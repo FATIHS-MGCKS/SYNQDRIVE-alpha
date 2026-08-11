@@ -85,6 +85,11 @@ export class EvaluationsFinanceRepository {
     const rows = await this.prisma.orgInvoicePayment.findMany({
       where: {
         organizationId,
+        // Defense-in-depth: the parent invoice must belong to the SAME tenant.
+        // A payment whose invoiceId points at another org's invoice (corrupt or
+        // malicious relation) is filtered out at the query level and never
+        // contributes a foreign currency/amount/status.
+        invoice: { is: { organizationId } },
         paidAt: { gte: window.start, lt: window.endExclusive },
       },
       select: {
@@ -92,12 +97,14 @@ export class EvaluationsFinanceRepository {
         invoiceId: true,
         amountCents: true,
         paidAt: true,
-        invoice: { select: { type: true, currency: true } },
+        invoice: { select: { type: true, currency: true, organizationId: true } },
       },
     });
 
     const facts: EvaluationsPaymentFact[] = [];
     for (const row of rows) {
+      // Redundant in-code guard mirroring the query filter (belt and braces).
+      if (row.invoice.organizationId !== organizationId) continue;
       if (!isOutgoingInvoiceType(row.invoice.type)) continue;
       facts.push({
         id: row.id,
@@ -112,15 +119,26 @@ export class EvaluationsFinanceRepository {
   }
 
   /**
-   * Authoritative organization reporting currency from finance settings. Used
-   * only to express a true-zero period; never used to override an invoice's own
-   * currency. Returns null when no settings authority exists (fail closed).
+   * Authoritative organization reporting currency from finance settings.
+   *
+   * E3.1 hardening: a Prisma `@default("EUR")` on a non-usable account is NOT a
+   * business authority. Only an ACTIVE, charges-enabled payment account counts,
+   * and selection is deterministic (most recently synced ACTIVE account). When no
+   * such account exists the reporting currency is unknown → null (fail closed;
+   * the caller must NOT fabricate a 0 EUR).
+   *
+   * Used only to express a true-zero period; it never overrides an invoice's own
+   * currency.
    */
   async resolveReportingCurrency(organizationId: string): Promise<string | null> {
     const account = await this.prisma.organizationPaymentAccount.findFirst({
-      where: { organizationId },
+      where: {
+        organizationId,
+        status: 'ACTIVE',
+        chargesEnabled: true,
+      },
       select: { defaultCurrency: true },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ lastSyncedAt: 'desc' }, { createdAt: 'desc' }],
     });
     if (!account?.defaultCurrency) return null;
     try {

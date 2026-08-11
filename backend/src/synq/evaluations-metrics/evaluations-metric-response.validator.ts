@@ -32,6 +32,7 @@ const UTC_ISO_INSTANT_PATTERN =
 const NUMERIC_VALUE_TYPES: ReadonlySet<EvaluationsNumericValueType> = new Set([
   'NUMBER',
   'PERCENT',
+  'SIGNED_PERCENT',
   'COUNT',
   'RATIO',
   'RATE',
@@ -178,6 +179,10 @@ function assertScalarValueMatchesType(
         if (value < 0 || value > 100) {
           fail('PERCENT metric value must be between 0 and 100', metricId);
         }
+        return;
+      case 'SIGNED_PERCENT':
+        // A finite signed percentage (already verified finite above). Losses may
+        // exceed -100%, so no lower bound is imposed; NaN/Infinity are rejected.
         return;
       case 'RATIO':
         if (value < 0 || value > 1) {

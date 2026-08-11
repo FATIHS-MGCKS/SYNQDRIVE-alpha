@@ -7,15 +7,17 @@ import { requireEvaluationsMetricDefinition } from '@modules/evaluations-metrics
 import type { EvaluationsMetricResponse } from '@synq/evaluations-metrics/evaluations-metric-response.contract';
 import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluations-period.contract';
 import { EvaluationsMoneyError } from '@synq/evaluations-finance/evaluations-money';
+import type { EvaluationsInvoiceFact } from '@synq/evaluations-finance/evaluations-finance-facts';
 import {
   type EvaluationsFinanceWindow,
   computeCashInflow,
   computeExpenses,
   computeIssuedRevenue,
   computeNetResult,
-  computeOpenReceivables,
+  computeCurrentTotalReceivables,
   computeOverdueReceivables,
   computeProfitMargin,
+  isCurrentReceivableReference,
   subtractAggregates,
 } from '@synq/evaluations-finance/evaluations-finance-calculator';
 import { EvaluationsFinanceRepository } from './evaluations-finance.repository';
@@ -29,6 +31,8 @@ export interface ComputeFinancialInsightsInput {
   readonly orgId: string;
   readonly requestedStationIds: readonly string[] | null;
   readonly reference?: Date;
+  /** Evaluation "now" (defaults to the wall clock). Injectable for determinism. */
+  readonly now?: Date;
 }
 
 /**
@@ -79,7 +83,7 @@ export class EvaluationsFinanceService {
       reference: input.reference,
     });
 
-    const generatedAt = new Date();
+    const generatedAt = input.now ?? new Date();
 
     // Finance sources have no authoritative per-station attribution on current
     // main. A station-narrowed actor must therefore NOT receive org-wide
@@ -119,11 +123,6 @@ export class EvaluationsFinanceService {
       const paidRevenue = computeCashInflow(payments, window);
       const expenses = computeExpenses(invoices, window);
       const netResult = computeNetResult(issuedRevenue, expenses);
-      // total outstanding = all currently-open receivables; open (not overdue) =
-      // total − overdue; overdue = past-due subset. All point-in-time.
-      const totalOutstanding = computeOpenReceivables(invoices, window.referenceMs);
-      const overdueReceivables = computeOverdueReceivables(invoices, window.referenceMs);
-      const openReceivables = subtractAggregates(totalOutstanding, overdueReceivables);
       const margin = computeProfitMargin(netResult, issuedRevenue);
 
       const money = (metricId: string, aggregate: typeof issuedRevenue) =>
@@ -144,9 +143,6 @@ export class EvaluationsFinanceService {
         [ids.paidRevenue]: money(ids.paidRevenue, paidRevenue),
         [ids.expenses]: money(ids.expenses, expenses),
         [ids.netResult]: money(ids.netResult, netResult),
-        [ids.openReceivables]: money(ids.openReceivables, openReceivables),
-        [ids.overdueReceivables]: money(ids.overdueReceivables, overdueReceivables),
-        [ids.totalOutstanding]: money(ids.totalOutstanding, totalOutstanding),
         [ids.profitMargin]: mapFinanceMarginMetric({
           metricId: ids.profitMargin,
           metricKind: requireEvaluationsMetricDefinition(ids.profitMargin).metricKind,
@@ -156,6 +152,7 @@ export class EvaluationsFinanceService {
           margin,
           sourceAvailable: true,
         }),
+        ...this.buildReceivableMetrics(invoices, scope.period, window, generatedAt, reportingCurrency),
       };
 
       return { organizationId: scope.organizationId, period: scope.period, metrics };
@@ -168,6 +165,66 @@ export class EvaluationsFinanceService {
           : 'FINANCE_CALCULATION_ERROR';
       return this.buildUnavailableBundle(scope.organizationId, scope.period, generatedAt, reason);
     }
+  }
+
+  /**
+   * Receivables are a CURRENT snapshot of the authoritative outstanding balance.
+   * A clearly historical reference cannot be honestly reconstructed from mutable
+   * current outstanding, so those metrics fail closed (Option B) rather than
+   * returning a false past value.
+   */
+  private buildReceivableMetrics(
+    invoices: readonly EvaluationsInvoiceFact[],
+    period: EvaluationsPeriodWindow,
+    window: EvaluationsFinanceWindow,
+    generatedAt: Date,
+    reportingCurrency: string | null,
+  ): Record<string, EvaluationsMetricResponse> {
+    const ids = EVALUATIONS_FINANCE_METRIC_IDS;
+    const receivableIds = [ids.openReceivables, ids.overdueReceivables, ids.totalOutstanding];
+
+    if (!isCurrentReceivableReference(window.referenceMs, generatedAt.getTime())) {
+      const out: Record<string, EvaluationsMetricResponse> = {};
+      for (const metricId of receivableIds) {
+        const definition = requireEvaluationsMetricDefinition(metricId);
+        out[metricId] = mapFinanceMoneyMetric({
+          metricId,
+          metricKind: definition.metricKind,
+          calculationVersion: definition.calculationVersion,
+          period,
+          generatedAt,
+          aggregate: { perCurrency: [], includedCount: 0, excludedCount: 0 },
+          sourceAvailable: false,
+          reportingCurrency,
+          unavailableReason: 'HISTORICAL_RECEIVABLE_RECONSTRUCTION_UNAVAILABLE',
+        });
+      }
+      return out;
+    }
+
+    const totalOutstanding = computeCurrentTotalReceivables(invoices);
+    const overdueReceivables = computeOverdueReceivables(invoices, window.referenceMs);
+    const openReceivables = subtractAggregates(totalOutstanding, overdueReceivables);
+
+    const money = (metricId: string, aggregate: typeof totalOutstanding) => {
+      const definition = requireEvaluationsMetricDefinition(metricId);
+      return mapFinanceMoneyMetric({
+        metricId,
+        metricKind: definition.metricKind,
+        calculationVersion: definition.calculationVersion,
+        period,
+        generatedAt,
+        aggregate,
+        sourceAvailable: true,
+        reportingCurrency,
+      });
+    };
+
+    return {
+      [ids.openReceivables]: money(ids.openReceivables, openReceivables),
+      [ids.overdueReceivables]: money(ids.overdueReceivables, overdueReceivables),
+      [ids.totalOutstanding]: money(ids.totalOutstanding, totalOutstanding),
+    };
   }
 
   private buildUnavailableBundle(

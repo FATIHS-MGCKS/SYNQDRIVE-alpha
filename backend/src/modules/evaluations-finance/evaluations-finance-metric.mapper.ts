@@ -31,6 +31,8 @@ export interface FinanceMoneyMetricInput {
   readonly sourceAvailable: boolean;
   /** Authoritative org reporting currency (org settings), or null when unknown. */
   readonly reportingCurrency: string | null;
+  /** Reason for an UNAVAILABLE result when `sourceAvailable` is false. */
+  readonly unavailableReason?: string;
 }
 
 function moneyBase(input: FinanceMoneyMetricInput) {
@@ -50,7 +52,10 @@ export function mapFinanceMoneyMetric(
 ): EvaluationsMetricResponse {
   const base = moneyBase(input);
   if (!input.sourceAvailable) {
-    return buildUnavailableEvaluationsMetric({ ...base, reason: 'FINANCE_SOURCE_UNAVAILABLE' });
+    return buildUnavailableEvaluationsMetric({
+      ...base,
+      reason: input.unavailableReason ?? 'FINANCE_SOURCE_UNAVAILABLE',
+    });
   }
   const { perCurrency } = input.aggregate;
   if (perCurrency.length > 1) {
@@ -88,7 +93,9 @@ export function mapFinanceMarginMetric(
   const base = {
     metricId: input.metricId,
     metricKind: input.metricKind,
-    valueType: 'PERCENT' as const,
+    // E3.1: SIGNED_PERCENT so a loss-making margin (negative, possibly < -100%)
+    // is served honestly instead of being hidden as NOT_APPLICABLE.
+    valueType: 'SIGNED_PERCENT' as const,
     unit: 'PERCENT' as const,
     calculationVersion: input.calculationVersion,
     period: input.period,
@@ -98,12 +105,12 @@ export function mapFinanceMarginMetric(
     return buildUnavailableEvaluationsMetric({ ...base, reason: 'FINANCE_SOURCE_UNAVAILABLE' });
   }
   if (input.margin.kind === 'NOT_APPLICABLE') {
+    // Only a genuine no-value case (zero-revenue denominator or multi-currency)
+    // is NOT_APPLICABLE — never a real negative margin.
     return buildNotApplicableEvaluationsMetric({ ...base, reason: input.margin.reason });
   }
-  // PERCENT metric values are bounded to [0, 100] by the E1 validator. A margin
-  // outside that band cannot be expressed on this contract → NOT_APPLICABLE.
-  if (input.margin.value < 0 || input.margin.value > 100) {
-    return buildNotApplicableEvaluationsMetric({ ...base, reason: 'MARGIN_OUT_OF_PERCENT_RANGE' });
+  if (!Number.isFinite(input.margin.value)) {
+    return buildNotApplicableEvaluationsMetric({ ...base, reason: 'MARGIN_NOT_FINITE' });
   }
   return buildAvailableEvaluationsMetric({ ...base, value: input.margin.value });
 }

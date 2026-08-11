@@ -11,8 +11,20 @@ const REGISTRY_METRIC_ID_PREFIXES = ['fin.', 'ins.', 'ops.', 'da.', 'fc.'] as co
 
 /** Per-metric overrides when formulas diverge from the initial version. */
 export const EVALUATIONS_METRIC_CALCULATION_VERSION_OVERRIDES: Readonly<Record<string, string>> = {
-  // Example when a formula changes:
-  // 'fin.mtd_issued_revenue': '2.0.0',
+  // E3.1 material finance semantic changes (see
+  // docs/audits/pr-recovery/phase3-e3-runtime-financial-semantics-correction-test-report-2026-08.md):
+  // - paid revenue now sourced from the confirmed payment ledger (was paid-invoice total)
+  // - expenses now use a positive finalized-state allowlist (UPLOADED/NEEDS_REVIEW excluded)
+  // - net result derives from the corrected expense semantics
+  // - profit margin is a signed percentage (negative margins served, not hidden)
+  // - receivables use the authoritative current outstanding balance (current-only)
+  'fin.mtd_paid_revenue': '2.0.0',
+  'fin.mtd_expenses': '2.0.0',
+  'fin.mtd_net_result': '2.0.0',
+  'fin.profit_margin_mtd': '2.0.0',
+  'fin.open_receivables': '2.0.0',
+  'fin.overdue_receivables': '2.0.0',
+  'fin.total_outstanding_receivables': '2.0.0',
 };
 
 /**

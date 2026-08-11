@@ -5,7 +5,7 @@ import {
   computeIssuedRevenue,
   computeNetCashflow,
   computeNetResult,
-  computeOpenReceivables,
+  computeCurrentTotalReceivables,
   computeOverdueReceivables,
   computeProfitMargin,
   computeRefundOutflow,
@@ -79,7 +79,7 @@ describe('evaluations finance calculator (E3)', () => {
       invoice({ id: 'inv-1', status: 'PARTIALLY_PAID', totalMinor: 10000, paidMinor: 3000, outstandingMinor: 7000 }),
     ];
     it('open receivable is the authoritative outstanding (70), not total or zero', () => {
-      expect(computeOpenReceivables(invoices, JULY.referenceMs).perCurrency).toEqual([
+      expect(computeCurrentTotalReceivables(invoices).perCurrency).toEqual([
         moneyOfMinor(7000, 'EUR'),
       ]);
     });
@@ -138,11 +138,11 @@ describe('evaluations finance calculator (E3)', () => {
       const paid = invoice({ id: 'p', status: 'PAID', outstandingMinor: 0 });
       const voided = invoice({ id: 'v', status: 'VOID', outstandingMinor: 10000 });
       const cancelled = invoice({ id: 'c', status: 'CANCELLED', outstandingMinor: 10000 });
-      expect(computeOpenReceivables([paid, voided, cancelled], JULY.referenceMs).perCurrency).toEqual([]);
+      expect(computeCurrentTotalReceivables([paid, voided, cancelled]).perCurrency).toEqual([]);
     });
     it('never produces a negative receivable', () => {
       const credit = invoice({ id: 'x', status: 'ISSUED', outstandingMinor: -500 });
-      expect(computeOpenReceivables([credit], JULY.referenceMs).perCurrency).toEqual([]);
+      expect(computeCurrentTotalReceivables([credit]).perCurrency).toEqual([]);
     });
   });
 

@@ -52,31 +52,43 @@ export interface EvaluationsPaymentFact {
   readonly settledAt: string | null;
 }
 
-/** Mirrors backend `invoice-domain.util.ts` REVENUE_EXCLUDED_STATUSES. */
-export const FINANCE_REVENUE_EXCLUDED_STATUSES: ReadonlySet<string> = new Set([
-  'DRAFT',
-  'CANCELLED',
-  'CANCELED',
-  'VOID',
-  'CREDITED',
+/**
+ * Positive revenue allowlist (E3.1): OUTGOING invoice states that represent a
+ * finalized commercial claim. Denylist semantics are avoided so a newly added
+ * enum state can never silently become revenue. DRAFT/CANCELLED/CREDITED/VOID
+ * are absent by design.
+ */
+export const FINANCE_REVENUE_INCLUDED_STATUSES: ReadonlySet<string> = new Set([
+  'ISSUED',
+  'SENT',
+  'PARTIALLY_PAID',
+  'PAID',
+  'OVERDUE',
 ]);
 
-/** Mirrors backend `invoice-domain.util.ts` EXPENSE_EXCLUDED_STATUSES. */
-export const FINANCE_EXPENSE_EXCLUDED_STATUSES: ReadonlySet<string> = new Set([
-  'DRAFT',
-  'CANCELLED',
-  'CANCELED',
-  'VOID',
-  'REJECTED',
+/**
+ * Positive expense allowlist (E3.1): INCOMING invoice states that represent a
+ * finalized/approved payable. UPLOADED and NEEDS_REVIEW are intake states and
+ * must NOT count as expenses; REJECTED/DRAFT/CANCELLED/VOID are excluded.
+ */
+export const FINANCE_EXPENSE_INCLUDED_STATUSES: ReadonlySet<string> = new Set([
+  'APPROVED',
+  'BOOKED',
+  'PARTIALLY_PAID',
+  'PAID',
+  'OVERDUE',
 ]);
 
-/** Outgoing statuses that are not open commercial demands (receivables). */
-export const FINANCE_NON_OPEN_OUTGOING_STATUSES: ReadonlySet<string> = new Set([
-  'DRAFT',
-  'CANCELLED',
-  'CANCELED',
-  'VOID',
-  'CREDITED',
+/**
+ * Positive open-receivable allowlist (E3.1): OUTGOING states that are a
+ * finalized commercial claim AND can still be outstanding. PAID is intentionally
+ * absent (fully settled); a paid outstanding is also guarded by the amount.
+ */
+export const FINANCE_OPEN_RECEIVABLE_STATUSES: ReadonlySet<string> = new Set([
+  'ISSUED',
+  'SENT',
+  'PARTIALLY_PAID',
+  'OVERDUE',
 ]);
 
 export function normalizeFinanceStatus(status: string | null | undefined): string {
@@ -86,33 +98,28 @@ export function normalizeFinanceStatus(status: string | null | undefined): strin
 export function isRevenueInvoiceFact(fact: EvaluationsInvoiceFact): boolean {
   return (
     fact.direction === 'OUTGOING' &&
-    !FINANCE_REVENUE_EXCLUDED_STATUSES.has(normalizeFinanceStatus(fact.status))
+    FINANCE_REVENUE_INCLUDED_STATUSES.has(normalizeFinanceStatus(fact.status))
   );
 }
 
 export function isExpenseInvoiceFact(fact: EvaluationsInvoiceFact): boolean {
   return (
     fact.direction === 'INCOMING' &&
-    !FINANCE_EXPENSE_EXCLUDED_STATUSES.has(normalizeFinanceStatus(fact.status))
+    FINANCE_EXPENSE_INCLUDED_STATUSES.has(normalizeFinanceStatus(fact.status))
   );
 }
 
-function isPaidInvoiceFact(fact: EvaluationsInvoiceFact): boolean {
-  const status = normalizeFinanceStatus(fact.status);
-  return status === 'PAID' || fact.outstandingMinor <= 0;
-}
-
 /**
- * Open receivable = outgoing, commercially open, still owed. Uses the
- * authoritative outstanding balance, so partial payments reduce (but do not
- * clear) the receivable.
+ * Open receivable = outgoing, in a finalized-claim state that can still be owed,
+ * with a positive authoritative CURRENT outstanding balance. Partial payments
+ * reduce (but do not clear) the receivable. This is a CURRENT snapshot; historical
+ * as-of reconstruction is handled (fail-closed) by the calculator/service.
  */
 export function isOpenReceivableFact(fact: EvaluationsInvoiceFact): boolean {
   if (fact.direction !== 'OUTGOING') return false;
-  if (FINANCE_NON_OPEN_OUTGOING_STATUSES.has(normalizeFinanceStatus(fact.status))) {
+  if (!FINANCE_OPEN_RECEIVABLE_STATUSES.has(normalizeFinanceStatus(fact.status))) {
     return false;
   }
-  if (isPaidInvoiceFact(fact)) return false;
   return fact.outstandingMinor > 0;
 }
 

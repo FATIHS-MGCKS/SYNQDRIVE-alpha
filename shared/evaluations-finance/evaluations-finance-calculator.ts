@@ -23,6 +23,7 @@ import {
   isOverdueReceivableFact,
   isRevenueInvoiceFact,
   isWithinWindow,
+  normalizeFinanceStatus,
   parseInstantMs,
   resolveExpenseBusinessMs,
   resolveRevenueBusinessMs,
@@ -33,6 +34,21 @@ export interface EvaluationsFinanceWindow {
   readonly endExclusiveMs: number;
   /** Point-in-time reference (e.g. "as of now") for receivables/overdue. */
   readonly referenceMs: number;
+}
+
+/**
+ * Receivables are a CURRENT snapshot derived from the mutable authoritative
+ * `outstandingCents`. They are only valid when the evaluation reference is
+ * "current" (close to now). Historical as-of receivables cannot be honestly
+ * reconstructed from the current outstanding balance, so a clearly historical
+ * reference is rejected (Option B — fail closed, never a false past value).
+ *
+ * Slack tolerates timezone/end-of-window boundaries around "now".
+ */
+export const CURRENT_RECEIVABLE_REFERENCE_SLACK_MS = 48 * 60 * 60 * 1000;
+
+export function isCurrentReceivableReference(referenceMs: number, nowMs: number): boolean {
+  return referenceMs >= nowMs - CURRENT_RECEIVABLE_REFERENCE_SLACK_MS;
 }
 
 /**
@@ -89,6 +105,32 @@ export function computeExpenses(
       continue;
     }
     if (!isWithinWindow(resolveExpenseBusinessMs(inv), window.startMs, window.endExclusiveMs)) {
+      excluded += 1;
+      continue;
+    }
+    contributions.push(moneyOfMinor(inv.totalMinor, inv.currency));
+  }
+  return aggregate(contributions, contributions.length, excluded);
+}
+
+/**
+ * Invoice-based settled revenue (cash proxy): OUTGOING invoices marked PAID whose
+ * settlement instant falls in the window. This is the invoice-ledger view of paid
+ * revenue used where the payment ledger is unavailable (e.g. the client serving
+ * path). It is a distinct, canonical definition from ledger `computeCashInflow`.
+ */
+export function computeSettledInvoiceRevenue(
+  invoices: readonly EvaluationsInvoiceFact[],
+  window: EvaluationsFinanceWindow,
+): EvaluationsFinanceAggregate {
+  const contributions: EvaluationsMoney[] = [];
+  let excluded = 0;
+  for (const inv of invoices) {
+    if (inv.direction !== 'OUTGOING' || normalizeFinanceStatus(inv.status) !== 'PAID') {
+      excluded += 1;
+      continue;
+    }
+    if (!isWithinWindow(parseInstantMs(inv.paidAt), window.startMs, window.endExclusiveMs)) {
       excluded += 1;
       continue;
     }
@@ -162,10 +204,13 @@ export function computeNetCashflow(
   };
 }
 
-/** Point-in-time open receivables: authoritative outstanding balance, no negatives. */
-export function computeOpenReceivables(
+/**
+ * CURRENT total outstanding receivables: authoritative current outstanding
+ * balance, no negatives. This is a current snapshot (no historical
+ * reconstruction); callers guard with `isCurrentReceivableReference`.
+ */
+export function computeCurrentTotalReceivables(
   invoices: readonly EvaluationsInvoiceFact[],
-  referenceMs: number,
 ): EvaluationsFinanceAggregate {
   const contributions: EvaluationsMoney[] = [];
   let excluded = 0;
@@ -176,7 +221,6 @@ export function computeOpenReceivables(
     }
     contributions.push(moneyOfMinor(inv.outstandingMinor, inv.currency));
   }
-  void referenceMs;
   return aggregate(contributions, contributions.length, excluded);
 }
 
