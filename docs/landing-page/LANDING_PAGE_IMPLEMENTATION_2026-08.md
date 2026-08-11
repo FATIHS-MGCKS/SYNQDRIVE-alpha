@@ -128,11 +128,20 @@ timer that removes it again if `script.js` never arrives.
 
 ## Performance
 
-984 kB total for the whole site, of which 640 kB is imagery across nine WebP files plus one
-JPEG. No framework, no animation library, one 6 kB script. The hero image is preloaded and
-eagerly decoded, everything below the fold is lazy. Fonts are self-hosted WebFont subsets and
+The shipped directory is 984 kB, but that counts every responsive variant. What a visitor
+actually downloads, measured against production with the whole page scrolled so no lazy image is
+missed:
+
+| Viewport | Images | CSS | HTML | Fonts | JS | Total |
+|----------|--------|-----|------|-------|-----|-------|
+| Desktop 1440 | 337 kB | 28 kB | 27 kB | 24 kB | 6 kB | 423 kB |
+| Mobile 390 | 230 kB | 28 kB | 27 kB | 24 kB | 6 kB | 316 kB |
+
+No framework, no animation library, one 6 kB script. The hero image is preloaded and eagerly
+decoded, everything below the fold is lazy, and `srcset` means the narrow viewport pulls the
+half-width variants rather than the desktop ones. Fonts are two self-hosted Manrope subsets,
 preloaded. Cumulative layout shift measured under 0.1 because every image carries intrinsic
-dimensions.
+dimensions, including the `<source>` elements of the art-directed pair.
 
 ## SEO
 
@@ -192,14 +201,15 @@ production immediately before the deploy. Restoring it is the same operation as 
 archive that directory and push it to the `synqdrive.eu` vhost. Nothing else changed, so no DNS,
 certificate or proxy state has to be reverted.
 
-Commit deployed: `6a094128`.
+Commit deployed: `6a094128`. Later commits on this branch are documentation only and do not
+change the shipped artefact.
 
 ## Acceptance
 
-Checked live on <https://synqdrive.eu>: 200 on the apex and on `/en/`, `/en` redirecting to
-`/en/`, HTTP redirecting to HTTPS, a valid certificate, `robots.txt` and `sitemap.xml` served
-with the right content types, and every asset returning 200 with the correct MIME type including
-WebP, WOFF2 and JPEG.
+Checked live on <https://synqdrive.eu>: 200 on the apex and on `/en/`, `/en` redirecting 301 to
+`/en/`, HTTP redirecting 301 to HTTPS, a Let's Encrypt certificate for `CN=synqdrive.eu` valid to
+2026-10-30, `robots.txt` and `sitemap.xml` served with the right content types, and every asset
+returning 200 with the correct MIME type including WebP, WOFF2 and JPEG.
 
 The QA suite was then run against `https://synqdrive.eu` and passed all 11 tests, so the live
 site has no console errors, no failed requests, no image 404s, no horizontal overflow at any of
