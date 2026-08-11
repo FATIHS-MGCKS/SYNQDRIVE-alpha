@@ -109,3 +109,32 @@ Evidence (E3.2): `phase3-e3-finance-metric-ownership-matrix-2026-08.csv`,
 `phase3-e3-canonical-live-serving-path-test-report-2026-08.md`, updated
 implementation report and semantic matrix; E3.1 serving-path claim marked
 `SUPERSEDED_BY_E3_2`.
+
+## E3.3 — Final UI Scope, Drilldown Reconciliation & Money Presentation
+
+### Changes (E3.3)
+
+- FinancialInsightsView propagates the selected station to the canonical finance
+  endpoint (requested narrowing) and reloads Core KPIs on station change with a
+  stale-response generation guard; station-scoped finance stays fail-closed (no
+  org-wide fallback).
+- Removed the non-canonical issued∪paid Core KPI drilldown popup and client
+  contributing counts (correct absence over misleading breakdown).
+- Money presentation converts minor→major via the shared ISO-4217 exponent
+  authority (JPY=0, KWD=3, …), not `/100`; invalid currency → guarded state.
+- Removed the legacy `total - paid` outstanding derivation.
+- Legacy daily chart + top-N labeled Limited / non-canonical.
+
+### Architektur (E3.3)
+
+- One visible scope: the selected station drives both the presentation surface and
+  the canonical Core KPI request; the backend is the single authority and fails
+  closed for station-scoped finance.
+- Money presentation is exponent-correct for all ISO-4217 currencies and is a pure
+  display concern (no client finance calculation authority).
+- Non-canonical legacy surfaces are explicitly degraded in the UI, never presented
+  as canonical Core results.
+
+Evidence (E3.3): `phase3-e3-financial-ui-reconciliation-matrix-2026-08.csv`,
+`phase3-e3-final-ui-scope-money-presentation-test-report-2026-08.md`; updated
+implementation report; E3.2 report claims marked `SUPERSEDED_BY_E3_3`.

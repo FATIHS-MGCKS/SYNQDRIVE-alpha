@@ -1,5 +1,15 @@
 # Phase 3 E3.2 — Canonical Live Serving Path Test Report
 
+> **SUPERSEDED note (E3.3, 2026-08-11).** The independent E3.2 audit found residual
+> issues on top of E3.2: (a) the selected station scope was not consistently passed
+> to the canonical Core Finance KPIs, (b) Core KPI counts/drilldown used
+> non-canonical (issued∪paid) client semantics, and (c) frontend money formatting
+> used a hardcoded `/100`, wrong for non-2-decimal currencies (JPY/KWD). Those
+> specific claims below (station scope, KPI/drilldown reconciliation, money
+> presentation) are marked `SUPERSEDED_BY_E3_3` and are corrected in
+> `phase3-e3-final-ui-scope-money-presentation-test-report-2026-08.md`. All other
+> E3.2 results remain valid.
+
 ## Revision
 
 - `BASE_MAIN_SHA` = `6acdb24eb84986b25789c01fb544645231c53dc5` (no drift)
@@ -35,7 +45,8 @@ Total Receivables — all served by the canonical backend; the browser only form
 | No client outstanding fallback for KPIs | PASS |
 | Historical receivable fail-closed preserved | PASS |
 | Period from E1/E2 (browser timezone cannot change KPI) | PASS (period label in backend tz) |
-| Money.currency backend authoritative (no hardcoded EUR KPI) | PASS |
+| Money.currency backend authoritative (no hardcoded EUR KPI) | PASS → money `/100` presentation **SUPERSEDED_BY_E3_3** |
+| FinancialInsightsView uses canonical backend values | PASS → station-scope propagation **SUPERSEDED_BY_E3_3** |
 | Mixed currency fail-closed visible (no silent EUR subtotal) | PASS |
 | Active finance metric has canonical owner | PASS (ownership test) |
 | Tenant: route :orgId only, E2 scope, station fail-closed | PASS |

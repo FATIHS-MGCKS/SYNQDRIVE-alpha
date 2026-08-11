@@ -337,3 +337,67 @@ failures). Frontend typecheck + production build PASS.
   explicitly non-canonical.
 - Ledger-based net cashflow with refunds and historical as-of receivables remain
   out of scope (fail-closed), as in E3/E3.1.
+
+---
+
+# E3.3 — Final UI Scope, Drilldown Reconciliation & Money Presentation (2026-08-11)
+
+Final narrow correction pass (same branch/PR #1022) closing the residual issues
+from the E3.2 audit. No finance redesign, no E4.
+
+## Selected station propagation
+
+`FinancialInsightsView` passes the selected station to the canonical endpoint
+(`buildFinanceInsightsPath` → `?stationIds=…`) as a requested narrowing; the loader
+depends on `selectedStationId` (station change → Core KPI refetch); a generation
+guard discards stale responses (rapid A→B safe). Backend E2 remains authoritative.
+
+## No org-wide fallback
+
+Station-scoped finance stays fail-closed at the backend (UNAVAILABLE); the UI shows
+the governed unavailable state and never falls back to org-wide totals for a
+selected station.
+
+## KPI / drilldown reconciliation
+
+Removed the non-canonical issued∪paid client drilldown popup and the client-derived
+contributing counts from the Core KPI cards. No misleading breakdown is shown
+(correct absence over wrong drilldown).
+
+## Money exponent correction
+
+`formatFinanceMoney` converts minor→major via the shared ISO-4217 minor-unit
+exponent authority (`getCurrencyMinorUnitExponent`), not a hardcoded `/100`. JPY
+(exp 0) and KWD (exp 3) format correctly; invalid currency → guarded state.
+
+## JPY/KWD tests
+
+`finance-insights-adapter.test.ts`: EUR/USD (2), JPY (0), KWD (3), negative, zero,
+invalid currency; plus station request-path tests.
+
+## Degraded surface treatment
+
+Daily chart labeled "Limited · non-canonical"; Top customers/vehicles suffixed
+"· Limited"; MoM deltas and Avg invoice shown as "—". Registry `active_degraded`;
+ownership test enforces `ACTIVE_BUT_NOT_CANONICALLY_SERVED = 0`.
+
+## Outstanding fallback removal
+
+`financial-insights.logic.ts` no longer derives `total - paid`; missing
+authoritative outstanding contributes 0 (excluded), never an invented receivable.
+
+## Final serving path
+
+`FinancialInsightsView → api.evaluations.financeInsights → EvaluationsFinanceController
+→ E2 scope → E1 period → EvaluationsFinanceService → calculator/repository → sources`.
+Frontend Core KPI = display only.
+
+## Residual limitations (E3.3)
+
+- Station-scoped finance is fail-closed (org-level canonical KPI surface); per-station
+  finance attribution is deferred (no lineage on current main).
+- Daily chart, top-N, MoM, avg-invoice remain non-canonical presentation (labeled
+  Limited / shown as unavailable), pending E4/E6.
+- Ledger net cashflow with refunds and historical as-of receivables remain fail-closed.
+- See `phase3-e3-financial-ui-reconciliation-matrix-2026-08.csv` and
+  `phase3-e3-final-ui-scope-money-presentation-test-report-2026-08.md`.
