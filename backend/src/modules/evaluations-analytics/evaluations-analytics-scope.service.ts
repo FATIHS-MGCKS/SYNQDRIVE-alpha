@@ -1,6 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { StationAccessService } from '@shared/stations/station-access.service';
 import type {
   EvaluationsPeriodType,
   EvaluationsPeriodWindow,
@@ -10,6 +9,10 @@ import {
   resolveEvaluationsPeriod,
   resolveEvaluationsTimezone,
 } from '@modules/evaluations-metrics/evaluations-period.resolver';
+import {
+  resolveEvaluationsAuthorizedStationScope,
+  type EvaluationsAuthorizedStationScope,
+} from './evaluations-analytics-station-scope';
 
 export interface EvaluationsAnalyticsActor {
   readonly id?: string;
@@ -21,7 +24,7 @@ export interface ResolveAuthorizedScopeInput {
   readonly actor: EvaluationsAnalyticsActor;
   /** Organization already authorized by OrgScopingGuard (the `:orgId` route param). */
   readonly orgId: string;
-  /** Requested station narrowing. `null` = all stations the actor may read. */
+  /** Requested station narrowing. `null` = the actor's full authorized station scope. */
   readonly requestedStationIds: readonly string[] | null;
   readonly periodType: EvaluationsPeriodType;
   readonly reference?: Date;
@@ -29,66 +32,93 @@ export interface ResolveAuthorizedScopeInput {
 
 /**
  * Resolves the server-authorized analytics scope, including the canonical
- * business timezone/period. Client-supplied ids are only a request;
- * authorization derives from the actor's central tenant/station scope. Any
- * requested station that is not both org-owned and within the actor's station
- * scope fails the whole request closed.
- *
- * Timezone precedence (EVAL-ADR-002): a single authorized station's timezone,
- * else the organization timezone, else the platform fallback. Multiple stations
- * never pick a "first station" — they fall through to the organization timezone.
+ * business timezone/period. Station authorization is derived from the actor's
+ * canonical role/membership scope (flag-independent — the Stations-V2 flag never
+ * widens it). Requested stations must be org-owned AND within the actor's
+ * authorized station scope; any violation fails the whole request closed.
  */
 @Injectable()
 export class EvaluationsAnalyticsScopeService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly stationAccess: StationAccessService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async resolveAuthorizedScope(
     input: ResolveAuthorizedScopeInput,
   ): Promise<EvaluationsAuthorizedAnalyticsScope> {
     const { actor, orgId, requestedStationIds, periodType } = input;
 
-    const access = await this.stationAccess.resolve(actor.id, orgId);
-    const bypass = access.bypassScope || access.allowedStationIds === null;
+    const authorized = await this.resolveActorStationScope(actor, orgId);
 
     let stationIds: readonly string[] | null;
     let stationScoped: boolean;
 
     if (requestedStationIds === null) {
-      stationIds = bypass ? null : [...(access.allowedStationIds ?? [])];
-      stationScoped = !bypass;
+      if (authorized.mode === 'ALL_STATIONS') {
+        stationIds = null;
+        stationScoped = false;
+      } else {
+        // ASSIGNED_STATIONS → exactly the assigned stations; NO_STATIONS → empty.
+        stationIds = [...(authorized.stationIds ?? [])];
+        stationScoped = true;
+      }
     } else if (requestedStationIds.length === 0) {
       stationIds = [];
       stationScoped = true;
     } else {
-      await this.assertStationsAuthorized(orgId, requestedStationIds, access, bypass);
+      await this.assertStationsAuthorized(orgId, requestedStationIds, authorized);
       stationIds = [...requestedStationIds];
       stationScoped = true;
     }
 
     const period = await this.resolvePeriod(orgId, stationIds, periodType, input.reference);
-
     return { organizationId: orgId, stationIds, stationScoped, period };
+  }
+
+  private async resolveActorStationScope(
+    actor: EvaluationsAnalyticsActor,
+    orgId: string,
+  ): Promise<EvaluationsAuthorizedStationScope> {
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: { userId: actor.id, organizationId: orgId, status: 'ACTIVE' },
+      select: {
+        role: true,
+        status: true,
+        permissions: true,
+        stationScope: true,
+        stationIds: true,
+        fieldAgentAccess: true,
+        membershipVersion: true,
+        organizationRoleId: true,
+      },
+    });
+    return resolveEvaluationsAuthorizedStationScope({
+      platformRole: actor.platformRole,
+      membership: membership ?? null,
+      organizationId: orgId,
+    });
   }
 
   private async assertStationsAuthorized(
     orgId: string,
     requestedStationIds: readonly string[],
-    access: { bypassScope: boolean; allowedStationIds: string[] | null },
-    bypass: boolean,
+    authorized: EvaluationsAuthorizedStationScope,
   ): Promise<void> {
+    // Every requested station must be organization-owned (tenant boundary).
     const owned = await this.prisma.station.findMany({
       where: { organizationId: orgId, id: { in: [...requestedStationIds] } },
       select: { id: true },
     });
     const ownedIds = new Set(owned.map((s) => s.id));
+    const assigned =
+      authorized.mode === 'ASSIGNED_STATIONS' ? new Set(authorized.stationIds ?? []) : null;
+
     for (const stationId of requestedStationIds) {
       if (!ownedIds.has(stationId)) {
         throw new ForbiddenException('Requested station is outside the authorized scope');
       }
-      if (!bypass && !(access.allowedStationIds ?? []).includes(stationId)) {
+      if (authorized.mode === 'NO_STATIONS') {
+        throw new ForbiddenException('Requested station is outside the authorized scope');
+      }
+      if (assigned && !assigned.has(stationId)) {
         throw new ForbiddenException('Requested station is outside the authorized scope');
       }
     }

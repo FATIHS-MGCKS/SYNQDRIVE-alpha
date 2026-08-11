@@ -24,6 +24,9 @@ interface Row {
 
 const REFERENCE = new Date('2026-08-10T00:00:00.000Z');
 
+let MEMBERSHIP: { role: string; stationScope?: string | null; stationIds?: unknown } | null =
+  null;
+
 function matches(row: Row, where: Record<string, unknown>): boolean {
   if (where.organizationId && row.organizationId !== where.organizationId) return false;
   const createdAt = where.createdAt as { gte: Date; lt: Date } | undefined;
@@ -54,6 +57,21 @@ function matches(row: Row, where: Record<string, unknown>): boolean {
 
 function makeFakePrisma(rows: Row[], stations: Array<{ id: string; organizationId: string }>) {
   return {
+    organizationMembership: {
+      findFirst: async (args: { where: { organizationId: string } }) =>
+        MEMBERSHIP
+          ? {
+              role: MEMBERSHIP.role,
+              status: 'ACTIVE',
+              permissions: {},
+              stationScope: MEMBERSHIP.stationScope ?? null,
+              stationIds: MEMBERSHIP.stationIds ?? [],
+              fieldAgentAccess: false,
+              membershipVersion: 1,
+              organizationRoleId: null,
+            }
+          : null,
+    },
     organization: {
       findUnique: async () => ({ timezone: 'Europe/Berlin' }),
     },
@@ -130,20 +148,21 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
     { id: 's-b3', organizationId: 'org-b' },
   ];
 
-  function build(access: {
-    bypassScope: boolean;
-    allowedStationIds: string[] | null;
+  function build(membership: {
+    role: string;
+    stationScope?: string | null;
+    stationIds?: unknown;
   }) {
+    MEMBERSHIP = membership;
     const prisma = makeFakePrisma(rows, stations);
-    const stationAccess = { resolve: async () => ({ ...access, membershipRole: 'X' }) } as never;
-    const scopeService = new EvaluationsAnalyticsScopeService(prisma, stationAccess);
+    const scopeService = new EvaluationsAnalyticsScopeService(prisma);
     const repo = new EvaluationsEntityReferenceRepository(prisma);
     const service = new EvaluationsAnalyticsService(repo);
     return { scopeService, service };
   }
 
   it('an org-a admin never sees org-b references in summary or detail', async () => {
-    const { scopeService, service } = build({ bypassScope: true, allowedStationIds: null });
+    const { scopeService, service } = build({ role: 'ORG_ADMIN', stationScope: 'ALL' });
     const scope = await scopeService.resolveAuthorizedScope({
       actor: { id: 'u-a', organizationId: 'org-a' },
       orgId: 'org-a',
@@ -162,7 +181,7 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
   });
 
   it('a shared natural entity id (veh-1) does not leak the other tenant row', async () => {
-    const { scopeService, service } = build({ bypassScope: true, allowedStationIds: null });
+    const { scopeService, service } = build({ role: 'ORG_ADMIN', stationScope: 'ALL' });
     const scope = await scopeService.resolveAuthorizedScope({
       actor: { id: 'u-a', organizationId: 'org-a' },
       orgId: 'org-a',
@@ -179,10 +198,7 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
   });
 
   it('a station-scoped org-a actor only sees allowed-station references', async () => {
-    const { scopeService, service } = build({
-      bypassScope: false,
-      allowedStationIds: ['s-a1'],
-    });
+    const { scopeService, service } = build({ role: 'WORKER', stationIds: ['s-a1'] });
     const scope = await scopeService.resolveAuthorizedScope({
       actor: { id: 'u-a', organizationId: 'org-a' },
       orgId: 'org-a',

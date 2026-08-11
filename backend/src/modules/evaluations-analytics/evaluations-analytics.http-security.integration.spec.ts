@@ -9,7 +9,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
 import { PrismaService } from '@shared/database/prisma.service';
-import { StationAccessService } from '@shared/stations/station-access.service';
 import { EvaluationsAnalyticsController } from './evaluations-analytics.controller';
 import { EvaluationsAnalyticsScopeService } from './evaluations-analytics-scope.service';
 import { EvaluationsAnalyticsService } from './evaluations-analytics.service';
@@ -32,9 +31,42 @@ class TestAuthGuard implements CanActivate {
   }
 }
 
-const MEMBERSHIPS: Record<string, { id: string; role: string; permissions: unknown }> = {
-  'ua|org-a': { id: 'm-a', role: 'ORG_ADMIN', permissions: {} },
-  'uw|org-a': { id: 'm-w', role: 'WORKER', permissions: {} },
+const MEMBERSHIPS: Record<
+  string,
+  {
+    id: string;
+    role: string;
+    status: string;
+    permissions: unknown;
+    stationScope: string | null;
+    stationIds: unknown;
+    fieldAgentAccess: boolean;
+    membershipVersion: number;
+    organizationRoleId: string | null;
+  }
+> = {
+  'ua|org-a': {
+    id: 'm-a',
+    role: 'ORG_ADMIN',
+    status: 'ACTIVE',
+    permissions: {},
+    stationScope: 'ALL',
+    stationIds: [],
+    fieldAgentAccess: false,
+    membershipVersion: 1,
+    organizationRoleId: null,
+  },
+  'uw|org-a': {
+    id: 'm-w',
+    role: 'WORKER',
+    status: 'ACTIVE',
+    permissions: {},
+    stationScope: null,
+    stationIds: [],
+    fieldAgentAccess: false,
+    membershipVersion: 1,
+    organizationRoleId: null,
+  },
 };
 
 const STATIONS = [
@@ -92,7 +124,6 @@ describe('EvaluationsAnalyticsController — HTTP security integration', () => {
       controllers: [EvaluationsAnalyticsController],
       providers: [
         { provide: PrismaService, useValue: makePrisma() },
-        StationAccessService,
         EvaluationsAnalyticsScopeService,
         EvaluationsAnalyticsService,
         EvaluationsEntityReferenceRepository,

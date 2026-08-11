@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@shared/database/prisma.module';
-import { StationsModule } from '@modules/stations/stations.module';
 import { EvaluationsAnalyticsController } from './evaluations-analytics.controller';
 import { EvaluationsAnalyticsScopeService } from './evaluations-analytics-scope.service';
 import { EvaluationsAnalyticsService } from './evaluations-analytics.service';
@@ -8,7 +7,7 @@ import { EvaluationsEntityReferenceRepository } from './evaluations-entity-refer
 import { EvaluationsEntityReferenceWriteService } from './evaluations-entity-reference-write.service';
 
 @Module({
-  imports: [PrismaModule, StationsModule],
+  imports: [PrismaModule],
   controllers: [EvaluationsAnalyticsController],
   providers: [
     EvaluationsAnalyticsScopeService,
