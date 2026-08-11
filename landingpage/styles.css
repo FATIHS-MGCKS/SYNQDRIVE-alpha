@@ -371,9 +371,10 @@ a {
 .signal-path {
   position: absolute;
   z-index: 2;
-  height: 1px;
+  height: 2px;
   overflow: hidden;
-  background: var(--line-strong);
+  background: rgba(132, 169, 236, 0.46);
+  box-shadow: 0 0 12px rgba(79, 134, 232, 0.24);
   transform-origin: left center;
 }
 
@@ -381,7 +382,13 @@ a {
   position: absolute;
   inset: 0;
   content: "";
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.92),
+    var(--accent-hover),
+    transparent
+  );
   transform: translateX(-100%);
   animation: signalTravel 3.8s cubic-bezier(0.2, 0, 0, 1) infinite;
 }

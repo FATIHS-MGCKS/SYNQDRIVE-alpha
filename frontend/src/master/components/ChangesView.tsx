@@ -41,6 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Die öffentliche Root-Domain synqdrive.eu erhält eine neue responsive Coming-soon-Seite mit kanonischem SynqDrive-Logo, klarer Enterprise-Fleet-Positionierung und reduziertem Motion-System.',
       'Die Seite ist statisch, dependency-frei und berücksichtigt Reduced Motion, Tastaturfokus, semantische Struktur, SEO-Metadaten sowie mobile Layouts.',
+      'Die Signalverbindungen nutzen produktionsgeprüfte Kontrast- und Glow-Werte, damit die Systemgrafik auch in komprimierten Displays und Aufzeichnungen klar lesbar bleibt.',
       'Die Runtime-Grenze ist dokumentiert: synqdrive.eu bleibt auf Hostinger Static Hosting; app.synqdrive.eu und der VPS-Releasepfad werden nicht verändert.',
     ],
     reason:
