@@ -1,39 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import type { DashboardInsight } from '../../DashboardInsightsContext';
-import { financialImpactEur, partitionInsights } from '../insights-categories';
+import { partitionInsights } from '../insights-categories';
 import { buildManyInsights, insight } from './evaluations-test-fixtures';
 
 /**
- * Mirrors InsightsCockpit estimated-risk aggregation without rendering React.
- * Characterization — includes known legacy prop semantics (financialRiskEur = overdue only).
+ * E3.5: InsightsCockpit no longer aggregates a monetary "estimated financial risk"
+ * (that used magnitude-based unit guessing via the removed financialImpactEur).
+ * The cockpit now surfaces NON-MONETARY counts. These tests mirror that logic
+ * without rendering React.
  */
-function computeEstimatedRiskEur(financialRiskEurProp: number, insights: DashboardInsight[]): number {
-  const { businessRisks, revenueLeakage } = partitionInsights(insights);
-  let sum = financialRiskEurProp;
-  for (const i of [...businessRisks, ...revenueLeakage]) {
-    const e = financialImpactEur(i);
-    if (e != null) sum += e;
-  }
-  return sum;
-}
-
-describe('InsightsCockpit KPI aggregation (characterization)', () => {
-  it('characterization: financialRiskEur prop is treated as overdue EUR base (legacy naming)', () => {
-    const overdueEur = 250;
-    const rows = buildManyInsights(2);
-    const estimated = computeEstimatedRiskEur(overdueEur, rows);
-    expect(estimated).toBeGreaterThanOrEqual(overdueEur);
-  });
-
-  it('adds lostRevenueEur from LOW_UTILIZATION insights to estimated risk', () => {
+describe('InsightsCockpit KPI aggregation (E3.5, non-monetary)', () => {
+  it('revenue-risk signal is a count of revenue-leakage insights (no € amount)', () => {
     const leakage = insight({
       id: 'leak',
       type: 'LOW_UTILIZATION',
       severity: 'OPPORTUNITY',
       metrics: { lostRevenueEur: 400 },
     });
-    const estimated = computeEstimatedRiskEur(0, [leakage]);
-    expect(estimated).toBe(400);
+    const { revenueLeakage } = partitionInsights([leakage]);
+    expect(revenueLeakage.length).toBe(1);
   });
 
   it('critical bookings count equals CRITICAL business risks only', () => {
@@ -44,7 +28,13 @@ describe('InsightsCockpit KPI aggregation (characterization)', () => {
     expect(criticalBookings).toBeLessThanOrEqual(businessRisks.length);
   });
 
-  it('empty insight list yields zero incremental risk above overdue prop', () => {
-    expect(computeEstimatedRiskEur(100, [])).toBe(100);
+  it('empty insight list yields zero revenue-risk count', () => {
+    const { revenueLeakage } = partitionInsights([]);
+    expect(revenueLeakage.length).toBe(0);
+  });
+
+  it('financialImpactEur heuristic is no longer exported (removed)', async () => {
+    const mod = await import('../insights-categories');
+    expect((mod as Record<string, unknown>).financialImpactEur).toBeUndefined();
   });
 });

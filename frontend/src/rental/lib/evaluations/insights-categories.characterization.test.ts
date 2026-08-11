@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  financialImpactEur,
   insightRecommendation,
   isVisibleOnInsightsPage,
   matchesStationIdFilter,
@@ -58,26 +57,9 @@ describe('insights-categories (characterization)', () => {
     expect(isVisibleOnInsightsPage(visible)).toBe(true);
   });
 
-  describe('financialImpactEur legacy behavior', () => {
-    it('characterization: treats values above 1000 as cents and divides by 100', () => {
-      const row = insight({
-        id: 'impact-cents',
-        type: 'BATTERY_CRITICAL',
-        metrics: { financialImpactCents: 12_500 },
-      });
-      // Legacy heuristic — documented for later correction, not endorsed as correct business logic.
-      expect(financialImpactEur(row)).toBe(125);
-    });
-
-    it('characterization: treats values at or below 1000 as whole EUR (lostRevenueEur path)', () => {
-      const row = insight({
-        id: 'impact-eur',
-        type: 'LOW_UTILIZATION',
-        metrics: { lostRevenueEur: 350 },
-      });
-      expect(financialImpactEur(row)).toBe(350);
-    });
-  });
+  // E3.5: the `financialImpactEur` magnitude-based unit-guessing heuristic was
+  // removed (unsafe; not a canonical Finance metric). No monetary insight impact is
+  // computed or displayed anymore.
 
   it('uses metrics.recommendation when present', () => {
     const row = insight({
