@@ -1,5 +1,8 @@
 # Phase 3 – E4 Tenant-Safe Analytics Backend — Test Report (2026-08)
 
+> **E4.1 correction note (2026-08-11).** The original E4 pass reported `E4_READY_FOR_POST_IMPLEMENTATION_AUDIT`; that historical claim is retained below for the audit trail. Subsequent independent audit passes (E4.1A/B/C) corrected defects on the same branch. In particular, the original claim that the Utilization section/metric could be `AVAILABLE` with numeric-zero fields on unavailable/error paths is **SUPERSEDED_BY_E4_1**: utilization is now served as coverage-limited `PARTIAL` (scheduled occupancy, unknown blocked, approximate eligibility) and all unobserved numeric quantities are `null`, never `0`. See `phase3-e4-1-final-source-authority-analytics-acceptance-2026-08.md`.
+
+
 - `TESTED_CODE_SHA` = `4f5d20d0cfa2570c6f5b2c3d4385e31d86b37902`
 - `E4_BASE_MAIN_SHA` = `cefeedfe7dcfd7f682ba5b80fad1fec37d4a6c0f`
 - Runner: Jest (backend, ts-jest), Node v22.14.0

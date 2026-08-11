@@ -117,3 +117,18 @@ Provenance-driven narrowing of the authoritative cost model (see `phase3-e4-cost
 - **Double-count & tenant safety:** because recorded costs are no longer aggregated, the Task→Invoice cost-suppression surface is eliminated (supersedes the E4.1A guard by removal); `COST_DOUBLE_COUNT_COUNT = 0`, `CROSS_TENANT_COST_RELATION_ACCEPT_COUNT = 0`. Re-validated by the real-Postgres adversarial spec.
 
 Details and counters: `phase3-e4-1b-cost-source-historical-correctness-test-report-2026-08.md`.
+
+## E4.1C — Utilization, Detection Semantics & Final E4.1 Acceptance (2026-08-11)
+
+`TESTED_CODE_SHA` = `ce9dfaeb4be75788825609962ba76fa02aa6b04d` (base `PRE_E4_1C_HEAD` = `ee1c145a`; A `d398c116` + B `c6d93ea9` confirmed ancestors). No schema change.
+
+- **No false-zero utilization.** All `EvaluationsUtilizationSection` numeric fields are `number | null`. UNAVAILABLE (station scope) and ERROR emit `null` for every unobserved quantity (`capacityMs/rentedMs/maintenanceMs/blockedMs/netCapacityMs/eligibleVehicles/overlappingBookingPairs/telemetryOfflineVehicles`) — never `0` (`FALSE_ZERO_ANALYTICS_COUNT = 0`). ERROR ≠ empty fleet.
+- **PARTIAL preserved.** The metric `ops.fleet_utilization_pct` is served as `PARTIAL` (value + coverage) via `buildPartialEvaluationsMetric`; there is no PARTIAL→AVAILABLE upgrade (`PARTIAL_TO_AVAILABLE_STATUS_UPGRADE_COUNT = 0`). Utilization is structurally coverage-limited on current main so it is never `AVAILABLE`.
+- **Blocked is unknown, not zero.** No authoritative historical vehicle blocked/hold/status-history source exists (only `ServiceCase` downtime, already bound to maintenance). `blockedMs` is always `null`; the fabricated `blocked: []`→`blockedMs=0` is gone (`SYNTHETIC_BLOCKED_ZERO_COUNT = 0`). Proven by a repository-adapter test (ServiceCase downtime → maintenance; blocked stays empty/unknown).
+- **Eligibility not overstated.** `vehicle.createdAt → period.end` does not prove continuous rental eligibility; coverage `missingSources` includes `VEHICLE_ELIGIBILITY_HISTORY` and the section is coverage-limited (`UNPROVEN_ELIGIBILITY_FULL_COVERAGE_COUNT = 0`). Current state is never applied retroactively (`CURRENT_STATION_RETROACTIVE_HISTORY_COUNT = 0`, `CURRENT_ELIGIBILITY_STATE_RETROACTIVE_HISTORY_COUNT = 0`).
+- **Scheduled ≠ actual.** `rentedMs` is SCHEDULED occupancy (booking start/end), not actual possession; the section carries `occupancyBasis: 'SCHEDULED'` and `missingSources: ['SCHEDULED_OCCUPANCY_NOT_ACTUAL', …]` (no BookingHandoverProtocol actual-possession reconstruction on current main). No calculation claims actual rented utilization.
+- **Platform-rule thresholds.** Fixed detection constants (0.70 / 0.40 / 0.10 / 10%) are labeled `PLATFORM_RULE_THRESHOLD`, never `ORGANIZATION_TARGET` (no tenant target config exists): `FAKE_ORGANIZATION_TARGET_COUNT = 0`. Previous-period rules keep `PREVIOUS_COMPARABLE_PERIOD`.
+- **Telemetry / available≠ready invariants preserved** (`TELEMETRY_OFFLINE_DOWNTIME_MISCLASS_COUNT = 0`, `AVAILABLE_READY_CONFLATION_COUNT = 0`); interval clip/overlap/DST unchanged (`OVERLAPPING_INTERVAL_DOUBLE_COUNT_COUNT = 0`, `UTILIZATION_OVER_100_COUNT = 0`).
+- **Calculation versions bumped** for material changes: utilization `utilization-model-e4-v1 → v2`; strength `strength-detection-e4-v1 → v2`; weakness `weakness-detection-e4-v1 → v2`; registry `ops.fleet_utilization_pct` `1.0.0 → 2.0.0` (mirrored in the shared calc-version resolver) and registry version `1.5.0 → 1.6.0`.
+
+Full acceptance, calc-version review, and final counters: `phase3-e4-1-final-source-authority-analytics-acceptance-2026-08.md`.
