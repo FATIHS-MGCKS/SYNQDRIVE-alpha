@@ -53,6 +53,7 @@ describe('financial calculation provenance', () => {
       organizationId: 'org-1',
       timezone: 'Europe/Berlin',
       invoiceRowCount: 50,
+      currencyFilter: 'EUR',
       calculationVersions: {
         mtdIssuedRevenue: '1.0.0',
         mtdPaidRevenue: '1.0.0',

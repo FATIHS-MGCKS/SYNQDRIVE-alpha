@@ -63,6 +63,11 @@ export interface BuildFinancialInsightsProvenanceBundleInput {
   organizationId: string;
   timezone: string;
   invoiceRowCount: number;
+  /**
+   * Explicit currency scope of the calculation. E3 forbids an implicit EUR
+   * default: callers must state the currency they actually filtered/aggregated.
+   */
+  currencyFilter: string;
   calculationVersions: {
     mtdIssuedRevenue: string;
     mtdPaidRevenue: string;
@@ -85,7 +90,7 @@ export function buildFinancialInsightsProvenanceBundle(
     timezone: input.timezone,
     invoiceRowCount: input.invoiceRowCount,
     isPartial: input.isPartial,
-    currencyFilter: 'EUR',
+    currencyFilter: input.currencyFilter,
   };
 
   return {
