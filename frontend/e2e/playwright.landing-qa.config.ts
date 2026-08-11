@@ -5,6 +5,10 @@ import { defineConfig } from '@playwright/test';
  *
  * Kept separate from the product e2e run: it never boots the app dev server and
  * only talks to the static file server that serves the built landing page.
+ *
+ * Point LANDING_QA_BASE_URL at https://synqdrive.eu to run the same suite as
+ * post-deployment acceptance, with LANDING_QA_LABEL keeping its screenshots
+ * separate from the local ones.
  */
 export default defineConfig({
   testDir: '.',
@@ -15,7 +19,7 @@ export default defineConfig({
   timeout: 240_000,
   reporter: [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:4321',
+    baseURL: process.env.LANDING_QA_BASE_URL ?? 'http://127.0.0.1:4321',
     browserName: 'chromium',
     viewport: { width: 1440, height: 900 },
     deviceScaleFactor: 2,

@@ -69,9 +69,16 @@ async function settle(page: Page) {
   await page.waitForTimeout(1100);
 }
 
+/** Set LANDING_QA_LABEL so an acceptance run does not overwrite the local set. */
+const LABEL = process.env.LANDING_QA_LABEL ? `${process.env.LANDING_QA_LABEL}-` : '';
+
 async function shoot(page: Page, name: string) {
   await fs.mkdir(OUT, { recursive: true });
-  await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: true, animations: 'disabled' });
+  await page.screenshot({
+    path: path.join(OUT, `${LABEL}${name}.png`),
+    fullPage: true,
+    animations: 'disabled',
+  });
 }
 
 test.describe('public landing page', () => {
