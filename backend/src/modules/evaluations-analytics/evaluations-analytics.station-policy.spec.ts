@@ -114,6 +114,34 @@ describe('E2.3 station scope authority is independent of the Stations-V2 flag', 
         expect(scope.stationIds).toBeNull();
       });
 
+      it('ORG_ADMIN with empty legacy fields → still ALL_STATIONS (no over-correction)', async () => {
+        const scope = await scopeFor({ role: 'ORG_ADMIN', stationScope: null, stationIds: [] }, null);
+        expect(scope.stationIds).toBeNull();
+        expect(scope.stationScoped).toBe(false);
+      });
+
+      it('WORKER with empty assignment → NO_STATIONS (fail closed, never org-wide)', async () => {
+        const scope = await scopeFor({ role: 'WORKER', stationScope: null, stationIds: [] }, null);
+        expect(scope.stationIds).toEqual([]);
+        expect(scope.stationScoped).toBe(true);
+      });
+
+      it('SUB_ADMIN with empty assignment → NO_STATIONS (fail closed)', async () => {
+        const scope = await scopeFor({ role: 'SUB_ADMIN', stationScope: null, stationIds: [] }, null);
+        expect(scope.stationIds).toEqual([]);
+      });
+
+      it('active DRIVER → NO_STATIONS regardless of assignment', async () => {
+        const scope = await scopeFor({ role: 'DRIVER', stationScope: 'ALL', stationIds: ['s-a1'] }, null);
+        expect(scope.stationIds).toEqual([]);
+      });
+
+      it('NO_STATIONS actor requesting a station → DENY', async () => {
+        await expect(
+          scopeFor({ role: 'WORKER', stationScope: null, stationIds: [] }, ['s-a1']),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+      });
+
       it('cross-tenant station request → DENY', async () => {
         await expect(
           scopeFor({ role: 'ORG_ADMIN', stationScope: 'ALL' }, ['s-b1']),
@@ -129,6 +157,15 @@ describe('E2.3 station scope authority is independent of the Stations-V2 flag', 
     const off = await scopeFor({ role: 'WORKER', stationIds: ['s-a1'] }, null);
     expect(off.stationIds).toEqual(on.stationIds);
     expect(off.stationScoped).toBe(on.stationScoped);
+  });
+
+  it('ON/OFF: an empty-assignment WORKER is NO_STATIONS in both modes (no flag escalation)', async () => {
+    process.env[FLAG_ENV] = 'true';
+    const on = await scopeFor({ role: 'WORKER', stationScope: null, stationIds: [] }, null);
+    process.env[FLAG_ENV] = 'off';
+    const off = await scopeFor({ role: 'WORKER', stationScope: null, stationIds: [] }, null);
+    expect(on.stationIds).toEqual([]);
+    expect(off.stationIds).toEqual([]);
   });
 });
 
@@ -162,6 +199,66 @@ describe('E2.3 canonical resolver role matrix (flag forced ON internally)', () =
         organizationId: org,
       }),
     ).toEqual({ mode: 'ASSIGNED_STATIONS', stationIds: ['s-a1'] });
+  });
+
+  it('WORKER with empty assignment → NO_STATIONS (never ALL)', () => {
+    expect(
+      resolveEvaluationsAuthorizedStationScope({
+        platformRole: 'USER',
+        membership: { role: 'WORKER' as never, status: 'ACTIVE' as never, stationScope: null, stationIds: [] },
+        organizationId: org,
+      }),
+    ).toEqual({ mode: 'NO_STATIONS', stationIds: [] });
+  });
+
+  it('WORKER with undefined legacy fields → NO_STATIONS', () => {
+    expect(
+      resolveEvaluationsAuthorizedStationScope({
+        platformRole: 'USER',
+        membership: { role: 'WORKER' as never, status: 'ACTIVE' as never, stationScope: null, stationIds: undefined },
+        organizationId: org,
+      }),
+    ).toEqual({ mode: 'NO_STATIONS', stationIds: [] });
+  });
+
+  it('SUB_ADMIN assigned → ASSIGNED_STATIONS', () => {
+    expect(
+      resolveEvaluationsAuthorizedStationScope({
+        platformRole: 'USER',
+        membership: { role: 'SUB_ADMIN' as never, status: 'ACTIVE' as never, stationScope: null, stationIds: ['s-a1', 's-a2'] },
+        organizationId: org,
+      }),
+    ).toEqual({ mode: 'ASSIGNED_STATIONS', stationIds: ['s-a1', 's-a2'] });
+  });
+
+  it('SUB_ADMIN with empty assignment → NO_STATIONS (never ALL)', () => {
+    expect(
+      resolveEvaluationsAuthorizedStationScope({
+        platformRole: 'USER',
+        membership: { role: 'SUB_ADMIN' as never, status: 'ACTIVE' as never, stationScope: null, stationIds: [] },
+        organizationId: org,
+      }),
+    ).toEqual({ mode: 'NO_STATIONS', stationIds: [] });
+  });
+
+  it('active DRIVER → NO_STATIONS even with an assignment', () => {
+    expect(
+      resolveEvaluationsAuthorizedStationScope({
+        platformRole: 'USER',
+        membership: { role: 'DRIVER' as never, status: 'ACTIVE' as never, stationScope: 'ALL', stationIds: ['s-a1'] },
+        organizationId: org,
+      }),
+    ).toEqual({ mode: 'NO_STATIONS', stationIds: [] });
+  });
+
+  it('inactive member → NO_STATIONS', () => {
+    expect(
+      resolveEvaluationsAuthorizedStationScope({
+        platformRole: 'USER',
+        membership: { role: 'WORKER' as never, status: 'SUSPENDED' as never, stationScope: null, stationIds: ['s-a1'] },
+        organizationId: org,
+      }),
+    ).toEqual({ mode: 'NO_STATIONS', stationIds: [] });
   });
 
   it('inactive / non-member → NO_STATIONS', () => {

@@ -1,19 +1,32 @@
 import type { MembershipRole, MembershipStatus } from '@prisma/client';
-import { computeEffectiveAccess } from '@modules/users/policies/effective-access-engine';
 
 /**
- * Canonical evaluations station-scope authority.
+ * Canonical evaluations station-scope authority (role-first, fail-closed).
  *
- * The Stations-V2 feature flag governs rollout/implementation only — it is NOT
- * an authorization authority. `StationAccessService.resolve` (and the underlying
- * engine) return an org-wide bypass when `stationsScopeV2Enabled === false`,
- * which would wrongly widen an assigned-station member to org-wide analytics.
+ * The central `computeEffectiveAccess` engine resolves an empty/absent station
+ * assignment (`stationIds = []`, `stationScope = null`) to ALL stations for
+ * station-restricted roles, and bypasses scope entirely when
+ * `stationsScopeV2Enabled === false`. Both would widen an unassigned member to
+ * org-wide analytics, contradicting the documented station policy
+ * (docs/architecture/stations-v2-permissions.md, PG-01…PG-05; EVAL-ADR-007).
  *
- * Evaluations therefore derives the actor's effective station scope from the
- * canonical membership/role data with the V2 scope path forced ON, so the
- * resulting security boundary is identical whether the flag is on or off. This
- * introduces no new role model — it reuses `computeEffectiveAccess`
- * (docs/architecture/stations-v2-permissions.md; EVAL-ADR-007).
+ * Evaluations therefore derives station authorization directly here, so that:
+ * - the Stations-V2 feature flag never affects the boundary, and
+ * - a missing/empty assignment is NEVER treated as "all stations".
+ *
+ * Authority per role:
+ *   MASTER_ADMIN                      → ALL_STATIONS (platform authority; the org
+ *                                       boundary is enforced separately by the
+ *                                       :orgId route + repository org filter)
+ *   ORG_ADMIN                         → ALL_STATIONS (own org)
+ *   SUB_ADMIN / WORKER                → ASSIGNED_STATIONS from explicit
+ *                                       stationIds/stationScope; an explicit
+ *                                       stationScope === 'ALL' is a deliberate
+ *                                       all-stations grant; empty/absent → NO_STATIONS
+ *   DRIVER                            → NO_STATIONS
+ *   inactive / non-member / other     → NO_STATIONS
+ *
+ * `null` (ALL_STATIONS) is strictly distinct from `[]` (NO_STATIONS).
  */
 export type EvaluationsStationScopeMode =
   | 'ALL_STATIONS'
@@ -31,10 +44,30 @@ export interface EvaluationsStationScopeMembership {
   readonly status: MembershipStatus;
   readonly stationScope: string | null;
   readonly stationIds: unknown;
-  readonly permissions?: unknown;
-  readonly organizationRoleId?: string | null;
-  readonly membershipVersion?: number;
-  readonly fieldAgentAccess?: boolean;
+}
+
+const ALL: EvaluationsAuthorizedStationScope = { mode: 'ALL_STATIONS', stationIds: null };
+const NONE: EvaluationsAuthorizedStationScope = { mode: 'NO_STATIONS', stationIds: [] };
+
+function parseAssignedStationIds(
+  membership: EvaluationsStationScopeMembership,
+): string[] {
+  const list = Array.isArray(membership.stationIds) ? membership.stationIds : [];
+  const cleaned: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of list) {
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    cleaned.push(trimmed);
+  }
+  if (cleaned.length > 0) return cleaned;
+
+  // Legacy single-station assignment (a concrete station id, never 'ALL'/empty).
+  const scope = typeof membership.stationScope === 'string' ? membership.stationScope.trim() : '';
+  if (scope && scope !== 'ALL') return [scope];
+  return [];
 }
 
 export function resolveEvaluationsAuthorizedStationScope(input: {
@@ -42,22 +75,20 @@ export function resolveEvaluationsAuthorizedStationScope(input: {
   membership: EvaluationsStationScopeMembership | null;
   organizationId: string;
 }): EvaluationsAuthorizedStationScope {
-  const access = computeEffectiveAccess({
-    platformRole: input.platformRole ?? null,
-    membership: input.membership ?? null,
-    // Force the canonical V2 scope path so the feature flag can never widen the
-    // authorization boundary for evaluations.
-    resourceContext: {
-      organizationId: input.organizationId,
-      stationsScopeV2Enabled: true,
-    },
-  });
+  if (input.platformRole === 'MASTER_ADMIN') return ALL;
 
-  if (access.stationBypass || access.effectiveStationIds === null) {
-    return { mode: 'ALL_STATIONS', stationIds: null };
-  }
-  if (access.effectiveStationIds.length === 0) {
-    return { mode: 'NO_STATIONS', stationIds: [] };
-  }
-  return { mode: 'ASSIGNED_STATIONS', stationIds: access.effectiveStationIds };
+  const membership = input.membership;
+  if (!membership || membership.status !== 'ACTIVE') return NONE;
+
+  if (membership.role === 'ORG_ADMIN') return ALL;
+  if (membership.role === 'DRIVER') return NONE;
+
+  // SUB_ADMIN / WORKER (and any other non-admin role): station-restricted.
+  const explicitScope =
+    typeof membership.stationScope === 'string' ? membership.stationScope.trim() : '';
+  if (explicitScope === 'ALL') return ALL;
+
+  const assigned = parseAssignedStationIds(membership);
+  if (assigned.length === 0) return NONE;
+  return { mode: 'ASSIGNED_STATIONS', stationIds: assigned };
 }

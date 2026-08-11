@@ -197,6 +197,23 @@ describe('Evaluations analytics tenant isolation (org-a vs org-b)', () => {
     expect(detail.items[0].reference.organizationId).toBe('org-a');
   });
 
+  it('an org-a WORKER with no station assignment sees no data (fail closed)', async () => {
+    const { scopeService, service } = build({ role: 'WORKER', stationScope: null, stationIds: [] });
+    const scope = await scopeService.resolveAuthorizedScope({
+      actor: { id: 'u-a', organizationId: 'org-a' },
+      orgId: 'org-a',
+      requestedStationIds: null,
+      periodType: 'YEAR',
+      reference: REFERENCE,
+    });
+    const summary = await service.getSummary({ scope, filters: {}, groupBy: 'ENTITY_TYPE' });
+    expect(summary.aggregateTotal).toBe(0);
+    expect(summary.groups).toEqual([]);
+    const detail = await service.getDetail({ scope, filters: {} });
+    expect(detail.totalCount).toBe(0);
+    expect(detail.items).toEqual([]);
+  });
+
   it('a station-scoped org-a actor only sees allowed-station references', async () => {
     const { scopeService, service } = build({ role: 'WORKER', stationIds: ['s-a1'] });
     const scope = await scopeService.resolveAuthorizedScope({
