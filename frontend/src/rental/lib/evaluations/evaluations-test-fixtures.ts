@@ -79,7 +79,7 @@ export const SCENARIO_FULL = {
       totalCents: 20_000,
       invoiceDate: '2026-05-20',
     }),
-    invoice({ id: 'exp-1', type: 'INCOMING_VENDOR', totalCents: 15_000, invoiceDate: '2026-06-04' }),
+    invoice({ id: 'exp-1', type: 'INCOMING_VENDOR', status: 'APPROVED', totalCents: 15_000, invoiceDate: '2026-06-04' }),
     invoice({ id: 'open-1', status: 'SENT', dueDate: '2026-07-01', totalCents: 12_000, invoiceDate: '2026-06-01' }),
     invoice({ id: 'over-1', status: 'SENT', dueDate: '2026-06-01', totalCents: 8_000, invoiceDate: '2026-05-15' }),
   ],
@@ -111,7 +111,7 @@ export const SCENARIO_MULTI_CURRENCY = {
   invoices: [
     invoice({ id: 'eur', totalCents: 10_000, currency: 'EUR' }),
     invoice({ id: 'usd', totalCents: 99_000, currency: 'USD' }),
-    invoice({ id: 'eur-exp', type: 'INCOMING_VENDOR', totalCents: 2_000, currency: 'EUR' }),
+    invoice({ id: 'eur-exp', type: 'INCOMING_VENDOR', status: 'APPROVED', totalCents: 2_000, currency: 'EUR' }),
   ],
   insights: [] as DashboardInsight[],
   customers: [] as { id: string; name?: string }[],

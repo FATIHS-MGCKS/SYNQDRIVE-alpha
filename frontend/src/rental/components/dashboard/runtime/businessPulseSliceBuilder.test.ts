@@ -66,11 +66,11 @@ describe('buildBusinessPulseSlices invoice classification', () => {
       locale: 'en',
       now: NOW,
       invoices: [
-        invoice({ id: 'vendor', type: 'INCOMING_VENDOR', totalCents: 4_000, invoiceDate: '2026-07-06T00:00:00.000Z' }),
-        invoice({ id: 'uploaded', type: 'INCOMING_UPLOADED', totalCents: 2_500, invoiceDate: '2026-07-07T00:00:00.000Z' }),
+        invoice({ id: 'vendor', type: 'INCOMING_VENDOR', status: 'APPROVED', totalCents: 4_000, invoiceDate: '2026-07-06T00:00:00.000Z' }),
+        invoice({ id: 'uploaded', type: 'INCOMING_UPLOADED', status: 'APPROVED', totalCents: 2_500, invoiceDate: '2026-07-07T00:00:00.000Z' }),
         invoice({ id: 'outgoing', type: 'OUTGOING_BOOKING', totalCents: 9_000, invoiceDate: '2026-07-08T00:00:00.000Z' }),
         invoice({ id: 'rejected', type: 'INCOMING_VENDOR', status: 'REJECTED', totalCents: 1_000, invoiceDate: '2026-07-08T00:00:00.000Z' }),
-        invoice({ id: 'old-exp', type: 'INCOMING_VENDOR', totalCents: 3_000, invoiceDate: '2026-06-01T00:00:00.000Z' }),
+        invoice({ id: 'old-exp', type: 'INCOMING_VENDOR', status: 'APPROVED', totalCents: 3_000, invoiceDate: '2026-06-01T00:00:00.000Z' }),
       ],
     });
 
@@ -137,7 +137,7 @@ describe('buildBusinessPulseSlices invoice classification', () => {
       invoices: [
         invoice({ id: 'rev-a', type: 'OUTGOING_BOOKING', totalCents: 20_000, invoiceDate: '2026-07-02T00:00:00.000Z' }),
         invoice({ id: 'rev-b', type: 'OUTGOING_FINAL', totalCents: 5_000, invoiceDate: '2026-07-03T00:00:00.000Z' }),
-        invoice({ id: 'exp-a', type: 'INCOMING_VENDOR', totalCents: 7_000, invoiceDate: '2026-07-04T00:00:00.000Z' }),
+        invoice({ id: 'exp-a', type: 'INCOMING_VENDOR', status: 'APPROVED', totalCents: 7_000, invoiceDate: '2026-07-04T00:00:00.000Z' }),
         invoice({ id: 'rev-old', type: 'OUTGOING_FINAL', totalCents: 50_000, invoiceDate: '2026-05-01T00:00:00.000Z' }),
       ],
     });

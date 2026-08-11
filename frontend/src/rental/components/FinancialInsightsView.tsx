@@ -21,6 +21,8 @@ import { useFleetMapStore } from '../stores/useFleetMapStore';
 import { filterFleetByStation } from './dashboard/dashboardUtils';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
+  currentOpenReceivablesMinor,
+  currentOverdueReceivablesMinor,
   expensesInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
@@ -51,10 +53,13 @@ interface InvoiceLite {
   totalCents: number | null;
   subtotalCents: number | null;
   taxCents: number | null;
+  paidCents: number | null;
+  outstandingCents: number | null;
   currency: string | null;
   invoiceDate: string | null;
   dueDate: string | null;
   paidAt: string | null;
+  issuedAt: string | null;
   createdAt: string | null;
 }
 
@@ -257,8 +262,17 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const mtdExpenseCents = useMemo(() => sumCents(bucketed.mtdExpense), [bucketed.mtdExpense]);
   const prevRevenueCents = useMemo(() => sumCents(bucketed.prevRevenue), [bucketed.prevRevenue]);
   const prevExpenseCents = useMemo(() => sumCents(bucketed.prevExpense), [bucketed.prevExpense]);
-  const outstandingCents = useMemo(() => sumCents(bucketed.outstandingRevenue), [bucketed.outstandingRevenue]);
-  const overdueCents = useMemo(() => sumCents(bucketed.overdueRevenue), [bucketed.overdueRevenue]);
+  // E3.1: receivable amounts use the canonical authoritative CURRENT outstanding
+  // balance (never a sum of totalCents), so a partially-paid invoice contributes
+  // only its open remainder.
+  const outstandingCents = useMemo(
+    () => currentOpenReceivablesMinor(scopedInvoices, now),
+    [scopedInvoices, now],
+  );
+  const overdueCents = useMemo(
+    () => currentOverdueReceivablesMinor(scopedInvoices, now),
+    [scopedInvoices, now],
+  );
   const profitCents = mtdRevenueCents - mtdExpenseCents;
   const profitMargin = mtdRevenueCents > 0 ? (profitCents / mtdRevenueCents) * 100 : 0;
   const mtdOpenInvoices = useMemo(
