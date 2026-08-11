@@ -68,20 +68,13 @@ const LIVE = process.env.EVALUATIONS_E4_POSTGRES_INTEGRATION === '1';
       expect(unattributedCount).toBe(3);
     });
 
-    it('B. ORG_A Task → ORG_B invoice does not suppress or alter ORG_A cost facts', async () => {
-      const events = await repo.loadCostEvents(fx.orgAId, win(), 'EUR');
+    it('B. ORG_A Task → ORG_B invoice never enters ORG_A authoritative cost', async () => {
+      const events = await repo.loadCostEvents(fx.orgAId, win());
       const serialized = JSON.stringify(events);
       // The foreign ORG_B invoice (and its amount) never enters ORG_A cost.
       expect(serialized).not.toContain(fx.orgBInvoiceId);
       expect(events.some((e) => e.amountMinor === 999999)).toBe(false);
-      // The linked ORG_A service case keeps its own economic key (foreign invoice
-      // link filtered out) and is therefore still counted.
-      expect(
-        events.some(
-          (e) => e.economicKey === `servicecase:${fx.linkedServiceCaseId}` && e.amountMinor === 5000,
-        ),
-      ).toBe(true);
-
+      // Only the authoritative ORG_A invoice is counted (explicit currency).
       const aggregation = aggregateCostEvents(
         events,
         E4_PG_WINDOW.start.getTime(),
@@ -91,21 +84,30 @@ const LIVE = process.env.EVALUATIONS_E4_POSTGRES_INTEGRATION === '1';
         aggregation.categories.map((c) => [c.category, c.totalsByCurrency]),
       );
       expect(byCategory.OPERATING_EXPENSES).toEqual([{ amountMinor: 3000, currency: 'EUR' }]);
-      expect(byCategory.UNPLANNED_MAINTENANCE).toEqual([{ amountMinor: 5000, currency: 'EUR' }]);
-      expect(aggregation.totalsByCurrency).toEqual([{ amountMinor: 8000, currency: 'EUR' }]);
+      // ServiceCase/Damage costs have no proven currency → not aggregated.
+      expect(byCategory.UNPLANNED_MAINTENANCE).toBeUndefined();
+      expect(aggregation.totalsByCurrency).toEqual([{ amountMinor: 3000, currency: 'EUR' }]);
     });
 
-    it('same-tenant Task → invoice dedup collapses the linked cost once (invoice wins)', async () => {
-      const events = await repo.loadCostEvents(fx.orgAId, win(), 'EUR');
-      // The dedup service case shares the ORG_A invoice economic key.
-      const dedupEvents = events.filter((e) => e.economicKey === `invoice:${fx.orgAInvoiceId}`);
-      expect(dedupEvents.length).toBeGreaterThanOrEqual(2); // operating invoice + linked service case
+    it('B2. ServiceCase costs (currency unproven) are reported UNSUPPORTED, not counted or zeroed', async () => {
+      const unsupported = await repo.loadUnsupportedCostSources(fx.orgAId, win());
+      // The two ORG_A REPAIR service cases exist but are structurally unsupported.
+      expect(unsupported.serviceCaseCount).toBe(2);
+      const events = await repo.loadCostEvents(fx.orgAId, win());
+      // They contribute no authoritative event and are never assigned a currency.
+      expect(events.some((e) => e.economicKey.startsWith('servicecase:'))).toBe(false);
+    });
+
+    it('no double counting: a linked ServiceCase never inflates the authoritative invoice total', async () => {
+      const events = await repo.loadCostEvents(fx.orgAId, win());
       const aggregation = aggregateCostEvents(
         events,
         E4_PG_WINDOW.start.getTime(),
         E4_PG_WINDOW.endExclusive.getTime(),
       );
-      expect(aggregation.deduplicatedCount).toBeGreaterThanOrEqual(1);
+      // The ORG_A invoice (3000) is counted exactly once; the ORG_A service case
+      // linked to it via OrgTask does not add a second 3000.
+      expect(aggregation.totalsByCurrency).toEqual([{ amountMinor: 3000, currency: 'EUR' }]);
     });
 
     it('C. ORG_A booking → ORG_B vehicle is excluded from utilization', async () => {
@@ -125,7 +127,7 @@ const LIVE = process.env.EVALUATIONS_E4_POSTGRES_INTEGRATION === '1';
       const { observations } = await repo.loadDriverObservations(fx.orgAId, win());
       expect(observations.filter((o) => o.driverRef === fx.driverAId).length).toBe(5);
 
-      const events = await repo.loadCostEvents(fx.orgAId, win(), 'EUR');
+      const events = await repo.loadCostEvents(fx.orgAId, win());
       expect(events.some((e) => e.economicKey === `invoice:${fx.orgAInvoiceId}` && e.amountMinor === 3000)).toBe(true);
 
       const facts = await repo.loadUtilizationFacts(fx.orgAId, win());

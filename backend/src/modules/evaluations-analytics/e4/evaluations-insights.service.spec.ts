@@ -121,7 +121,12 @@ function buildService(overrides: {
         businessAtMs: START + 1000,
       },
     ]),
-    loadFixedCostEvents: jest.fn().mockResolvedValue({ events: [], vehiclesWithConfig: 0, vehicleCount: 3 }),
+    loadUnsupportedCostSources: jest.fn().mockResolvedValue({
+      serviceCaseCount: 0,
+      damageCount: 0,
+      fixedConfigVehicleCount: 0,
+      vehicleCount: 3,
+    }),
     loadUtilizationFacts: jest.fn().mockResolvedValue({
       vehicles: [fullyRentedVehicle(), fullyRentedVehicle(), fullyRentedVehicle()],
       telemetryOfflineVehicles: 1,
@@ -258,12 +263,63 @@ describe('EvaluationsInsightsService — cost currency safety', () => {
     const { service } = buildService({
       repo: {
         loadCostEvents: jest.fn().mockResolvedValue([]),
-        loadFixedCostEvents: jest.fn().mockResolvedValue({ events: [], vehiclesWithConfig: 0, vehicleCount: 3 }),
+        loadUnsupportedCostSources: jest.fn().mockResolvedValue({
+          serviceCaseCount: 0,
+          damageCount: 0,
+          fixedConfigVehicleCount: 0,
+          vehicleCount: 3,
+        }),
       },
     });
     const cost = await service.getCostModel(orgScope, GEN);
     expect(cost.status).toBe('UNAVAILABLE');
     expect(cost.totalsByCurrency).toEqual([]);
     expect(cost.reason).toBe('NO_COST_SOURCE');
+  });
+
+  it('marks ServiceCase/Damage/fixed costs UNSUPPORTED (unproven currency/periodicity) → PARTIAL, never €0', async () => {
+    const { service } = buildService({
+      repo: {
+        loadCostEvents: jest.fn().mockResolvedValue([
+          { category: 'OPERATING_EXPENSES', nature: 'ACTUAL', amountMinor: 5000, currency: 'EUR', economicKey: 'invoice:1', businessAtMs: START + 1000 },
+        ]),
+        loadUnsupportedCostSources: jest.fn().mockResolvedValue({
+          serviceCaseCount: 2,
+          damageCount: 1,
+          fixedConfigVehicleCount: 4,
+          vehicleCount: 4,
+        }),
+      },
+    });
+    const cost = await service.getCostModel(orgScope, GEN);
+    expect(cost.status).toBe('PARTIAL');
+    expect(cost.reason).toBe('COST_MODEL_INCOMPLETE_UNSUPPORTED_CATEGORIES');
+    // Authoritative invoice cost present; recorded/fixed reported as UNAVAILABLE.
+    expect(cost.totalsByCurrency).toEqual([{ amountMinor: 5000, currency: 'EUR' }]);
+    const byCat = Object.fromEntries(cost.categories.map((c) => [c.category, c]));
+    expect(byCat.OPERATING_EXPENSES.status).toBe('AVAILABLE');
+    expect(byCat.UNPLANNED_MAINTENANCE.status).toBe('UNAVAILABLE');
+    expect(byCat.UNPLANNED_MAINTENANCE.totalsByCurrency).toEqual([]);
+    expect(byCat.UNPLANNED_MAINTENANCE.reason).toBe('SERVICECASE_COST_CURRENCY_UNPROVEN');
+    expect(byCat.DAMAGE_REPAIR.reason).toBe('DAMAGE_COST_CURRENCY_UNPROVEN');
+    expect(byCat.ESTIMATED_FIXED_COSTS.reason).toBe('FIXED_COST_PERIODICITY_AND_HISTORY_UNPROVEN');
+  });
+
+  it('returns UNAVAILABLE when only unsupported sources exist (no authoritative invoice cost)', async () => {
+    const { service } = buildService({
+      repo: {
+        loadCostEvents: jest.fn().mockResolvedValue([]),
+        loadUnsupportedCostSources: jest.fn().mockResolvedValue({
+          serviceCaseCount: 3,
+          damageCount: 0,
+          fixedConfigVehicleCount: 0,
+          vehicleCount: 5,
+        }),
+      },
+    });
+    const cost = await service.getCostModel(orgScope, GEN);
+    expect(cost.status).toBe('UNAVAILABLE');
+    expect(cost.reason).toBe('COST_SOURCES_UNSUPPORTED');
+    expect(cost.totalsByCurrency).toEqual([]);
   });
 });
