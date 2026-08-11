@@ -23,7 +23,8 @@
       "@workers/*": ["src/workers/*"],
       "@config/*": ["src/config/*"],
       "@synq/evaluations-metrics/*": ["src/synq/evaluations-metrics/*"],
-      "@synq/evaluations-periods/*": ["src/synq/evaluations-periods/*"]
+      "@synq/evaluations-periods/*": ["src/synq/evaluations-periods/*"],
+      "@synq/evaluations-analytics/*": ["src/synq/evaluations-analytics/*"]
     }
   }
 }
