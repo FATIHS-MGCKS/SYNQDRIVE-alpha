@@ -72,8 +72,27 @@ async function settle(page: Page) {
 /** Set LANDING_QA_LABEL so an acceptance run does not overwrite the local set. */
 const LABEL = process.env.LANDING_QA_LABEL ? `${process.env.LANDING_QA_LABEL}-` : '';
 
+/**
+ * Every image has to be decoded before the shutter, not merely requested. A fixed
+ * settle delay is enough on localhost but not against a deployed origin, where a
+ * lazy image can still be in flight and would be captured as an empty frame,
+ * making the screenshot look like a broken page when the page is fine.
+ */
+async function waitForImagery(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.$$eval('img', (imgs) =>
+          imgs.filter((i) => !i.complete || i.naturalWidth === 0).length,
+        ),
+      { timeout: 20_000, message: 'images still decoding at screenshot time' },
+    )
+    .toBe(0);
+}
+
 async function shoot(page: Page, name: string) {
   await fs.mkdir(OUT, { recursive: true });
+  await waitForImagery(page);
   await page.screenshot({
     path: path.join(OUT, `${LABEL}${name}.png`),
     fullPage: true,
