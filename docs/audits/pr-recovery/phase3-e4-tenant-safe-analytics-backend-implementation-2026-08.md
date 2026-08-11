@@ -100,3 +100,20 @@ Independent-audit defects fixed on the E4 branch:
 - **Real PostgreSQL adversarial tests.** Added `evaluations-insights.tenant-integrity.integration.spec.ts` + harness (env-gated `EVALUATIONS_E4_POSTGRES_INTEGRATION=1`, DB-probed) planting cross-tenant relations (ORG_A booking→ORG_B driver, ORG_A task→ORG_B invoice, ORG_A booking→ORG_B vehicle) and asserting no leakage against a live database. Mocked-repository coverage retained for the always-run suite.
 
 Details and counters: `phase3-e4-1a-tenant-driver-integrity-test-report-2026-08.md`.
+
+## E4.1B — Cost Source Authority & Historical Correctness (2026-08-11)
+
+`TESTED_CODE_SHA` = `c6d93ea9e77312672fa069df721a3ea9fd188d6b` (base `PRE_E4_1B_HEAD` = `9a768fe6`). No schema change. Cost `calculationVersion` bumped `cost-model-e4-v1` → `cost-model-e4-v2` (material change: source set, currency semantics, periodicity, historical accrual, dedup).
+
+Provenance-driven narrowing of the authoritative cost model (see `phase3-e4-cost-source-authority-matrix-2026-08.csv`):
+
+- **Only `OrgInvoice` (incoming expense) is an authoritative Money cost source** — it carries an explicit per-row `currency`. Each event uses that concrete currency.
+- **ServiceCase.actualCostCents / VehicleDamage.repairCostCents currency is UNPROVEN** — no currency column exists in the schema, write-path, or docs. They are no longer denominated in the organization's *current* reporting currency (that would be retroactive) and are excluded from the authoritative total (`UNPROVEN_COST_CURRENCY_ACCEPT_COUNT = 0`).
+- **Fixed costs (leasing/insurance/tax) periodicity is UNPROVEN** — no periodicity annotation, no currency column (the sole consumer, `vehicle-file-summary`, hardcodes `EUR`/monthly for display only), and no effective-date/version history. The fake `monthlyAmount * periodMs / 30d` accrual is removed; fixed costs are excluded from authoritative accrual (`UNPROVEN_COST_PERIODICITY_ACCEPT_COUNT = 0`, `CURRENT_COST_CONFIG_RETROACTIVE_HISTORY_COUNT = 0`, no fake 30-day month).
+- **Unsupported categories are reported, not hidden.** `loadUnsupportedCostSources` counts ServiceCase/Damage/fixed-config records that exist in the period; the section lists them as `UNAVAILABLE` categories with explicit reasons (`SERVICECASE_COST_CURRENCY_UNPROVEN`, `DAMAGE_COST_CURRENCY_UNPROVEN`, `FIXED_COST_PERIODICITY_AND_HISTORY_UNPROVEN`) and downgrades the section to **PARTIAL** (STEP 12) — never a false zero, never "AVAILABLE pretending the model is complete".
+- **Status semantics:** authoritative invoice cost + unsupported records → `PARTIAL`; mixed currency → `PARTIAL` (segmented, no false blended total); only-unsupported sources → `UNAVAILABLE` (`COST_SOURCES_UNSUPPORTED`); no source at all → `UNAVAILABLE` (`NO_COST_SOURCE`).
+- **No invented estimates** — no depreciation / insurance / maintenance-% / per-vehicle constants (`UNPROVEN_COST_ESTIMATE_COUNT = 0`). Money safety preserved (BigInt, explicit currency, per-currency segmentation; `COST_FLOAT_MONEY_COUNT`/`COST_MIXED_CURRENCY_FALSE_TOTAL_COUNT`/`COST_IMPLICIT_CURRENCY_COUNT = 0`). Station scope still fails closed (`COST_STATION_ORG_FALLBACK_COUNT = 0`).
+- **Cost≠all E3 expenses** preserved: only defined categories enter the model; an incoming invoice maps to `OPERATING_EXPENSES`, nothing silently added.
+- **Double-count & tenant safety:** because recorded costs are no longer aggregated, the Task→Invoice cost-suppression surface is eliminated (supersedes the E4.1A guard by removal); `COST_DOUBLE_COUNT_COUNT = 0`, `CROSS_TENANT_COST_RELATION_ACCEPT_COUNT = 0`. Re-validated by the real-Postgres adversarial spec.
+
+Details and counters: `phase3-e4-1b-cost-source-historical-correctness-test-report-2026-08.md`.
