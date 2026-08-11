@@ -34,6 +34,18 @@ boundary, 403) → `PermissionsGuard` (`evaluations.read`) →
 | Repository always org-scoped | org-a | — | — | where has organizationId | asserted on count/find/group | NO | UNIT_RUNTIME | evaluations-entity-reference.repository.spec.ts | tenant-scoped queries | PASS |
 | EntityReference station-org integrity | org-a | s-b1 (write) | — | write rejected | ForbiddenException | NO | UNIT_RUNTIME | evaluations-entity-reference-write.service.spec.ts | rejects a reference whose station belongs to another organization | PASS |
 | Same natural id unique per org (DB) | org-a / org-b | — | veh-1 | tenant-scoped uniqueness | 2 rows; in-org dup rejected; org cascade | NO | MIGRATION_TEST | phase3-e2-migration-validation-2026-08.md | live disposable PostgreSQL 16 dry-run | PASS |
+| WRITE: foreign VEHICLE target | org-a | — | org-b vehicle (write) | reject | ForbiddenException | NO | UNIT_RUNTIME + INTEGRATION_RUNTIME | evaluations-entity-reference-write.service.spec.ts / evaluations-entity-reference.db-integration.spec.ts | rejects a cross-tenant target entity / rejects a cross-tenant target (A owner + B vehicle) | PASS |
+| WRITE: foreign CUSTOMER/BOOKING/etc. target | org-a | — | org-b target (write) | reject | belongsToOrganization=false → reject | NO | UNIT_RUNTIME | evaluations-entity-reference.resolver.spec.ts | rejects cross-tenant targets for every supported entity type | PASS |
+| WRITE: unsupported DRIVER target | org-a | — | driver (write) | reject fail-closed | not persistable → BadRequest | NO | UNIT_RUNTIME | evaluations-entity-reference-write.service.spec.ts | rejects an unsupported target type (DRIVER) fail-closed | PASS |
+| WRITE: foreign owner | org-a | — | org-b INSIGHT owner (write) | reject | ForbiddenException | NO | UNIT_RUNTIME | evaluations-entity-reference-write.service.spec.ts | rejects a cross-tenant owner | PASS |
+| WRITE: unsupported ANALYTICS_GROUP owner | org-a | — | analytics group owner (write) | reject fail-closed | not persistable → BadRequest | NO | UNIT_RUNTIME | evaluations-entity-reference-write.service.spec.ts | rejects an unsupported owner type (ANALYTICS_GROUP) fail-closed | PASS |
+| WRITE: foreign station on reference | org-a | s-b1 (write) | — | reject | ForbiddenException | NO | UNIT_RUNTIME | evaluations-entity-reference-write.service.spec.ts | rejects a cross-tenant station | PASS |
+| WRITE: zero cross-tenant persisted rows (real DB) | org-a / org-b | — | mixed | 0 cross-tenant rows | count 0 | NO | INTEGRATION_RUNTIME | evaluations-entity-reference.db-integration.spec.ts | has zero cross-tenant persisted rows overall | PASS |
+| Stations-V2 ON: worker limited to assigned stations | org-a | assigned subset | — | limited | scope=assigned | NO | INTEGRATION_RUNTIME | evaluations-analytics.station-policy.spec.ts | limits a station-scoped worker to assigned stations | PASS |
+| Stations-V2 ON: foreign-org station | org-a | s-b1 | — | 403 | ForbiddenException | NO | INTEGRATION_RUNTIME | evaluations-analytics.station-policy.spec.ts | (ON) still denies a foreign-organization station | PASS |
+| Stations-V2 OFF: org-wide visibility | org-a | (all) | — | org-wide, no narrowing | stationIds=null | NO | INTEGRATION_RUNTIME | evaluations-analytics.station-policy.spec.ts | grants org-wide station visibility without narrowing | PASS |
+| Stations-V2 OFF: foreign-org station | org-a | s-b1 | — | 403 (flag-independent) | ForbiddenException | NO | INTEGRATION_RUNTIME | evaluations-analytics.station-policy.spec.ts | (OFF) still denies a foreign-organization station | PASS |
+| Unknown query parameter | org-a | — | ?evilField/__proto__ | ignored (platform policy), not forwarded | 200, org-a scope, not forwarded | NO | INTEGRATION_RUNTIME | evaluations-analytics.http-security.integration.spec.ts | 16. unknown query parameter is ignored | PASS |
 
 ## Repository query-scope assertions (Step 46)
 
@@ -55,7 +67,17 @@ On a disposable PostgreSQL 16 instance the migration was applied and:
   index `evaluations_entity_refs_org_dedupe_key`.
 - Deleting `org-a` cascades to remove only org-a references (org-a: 0, org-b: 1).
 
+## Unknown query parameter policy
+
+Platform policy: unknown top-level query parameters are **ignored** (no global
+`forbidNonWhitelisted`); the controller reads only named parameters and never
+forwards unknown keys to the query builder. Unknown **filter** keys inside the
+typed filter object are still rejected (allowlist). Documented as
+`UNKNOWN_QUERY_KEYS = IGNORED_BY_PLATFORM_POLICY` (top-level) +
+`UNKNOWN_FILTER_KEYS = REJECTED` (filter object).
+
 ## Result
 
-- Cross-tenant leakage count: **0**
+- READ cross-tenant leakage count: **0**
+- WRITE cross-tenant leakage count: **0**
 - All scenarios: **PASS** (fail-closed)

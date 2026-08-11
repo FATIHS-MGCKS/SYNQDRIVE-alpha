@@ -302,3 +302,93 @@ dependency audit, Vehicle Detail Playwright). `NEW_E2_FAILURE = 0`,
 - Full greenfield `migrate deploy` still blocked by the pre-existing P3018.
 
 Final E2.1 status: `E2_READY_FOR_POST_IMPLEMENTATION_AUDIT`.
+
+---
+
+## 24. E2.2 — Referential Integrity & Final Evidence Closure
+
+Correction pass on the same branch/PR (#1020). Base `origin/main` unchanged
+(`ab554722a2e6e9ed8e4263310bd2bddf9b62445a`); previous E2.1 head `6262bee0`.
+
+### 24.1 Target resolver
+
+Added a central tenant-aware target resolver
+(`evaluations-entity-reference.resolver.ts`). For every persistable entity type
+it performs an organization-scoped existence lookup
+(`WHERE id = ? AND organization_id = ?`), selecting only `{ id }` (never PII).
+Persistable target types: `VEHICLE`, `BOOKING`, `CUSTOMER`, `STATION`, `INVOICE`,
+`TASK`, `SERVICE_CASE`, `DAMAGE`, `DOCUMENT`, `PAYMENT`, and `USER` (via ACTIVE
+organization membership). `DRIVER` has no canonical organization-scoped entity
+and is rejected fail-closed rather than persisted unvalidated.
+
+### 24.2 Owner resolver
+
+Owners are validated the same way. `INSIGHT` owners resolve to a `DashboardInsight`
+row in the reference's organization. `ANALYTICS_GROUP` has no tenant-owned backing
+store in E2 and is rejected fail-closed (no reference is persisted with an
+unverifiable owner).
+
+### 24.3 Same-tenant invariant
+
+The write gate runs all checks in one serializable transaction: organization
+exists; owner exists in the org; target exists in the org; any station belongs to
+the org. Because every check is anchored on `relation.organizationId`, owner,
+target and station necessarily share the same tenant. Enforced by unit, resolver,
+and real-DB integration tests.
+
+### 24.4 Single write authority
+
+Repository has no write methods; the only production write path is
+`EvaluationsEntityReferenceWriteService.createReference`.
+`DIRECT_PRODUCTION_WRITES_OUTSIDE_GATE = 0` (verified by
+`rg "evaluationsEntityReference\.(create|createMany|update|upsert|delete)"`
+excluding specs).
+
+### 24.5 Station access policy decision
+
+Authority: `docs/architecture/stations-v2-permissions.md` (PG-01…PG-05) +
+central `StationAccessService`. Decision (Option A, grounded in the platform
+doc): Stations-V2 OFF is the documented legacy org-wide behavior
+(StationAccessService bypass → an evaluations reader sees all stations in their
+own organization); Stations-V2 ON enforces station scope from membership. In both
+modes the organization boundary is always enforced and the flag can never enable
+cross-tenant access. `MULTI_STATION_TIMEZONE_POLICY` = organization timezone
+(unchanged). No new station policy was invented.
+
+### 24.6 Unknown query parameter policy
+
+`UNKNOWN_QUERY_KEYS = IGNORED_BY_PLATFORM_POLICY` for top-level query params (the
+platform has no global `forbidNonWhitelisted`; the controller reads only named
+params and never forwards unknown keys). Unknown keys inside the typed filter
+object remain rejected (`UNKNOWN_FILTER_KEYS = REJECTED`). Reports corrected to
+this exact semantics; covered by an HTTP integration test.
+
+### 24.7 Migration documentation correction
+
+Removed the imprecise "idempotent because CREATE TABLE is new" claim. The report
+now states the accurate Prisma migration-state / partial-apply / roll-forward
+semantics and reconfirms the current-main-schema validation with re-run commands
+(`phase3-e2-migration-validation-2026-08.md`).
+
+### 24.8 Tests
+
+Focused E2 suites now: **12 suites, 109 tests pass** (+ 4 gated DB-integration
+tests that pass against a disposable PostgreSQL 16 and skip in standard CI).
+Added: target/owner resolver suite, real-DB write-gate integration, station
+policy ON/OFF suite, unknown-query HTTP case; rewrote the write-gate suite for the
+transactional resolver behavior.
+
+### 24.9 Final CI / A/B
+
+All repository-wide CI reds remain `PRE_EXISTING_IDENTICAL` vs `origin/main`.
+`NEW_E2_FAILURE = 0`, `UNKNOWN = 0`.
+
+### 24.10 Residual risks
+
+- DB-level composite `(stationId, organizationId)` FK still deferred (write-gate +
+  resolver enforce same-tenant integrity in one transaction).
+- `DRIVER` target and `ANALYTICS_GROUP` owner are fail-closed unsupported until a
+  canonical org-scoped backing store exists.
+- Full greenfield `migrate deploy` remains blocked by the pre-existing P3018.
+
+Final E2.2 status: `E2_READY_FOR_FINAL_MERGE_AUDIT`.

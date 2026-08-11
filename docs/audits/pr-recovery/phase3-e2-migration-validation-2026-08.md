@@ -157,10 +157,35 @@ regardless.
 
 - `prisma validate`: PASS. Production migration performed: **NO**.
 
+### E2.2 reconfirmation (commands re-run)
+
+- `CURRENT_MAIN_SHA` = `ab554722a2e6e9ed8e4263310bd2bddf9b62445a`
+- `MIGRATION_CHAIN_RESULT` = fails at migration #4 `20260325161142_trip_architecture_refactor`
+  (`P3018` / `42P01 relation "vehicle_trips" does not exist`); 3 migrations
+  committed first.
+- `PRE_EXISTING_FAILURE` = `PRE_EXISTING_MIGRATION_BASELINE` (identical on
+  `origin/main`; unrelated to E2).
+- `CURRENT_MAIN_SCHEMA_STATE_METHOD` = full `prisma migrate deploy` applied to a
+  fresh disposable PostgreSQL 16 DB up to the baseline failure (init creates
+  `organizations` and `stations`); the write-gate DB integration additionally
+  runs against a full-schema DB created with `prisma db push`.
+- `E2_MIGRATION_APPLY_RESULT` = the E2 migration applies cleanly on the real
+  current-main-derived schema; FK binds to the real `organizations`; insert +
+  org-cascade verified. `prisma db push` full-schema sync also succeeds and the
+  write-gate integration (same-tenant persist, cross-tenant reject, 0 leaked
+  rows, idempotent) passes against it.
+- `PRODUCTION_MIGRATION_PERFORMED` = **NO**.
+
 ## Rollback / roll-forward
 
-- Roll-forward repair: re-run `migrate deploy` (idempotent; the migration only
-  creates new objects).
+- Roll-forward repair: after diagnosing the failure and inspecting
+  `_prisma_migrations`, resolve the migration state with `prisma migrate resolve`
+  and re-run `migrate deploy`. Prisma applies a versioned migration once and
+  tracks it; a failed migration is rolled back by PostgreSQL (this migration is a
+  single transaction), so there is no half-applied state to clean up. The raw SQL
+  is **not** blindly re-runnable (`CREATE TYPE` errors on a second run) — recovery
+  goes through Prisma's state machine, not repeated raw execution. Production
+  recovery follows its own change-control.
 - Rollback: drop `evaluations_entity_references` and the three enum types. No
   other object depends on them; no data outside the new table is affected.
 
