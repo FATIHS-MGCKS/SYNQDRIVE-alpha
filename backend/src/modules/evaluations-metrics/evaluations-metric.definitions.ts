@@ -488,12 +488,18 @@ export const EVALUATIONS_METRIC_DEFINITIONS: readonly EvaluationsMetricDefinitio
     unit: 'PERCENT',
     valueType: 'PERCENT',
     aggregationType: 'RATIO',
-    calculationVersion: '1.0.0',
+    // 2.0.0 (E4.1C): materially different semantics vs the never-served 1.0.0 —
+    // scheduled-occupancy (not actual possession), unknown blocked time, and
+    // approximate eligibility → served as a coverage-limited PARTIAL metric.
+    calculationVersion: '2.0.0',
     supportedDimensions: ORG_STATION,
     supportedComparisons: ['PREVIOUS_COMPARABLE_PERIOD'],
     dataClassification: 'AGGREGATE',
     metricKind: 'DERIVED',
-    implementationStatus: 'planned',
+    // E4: served by the canonical E4 utilization capability at organization
+    // scope (coverage-limited PARTIAL). Station scope fails closed (no continuous
+    // vehicle→station history on current main) → degraded, not fully active.
+    implementationStatus: 'active_degraded',
   }),
 
   // ─── Fleet availability & stations ───────────────────────────────────────

@@ -25,6 +25,10 @@ export const EVALUATIONS_METRIC_CALCULATION_VERSION_OVERRIDES: Readonly<Record<s
   'fin.open_receivables': '2.0.0',
   'fin.overdue_receivables': '2.0.0',
   'fin.total_outstanding_receivables': '2.0.0',
+  // E4.1C: fleet utilization served with materially different semantics than the
+  // never-served 1.0.0 — scheduled occupancy (not actual possession), unknown
+  // blocked time, approximate eligibility → coverage-limited PARTIAL metric.
+  'ops.fleet_utilization_pct': '2.0.0',
 };
 
 /**

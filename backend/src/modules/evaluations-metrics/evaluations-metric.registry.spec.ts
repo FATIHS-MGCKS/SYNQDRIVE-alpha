@@ -246,7 +246,7 @@ describe('EvaluationsMetricRegistry', () => {
   it('exposes stable registry snapshot', () => {
     const snapshot = getEvaluationsMetricRegistrySnapshot();
     expect(snapshot.taxonomyVersion).toBe('1.0.0');
-    expect(snapshot.registryVersion).toBe('1.4.0');
+    expect(snapshot.registryVersion).toBe('1.6.0');
     expect(snapshot.metrics).toBe(EVALUATIONS_METRIC_DEFINITIONS);
   });
 
