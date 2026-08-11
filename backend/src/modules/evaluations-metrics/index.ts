@@ -4,6 +4,7 @@ export {
   EVALUATIONS_METRIC_REGISTRY_VERSION,
   EVALUATIONS_METRIC_TAXONOMY_VERSION,
   EvaluationsMetricRegistryError,
+  assertEvaluationsMetricRegistryIntegrity,
   getEvaluationsMetricDefinition,
   getEvaluationsMetricRegistrySnapshot,
   isEvaluationsMetricId,
@@ -12,6 +13,7 @@ export {
   resolveEvaluationsMetricId,
 } from './evaluations-metric.registry';
 export { EVALUATIONS_METRIC_DEFINITIONS } from './evaluations-metric.definitions';
+export { assertValidRegisteredEvaluationsMetricResponse } from './evaluations-metric-response.registry-validator';
 export {
   AUDIT_LEGACY_TO_EVALUATIONS_METRIC,
   BUSINESS_PULSE_TO_EVALUATIONS_METRIC,
@@ -19,3 +21,8 @@ export {
   INSIGHT_METRICS_FIELD_LEGACY,
   resolveLegacyEvaluationsMetricId,
 } from './evaluations-metric.legacy-map';
+export {
+  resolveEvaluationsComparisonPeriods,
+  resolveEvaluationsPeriod,
+  resolveEvaluationsTimezone,
+} from './evaluations-period.resolver';

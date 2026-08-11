@@ -107,6 +107,12 @@ Prisma models: `DashboardInsight.calculationMeta`, `DashboardInsightRun.calculat
 
 Consumers comparing values across versions must match on `metricId` **and** `calculationVersion`.
 
+Phase-3 E1 metric responses carry the same `calculationVersion` directly alongside
+their canonical period and `generatedAt`. A formula migration from v1 to v2 is
+published only after the registry definition and shared override are bumped
+together. Existing persisted v1 provenance remains v1; E1 performs no historical
+backfill and never relabels old values as v2.
+
 ## Backfills and historical recalculation
 
 ### When to backfill

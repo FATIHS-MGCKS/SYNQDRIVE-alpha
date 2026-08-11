@@ -5,6 +5,7 @@
  * @see docs/architecture/analytics/evaluations-kpi-taxonomy.md
  * @see docs/architecture/analytics/evaluations-metric-registry.md
  */
+import type { EvaluationsComparisonType } from '../evaluations-periods/evaluations-period.contract';
 
 /** Domains from evaluations-kpi-taxonomy.md §3 */
 export const EVALUATIONS_METRIC_CATEGORIES = [
@@ -44,11 +45,16 @@ export type EvaluationsMetricKind = (typeof EVALUATIONS_METRIC_KINDS)[number];
 export const EVALUATIONS_METRIC_UNITS = [
   'EUR',
   'EUR_CENTS',
+  'CURRENCY_MINOR',
   'PERCENT',
   'COUNT',
+  'SECONDS',
   'MINUTES',
+  'HOURS',
   'DAYS',
+  'KILOMETERS',
   'MILLISECONDS',
+  'RATE',
   'SCORE',
   'ENUM',
   'TEXT',
@@ -65,7 +71,11 @@ export const EVALUATIONS_VALUE_TYPES = [
   'PERCENT',
   'COUNT',
   'RATIO',
+  'RATE',
+  'DISTANCE_KILOMETERS',
+  'DURATION_SECONDS',
   'DURATION_MINUTES',
+  'DURATION_HOURS',
   'DURATION_DAYS',
   'DURATION_MILLISECONDS',
   'DATETIME',
@@ -112,10 +122,6 @@ export const EVALUATIONS_DIMENSIONS = [
 
 export type EvaluationsDimension = (typeof EVALUATIONS_DIMENSIONS)[number];
 
-export const EVALUATIONS_COMPARISONS = ['none', 'mom', 'yoy', 'prev_period'] as const;
-
-export type EvaluationsComparison = (typeof EVALUATIONS_COMPARISONS)[number];
-
 export const EVALUATIONS_IMPLEMENTATION_STATUSES = [
   'active',
   'active_degraded',
@@ -132,12 +138,18 @@ export interface EvaluationsMetricDefinition {
   readonly category: EvaluationsMetricCategory;
   readonly labelKey: string;
   readonly descriptionKey: string;
+  /**
+   * @deprecated Presentation hint only. It is never the currency authority for
+   * MONEY values; concrete currency always comes from Money.currency.
+   */
   readonly unit: EvaluationsMetricUnit;
+  /** Canonical wire encoding; MONEY always uses CURRENCY_MINOR. */
+  readonly transportUnit: EvaluationsMetricUnit;
   readonly valueType: EvaluationsValueType;
   readonly aggregationType: EvaluationsAggregationType;
   readonly calculationVersion: string;
   readonly supportedDimensions: readonly EvaluationsDimension[];
-  readonly supportedComparisons: readonly EvaluationsComparison[];
+  readonly supportedComparisons: readonly EvaluationsComparisonType[];
   readonly dataClassification: EvaluationsDataClassification;
   readonly metricKind: EvaluationsMetricKind;
   readonly implementationStatus: EvaluationsImplementationStatus;

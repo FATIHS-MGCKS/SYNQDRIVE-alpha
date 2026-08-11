@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   BUSINESS_PULSE_TO_EVALUATIONS_METRIC,
+  EVALUATIONS_COMPARISON_TYPES,
+  EVALUATIONS_METRIC_STATUSES,
+  EVALUATIONS_PERIOD_TYPES,
+  EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE,
   FINANCIAL_INSIGHTS_REGISTRY_METRIC_IDS,
   resolveLegacyEvaluationsMetricId,
 } from './evaluations-metric.contract';
@@ -16,5 +20,12 @@ describe('evaluations metric contract (shared)', () => {
 
   it('exposes stable financial insights registry constants', () => {
     expect(FINANCIAL_INSIGHTS_REGISTRY_METRIC_IDS.mtdNetResult).toBe('fin.mtd_net_result');
+  });
+
+  it('re-exports canonical status, period and comparison contracts', () => {
+    expect(EVALUATIONS_METRIC_STATUSES).toContain('NOT_APPLICABLE');
+    expect(EVALUATIONS_PERIOD_TYPES).toContain('MTD');
+    expect(EVALUATIONS_COMPARISON_TYPES).toContain('PREVIOUS_COMPARABLE_PERIOD');
+    expect(EVALUATIONS_PLATFORM_FALLBACK_TIMEZONE).toBe('Europe/Berlin');
   });
 });

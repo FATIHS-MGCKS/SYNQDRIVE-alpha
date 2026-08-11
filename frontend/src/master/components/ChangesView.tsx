@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e1-contract-recovery-v49886-2026-08-10',
+    version: '4.9.886',
+    title: 'V4.9.886 — Evaluations E1.1 Contract Correction',
+    summary: [
+      'Registry 1.2.0 uses only canonical comparison IDs; MTD capabilities resolve to PREVIOUS_COMPARABLE_PERIOD and no-comparison is an empty list.',
+      'Registered KPI responses are checked against metric id, kind, value type, transport unit, calculation version, and allowed comparisons.',
+      'Shared/core time owns the Europe/Berlin fallback; period references must remain inside [start, endExclusive).',
+      'COUNT/date-time/range, mathematical coverage, and multi-currency MONEY invariants are enforced with byte-identical contract mirrors.',
+    ],
+    reason:
+      'Phase 3 E1 recovers the versioned contract foundation required by later tenant-safe analytics, finance, quality, and UI packages.',
+    previousBehavior:
+      'Current main had the metric registry and calculation provenance, but no canonical metric-status/value response or business-period resolver.',
+    details:
+      'shared/evaluations-{metrics,periods}, backend/src/modules/evaluations-metrics/evaluations-period.resolver.ts, docs/architecture/analytics/evaluations-{metric-response-contract,timezone-period-model}.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-10T19:25:00.000Z',
+  },
+  {
     id: 'master-admin-production-deploy-2g7-2026-07-26',
     version: '4.9.885',
     title: 'V4.9.885 — Master Admin 2G.7: production deploy + post-deploy ops',
