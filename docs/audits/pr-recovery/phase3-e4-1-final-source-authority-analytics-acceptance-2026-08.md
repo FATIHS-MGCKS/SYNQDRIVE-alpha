@@ -100,6 +100,18 @@ PARALLEL_ANALYTICS_TRUTH_COUNT, E4_FINANCE_REIMPLEMENTATION_COUNT, UNSAFE_FINANC
 - Trip-level `DriverAttribution` (actual-driver) integration deferred.
 - E5 (Data Quality), E6 (UI), E7 (Recommendations/Actions), E8 (Predictive/Forecast), E9 (Forecast UI) — NOT started.
 
+## E4.2 Independent Residual Corrections (2026-08-11)
+
+A further independent-audit pass (E4.2) on the same branch, `TESTED_CODE_SHA` = `f11b56d859bedcfdaf38ad189b76f52373464335`:
+
+- Detection dimensions are evaluated only when their source is AVAILABLE; PARTIAL/UNAVAILABLE sources are skipped (recorded) and the section rolls up to PARTIAL — a PARTIAL input can no longer become fully AVAILABLE detection evidence. (Note: on current main utilization is structurally PARTIAL, so utilization-based rules are skipped and the detection sections are PARTIAL — the honest outcome. This **SUPERSEDES_BY_E4_2** the earlier E4-initial expectation that detection sections would be AVAILABLE.)
+- Strength/Weakness expose `evaluatedDimensions`/`skippedDimensions`; empty results with skipped dimensions remain PARTIAL.
+- `latestState.online` is treated as a current snapshot (`telemetrySnapshotAsOf`), surfaced only for a live period and `null` for historical periods; never a historical period fact; never in utilization math.
+- Detection calc versions bumped strength/weakness `v2 → v3`.
+- New counters (all 0): `PARTIAL_INPUT_TO_AVAILABLE_DETECTION_COUNT`, `DETECTION_COVERAGE_STATUS_UPGRADE_COUNT`, `FALSE_COMPLETE_EMPTY_DETECTION_COUNT`, `CURRENT_TELEMETRY_AS_HISTORICAL_FACT_COUNT`, `SUMMARY_DETECTION_STATUS_UPGRADE_COUNT`.
+
+Full E4.2 report: `phase3-e4-2-detection-coverage-temporal-signal-test-report-2026-08.md`.
+
 ## Final decision
 
-`E4_READY_FOR_POST_IMPLEMENTATION_AUDIT`.
+Original E4.1 decision retained for the audit trail: `E4_READY_FOR_POST_IMPLEMENTATION_AUDIT`. After E4.2 the branch decision is **`E4_READY_FOR_FINAL_MERGE_AUDIT`** (all A/B/C + E4.2 corrections complete; all critical counters 0; no E5–E9 leak).

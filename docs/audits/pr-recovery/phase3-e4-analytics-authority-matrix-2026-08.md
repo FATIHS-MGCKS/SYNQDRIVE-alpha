@@ -46,7 +46,7 @@ Base main SHA: `cefeedfe7dcfd7f682ba5b80fad1fec37d4a6c0f` (E3 merge, #1022).
 | Fleet utilization % | Registry `ops.fleet_utilization_pct` (planned, unimplemented) | registry | **E4 becomes the canonical server** → activated (degraded). **E4.1C:** served as coverage-limited `PARTIAL` (scheduled occupancy, unknown blocked, approximate eligibility); calc version bumped `1.0.0 → 2.0.0`; station-scope fails closed |
 | Strengths / weaknesses counts | Registry `ops.strengths_count` / `ops.weaknesses_count` (planned) | registry | **E4 becomes canonical server** → activated (degraded: evidence-gated) |
 | Cost aggregation | none (only E3 finance expenses) | — | E4 Cost Model is analytical cost (distinct from E3 accounting expense); exposed as section envelope with own calculationVersion |
-| Strength/weakness/driver rule engines | none on current main | — | New deterministic rule engines (reimplemented from historical intent) |
+| Strength/weakness/driver rule engines | none on current main | — | New deterministic rule engines (reimplemented from historical intent). **E4.2:** a rule is evaluated only when its source dimension is AVAILABLE; PARTIAL/UNAVAILABLE sources are skipped and the section rolls up to PARTIAL (utilization is structurally PARTIAL → utilization rules skipped). Detection calc `v3` |
 
 ## 6. Source schema realities that force fail-closed behavior
 

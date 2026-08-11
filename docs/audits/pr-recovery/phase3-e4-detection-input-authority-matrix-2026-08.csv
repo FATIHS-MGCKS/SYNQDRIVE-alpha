@@ -1,0 +1,8 @@
+rule_id,rule_type,source_metric,source_status_allowed,coverage_requirement,evidence_requirement,skip_reason,calculation_version
+HIGH_UTILIZATION,STRENGTH,ops.fleet_utilization_pct (UTILIZATION dimension),AVAILABLE only,coverageRatio >= 0.80,eligibleVehicles >= 3 and ratio >= 0.70,UTILIZATION_SOURCE_PARTIAL / UTILIZATION_SOURCE_UNAVAILABLE / UTILIZATION_SOURCE_ERROR,strength-detection-e4-v3
+REVENUE_GROWTH,STRENGTH,fin.mtd_issued_revenue (FINANCE dimension),AVAILABLE only,n/a,previousRevenueMinor > 0 and growth >= +5%,FINANCE_SOURCE_PARTIAL / FINANCE_SOURCE_UNAVAILABLE / FINANCE_SOURCE_ERROR,strength-detection-e4-v3
+LOW_CANCELLATION_RATE,STRENGTH,booking outcomes (BOOKINGS dimension),AVAILABLE (org scope only),n/a,totalOutcomes >= 10 and rate <= 10%,BOOKINGS_STATION_SCOPE_UNSUPPORTED,strength-detection-e4-v3
+UNDERUTILIZATION,WEAKNESS,ops.fleet_utilization_pct (UTILIZATION dimension),AVAILABLE only,coverageRatio >= 0.80,eligibleVehicles >= 3 and ratio < 0.40,UTILIZATION_SOURCE_PARTIAL / UTILIZATION_SOURCE_UNAVAILABLE / UTILIZATION_SOURCE_ERROR,weakness-detection-e4-v3
+DECLINING_REVENUE,WEAKNESS,fin.mtd_issued_revenue (FINANCE dimension),AVAILABLE only,n/a,previousRevenueMinor > 0 and growth <= -5%,FINANCE_SOURCE_PARTIAL / FINANCE_SOURCE_UNAVAILABLE / FINANCE_SOURCE_ERROR,weakness-detection-e4-v3
+LOW_MARGIN,WEAKNESS,fin.profit_margin_mtd + fin.mtd_issued_revenue (FINANCE dimension),AVAILABLE only,n/a,revenueMinor > 0 and marginPercent < 10%,FINANCE_SOURCE_PARTIAL / FINANCE_SOURCE_UNAVAILABLE / FINANCE_SOURCE_ERROR,weakness-detection-e4-v3
+HIGH_CANCELLATION_RATE,WEAKNESS,booking outcomes (BOOKINGS dimension),AVAILABLE (org scope only),n/a,totalOutcomes >= 10 and rate > 10%,BOOKINGS_STATION_SCOPE_UNSUPPORTED,weakness-detection-e4-v3

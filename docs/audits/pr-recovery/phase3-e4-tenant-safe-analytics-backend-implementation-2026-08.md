@@ -132,3 +132,16 @@ Details and counters: `phase3-e4-1b-cost-source-historical-correctness-test-repo
 - **Calculation versions bumped** for material changes: utilization `utilization-model-e4-v1 → v2`; strength `strength-detection-e4-v1 → v2`; weakness `weakness-detection-e4-v1 → v2`; registry `ops.fleet_utilization_pct` `1.0.0 → 2.0.0` (mirrored in the shared calc-version resolver) and registry version `1.5.0 → 1.6.0`.
 
 Full acceptance, calc-version review, and final counters: `phase3-e4-1-final-source-authority-analytics-acceptance-2026-08.md`.
+
+## E4.2 — Detection Coverage & Temporal Signal Correction (2026-08-11)
+
+`TESTED_CODE_SHA` = `f11b56d859bedcfdaf38ad189b76f52373464335` (base `PRE_E4_2_HEAD` = `f25b1d72`). No schema change.
+
+- **PARTIAL input never becomes fully AVAILABLE detection evidence.** Each detection dimension is evaluated only when its source is `AVAILABLE`: FINANCE (E3 finance AVAILABLE), UTILIZATION (utilization AVAILABLE — structurally PARTIAL on current main, so skipped), BOOKINGS (org-scope only). A PARTIAL/UNAVAILABLE source dimension is skipped with a recorded reason (`PARTIAL_INPUT_TO_AVAILABLE_DETECTION_COUNT = 0`). Per-rule input authority: `phase3-e4-detection-input-authority-matrix-2026-08.csv`.
+- **Honest section coverage.** Strength/Weakness sections expose `evaluatedDimensions` + `skippedDimensions` and roll up to `PARTIAL` when any configured dimension is skipped (never a silent upgrade): `DETECTION_COVERAGE_STATUS_UPGRADE_COUNT = 0`. An empty result with a skipped dimension stays `PARTIAL` — it never implies "everything was checked" (`FALSE_COMPLETE_EMPTY_DETECTION_COUNT = 0`).
+- **Current telemetry is not a historical fact.** `latestState.online` is a current snapshot. The section now carries `telemetrySnapshotAsOf`; `telemetryOfflineVehicles` is surfaced only for a live/current period (period still includes "now") and is `null` for a historical period (`CURRENT_TELEMETRY_AS_HISTORICAL_FACT_COUNT = 0`). It never enters utilization/downtime math (`TELEMETRY_OFFLINE_DOWNTIME_MISCLASS_COUNT = 0`).
+- **Summary preserves child detection status.** Strength/Weakness PARTIAL propagate into the summary with no upgrade (`SUMMARY_DETECTION_STATUS_UPGRADE_COUNT = 0`, `SUMMARY_DIRECT_ENDPOINT_MISMATCH_COUNT = 0`).
+- **Calc versions bumped** for the material detection change: strength `v2 → v3`, weakness `v2 → v3` (rule set unchanged; input-authority/coverage semantics changed). No unrelated metric bumped; detection is section-local (no registry metric), so registry version is unchanged.
+- **Stale comments corrected** (E4.1B cost currency behavior; fixed-cost formula).
+
+Details, calc-version review, and recomputed counters: `phase3-e4-2-detection-coverage-temporal-signal-test-report-2026-08.md`.
