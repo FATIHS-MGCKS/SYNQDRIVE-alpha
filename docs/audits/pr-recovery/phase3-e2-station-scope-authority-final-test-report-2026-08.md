@@ -97,3 +97,25 @@ schema change. Production migration performed: NO.
 - `PR_HEAD_EQUALS_BRANCH_HEAD` = (recorded in final status after push)
 - `CHECK_HEAD_EQUALS_PR_HEAD` = (recorded in final status)
 - `POST_TEST_CODE_CHANGES` = DOCS_ONLY (only reports change after `TESTED_CODE_SHA`)
+
+## E2.4 — Empty assignment fail-closed (correction)
+
+The E2.3 role matrix above is retained; E2.4 hardens the "no valid assignment"
+case, which previously could resolve to ALL for station-restricted roles via the
+central engine's empty→ALL fallback. Corrected role-first, fail-closed:
+
+- `DRIVER_ACTIVE_TEST` = PASS → NO_STATIONS (even with an assignment present).
+- `WORKER_NO_ASSIGNMENT_TEST` = PASS → NO_STATIONS (`stationIds []`/`null`,
+  `stationScope null`, and `undefined` legacy fields).
+- `SUB_ADMIN_NO_ASSIGNMENT_TEST` = PASS → NO_STATIONS.
+- WORKER/SUB_ADMIN with a valid assignment → ASSIGNED_STATIONS (unchanged).
+- ORG_ADMIN with empty legacy fields → ALL_STATIONS (no over-correction).
+- inactive member → NO_STATIONS.
+
+ON/OFF equivalence holds for the empty-assignment case (NO_STATIONS in both).
+Data level: an empty-assignment WORKER sees zero records (summary 0 / detail 0 /
+no groups). Evidence: `evaluations-analytics.station-policy.spec.ts`,
+`evaluations-analytics-scope.service.spec.ts`,
+`evaluations-analytics.tenant-isolation.spec.ts`. See
+`phase3-e2-empty-assignment-final-test-report-2026-08.md` for full metrics and
+SHAs.

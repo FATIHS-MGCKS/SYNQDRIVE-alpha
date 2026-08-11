@@ -475,3 +475,70 @@ typecheck adds 0 new errors (4 pre-existing baseline); ESLint PASS; `prisma
 validate` PASS. `NEW_E2_FAILURE = 0`, `UNKNOWN = 0`.
 
 Final E2.3 status: `E2_READY_FOR_FINAL_MERGE_AUDIT`.
+
+---
+
+## 26. E2.4 — Empty Assignment Fail-Closed Correction
+
+Correction pass on the same branch/PR (#1020). Base `origin/main` unchanged
+(`ab554722a2e6e9ed8e4263310bd2bddf9b62445a`); previous E2.3 head `0eedf4ab`;
+tested code SHA `8c7d35939c13ede108d0f2c4d2768acaf79f61b8`.
+
+### 26.1 Problem
+
+The central `computeEffectiveAccess` engine resolves an empty/absent station
+assignment (`stationIds = []`, `stationScope = null`) to ALL stations for
+station-restricted roles (engine `resolveStationScope`: `!scope || scope === 'ALL'
+→ ALL`). Through the E2.3 adapter this could grant DRIVER, and WORKER/SUB_ADMIN
+without assignments, org-wide analytics — contradicting the documented policy
+(WORKER/SUB_ADMIN = ASSIGNED_STATIONS; DRIVER = NO_STATIONS).
+
+### 26.2 Affected roles
+
+DRIVER; WORKER without a valid assignment; SUB_ADMIN without a valid assignment.
+
+### 26.3 Corrected semantics (role-first, fail-closed)
+
+- MASTER_ADMIN → ALL_STATIONS (platform authority; org boundary enforced
+  separately).
+- ORG_ADMIN → ALL_STATIONS (own org), including when legacy fields are empty (no
+  over-correction).
+- SUB_ADMIN / WORKER → ASSIGNED_STATIONS from explicit `stationIds` (or a legacy
+  single `stationScope` id); an explicit `stationScope === 'ALL'` remains a
+  deliberate all-stations grant; **empty/absent assignment → NO_STATIONS**.
+- DRIVER → NO_STATIONS (always).
+- inactive / non-member / any other role → NO_STATIONS.
+
+`null` (ALL_STATIONS) stays strictly distinct from `[]` (NO_STATIONS). A missing
+assignment never widens scope.
+
+### 26.4 Central engine vs E2 adapter
+
+Fixed in the **E2 adapter** (`evaluations-analytics-station-scope.ts`), not the
+central engine: the engine's empty→ALL fallback is legacy behavior relied on by
+other modules, so a repository-wide change carries unknown blast radius. The
+adapter implements the documented station policy directly for the evaluations
+path and no longer calls `computeEffectiveAccess`.
+
+### 26.5 Feature-flag independence
+
+For the same membership, Stations-V2 ON and OFF produce identical authorized
+station populations (including the empty-assignment → NO_STATIONS case).
+`FEATURE_FLAG_SCOPE_ESCALATION_COUNT = 0`.
+
+### 26.6 Data-level leakage tests
+
+Through the real repository query: an empty-assignment WORKER sees no data
+(summary total 0, detail 0, no groups); an assigned WORKER sees only its station;
+an ORG_ADMIN sees all org stations. `INTRA_TENANT_STATION_LEAKAGE_COUNT = 0`,
+`CROSS_TENANT_STATION_LEAKAGE_COUNT = 0`.
+
+### 26.7 Regression + quality
+
+E2.2 target/owner integrity, DB cross-tenant write (0 rows), HTTP security,
+unknown-query, input bounds, summary/detail, migration all remain green. No
+schema change. Focused E2 suites: **12 suites, 134 tests pass** (+4 gated
+DB-integration). Backend production typecheck/build PASS; full typecheck 0 new
+errors; ESLint PASS; `prisma validate` PASS. `NEW_E2_FAILURE = 0`, `UNKNOWN = 0`.
+
+Final E2.4 status: `E2_READY_FOR_FINAL_MERGE_AUDIT`.

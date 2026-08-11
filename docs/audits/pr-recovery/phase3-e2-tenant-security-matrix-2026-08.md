@@ -50,6 +50,14 @@ boundary, 403) → `PermissionsGuard` (`evaluations.read`) →
 | E2.3 cross-tenant station (V2 ON and OFF) | org-a | s-b1 | — | DENY both modes | ForbiddenException | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | cross-tenant station request → DENY | PASS |
 | E2.3 ON≡OFF authorized population equivalence | org-a | — | — | identical stationIds | equal | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | ON/OFF produce identical authorized station population | PASS |
 | E2.3 data-level: ORG_ADMIN sees A+B; WORKER(A) sees only A | org-a | — | — | admin 2 rows / worker 1 row | via repository query | NO | UNIT_RUNTIME | evaluations-analytics.tenant-isolation.spec.ts | admin sees org-a A+B; station-scoped actor only sees allowed-station references | PASS |
+| E2.4 DRIVER active (any assignment) | org-a | — | — | NO_STATIONS | stationIds=[] | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | active DRIVER → NO_STATIONS regardless of assignment | PASS |
+| E2.4 WORKER empty assignment, V2 ON | org-a | (none) | — | NO_STATIONS (not ALL) | stationIds=[] | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | (ON) WORKER with empty assignment → NO_STATIONS | PASS |
+| E2.4 WORKER empty assignment, V2 OFF | org-a | (none) | — | NO_STATIONS (not ALL) | stationIds=[] | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | (OFF) WORKER with empty assignment → NO_STATIONS | PASS |
+| E2.4 WORKER null legacy scope + undefined ids | org-a | — | — | NO_STATIONS | stationIds=[] | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | WORKER with undefined legacy fields → NO_STATIONS | PASS |
+| E2.4 SUB_ADMIN empty assignment | org-a | — | — | NO_STATIONS | stationIds=[] | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | SUB_ADMIN with empty assignment → NO_STATIONS | PASS |
+| E2.4 ORG_ADMIN empty legacy fields (control) | org-a | — | — | ALL_STATIONS | stationIds=null | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | ORG_ADMIN with empty legacy fields → still ALL_STATIONS | PASS |
+| E2.4 NO_STATIONS actor requests a station | org-a | s-a1 | — | DENY | ForbiddenException | NO | UNIT_RUNTIME | evaluations-analytics.station-policy.spec.ts | NO_STATIONS actor requesting a station → DENY | PASS |
+| E2.4 data-level: empty-assignment WORKER sees nothing | org-a | — | — | 0 rows | summary 0 / detail 0 | NO | UNIT_RUNTIME | evaluations-analytics.tenant-isolation.spec.ts | an org-a WORKER with no station assignment sees no data | PASS |
 | Unknown query parameter | org-a | — | ?evilField/__proto__ | ignored (platform policy), not forwarded | 200, org-a scope, not forwarded | NO | INTEGRATION_RUNTIME | evaluations-analytics.http-security.integration.spec.ts | 16. unknown query parameter is ignored | PASS |
 
 ## Repository query-scope assertions (Step 46)
