@@ -771,6 +771,79 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+/**
+ * Status-aware request that does NOT throw on non-2xx (except the shared 401
+ * redirect). Used by the canonical Evaluations (E6) data layer to distinguish a
+ * feature-disabled 404 from a real payload, an authorization 403, and network
+ * errors — without collapsing them into a generic thrown Error. Never returns
+ * fabricated data.
+ */
+export interface RequestResult<T> {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly data?: T;
+  readonly errorMessage?: string;
+}
+
+export async function requestResult<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<RequestResult<T>> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const stepUpToken = getStepUpToken();
+  if (stepUpToken) headers['x-step-up-token'] = stepUpToken;
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { cache: 'no-store', ...options, headers });
+  } catch (e) {
+    // Network/transport failure — distinct from an HTTP error status.
+    return { ok: false, status: 0, errorMessage: e instanceof Error ? e.message : 'Network error' };
+  }
+
+  if (res.status === 401 && !path.includes('/auth/')) {
+    clearAuth();
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      status: res.status,
+      errorMessage: formatHttpErrorMessage(body, res.status, path),
+    };
+  }
+
+  if (res.status === 204) return { ok: true, status: 204 };
+  const text = await res.text();
+  if (!text) return { ok: true, status: res.status };
+  return { ok: true, status: res.status, data: JSON.parse(text) as T };
+}
+
+/**
+ * Build the canonical Evaluations analytics query string. `stationIds` is sent
+ * comma-separated (backend contract); empty/omitted params are dropped so the
+ * server applies its defaults (period → MTD; station → all authorized).
+ */
+function buildEvaluationsAnalyticsQuery(req?: {
+  periodType?: string;
+  stationIds?: readonly string[] | null;
+}): string {
+  const parts: string[] = [];
+  if (req?.periodType) parts.push(`periodType=${encodeURIComponent(req.periodType)}`);
+  if (req?.stationIds && req.stationIds.length > 0) {
+    parts.push(`stationIds=${encodeURIComponent(req.stationIds.join(','))}`);
+  }
+  return parts.length ? `?${parts.join('&')}` : '';
+}
+
 function buildQuery(params?: Record<string, string | number | undefined>): string {
   if (!params) return '';
   const entries = Object.entries(params).filter(([, v]) => v != null);
@@ -5880,6 +5953,41 @@ export const api = {
     financeInsights: (orgId: string, stationIds?: string[]) =>
       get<import('../rental/lib/finance-insights.types').FinancialInsightsBundleDto>(
         buildFinanceInsightsPath(orgId, stationIds),
+      ),
+
+    /**
+     * Canonical E4 analytics insights summary (composite). Status-aware transport:
+     * a feature-disabled 404 is surfaced as a distinct result, never fabricated data.
+     * `periodType`/`stationIds` map to canonical E1 period / E2 station scope.
+     */
+    analyticsInsightsSummary: (
+      orgId: string,
+      req?: { periodType?: string; stationIds?: readonly string[] | null },
+    ) =>
+      requestResult<import('../rental/lib/evaluations/evaluations-canonical.types').EvaluationsAnalyticsInsightsSummary>(
+        `/organizations/${orgId}/evaluations/analytics/insights/summary${buildEvaluationsAnalyticsQuery(req)}`,
+      ),
+
+    /** Canonical E5 quality report (status-aware transport). */
+    analyticsQuality: (
+      orgId: string,
+      req?: { periodType?: string; stationIds?: readonly string[] | null },
+    ) =>
+      requestResult<import('../rental/lib/evaluations/evaluations-canonical.types').EvaluationsQualityReport>(
+        `/organizations/${orgId}/evaluations/analytics/insights/quality${buildEvaluationsAnalyticsQuery(req)}`,
+      ),
+
+    /**
+     * Canonical E4/E5 driver influence (person-level). The server resolves the PII
+     * tier; the client transports the returned `piiTier`/`driverRef` verbatim and
+     * never derives identity or authorization.
+     */
+    driverAnalysis: (
+      orgId: string,
+      req?: { periodType?: string; stationIds?: readonly string[] | null },
+    ) =>
+      requestResult<import('../rental/lib/evaluations/evaluations-canonical.types').EvaluationsDriverInfluenceSection>(
+        `/organizations/${orgId}/evaluations/analytics/insights/driver-analysis${buildEvaluationsAnalyticsQuery(req)}`,
       ),
   },
   invoices: {
