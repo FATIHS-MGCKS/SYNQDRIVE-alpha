@@ -160,6 +160,35 @@ Changed: `frontend/src/lib/api.ts` (add `requestResult` + `buildEvaluationsAnaly
 The current `FinancialInsightsView` visuals are intentionally untouched in E6A (no
 mixing of canonical + legacy for the same concept).
 
+## E6A.1 Independent Review Correction (2026-08-12)
+
+Two narrowly-scoped runtime corrections; no redesign, no backend change.
+
+- Old 404 behavior: `mapEvaluationsResult` mapped every HTTP 404 →
+  `FEATURE_DISABLED`.
+- Actual FeatureGuard behavior: `EvaluationsAnalyticsFeatureGuard` throws
+  `NotFoundException('Not found')` — a deliberately generic 404 with NO
+  machine-readable discriminator (intentional non-disclosure so a disabled route
+  leaks no existence). NestJS serializes `{ statusCode: 404, message: 'Not found',
+  error: 'Not Found' }`.
+- Discriminator decision: `FEATURE_DISABLED_DISCRIMINATOR_DOES_NOT_EXIST`. Message
+  text ("Not found") is not a reliable discriminator and is never parsed as feature
+  authority. Backend fail-closed non-disclosure is preserved
+  (`BACKEND_RUNTIME_CHANGE_COUNT = 0`).
+- Final 404 semantics: generic 404 → neutral `NOT_FOUND` (added to the result
+  union). `FEATURE_DISABLED` remains in the union but is NEVER emitted from a bare
+  404 — reserved for a future reliable, non-leaking discriminator.
+  `HTTP_404_ALWAYS_FEATURE_DISABLED_COUNT = 0`. No legacy fallback on any state.
+- Organization lifecycle: hooks now use a phased async state
+  (`IDLE`/`LOADING`/`SETTLED`). No organization → `IDLE` (no request, no permanent
+  spinner, no stale prior-org data); org A→B → `LOADING` then B (stale A cleared
+  before B resolves); org A→null → `IDLE` (stale A cleared). Pure helpers
+  `orgFetchState` + `shouldApplyResponse` encode this and are unit-tested.
+- Race safety: the effect re-keys on organization+period+station; an `active` guard
+  plus `shouldApplyResponse` ensure a late response for a superseded scope never
+  overwrites the current one. `STALE_SCOPE_RESPONSE_OVERWRITE_COUNT = 0`.
+- E6A1_TESTED_CODE_SHA: `e26ed3da638d1854656a237a9acceea2c1070e1c`.
+
 ## 20. Risk review
 
 - No second Evaluations page (`SECOND_EVALUATIONS_PAGE_COUNT = 0`).

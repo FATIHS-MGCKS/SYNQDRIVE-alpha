@@ -62,3 +62,33 @@ NEW_E6_FAILURE_COUNT 0; UNKNOWN_COUNT 0 (implementation-critical).
 
 EXPECTED_INITIAL_REQUEST_COUNT = 2 (E4 summary + E5 quality) for core sections; +1
 lazy person-level driver-analysis request.
+
+## E6A.1 Independent Review Correction — Test Report (2026-08-12)
+
+E6A1_TESTED_CODE_SHA: `e26ed3da638d1854656a237a9acceea2c1070e1c`.
+
+New/updated tests in `evaluations-canonical.test.ts`:
+- Result mapping: 200→AVAILABLE, 403→UNAUTHORIZED, generic 404→NOT_FOUND (asserts
+  NOT `FEATURE_DISABLED`), 500/network→ERROR; plus an invariant test that the mapper
+  NEVER emits `FEATURE_DISABLED` for any status (no reliable discriminator).
+- Organization lifecycle (pure helpers used by the hooks): `orgFetchState(null|
+  undefined|'')`→IDLE, `orgFetchState('org')`→LOADING; `settledResult` returns the
+  result only when SETTLED.
+- Race safety: `shouldApplyResponse` discards org A response after switching to B,
+  discards on removed org (null active key), and guards period/station scope changes.
+
+Counts: `evaluations-canonical.test.ts` 19 tests (was 14), `evaluations-money.test.ts`
+11 tests → E6A suites TEST_COUNT 30, PASSED 30, FAILED 0, SKIPPED 0. Focused
+regression (evaluations + finance-adapter + finance-navigation): 9 files / 94 tests
+passed. Frontend typecheck 0, `vite build` OK, targeted lint 0.
+
+Corrected counters (all 0): `HTTP_404_ALWAYS_FEATURE_DISABLED_COUNT`,
+`FEATURE_DISABLED_FALSE_POSITIVE_COUNT`, `STALE_ORGANIZATION_DATA_COUNT`,
+`PERMANENT_NULL_ORG_LOADING_COUNT`, `STALE_SCOPE_RESPONSE_OVERWRITE_COUNT`,
+`LEGACY_ANALYTICS_FALLBACK_COUNT`, `NEW_DUPLICATE_BUSINESS_CALCULATION_COUNT`,
+`CLIENT_SIDE_QUALITY_AUTHORITY_COUNT`, `CLIENT_SIDE_PII_AUTHORITY_COUNT`,
+`CLIENT_SIDE_IDENTITY_RECONSTRUCTION_COUNT`, `UNAUTHORIZED_MONEY_RECONSTRUCTION_COUNT`,
+`MIXED_CURRENCY_CLIENT_SUM_COUNT`, `UNKNOWN_TO_ZERO_ADAPTER_COUNT`,
+`E7/E8/E9_RUNTIME_SCOPE_COUNT`, `BACKEND_RUNTIME_CHANGE_COUNT`, `PRISMA_CHANGE_COUNT`,
+`MIGRATION_CHANGE_COUNT`, `PRODUCTION_CONFIG_CHANGE_COUNT`, `PRODUCTION_DEPLOYMENT_COUNT`,
+`NEW_E6_FAILURE_COUNT`, `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT`.
