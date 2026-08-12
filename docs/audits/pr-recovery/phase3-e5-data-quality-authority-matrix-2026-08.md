@@ -26,6 +26,13 @@ governance around the E1–E4 truths without becoming a second calculation engin
 | DAMAGE | `VehicleDamage` | `repairedAt` | `repairedAt` | `createdAt` | realized repair time |
 | TELEMETRY | `VehicleLatestState` | `lastSeenAt` (CURRENT snapshot only) | n/a | `providerFetchedAt` | current snapshot; NEVER a historical period freshness fact |
 
+## E5.1A correction (SUPERSEDES the E5A freshness/roll-up/provenance claims)
+
+- **Freshness ≠ business recency.** No authoritative ingestion/observation/sync watermark exists for these sources (`phase3-e5-freshness-source-authority-matrix-2026-08.csv`) → pipeline freshness is `UNKNOWN`; business timestamps are exposed as `businessEventRecency`. The earlier "business event older than 3 days → STALE" behavior is removed.
+- **Conservative roll-up:** overall status is AVAILABLE only when every section is AVAILABLE (no PARTIAL/STALE → AVAILABLE upgrade).
+- **Composite provenance:** PROVENANCE COMPLETE requires every declared source class (e.g. Finance = invoice + payment).
+- Quality calc version `evaluations-quality-e5-v1 → v2`.
+
 ## Quality dimensions (no global 0–100 score)
 
 Distinct dimensions (`UNSUPPORTED_GLOBAL_QUALITY_SCORE_COUNT = 0`): `FRESHNESS`,

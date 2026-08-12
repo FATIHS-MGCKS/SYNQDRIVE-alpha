@@ -1,5 +1,15 @@
 # Phase 3 – E5A Data Quality, Freshness & Lineage — Implementation Report (2026-08)
 
+> **SUPERSEDED_BY_E5_1A (2026-08-12).** The original E5A freshness model measured
+> the newest business-event timestamp against a 3-day threshold and could roll
+> mixed PARTIAL sections up to AVAILABLE and mark composite provenance COMPLETE
+> from a single source. E5.1A corrected these: pipeline freshness is `UNKNOWN`
+> (no ingestion authority; business timestamps → `businessEventRecency`),
+> roll-up is conservative (never upgrades), and provenance requires every
+> declared source class. Quality calc `evaluations-quality-e5-v1 → v2`. See
+> `phase3-e5-1a-quality-truth-provenance-test-report-2026-08.md`. The historical
+> text below is retained for the audit trail.
+
 ## Revision
 
 - `E5_BASE_MAIN_SHA` = `960365a9b095a54f4656947ac2067a104e56bd8a` (E4 merge; E4 confirmed ancestor; no drift)

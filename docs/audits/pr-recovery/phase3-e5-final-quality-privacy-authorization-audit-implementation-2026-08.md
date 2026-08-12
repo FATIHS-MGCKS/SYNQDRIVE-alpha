@@ -1,5 +1,11 @@
 # Phase 3 – E5 Final: Quality, Privacy, Authorization & Audit — Implementation Report (2026-08)
 
+> **SUPERSEDED_BY_E5_1A (quality semantics only, 2026-08-12).** The E5A quality
+> freshness/roll-up/provenance semantics referenced here were corrected in E5.1A
+> (freshness `UNKNOWN` vs `businessEventRecency`; conservative roll-up; composite
+> provenance; quality calc v2). E5B (privacy) and E5C (audit) are unchanged. See
+> `phase3-e5-1a-quality-truth-provenance-test-report-2026-08.md`.
+
 Consolidated E5 (E5A + E5B + E5C) on branch
 `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, Draft).
 
