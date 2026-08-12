@@ -20,21 +20,21 @@ import {
   type E5QualityDimension,
 } from './contracts/evaluations-quality.contract';
 import {
-  buildSourceFreshness,
+  buildUnknownFreshness,
   completenessState,
   freshnessDimensionState,
+  provenanceState,
   validityState,
   weakestDimension,
   rollupQualityStatus,
 } from './domain/evaluations-quality.domain';
 
-/** Platform freshness rule: a source is FRESH within 3 days of the reference. */
-const FRESHNESS_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
-
 interface SectionInput {
   readonly section: string;
   readonly status: EvaluationsMetricStatus;
   readonly coverage: EvaluationsDataCoverage | null;
+  /** Canonical source classes this section's results depend on. */
+  readonly requiredSourceClasses: readonly string[];
   readonly sources: readonly { category: string; model: string; range: E5FreshnessRange }[];
 }
 
@@ -59,8 +59,6 @@ export class EvaluationsQualityService {
   ): Promise<EvaluationsQualityReport> {
     const generatedAt = now ?? new Date();
     const summary = await this.insights.getSummary(scope, actor, generatedAt);
-    const periodEndExclusiveMs = Date.parse(scope.period.endExclusive);
-    const isCurrentPeriod = generatedAt.getTime() < periodEndExclusiveMs;
 
     const emptyRange: E5FreshnessRange = { newestMs: null, oldestMs: null };
 
@@ -68,19 +66,19 @@ export class EvaluationsQualityService {
     // underlying E4 sections are already fail-closed, and org-wide lineage under a
     // Station A request would leak scope. Only org-wide requests read freshness.
     let finance = emptyRange;
+    let payments = emptyRange;
     let bookings = emptyRange;
     let maintenance = emptyRange;
-    let damage = emptyRange;
     if (!scope.stationScoped) {
       const window: E5SourceWindow = {
         start: new Date(scope.period.start),
         endExclusive: new Date(scope.period.endExclusive),
       };
-      [finance, bookings, maintenance, damage] = await Promise.all([
+      [finance, payments, bookings, maintenance] = await Promise.all([
         this.repository.financeFreshness(scope.organizationId, window),
+        this.repository.paymentsFreshness(scope.organizationId, window),
         this.repository.bookingsFreshness(scope.organizationId, window),
         this.repository.maintenanceFreshness(scope.organizationId, window),
-        this.repository.damageFreshness(scope.organizationId, window),
       ]);
     }
 
@@ -89,18 +87,26 @@ export class EvaluationsQualityService {
         section: 'finance',
         status: summary.sections.finance.status,
         coverage: null,
-        sources: [{ category: 'FINANCE', model: 'OrgInvoice', range: finance }],
+        // Finance results include issued revenue (invoices) AND paid revenue /
+        // cashflow (payments) → both source classes are required for provenance.
+        requiredSourceClasses: ['FINANCE_INVOICE', 'FINANCE_PAYMENT'],
+        sources: [
+          { category: 'FINANCE_INVOICE', model: 'OrgInvoice', range: finance },
+          { category: 'FINANCE_PAYMENT', model: 'OrgInvoicePayment', range: payments },
+        ],
       },
       {
         section: 'costModel',
         status: summary.sections.costModel.status,
         coverage: summary.sections.costModel.coverage,
+        requiredSourceClasses: ['COST_OPERATING_EXPENSES'],
         sources: [{ category: 'COST_OPERATING_EXPENSES', model: 'OrgInvoice', range: finance }],
       },
       {
         section: 'utilization',
         status: summary.sections.utilization.status,
         coverage: summary.sections.utilization.coverage,
+        requiredSourceClasses: ['BOOKINGS', 'MAINTENANCE'],
         sources: [
           { category: 'BOOKINGS', model: 'Booking', range: bookings },
           { category: 'MAINTENANCE', model: 'ServiceCase', range: maintenance },
@@ -110,8 +116,9 @@ export class EvaluationsQualityService {
         section: 'strengths',
         status: summary.sections.strengths.status,
         coverage: summary.sections.strengths.coverage,
+        requiredSourceClasses: ['FINANCE_INVOICE', 'BOOKINGS'],
         sources: [
-          { category: 'FINANCE', model: 'OrgInvoice', range: finance },
+          { category: 'FINANCE_INVOICE', model: 'OrgInvoice', range: finance },
           { category: 'BOOKINGS', model: 'Booking', range: bookings },
         ],
       },
@@ -119,8 +126,9 @@ export class EvaluationsQualityService {
         section: 'weaknesses',
         status: summary.sections.weaknesses.status,
         coverage: summary.sections.weaknesses.coverage,
+        requiredSourceClasses: ['FINANCE_INVOICE', 'BOOKINGS'],
         sources: [
-          { category: 'FINANCE', model: 'OrgInvoice', range: finance },
+          { category: 'FINANCE_INVOICE', model: 'OrgInvoice', range: finance },
           { category: 'BOOKINGS', model: 'Booking', range: bookings },
         ],
       },
@@ -128,24 +136,23 @@ export class EvaluationsQualityService {
         section: 'driverInfluence',
         status: summary.sections.driverInfluence.status,
         coverage: summary.sections.driverInfluence.coverage,
+        requiredSourceClasses: ['BOOKINGS'],
         sources: [{ category: 'BOOKINGS', model: 'Booking', range: bookings }],
       },
     ];
-
-    // Damage participates in cost lineage transparency where present.
-    void damage;
 
     const sections = sectionInputs.map((input) =>
       this.buildSectionQuality(input, {
         organizationId: scope.organizationId,
         stationScoped: scope.stationScoped,
         generatedAt,
-        periodEndExclusiveMs,
-        isCurrentPeriod,
       }),
     );
 
     const overallStatus = rollupQualityStatus(sections.map((s) => s.status));
+    // Fully complete requires every section AVAILABLE and every dimension
+    // COMPLETE. On current main FRESHNESS is structurally UNKNOWN (no ingestion
+    // watermark), so `complete` is honestly false until such an authority exists.
     const complete =
       sections.length > 0 &&
       sections.every(
@@ -168,7 +175,7 @@ export class EvaluationsQualityService {
       overall: {
         status: overallStatus,
         complete,
-        reason: complete ? null : 'QUALITY_COVERAGE_INCOMPLETE',
+        reason: complete ? null : 'QUALITY_INCOMPLETE',
       },
     };
   }
@@ -179,42 +186,39 @@ export class EvaluationsQualityService {
       organizationId: string;
       stationScoped: boolean;
       generatedAt: Date;
-      periodEndExclusiveMs: number;
-      isCurrentPeriod: boolean;
     },
   ): E5SectionQuality {
     const isServed =
       input.status === 'AVAILABLE' || input.status === 'PARTIAL' || input.status === 'STALE';
 
-    // Section freshness is conservative: it is only as fresh as its stalest
-    // source (the minimum newest timestamp across contributing sources).
-    let sectionNewestMs: number | null = null;
-    let sectionOldestMs: number | null = null;
+    // Business-event recency (activity), NOT pipeline freshness: newest = most
+    // recent business event, oldest = earliest, across contributing sources.
+    let newestMs: number | null = null;
+    let oldestMs: number | null = null;
     for (const source of input.sources) {
       if (source.range.newestMs !== null) {
-        sectionNewestMs =
-          sectionNewestMs === null ? source.range.newestMs : Math.min(sectionNewestMs, source.range.newestMs);
+        newestMs = newestMs === null ? source.range.newestMs : Math.max(newestMs, source.range.newestMs);
       }
       if (source.range.oldestMs !== null) {
-        sectionOldestMs =
-          sectionOldestMs === null ? source.range.oldestMs : Math.min(sectionOldestMs, source.range.oldestMs);
+        oldestMs = oldestMs === null ? source.range.oldestMs : Math.min(oldestMs, source.range.oldestMs);
       }
     }
 
-    let freshness: EvaluationsSourceFreshness | null = null;
-    if (isServed && !ctx.stationScoped) {
-      freshness = buildSourceFreshness({
-        newestSourceAtMs: sectionNewestMs,
-        oldestSourceAtMs: sectionOldestMs,
-        evaluatedAt: ctx.generatedAt,
-        periodEndExclusiveMs: ctx.periodEndExclusiveMs,
-        isCurrentPeriod: ctx.isCurrentPeriod,
-        thresholdMs: FRESHNESS_THRESHOLD_MS,
-      });
-    }
+    const businessEventRecency =
+      isServed && !ctx.stationScoped
+        ? {
+            newestAt: newestMs !== null ? new Date(newestMs).toISOString() : null,
+            oldestAt: oldestMs !== null ? new Date(oldestMs).toISOString() : null,
+          }
+        : null;
+
+    // Pipeline freshness is UNKNOWN: no authoritative ingestion/sync watermark
+    // exists for these sources. Business recency is NEVER presented as freshness.
+    const freshness: EvaluationsSourceFreshness | null =
+      isServed && !ctx.stationScoped ? buildUnknownFreshness(ctx.generatedAt) : null;
 
     // Tenant-safe lineage: only source-class opaque references, never raw ids/PII,
-    // and only for served org-scoped sections.
+    // and only for served org-scoped sources that actually have evidence.
     const lineage: E5LineageRef[] =
       isServed && !ctx.stationScoped
         ? input.sources
@@ -225,17 +229,23 @@ export class EvaluationsQualityService {
               effectiveTimestamp:
                 source.range.newestMs !== null ? new Date(source.range.newestMs).toISOString() : null,
               calculationVersion: E5_CALCULATION_VERSIONS.quality,
-              reason: 'SOURCE_CLASS_BUSINESS_TIMESTAMP',
+              reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY',
             }))
         : [];
 
+    const presentClasses = lineage.map((l) => l.sourceCategory);
+
     const dimensions: Record<E5QualityDimension, E5DimensionState> = {
-      FRESHNESS: freshnessDimensionState(freshness ? freshness.state : null),
+      // No ingestion authority → freshness dimension is UNKNOWN (never COMPLETE).
+      FRESHNESS: isServed ? freshnessDimensionState('UNKNOWN') : 'UNAVAILABLE',
       COMPLETENESS: completenessState(input.status, input.coverage),
-      PROVENANCE: !isServed ? 'UNAVAILABLE' : lineage.length > 0 ? 'COMPLETE' : 'UNKNOWN',
+      // Composite: COMPLETE only when EVERY required source class is present.
+      PROVENANCE: provenanceState({
+        served: isServed,
+        requiredClasses: input.requiredSourceClasses,
+        presentClasses,
+      }),
       VALIDITY: validityState(input.status),
-      // Historical vs current handled correctly (freshness reference switches on
-      // period), so temporal applicability is COMPLETE for served sections.
       TEMPORAL_APPLICABILITY: isServed ? 'COMPLETE' : 'UNAVAILABLE',
     };
 
@@ -251,7 +261,9 @@ export class EvaluationsQualityService {
       status: input.status, // mirror verbatim — never upgraded
       dimensions,
       freshness,
+      businessEventRecency,
       coverage: input.coverage,
+      requiredSourceClasses: input.requiredSourceClasses,
       lineage,
       reason,
     };

@@ -14,7 +14,12 @@ import type {
 import type { EvaluationsPeriodWindow } from '@synq/evaluations-periods/evaluations-period.contract';
 
 export const E5_CALCULATION_VERSIONS = {
-  quality: 'evaluations-quality-e5-v1',
+  // v2 (E5.1A): freshness is no longer conflated with business-event recency
+  // (no authoritative ingestion/sync timestamp → freshness UNKNOWN; business
+  // timestamps exposed separately as businessEventRecency); conservative status
+  // roll-up (never upgrades PARTIAL/STALE → AVAILABLE); composite provenance
+  // requires every declared source class, not just one.
+  quality: 'evaluations-quality-e5-v2',
 } as const;
 
 /** Distinct quality dimensions — never collapsed into a single 0–100 score. */
@@ -50,13 +55,33 @@ export interface E5LineageRef {
   readonly reason: string;
 }
 
+/**
+ * Business-event recency (activity metadata) — the newest/oldest BUSINESS event
+ * timestamp in scope/period. This is NOT pipeline/data freshness: a business may
+ * legitimately have no recent events while its data pipeline is perfectly
+ * current.
+ */
+export interface E5BusinessEventRecency {
+  readonly newestAt: string | null;
+  readonly oldestAt: string | null;
+}
+
 export interface E5SectionQuality {
   readonly section: string;
   /** Mirrors the underlying E4/E3 section status verbatim — never upgraded. */
   readonly status: EvaluationsMetricStatus;
   readonly dimensions: Readonly<Record<E5QualityDimension, E5DimensionState>>;
+  /**
+   * Pipeline/data freshness. On current main there is no authoritative
+   * ingestion/observation/sync watermark for these sources, so the state is
+   * UNKNOWN (never inferred from business recency).
+   */
   readonly freshness: EvaluationsSourceFreshness | null;
+  /** Business-event recency (activity), distinct from pipeline freshness. */
+  readonly businessEventRecency: E5BusinessEventRecency | null;
   readonly coverage: EvaluationsDataCoverage | null;
+  /** Canonical source classes this section's results depend on. */
+  readonly requiredSourceClasses: readonly string[];
   readonly lineage: readonly E5LineageRef[];
   readonly reason: string | null;
 }

@@ -22,53 +22,38 @@ import type {
 import type { E5DimensionState } from '../contracts/evaluations-quality.contract';
 
 /**
- * Resolve a freshness state without ever treating a current snapshot as a
- * historical fact. For a historical period the reference is the period end
- * (data should be complete as of the period boundary); for a current period the
- * reference is the evaluation instant.
+ * E5.1A: pipeline/data freshness for the current E5 sources is UNKNOWN — there is
+ * no authoritative ingestion/observation/sync watermark on current main, and
+ * business-event recency must NEVER be presented as freshness. `newestSourceAt`
+ * here would mean an ingestion watermark, which we do not have, so it stays null.
  */
-export function resolveFreshnessState(input: {
-  readonly newestSourceAtMs: number | null;
-  readonly evaluatedAtMs: number;
-  readonly periodEndExclusiveMs: number;
-  readonly isCurrentPeriod: boolean;
-  readonly thresholdMs: number;
-}): EvaluationsSourceFreshnessState {
-  if (input.newestSourceAtMs === null || !Number.isFinite(input.newestSourceAtMs)) {
-    return 'UNKNOWN';
-  }
-  const reference = input.isCurrentPeriod ? input.evaluatedAtMs : input.periodEndExclusiveMs;
-  const lagMs = reference - input.newestSourceAtMs;
-  if (lagMs < 0) {
-    // Source newer than the reference (e.g. a record dated after the period end
-    // for a historical period) — not a freshness signal we can assert.
-    return 'UNKNOWN';
-  }
-  return lagMs <= input.thresholdMs ? 'FRESH' : 'STALE';
+export function buildUnknownFreshness(evaluatedAt: Date): EvaluationsSourceFreshness {
+  return {
+    newestSourceAt: null,
+    oldestSourceAt: null,
+    lastSuccessfulImportAt: null,
+    evaluatedAt: evaluatedAt.toISOString(),
+    state: 'UNKNOWN',
+  };
 }
 
-export function buildSourceFreshness(input: {
-  readonly newestSourceAtMs: number | null;
-  readonly oldestSourceAtMs: number | null;
-  readonly evaluatedAt: Date;
-  readonly periodEndExclusiveMs: number;
-  readonly isCurrentPeriod: boolean;
-  readonly thresholdMs: number;
-}): EvaluationsSourceFreshness {
-  return {
-    newestSourceAt: input.newestSourceAtMs !== null ? new Date(input.newestSourceAtMs).toISOString() : null,
-    oldestSourceAt: input.oldestSourceAtMs !== null ? new Date(input.oldestSourceAtMs).toISOString() : null,
-    // E5A does not implement an import pipeline; last successful import is unknown.
-    lastSuccessfulImportAt: null,
-    evaluatedAt: input.evaluatedAt.toISOString(),
-    state: resolveFreshnessState({
-      newestSourceAtMs: input.newestSourceAtMs,
-      evaluatedAtMs: input.evaluatedAt.getTime(),
-      periodEndExclusiveMs: input.periodEndExclusiveMs,
-      isCurrentPeriod: input.isCurrentPeriod,
-      thresholdMs: input.thresholdMs,
-    }),
-  };
+/**
+ * Composite provenance: COMPLETE only when every declared required source class
+ * is actually present (has traceable evidence). Never COMPLETE merely because one
+ * source (lineage.length > 0) exists.
+ */
+export function provenanceState(input: {
+  readonly served: boolean;
+  readonly requiredClasses: readonly string[];
+  readonly presentClasses: readonly string[];
+}): E5DimensionState {
+  if (!input.served) return 'UNAVAILABLE';
+  if (input.requiredClasses.length === 0) return 'UNKNOWN';
+  const present = new Set(input.presentClasses);
+  const missing = input.requiredClasses.filter((c) => !present.has(c));
+  if (missing.length === 0) return 'COMPLETE';
+  if (present.size === 0) return 'UNKNOWN';
+  return 'PARTIAL';
 }
 
 /** Completeness dimension from an E4 coverage object + the section status. */
@@ -113,20 +98,23 @@ export function weakestDimension(states: readonly E5DimensionState[]): E5Dimensi
 }
 
 /**
- * Conservative status roll-up across sections. Mirrors the E4 pattern: all
- * AVAILABLE → AVAILABLE; a mix → PARTIAL; none available → UNAVAILABLE (ERROR if
- * any ERROR and none available). Never upgrades.
+ * Conservative status roll-up. It NEVER upgrades: the result is AVAILABLE only
+ * when every input is AVAILABLE. Any PARTIAL/STALE (or a mix with any usable
+ * status) yields PARTIAL; only when nothing is usable does it fall to
+ * UNAVAILABLE/ERROR. This forbids AVAILABLE+PARTIAL→AVAILABLE,
+ * PARTIAL+PARTIAL→AVAILABLE, and AVAILABLE+STALE→AVAILABLE.
  */
 export function rollupQualityStatus(
   statuses: readonly EvaluationsMetricStatus[],
 ): EvaluationsMetricStatus {
   if (statuses.length === 0) return 'UNAVAILABLE';
-  const hasAvailable = statuses.some((s) => s === 'AVAILABLE' || s === 'PARTIAL' || s === 'STALE');
-  const hasNonAvailable = statuses.some(
-    (s) => s === 'UNAVAILABLE' || s === 'ERROR' || s === 'NOT_APPLICABLE',
-  );
-  if (hasAvailable && !hasNonAvailable) return 'AVAILABLE';
-  if (hasAvailable && hasNonAvailable) return 'PARTIAL';
+  // Uniform status → itself (e.g. all AVAILABLE, all STALE, all UNAVAILABLE).
+  if (statuses.every((s) => s === statuses[0])) return statuses[0];
+
+  const hasAvailable = statuses.some((s) => s === 'AVAILABLE');
+  const hasWeak = statuses.some((s) => s === 'PARTIAL' || s === 'STALE');
+  // Any mix that still has usable evidence but is not uniformly AVAILABLE → PARTIAL.
+  if (hasAvailable || hasWeak) return 'PARTIAL';
   if (statuses.some((s) => s === 'ERROR')) return 'ERROR';
   return 'UNAVAILABLE';
 }

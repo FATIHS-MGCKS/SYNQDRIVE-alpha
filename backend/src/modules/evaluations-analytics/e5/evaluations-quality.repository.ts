@@ -33,6 +33,20 @@ export class EvaluationsQualityRepository {
     return toRange(agg._max.invoiceDate, agg._min.invoiceDate);
   }
 
+  async paymentsFreshness(organizationId: string, window: E5SourceWindow): Promise<E5FreshnessRange> {
+    const agg = await this.prisma.orgInvoicePayment.aggregate({
+      where: {
+        organizationId,
+        // Defense-in-depth: the parent invoice must be same-tenant.
+        invoice: { is: { organizationId } },
+        paidAt: { gte: window.start, lt: window.endExclusive },
+      },
+      _max: { paidAt: true },
+      _min: { paidAt: true },
+    });
+    return toRange(agg._max.paidAt, agg._min.paidAt);
+  }
+
   async bookingsFreshness(organizationId: string, window: E5SourceWindow): Promise<E5FreshnessRange> {
     const agg = await this.prisma.booking.aggregate({
       where: {
