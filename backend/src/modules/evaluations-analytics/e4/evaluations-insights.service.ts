@@ -45,6 +45,7 @@ import {
   canRevealPersonIdentity,
   pseudonymizePersonRef,
 } from '../privacy/evaluations-privacy.policy';
+import { EvaluationsAuditService } from '../audit/evaluations-audit.service';
 
 const COST_FORMULAE: Readonly<Record<string, string>> = {
   OPERATING_EXPENSES:
@@ -89,6 +90,7 @@ export class EvaluationsInsightsService {
     private readonly finance: EvaluationsFinanceService,
     private readonly repository: EvaluationsInsightsRepository,
     private readonly privacy: EvaluationsPrivacyResolver,
+    private readonly audit: EvaluationsAuditService,
   ) {}
 
   async getSummary(
@@ -534,8 +536,18 @@ export class EvaluationsInsightsService {
       piiTier,
     };
 
-    // Person-level access denied → fail closed with no factors or references.
+    // Person-level access denied → fail closed with no factors or references, and
+    // record the denied outcome honestly (E5C, no PII).
     if (!canAccessPersonLevel(piiTier)) {
+      await this.audit.recordPersonLevelAccess({
+        organizationId: scope.organizationId,
+        actorUserId: actor.id ?? null,
+        result: 'DENIED',
+        piiTier,
+        stationScoped: scope.stationScoped,
+        factorCount: 0,
+        calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+      });
       return {
         ...base,
         status: 'UNAVAILABLE',
@@ -547,7 +559,17 @@ export class EvaluationsInsightsService {
 
     // Driver-level facts have no authoritative station lineage; a station-scoped
     // parent request cannot be honestly narrowed → fail closed (scope matches).
+    // Access was authorized (tier ok) but yields no person data → record SUCCEEDED.
     if (scope.stationScoped) {
+      await this.audit.recordPersonLevelAccess({
+        organizationId: scope.organizationId,
+        actorUserId: actor.id ?? null,
+        result: 'SUCCEEDED',
+        piiTier,
+        stationScoped: true,
+        factorCount: 0,
+        calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+      });
       return {
         ...base,
         status: 'UNAVAILABLE',
@@ -575,6 +597,18 @@ export class EvaluationsInsightsService {
 
     const status: EvaluationsMetricStatus =
       influence.dimensionsAnalyzed.length === 0 ? 'UNAVAILABLE' : 'AVAILABLE';
+
+    // Authorized person-level access served → record SUCCEEDED (non-PII metadata).
+    await this.audit.recordPersonLevelAccess({
+      organizationId: scope.organizationId,
+      actorUserId: actor.id ?? null,
+      result: 'SUCCEEDED',
+      piiTier,
+      stationScoped: false,
+      factorCount: factors.length,
+      calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+    });
+
     return {
       ...base,
       status,
