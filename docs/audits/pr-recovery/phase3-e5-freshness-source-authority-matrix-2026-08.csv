@@ -1,0 +1,7 @@
+source,business_event_timestamp,source_observation_timestamp,ingestion_timestamp,sync_watermark,freshness_authority,freshness_threshold_authority,supported
+OrgInvoice,invoiceDate (issued/paid variants),NONE,createdAt (record creation; not an external observation/sync),NONE,NONE (no ingestion/observation/sync watermark),NONE (no source/domain contract defines an evaluations freshness threshold),NO -> freshness UNKNOWN; invoiceDate exposed as businessEventRecency only
+OrgInvoicePayment,paidAt,NONE,createdAt,NONE,NONE,NONE,NO -> freshness UNKNOWN; paidAt = businessEventRecency
+Booking,startDate / completedAt / cancelledAt,NONE,createdAt,NONE,NONE,NONE,NO -> freshness UNKNOWN; business dates = businessEventRecency
+ServiceCase,completedAt / downtimeEnd,NONE,createdAt,NONE,NONE,NONE,NO -> freshness UNKNOWN; completedAt = businessEventRecency
+VehicleDamage,repairedAt,NONE,createdAt,NONE,NONE,NONE,NO -> freshness UNKNOWN; repairedAt = businessEventRecency
+VehicleLatestState (telemetry),n/a,lastSeenAt (provider observation),providerFetchedAt,sourceTimestamp,POTENTIAL (real observation/sync timestamps exist),NONE ratified for evaluations,NOT USED in E5 quality sections (no telemetry quality section); would be the only legitimate freshness authority if a telemetry quality section is added later

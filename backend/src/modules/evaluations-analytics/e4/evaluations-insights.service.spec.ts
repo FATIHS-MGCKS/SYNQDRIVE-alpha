@@ -118,6 +118,7 @@ function fullyRentedVehicle() {
 function buildService(overrides: {
   financeMetrics?: Record<string, EvaluationsMetricResponse>;
   repo?: Partial<Record<string, jest.Mock>>;
+  piiTier?: 'full' | 'pseudonymous' | 'none';
 }) {
   const financeMock = {
     computeFinancialInsights: jest.fn().mockResolvedValue({
@@ -159,8 +160,18 @@ function buildService(overrides: {
     }),
     ...overrides.repo,
   } as never;
-  const service = new EvaluationsInsightsService(financeMock as never, repo as never);
-  return { service, financeMock, repo: repo as unknown as Record<string, jest.Mock> };
+  const privacy = { resolvePiiTier: jest.fn().mockResolvedValue(overrides.piiTier ?? 'full') };
+  const audit = {
+    recordPersonLevelAccess: jest.fn().mockResolvedValue(undefined),
+    recordCriticalPersonLevelDisclosure: jest.fn().mockResolvedValue(undefined),
+  };
+  const service = new EvaluationsInsightsService(
+    financeMock as never,
+    repo as never,
+    privacy as never,
+    audit as never,
+  );
+  return { service, financeMock, privacy, audit, repo: repo as unknown as Record<string, jest.Mock> };
 }
 
 describe('EvaluationsInsightsService — org scope', () => {
@@ -366,6 +377,138 @@ describe('EvaluationsInsightsService — cost currency safety', () => {
     expect(cost.status).toBe('UNAVAILABLE');
     expect(cost.reason).toBe('COST_SOURCES_UNSUPPORTED');
     expect(cost.totalsByCurrency).toEqual([]);
+  });
+});
+
+describe('EvaluationsInsightsService — E5B person-level privacy gating', () => {
+  it('full tier reveals raw org-scoped driver references', async () => {
+    const { service } = buildService({ piiTier: 'full' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.piiTier).toBe('full');
+    expect(driver.status).toBe('AVAILABLE');
+    expect(driver.factors.map((f) => f.driverRef)).toEqual(expect.arrayContaining(['driver-a', 'driver-b']));
+  });
+
+  it('pseudonymous tier redacts driver references to keyed, non-reversible pseudonyms', async () => {
+    const { service } = buildService({ piiTier: 'pseudonymous' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.piiTier).toBe('pseudonymous');
+    expect(driver.status).toBe('AVAILABLE');
+    for (const factor of driver.factors) {
+      // Versioned, keyed HMAC form: no original-ID fragment, digest hex only.
+      expect(factor.driverRef).toMatch(/^person-v1-[0-9a-f]{16}$/);
+      expect(factor.driverRef).not.toContain('driver-');
+    }
+    // No raw identity leaks in the serialized response.
+    const serialized = JSON.stringify(driver);
+    expect(serialized).not.toContain('driver-a');
+    expect(serialized).not.toContain('driver-b');
+  });
+
+  describe('E5.2 production pseudonym secret fail-closed', () => {
+    const savedEnv = process.env.NODE_ENV;
+    const savedSecret = process.env.EVALUATIONS_PSEUDONYM_SECRET;
+    afterEach(() => {
+      process.env.NODE_ENV = savedEnv;
+      if (savedSecret === undefined) delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      else process.env.EVALUATIONS_PSEUDONYM_SECRET = savedSecret;
+    });
+
+    it('pseudonymous tier + production + missing secret → fail closed (no factors, no raw id)', async () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      const { service, audit } = buildService({ piiTier: 'pseudonymous' });
+      const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+      expect(driver.status).toBe('UNAVAILABLE');
+      expect(driver.reason).toBe('PSEUDONYMIZATION_UNAVAILABLE');
+      expect(driver.factors).toEqual([]);
+      const serialized = JSON.stringify(driver);
+      expect(serialized).not.toContain('driver-a');
+      expect(serialized).not.toContain('driver-b');
+      // Never crosses into the durable-critical disclosure path (nothing disclosed).
+      expect(audit.recordCriticalPersonLevelDisclosure).not.toHaveBeenCalled();
+      // Denied/failed capability is auditable with safe metadata only.
+      expect(audit.recordPersonLevelAccess).toHaveBeenCalledTimes(1);
+      expect(audit.recordPersonLevelAccess.mock.calls[0][0].result).toBe('DENIED');
+    });
+
+    it('F: full tier + production + missing secret → unaffected (no pseudonymization runs)', async () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      const { service, audit } = buildService({ piiTier: 'full' });
+      const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+      expect(driver.status).toBe('AVAILABLE');
+      expect(driver.factors.map((f) => f.driverRef)).toEqual(
+        expect.arrayContaining(['driver-a', 'driver-b']),
+      );
+      // Full tier still records the durable-critical disclosure.
+      expect(audit.recordCriticalPersonLevelDisclosure).toHaveBeenCalledTimes(1);
+    });
+
+    it('pseudonymous tier + production + valid secret → pseudonymization works', async () => {
+      process.env.NODE_ENV = 'production';
+      process.env.EVALUATIONS_PSEUDONYM_SECRET = 'x'.repeat(48);
+      const { service } = buildService({ piiTier: 'pseudonymous' });
+      const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+      expect(driver.status).toBe('AVAILABLE');
+      for (const factor of driver.factors) {
+        expect(factor.driverRef).toMatch(/^person-v1-[0-9a-f]{16}$/);
+      }
+      expect(JSON.stringify(driver)).not.toContain('driver-a');
+    });
+  });
+
+  it('none tier denies person-level access server-side (UNAVAILABLE, no factors)', async () => {
+    const { service, audit } = buildService({ piiTier: 'none' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.piiTier).toBe('none');
+    expect(driver.status).toBe('UNAVAILABLE');
+    expect(driver.reason).toBe('PERSON_LEVEL_ACCESS_DENIED');
+    expect(driver.factors).toEqual([]);
+    expect(JSON.stringify(driver)).not.toContain('driver-a');
+    // E5C: denied access recorded honestly, actor from server context, no PII.
+    expect(audit.recordPersonLevelAccess).toHaveBeenCalledTimes(1);
+    const rec = audit.recordPersonLevelAccess.mock.calls[0][0];
+    expect(rec.result).toBe('DENIED');
+    expect(rec.actorUserId).toBe('user-1');
+    expect(rec.organizationId).toBe('org-a');
+    expect(JSON.stringify(rec)).not.toContain('driver-a');
+  });
+
+  it('E5C: successful disclosure records a durable-critical audit with non-PII metadata only', async () => {
+    const { service, audit } = buildService({ piiTier: 'full' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.factors.length).toBeGreaterThan(0);
+    // Durable-critical path (fail-closed) is used, not best-effort.
+    expect(audit.recordCriticalPersonLevelDisclosure).toHaveBeenCalledTimes(1);
+    expect(audit.recordPersonLevelAccess).not.toHaveBeenCalled();
+    const rec = audit.recordCriticalPersonLevelDisclosure.mock.calls[0][0];
+    expect(rec.result).toBe('SUCCEEDED');
+    expect(rec.actorUserId).toBe('user-1');
+    expect(rec.piiTier).toBe('full');
+    // Records only aggregate counts + tier — never driver identifiers.
+    expect(JSON.stringify(rec)).not.toContain('driver-a');
+    expect(JSON.stringify(rec)).not.toContain('driver-b');
+  });
+
+  it('E5.1B: fails closed (no person data) when the durable-critical audit cannot persist', async () => {
+    const { service, audit } = buildService({ piiTier: 'full' });
+    audit.recordCriticalPersonLevelDisclosure.mockRejectedValueOnce(
+      new Error('BUSINESS_AUDIT_OUTBOX_FLUSH_FAILED'),
+    );
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.status).toBe('UNAVAILABLE');
+    expect(driver.reason).toBe('SENSITIVE_AUDIT_UNAVAILABLE');
+    expect(driver.factors).toEqual([]);
+    expect(JSON.stringify(driver)).not.toContain('driver-a');
+  });
+
+  it('summary applies the same person-level gate to its driverInfluence section', async () => {
+    const { service } = buildService({ piiTier: 'none' });
+    const summary = await service.getSummary(orgScope, actor, GEN);
+    expect(summary.sections.driverInfluence.status).toBe('UNAVAILABLE');
+    expect(summary.sections.driverInfluence.reason).toBe('PERSON_LEVEL_ACCESS_DENIED');
+    expect(JSON.stringify(summary.sections.driverInfluence)).not.toContain('driver-a');
   });
 });
 

@@ -41,6 +41,9 @@ export const BusinessAuditAction = {
   MANUAL_APPROVAL_REJECTED: 'MANUAL_APPROVAL_REJECTED',
   MANUAL_APPROVAL_REVOKED: 'MANUAL_APPROVAL_REVOKED',
   MANUAL_APPROVAL_EXPIRED: 'MANUAL_APPROVAL_EXPIRED',
+  // E5C: sensitive person-level evaluations analytics access (audit evidence).
+  EVALUATIONS_PERSON_ANALYTICS_ACCESSED: 'EVALUATIONS_PERSON_ANALYTICS_ACCESSED',
+  EVALUATIONS_PERSON_ANALYTICS_DENIED: 'EVALUATIONS_PERSON_ANALYTICS_DENIED',
 } as const;
 
 export type BusinessAuditActionCode =
@@ -52,6 +55,8 @@ export const BUSINESS_AUDIT_ENTITY_TYPE = {
   VEHICLE: 'VEHICLE',
   BOOKING: 'BOOKING',
   BOOKING_ELIGIBILITY_APPROVAL: 'BOOKING_ELIGIBILITY_APPROVAL',
+  // E5C: target category for evaluations person-level analytics access events.
+  EVALUATIONS_DRIVER_ANALYTICS: 'EVALUATIONS_DRIVER_ANALYTICS',
 } as const;
 
 export type BusinessAuditEntityType =

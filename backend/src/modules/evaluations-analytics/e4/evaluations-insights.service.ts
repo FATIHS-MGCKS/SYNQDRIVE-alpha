@@ -39,6 +39,14 @@ import {
   computeDriverInfluence,
   E4_DEFAULT_DRIVER_CONFIG,
 } from './domain/evaluations-driver.domain';
+import { EvaluationsPrivacyResolver } from '../privacy/evaluations-privacy.resolver';
+import {
+  canAccessPersonLevel,
+  canRevealPersonIdentity,
+  pseudonymizePersonRef,
+} from '../privacy/evaluations-privacy.policy';
+import { resolveEvaluationsPseudonymSecret } from '../privacy/evaluations-privacy.config';
+import { EvaluationsAuditService } from '../audit/evaluations-audit.service';
 
 const COST_FORMULAE: Readonly<Record<string, string>> = {
   OPERATING_EXPENSES:
@@ -82,6 +90,8 @@ export class EvaluationsInsightsService {
   constructor(
     private readonly finance: EvaluationsFinanceService,
     private readonly repository: EvaluationsInsightsRepository,
+    private readonly privacy: EvaluationsPrivacyResolver,
+    private readonly audit: EvaluationsAuditService,
   ) {}
 
   async getSummary(
@@ -137,7 +147,7 @@ export class EvaluationsInsightsService {
       () => this.errorWeaknessSection(scope, generatedAt),
     );
     const driverInfluence = await isolateAsync(
-      () => this.getDriverInfluence(scope, generatedAt),
+      () => this.getDriverInfluence(scope, actor, generatedAt),
       () => this.errorDriverSection(scope, generatedAt),
     );
 
@@ -505,8 +515,13 @@ export class EvaluationsInsightsService {
 
   async getDriverInfluence(
     scope: EvaluationsAuthorizedAnalyticsScope,
+    actor: { id?: string; organizationId?: string | null; platformRole?: string | null },
     generatedAt: Date,
   ): Promise<EvaluationsDriverInfluenceSection> {
+    // E5B: driver influence is person-level data. Resolve the server-side PII
+    // tier before emitting any driver reference (frontend hiding is never authz).
+    const piiTier = await this.privacy.resolvePiiTier(actor, scope.organizationId);
+
     const base = {
       calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
       period: scope.period,
@@ -519,11 +534,43 @@ export class EvaluationsInsightsService {
         'Station transfer effects (incomplete station history)',
         'Correlated service cases and vehicle-level factors',
       ],
+      piiTier,
     };
+
+    // Person-level access denied → fail closed with no factors or references, and
+    // record the denied outcome honestly (E5C, no PII).
+    if (!canAccessPersonLevel(piiTier)) {
+      await this.audit.recordPersonLevelAccess({
+        organizationId: scope.organizationId,
+        actorUserId: actor.id ?? null,
+        result: 'DENIED',
+        piiTier,
+        stationScoped: scope.stationScoped,
+        factorCount: 0,
+        calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+      });
+      return {
+        ...base,
+        status: 'UNAVAILABLE',
+        coverage: null,
+        reason: 'PERSON_LEVEL_ACCESS_DENIED',
+        factors: [],
+      };
+    }
 
     // Driver-level facts have no authoritative station lineage; a station-scoped
     // parent request cannot be honestly narrowed → fail closed (scope matches).
+    // Access was authorized (tier ok) but yields no person data → record SUCCEEDED.
     if (scope.stationScoped) {
+      await this.audit.recordPersonLevelAccess({
+        organizationId: scope.organizationId,
+        actorUserId: actor.id ?? null,
+        result: 'SUCCEEDED',
+        piiTier,
+        stationScoped: true,
+        factorCount: 0,
+        calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+      });
       return {
         ...base,
         status: 'UNAVAILABLE',
@@ -540,8 +587,88 @@ export class EvaluationsInsightsService {
     );
     const influence = computeDriverInfluence(observations, E4_DEFAULT_DRIVER_CONFIG);
 
+    // Field-level exposure: only a `full` tier may reveal raw driver identity;
+    // a `pseudonymous` tier receives keyed, non-reversible pseudonyms.
+    const revealIdentity = canRevealPersonIdentity(piiTier);
+
+    let factors: EvaluationsDriverInfluenceSection['factors'];
+    if (revealIdentity) {
+      // Full tier does NOT pseudonymize → never requires the pseudonym secret.
+      factors = influence.factors;
+    } else {
+      // Pseudonymous tier: the keyed secret is mandatory. In production a
+      // missing/empty/placeholder/insufficient secret makes secure
+      // pseudonymization UNAVAILABLE — fail closed (E5.2), never fall back to the
+      // dev key, never return raw/truncated ids. The secret value is never logged
+      // or placed in the response/audit.
+      const secretResolution = resolveEvaluationsPseudonymSecret();
+      if (!secretResolution.ok) {
+        await this.audit.recordPersonLevelAccess({
+          organizationId: scope.organizationId,
+          actorUserId: actor.id ?? null,
+          result: 'DENIED',
+          piiTier,
+          stationScoped: false,
+          factorCount: 0,
+          calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+        });
+        return {
+          ...base,
+          status: 'UNAVAILABLE',
+          coverage: null,
+          reason: 'PSEUDONYMIZATION_UNAVAILABLE',
+          factors: [],
+        };
+      }
+      factors = influence.factors.map((factor) => ({
+        ...factor,
+        driverRef: pseudonymizePersonRef({
+          organizationId: scope.organizationId,
+          personId: factor.driverRef,
+          secret: secretResolution.secret,
+        }),
+      }));
+    }
+
     const status: EvaluationsMetricStatus =
       influence.dimensionsAnalyzed.length === 0 ? 'UNAVAILABLE' : 'AVAILABLE';
+
+    if (factors.length > 0) {
+      // Audit-critical: durable evidence of the person-level disclosure MUST
+      // persist before the data is released. If the canonical audit cannot
+      // durably record it, fail closed (no person data) rather than logging.
+      try {
+        await this.audit.recordCriticalPersonLevelDisclosure({
+          organizationId: scope.organizationId,
+          actorUserId: actor.id ?? null,
+          result: 'SUCCEEDED',
+          piiTier,
+          stationScoped: false,
+          factorCount: factors.length,
+          calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+        });
+      } catch {
+        return {
+          ...base,
+          status: 'UNAVAILABLE',
+          coverage: null,
+          reason: 'SENSITIVE_AUDIT_UNAVAILABLE',
+          factors: [],
+        };
+      }
+    } else {
+      // Authorized, but no person data disclosed → best-effort audit only.
+      await this.audit.recordPersonLevelAccess({
+        organizationId: scope.organizationId,
+        actorUserId: actor.id ?? null,
+        result: 'SUCCEEDED',
+        piiTier,
+        stationScoped: false,
+        factorCount: 0,
+        calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+      });
+    }
+
     return {
       ...base,
       status,
@@ -555,7 +682,7 @@ export class EvaluationsInsightsService {
         missingSources: influence.dimensionsSkippedInsufficient,
       },
       reason: status === 'UNAVAILABLE' ? 'DRIVER_EVIDENCE_INSUFFICIENT' : null,
-      factors: influence.factors,
+      factors,
     };
   }
 
@@ -885,6 +1012,7 @@ export class EvaluationsInsightsService {
       disclaimer: E4_DRIVER_ANALYSIS_DISCLAIMER,
       confounders: [],
       factors: [],
+      piiTier: 'none',
     };
   }
 }
