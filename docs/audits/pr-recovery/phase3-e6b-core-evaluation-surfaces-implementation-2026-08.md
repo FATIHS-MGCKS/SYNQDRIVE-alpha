@@ -175,6 +175,22 @@ is unchanged.
 - Revision: `PRE_E6B1_SHA = f76fbe3b`; `E6B1_TESTED_CODE_SHA = a0c8027a` (runtime frozen;
   post-freeze commit docs-only).
 
+## E6B.1.1 — 404 Authority Comment Cleanup (documentation only)
+
+- Runtime semantics were already correct and were **not** changed: a generic HTTP 404
+  maps to the neutral `NOT_FOUND`; a 404 alone is never `FEATURE_DISABLED`;
+  `FEATURE_DISABLED` requires a reliable machine-readable discriminator (none exists on
+  current main).
+- Corrected stale authority comments so they describe transport truth: `api.ts`
+  `requestResult()` JSDoc (now: preserves HTTP status; does not infer a feature-disabled
+  meaning from a bare 404) and `api.evaluations.analyticsInsightsSummary()` JSDoc (now:
+  generic 404 → neutral `NOT_FOUND`, non-disclosing guard, never `FEATURE_DISABLED`).
+- Marked the remaining stale current-authority statements in the E6A implementation and
+  test reports as **SUPERSEDED BY E6A.1** (history preserved, no longer read as current).
+- `EXECUTABLE_RUNTIME_CHANGE_COUNT = 0`, `TEST_LOGIC_CHANGE_COUNT = 0`,
+  `STALE_404_FEATURE_DISABLED_AUTHORITY_STATEMENT_COUNT = 0` (reverified). No backend/
+  Prisma/migration/config change; no E6C/E7/E8/E9 scope.
+
 ## 24. Risk review
 - Feature flag off by default on main → canonical analytics sections render neutral
   NOT_FOUND; Finance (always-on E3) still renders. Honest, no legacy fallback.
