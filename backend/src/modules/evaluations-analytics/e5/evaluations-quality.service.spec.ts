@@ -61,17 +61,24 @@ function summaryFixture(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function rangeOf(newest: number | null) {
+  return { newestMs: newest, oldestMs: newest === null ? null : newest - 10 * DAY };
+}
+
 function buildService(opts: {
   summary?: unknown;
   freshnessNewestMs?: number | null;
+  paymentsNewestMs?: number | null;
 } = {}) {
   const insights = {
     getSummary: jest.fn().mockResolvedValue(opts.summary ?? summaryFixture()),
   };
   const newest = opts.freshnessNewestMs === undefined ? GEN.getTime() - DAY : opts.freshnessNewestMs;
-  const range = { newestMs: newest, oldestMs: newest === null ? null : newest - 10 * DAY };
+  const paymentsNewest = opts.paymentsNewestMs === undefined ? newest : opts.paymentsNewestMs;
+  const range = rangeOf(newest);
   const repo = {
     financeFreshness: jest.fn().mockResolvedValue(range),
+    paymentsFreshness: jest.fn().mockResolvedValue(rangeOf(paymentsNewest)),
     bookingsFreshness: jest.fn().mockResolvedValue(range),
     maintenanceFreshness: jest.fn().mockResolvedValue(range),
     damageFreshness: jest.fn().mockResolvedValue(range),
@@ -99,33 +106,49 @@ describe('EvaluationsQualityService — org scope', () => {
     const report = await service.getQualityReport(orgScope, actor, GEN);
     const util = report.sections.find((s) => s.section === 'utilization');
     expect(util?.dimensions.COMPLETENESS).toBe('PARTIAL');
-    // overall is not "complete" because sections are PARTIAL.
+    // Mixed AVAILABLE+PARTIAL sections → PARTIAL roll-up, never upgraded.
+    expect(report.overall.status).toBe('PARTIAL');
     expect(report.overall.complete).toBe(false);
-    expect(report.overall.status).toBe('AVAILABLE'); // mix of AVAILABLE+PARTIAL → AVAILABLE rollup, but not complete
   });
 
-  it('surfaces FRESH freshness + tenant-safe lineage for served org sections', async () => {
+  it('E5.1A: freshness is UNKNOWN (no pipeline authority); business recency is exposed separately', async () => {
     const { service } = buildService();
     const report = await service.getQualityReport(orgScope, actor, GEN);
     const finance = report.sections.find((s) => s.section === 'finance');
-    expect(finance?.freshness?.state).toBe('FRESH');
-    expect(finance?.dimensions.FRESHNESS).toBe('COMPLETE');
-    expect(finance?.lineage.length).toBeGreaterThan(0);
+    // Freshness is never inferred from business recency.
+    expect(finance?.freshness?.state).toBe('UNKNOWN');
+    expect(finance?.dimensions.FRESHNESS).toBe('UNKNOWN');
+    // Business recency is present as distinct activity metadata.
+    expect(finance?.businessEventRecency?.newestAt).toBe(new Date(GEN.getTime() - DAY).toISOString());
     // Lineage is opaque source-class only — no raw record ids/PII.
-    expect(finance?.lineage[0].sourceRef).toBe('org:org-a:OrgInvoice');
-    expect(finance?.lineage[0].sourceCategory).toBe('FINANCE');
+    expect(finance?.lineage.map((l) => l.sourceCategory)).toEqual(
+      expect.arrayContaining(['FINANCE_INVOICE', 'FINANCE_PAYMENT']),
+    );
+    expect(finance?.lineage[0].sourceRef.startsWith('org:org-a:')).toBe(true);
   });
 
-  it('emits UNKNOWN freshness (not healthy) when no source timestamp exists', async () => {
+  it('E5.1A: Finance provenance is PARTIAL when Payment provenance is absent, COMPLETE when both present', async () => {
+    const partial = await buildService({ paymentsNewestMs: null }).service.getQualityReport(orgScope, actor, GEN);
+    const financePartial = partial.sections.find((s) => s.section === 'finance');
+    expect(financePartial?.requiredSourceClasses).toEqual(['FINANCE_INVOICE', 'FINANCE_PAYMENT']);
+    expect(financePartial?.dimensions.PROVENANCE).toBe('PARTIAL'); // invoice present, payment absent
+
+    const complete = await buildService().service.getQualityReport(orgScope, actor, GEN);
+    const financeComplete = complete.sections.find((s) => s.section === 'finance');
+    expect(financeComplete?.dimensions.PROVENANCE).toBe('COMPLETE'); // both invoice + payment present
+  });
+
+  it('emits UNKNOWN freshness + UNKNOWN provenance (not healthy) when no source data exists', async () => {
     const { service } = buildService({ freshnessNewestMs: null });
     const report = await service.getQualityReport(orgScope, actor, GEN);
     const finance = report.sections.find((s) => s.section === 'finance');
     expect(finance?.freshness?.state).toBe('UNKNOWN');
     expect(finance?.dimensions.FRESHNESS).toBe('UNKNOWN');
-    expect(finance?.dimensions.PROVENANCE).toBe('UNKNOWN'); // no dated lineage
+    expect(finance?.dimensions.PROVENANCE).toBe('UNKNOWN'); // no present source classes
+    expect(finance?.businessEventRecency?.newestAt).toBeNull();
   });
 
-  it('is fully complete only when every section AVAILABLE and every dimension COMPLETE', async () => {
+  it('overall is never fully complete while freshness is structurally UNKNOWN', async () => {
     const summary = summaryFixture({
       costModel: { status: 'AVAILABLE', coverage: coverage(1) },
       utilization: { status: 'AVAILABLE', coverage: coverage(1) },
@@ -134,29 +157,30 @@ describe('EvaluationsQualityService — org scope', () => {
     });
     const { service } = buildService({ summary });
     const report = await service.getQualityReport(orgScope, actor, GEN);
-    expect(report.overall.status).toBe('AVAILABLE');
-    expect(report.overall.complete).toBe(true);
-    expect(report.overall.reason).toBeNull();
+    expect(report.overall.status).toBe('AVAILABLE'); // all sections AVAILABLE
+    expect(report.overall.complete).toBe(false); // FRESHNESS UNKNOWN blocks full completeness
+    expect(report.overall.reason).toBe('QUALITY_INCOMPLETE');
   });
 });
 
-describe('EvaluationsQualityService — historical period', () => {
-  it('does not treat a current snapshot as historical: in-period data is FRESH vs period end', async () => {
+describe('EvaluationsQualityService — historical period (no current-state-as-historical)', () => {
+  it('exposes historical business recency without fabricating freshness', async () => {
     const historicalPeriod: EvaluationsPeriodWindow = {
       ...period,
       periodType: 'MONTH',
       start: '2025-12-01T00:00:00.000Z',
-      endExclusive: '2026-01-01T00:00:00.000Z', // past vs GEN → historical
+      endExclusive: '2026-01-01T00:00:00.000Z',
       reference: '2025-12-31T00:00:00.000Z',
     };
     const histScope = { ...orgScope, period: historicalPeriod };
-    // Newest source is just before the historical period end (naturally old vs GEN).
     const newest = Date.parse('2025-12-31T00:00:00.000Z');
     const { service } = buildService({ freshnessNewestMs: newest });
     const report = await service.getQualityReport(histScope as never, actor, GEN);
     const finance = report.sections.find((s) => s.section === 'finance');
-    // Against "now" it would be STALE; against the period end it is FRESH.
-    expect(finance?.freshness?.state).toBe('FRESH');
+    // Freshness is UNKNOWN (never fabricated from a current snapshot); business
+    // recency reflects the in-period historical event.
+    expect(finance?.freshness?.state).toBe('UNKNOWN');
+    expect(finance?.businessEventRecency?.newestAt).toBe(new Date(newest).toISOString());
   });
 });
 
@@ -173,9 +197,11 @@ describe('EvaluationsQualityService — station scope (no org-wide leakage)', ()
     const { service, repo } = buildService({ summary: stationSummary });
     const report = await service.getQualityReport(stationScope, actor, GEN);
     expect(repo.financeFreshness).not.toHaveBeenCalled();
+    expect(repo.paymentsFreshness).not.toHaveBeenCalled();
     expect(repo.bookingsFreshness).not.toHaveBeenCalled();
     for (const section of report.sections) {
       expect(section.freshness).toBeNull();
+      expect(section.businessEventRecency).toBeNull();
       expect(section.lineage).toEqual([]);
       expect(section.status).toBe('UNAVAILABLE');
     }
