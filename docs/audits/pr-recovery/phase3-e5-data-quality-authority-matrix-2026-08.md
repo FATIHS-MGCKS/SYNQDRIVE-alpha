@@ -43,9 +43,17 @@ quality reason. Lineage is data access: it is tenant-scoped (E2) and never emits
 cross-tenant or out-of-station source references
 (`CROSS_TENANT_LINEAGE_LEAKAGE_COUNT = 0`, `STATION_LINEAGE_SCOPE_LEAKAGE_COUNT = 0`).
 
+## Audit authority (E5C)
+
+Sensitive person-level access is audited via the **canonical** `BusinessAudit`
+durable outbox (`backend/src/modules/business-audit/`), reused (not forked):
+`EvaluationsAuditService` extends the canonical action taxonomy with
+`EVALUATIONS_PERSON_ANALYTICS_ACCESSED`/`_DENIED` + entity type
+`EVALUATIONS_DRIVER_ANALYTICS` and records non-PII metadata only.
+`PARALLEL_AUDIT_TRUTH_COUNT = 0`.
+
 ## Boundaries
 
-E5A implements only Data Quality + Freshness + Lineage + Coverage + truthful
-availability. Privacy/GDPR (`cs-evaluations-gdpr`), Roles/Permissions
-(`cs-evaluations-roles-permissions`), Audit logging (`cs-evaluations-audit-logging`)
-are E5B/E5C — NOT started. No E6–E9.
+E5 implements Quality/Freshness/Lineage/Coverage (E5A), Privacy & Authorization
+(E5B), and Auditability (E5C). Roles/Permissions reuse existing platform RBAC +
+E5B PII tiers (no bespoke evaluations RBAC matrix). No E6–E9.
