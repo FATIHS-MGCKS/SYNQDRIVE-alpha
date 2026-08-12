@@ -34,36 +34,55 @@ export class EvaluationsAuditService {
 
   constructor(private readonly audit: BusinessAuditService) {}
 
+  private buildInput(input: EvaluationsPersonAccessAudit) {
+    return {
+      organizationId: input.organizationId,
+      idempotencyKey: `evaluations-driver-access:${input.organizationId}:${randomUUID()}`,
+      action:
+        input.result === 'DENIED'
+          ? BusinessAuditAction.EVALUATIONS_PERSON_ANALYTICS_DENIED
+          : BusinessAuditAction.EVALUATIONS_PERSON_ANALYTICS_ACCESSED,
+      entityType: BUSINESS_AUDIT_ENTITY_TYPE.EVALUATIONS_DRIVER_ANALYTICS,
+      // Scope target only — never a person id.
+      entityId: `org:${input.organizationId}:driver-analytics`,
+      actorUserId: input.actorUserId ?? null,
+      correlationId: input.correlationId ?? null,
+      outcome: input.result,
+      description: `Evaluations person-level driver analytics ${input.result.toLowerCase()}`,
+      // Non-PII metadata only (no driver refs, names, or payloads).
+      metadata: {
+        piiTier: input.piiTier,
+        stationScoped: input.stationScoped,
+        factorCount: input.factorCount,
+        calculationVersion: input.calculationVersion,
+      },
+    };
+  }
+
+  /**
+   * Best-effort audit for non-critical outcomes (denied access, or authorized
+   * access that discloses no person data). An enqueue failure never grants access
+   * and never fails the request.
+   */
   async recordPersonLevelAccess(input: EvaluationsPersonAccessAudit): Promise<void> {
     try {
-      await this.audit.enqueue({
-        organizationId: input.organizationId,
-        idempotencyKey: `evaluations-driver-access:${input.organizationId}:${randomUUID()}`,
-        action:
-          input.result === 'DENIED'
-            ? BusinessAuditAction.EVALUATIONS_PERSON_ANALYTICS_DENIED
-            : BusinessAuditAction.EVALUATIONS_PERSON_ANALYTICS_ACCESSED,
-        entityType: BUSINESS_AUDIT_ENTITY_TYPE.EVALUATIONS_DRIVER_ANALYTICS,
-        // Scope target only — never a person id.
-        entityId: `org:${input.organizationId}:driver-analytics`,
-        actorUserId: input.actorUserId ?? null,
-        correlationId: input.correlationId ?? null,
-        outcome: input.result,
-        description: `Evaluations person-level driver analytics ${input.result.toLowerCase()}`,
-        // Non-PII metadata only (no driver refs, names, or payloads).
-        metadata: {
-          piiTier: input.piiTier,
-          stationScoped: input.stationScoped,
-          factorCount: input.factorCount,
-          calculationVersion: input.calculationVersion,
-        },
-      });
+      await this.audit.enqueue(this.buildInput(input));
     } catch (error) {
-      // Audit is best-effort for a read; never fail the request. Log without PII.
       this.logger.warn(
         `Evaluations person-level access audit enqueue failed (org ${input.organizationId}, result ${input.result})`,
       );
       void error;
     }
+  }
+
+  /**
+   * Durable, audit-critical record for a SUCCESSFUL person-level disclosure. The
+   * canonical BusinessAudit critical flush MUST persist the evidence before the
+   * sensitive data is released; if it cannot, this throws and the caller fails
+   * closed (no person data). Never swallows the failure.
+   */
+  async recordCriticalPersonLevelDisclosure(input: EvaluationsPersonAccessAudit): Promise<void> {
+    const row = await this.audit.enqueue(this.buildInput({ ...input, result: 'SUCCEEDED' }));
+    await this.audit.flushCritical([row?.id]);
   }
 }

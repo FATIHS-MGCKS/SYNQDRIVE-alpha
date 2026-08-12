@@ -1,55 +1,72 @@
 /**
- * E5B evaluations privacy policy (pure, deterministic).
+ * E5B/E5.1B evaluations privacy policy (pure, deterministic).
  *
- * Reconstructs the historical GDPR privacy-by-design intent (PR #815) as a
- * server-side authorization policy: a PII tier gates person-level exposure.
- * Frontend visibility is never authorization — this is applied server-side.
+ * A server-side PII tier gates person-level exposure. Frontend visibility is
+ * never authorization. E5.1B hardening:
+ *  - person identity (`full`) requires an explicit person-identity authority
+ *    (`customers.read`), not merely invoice access;
+ *  - pseudonymous person-level analytics requires the evaluations analytics
+ *    authority (`evaluations.read`);
+ *  - pseudonyms are keyed, versioned HMACs with no original-ID fragment.
  */
+import { createHmac } from 'node:crypto';
 
 export type EvaluationsPiiTier = 'full' | 'pseudonymous' | 'none';
 
+export const EVALUATIONS_PSEUDONYM_VERSION = 'v1';
+
 export interface EvaluationsPrivacyContext {
-  /** Platform role (e.g. MASTER_ADMIN) when present. */
   readonly platformRole: string | null;
-  /** Organization membership role, or null when there is no active membership. */
   readonly membershipRole: string | null;
-  readonly canReadInvoices: boolean;
+  /** Person-identity authority (customers module read). */
   readonly canReadCustomers: boolean;
+  /** Evaluations analytics authority (evaluations module read). */
+  readonly canReadEvaluations: boolean;
 }
 
 /**
  * Resolve the PII tier for a person-level evaluations read.
  *
  *  - MASTER_ADMIN / ORG_ADMIN → full
- *  - SUB_ADMIN with both invoice AND customer read → full
- *  - any role with invoice read → pseudonymous
- *  - otherwise (incl. no membership, DRIVER, CUSTOMER) → none (fail closed)
+ *  - any role with `customers.read` (person-identity authority) → full
+ *  - any role with `evaluations.read` (analytics authority) → pseudonymous
+ *  - otherwise (no membership, DRIVER, CUSTOMER, no analytics authority) → none
+ *
+ * `invoices.read` alone NEVER grants person-level analytics (E5.1B correction).
  */
 export function resolveEvaluationsPiiTier(ctx: EvaluationsPrivacyContext): EvaluationsPiiTier {
   if (ctx.platformRole === 'MASTER_ADMIN') return 'full';
   if (ctx.membershipRole === 'ORG_ADMIN' || ctx.membershipRole === 'MASTER_ADMIN') return 'full';
-  if (ctx.membershipRole === 'SUB_ADMIN' && ctx.canReadInvoices && ctx.canReadCustomers) {
-    return 'full';
-  }
-  if (ctx.canReadInvoices) return 'pseudonymous';
+  if (ctx.canReadCustomers) return 'full';
+  if (ctx.canReadEvaluations) return 'pseudonymous';
   return 'none';
 }
 
-/** True when the actor may see raw person identifiers. */
 export function canRevealPersonIdentity(tier: EvaluationsPiiTier): boolean {
   return tier === 'full';
 }
 
-/** True when the actor may see any (even pseudonymous) person-level analytics. */
 export function canAccessPersonLevel(tier: EvaluationsPiiTier): boolean {
   return tier === 'full' || tier === 'pseudonymous';
 }
 
 /**
- * Deterministic, non-reversible pseudonym for an organization-scoped person id.
- * Never leaks the raw id; stable for the same id so aggregates remain coherent.
+ * Keyed, versioned, domain-separated pseudonym for an organization-scoped person
+ * id. Uses HMAC-SHA-256 over `evaluations-person-<version>|orgId|personId` so:
+ *  - it contains NO substring of the original id (digest hex only),
+ *  - it is non-reversible without the server secret and never exposed for reverse
+ *    lookup,
+ *  - it is stable for the same tenant+person+version,
+ *  - the same person id in a different tenant yields a different pseudonym
+ *    (organizationId is part of the domain-separated input),
+ *  - it is versioned.
  */
-export function pseudonymizePersonRef(personId: string): string {
-  const tail = personId.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase() || '000000';
-  return `person-····${tail}`;
+export function pseudonymizePersonRef(input: {
+  readonly organizationId: string;
+  readonly personId: string;
+  readonly secret: string;
+}): string {
+  const material = `evaluations-person-${EVALUATIONS_PSEUDONYM_VERSION}|${input.organizationId}|${input.personId}`;
+  const digest = createHmac('sha256', input.secret).update(material).digest('hex').slice(0, 16);
+  return `person-${EVALUATIONS_PSEUDONYM_VERSION}-${digest}`;
 }

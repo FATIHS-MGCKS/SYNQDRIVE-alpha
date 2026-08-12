@@ -3,8 +3,15 @@
 > **SUPERSEDED_BY_E5_1A (quality semantics only, 2026-08-12).** The E5A quality
 > freshness/roll-up/provenance semantics referenced here were corrected in E5.1A
 > (freshness `UNKNOWN` vs `businessEventRecency`; conservative roll-up; composite
-> provenance; quality calc v2). E5B (privacy) and E5C (audit) are unchanged. See
+> provenance; quality calc v2). See
 > `phase3-e5-1a-quality-truth-provenance-test-report-2026-08.md`.
+>
+> **SUPERSEDED_BY_E5_1B (privacy & audit, 2026-08-12).** The E5B/E5C privacy and
+> audit claims here were hardened in E5.1B: keyed HMAC pseudonyms (no original-ID
+> fragment); person-level tier requires `customers.read` (full) / `evaluations.read`
+> (pseudonymous), `invoices.read` grants nothing; and successful person-level
+> disclosure is durable-audit-critical (fail closed if the canonical audit cannot
+> persist). See `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md`.
 
 Consolidated E5 (E5A + E5B + E5C) on branch
 `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, Draft).

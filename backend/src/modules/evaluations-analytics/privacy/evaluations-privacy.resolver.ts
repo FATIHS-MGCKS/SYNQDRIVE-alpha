@@ -38,11 +38,14 @@ export class EvaluationsPrivacyResolver {
     if (!membership) return 'none'; // fail closed
 
     const permissions = normalizeMembershipPermissions(membership.permissions);
+    const options = { membershipRole: membership.role, platformRole: actor.platformRole ?? undefined };
     return resolveEvaluationsPiiTier({
       platformRole: actor.platformRole ?? null,
       membershipRole: membership.role ?? null,
-      canReadInvoices: evaluateModulePermission(permissions, 'invoices', 'read'),
-      canReadCustomers: evaluateModulePermission(permissions, 'customers', 'read'),
+      // Person-identity authority (E5.1B): customers.read, NOT invoices.read.
+      canReadCustomers: evaluateModulePermission(permissions, 'customers', 'read', options),
+      // Evaluations analytics authority → pseudonymous person-level access.
+      canReadEvaluations: evaluateModulePermission(permissions, 'evaluations', 'read', options),
     });
   }
 }

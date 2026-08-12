@@ -1,5 +1,14 @@
 # Phase 3 – E5B Privacy & Authorization — Implementation Report (2026-08)
 
+> **SUPERSEDED_BY_E5_1B (2026-08-12).** Two E5B claims were corrected in E5.1B:
+> (1) the permission mapping — `invoices.read` no longer grants any person-level
+> access; `full` now requires the person-identity authority `customers.read` (or
+> admin) and `pseudonymous` requires `evaluations.read`; (2) pseudonymization is
+> now a keyed, domain-separated HMAC-SHA-256 (`person-v1-<hex>`) with no
+> original-ID fragment, replacing the earlier `person-····<slice>` form. See
+> `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md` and
+> `phase3-e5-person-level-permission-authority-matrix-2026-08.csv`.
+
 ## Revision
 
 - `PRE_E5B_HEAD` = `670db7138378948827507a20992a3c236be34929` (E5A; confirmed ancestor)

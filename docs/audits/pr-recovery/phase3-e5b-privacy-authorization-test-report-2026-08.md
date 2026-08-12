@@ -1,5 +1,11 @@
 # Phase 3 – E5B Privacy & Authorization — Test Report (2026-08)
 
+> **SUPERSEDED_BY_E5_1B (2026-08-12).** Person-level permission mapping and
+> pseudonymization were hardened in E5.1B (keyed HMAC pseudonyms; `customers.read`
+> for full / `evaluations.read` for pseudonymous; `invoices.read` grants nothing;
+> durable-before-disclosure auditing). Real-PostgreSQL adversarial coverage was
+> added. See `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md`.
+
 - `TESTED_CODE_SHA` = `494bbc51145ad4a6717d5bd50c7ec17af87c2497`
 - `PRE_E5B_HEAD` = `670db7138378948827507a20992a3c236be34929` (E5A ancestor)
 - Branch `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, OPEN, DRAFT). No schema change.

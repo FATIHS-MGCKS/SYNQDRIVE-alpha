@@ -4,10 +4,11 @@ import {
   BUSINESS_AUDIT_ENTITY_TYPE,
 } from '@modules/business-audit/business-audit.constants';
 
-function build(enqueueImpl?: jest.Mock) {
-  const enqueue = enqueueImpl ?? jest.fn().mockResolvedValue({ outboxId: 'ob-1' });
-  const audit = new EvaluationsAuditService({ enqueue } as never);
-  return { audit, enqueue };
+function build(enqueueImpl?: jest.Mock, flushImpl?: jest.Mock) {
+  const enqueue = enqueueImpl ?? jest.fn().mockResolvedValue({ id: 'ob-1' });
+  const flushCritical = flushImpl ?? jest.fn().mockResolvedValue(undefined);
+  const audit = new EvaluationsAuditService({ enqueue, flushCritical } as never);
+  return { audit, enqueue, flushCritical };
 }
 
 describe('EvaluationsAuditService (reuses canonical BusinessAudit outbox)', () => {
@@ -90,5 +91,39 @@ describe('EvaluationsAuditService (reuses canonical BusinessAudit outbox)', () =
         calculationVersion: 'v',
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('E5.1B: durable-critical disclosure flushes the enqueued outbox id before returning', async () => {
+    const { audit, enqueue, flushCritical } = build();
+    await audit.recordCriticalPersonLevelDisclosure({
+      organizationId: 'org-a',
+      actorUserId: 'user-1',
+      result: 'SUCCEEDED',
+      piiTier: 'full',
+      stationScoped: false,
+      factorCount: 2,
+      calculationVersion: 'driver-influence-e4-v1',
+    });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue.mock.calls[0][0].action).toBe(
+      BusinessAuditAction.EVALUATIONS_PERSON_ANALYTICS_ACCESSED,
+    );
+    expect(flushCritical).toHaveBeenCalledWith(['ob-1']);
+  });
+
+  it('E5.1B: durable-critical disclosure PROPAGATES a flush failure (caller fails closed)', async () => {
+    const flushing = jest.fn().mockRejectedValue(new Error('BUSINESS_AUDIT_OUTBOX_FLUSH_FAILED'));
+    const { audit } = build(undefined, flushing);
+    await expect(
+      audit.recordCriticalPersonLevelDisclosure({
+        organizationId: 'org-a',
+        actorUserId: 'user-1',
+        result: 'SUCCEEDED',
+        piiTier: 'full',
+        stationScoped: false,
+        factorCount: 2,
+        calculationVersion: 'driver-influence-e4-v1',
+      }),
+    ).rejects.toThrow('BUSINESS_AUDIT_OUTBOX_FLUSH_FAILED');
   });
 });

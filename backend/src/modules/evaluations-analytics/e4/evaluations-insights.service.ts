@@ -45,6 +45,7 @@ import {
   canRevealPersonIdentity,
   pseudonymizePersonRef,
 } from '../privacy/evaluations-privacy.policy';
+import { getEvaluationsPseudonymSecret } from '../privacy/evaluations-privacy.config';
 import { EvaluationsAuditService } from '../audit/evaluations-audit.service';
 
 const COST_FORMULAE: Readonly<Record<string, string>> = {
@@ -587,27 +588,60 @@ export class EvaluationsInsightsService {
     const influence = computeDriverInfluence(observations, E4_DEFAULT_DRIVER_CONFIG);
 
     // Field-level exposure: only a `full` tier may reveal raw driver identity;
-    // a `pseudonymous` tier receives non-reversible pseudonyms.
+    // a `pseudonymous` tier receives keyed, non-reversible pseudonyms.
     const revealIdentity = canRevealPersonIdentity(piiTier);
+    const pseudonymSecret = getEvaluationsPseudonymSecret();
     const factors = influence.factors.map((factor) =>
       revealIdentity
         ? factor
-        : { ...factor, driverRef: pseudonymizePersonRef(factor.driverRef) },
+        : {
+            ...factor,
+            driverRef: pseudonymizePersonRef({
+              organizationId: scope.organizationId,
+              personId: factor.driverRef,
+              secret: pseudonymSecret,
+            }),
+          },
     );
 
     const status: EvaluationsMetricStatus =
       influence.dimensionsAnalyzed.length === 0 ? 'UNAVAILABLE' : 'AVAILABLE';
 
-    // Authorized person-level access served → record SUCCEEDED (non-PII metadata).
-    await this.audit.recordPersonLevelAccess({
-      organizationId: scope.organizationId,
-      actorUserId: actor.id ?? null,
-      result: 'SUCCEEDED',
-      piiTier,
-      stationScoped: false,
-      factorCount: factors.length,
-      calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
-    });
+    if (factors.length > 0) {
+      // Audit-critical: durable evidence of the person-level disclosure MUST
+      // persist before the data is released. If the canonical audit cannot
+      // durably record it, fail closed (no person data) rather than logging.
+      try {
+        await this.audit.recordCriticalPersonLevelDisclosure({
+          organizationId: scope.organizationId,
+          actorUserId: actor.id ?? null,
+          result: 'SUCCEEDED',
+          piiTier,
+          stationScoped: false,
+          factorCount: factors.length,
+          calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+        });
+      } catch {
+        return {
+          ...base,
+          status: 'UNAVAILABLE',
+          coverage: null,
+          reason: 'SENSITIVE_AUDIT_UNAVAILABLE',
+          factors: [],
+        };
+      }
+    } else {
+      // Authorized, but no person data disclosed → best-effort audit only.
+      await this.audit.recordPersonLevelAccess({
+        organizationId: scope.organizationId,
+        actorUserId: actor.id ?? null,
+        result: 'SUCCEEDED',
+        piiTier,
+        stationScoped: false,
+        factorCount: 0,
+        calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+      });
+    }
 
     return {
       ...base,

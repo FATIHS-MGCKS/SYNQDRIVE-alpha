@@ -1,5 +1,10 @@
 # Phase 3 – E5 Final: Quality, Privacy, Authorization & Audit — Test Report (2026-08)
 
+> **SUPERSEDED_BY_E5_1B (privacy & audit, 2026-08-12).** Privacy/audit results
+> here were re-hardened in E5.1B (keyed HMAC pseudonyms; proven person-level
+> permission mapping; durable-before-disclosure auditing; real-PostgreSQL
+> adversarial coverage). See `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md`.
+
 - `TESTED_CODE_SHA` = `9e083f8a3c651bf1cbfeaf29d510ae68afeda7f7`
 - `E5_BASE_MAIN_SHA` = `960365a9b095a54f4656947ac2067a104e56bd8a`
 - Branch `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, OPEN, DRAFT). No schema change.
