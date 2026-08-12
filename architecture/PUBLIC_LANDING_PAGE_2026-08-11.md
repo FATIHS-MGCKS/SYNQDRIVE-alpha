@@ -165,9 +165,11 @@ instead of `landingpage/assets-raw/`, which no longer exists.
 tenant renders the current date and relative times, so a capture taken on another day changes the
 dashboard date, the plan's day columns and the message timestamps. Verified by handing a fresh
 capture set to a clean clone of the landing repository: both rendered HTML files came out
-byte-identical to production, six of the nine imagery assets reproduced bit for bit, and the three
-that moved were exactly the ones showing absolute dates. Treat the committed `assets/` as the
-source of truth for what is live, and re-capture only deliberately.
+byte-identical to production, and 9 of the 19 encoded assets reproduced bit for bit. The 10 that
+moved were exactly the three families carrying absolute dates — hero operations, the unified
+operations plan and the communications thread — plus the social card, which is derived from the
+hero capture. The three families with no absolute dates in frame reproduced bit for bit. Treat the
+committed `assets/` as the source of truth for what is live, and re-capture only deliberately.
 
 **Verification of the split.** The standalone repository was verified before the removal:
 its build output is byte-identical to the build that produced the live site, and its QA suite
