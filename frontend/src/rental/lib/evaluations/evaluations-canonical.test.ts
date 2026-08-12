@@ -5,20 +5,20 @@ import {
   evaluationsQueryKey,
   evaluationsQueryKeyString,
 } from './evaluations-query-keys';
-import { EVALUATIONS_FINANCE_PERIOD_AUTHORITY, isAvailable } from './evaluations-request';
+import {
+  EVALUATIONS_FINANCE_PERIOD_AUTHORITY,
+  isAvailable,
+  orgFetchState,
+  shouldApplyResponse,
+  settledResult,
+} from './evaluations-request';
 import type { EvaluationsDriverInfluenceSection } from './evaluations-canonical.types';
 
-describe('E6A result mapping — feature/HTTP states distinct from metric states', () => {
+describe('E6A.1 result mapping — HTTP/feature states distinct; 404 is neutral', () => {
   it('ok+data → AVAILABLE', () => {
     const r = mapEvaluationsResult({ ok: true, status: 200, data: { x: 1 } } as RequestResult<{ x: number }>);
     expect(r.state).toBe('AVAILABLE');
     if (isAvailable(r)) expect(r.data.x).toBe(1);
-  });
-
-  it('404 → FEATURE_DISABLED (never empty/zero/healthy data)', () => {
-    const r = mapEvaluationsResult({ ok: false, status: 404, errorMessage: 'Not found' } as RequestResult<unknown>);
-    expect(r.state).toBe('FEATURE_DISABLED');
-    expect((r as Record<string, unknown>).data).toBeUndefined();
   });
 
   it('403 → UNAUTHORIZED', () => {
@@ -26,9 +26,58 @@ describe('E6A result mapping — feature/HTTP states distinct from metric states
     expect(r.state).toBe('UNAUTHORIZED');
   });
 
-  it('500 / network → ERROR (distinct from metric UNAVAILABLE)', () => {
+  it('generic 404 → NOT_FOUND (NEVER auto FEATURE_DISABLED, never empty/zero data)', () => {
+    const r = mapEvaluationsResult({ ok: false, status: 404, errorMessage: 'Not found' } as RequestResult<unknown>);
+    expect(r.state).toBe('NOT_FOUND');
+    expect(r.state).not.toBe('FEATURE_DISABLED');
+    expect((r as Record<string, unknown>).data).toBeUndefined();
+  });
+
+  it('the mapper never emits FEATURE_DISABLED (no reliable discriminator on current main)', () => {
+    const statuses = [200, 403, 404, 500, 0];
+    for (const status of statuses) {
+      const r = mapEvaluationsResult(
+        (status === 200
+          ? { ok: true, status, data: {} }
+          : { ok: false, status, errorMessage: 'x' }) as RequestResult<unknown>,
+      );
+      expect(r.state).not.toBe('FEATURE_DISABLED');
+    }
+  });
+
+  it('500 / network → ERROR (distinct from metric UNAVAILABLE and from NOT_FOUND)', () => {
     expect(mapEvaluationsResult({ ok: false, status: 500, errorMessage: 'x' } as RequestResult<unknown>).state).toBe('ERROR');
     expect(mapEvaluationsResult({ ok: false, status: 0, errorMessage: 'net' } as RequestResult<unknown>).state).toBe('ERROR');
+  });
+});
+
+describe('E6A.1 organization lifecycle + race safety (pure helpers used by the hooks)', () => {
+  it('no organization → IDLE (no request, no permanent loading, no stale data)', () => {
+    expect(orgFetchState(null).phase).toBe('IDLE');
+    expect(orgFetchState(undefined).phase).toBe('IDLE');
+    expect(orgFetchState('').phase).toBe('IDLE');
+  });
+
+  it('organization present → LOADING (fresh fetch replaces prior-org data)', () => {
+    expect(orgFetchState('org-a').phase).toBe('LOADING');
+    expect(orgFetchState('org-b').phase).toBe('LOADING');
+  });
+
+  it('race guard: only a response for the currently active scope key is applied', () => {
+    // org A response arriving after switching to org B is discarded.
+    expect(shouldApplyResponse('evaluations|insights-summary|org-b|MTD|all', 'evaluations|insights-summary|org-a|MTD|all')).toBe(false);
+    // matching scope → applied.
+    expect(shouldApplyResponse('k', 'k')).toBe(true);
+    // no active scope (e.g. org removed) → never apply a stale response.
+    expect(shouldApplyResponse(null, 'k')).toBe(false);
+    // period/station scope change is also guarded (different keys).
+    expect(shouldApplyResponse('evaluations|quality|org-a|YEAR|all', 'evaluations|quality|org-a|MTD|all')).toBe(false);
+  });
+
+  it('settledResult returns the result only when SETTLED', () => {
+    expect(settledResult({ phase: 'IDLE' })).toBeNull();
+    expect(settledResult({ phase: 'LOADING' })).toBeNull();
+    expect(settledResult({ phase: 'SETTLED', result: { state: 'NOT_FOUND' } })?.state).toBe('NOT_FOUND');
   });
 });
 

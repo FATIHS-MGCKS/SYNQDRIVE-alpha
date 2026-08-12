@@ -4,21 +4,31 @@
  * Convention: the project uses custom `useState`/`useEffect` fetch hooks over a
  * shared `fetch` wrapper (NO React Query/SWR) — this follows that convention and
  * introduces no second data-fetching framework. Hooks preserve canonical statuses
- * and the discriminated result state (LOADING vs AVAILABLE vs FEATURE_DISABLED vs
- * UNAUTHORIZED vs ERROR); they perform no business calculation.
+ * and the discriminated result state; they perform no business calculation.
  *
- * Scope safety: the effect depends on a serialized, scope-safe query key, and an
- * `active` guard ensures a late response for a stale period/station scope can never
- * overwrite the currently selected scope (no race condition).
- *
- * Deduplication: `useEvaluationsCanonicalAnalytics` fetches the E4 summary + E5
- * quality ONCE for the whole page; sections consume its result rather than each
- * re-requesting the summary (EXPECTED_INITIAL_REQUEST_COUNT = 2 here; driver
- * influence is a separate person-level request, fetched lazily by its own hook).
+ * E6A.1 lifecycle correctness:
+ *  - No organization → deterministic IDLE (no request, no permanent spinner, no
+ *    stale prior-organization data).
+ *  - Organization change (A→B) → immediately LOADING (stale A SETTLED data cleared
+ *    before B resolves), then SETTLED with B.
+ *  - Organization removed (A→null) → IDLE (stale A data cleared).
+ *  - Race safety: the effect re-keys on organization+period+station and an `active`
+ *    guard ensures a late response for a stale scope never overwrites the current
+ *    scope (`shouldApplyResponse` semantics).
  */
 import { useEffect, useState } from 'react';
-import type { EvaluationsAnalyticsRequest, EvaluationsAsyncResult } from '../lib/evaluations/evaluations-request';
-import { evaluationsQueryKeyString } from '../lib/evaluations/evaluations-query-keys';
+import {
+  orgFetchState,
+  EVALUATIONS_ASYNC_IDLE,
+  EVALUATIONS_ASYNC_LOADING,
+  type EvaluationsAnalyticsRequest,
+  type EvaluationsAsyncResult,
+  type EvaluationsCanonicalResult,
+} from '../lib/evaluations/evaluations-request';
+import {
+  evaluationsQueryKeyString,
+  type EvaluationsCapability,
+} from '../lib/evaluations/evaluations-query-keys';
 import {
   fetchEvaluationsInsightsSummary,
   fetchEvaluationsQuality,
@@ -35,54 +45,57 @@ export interface EvaluationsCanonicalAnalytics {
   readonly quality: EvaluationsAsyncResult<EvaluationsQualityReport>;
 }
 
-const LOADING = { loading: true, result: null } as const;
+/** Shared hook body: org-lifecycle + race-safe fetch for one canonical capability. */
+function useCanonicalResource<T>(
+  capability: EvaluationsCapability,
+  organizationId: string | null | undefined,
+  req: EvaluationsAnalyticsRequest | undefined,
+  fetcher: (
+    orgId: string,
+    req?: EvaluationsAnalyticsRequest,
+  ) => Promise<EvaluationsCanonicalResult<T>>,
+): EvaluationsAsyncResult<T> {
+  const [state, setState] = useState<EvaluationsAsyncResult<T>>(() =>
+    orgFetchState<T>(organizationId),
+  );
+  // key encodes organizationId + period + station scope. When there is no org the
+  // key is null, so the effect re-runs on org add/remove/change (scope-safe).
+  const key = organizationId ? evaluationsQueryKeyString(capability, organizationId, req) : null;
+
+  useEffect(() => {
+    if (!organizationId) {
+      // No organization: clear any stale data, settle deterministically on IDLE.
+      setState(EVALUATIONS_ASYNC_IDLE);
+      return;
+    }
+    let active = true;
+    // Fresh scope: immediately drop any previous-scope data and show LOADING.
+    setState(EVALUATIONS_ASYNC_LOADING);
+    fetcher(organizationId, req).then((result) => {
+      // Race guard: a late response for a superseded scope is discarded.
+      if (active) setState({ phase: 'SETTLED', result });
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  return state;
+}
 
 export function useEvaluationsInsightsSummary(
   organizationId: string | null | undefined,
   req?: EvaluationsAnalyticsRequest,
 ): EvaluationsAsyncResult<EvaluationsAnalyticsInsightsSummary> {
-  const [state, setState] =
-    useState<EvaluationsAsyncResult<EvaluationsAnalyticsInsightsSummary>>(LOADING);
-  const key = organizationId
-    ? evaluationsQueryKeyString('insights-summary', organizationId, req)
-    : null;
-  useEffect(() => {
-    if (!organizationId) return;
-    let active = true;
-    setState(LOADING);
-    fetchEvaluationsInsightsSummary(organizationId, req).then((result) => {
-      if (active) setState({ loading: false, result });
-    });
-    return () => {
-      active = false;
-    };
-    // key encodes organizationId + periodType + stationIds (scope-safe).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return state;
+  return useCanonicalResource('insights-summary', organizationId, req, fetchEvaluationsInsightsSummary);
 }
 
 export function useEvaluationsQuality(
   organizationId: string | null | undefined,
   req?: EvaluationsAnalyticsRequest,
 ): EvaluationsAsyncResult<EvaluationsQualityReport> {
-  const [state, setState] = useState<EvaluationsAsyncResult<EvaluationsQualityReport>>(LOADING);
-  const key = organizationId
-    ? evaluationsQueryKeyString('quality', organizationId, req)
-    : null;
-  useEffect(() => {
-    if (!organizationId) return;
-    let active = true;
-    setState(LOADING);
-    fetchEvaluationsQuality(organizationId, req).then((result) => {
-      if (active) setState({ loading: false, result });
-    });
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return state;
+  return useCanonicalResource('quality', organizationId, req, fetchEvaluationsQuality);
 }
 
 /** Composite page-level hook: E4 summary + E5 quality, one request each. */
@@ -97,29 +110,12 @@ export function useEvaluationsCanonicalAnalytics(
 
 /**
  * Person-level driver influence — a SEPARATE request (E5B privacy tier resolved
- * server-side). The hook transports `piiTier`/`driverRef` verbatim; it never joins
- * against customers/users/bookings/invoices and never derives identity/authorization.
+ * server-side). Transports `piiTier`/`driverRef` verbatim; never joins against
+ * customers/users/bookings/invoices and never derives identity/authorization.
  */
 export function useEvaluationsDriverInfluence(
   organizationId: string | null | undefined,
   req?: EvaluationsAnalyticsRequest,
 ): EvaluationsAsyncResult<EvaluationsDriverInfluenceSection> {
-  const [state, setState] =
-    useState<EvaluationsAsyncResult<EvaluationsDriverInfluenceSection>>(LOADING);
-  const key = organizationId
-    ? evaluationsQueryKeyString('driver-analysis', organizationId, req)
-    : null;
-  useEffect(() => {
-    if (!organizationId) return;
-    let active = true;
-    setState(LOADING);
-    fetchEvaluationsDriverInfluence(organizationId, req).then((result) => {
-      if (active) setState({ loading: false, result });
-    });
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return state;
+  return useCanonicalResource('driver-analysis', organizationId, req, fetchEvaluationsDriverInfluence);
 }

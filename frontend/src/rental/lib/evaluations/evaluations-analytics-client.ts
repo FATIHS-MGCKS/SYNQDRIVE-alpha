@@ -18,9 +18,13 @@ import type {
 
 export function mapEvaluationsResult<T>(r: RequestResult<T>): EvaluationsCanonicalResult<T> {
   if (r.ok && r.data !== undefined) return { state: 'AVAILABLE', data: r.data };
-  // Feature guard returns 404 when EVALUATIONS_ANALYTICS_V2_MODE is off.
-  if (r.status === 404) return { state: 'FEATURE_DISABLED' };
   if (r.status === 403) return { state: 'UNAUTHORIZED' };
+  // E6A.1: a generic 404 is NOT proof of a disabled feature. The FeatureGuard
+  // returns a deliberately generic `NotFoundException('Not found')` (no
+  // machine-readable discriminator, to avoid leaking disabled-route existence), and
+  // a 404 can equally be a genuine not-found. Map to the neutral NOT_FOUND state —
+  // never a fabricated FEATURE_DISABLED, never legacy fallback, never empty/zero.
+  if (r.status === 404) return { state: 'NOT_FOUND' };
   return { state: 'ERROR', message: r.errorMessage ?? 'Request failed' };
 }
 
