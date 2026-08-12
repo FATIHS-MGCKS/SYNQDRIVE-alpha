@@ -15,6 +15,7 @@ import {
   type EvaluationsAsyncResult,
 } from '../lib/evaluations/evaluations-request';
 import { evaluationsQueryKeyString } from '../lib/evaluations/evaluations-query-keys';
+import { mapEvaluationsResult } from '../lib/evaluations/evaluations-analytics-client';
 import type { FinancialInsightsBundleDto } from '../lib/finance-insights.types';
 
 export function useEvaluationsFinanceBundle(
@@ -35,10 +36,14 @@ export function useEvaluationsFinanceBundle(
     let active = true;
     setState(EVALUATIONS_ASYNC_LOADING);
     const stationIds = req?.stationIds ? [...req.stationIds] : undefined;
+    // E6B.1: status-aware transport — 403 → UNAUTHORIZED, 404 → NOT_FOUND (Finance is
+    // NOT feature-gated, so never FEATURE_DISABLED), 5xx/network → ERROR. No legacy
+    // fallback. The `active` guard keeps stale org/station responses from overwriting
+    // a newer scope (race safety preserved from E6A/E6B).
     api.evaluations
-      .financeInsights(organizationId, stationIds)
-      .then((data) => {
-        if (active) setState({ phase: 'SETTLED', result: { state: 'AVAILABLE', data } });
+      .financeInsightsResult(organizationId, stationIds)
+      .then((r) => {
+        if (active) setState({ phase: 'SETTLED', result: mapEvaluationsResult(r) });
       })
       .catch((e: unknown) => {
         if (active) {

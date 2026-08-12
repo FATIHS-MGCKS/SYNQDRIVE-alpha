@@ -3193,6 +3193,7 @@ export const en = {
   'evaluations.kpi.openReceivables': 'Open receivables',
   'evaluations.kpi.overdueReceivables': 'Overdue receivables',
   'evaluations.kpi.utilization': 'Utilization',
+  'evaluations.kpi.eligibleVehicles': 'Eligible vehicles',
   'evaluations.kpi.strengths': 'Strengths',
   'evaluations.kpi.weaknesses': 'Weaknesses',
   'evaluations.utilization.scheduled': 'Based on scheduled occupancy — not actual possession.',

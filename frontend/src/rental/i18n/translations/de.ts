@@ -3191,6 +3191,7 @@ export const de: Record<TranslationKey, string> = {
   'evaluations.kpi.openReceivables': 'Offene Forderungen',
   'evaluations.kpi.overdueReceivables': 'Überfällige Forderungen',
   'evaluations.kpi.utilization': 'Auslastung',
+  'evaluations.kpi.eligibleVehicles': 'Berechtigte Fahrzeuge',
   'evaluations.kpi.strengths': 'Stärken',
   'evaluations.kpi.weaknesses': 'Schwächen',
   'evaluations.utilization.scheduled': 'Basierend auf geplanter Belegung — nicht auf tatsächlichem Besitz.',

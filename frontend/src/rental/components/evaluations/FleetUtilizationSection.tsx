@@ -40,7 +40,7 @@ export function FleetUtilizationSection({
               />
               <EvaluationsKpiCard
                 testId="evaluations-utilization-eligible"
-                label="Eligible vehicles"
+                label={t('evaluations.kpi.eligibleVehicles')}
                 value={u.eligibleVehicles ?? t('evaluations.value.unavailable')}
               />
             </div>

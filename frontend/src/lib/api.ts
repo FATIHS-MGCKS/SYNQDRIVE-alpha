@@ -5956,6 +5956,17 @@ export const api = {
       ),
 
     /**
+     * Status-aware variant of {@link financeInsights} (E6B.1). Preserves the HTTP
+     * status so callers can distinguish 403 (UNAUTHORIZED) and 404 (NOT_FOUND) from
+     * 5xx/network (ERROR) instead of collapsing every non-2xx into a throw. Finance
+     * is NOT feature-gated, so a 404 is a neutral not-found — never FEATURE_DISABLED.
+     */
+    financeInsightsResult: (orgId: string, stationIds?: string[]) =>
+      requestResult<import('../rental/lib/finance-insights.types').FinancialInsightsBundleDto>(
+        buildFinanceInsightsPath(orgId, stationIds),
+      ),
+
+    /**
      * Canonical E4 analytics insights summary (composite). Status-aware transport:
      * a feature-disabled 404 is surfaced as a distinct result, never fabricated data.
      * `periodType`/`stationIds` map to canonical E1 period / E2 station scope.
