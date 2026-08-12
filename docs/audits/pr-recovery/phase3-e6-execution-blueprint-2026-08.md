@@ -159,13 +159,20 @@ scoring, no association→causation upgrade. Salvage finding-card/drawer visuals
 
 ## 10. PR #798 — Cost / Downtime forensic split
 
-| Class | Count | Examples |
-|-------|------:|----------|
-| E6_CURRENT_STATE | 42 | costsMinor, expensesMtd, fixed/damage/maintenance/actual waterfall, pareto share/cumulative, downtimePercent (from utilization), maintenance/blocked/cleaning vehicle counts, receivables aging, dimension value/deltaVsOrg, current estimatedExposure, currency, period |
-| E8_PREDICTIVE | 8 | probability, impact, RiskMatrixPoint.confidence, exposureMinor (P×I allocation), col/axis probability, cellTone score, scaleToFive outputs |
+**[CORRECTED BY E6.0.1 — this is the authoritative split; the E6.0 "E6_CURRENT_STATE=42"
+row is superseded and retained below only for traceability.]**
+
+| Class (corrected) | Count | Examples |
+|-------------------|------:|----------|
+| E6_CANONICAL_RENDERABLE | 18 | OPERATING_EXPENSES `totalsByCurrency`/`eventCount`, section `reportingCurrency`/`mixedCurrency`/status/coverage, downtime `maintenanceMs`/`netCapacityMs`/`capacityMs` + maintenance/blocked/cleaning vehicle counts, currency, period |
+| E6_STATUS_ONLY | 10 | maintenance cost, damage cost, fixed cost amounts + waterfall steps + those category totals → render E4 UNAVAILABLE+reason, NO amount |
+| UNSAFE_LEGACY_CALCULATION | 6 | client cost series/pareto/aging summing non-canonical categories; `derivedDowntimePct` fallback |
+| E8_PREDICTIVE | 8 | probability, impact, RiskMatrixPoint.confidence, exposureMinor/**estimatedExposure** (P×I allocation), col/axis probability, cellTone score, scaleToFive outputs |
 | E9_FORECAST | 5 | quantitativeDeviation.kind==='FORECAST', forecasts list UI, isForecast (chart card + SW card passthrough), forecast i18n |
-| GENERIC_VISUAL | 14 | chart shells, tables, empty states, formatters, skeletons |
-| UNSAFE | 4 | cellTone(probability+impact); shared deriveErrorRatePercent; derivedDowntimePct fallback; (rawValue??0) accent |
+| GENERIC_VISUAL_PATTERN_ONLY | 14 | chart shells, tables, empty states, formatters, skeletons |
+
+Superseded E6.0 row (traceability only — DO NOT use): `E6_CURRENT_STATE = 42` wrongly
+included fixed/damage/maintenance cost amounts + `estimatedExposure` as canonical.
 
 `PREDICTIVE_SYMBOL_COUNT = 8`, `FORECAST_SYMBOL_COUNT = 5`. **[CORRECTED BY E6.0.1]**
 the former `E6_SAFE_SYMBOL_COUNT = 42` is superseded: only OPERATING_EXPENSES money +
@@ -195,8 +202,10 @@ stacking) — not old DOM-specific CSS. Target responsive requirements:
 
 Reuse ARIA/landmark/heading/keyboard/focus/screen-reader patterns and the DE/EN
 `evaluations.*` translation keys via the EXISTING project i18n system (no hardcoded
-strings). Number/currency/date formatting via existing locale utilities +
-`evaluations-format.ts`. E6 a11y acceptance criteria: single h1 + ordered headings
+strings). Date/number formatting via existing locale utilities; **Money formatting
+uses the canonical currency-aware `finance-insights-adapter` (explicit
+`Money.currency`, no EUR default) — NOT `evaluations-format.ts` `fmtEurMinor`** [E6.0.1].
+E6 a11y acceptance criteria: single h1 + ordered headings
 per section; `<nav>`/`<section>` landmarks; sticky nav keyboard-operable; charts have
 text-alternative data tables (`EvaluationsChartDataTable`); status badges have
 `aria-label`; focus visible; color is not the only signal (icon+text for status);
@@ -223,7 +232,11 @@ PII. `InsightsCockpit` uses `dashboard-insights` + `misuse-cases`. File verdicts
 salvage CSV. Evolutionary path (no second page): add E4/E5 API clients + hooks →
 render exec summary/strengths/weaknesses/utilization/cost-downtime/quality/driver
 from canonical → stop using client aggregates on this page → keep
-`invoices/customers` only for line-item activity until E4 drilldowns exist.
+`invoices/customers` only for non-analytics line-item activity until E4 drilldowns
+exist. **[E6.0.1]** `dashboard-insights` and `misuse-cases` are moved OUTSIDE the
+canonical E6 composition (KEEP_OUTSIDE_CANONICAL_E6 / KEEP_IN_PRODUCT_OUTSIDE_E6_
+CANONICAL_COMPOSITION) — never mixed into canonical sections, never a canonical
+fallback; endpoints and other consumers are untouched.
 
 ## 15. Legacy data sources
 
@@ -232,8 +245,8 @@ from canonical → stop using client aggregates on this page → keep
 | evaluations/finance/insights (E3) | FinancialInsightsView | core KPIs | self | KEEP | only this page |
 | invoices | FinancialInsightsView | detail/chart/rankings/legacy math | E4 sections | REDUCE to line-items | dashboard, tasks, topbar (KEEP endpoint) |
 | customers | FinancialInsightsView | id→name | E4/E5 server refs | REMOVE from page math | many (KEEP endpoint) |
-| dashboard-insights | InsightsCockpit | risks/leakage/reco | E4 insights/summary (partial) | REDUCE | app-wide (KEEP endpoint) |
-| misuse-cases | InsightsCockpit | abuse cards | none (separate domain) | KEEP short-term | MisuseCasesPanel, handover |
+| dashboard-insights | InsightsCockpit | risks/leakage/reco | none canonical (not an E1–E5 analytics contract) | KEEP_OUTSIDE_CANONICAL_E6 [E6.0.1] | app-wide (KEEP endpoint) |
+| misuse-cases | InsightsCockpit | abuse cards | none (separate domain) | KEEP_IN_PRODUCT_OUTSIDE_E6_CANONICAL_COMPOSITION [E6.0.1] | MisuseCasesPanel, handover |
 | fleet-map | indirect | station filter/labels | E2 scope | KEEP | fleet shell (KEEP) |
 
 Do not remove shared endpoints; only stop the page from doing client business math.
@@ -415,7 +428,7 @@ Convention (confirmed): custom hooks + `fetch` wrapper in `frontend/src/lib/api.
 | api.evaluations.analyticsInsightsSummary | E4 /insights/summary | orgId, periodType, stationIds | 404→disabled state | section UNAVAILABLE | preserve per-section status |
 | api.evaluations.analyticsQuality | E5 /insights/quality | orgId, periodType, stationIds | 404→disabled | UNAVAILABLE | preserve dimension states |
 | api.evaluations.driverAnalysis | E4 driver-analysis | orgId, periodType, stationIds | 404→disabled | UNAVAILABLE | preserve piiTier |
-| api.evaluations.financeInsights (exists) | E3 finance | orgId, stationIds | always-on | UNAVAILABLE labels | preserve |
+| api.evaluations.financeInsights (exists) | E3 finance | orgId, stationIds (NO periodType) | always-on | UNAVAILABLE labels | preserve; **FIXED MTD — global period selector MUST NOT be applied** [E6.0.1] |
 | api.evaluationsMetrics.registry | E1 registry | (none, cached) | always-on | fallback labels | n/a |
 No business calculations in hooks; validate + pass through.
 
@@ -438,7 +451,11 @@ LOADING ≠ EMPTY ≠ ZERO ≠ UNAVAILABLE ≠ ERROR ≠ PARTIAL ≠ STALE:
 Use the E4 composite `/insights/summary` (1 request) + E5 `/insights/quality` (1) +
 E1 registry (1, cached) as the initial load; driver-analysis lazy on section view;
 E3 finance already inside composite (avoid double-fetch — read finance from composite
-on this page). `EXPECTED_INITIAL_REQUEST_COUNT = 3` (summary, quality, registry).
+on this page). **[E6.0.1] Transport ≠ authority:** when the finance slice is read from
+the E4 `/insights/summary` response, the transport is the E4 composite but the truth
+authority remains E3 and the period authority remains E3 **MTD** — the selected E4
+period MUST NOT be applied to or displayed over that finance slice; the Finance
+section keeps its explicit MTD scope. `EXPECTED_INITIAL_REQUEST_COUNT = 3` (summary, quality, registry).
 `DUPLICATE_REQUEST_RISK_COUNT = 1` (E3 finance also standalone — mitigate by reading
 composite). `N_PLUS_ONE_RISK_COUNT = 0` (factors/sections are in-payload). Frontend
 orchestration only; no new aggregation backend.
@@ -447,16 +464,21 @@ orchestration only; no new aggregation backend.
 
 **E6A — Canonical Frontend Data Layer.** Scope: `api.ts` client fns + typed hooks +
 local E4/E5 types; feature-flag-aware fetch; status preservation; no business calc.
-Files: `frontend/src/lib/api.ts`, `frontend/src/rental/hooks/useEvaluations*`,
-`frontend/src/rental/lib/evaluations/*` types. Reuse: #792 hooks (repointed),
-`finance-insights-adapter`. Tests: hook unit + validators. Gate: no client business
-math; flag off → disabled state.
+**[E6.0.1] Money formatter = canonical currency-aware `finance-insights-adapter`
+(explicit `Money.currency`, no EUR default); period semantics = global selector drives
+E4/E5 only, E3 finance is fixed MTD (no `periodType`).** Files: `frontend/src/lib/api.ts`,
+`frontend/src/rental/hooks/useEvaluations*`, `frontend/src/rental/lib/evaluations/*`
+types. Reuse: #792 hooks (repointed), `finance-insights-adapter`. Tests: hook unit +
+validators. Gate: no client business math; flag off → disabled state; no implicit-EUR
+formatting; no finance period recalculation.
 
 **E6B — IA + Core Surfaces.** Scope: EvaluationsPage composer + Section/Nav +
-Executive Summary + Strengths/Weaknesses + Finance + Utilization + Costs/Downtime
-(current only), status-aware badges. Reuse: #792/#794/#795/#796/#798 (safe subset).
-Tests: extend #818 flow + component render. Gate: no duplicate calc; no risk-matrix/
-forecast; single page.
+Executive Summary + Strengths/Weaknesses + Finance (**persistent MTD scope badge**) +
+Utilization + Costs/Downtime (**OPERATING_EXPENSES money only; maintenance/damage/
+fixed → UNAVAILABLE+reason; no estimatedExposure**), status-aware badges. Reuse:
+#792/#794/#795/#796/#798 (safe subset). Tests: extend #818 flow + component render.
+Gate: no duplicate calc; no risk-matrix/forecast; no unsupported cost money rendered
+as amount; Finance period not misrepresented; single page.
 
 **E6C — Quality + Driver Influence.** Scope: DataQualitySection (E5 truth, drop
 derivation/role gate) + DriverInfluenceSection (server tier). Reuse: #793 visuals.
@@ -497,7 +519,8 @@ Non-critical (do not affect architecture/security/privacy/quality/API/scope):
 - Exact production `EVALUATIONS_ANALYTICS_V2_MODE` value (repo = UNSET/off; ops
   confirms at rollout; E6 renders honest disabled state regardless).
 - Whether `dashboard-insights`/`misuse-cases` remain as complementary operational
-  surfaces vs migrate later (product decision; E6 can keep them as non-authoritative).
+  surfaces vs migrate later (product decision). Either way they stay OUTSIDE the
+  canonical E6 composition [E6.0.1] — never mixed into canonical sections.
 - Whether E4 will later add invoice line-item drilldown (would let the page drop
   `invoices.list` entirely; not required for E6).
 
