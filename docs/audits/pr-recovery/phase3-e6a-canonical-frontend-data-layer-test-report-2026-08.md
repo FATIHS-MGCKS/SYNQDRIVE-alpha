@@ -9,7 +9,7 @@ Base main (A): `a704fdcca76f03703a0816f71a4d11ffdbaf4292`
 | Suite | Tests | Covers |
 |-------|------:|--------|
 | `evaluations-money.test.ts` | 11 | EUR/USD/JPY(0-dec)/KWD(3-dec) formatting; same amountMinor differs by currency; missing/invalid currency → null (no EUR default, no /100); mixed-currency partition (never summed); value-bearing status gate |
-| `evaluations-canonical.test.ts` | 14 | result mapping AVAILABLE / 404→FEATURE_DISABLED / 403→UNAUTHORIZED / 500+network→ERROR; scope-safe query keys (distinct period, station order-normalized, null vs [], cross-org, dedup, finance ignores period, capability distinct); driver tiers full/pseudonymous/none preserved verbatim |
+| `evaluations-canonical.test.ts` | 14 | result mapping AVAILABLE / 404→NOT_FOUND [orig E6A stated 404→FEATURE_DISABLED — **SUPERSEDED BY E6A.1**; see the E6A.1 correction section below] / 403→UNAUTHORIZED / 500+network→ERROR; scope-safe query keys (distinct period, station order-normalized, null vs [], cross-org, dedup, finance ignores period, capability distinct); driver tiers full/pseudonymous/none preserved verbatim |
 
 Result: SUITE_COUNT 2, TEST_COUNT 25, PASSED 25, FAILED 0, SKIPPED 0.
 
@@ -18,7 +18,7 @@ Category mapping to mandated cases (§36–§40):
 - Status/period tests: 6-state preserved in transport types (type-level); query-key period/station/capability ✓
 - Query-key tests: distinct period/station/capability, dedup same inputs, no cross-org collision ✓
 - Privacy tests: piiTier none/pseudonymous/full preserved; no local ID lookup (client performs none) ✓
-- Feature-state tests: 404 → FEATURE_DISABLED (never legacy fallback / empty / zero) ✓
+- Feature-state tests: generic 404 → NOT_FOUND, never FEATURE_DISABLED (never legacy fallback / empty / zero) ✓ [orig E6A stated 404→FEATURE_DISABLED — **SUPERSEDED BY E6A.1**]
 
 ## Regression (existing evaluations/finance frontend suites)
 

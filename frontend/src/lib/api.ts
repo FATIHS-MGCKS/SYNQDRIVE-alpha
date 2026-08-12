@@ -773,10 +773,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 /**
  * Status-aware request that does NOT throw on non-2xx (except the shared 401
- * redirect). Used by the canonical Evaluations (E6) data layer to distinguish a
- * feature-disabled 404 from a real payload, an authorization 403, and network
- * errors — without collapsing them into a generic thrown Error. Never returns
- * fabricated data.
+ * redirect). It PRESERVES the HTTP status (and network failure as status 0) instead
+ * of collapsing every failure into a thrown Error, so callers can classify 403, 404,
+ * 5xx, etc. themselves. It does NOT interpret *why* a status occurred — in
+ * particular it never infers a "feature-disabled" meaning from a bare 404. Used by
+ * the canonical Evaluations (E6) data layer. Never returns fabricated data.
  */
 export interface RequestResult<T> {
   readonly ok: boolean;
@@ -5967,8 +5968,11 @@ export const api = {
       ),
 
     /**
-     * Canonical E4 analytics insights summary (composite). Status-aware transport:
-     * a feature-disabled 404 is surfaced as a distinct result, never fabricated data.
+     * Canonical E4 analytics insights summary (composite). Status-aware transport
+     * (never fabricated data): a generic 404 is surfaced as the neutral NOT_FOUND —
+     * the FeatureGuard returns a deliberately non-disclosing 404, so a bare 404 is
+     * NOT proof of a disabled feature and is never mapped to FEATURE_DISABLED (which
+     * requires a reliable machine-readable discriminator that does not exist today).
      * `periodType`/`stationIds` map to canonical E1 period / E2 station scope.
      */
     analyticsInsightsSummary: (

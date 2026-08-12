@@ -199,5 +199,8 @@ Two narrowly-scoped runtime corrections; no redesign, no backend change.
   risk not present).
 - `api.ts` carries pre-existing `no-explicit-any` lint debt (unrelated lines); E6A
   additions add zero new lint errors; dedicated E6 files lint clean.
-- Feature flag is `off` by default on main; E6A renders honest FEATURE_DISABLED, so
-  the layer is safe before the flag is enabled (E6B UX consumes this state).
+- Feature flag is `off` by default on main; the layer renders an honest transport
+  state so it is safe before the flag is enabled (E6B UX consumes this state).
+  **[SUPERSEDED BY E6A.1: a generic 404 renders as the neutral `NOT_FOUND`, NOT
+  `FEATURE_DISABLED` — the FeatureGuard's 404 is non-disclosing and carries no
+  reliable discriminator.]**
