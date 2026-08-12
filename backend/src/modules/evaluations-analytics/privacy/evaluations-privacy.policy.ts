@@ -25,18 +25,35 @@ export interface EvaluationsPrivacyContext {
 }
 
 /**
+ * Roles whose org membership is the DRIVER role. A DRIVER is a person-level data
+ * SUBJECT, never an authorized viewer of person-level Driver Influence analytics.
+ * This is a person-level privacy boundary that is strictly stricter than general
+ * module read permissions.
+ */
+const EVALUATIONS_PERSON_LEVEL_DENIED_MEMBERSHIP_ROLES = new Set<string>(['DRIVER']);
+
+/**
  * Resolve the PII tier for a person-level evaluations read.
  *
- *  - MASTER_ADMIN / ORG_ADMIN → full
- *  - any role with `customers.read` (person-identity authority) → full
- *  - any role with `evaluations.read` (analytics authority) → pseudonymous
- *  - otherwise (no membership, DRIVER, CUSTOMER, no analytics authority) → none
+ *  - MASTER_ADMIN (platform) / ORG_ADMIN → full
+ *  - DRIVER membership → none, ALWAYS (E5.2.1 hard deny): a DRIVER never gains
+ *    person-level analytics regardless of `evaluations.read`, `customers.read`,
+ *    `invoices.read`, or any combination. DRIVER is a data subject, not a viewer.
+ *  - any (non-DRIVER) role with `customers.read` (person-identity authority) → full
+ *  - any (non-DRIVER) role with `evaluations.read` (analytics authority) → pseudonymous
+ *  - otherwise (no membership, no analytics authority) → none
  *
  * `invoices.read` alone NEVER grants person-level analytics (E5.1B correction).
  */
 export function resolveEvaluationsPiiTier(ctx: EvaluationsPrivacyContext): EvaluationsPiiTier {
+  // Platform master admin oversight is resolved before org-role gating.
   if (ctx.platformRole === 'MASTER_ADMIN') return 'full';
-  if (ctx.membershipRole === 'ORG_ADMIN' || ctx.membershipRole === 'MASTER_ADMIN') return 'full';
+  // Person-level privacy boundary: DRIVER is hard-denied before any
+  // permission-based grant can apply (documented authority: DRIVER → none).
+  if (ctx.membershipRole !== null && EVALUATIONS_PERSON_LEVEL_DENIED_MEMBERSHIP_ROLES.has(ctx.membershipRole)) {
+    return 'none';
+  }
+  if (ctx.membershipRole === 'ORG_ADMIN') return 'full';
   if (ctx.canReadCustomers) return 'full';
   if (ctx.canReadEvaluations) return 'pseudonymous';
   return 'none';

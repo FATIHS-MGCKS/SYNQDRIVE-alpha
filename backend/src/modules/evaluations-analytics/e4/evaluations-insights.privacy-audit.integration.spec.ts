@@ -262,6 +262,84 @@ const GEN = new Date('2026-01-31T12:00:00.000Z');
       expect(JSON.stringify(denied[0].payload)).not.toContain(fx.driverAId);
     });
 
+    // E5.2.1: a real DRIVER membership is hard-denied person-level analytics,
+    // regardless of evaluations.read / customers.read, against a live database.
+    it('DRIVER + evaluations.read → person-level access denied (no factors, no identity)', async () => {
+      const userId = await addMember(fx.orgAId, 'DRIVER', {
+        evaluations: { read: true, write: false },
+      });
+      const section = await service.getDriverInfluence(
+        scope(fx.orgAId),
+        { id: userId, organizationId: fx.orgAId, platformRole: null },
+        GEN,
+      );
+      expect(section.piiTier).toBe('none');
+      expect(section.status).toBe('UNAVAILABLE');
+      expect(section.reason).toBe('PERSON_LEVEL_ACCESS_DENIED');
+      expect(section.factors).toEqual([]);
+      const serialized = JSON.stringify(section);
+      expect(serialized).not.toContain(fx.driverAId);
+      expect(serialized).not.toContain(fx.driverBId);
+      expect(serialized).not.toContain('person-v1-'); // no pseudonym emitted
+
+      // Denied access is audited with privacy-safe metadata only.
+      const denied = await prisma.businessAuditOutbox.findMany({
+        where: {
+          organizationId: fx.orgAId,
+          action: BusinessAuditAction.EVALUATIONS_PERSON_ANALYTICS_DENIED,
+        },
+      });
+      expect(denied.length).toBe(1);
+      const payload = JSON.stringify(denied[0].payload);
+      expect(payload).not.toContain(fx.driverAId);
+      expect(payload).not.toContain(fx.driverBId);
+      expect(payload).not.toContain('person-v1-');
+    });
+
+    it('DRIVER + customers.read → person-level access denied', async () => {
+      const userId = await addMember(fx.orgAId, 'DRIVER', {
+        customers: { read: true, write: false },
+      });
+      const section = await service.getDriverInfluence(
+        scope(fx.orgAId),
+        { id: userId, organizationId: fx.orgAId, platformRole: null },
+        GEN,
+      );
+      expect(section.piiTier).toBe('none');
+      expect(section.factors).toEqual([]);
+      expect(JSON.stringify(section)).not.toContain(fx.driverAId);
+    });
+
+    it('DRIVER + customers.read + evaluations.read → person-level access denied', async () => {
+      const userId = await addMember(fx.orgAId, 'DRIVER', {
+        customers: { read: true, write: false },
+        evaluations: { read: true, write: false },
+      });
+      const section = await service.getDriverInfluence(
+        scope(fx.orgAId),
+        { id: userId, organizationId: fx.orgAId, platformRole: null },
+        GEN,
+      );
+      expect(section.piiTier).toBe('none');
+      expect(section.factors).toEqual([]);
+      expect(JSON.stringify(section)).not.toContain(fx.driverAId);
+    });
+
+    it('DRIVER in ORG_A cannot gain person-level analytics in ORG_B (cross-tenant fail closed)', async () => {
+      const userId = await addMember(fx.orgAId, 'DRIVER', {
+        evaluations: { read: true, write: false },
+        customers: { read: true, write: false },
+      });
+      const section = await service.getDriverInfluence(
+        scope(fx.orgBId),
+        { id: userId, organizationId: fx.orgAId, platformRole: null },
+        GEN,
+      );
+      expect(section.piiTier).toBe('none');
+      expect(section.factors).toEqual([]);
+      expect(JSON.stringify(section)).not.toContain(fx.driverBId);
+    });
+
     // E5.2: production-like config + missing pseudonym secret → fail closed.
     it('production + missing pseudonym secret → authorized pseudonymous request discloses no factors', async () => {
       const savedNodeEnv = process.env.NODE_ENV;

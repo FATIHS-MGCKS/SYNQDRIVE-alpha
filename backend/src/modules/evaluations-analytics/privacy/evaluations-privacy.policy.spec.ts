@@ -35,9 +35,53 @@ describe('E5B/E5.1B evaluations privacy policy', () => {
     expect(
       resolveEvaluationsPiiTier({ ...base, membershipRole: 'WORKER' }),
     ).toBe('none');
-    expect(resolveEvaluationsPiiTier({ ...base, membershipRole: 'DRIVER' })).toBe('none');
-    expect(resolveEvaluationsPiiTier({ ...base, membershipRole: 'CUSTOMER' })).toBe('none');
     expect(resolveEvaluationsPiiTier({ ...base, membershipRole: null })).toBe('none');
+    // Defensive: an unknown/synthetic role string (NOT a real MembershipRole —
+    // the enum is ORG_ADMIN|SUB_ADMIN|WORKER|DRIVER) fails closed. 'CUSTOMER' is
+    // used here purely as an arbitrary unknown-role input, not a runtime authority.
+    expect(resolveEvaluationsPiiTier({ ...base, membershipRole: 'UNKNOWN_SYNTHETIC_ROLE' })).toBe('none');
+  });
+
+  describe('E5.2.1 DRIVER person-level hard deny (MembershipRole DRIVER → none)', () => {
+    // DRIVER is a real MembershipRole and a person-level data subject — never a
+    // person-level viewer, regardless of module permissions.
+    it('A: DRIVER + evaluations.read only → none', () => {
+      expect(
+        resolveEvaluationsPiiTier({ ...base, membershipRole: 'DRIVER', canReadEvaluations: true }),
+      ).toBe('none');
+    });
+    it('B: DRIVER + customers.read only → none', () => {
+      expect(
+        resolveEvaluationsPiiTier({ ...base, membershipRole: 'DRIVER', canReadCustomers: true }),
+      ).toBe('none');
+    });
+    it('C: DRIVER + evaluations.read + customers.read → none', () => {
+      expect(
+        resolveEvaluationsPiiTier({
+          ...base,
+          membershipRole: 'DRIVER',
+          canReadEvaluations: true,
+          canReadCustomers: true,
+        }),
+      ).toBe('none');
+    });
+    it('DRIVER with no relevant permission → none', () => {
+      expect(resolveEvaluationsPiiTier({ ...base, membershipRole: 'DRIVER' })).toBe('none');
+    });
+    it('D/E: non-DRIVER lower roles retain their proven access (WORKER/SUB_ADMIN)', () => {
+      expect(
+        resolveEvaluationsPiiTier({ ...base, membershipRole: 'WORKER', canReadEvaluations: true }),
+      ).toBe('pseudonymous');
+      expect(
+        resolveEvaluationsPiiTier({ ...base, membershipRole: 'SUB_ADMIN', canReadEvaluations: true }),
+      ).toBe('pseudonymous');
+      expect(
+        resolveEvaluationsPiiTier({ ...base, membershipRole: 'SUB_ADMIN', canReadCustomers: true }),
+      ).toBe('full');
+    });
+    it('F: ORG_ADMIN → full (unchanged)', () => {
+      expect(resolveEvaluationsPiiTier({ ...base, membershipRole: 'ORG_ADMIN' })).toBe('full');
+    });
   });
 
   it('exposes identity gates', () => {
