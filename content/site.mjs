@@ -39,26 +39,49 @@ const SECTION_IDS = {
  * Product visuals. Every file is a real screenshot of the SynqDrive frontend
  * rendered against one synthetic demo tenant (frontend/e2e/landing-demo-tenant.ts).
  */
+/**
+ * Every product visual is a crop of a desktop capture, so each one also carries
+ * a `mobile` crop of the same screenshot. Below 760px the page switches to it:
+ * scaling a full desktop panel into a phone column renders its labels at around
+ * 5px, which reads as texture rather than as a product.
+ */
 const MEDIA = {
-  hero: { file: 'landing-hero-operations', width: 1700, height: 1192 },
+  hero: {
+    file: 'landing-hero-operations',
+    width: 1700,
+    height: 1192,
+    mobile: { file: 'landing-hero-operations-mobile', width: 968, height: 1104 },
+  },
   unified: {
     file: 'landing-unified-operations',
     width: 1968,
     height: 1458,
-    // The fleet plan and the workflow list are the two wide captures. Below
-    // 760px they switch to a tighter crop of the same screenshot, because
-    // scaling the full width into a phone column makes the labels unreadable.
-    mobile: { file: 'landing-unified-operations-mobile', width: 956, height: 724 },
+    mobile: { file: 'landing-unified-operations-mobile', width: 956, height: 600 },
   },
-  vehicle: { file: 'landing-connected-vehicle', width: 1284, height: 992 },
-  ai: { file: 'landing-ai-orchestration', width: 1368, height: 1444 },
+  vehicle: {
+    file: 'landing-connected-vehicle',
+    width: 1284,
+    height: 992,
+    mobile: { file: 'landing-connected-vehicle-mobile', width: 804, height: 1100 },
+  },
+  ai: {
+    file: 'landing-ai-orchestration',
+    width: 1368,
+    height: 1444,
+    mobile: { file: 'landing-ai-orchestration-mobile', width: 632, height: 524 },
+  },
   workflow: {
     file: 'landing-workflow-automation',
     width: 1900,
     height: 1205,
     mobile: { file: 'landing-workflow-automation-mobile', width: 904, height: 808 },
   },
-  communication: { file: 'landing-communications', width: 1390, height: 1310 },
+  communication: {
+    file: 'landing-communications',
+    width: 1390,
+    height: 1310,
+    mobile: { file: 'landing-communications-mobile', width: 780, height: 820 },
+  },
 };
 
 const en = {

@@ -1259,11 +1259,17 @@ svg {
   }
 
   /* Below the desktop breakpoint the diagram becomes two plain tile columns:
-     the centre node and its connectors only read as a hub at full width. */
+     the centre node and its connectors only read as a hub at full width.
+     The columns stretch and share equal rows so the two sets of tiles line up
+     across the gap instead of drifting out of step as their copy wraps. */
   .hub__diagram {
     --hub-gap: 16px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    align-items: stretch;
+  }
+
+  .hub__column {
+    grid-auto-rows: 1fr;
   }
 
   .hub__tile::after,
@@ -1301,10 +1307,6 @@ svg {
     padding: 4px 22px 16px;
   }
 
-  .hub__diagram {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .sitefooter__inner {
     padding-block: 44px 32px;
   }
@@ -1315,6 +1317,15 @@ svg {
      section, so the masthead keeps only the wordmark and the menu toggle. */
   .masthead__actions .action--primary {
     display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  /* The hub keeps two tile columns on a normal phone, where a single column
+     turns six short tiles into the longest section on the page. Below this the
+     columns get too narrow for the tile copy, so they stack. */
+  .hub__diagram {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -198,10 +198,10 @@ export function ai(c) {
     )
     .join('');
 
+  // Copy first in the DOM even though this section renders mirrored: stacked on
+  // a phone the reader must meet the heading before the screenshot. The mirror
+  // is a desktop-only column swap, done in CSS.
   return `<section class="section split split--mirror" id="${s.id}" aria-labelledby="${s.id}-title">
-      <div class="split__media" data-reveal>
-        ${productFrame({ media: s.media, alt: s.mediaAlt, sizes: '(max-width: 900px) 92vw, 48vw' })}
-      </div>
       <div class="split__copy">
         ${sectionHead({ eyebrow: s.eyebrow, title: s.title, body: s.body, id: s.id })}
         <div class="flow" data-reveal>
@@ -209,6 +209,9 @@ export function ai(c) {
           <ol class="flow__list">${steps}</ol>
         </div>
         <ul class="notes" data-reveal>${governance}</ul>
+      </div>
+      <div class="split__media" data-reveal>
+        ${productFrame({ media: s.media, alt: s.mediaAlt, sizes: '(max-width: 900px) 92vw, 48vw' })}
       </div>
     </section>`;
 }

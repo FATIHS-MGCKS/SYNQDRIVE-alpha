@@ -60,6 +60,21 @@ nor `assets-raw/`. You only need steps 1 and 2 when a screenshot should be re-ta
 Never replace these with screenshots of production data: the site is public, and the synthetic
 tenant is what keeps it free of names, phone numbers, addresses, bookings and identifiers.
 
+### Phone crops
+
+A phone renders these visuals in a 356px column, so every one of them also has a `mobile` crop of
+a compact region of the same capture. Without it a 616px-wide desktop panel arrives at 58% scale
+and its 13px product text at 7px, which passes every layout check and still says nothing. Keep the
+crop width close to the rendered column: `content/site.mjs` documents the intent, and
+`tools/build-assets.mjs` carries the coordinates and the reasoning per crop.
+
+One capture is not a desktop view. `fleet-command-narrow.png` is the Fleet list rendered at 430px,
+because its rows cannot be narrowed by cropping without losing the condition and status badges on
+the right edge. The product has its own narrow layout below 1024px, and the harness in the product
+repo captures that. Prefer this route whenever the product reflows; check the result first, though,
+since a narrow layout is not automatically the better picture. The Bookings plan was rejected on
+exactly that basis.
+
 ## Deploy
 
 `synqdrive.eu` is a Hostinger shared-hosting vhost. It is **not** the VPS, and it has nothing to

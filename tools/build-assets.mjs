@@ -38,6 +38,17 @@ const TARGETS = [
     quality: 90,
   },
   {
+    // Phone crop of the same dashboard: the station summary card on its own.
+    // A self-contained card survives a phone column where the full dashboard,
+    // sidebar and all, only survives as unreadable texture.
+    source: 'operations-dashboard.png',
+    out: 'landing-hero-operations-mobile.webp',
+    crop: [360, 79, 484, 552],
+    width: 968,
+    quality: 90,
+    variants: 'single',
+  },
+  {
     // The plan card only. The filter row above it sits directly on top but has
     // empty date inputs, which reads as an unfinished form rather than a product.
     source: 'bookings-timeline.png',
@@ -48,11 +59,13 @@ const TARGETS = [
   },
   {
     // Phone crop of the same plan: the vehicle column, three days including the
-    // current-day marker, and six rows. Cropping rather than scaling keeps the
-    // plate and booking reference readable in a 350px column.
+    // current-day marker, and five rows. Cropping rather than scaling keeps the
+    // plate and booking reference readable in a 350px column. The height ends on
+    // a row boundary, and the five rows are the ones carrying bookings, so the
+    // plan does not read as mostly empty.
     source: 'bookings-timeline.png',
     out: 'landing-unified-operations-mobile.webp',
-    crop: [98, 221, 478, 362],
+    crop: [98, 226, 478, 300],
     width: 956,
     quality: 90,
     variants: 'single',
@@ -69,6 +82,19 @@ const TARGETS = [
     quality: 90,
   },
   {
+    // Phone version of the same panel. Unlike the other mobile assets this is
+    // not a crop of the wide capture: the fleet rows are 616 CSS px across, and
+    // no crop of them survives a phone column, because the condition and status
+    // badges on the right are the point of the shot. The product has its own
+    // narrow layout below 1024px, so this crops that capture instead.
+    source: 'fleet-command-narrow.png',
+    out: 'landing-connected-vehicle-mobile.webp',
+    crop: [14, 505, 402, 550],
+    width: 804,
+    quality: 90,
+    variants: 'single',
+  },
+  {
     // The two exchanges, without the assistant's left sidebar. The structured
     // answers and their source lines are the point of this section.
     source: 'ai-assistant.png',
@@ -76,6 +102,17 @@ const TARGETS = [
     crop: [378, 118, 684, 722],
     width: 1368,
     quality: 90,
+  },
+  {
+    // Phone crop of one answer: the structured card with its source line. One
+    // answer at readable size proves more than two at unreadable size, and the
+    // section's own copy already says the assistant is asked questions.
+    source: 'ai-assistant.png',
+    out: 'landing-ai-orchestration-mobile.webp',
+    crop: [408, 168, 316, 262],
+    width: 632,
+    quality: 90,
+    variants: 'single',
   },
   {
     source: 'workflow-automation.png',
@@ -103,6 +140,17 @@ const TARGETS = [
     crop: [644, 245, 695, 655],
     width: 1390,
     quality: 90,
+  },
+  {
+    // Phone crop of the same thread, without the context column beside it. The
+    // two panels sit side by side, so a phone can hold one of them legibly or
+    // both illegibly; the section's copy carries the context claim.
+    source: 'customer-communication-inbox.png',
+    out: 'landing-communications-mobile.webp',
+    crop: [648, 246, 390, 410],
+    width: 780,
+    quality: 90,
+    variants: 'single',
   },
   {
     // Social card. Fixed 1200x630 because that is what the sharing platforms
