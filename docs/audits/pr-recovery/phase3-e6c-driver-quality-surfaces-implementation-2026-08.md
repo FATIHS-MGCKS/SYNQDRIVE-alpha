@@ -156,3 +156,34 @@ tests/i18n only — no backend, no canonical contract, no business/privacy autho
   coverage on the available scenarios (`MISSING_DRIVER_E2E_SCENARIO_COUNT = 0`).
 - `DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0` (the two inaccurate E6C claims above are marked
   corrected). No E7/E8/E9, no `api.ts`/canonical hook/`EvaluationsPage` composition change.
+
+## E6C.1.1 — Canonical Fixture Authority Closure
+
+Fixtures/tests/docs only — no production runtime, backend, API, hook, canonical
+contract, config, or deployment change (the E6C.1 runtime presentation was already
+correct and is untouched).
+
+- Driver fixtures now mirror executable backend derivation
+  (`evaluations-insights.service.ts` + `evaluations-driver.domain.ts`):
+  `availableRecords === factors.length`, `excludedRecords === unattributedCount`,
+  `expectedRecords = null`, `ratio = null`, `missingSources === dimensionsSkippedInsufficient`.
+  The AVAILABLE two-factor case uses `availableRecords: 2`, `missingSources: []`; the
+  analyzed dimension is `BOOKING_CANCELLATIONS`. A separate `DRIVER_EVIDENCE_INSUFFICIENT`
+  fixture (factors `[]`, `missingSources: ['BOOKING_CANCELLATIONS']`) exercises non-empty
+  missing sources.
+- Impossible tier/reason pairs removed: `PSEUDONYMIZATION_UNAVAILABLE` now uses
+  `piiTier: 'pseudonymous'` (it can only occur after person-level access was granted);
+  `PERSON_LEVEL_ACCESS_DENIED` remains `piiTier: 'none'`. Fixtures are fully typed
+  (`satisfies EvaluationsDataCoverage` / real `EvaluationsPeriodWindow`); the driver
+  response `as unknown` cast was removed.
+- Quality non-null coverage moved to the utilization section (finance coverage is
+  ALWAYS null per the E5 service). Utilization uses `requiredSourceClasses:
+  [BOOKINGS, MAINTENANCE]`, `PROVENANCE: COMPLETE` with both lineages present,
+  `VALIDITY: UNKNOWN`, UNKNOWN pipeline freshness; the null-coverage section is a
+  backend-reachable UNAVAILABLE finance section (reason `SECTION_UNAVAILABLE`) under the
+  same org scope (no section is described as station-scoped while the report scope is
+  org-wide). `requiredSourceClasses` and `coverage.missingSources` stay distinct concepts.
+- Evidence honesty: `evaluations-flow.spec.ts` is NOT run by any CI workflow (CI runs
+  only vehicle-detail and legal-documents Playwright); the prior "validated in CI" claim
+  is corrected to authored-but-not-executed. `DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0`.
+- No E7/E8/E9; no `api.ts`/canonical hook/`EvaluationsPage` composition change.

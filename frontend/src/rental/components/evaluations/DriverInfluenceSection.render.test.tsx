@@ -9,15 +9,44 @@ import type {
   EvaluationsPiiTier,
   E4DriverFactor,
   EvaluationsDataCoverage,
+  EvaluationsPeriodWindow,
 } from '../../lib/evaluations/evaluations-canonical.types';
 
-// Canonical driver coverage — all five fields; null expected/ratio stay unavailable.
-const DRIVER_COVERAGE = {
+const PERIOD = {
+  periodType: 'MTD',
+  start: '2026-06-01T00:00:00.000Z',
+  endExclusive: '2026-07-01T00:00:00.000Z',
+  reference: '2026-06-16T12:00:00.000Z',
+  timezone: {
+    effectiveTimezone: 'Europe/Berlin',
+    source: 'ORGANIZATION',
+    reportTimezone: null,
+    stationTimezone: null,
+    organizationTimezone: 'Europe/Berlin',
+  },
+  comparisonBasis: null,
+} satisfies EvaluationsPeriodWindow;
+
+// Canonical AVAILABLE driver coverage (executable authority): availableRecords equals
+// the analyzed factor count, excludedRecords is the unattributed count, expected/ratio
+// are null, and missingSources mirrors dimensionsSkippedInsufficient (empty when the
+// only observed dimension, BOOKING_CANCELLATIONS, was analyzed).
+const DRIVER_COVERAGE_2_FACTORS = {
   expectedRecords: null,
-  availableRecords: 12,
+  availableRecords: 2,
   excludedRecords: 3,
   ratio: null,
-  missingSources: ['TELEMETRY_SEGMENT', 'DRIVER_LINEAGE'],
+  missingSources: [],
+} satisfies EvaluationsDataCoverage;
+
+// Insufficient-evidence authority: no dimension analyzed → factors [], coverage
+// availableRecords 0, missingSources ['BOOKING_CANCELLATIONS'].
+const DRIVER_COVERAGE_INSUFFICIENT = {
+  expectedRecords: null,
+  availableRecords: 0,
+  excludedRecords: 4,
+  ratio: null,
+  missingSources: ['BOOKING_CANCELLATIONS'],
 } satisfies EvaluationsDataCoverage;
 
 const driverMock =
@@ -70,25 +99,26 @@ function driverData(
   factors: E4DriverFactor[],
   extra?: Partial<EvaluationsDriverInfluenceSection>,
 ): EvaluationsDriverInfluenceSection {
-  return {
+  const base: EvaluationsDriverInfluenceSection = {
     status: 'AVAILABLE',
-    calculationVersion: 'v',
-    period: {},
+    calculationVersion: 'evaluations-driver-e5b-v1',
+    period: PERIOD,
     scope: { organizationId: 'org-a', stationIds: null, stationScoped: false },
-    coverage: null,
+    coverage: factors.length > 0 ? DRIVER_COVERAGE_2_FACTORS : null,
     generatedAt: '2026-06-16T12:00:00.000Z',
     reason: null,
     disclaimer: 'Association only, not causation.',
     confounders: ['seasonality'],
     factors,
     piiTier,
-    ...extra,
-  } as unknown as EvaluationsDriverInfluenceSection;
+  };
+  return { ...base, ...extra };
 }
 
+// Canonical analyzed dimension is BOOKING_CANCELLATIONS (association-only).
 const FACTORS: E4DriverFactor[] = [
-  { driverRef: 'driver-REF-1', associatedDimension: 'HARSH_BRAKING', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
-  { driverRef: 'driver-REF-2', associatedDimension: 'IDLING', associationShare: 0.4, sampleSize: 18, relationship: 'CORRELATES_WITH' },
+  { driverRef: 'driver-REF-1', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
+  { driverRef: 'driver-REF-2', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 18, relationship: 'ASSOCIATED_WITH' },
 ];
 
 describe('E6C DriverInfluenceSection — lazy request lifecycle', () => {
@@ -187,37 +217,55 @@ describe('E6C DriverInfluenceSection — privacy tiers & rendering', () => {
   });
 });
 
-describe('E6C.1 DriverInfluenceSection — canonical coverage', () => {
-  it('renders driver coverage fields independently; null expected/ratio stay unavailable; missingSources in server order; factors not reordered', async () => {
-    driverMock.mockResolvedValue({ ok: true, status: 200, data: driverData('full', FACTORS, { coverage: DRIVER_COVERAGE }) });
+describe('E6C.1.1 DriverInfluenceSection — canonical coverage authority', () => {
+  it('AVAILABLE 2-factor coverage: available=2, excluded=3, expected/ratio unavailable, no missing sources; factors not reordered', async () => {
+    driverMock.mockResolvedValue({ ok: true, status: 200, data: driverData('full', FACTORS) });
     render();
     toggle();
     await flush();
     const cov = container.querySelector('[data-testid="evaluations-driver-coverage"]')!;
-    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-available"]')?.textContent ?? '').toContain('12');
+    // availableRecords === factor count (2).
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-available"]')?.textContent ?? '').toContain('2');
     expect(cov.querySelector('[data-testid="evaluations-driver-coverage-excluded"]')?.textContent ?? '').toContain('3');
     expect(cov.querySelector('[data-testid="evaluations-driver-coverage-expected"]')?.textContent ?? '').toContain('—');
     expect(cov.querySelector('[data-testid="evaluations-driver-coverage-ratio"]')?.textContent ?? '').toContain('—');
-    const missing = cov.querySelector('[data-testid="evaluations-driver-coverage-missing-sources"]')?.textContent ?? '';
-    expect(missing.indexOf('TELEMETRY_SEGMENT')).toBeLessThan(missing.indexOf('DRIVER_LINEAGE')); // server order
-    // Coverage presence must not reorder the factor list.
+    // Analyzed dimension is not skipped → canonical "no missing sources" state.
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-missing-sources"]')?.textContent ?? '').toContain('No missing sources reported');
     const rows = container.querySelectorAll('[data-testid="evaluations-driver-factor"]');
     expect(rows[0].textContent ?? '').toContain('driver-REF-1');
     expect(rows[1].textContent ?? '').toContain('driver-REF-2');
   });
 
-  it('fail-closed null coverage renders neutral (not zero) and keeps the reason', async () => {
+  it('insufficient evidence: DRIVER_EVIDENCE_INSUFFICIENT, no factors, missingSources=[BOOKING_CANCELLATIONS]', async () => {
     driverMock.mockResolvedValue({
       ok: true,
       status: 200,
-      data: driverData('none', [], { status: 'UNAVAILABLE', reason: 'PSEUDONYMIZATION_UNAVAILABLE', coverage: null }),
+      data: driverData('full', [], { status: 'UNAVAILABLE', reason: 'DRIVER_EVIDENCE_INSUFFICIENT', coverage: DRIVER_COVERAGE_INSUFFICIENT }),
     });
     render();
     toggle();
     await flush();
     const cov = container.querySelector('[data-testid="evaluations-driver-coverage"]')!;
-    expect(cov.textContent ?? '').toContain('Not available for this scope');
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-available"]')?.textContent ?? '').toContain('0');
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-missing-sources"]')?.textContent ?? '').toContain('BOOKING_CANCELLATIONS');
+    expect(container.textContent ?? '').toContain('DRIVER_EVIDENCE_INSUFFICIENT');
+    expect(container.querySelectorAll('[data-testid="evaluations-driver-factor"]').length).toBe(0);
+  });
+
+  it('fail-closed PSEUDONYMIZATION_UNAVAILABLE uses the pseudonymous tier, null coverage neutral, no references', async () => {
+    driverMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: driverData('pseudonymous', [], { status: 'UNAVAILABLE', reason: 'PSEUDONYMIZATION_UNAVAILABLE', coverage: null }),
+    });
+    render();
+    toggle();
+    await flush();
+    // Pseudonymization fails only AFTER person-level access was granted → tier stays pseudonymous.
+    expect(container.querySelector('[data-testid="evaluations-driver-piitier-pseudonymous"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="evaluations-driver-coverage"]')?.textContent ?? '').toContain('Not available for this scope');
     expect(container.textContent ?? '').toContain('PSEUDONYMIZATION_UNAVAILABLE');
+    expect(container.querySelectorAll('[data-testid="evaluations-driver-factor"]').length).toBe(0);
   });
 });
 

@@ -60,8 +60,12 @@ Broader regression (finance adapter, finance navigation, legacy `FinancialInsigh
 
 ## E2E (Playwright)
 
-`E2E = ENVIRONMENT_SPECIFIC` — Playwright browsers are not installed in the Cloud Agent
-sandbox, so the flow could not be executed locally (validated in CI). Fixtures + spec
+`E2E = ENVIRONMENT_SPECIFIC_NOT_EXECUTED` — Playwright browsers are not installed in the
+Cloud Agent sandbox (`browserType.launch: Executable doesn't exist at
+…/ms-playwright/chromium_headless_shell-*/…`), so the flow could not be executed.
+**Correction (E6C.1.1):** no CI workflow runs `evaluations-flow.spec.ts` — the repo
+Playwright jobs run only `test:vehicle-detail:e2e` and `test:legal-documents:e2e` — so
+this spec is authored-but-not-executed, NOT "validated in CI". Fixtures + spec
 were updated: `evaluations-fixtures.ts` now returns a non-empty E5 quality report with
 all five dimensions, separate freshness vs business-event recency, coverage and lineage,
 plus a direct driver-analysis response and a lazy-request counter; `evaluations-flow.spec.ts`
@@ -108,8 +112,10 @@ UNIT_COVERAGE_FIELD_ASSERTION_MISSING_COUNT = 0
 DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0
 ```
 
-E2E remains `ENVIRONMENT_SPECIFIC` (no Playwright browsers in the sandbox); the fixtures
-+ flow spec (coverage assertions + full driver scenario matrix) are validated in CI.
+E2E remains `ENVIRONMENT_SPECIFIC_NOT_EXECUTED` (no Playwright browsers in the sandbox;
+no CI workflow runs the evaluations flow spec). The fixtures + flow spec (coverage
+assertions + full driver scenario matrix) are authored and type-consistent but were not
+executed.
 
 ## Required E6C counters (all 0 unless noted)
 
@@ -150,3 +156,49 @@ PRODUCTION_CONFIG_CHANGE_COUNT = 0
 PRODUCTION_DEPLOYMENT_COUNT = 0
 IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0
 ```
+
+## E6C.1.1 — Fixture Authority Verification
+
+Fixtures/tests/docs only (no runtime change). Commands + results at this revision:
+
+- `npx tsc -b` → PASS (exit 0)
+- `npx vite build` → PASS
+- `npx vitest run src/rental/lib/evaluations src/rental/components/evaluations src/rental/hooks/useEvaluationsFinanceBundle.test.tsx`
+  → `TARGETED_TEST_FILES = 12`, `TARGETED_TEST_COUNT = 105`, all PASS
+  (DataQualityPanel 12, DriverInfluenceSection 15, +others).
+- Targeted ESLint: E6C components `PASS` (0); e2e specs `PRE_EXISTING_IDENTICAL_NO_REGRESSION`
+  (2 pre-existing `no-empty-pattern` in E6B `beforeEach(({}, …))`, zero new).
+- `npm run test:evaluations:e2e:flow` → `EVALUATIONS_E2E_STATUS =
+  ENVIRONMENT_SPECIFIC_NOT_EXECUTED`; exact error:
+  `browserType.launch: Executable doesn't exist at …/ms-playwright/chromium_headless_shell-1169/chrome-linux/headless_shell`.
+  No CI workflow runs this spec (CI Playwright = vehicle-detail + legal-documents only).
+
+Authority-alignment counters (verified 0):
+```
+NONCANONICAL_DRIVER_UNIT_FIXTURE_COUNT = 0
+NONCANONICAL_DRIVER_E2E_FIXTURE_COUNT = 0
+NONCANONICAL_QUALITY_UNIT_FIXTURE_COUNT = 0
+NONCANONICAL_QUALITY_E2E_FIXTURE_COUNT = 0
+IMPOSSIBLE_PII_TIER_REASON_UNIT_PAIR_COUNT = 0
+IMPOSSIBLE_PII_TIER_REASON_E2E_PAIR_COUNT = 0
+FAIL_CLOSED_PII_TIER_ASSERTION_MISSING_COUNT = 0
+DRIVER_FIXTURE_UNKNOWN_CAST_COUNT = 0
+QUALITY_SCOPE_CONTRADICTION_COUNT = 0
+INVALID_EVALUATIONS_COVERAGE_UNIT_FIXTURE_COUNT = 0
+INVALID_EVALUATIONS_COVERAGE_E2E_FIXTURE_COUNT = 0
+QUALITY_REQUIRED_SOURCE_MISSING_SOURCE_COLLAPSE_COUNT = 0
+GENERIC_404_FEATURE_DISABLED_REGRESSION_COUNT = 0
+PRODUCTION_RUNTIME_CHANGE_COUNT = 0
+BACKEND_RUNTIME_CHANGE_COUNT = 0
+API_RUNTIME_CHANGE_COUNT = 0
+HOOK_RUNTIME_CHANGE_COUNT = 0
+CANONICAL_CONTRACT_CHANGE_COUNT = 0
+PRODUCTION_CONFIG_CHANGE_COUNT = 0
+PRODUCTION_DEPLOYMENT_COUNT = 0
+E7_RUNTIME_SCOPE_COUNT = 0
+E8_RUNTIME_SCOPE_COUNT = 0
+E9_RUNTIME_SCOPE_COUNT = 0
+IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0
+```
+
+`EVALUATIONS_E2E_STATUS = ENVIRONMENT_SPECIFIC_NOT_EXECUTED`.

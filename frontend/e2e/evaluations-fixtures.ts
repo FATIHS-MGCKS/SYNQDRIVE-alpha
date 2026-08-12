@@ -5,6 +5,7 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
+import type { EvaluationsDataCoverage } from '../src/rental/lib/evaluations/evaluations-canonical.types';
 
 export { assertNoHorizontalOverflow };
 
@@ -213,18 +214,18 @@ function canonicalQualityReport() {
     calculationVersion: 'evaluations-quality-e5-v2',
     sections: [
       {
-        section: 'finance',
-        status: 'PARTIAL',
-        // All five E5 dimensions present with distinct states.
+        // Served org-scoped section carrying canonical non-null coverage (finance
+        // coverage is ALWAYS null per the E5 service, so utilization is used here).
+        section: 'utilization',
+        status: 'AVAILABLE',
         dimensions: {
           FRESHNESS: 'UNKNOWN',
           COMPLETENESS: 'PARTIAL',
-          PROVENANCE: 'COMPLETE',
-          VALIDITY: 'UNAVAILABLE',
+          PROVENANCE: 'COMPLETE', // both required lineages present
+          VALIDITY: 'UNKNOWN', // no independent validity authority
           TEMPORAL_APPLICABILITY: 'COMPLETE',
         },
-        // Current E5.1A authority: no ingestion watermark → pipeline freshness UNKNOWN
-        // with all source/import timestamps null (business recency is separate).
+        // E5.1A: pipeline freshness UNKNOWN, all timestamps null (business recency separate).
         freshness: {
           newestSourceAt: null,
           oldestSourceAt: null,
@@ -233,32 +234,34 @@ function canonicalQualityReport() {
           state: 'UNKNOWN',
         },
         businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
-        // All five canonical coverage fields (incl. missingSources — distinct from
-        // requiredSourceClasses below).
-        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 5, ratio: 0.8, missingSources: ['FINANCE_PAYMENT'] },
-        requiredSourceClasses: ['FINANCE_INVOICE'],
+        // All five canonical coverage fields; missingSources are analytical limitations
+        // (distinct from requiredSourceClasses).
+        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 20, ratio: 0.8, missingSources: ['SCHEDULED_OCCUPANCY_NOT_ACTUAL', 'VEHICLE_ELIGIBILITY_HISTORY', 'BLOCKED_HISTORY'] } satisfies EvaluationsDataCoverage,
+        requiredSourceClasses: ['BOOKINGS', 'MAINTENANCE'],
         lineage: [
-          { sourceCategory: 'FINANCE_INVOICE', sourceRef: 'src::opaque::e2e1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'BOOKINGS', sourceRef: 'src::opaque::bk1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'MAINTENANCE', sourceRef: 'src::opaque::mt1', effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
         ],
         reason: null,
       },
       {
-        // Station-scoped nulls render neutrally.
-        section: 'utilization',
+        // Backend-reachable UNAVAILABLE section (same org scope; NOT station-scoped):
+        // finance coverage is null; dimensions stay UNAVAILABLE (never healthy/zero).
+        section: 'finance',
         status: 'UNAVAILABLE',
         dimensions: {
           FRESHNESS: 'UNAVAILABLE',
-          COMPLETENESS: 'UNKNOWN',
-          PROVENANCE: 'UNKNOWN',
-          VALIDITY: 'UNKNOWN',
-          TEMPORAL_APPLICABILITY: 'UNKNOWN',
+          COMPLETENESS: 'UNAVAILABLE',
+          PROVENANCE: 'UNAVAILABLE',
+          VALIDITY: 'UNAVAILABLE',
+          TEMPORAL_APPLICABILITY: 'UNAVAILABLE',
         },
         freshness: null,
         businessEventRecency: null,
         coverage: null,
-        requiredSourceClasses: [],
+        requiredSourceClasses: ['FINANCE_INVOICE', 'FINANCE_PAYMENT'],
         lineage: [],
-        reason: 'STATION_SCOPE_UNAVAILABLE',
+        reason: 'SECTION_UNAVAILABLE',
       },
     ],
     overall: { status: 'PARTIAL', complete: false, reason: 'QUALITY_INCOMPLETE' },
@@ -267,14 +270,16 @@ function canonicalQualityReport() {
 
 export type EvaluationsDriverScenario = 'full' | 'pseudonymous' | 'none' | 'failClosed' | 'notFound';
 
-// Canonical driver coverage — all five fields (null expected/ratio stay unavailable).
+// Canonical AVAILABLE driver coverage: availableRecords === factor count (2),
+// excludedRecords === unattributed count, expected/ratio null, missingSources empty
+// (the only observed dimension BOOKING_CANCELLATIONS was analyzed, not skipped).
 const CANON_DRIVER_COVERAGE = {
   expectedRecords: null,
-  availableRecords: 12,
+  availableRecords: 2,
   excludedRecords: 3,
   ratio: null,
-  missingSources: ['TELEMETRY_SEGMENT', 'DRIVER_LINEAGE'],
-};
+  missingSources: [],
+} satisfies EvaluationsDataCoverage;
 
 // E6C: direct E5B driver-analysis response (separate from the summary's embedded slice).
 function canonicalDriverInfluence(scenario: EvaluationsDriverScenario) {
@@ -290,11 +295,12 @@ function canonicalDriverInfluence(scenario: EvaluationsDriverScenario) {
     return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PERSON_LEVEL_ACCESS_DENIED', factors: [], piiTier: 'none' };
   }
   if (scenario === 'failClosed') {
-    return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PSEUDONYMIZATION_UNAVAILABLE', factors: [], piiTier: 'none' };
+    // Pseudonymization fails only AFTER person-level access is granted → tier stays pseudonymous.
+    return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PSEUDONYMIZATION_UNAVAILABLE', factors: [], piiTier: 'pseudonymous' };
   }
   const factors = [
-    { driverRef: scenario === 'full' ? 'driver::raw::A' : 'driver::pseudo::A', associatedDimension: 'HARSH_BRAKING', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
-    { driverRef: scenario === 'full' ? 'driver::raw::B' : 'driver::pseudo::B', associatedDimension: 'IDLING', associationShare: 0.4, sampleSize: 18, relationship: 'CORRELATES_WITH' },
+    { driverRef: scenario === 'full' ? 'driver::raw::A' : 'driver::pseudo::A', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
+    { driverRef: scenario === 'full' ? 'driver::raw::B' : 'driver::pseudo::B', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 18, relationship: 'ASSOCIATED_WITH' },
   ];
   return {
     ...base,

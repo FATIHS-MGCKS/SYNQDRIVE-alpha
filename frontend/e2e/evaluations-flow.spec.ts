@@ -37,11 +37,13 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     // No E7 (recommendations/actions) or E8/E9 (forecast/prediction) surfaces.
     await expect(page.getByText(/Empfohlene Maßnahmen|Maßnahmen-Center|Prognose|Forecast|MoM revenue/i)).toHaveCount(0);
 
-    // E6C: Data Quality panel is present and loaded with the page, with full coverage.
+    // E6C: Data Quality panel is present and loaded with the page, with full coverage
+    // on the served (utilization) section; required vs missing sources stay distinct.
     const quality = page.getByTestId('evaluations-data-quality');
     await expect(quality).toBeVisible();
-    await expect(quality.getByTestId('evaluations-quality-coverage-excluded').first()).toContainText('5');
-    await expect(quality.getByTestId('evaluations-quality-coverage-missing-sources').first()).toContainText('FINANCE_PAYMENT');
+    await expect(quality.getByTestId('evaluations-quality-coverage-excluded').first()).toContainText('20');
+    await expect(quality.getByTestId('evaluations-quality-coverage-missing-sources').first()).toContainText('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
+    await expect(quality.getByTestId('evaluations-quality-section-utilization')).toContainText('BOOKINGS'); // required source (distinct)
 
     await assertNoHorizontalOverflow(page);
   });
@@ -58,11 +60,12 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     await expect(page.getByTestId('evaluations-driver-content')).toBeVisible();
     expect(getDriverAnalysisRequestCount()).toBe(1);
 
-    // Driver coverage renders excluded records + missing sources.
+    // Driver coverage: availableRecords === factor count (2), excluded records, and the
+    // canonical "no missing sources" state (analyzed dimension is not skipped).
     const cov = page.getByTestId('evaluations-driver-coverage');
-    await expect(cov.getByTestId('evaluations-driver-coverage-available')).toContainText('12');
+    await expect(cov.getByTestId('evaluations-driver-coverage-available')).toContainText('2');
     await expect(cov.getByTestId('evaluations-driver-coverage-excluded')).toContainText('3');
-    await expect(cov.getByTestId('evaluations-driver-coverage-missing-sources')).toContainText('TELEMETRY_SEGMENT');
+    await expect(cov.getByTestId('evaluations-driver-coverage-missing-sources')).toContainText('No missing sources reported');
 
     // Collapse + reopen must not refetch.
     await page.getByTestId('evaluations-driver-toggle').click();
@@ -96,12 +99,14 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     await expect(page.getByTestId('evaluations-driver')).toContainText('PERSON_LEVEL_ACCESS_DENIED');
     await expect(page.getByTestId('evaluations-driver')).not.toContainText('driver::');
 
-    // fail-closed → reason visible, no reference
+    // fail-closed → pseudonymous tier badge + reason visible, no reference
     setDriverScenario('failClosed');
     await openEvaluationsPage(page, { profile: 'full-org' });
     setDriverScenario('failClosed');
     await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver-piitier-pseudonymous')).toBeVisible();
     await expect(page.getByTestId('evaluations-driver')).toContainText('PSEUDONYMIZATION_UNAVAILABLE');
+    await expect(page.getByTestId('evaluations-driver')).not.toContainText('driver::');
 
     // generic 404 → neutral unavailable, never "disabled"
     setDriverScenario('notFound');

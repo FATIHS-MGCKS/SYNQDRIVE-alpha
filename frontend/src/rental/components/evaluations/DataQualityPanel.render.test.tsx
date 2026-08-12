@@ -8,16 +8,32 @@ import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-r
 import type {
   EvaluationsQualityReport,
   EvaluationsDataCoverage,
+  EvaluationsPeriodWindow,
 } from '../../lib/evaluations/evaluations-canonical.types';
 
-// Canonical coverage fixture — every field present, validated by the contract type
-// (no `as unknown` hiding an incomplete object).
-const COVERAGE_FINANCE = {
+const PERIOD = {
+  periodType: 'MTD',
+  start: '2026-06-01T00:00:00.000Z',
+  endExclusive: '2026-07-01T00:00:00.000Z',
+  reference: '2026-06-16T12:00:00.000Z',
+  timezone: {
+    effectiveTimezone: 'Europe/Berlin',
+    source: 'ORGANIZATION',
+    reportTimezone: null,
+    stationTimezone: null,
+    organizationTimezone: 'Europe/Berlin',
+  },
+  comparisonBasis: null,
+} satisfies EvaluationsPeriodWindow;
+
+// Backend-reachable non-null coverage lives on the utilization section (finance
+// coverage is ALWAYS null per the E5 service). Every field present + validated.
+const COVERAGE_UTILIZATION = {
   expectedRecords: 100,
   availableRecords: 80,
-  excludedRecords: 5,
+  excludedRecords: 20,
   ratio: 0.8,
-  missingSources: ['FINANCE_PAYMENT'],
+  missingSources: ['SCHEDULED_OCCUPANCY_NOT_ACTUAL', 'VEHICLE_ELIGIBILITY_HISTORY', 'BLOCKED_HISTORY'],
 } satisfies EvaluationsDataCoverage;
 
 let container: HTMLDivElement;
@@ -46,21 +62,24 @@ function report(): EvaluationsQualityReport {
   return {
     schemaVersion: '1.0.0',
     generatedAt: '2026-06-16T12:00:00.000Z',
+    // One canonical org scope for the whole report (no per-section station scope).
     scope: { organizationId: 'org-a', stationIds: null, stationScoped: false },
-    period: {},
+    period: PERIOD,
     calculationVersion: 'evaluations-quality-e5-v2',
     sections: [
       {
-        section: 'finance',
-        status: 'PARTIAL',
+        // Served org-scoped section carrying canonical non-null coverage.
+        section: 'utilization',
+        status: 'AVAILABLE',
         dimensions: {
-          FRESHNESS: 'UNKNOWN',
+          FRESHNESS: 'UNKNOWN', // no ingestion authority → UNKNOWN (never COMPLETE)
           COMPLETENESS: 'PARTIAL',
-          PROVENANCE: 'COMPLETE',
-          VALIDITY: 'UNAVAILABLE',
+          PROVENANCE: 'COMPLETE', // COMPLETE because both required lineages exist
+          VALIDITY: 'UNKNOWN', // no independent validity authority → UNKNOWN
           TEMPORAL_APPLICABILITY: 'COMPLETE',
         },
-        // Pipeline freshness UNKNOWN even though business events are recent.
+        // Pipeline freshness UNKNOWN with all timestamps null (E5.1A authority),
+        // separate from the recent business-event recency below.
         freshness: {
           newestSourceAt: null,
           oldestSourceAt: null,
@@ -69,34 +88,36 @@ function report(): EvaluationsQualityReport {
           state: 'UNKNOWN',
         },
         businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
-        coverage: COVERAGE_FINANCE,
-        requiredSourceClasses: ['OrgInvoice'],
+        coverage: COVERAGE_UTILIZATION,
+        requiredSourceClasses: ['BOOKINGS', 'MAINTENANCE'],
         lineage: [
-          { sourceCategory: 'OrgInvoice', sourceRef: 'src::opaque::abc123', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'primary' },
+          { sourceCategory: 'BOOKINGS', sourceRef: 'src::opaque::bk1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'MAINTENANCE', sourceRef: 'src::opaque::mt1', effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
         ],
         reason: null,
       },
       {
-        // Station-scoped: freshness/recency/lineage null/empty; coverage null.
-        section: 'utilization',
+        // Backend-reachable UNAVAILABLE section: null coverage; dimensions stay
+        // UNAVAILABLE (never healthy/zero), same org scope (not station-scoped).
+        section: 'finance',
         status: 'UNAVAILABLE',
         dimensions: {
           FRESHNESS: 'UNAVAILABLE',
-          COMPLETENESS: 'UNKNOWN',
-          PROVENANCE: 'UNKNOWN',
-          VALIDITY: 'UNKNOWN',
-          TEMPORAL_APPLICABILITY: 'UNKNOWN',
+          COMPLETENESS: 'UNAVAILABLE',
+          PROVENANCE: 'UNAVAILABLE',
+          VALIDITY: 'UNAVAILABLE',
+          TEMPORAL_APPLICABILITY: 'UNAVAILABLE',
         },
         freshness: null,
         businessEventRecency: null,
         coverage: null,
-        requiredSourceClasses: [],
+        requiredSourceClasses: ['FINANCE_INVOICE', 'FINANCE_PAYMENT'],
         lineage: [],
-        reason: 'STATION_SCOPE_UNAVAILABLE',
+        reason: 'SECTION_UNAVAILABLE',
       },
     ],
     overall: { status: 'PARTIAL', complete: false, reason: 'QUALITY_INCOMPLETE' },
-  } as unknown as EvaluationsQualityReport;
+  };
 }
 
 describe('E6C DataQualityPanel', () => {
@@ -109,11 +130,11 @@ describe('E6C DataQualityPanel', () => {
 
   it('UNKNOWN dimension does not become COMPLETE/healthy; UNAVAILABLE is not zero', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const financeCard = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
-    const text = financeCard.textContent ?? '';
-    expect(text).toContain('Unknown'); // FRESHNESS: UNKNOWN
-    expect(text).toContain('Unavailable'); // VALIDITY: UNAVAILABLE
-    expect(text).not.toContain('0.00');
+    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
+    expect(util.textContent ?? '').toContain('Unknown'); // FRESHNESS/VALIDITY: UNKNOWN
+    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
+    expect(finance.textContent ?? '').toContain('Unavailable'); // UNAVAILABLE section dims
+    expect(finance.textContent ?? '').not.toContain('0.00');
   });
 
   it('shows no global/aggregate quality score', () => {
@@ -132,48 +153,51 @@ describe('E6C DataQualityPanel', () => {
 
   it('unknown pipeline freshness stays UNKNOWN even when business events are recent', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
+    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
     // Freshness badge is the UNKNOWN state, not derived FRESH from recent business events.
-    expect(finance.querySelector('[data-testid="evaluations-quality-freshness-UNKNOWN"]')).not.toBeNull();
-    expect(finance.querySelector('[data-testid="evaluations-quality-freshness-FRESH"]')).toBeNull();
+    expect(util.querySelector('[data-testid="evaluations-quality-freshness-UNKNOWN"]')).not.toBeNull();
+    expect(util.querySelector('[data-testid="evaluations-quality-freshness-FRESH"]')).toBeNull();
   });
 
-  it('null station-scoped freshness/recency/lineage render neutrally (not healthy/zero)', () => {
+  it('null (org-scoped) freshness/recency/lineage on an UNAVAILABLE section render neutrally (not healthy/zero)', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
-    const text = util.textContent ?? '';
+    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
+    const text = finance.textContent ?? '';
     expect(text).toContain('Not available for this scope');
     // Null freshness must not be rendered as a FRESH pipeline state.
-    expect(util.querySelector('[data-testid="evaluations-quality-freshness-FRESH"]')).toBeNull();
+    expect(finance.querySelector('[data-testid="evaluations-quality-freshness-FRESH"]')).toBeNull();
   });
 
   it('coverage null renders unavailable, not zero', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
-    const cov = util.querySelector('[data-testid="evaluations-quality-coverage"]')!;
+    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
+    const cov = finance.querySelector('[data-testid="evaluations-quality-coverage"]')!;
     expect(cov.textContent ?? '').not.toContain('0%');
     expect(cov.textContent ?? '').toContain('Not available for this scope');
   });
 
-  it('renders every canonical coverage field (expected/available/excluded/ratio/missingSources)', () => {
+  it('renders every canonical coverage field (expected/available/excluded/ratio/missingSources) in server order', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
-    const cov = finance.querySelector('[data-testid="evaluations-quality-coverage"]')!;
+    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
+    const cov = util.querySelector('[data-testid="evaluations-quality-coverage"]')!;
     expect(cov.querySelector('[data-testid="evaluations-quality-coverage-expected"]')?.textContent ?? '').toContain('100');
     expect(cov.querySelector('[data-testid="evaluations-quality-coverage-available"]')?.textContent ?? '').toContain('80');
-    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-excluded"]')?.textContent ?? '').toContain('5');
+    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-excluded"]')?.textContent ?? '').toContain('20');
     expect(cov.querySelector('[data-testid="evaluations-quality-coverage-ratio"]')?.textContent ?? '').toContain('80%');
-    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-missing-sources"]')?.textContent ?? '').toContain('FINANCE_PAYMENT');
+    const missing = cov.querySelector('[data-testid="evaluations-quality-coverage-missing-sources"]')?.textContent ?? '';
+    expect(missing).toContain('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
+    expect(missing.indexOf('SCHEDULED_OCCUPANCY_NOT_ACTUAL')).toBeLessThan(missing.indexOf('BLOCKED_HISTORY')); // server order
   });
 
   it('keeps requiredSourceClasses and coverage.missingSources distinguishable', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
-    const text = finance.textContent ?? '';
+    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
+    const text = util.textContent ?? '';
     expect(text).toContain('Required sources'); // requiredSourceClasses label
     expect(text).toContain('Missing sources'); // coverage.missingSources label
-    expect(text).toContain('OrgInvoice'); // required source class (distinct)
-    expect(text).toContain('FINANCE_PAYMENT'); // missing source (distinct)
+    expect(text).toContain('BOOKINGS'); // required source class (distinct)
+    expect(text).toContain('MAINTENANCE'); // required source class (distinct)
+    expect(text).toContain('SCHEDULED_OCCUPANCY_NOT_ACTUAL'); // missing source (distinct concept)
   });
 
   it('renders lineage calculationVersion', () => {
@@ -184,8 +208,8 @@ describe('E6C DataQualityPanel', () => {
 
   it('lineage sourceRef is shown verbatim without entity reconstruction', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
-    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
-    expect(finance.querySelector('[data-testid="evaluations-quality-lineage"]')?.textContent ?? '').toContain('src::opaque::abc123');
+    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
+    expect(util.querySelector('[data-testid="evaluations-quality-lineage"]')?.textContent ?? '').toContain('src::opaque::bk1');
   });
 
   it('generic 404 renders neutral NOT_FOUND copy (never feature disabled)', () => {
