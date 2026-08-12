@@ -161,8 +161,14 @@ function buildService(overrides: {
     ...overrides.repo,
   } as never;
   const privacy = { resolvePiiTier: jest.fn().mockResolvedValue(overrides.piiTier ?? 'full') };
-  const service = new EvaluationsInsightsService(financeMock as never, repo as never, privacy as never);
-  return { service, financeMock, privacy, repo: repo as unknown as Record<string, jest.Mock> };
+  const audit = { recordPersonLevelAccess: jest.fn().mockResolvedValue(undefined) };
+  const service = new EvaluationsInsightsService(
+    financeMock as never,
+    repo as never,
+    privacy as never,
+    audit as never,
+  );
+  return { service, financeMock, privacy, audit, repo: repo as unknown as Record<string, jest.Mock> };
 }
 
 describe('EvaluationsInsightsService — org scope', () => {
@@ -395,13 +401,33 @@ describe('EvaluationsInsightsService — E5B person-level privacy gating', () =>
   });
 
   it('none tier denies person-level access server-side (UNAVAILABLE, no factors)', async () => {
-    const { service } = buildService({ piiTier: 'none' });
+    const { service, audit } = buildService({ piiTier: 'none' });
     const driver = await service.getDriverInfluence(orgScope, actor, GEN);
     expect(driver.piiTier).toBe('none');
     expect(driver.status).toBe('UNAVAILABLE');
     expect(driver.reason).toBe('PERSON_LEVEL_ACCESS_DENIED');
     expect(driver.factors).toEqual([]);
     expect(JSON.stringify(driver)).not.toContain('driver-a');
+    // E5C: denied access recorded honestly, actor from server context, no PII.
+    expect(audit.recordPersonLevelAccess).toHaveBeenCalledTimes(1);
+    const rec = audit.recordPersonLevelAccess.mock.calls[0][0];
+    expect(rec.result).toBe('DENIED');
+    expect(rec.actorUserId).toBe('user-1');
+    expect(rec.organizationId).toBe('org-a');
+    expect(JSON.stringify(rec)).not.toContain('driver-a');
+  });
+
+  it('E5C: authorized person-level access records SUCCEEDED with non-PII metadata only', async () => {
+    const { service, audit } = buildService({ piiTier: 'full' });
+    await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(audit.recordPersonLevelAccess).toHaveBeenCalledTimes(1);
+    const rec = audit.recordPersonLevelAccess.mock.calls[0][0];
+    expect(rec.result).toBe('SUCCEEDED');
+    expect(rec.actorUserId).toBe('user-1');
+    expect(rec.piiTier).toBe('full');
+    // Records only aggregate counts + tier — never driver identifiers.
+    expect(JSON.stringify(rec)).not.toContain('driver-a');
+    expect(JSON.stringify(rec)).not.toContain('driver-b');
   });
 
   it('summary applies the same person-level gate to its driverInfluence section', async () => {
