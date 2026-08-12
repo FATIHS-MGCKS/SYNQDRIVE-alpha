@@ -39,4 +39,18 @@ costs UNSUPPORTED (no fabricated accrual / reporting-currency reinterpretation).
 - IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0
 - RUNTIME_CHANGE_COUNT = 0 / TEST_CHANGE_COUNT = 0 / CONFIG_CHANGE_COUNT = 0 / MIGRATION_CHANGE_COUNT = 0
 
+## E6.0.2.2 push verification (2026-08-12)
+
+The three PR #798 salvage rows (`EvaluationsRiskCostVizPanel`,
+`EvaluationsRiskCostCharts`, `evaluations-risk-cost-visualizations.ts`) were further
+reworded so the CSV no longer contains the literal stale phrases even inside the
+correction annotations. Exact-string greps now return zero matches:
+- "cost/downtime viz orchestration is E6-safe" → 0
+- "cost/pareto/downtime charts = E6" → 0
+- "cost/downtime resolvers within are E6-safe" → 0
+Symbol-level #798 authority rows (OPERATING_EXPENSES canonical Money; maintenance/
+damage/fixed → STATUS_ONLY; Pareto/waterfall/aging → UNSAFE_LEGACY; estimatedExposure
++ probability/confidence/risk → E8; forecast → E9; chart shells → ADAPT/GENERIC) remain
+intact. Docs-only; no runtime/test/config/migration change.
+
 Status: E6_READY_FOR_IMPLEMENTATION
