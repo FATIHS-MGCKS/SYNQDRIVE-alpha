@@ -186,6 +186,41 @@ NEW_E5_FAILURE_COUNT = 0; UNKNOWN_COUNT = 0.
 | NEW_E5_FAILURE_COUNT | 0 |
 | UNKNOWN_COUNT | 0 |
 
+## 12b. Exact-head CI classification
+
+CHECK_RUN_HEAD_SHA = `3a0460ec5facc7d843620cc147d79e8820d96754` (== PR headRefOid).
+Two production-readiness CI workflows run per PR ("Vehicle Detail" and "Legal
+Documents"). Red checks on the PR head, each classified against baseline A
+(`CURRENT_MAIN_SHA 960365a9`, whose own CI runs are `failure`):
+
+| Check | PR result | Baseline A (main 960365a9) | Classification |
+|-------|-----------|-----------------------------|----------------|
+| Typecheck | fail | fail (both workflows) | PRE_EXISTING_IDENTICAL |
+| Lint (`lint:all`) | fail | fail | PRE_EXISTING_IDENTICAL |
+| Backend integration tests | fail | fail | PRE_EXISTING_IDENTICAL |
+| Migration tests (PostgreSQL) | fail | fail | PRE_EXISTING_IDENTICAL |
+| Security / dependency scan | fail | fail | PRE_EXISTING_IDENTICAL |
+| Playwright E2E (Vehicle Detail) | fail | fail | PRE_EXISTING_IDENTICAL |
+
+Evidence details:
+- CI `Typecheck` runs `tsc --noEmit -p tsconfig.json` (includes spec files). The
+  only errors are in `billing/stripe-webhook.characterization.spec.ts`,
+  `billing/stripe-webhook.service.spec.ts`, and
+  `workflows/workflow-dry-run.service.spec.ts` — non-evaluations files the E5
+  branch does not touch. The backend production typecheck used for the E5 gate
+  (`tsc -p tsconfig.build.json --noEmit`) passes with 0 errors.
+- CI `Lint` (`lint:all`, whole repo) fails on pre-existing `no-control-regex`,
+  `no-useless-catch`, and `no-fallthrough` in non-E5 files; the targeted E5 lint
+  passes with 0.
+- `Security / dependency scan` fails on pre-existing transitive dependency
+  vulnerabilities (`@nestjs/*`, `express`, `multer`) unrelated to E5.
+- `git diff --name-only origin/main...HEAD` touches only `backend/.env.example`,
+  `backend/src/modules/evaluations-analytics/**`, and `docs/**` — none of the
+  files implicated by any red check.
+
+The failing job set is identical to main's. NEW_E5_FAILURE_COUNT (CI) = 0;
+UNKNOWN_COUNT (CI) = 0.
+
 ## 13. Runtime freeze
 
 No runtime/test changes were made during this acceptance pass. TESTED_CODE_SHA =
