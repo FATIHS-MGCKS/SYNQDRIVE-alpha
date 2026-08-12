@@ -96,11 +96,18 @@ const state = {
   canonicalFeatureDisabled: false,
   // E6C: counts direct driver-analysis requests (lazy-reveal assertion).
   driverAnalysisRequestCount: 0,
+  // E6C.1: which driver scenario the driver-analysis route serves.
+  driverScenario: 'pseudonymous' as EvaluationsDriverScenario,
 };
 
 /** Toggle the canonical E4/E5 feature-disabled (generic 404) behavior for a test. */
 export function setCanonicalFeatureDisabled(disabled: boolean) {
   state.canonicalFeatureDisabled = disabled;
+}
+
+/** E6C.1: select which driver-analysis scenario the mock serves. */
+export function setDriverScenario(scenario: EvaluationsDriverScenario) {
+  state.driverScenario = scenario;
 }
 
 /** E6C: number of direct driver-analysis requests observed since the last reset. */
@@ -216,19 +223,22 @@ function canonicalQualityReport() {
           VALIDITY: 'UNAVAILABLE',
           TEMPORAL_APPLICABILITY: 'COMPLETE',
         },
-        // Pipeline freshness (separate from business-event recency).
+        // Current E5.1A authority: no ingestion watermark → pipeline freshness UNKNOWN
+        // with all source/import timestamps null (business recency is separate).
         freshness: {
           newestSourceAt: null,
           oldestSourceAt: null,
-          lastSuccessfulImportAt: '2026-06-16T06:00:00.000Z',
+          lastSuccessfulImportAt: null,
           evaluatedAt: EVAL_E2E_FIXED_NOW,
           state: 'UNKNOWN',
         },
         businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
-        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 0, ratio: 0.8 },
-        requiredSourceClasses: ['OrgInvoice'],
+        // All five canonical coverage fields (incl. missingSources — distinct from
+        // requiredSourceClasses below).
+        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 5, ratio: 0.8, missingSources: ['FINANCE_PAYMENT'] },
+        requiredSourceClasses: ['FINANCE_INVOICE'],
         lineage: [
-          { sourceCategory: 'OrgInvoice', sourceRef: 'src::opaque::e2e1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'v', reason: 'primary' },
+          { sourceCategory: 'FINANCE_INVOICE', sourceRef: 'src::opaque::e2e1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
         ],
         reason: null,
       },
@@ -255,23 +265,44 @@ function canonicalQualityReport() {
   };
 }
 
+export type EvaluationsDriverScenario = 'full' | 'pseudonymous' | 'none' | 'failClosed' | 'notFound';
+
+// Canonical driver coverage — all five fields (null expected/ratio stay unavailable).
+const CANON_DRIVER_COVERAGE = {
+  expectedRecords: null,
+  availableRecords: 12,
+  excludedRecords: 3,
+  ratio: null,
+  missingSources: ['TELEMETRY_SEGMENT', 'DRIVER_LINEAGE'],
+};
+
 // E6C: direct E5B driver-analysis response (separate from the summary's embedded slice).
-function canonicalDriverInfluence() {
-  return {
-    status: 'AVAILABLE',
+function canonicalDriverInfluence(scenario: EvaluationsDriverScenario) {
+  const base = {
     calculationVersion: 'evaluations-driver-e5b-v1',
     period: CANON_PERIOD,
     scope: CANON_SCOPE,
-    coverage: null,
     generatedAt: EVAL_E2E_FIXED_NOW,
-    reason: null,
     disclaimer: 'Statistical association only — not causation.',
     confounders: ['seasonality', 'route mix'],
-    factors: [
-      { driverRef: 'driver::e2e::A', associatedDimension: 'HARSH_BRAKING', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
-      { driverRef: 'driver::e2e::B', associatedDimension: 'IDLING', associationShare: 0.4, sampleSize: 18, relationship: 'CORRELATES_WITH' },
-    ],
-    piiTier: 'pseudonymous',
+  };
+  if (scenario === 'none') {
+    return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PERSON_LEVEL_ACCESS_DENIED', factors: [], piiTier: 'none' };
+  }
+  if (scenario === 'failClosed') {
+    return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PSEUDONYMIZATION_UNAVAILABLE', factors: [], piiTier: 'none' };
+  }
+  const factors = [
+    { driverRef: scenario === 'full' ? 'driver::raw::A' : 'driver::pseudo::A', associatedDimension: 'HARSH_BRAKING', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
+    { driverRef: scenario === 'full' ? 'driver::raw::B' : 'driver::pseudo::B', associatedDimension: 'IDLING', associationShare: 0.4, sampleSize: 18, relationship: 'CORRELATES_WITH' },
+  ];
+  return {
+    ...base,
+    status: 'AVAILABLE',
+    coverage: CANON_DRIVER_COVERAGE,
+    reason: null,
+    factors,
+    piiTier: scenario === 'full' ? 'full' : 'pseudonymous',
   };
 }
 
@@ -486,6 +517,7 @@ export function resetEvaluationsMockState(profile: EvaluationsScenarioProfile = 
   state.insightsForbidden = false;
   state.canonicalFeatureDisabled = false;
   state.driverAnalysisRequestCount = 0;
+  state.driverScenario = 'pseudonymous';
   state.invoices = [];
   state.insights = [];
   state.customers = [];
@@ -796,10 +828,10 @@ export async function installEvaluationsMocks(
     // only fire after the explicit reveal. Count tracks lazy-request assertions.
     if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/driver-analysis`) && method === 'GET') {
       state.driverAnalysisRequestCount += 1;
-      if (state.canonicalFeatureDisabled) {
+      if (state.canonicalFeatureDisabled || state.driverScenario === 'notFound') {
         return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
       }
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalDriverInfluence()) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalDriverInfluence(state.driverScenario)) });
     }
 
     return route.continue();

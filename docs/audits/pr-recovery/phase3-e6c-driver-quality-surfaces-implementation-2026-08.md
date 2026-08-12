@@ -58,8 +58,9 @@ section, and all five E5 dimensions with a SEPARATE dimension-state vocabulary
 - Pipeline freshness (`section.freshness.state`) and business-event recency
   (`section.businessEventRecency`) are rendered as separate, explicitly-labelled blocks;
   business timestamps are never used as ingestion freshness.
-- Coverage renders supplied counts + Intl-percent ratio (presentation-only); null →
-  unavailable, never zero.
+- Coverage: see E6C.1 — the initial E6C render omitted `excludedRecords` and
+  `missingSources`; E6C.1 renders all five canonical coverage fields via the shared
+  presenter (null → unavailable, never zero).
 - Lineage preserves server order; `sourceRef` is shown verbatim as an opaque `<code>`
   reference inside a `<details>`; no entity join, no record-id reconstruction.
 - Station-scoped nulls (freshness/recency/lineage/coverage) render neutrally as
@@ -75,7 +76,9 @@ keyboard-operable button (`aria-expanded`, `aria-controls`, min 40×40px) and NO
 After reveal, renders the direct `EvaluationsDriverInfluenceSection`: canonical status,
 `piiTier` verbatim (full/pseudonymous/none), server `disclaimer` and `confounders`
 verbatim, `factors` in server order (`driverRef`, `associatedDimension`, `relationship`,
-`associationShare` via Intl percent display-only, `sampleSize`), plus coverage/reason.
+`associationShare` via Intl percent display-only, `sampleSize`), plus reason. **[Corrected
+in E6C.1: the initial E6C did NOT render `data.coverage`; E6C.1 renders it via the shared
+coverage presenter, independent of the factor list/reason.]**
 - `piiTier = none` exposes no factor references (qualified restricted copy).
 - Empty factors → qualified neutral copy ("no reportable factors…"), never "no driver
   influence/blame".
@@ -120,3 +123,36 @@ recommendations/actions/estimatedExposure/forecast/prediction introduced.
 ## 11. Explicit exclusions
 E7 (recommendations/actions), E8 (predictive risk / estimatedExposure), E9 (forecast),
 and full E6D visual/a11y migration are explicitly not implemented.
+
+## E6C.1 — Canonical Evidence Completeness Closure
+
+Independent review found three evidence-completeness blockers; all fixed (presentation/
+tests/i18n only — no backend, no canonical contract, no business/privacy authority):
+
+- A shared display-only presenter `EvaluationsCoverageDetails.tsx` renders EVERY
+  canonical `EvaluationsDataCoverage` field (`expectedRecords`, `availableRecords`,
+  `excludedRecords`, `ratio`, `missingSources`); null → unavailable (never zero); ratio
+  is Intl-percent display-only; `missingSources` order preserved; no replacement ratio.
+  Reused by both surfaces (`COVERAGE_COMPONENT_DUPLICATION_COUNT = 0`).
+- Data Quality: coverage now renders all canonical fields (previously omitted
+  `excludedRecords`/`missingSources`); `requiredSourceClasses` stays a DISTINCT block
+  from `coverage.missingSources`; lineage now renders every `E5LineageRef` field
+  including `calculationVersion`. (`QUALITY_COVERAGE_FIELD_OMISSION_COUNT = 0`,
+  `LINEAGE_FIELD_OMISSION_COUNT = 0`,
+  `QUALITY_REQUIRED_SOURCE_MISSING_SOURCE_COLLAPSE_COUNT = 0`.)
+- Driver Influence now renders `data.coverage` via the same presenter, independent of
+  the factor list/reason (`DRIVER_COVERAGE_FIELD_OMISSION_COUNT = 0`). All prior E6C
+  guarantees preserved: lazy request (0 before reveal, 1 after, no refetch on
+  collapse/reopen), server factor order, server-authoritative `piiTier`, no identity
+  join, none-tier hides references, association-only wording, generic 404 → NOT_FOUND.
+- Fixtures corrected: unit coverage fixtures declare `satisfies EvaluationsDataCoverage`
+  (no `as unknown` hiding an incomplete object); E5 freshness fixtures match current
+  E5.1A authority (pipeline freshness UNKNOWN with `newestSourceAt`/`oldestSourceAt`/
+  `lastSuccessfulImportAt = null`, `evaluatedAt` = fixed test time), business recency
+  kept separate; canonical source categories (`FINANCE_INVOICE`/`FINANCE_PAYMENT`) and a
+  current-authority lineage reason (`SOURCE_CLASS_BUSINESS_EVENT_RECENCY`). Driver E2E
+  scenario matrix complete: full / pseudonymous / none (PERSON_LEVEL_ACCESS_DENIED) /
+  fail-closed (PSEUDONYMIZATION_UNAVAILABLE) / generic-404, with non-null canonical
+  coverage on the available scenarios (`MISSING_DRIVER_E2E_SCENARIO_COUNT = 0`).
+- `DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0` (the two inaccurate E6C claims above are marked
+  corrected). No E7/E8/E9, no `api.ts`/canonical hook/`EvaluationsPage` composition change.

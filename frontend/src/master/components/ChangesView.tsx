@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e6c1-canonical-evidence-completeness-2026-08-12',
+    version: '4.9.893',
+    title: 'V4.9.893 — Evaluations E6C.1: canonical coverage + lineage evidence completeness',
+    summary: [
+      'Shared display-only coverage presenter renders every canonical EvaluationsDataCoverage field (expected/available/excluded/ratio/missingSources); null never becomes zero.',
+      'Data Quality now shows excludedRecords + missingSources (kept distinct from requiredSourceClasses) and lineage calculationVersion.',
+      'Driver Influence now renders canonical coverage independently of factors/reason; all prior lazy/privacy/association-only guarantees preserved.',
+      'Unit fixtures use `satisfies EvaluationsDataCoverage`; E2E quality/driver fixtures satisfy the coverage contract, use E5.1A-authoritative UNKNOWN pipeline freshness, and add the full driver scenario matrix (full/pseudonymous/none/fail-closed/404).',
+    ],
+    reason:
+      'Independent review found E6C omitted canonical coverage/lineage evidence; E6C.1 closes the evidence-completeness gap (presentation/tests only).',
+    previousBehavior:
+      'E6C rendered partial quality coverage (no excluded/missing sources), omitted lineage calculationVersion, and did not render Driver coverage.',
+    details:
+      'frontend/src/rental/components/evaluations/{EvaluationsCoverageDetails,DataQualityPanel,DriverInfluenceSection}.*, i18n evaluations.coverage.*, e2e evaluations-{fixtures,flow}, docs/audits/pr-recovery/phase3-e6c-*',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-12T22:20:00.000Z',
+  },
+  {
     id: 'evaluations-e6c-driver-quality-surfaces-2026-08-12',
     version: '4.9.892',
     title: 'V4.9.892 — Evaluations E6C: Driver Influence UI + Data Quality panel',

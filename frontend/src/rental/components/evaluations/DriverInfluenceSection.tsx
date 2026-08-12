@@ -20,6 +20,7 @@ import type {
   E4DriverFactor,
 } from '../../lib/evaluations/evaluations-canonical.types';
 import { MetricStatusBadge } from './MetricStatusBadge';
+import { EvaluationsCoverageDetails } from './EvaluationsCoverageDetails';
 import {
   driverPiiTierLabelKey,
   driverRelationshipLabelKey,
@@ -93,6 +94,10 @@ function DriverContent({ data }: { data: DriverSection }) {
       <p className="text-[11px] text-[var(--muted-foreground)]" data-testid="evaluations-driver-disclaimer">
         {data.disclaimer}
       </p>
+
+      {/* Canonical coverage — rendered independently of the factor list and reason.
+          Communicates reportable/excluded/attributable evidence; null stays neutral. */}
+      <EvaluationsCoverageDetails coverage={data.coverage} testId="evaluations-driver-coverage" />
 
       {data.confounders.length > 0 ? (
         <div data-testid="evaluations-driver-confounders">

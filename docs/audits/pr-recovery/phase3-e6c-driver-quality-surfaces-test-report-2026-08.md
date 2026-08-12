@@ -21,13 +21,13 @@ New E6C render/logic suites:
 
 | Suite | Tests | Result |
 |-------|-------|--------|
-| `components/evaluations/DataQualityPanel.render.test.tsx` | 9 | PASS |
-| `components/evaluations/DriverInfluenceSection.render.test.tsx` | 12 | PASS |
+| `components/evaluations/DataQualityPanel.render.test.tsx` | 12 (E6C 9 + E6C.1 3) | PASS |
+| `components/evaluations/DriverInfluenceSection.render.test.tsx` | 14 (E6C 12 + E6C.1 2) | PASS |
 
 Targeted acceptance run
 (`src/rental/lib/evaluations src/rental/components/evaluations src/rental/hooks/useEvaluationsFinanceBundle.test.tsx`):
 - Test files: 12 passed / 12
-- Tests: 99 passed / 99 (0 failed, 0 skipped)
+- Tests: 104 passed / 104 (0 failed, 0 skipped) — +5 from E6C.1 coverage/lineage tests.
 
 Broader regression (finance adapter, finance navigation, legacy `FinancialInsightsView`
 + `InsightsCockpit` render tests): 4 files / 46 tests, all PASS.
@@ -68,6 +68,48 @@ plus a direct driver-analysis response and a lazy-request counter; `evaluations-
 asserts Data Quality is visible, the driver request is lazy (0 before reveal, 1 after,
 no refetch on collapse/reopen), and no horizontal overflow. This is not an implementation
 failure — unit/render coverage passes and the fixture/spec are correctly updated.
+
+## E6C.1 — Canonical Evidence Completeness Closure
+
+Runtime limited to E6C presentation + tests + i18n (no backend/contract/hook/api/page
+composition change). New/updated coverage:
+
+Data Quality (`+3` tests): every canonical coverage field renders
+(expected/available/excluded/ratio/missingSources); `requiredSourceClasses` vs
+`coverage.missingSources` remain distinguishable; lineage `calculationVersion` renders;
+null fields never become zero.
+
+Driver Influence (`+2` tests): non-null canonical coverage renders available/excluded,
+null expected/ratio stay unavailable, `missingSources` render in server order, coverage
+presence does not reorder factors; fail-closed null coverage stays neutral with the
+reason visible.
+
+Fixtures: unit coverage fixtures use `satisfies EvaluationsDataCoverage` (no `as unknown`
+masking); E2E quality fixture uses all coverage fields + `missingSources`, canonical
+source categories (FINANCE_INVOICE/FINANCE_PAYMENT), lineage reason
+SOURCE_CLASS_BUSINESS_EVENT_RECENCY, and E5.1A-authoritative UNKNOWN pipeline freshness
+(all timestamps null); E2E driver scenario matrix full/pseudonymous/none/failClosed/404
+with non-null coverage on available scenarios.
+
+E6C.1 counters:
+```
+QUALITY_COVERAGE_FIELD_OMISSION_COUNT = 0
+DRIVER_COVERAGE_FIELD_OMISSION_COUNT = 0
+LINEAGE_FIELD_OMISSION_COUNT = 0
+QUALITY_REQUIRED_SOURCE_MISSING_SOURCE_COLLAPSE_COUNT = 0
+INVALID_EVALUATIONS_COVERAGE_UNIT_FIXTURE_COUNT = 0
+INVALID_EVALUATIONS_COVERAGE_E2E_FIXTURE_COUNT = 0
+NONCANONICAL_E5_FRESHNESS_FIXTURE_COUNT = 0
+MISSING_DRIVER_E2E_SCENARIO_COUNT = 0
+COVERAGE_COMPONENT_DUPLICATION_COUNT = 0
+CLIENT_SIDE_COVERAGE_RECALCULATION_COUNT = 0
+NULL_COVERAGE_TO_ZERO_COUNT = 0
+UNIT_COVERAGE_FIELD_ASSERTION_MISSING_COUNT = 0
+DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0
+```
+
+E2E remains `ENVIRONMENT_SPECIFIC` (no Playwright browsers in the sandbox); the fixtures
++ flow spec (coverage assertions + full driver scenario matrix) are validated in CI.
 
 ## Required E6C counters (all 0 unless noted)
 

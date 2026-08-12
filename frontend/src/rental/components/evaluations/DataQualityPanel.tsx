@@ -15,12 +15,12 @@ import type {
   EvaluationsQualityReport,
   E5SectionQuality,
   E5DimensionState,
-  EvaluationsDataCoverage,
   EvaluationsSourceFreshness,
   E5BusinessEventRecency,
   E5LineageRef,
 } from '../../lib/evaluations/evaluations-canonical.types';
 import { EvaluationsSectionShell } from './EvaluationsSectionShell';
+import { EvaluationsCoverageDetails } from './EvaluationsCoverageDetails';
 import { MetricStatusBadge } from './MetricStatusBadge';
 import {
   E5_QUALITY_DIMENSIONS,
@@ -106,28 +106,6 @@ function BusinessRecency({ recency }: { recency: E5BusinessEventRecency | null }
   );
 }
 
-function Coverage({ coverage }: { coverage: EvaluationsDataCoverage | null }) {
-  const { t, locale } = useLanguage();
-  const unavailable = t('evaluations.value.unavailable');
-  return (
-    <div data-testid="evaluations-quality-coverage">
-      <p className="text-[11px] font-medium text-[var(--muted-foreground)]">{t('evaluations.quality.coverage')}</p>
-      {coverage === null ? (
-        <Unavailable />
-      ) : (
-        <span className="text-[11px] tabular-nums">
-          {/* ratio is server-supplied; Intl percent is presentation-only. null → unavailable, never 0. */}
-          {coverage.ratio !== null
-            ? new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 }).format(coverage.ratio)
-            : unavailable}
-          {' · '}
-          {coverage.availableRecords ?? unavailable}/{coverage.expectedRecords ?? unavailable}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function Lineage({ lineage }: { lineage: readonly E5LineageRef[] }) {
   const { t, locale } = useLanguage();
   if (lineage.length === 0) {
@@ -152,6 +130,8 @@ function Lineage({ lineage }: { lineage: readonly E5LineageRef[] }) {
             {fmtTimestamp(ref.effectiveTimestamp, locale) ?? t('evaluations.value.unavailable')}
             {' · '}
             <code className="opacity-70">{ref.sourceRef}</code>
+            {' · '}
+            {t('evaluations.quality.lineageCalcVersion')}: {ref.calculationVersion}
             {ref.reason ? ` · ${ref.reason}` : ''}
           </li>
         ))}
@@ -189,8 +169,9 @@ function SectionCard({ section }: { section: E5SectionQuality }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <PipelineFreshness freshness={section.freshness} />
         <BusinessRecency recency={section.businessEventRecency} />
-        <Coverage coverage={section.coverage} />
+        <EvaluationsCoverageDetails coverage={section.coverage} testId="evaluations-quality-coverage" />
         <div>
+          {/* requiredSourceClasses is a DISTINCT concept from coverage.missingSources. */}
           <p className="text-[11px] font-medium text-[var(--muted-foreground)]">
             {t('evaluations.quality.requiredSources')}
           </p>

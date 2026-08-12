@@ -5,7 +5,20 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { DataQualityPanel } from './DataQualityPanel';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
-import type { EvaluationsQualityReport } from '../../lib/evaluations/evaluations-canonical.types';
+import type {
+  EvaluationsQualityReport,
+  EvaluationsDataCoverage,
+} from '../../lib/evaluations/evaluations-canonical.types';
+
+// Canonical coverage fixture — every field present, validated by the contract type
+// (no `as unknown` hiding an incomplete object).
+const COVERAGE_FINANCE = {
+  expectedRecords: 100,
+  availableRecords: 80,
+  excludedRecords: 5,
+  ratio: 0.8,
+  missingSources: ['FINANCE_PAYMENT'],
+} satisfies EvaluationsDataCoverage;
 
 let container: HTMLDivElement;
 let root: Root;
@@ -56,10 +69,10 @@ function report(): EvaluationsQualityReport {
           state: 'UNKNOWN',
         },
         businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
-        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 0, ratio: 0.8 },
+        coverage: COVERAGE_FINANCE,
         requiredSourceClasses: ['OrgInvoice'],
         lineage: [
-          { sourceCategory: 'OrgInvoice', sourceRef: 'src::opaque::abc123', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'v', reason: 'primary' },
+          { sourceCategory: 'OrgInvoice', sourceRef: 'src::opaque::abc123', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'primary' },
         ],
         reason: null,
       },
@@ -140,6 +153,33 @@ describe('E6C DataQualityPanel', () => {
     const cov = util.querySelector('[data-testid="evaluations-quality-coverage"]')!;
     expect(cov.textContent ?? '').not.toContain('0%');
     expect(cov.textContent ?? '').toContain('Not available for this scope');
+  });
+
+  it('renders every canonical coverage field (expected/available/excluded/ratio/missingSources)', () => {
+    render(createElement(DataQualityPanel, { quality: settled(report()) }));
+    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
+    const cov = finance.querySelector('[data-testid="evaluations-quality-coverage"]')!;
+    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-expected"]')?.textContent ?? '').toContain('100');
+    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-available"]')?.textContent ?? '').toContain('80');
+    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-excluded"]')?.textContent ?? '').toContain('5');
+    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-ratio"]')?.textContent ?? '').toContain('80%');
+    expect(cov.querySelector('[data-testid="evaluations-quality-coverage-missing-sources"]')?.textContent ?? '').toContain('FINANCE_PAYMENT');
+  });
+
+  it('keeps requiredSourceClasses and coverage.missingSources distinguishable', () => {
+    render(createElement(DataQualityPanel, { quality: settled(report()) }));
+    const finance = container.querySelector('[data-testid="evaluations-quality-section-finance"]')!;
+    const text = finance.textContent ?? '';
+    expect(text).toContain('Required sources'); // requiredSourceClasses label
+    expect(text).toContain('Missing sources'); // coverage.missingSources label
+    expect(text).toContain('OrgInvoice'); // required source class (distinct)
+    expect(text).toContain('FINANCE_PAYMENT'); // missing source (distinct)
+  });
+
+  it('renders lineage calculationVersion', () => {
+    render(createElement(DataQualityPanel, { quality: settled(report()) }));
+    const lineage = container.querySelector('[data-testid="evaluations-quality-lineage"]')!;
+    expect(lineage.textContent ?? '').toContain('lineage-calc-v7');
   });
 
   it('lineage sourceRef is shown verbatim without entity reconstruction', () => {

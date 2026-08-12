@@ -4,6 +4,7 @@ import {
   assertNoHorizontalOverflow,
   openEvaluationsPage,
   getDriverAnalysisRequestCount,
+  setDriverScenario,
 } from './evaluations-fixtures';
 
 /**
@@ -36,27 +37,79 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     // No E7 (recommendations/actions) or E8/E9 (forecast/prediction) surfaces.
     await expect(page.getByText(/Empfohlene Maßnahmen|Maßnahmen-Center|Prognose|Forecast|MoM revenue/i)).toHaveCount(0);
 
-    // E6C: Data Quality panel is present and loaded with the page.
-    await expect(page.getByTestId('evaluations-data-quality')).toBeVisible();
+    // E6C: Data Quality panel is present and loaded with the page, with full coverage.
+    const quality = page.getByTestId('evaluations-data-quality');
+    await expect(quality).toBeVisible();
+    await expect(quality.getByTestId('evaluations-quality-coverage-excluded').first()).toContainText('5');
+    await expect(quality.getByTestId('evaluations-quality-coverage-missing-sources').first()).toContainText('FINANCE_PAYMENT');
 
     await assertNoHorizontalOverflow(page);
   });
 
-  test('E6C: Driver Influence request is lazy — only after explicit reveal', async ({ page }) => {
+  test('E6C: Driver Influence request is lazy and renders canonical coverage', async ({ page }) => {
+    setDriverScenario('pseudonymous');
     await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('pseudonymous'); // re-apply after openEvaluationsPage reset
 
     await expect(page.getByTestId('evaluations-driver')).toBeVisible();
-    // No driver-analysis request before the reveal.
-    expect(getDriverAnalysisRequestCount()).toBe(0);
+    expect(getDriverAnalysisRequestCount()).toBe(0); // no request before reveal
 
     await page.getByTestId('evaluations-driver-toggle').click();
     await expect(page.getByTestId('evaluations-driver-content')).toBeVisible();
     expect(getDriverAnalysisRequestCount()).toBe(1);
 
+    // Driver coverage renders excluded records + missing sources.
+    const cov = page.getByTestId('evaluations-driver-coverage');
+    await expect(cov.getByTestId('evaluations-driver-coverage-available')).toContainText('12');
+    await expect(cov.getByTestId('evaluations-driver-coverage-excluded')).toContainText('3');
+    await expect(cov.getByTestId('evaluations-driver-coverage-missing-sources')).toContainText('TELEMETRY_SEGMENT');
+
     // Collapse + reopen must not refetch.
     await page.getByTestId('evaluations-driver-toggle').click();
     await page.getByTestId('evaluations-driver-toggle').click();
     expect(getDriverAnalysisRequestCount()).toBe(1);
+
+    await assertNoHorizontalOverflow(page);
+  });
+
+  test('E6C: Driver Influence privacy/transport scenario matrix', async ({ page }) => {
+    // full → raw permitted reference verbatim
+    setDriverScenario('full');
+    await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('full');
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver-content')).toContainText('driver::raw::A');
+
+    // pseudonymous → pseudonym verbatim
+    setDriverScenario('pseudonymous');
+    await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('pseudonymous');
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver-piitier-pseudonymous')).toBeVisible();
+    await expect(page.getByTestId('evaluations-driver-content')).toContainText('driver::pseudo::A');
+
+    // none / PERSON_LEVEL_ACCESS_DENIED → no reference, reason visible
+    setDriverScenario('none');
+    await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('none');
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver')).toContainText('PERSON_LEVEL_ACCESS_DENIED');
+    await expect(page.getByTestId('evaluations-driver')).not.toContainText('driver::');
+
+    // fail-closed → reason visible, no reference
+    setDriverScenario('failClosed');
+    await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('failClosed');
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver')).toContainText('PSEUDONYMIZATION_UNAVAILABLE');
+
+    // generic 404 → neutral unavailable, never "disabled"
+    setDriverScenario('notFound');
+    await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('notFound');
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver')).toContainText('Für diesen Bereich sind keine Auswertungen verfügbar.');
+    await expect(page.getByTestId('evaluations-driver')).not.toContainText(/deaktiviert|disabled/i);
 
     await assertNoHorizontalOverflow(page);
   });

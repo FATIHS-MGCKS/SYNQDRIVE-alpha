@@ -8,7 +8,17 @@ import type {
   EvaluationsDriverInfluenceSection,
   EvaluationsPiiTier,
   E4DriverFactor,
+  EvaluationsDataCoverage,
 } from '../../lib/evaluations/evaluations-canonical.types';
+
+// Canonical driver coverage — all five fields; null expected/ratio stay unavailable.
+const DRIVER_COVERAGE = {
+  expectedRecords: null,
+  availableRecords: 12,
+  excludedRecords: 3,
+  ratio: null,
+  missingSources: ['TELEMETRY_SEGMENT', 'DRIVER_LINEAGE'],
+} satisfies EvaluationsDataCoverage;
 
 const driverMock =
   vi.fn<(orgId: string, req?: unknown) => Promise<RequestResult<EvaluationsDriverInfluenceSection>>>();
@@ -174,6 +184,40 @@ describe('E6C DriverInfluenceSection — privacy tiers & rendering', () => {
     await flush();
     expect(container.querySelector('[data-testid="evaluations-driver-empty"]')).not.toBeNull();
     expect((container.textContent ?? '').toLowerCase()).not.toContain('no driver influence');
+  });
+});
+
+describe('E6C.1 DriverInfluenceSection — canonical coverage', () => {
+  it('renders driver coverage fields independently; null expected/ratio stay unavailable; missingSources in server order; factors not reordered', async () => {
+    driverMock.mockResolvedValue({ ok: true, status: 200, data: driverData('full', FACTORS, { coverage: DRIVER_COVERAGE }) });
+    render();
+    toggle();
+    await flush();
+    const cov = container.querySelector('[data-testid="evaluations-driver-coverage"]')!;
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-available"]')?.textContent ?? '').toContain('12');
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-excluded"]')?.textContent ?? '').toContain('3');
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-expected"]')?.textContent ?? '').toContain('—');
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-ratio"]')?.textContent ?? '').toContain('—');
+    const missing = cov.querySelector('[data-testid="evaluations-driver-coverage-missing-sources"]')?.textContent ?? '';
+    expect(missing.indexOf('TELEMETRY_SEGMENT')).toBeLessThan(missing.indexOf('DRIVER_LINEAGE')); // server order
+    // Coverage presence must not reorder the factor list.
+    const rows = container.querySelectorAll('[data-testid="evaluations-driver-factor"]');
+    expect(rows[0].textContent ?? '').toContain('driver-REF-1');
+    expect(rows[1].textContent ?? '').toContain('driver-REF-2');
+  });
+
+  it('fail-closed null coverage renders neutral (not zero) and keeps the reason', async () => {
+    driverMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: driverData('none', [], { status: 'UNAVAILABLE', reason: 'PSEUDONYMIZATION_UNAVAILABLE', coverage: null }),
+    });
+    render();
+    toggle();
+    await flush();
+    const cov = container.querySelector('[data-testid="evaluations-driver-coverage"]')!;
+    expect(cov.textContent ?? '').toContain('Not available for this scope');
+    expect(container.textContent ?? '').toContain('PSEUDONYMIZATION_UNAVAILABLE');
   });
 });
 
