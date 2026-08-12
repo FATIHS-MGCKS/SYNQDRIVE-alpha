@@ -1,5 +1,10 @@
 # Changes & Architektur — Public landing page on synqdrive.eu (2026-08-11)
 
+> **Read the `landingpage/` paths below as history.** The marketing site was built in this
+> repository and then extracted into `FATIHS-MGCKS/SynqDrive-Landing-Page`, where those files now
+> live at the repository root. This branch ships only the capture harness. See "Extraction into a
+> standalone repository" for what stays here and what moved.
+
 ## Changes
 
 - **Added** `landingpage/content/site.mjs` — one content model per locale (de, en). All public
@@ -83,21 +88,17 @@ records. This work keeps that boundary and supersedes only its "deployment archi
 from" section, because the archive is now the output of `landingpage/tools/build-site.mjs` rather
 than three hand-maintained files plus two copied assets.
 
-**Merge hazard.** Neither branch is an ancestor of the other and `main` has neither. The two
-touch `landingpage/` with non-overlapping filenames, so a merge would succeed silently and leave
-two competing implementations side by side:
+**Merge hazard.** Neither branch is an ancestor of the other and `main` has neither. Since the
+extraction, this branch adds no `landingpage/` files at all, which changes the hazard rather than
+removing it: merging `cursor/professional-coming-soon-c50c` would **recreate** `landingpage/` in
+this repository, holding `index.html`, `styles.css`, `script.js` and a `README.md` describing a
+flat-archive deploy that no longer matches production. There would be no conflict to warn anyone,
+just a stale public page in a directory that should not exist here any more, deployable by mistake.
 
-| Path | Branch | State after a naive merge |
-|------|--------|---------------------------|
-| `landingpage/index.html`, `styles.css`, `script.js` | coming-soon | Stale page beside the build pipeline, deployable by mistake |
-| `landingpage/README.md` | coming-soon | Documents the flat-archive deploy, which no longer matches production |
-| `landingpage/{content,src,tools}/` | this branch | The pipeline that actually produced the live site |
-
-If the coming-soon branch is merged after this one, delete `landingpage/index.html`,
-`landingpage/styles.css`, `landingpage/script.js` and `landingpage/README.md` as part of the
-merge, and keep the coming-soon page only where it already lives as the rollback snapshot in
-`landingpage/rollback/coming-soon-2026-08-11/`. The boundary record itself should be kept and
-cross-referenced, not deleted.
+If that branch is merged, drop its `landingpage/` files as part of the merge. The page itself is
+already preserved as the rollback snapshot at `rollback/coming-soon-2026-08-11/` in the landing
+repository, so nothing is lost. Keep and cross-reference the boundary record itself — it is the
+only place the `synqdrive.eu` / `app.synqdrive.eu` split is written down.
 
 ## Phone breakpoint rework (2026-08-12)
 
@@ -137,10 +138,38 @@ Note for anyone measuring this: `naturalWidth` is density-corrected for `w`-desc
 so it reports roughly the rendered CSS width whatever the file behind it. Compare the file's true
 pixel width against rendered width times device pixel ratio.
 
-## Planned extraction into a standalone repository
+## Extraction into a standalone repository (completed 2026-08-12)
 
-The marketing site is to live in its own repository so the public surface is versioned and
-deployed independently of the product. The standalone repository has been prepared and verified:
+The marketing site now lives in **`FATIHS-MGCKS/SynqDrive-Landing-Page`** and `landingpage/` has
+been removed from this repository, so there is one source of truth for the public surface. This
+branch therefore never introduces `landingpage/` at all; nothing had to be deleted from `main`,
+because none of it had been merged there.
+
+**Removed here, present there** — checked file by file before deleting: all 37 tracked files under
+`landingpage/` exist in the landing repository, so nothing was lost.
+
+| Removed from this repository | Now at |
+|------------------------------|--------|
+| `landingpage/{content,src,tools,assets,rollback}/` | repository root |
+| `frontend/e2e/landing-page-qa.spec.ts` | `e2e/landing-page-qa.spec.ts` |
+| `frontend/e2e/playwright.landing-qa.config.ts` | `e2e/playwright.landing-qa.config.ts` |
+| `docs/landing-page/LANDING_PAGE_IMPLEMENTATION_2026-08.md` | `docs/IMPLEMENTATION.md` |
+| `frontend` scripts `landing:{assets,icons,build,serve,qa}` | `npm run {assets,icons,build,serve,qa}` there |
+
+**Kept here:** `frontend/e2e/landing-assets.capture.spec.ts`,
+`frontend/e2e/landing-demo-tenant.ts`, `frontend/e2e/playwright.landing-assets.config.ts` and the
+`landing:capture` script. Raw captures now land in `frontend/e2e/landing-captures/`, git-ignored,
+instead of `landingpage/assets-raw/`, which no longer exists.
+
+**Re-capturing shifts some assets, and that is the demo data, not the pipeline.** The synthetic
+tenant renders the current date and relative times, so a capture taken on another day changes the
+dashboard date, the plan's day columns and the message timestamps. Verified by handing a fresh
+capture set to a clean clone of the landing repository: both rendered HTML files came out
+byte-identical to production, six of the nine imagery assets reproduced bit for bit, and the three
+that moved were exactly the ones showing absolute dates. Treat the committed `assets/` as the
+source of truth for what is live, and re-capture only deliberately.
+
+**Verification of the split.** The standalone repository was verified before the removal:
 its build output is byte-identical to the build that produced the live site, and its QA suite
 passes 11 of 11 against it. Two path changes were required, both because the code moved out of
 `landingpage/`: `build-icons.mjs` reads `lucide-react` from its own `node_modules` instead of
@@ -162,9 +191,10 @@ is therefore the raw PNG captures:
 `assets/` is committed in the landing repository, so an ordinary build needs neither this
 repository nor the raw captures. Steps 1 and 2 are only needed when a screenshot is re-taken.
 
-Follow-up once the standalone repository exists: remove `landingpage/` from this repository and
-keep only the capture harness, so there is one source of truth for the marketing site. Do not
-remove it before then. `.gitignore` entries for `landingpage/{assets-raw,dist,qa}/` go with it.
+**Deployment moved with the code.** `synqdrive.eu` is deployed from the landing repository; this
+repository can no longer build the public site. The rollback payload for the previous coming-soon
+page went along with it, at `rollback/coming-soon-2026-08-11/`. `app.synqdrive.eu` is untouched by
+any of this and keeps deploying from here through `.cursor/scripts/cloud-agent-deploy.sh`.
 
 ## Notes
 

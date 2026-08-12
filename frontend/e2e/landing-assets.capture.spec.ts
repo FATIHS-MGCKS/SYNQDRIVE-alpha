@@ -1,12 +1,17 @@
 /**
- * Captures product screenshots for the public marketing site (landingpage/).
+ * Captures product screenshots for the public marketing site, which lives in its
+ * own repository (FATIHS-MGCKS/SynqDrive-Landing-Page). This harness stays here
+ * because it drives the real SynqDrive frontend; the handover between the two
+ * repositories is the raw PNGs it writes.
  *
  * Every view is rendered from the real SynqDrive frontend against mocked API
  * responses for one synthetic demo tenant (see landing-demo-tenant.ts). No
  * production database, no production tenant and therefore no personal data is
  * involved.
  *
- * Run: npm run capture:landing-assets
+ * Run: npm run landing:capture
+ * Then: copy landing-captures/*.png into assets-raw/ of the landing page repo
+ * and run `npm run assets` there.
  */
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs/promises';
@@ -14,14 +19,8 @@ import path from 'node:path';
 
 import { demoTenantUser, installDemoTenantMocks } from './landing-demo-tenant';
 
-/** Repo-root relative, so the run directory does not matter. */
-const RAW_DIR = path.resolve(
-  path.dirname(new URL(import.meta.url).pathname),
-  '..',
-  '..',
-  'landingpage',
-  'assets-raw',
-);
+/** Beside the harness and git-ignored, so a capture run leaves no tracked files. */
+const RAW_DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), 'landing-captures');
 
 async function seedSession(page: Page, token: string, extra?: Record<string, string>) {
   await page.addInitScript(

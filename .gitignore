@@ -102,8 +102,7 @@ backend/*-output.txt
 backend/analyze-*.txt
 tmp/
 
-# Landing page build artefacts and QA output.
-# Raw captures: npm run landing:capture   Built site: npm run landing:build
-landingpage/assets-raw/
-landingpage/dist/
-landingpage/qa/
+# Raw product screenshots for the public landing page, written by
+# `npm run landing:capture` in frontend/ and handed to the landing page
+# repository. The built site itself lives in that repository, not here.
+frontend/e2e/landing-captures/
