@@ -126,6 +126,6 @@ export class EvaluationsInsightsController {
     @Query() query: Record<string, unknown>,
   ) {
     const scope = await this.resolveScope(actor, orgId, query);
-    return this.insights.getDriverInfluence(scope, new Date());
+    return this.insights.getDriverInfluence(scope, actor, new Date());
   }
 }

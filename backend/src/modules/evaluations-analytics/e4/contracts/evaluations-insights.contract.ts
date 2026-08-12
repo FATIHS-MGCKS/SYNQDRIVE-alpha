@@ -211,6 +211,13 @@ export interface EvaluationsDriverInfluenceSection extends EvaluationsInsightsSe
   readonly disclaimer: string;
   readonly confounders: readonly string[];
   readonly factors: readonly E4DriverFactor[];
+  /**
+   * E5B server-resolved PII tier applied to this person-level section:
+   *  - `full`: raw org-scoped driver references,
+   *  - `pseudonymous`: driver references are non-reversible pseudonyms,
+   *  - `none`: person-level access denied (section UNAVAILABLE, no factors).
+   */
+  readonly piiTier: 'full' | 'pseudonymous' | 'none';
 }
 
 // ── Analytics Summary composition ───────────────────────────────────────────

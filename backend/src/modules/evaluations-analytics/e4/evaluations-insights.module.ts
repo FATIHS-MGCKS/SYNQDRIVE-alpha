@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { EvaluationsAnalyticsModule } from '../evaluations-analytics.module';
 import { EvaluationsFinanceModule } from '@modules/evaluations-finance/evaluations-finance.module';
+import { EvaluationsPrivacyModule } from '../privacy/evaluations-privacy.module';
 import { EvaluationsInsightsController } from './evaluations-insights.controller';
 import { EvaluationsInsightsRepository } from './evaluations-insights.repository';
 import { EvaluationsInsightsService } from './evaluations-insights.service';
@@ -14,7 +15,7 @@ import { EvaluationsInsightsService } from './evaluations-insights.service';
  * imports the analytics module).
  */
 @Module({
-  imports: [PrismaModule, EvaluationsAnalyticsModule, EvaluationsFinanceModule],
+  imports: [PrismaModule, EvaluationsAnalyticsModule, EvaluationsFinanceModule, EvaluationsPrivacyModule],
   controllers: [EvaluationsInsightsController],
   providers: [EvaluationsInsightsService, EvaluationsInsightsRepository],
   exports: [EvaluationsInsightsService],
