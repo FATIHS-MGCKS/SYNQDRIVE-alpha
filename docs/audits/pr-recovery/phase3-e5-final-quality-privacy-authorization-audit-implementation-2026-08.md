@@ -12,6 +12,12 @@
 > (pseudonymous), `invoices.read` grants nothing; and successful person-level
 > disclosure is durable-audit-critical (fail closed if the canonical audit cannot
 > persist). See `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md`.
+>
+> **SUPERSEDED_BY_E5_1 (final acceptance, 2026-08-12).** Integrated E5 acceptance
+> (quality truth, provenance, privacy, audit, real-DB adversarial, E1–E4 + full E5
+> regression, all gates, all counters = 0) is recorded in
+> `phase3-e5-1-final-quality-privacy-audit-acceptance-2026-08.md`
+> (TESTED_CODE_SHA `121e127b`). Outcome: E5_READY_FOR_FINAL_MERGE_AUDIT.
 
 Consolidated E5 (E5A + E5B + E5C) on branch
 `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, Draft).

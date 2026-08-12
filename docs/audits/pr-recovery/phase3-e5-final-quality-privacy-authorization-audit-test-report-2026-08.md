@@ -4,6 +4,12 @@
 > here were re-hardened in E5.1B (keyed HMAC pseudonyms; proven person-level
 > permission mapping; durable-before-disclosure auditing; real-PostgreSQL
 > adversarial coverage). See `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md`.
+>
+> **SUPERSEDED_BY_E5_1 (final acceptance, 2026-08-12).** Final integrated E5
+> acceptance evidence (all suites, real-DB adversarial, gates, counters = 0,
+> baseline A/B) is recorded in
+> `phase3-e5-1-final-quality-privacy-audit-acceptance-2026-08.md`
+> (TESTED_CODE_SHA `121e127b`).
 
 - `TESTED_CODE_SHA` = `9e083f8a3c651bf1cbfeaf29d510ae68afeda7f7`
 - `E5_BASE_MAIN_SHA` = `960365a9b095a54f4656947ac2067a104e56bd8a`
