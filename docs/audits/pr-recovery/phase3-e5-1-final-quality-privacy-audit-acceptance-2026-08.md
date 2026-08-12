@@ -10,6 +10,10 @@ Preconditions: `E5_1A_COMPLETED`, `E5_1B_COMPLETED` (both verified as ancestors)
 > missing/invalid); (2) quality VALIDITY no longer fabricates COMPLETE (served →
 > UNKNOWN; ERROR/UNAVAILABLE/NOT_APPLICABLE → UNAVAILABLE) and completeness
 > null-ratio → UNKNOWN. See `phase3-e5-2-pseudonym-secret-validity-closure-2026-08.md`.
+>
+> **SUPERSEDED_BY_E5_2_1 (2026-08-12).** The DRIVER membership is now hard-denied
+> person-level analytics (→ none) regardless of module permissions. See
+> `phase3-e5-2-1-driver-role-authorization-closure-2026-08.md`.
 
 This is an integrated acceptance pass. No new capability work was required (no
 final gate exposed a defect); all changes prior to this doc are runtime-frozen.

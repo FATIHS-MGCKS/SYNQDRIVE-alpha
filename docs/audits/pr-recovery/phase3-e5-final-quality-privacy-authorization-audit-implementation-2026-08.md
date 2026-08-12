@@ -23,6 +23,11 @@
 > production pseudonym-secret fail-closed (no dev fallback in production) and honest
 > quality VALIDITY (never fabricated COMPLETE). See
 > `phase3-e5-2-pseudonym-secret-validity-closure-2026-08.md` (TESTED_CODE_SHA `9e9e4060`).
+>
+> **SUPERSEDED_BY_E5_2_1 (2026-08-12).** E5.2.1 hard-denies the DRIVER membership
+> from person-level Evaluations analytics (→ none) regardless of module
+> permissions. See `phase3-e5-2-1-driver-role-authorization-closure-2026-08.md`
+> (TESTED_CODE_SHA `568d9220`).
 
 Consolidated E5 (E5A + E5B + E5C) on branch
 `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, Draft).

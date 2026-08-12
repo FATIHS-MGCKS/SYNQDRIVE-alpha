@@ -4,6 +4,11 @@ Branch: `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08`
 Draft PR: #1025 (OPEN + DRAFT — not merged, not marked ready)
 Preconditions: `E5_1A_COMPLETED`, `E5_1B_COMPLETED` (final-acceptance ancestors verified).
 
+> **SUPERSEDED_BY_E5_2_1 (permission mapping, 2026-08-12).** The permission mapping
+> is further hardened in E5.2.1: a `DRIVER` membership is hard-denied person-level
+> analytics (→ none) regardless of `evaluations.read`/`customers.read`. See
+> `phase3-e5-2-1-driver-role-authorization-closure-2026-08.md`.
+
 Closes the two remaining independent E5 audit blockers only. No E5 redesign.
 
 ## 1. Identity & lineage
