@@ -111,6 +111,44 @@ NEW_E6_FAILURE_COUNT = 0
 IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0
 ```
 
+## E6B.1 — Finance Transport Regression
+
+- `E6B1_TESTED_CODE_SHA = a0c8027a` (runtime frozen; results measured at this SHA).
+- New suite: `src/rental/hooks/useEvaluationsFinanceBundle.test.tsx` — 9 tests, all PASS.
+
+Finance transport mapping (status-aware; no HTTP collapse):
+
+| HTTP | Mapped state |
+|------|--------------|
+| 200 + valid body | `AVAILABLE` |
+| 403 | `UNAUTHORIZED` |
+| 404 | `NOT_FOUND` (asserted `!= FEATURE_DISABLED`) |
+| 500 | `ERROR` |
+| network failure (status 0) | `ERROR` |
+
+`FINANCE_404_TO_FEATURE_DISABLED_COUNT = 0`.
+
+Finance lifecycle (race safety):
+- null organization → IDLE, no request issued.
+- org A → org B → refetch for B; settles with B's result (last call = `('org-b', undefined)`).
+- org A → null → stale Finance cleared (IDLE).
+- station A → station B → refetch for the new station scope (last call = `('org-a', ['station-b'])`).
+
+Gates re-run at the frozen SHA: frontend typecheck PASS (`tsc -b`), production build PASS
+(`vite build`), targeted E6 lint PASS (0 problems for
+`components/evaluations/`, `hooks/useEvaluationsFinanceBundle*.ts(x)`).
+
+Full E6 acceptance suite at `a0c8027a`:
+- `SUITE_COUNT = 14`, `TEST_COUNT = 124`, `PASSED = 124`, `FAILED = 0`, `SKIPPED = 0`
+  (E6A canonical/lifecycle, money, finance adapter, the 13 E6B component/logic tests, the
+  9 new E6B.1 finance-transport tests, and the legacy component render tests still green
+  in isolation).
+
+Playwright: unchanged from the E6B baseline — not runnable in the agent sandbox (no
+browsers); classified `ENVIRONMENT_SPECIFIC`, not a new E6 failure. The canonical E2E
+fixtures already mock the finance endpoint at the same path used by the new
+`financeInsightsResult`, so no E2E change was required.
+
 ## Classification
 - `NEW_E6_FAILURE_COUNT = 0`, `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0`.
 - Pre-existing global failures (App.tsx lint, unrelated CI jobs) classified

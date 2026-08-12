@@ -130,6 +130,51 @@ evaluations-presentation,evaluations-section-derive}.tsx/.ts` + tests
 (`evaluations-flow.spec.ts` rewritten canonical; `evaluations-fixtures.ts` canonical
 mocks; `evaluations-visual.spec.ts` + `evaluations-a11y.spec.ts` deferred to E6D).
 
+## E6B.1 — Finance Transport Status Correction (independent-review follow-up)
+
+This addendum records the one accepted E6B blocker fix; the original E6B history above
+is unchanged.
+
+- Previous (throwing) transport: `useEvaluationsFinanceBundle` called
+  `api.evaluations.financeInsights` → `get<T>()`, which throws on any non-2xx. The hook's
+  single `.catch` therefore collapsed **403, 404, 5xx, and network** all into a generic
+  `ERROR`; the HTTP status was lost (`CURRENT_FINANCE_403_MAPPING = ERROR`,
+  `CURRENT_FINANCE_404_MAPPING = ERROR`, `CURRENT_FINANCE_5XX_MAPPING = ERROR`).
+- Backend contract confirmed (no change): the E3 finance controller
+  (`/organizations/:orgId/evaluations/finance/insights`) is protected by the canonical
+  tenant/auth guards (403 is a legitimate response) and is **not** governed by the E4/E5
+  analytics dark-feature guard. Therefore a Finance 404 must be a neutral not-found and
+  must **never** be interpreted as `FEATURE_DISABLED`.
+- Final status-aware transport: added `api.evaluations.financeInsightsResult`
+  (`requestResult<FinancialInsightsBundleDto>`, the same convention as the E4/E5 clients;
+  no second HTTP abstraction). The hook maps via the shared `mapEvaluationsResult`:
+  - 2xx + valid body → `AVAILABLE`
+  - 403 → `UNAUTHORIZED`
+  - 404 → `NOT_FOUND` (never `FEATURE_DISABLED`)
+  - 5xx → `ERROR`; network failure (status 0) → `ERROR`
+  `FINANCE_HTTP_STATUS_COLLAPSE_COUNT = 0`, `FINANCE_FEATURE_DISABLED_FALSE_POSITIVE_COUNT = 0`.
+- Result taxonomy: reuses the existing E6 states (IDLE/LOADING/AVAILABLE/UNAUTHORIZED/
+  NOT_FOUND/ERROR); no aliases added. The `EvaluationsSectionShell` already renders
+  UNAUTHORIZED/NOT_FOUND/ERROR distinctly and neutrally (no raw error bodies, no
+  "feature disabled" for a 404).
+- Lifecycle/race safety preserved: null org → no request (IDLE); org A→B and station A→B
+  refetch and the `active` guard prevents a stale-scope response from overwriting the
+  current scope; org A→null clears stale Finance data (IDLE).
+  `STALE_FINANCE_SCOPE_RESPONSE_OVERWRITE_COUNT = 0`.
+- No legacy fallback on any error: `FINANCE_LEGACY_FALLBACK_COUNT = 0`,
+  `CLIENT_SIDE_FINANCE_RECOMPUTATION_COUNT = 0`.
+- Finance business contract unchanged: schema, E3 calculations, MTD authority, Money
+  representation, station/tenant scope, calculationVersion, receivables/revenue/expense/
+  margin logic — all untouched (`FINANCE_PERIOD_RECALCULATION_COUNT = 0`,
+  `GLOBAL_FILTER_FALSE_SCOPE_COUNT = 0`). This is transport-state correction only.
+- i18n cleanup: replaced the hardcoded "Eligible vehicles" in `FleetUtilizationSection`
+  with `evaluations.kpi.eligibleVehicles` (EN "Eligible vehicles" / DE "Berechtigte
+  Fahrzeuge"). Targeted scan of the E6B components found no other newly-introduced
+  hardcoded user-facing strings (`NEW_E6B_HARDCODED_UI_STRING_COUNT = 0`).
+- No backend/Prisma/migration/config/deploy change; no E6C/E7/E8/E9 runtime introduced.
+- Revision: `PRE_E6B1_SHA = f76fbe3b`; `E6B1_TESTED_CODE_SHA = a0c8027a` (runtime frozen;
+  post-freeze commit docs-only).
+
 ## 24. Risk review
 - Feature flag off by default on main → canonical analytics sections render neutral
   NOT_FOUND; Finance (always-on E3) still renders. Honest, no legacy fallback.
