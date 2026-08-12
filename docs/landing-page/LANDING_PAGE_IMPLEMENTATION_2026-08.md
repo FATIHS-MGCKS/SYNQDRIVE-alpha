@@ -147,6 +147,35 @@ action leaves the masthead below 480px, where it is still reachable in the drawe
 the closing section; section titles use a `clamp` low bound that fits German compound words such
 as "Kundenkommunikation" at 320px.
 
+### Phone imagery
+
+Every product visual is a crop of a desktop panel, and a phone renders it in a 356px column. A
+616px-wide panel therefore arrives at 58% scale, which turns 13px product text into roughly 7px.
+"No horizontal overflow" was true of the first release while four of the six screenshots still
+carried no readable information, so legibility is tracked separately from layout:
+
+| Visual | Phone source | Crop width | Scale in a 356px column |
+|--------|--------------|-----------|--------------------------|
+| Hero | station summary card | 484 | 0.74 |
+| Fleet plan | vehicle column, three days, five booked rows | 478 | 0.75 |
+| Vehicle list | the product's own narrow layout | 402 | 0.89 |
+| Assistant | one structured answer with its sources | 316 | 1.13 |
+| Workflows | three automations | 452 | 0.79 |
+| Communication | the message thread | 390 | 0.91 |
+
+The vehicle list is the exception that shaped the rule. Its rows run 616 CSS px across and cannot
+be narrowed, because the condition and status badges on the right edge are the point of the shot.
+The product renders its own narrow layout below 1024px, so `landing-assets.capture.spec.ts` opens
+the view at desktop width, where the sidebar navigation exists, then shrinks the viewport and
+captures that instead. The Bookings workspace was tested the same way and rejected: at phone width
+its plan degrades to a card list with German status badges in an otherwise English UI, which is
+less faithful than a crop of the real plan.
+
+`naturalWidth` is not a resolution check here. For a `srcset` with `w` descriptors the browser
+reports it density-corrected, so every image measures about 100% of its rendered width regardless
+of the file behind it. Compare the file's true pixel width against rendered width times device
+pixel ratio instead.
+
 ## Accessibility
 
 Semantic sectioning with one `h1` and no skipped heading level, skip link, visible focus states,

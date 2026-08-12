@@ -99,6 +99,44 @@ merge, and keep the coming-soon page only where it already lives as the rollback
 `landingpage/rollback/coming-soon-2026-08-11/`. The boundary record itself should be kept and
 cross-referenced, not deleted.
 
+## Phone breakpoint rework (2026-08-12)
+
+**Changes**
+
+- **Added** four phone crops in `landingpage/tools/build-assets.mjs`
+  (`landing-hero-operations-mobile`, `landing-connected-vehicle-mobile`,
+  `landing-ai-orchestration-mobile`, `landing-communications-mobile`), so all six product visuals
+  now carry a `mobile` variant rather than two of six.
+- **Added** `fleet command at phone width` to `frontend/e2e/landing-assets.capture.spec.ts`. It
+  opens the Fleet view at 1720px, where the sidebar navigation exists, then shrinks the viewport to
+  430px and captures the product's own narrow layout as `fleet-command-narrow.png`.
+- **Changed** `landingpage/content/site.mjs` — `MEDIA` carries a `mobile` entry for every visual.
+- **Changed** `landingpage/src/sections.mjs` — the mirrored split renders its copy first in the
+  DOM. The mirror is now purely a desktop column swap.
+- **Changed** `landingpage/src/styles.css` — the integration hub keeps two tile columns down to
+  360px and its columns stretch to equal rows.
+
+**Why**
+
+Every visual is a crop of a desktop panel, rendered on a phone in a 356px column. Four of the six
+arrived at 42–58% scale, which renders 13px product text at 5–7px. The existing responsive checks
+did not catch this: they assert layout (no overflow, nothing clipped) and a page can satisfy all of
+them while its screenshots carry no readable information.
+
+**Architektur delta**
+
+The phone breakpoint gains a second asset source. Until now every asset was a crop of a
+desktop-viewport capture; the fleet list is now a crop of a **phone-viewport capture of the same
+product view**. This is the preferred path wherever the product has a genuine narrow layout, and
+it is the only path when a panel cannot be narrowed by cropping — here because the condition and
+status badges sit on the right edge and are the point of the shot. Bookings was evaluated the same
+way and rejected: its narrow layout degrades the plan to a card list with German status badges in
+an otherwise English UI, so that section keeps a crop of the wide plan.
+
+Note for anyone measuring this: `naturalWidth` is density-corrected for `w`-descriptor `srcset`,
+so it reports roughly the rendered CSS width whatever the file behind it. Compare the file's true
+pixel width against rendered width times device pixel ratio.
+
 ## Planned extraction into a standalone repository
 
 The marketing site is to live in its own repository so the public surface is versioned and
