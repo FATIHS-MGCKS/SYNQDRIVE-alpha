@@ -118,6 +118,7 @@ function fullyRentedVehicle() {
 function buildService(overrides: {
   financeMetrics?: Record<string, EvaluationsMetricResponse>;
   repo?: Partial<Record<string, jest.Mock>>;
+  piiTier?: 'full' | 'pseudonymous' | 'none';
 }) {
   const financeMock = {
     computeFinancialInsights: jest.fn().mockResolvedValue({
@@ -159,8 +160,9 @@ function buildService(overrides: {
     }),
     ...overrides.repo,
   } as never;
-  const service = new EvaluationsInsightsService(financeMock as never, repo as never);
-  return { service, financeMock, repo: repo as unknown as Record<string, jest.Mock> };
+  const privacy = { resolvePiiTier: jest.fn().mockResolvedValue(overrides.piiTier ?? 'full') };
+  const service = new EvaluationsInsightsService(financeMock as never, repo as never, privacy as never);
+  return { service, financeMock, privacy, repo: repo as unknown as Record<string, jest.Mock> };
 }
 
 describe('EvaluationsInsightsService — org scope', () => {
@@ -366,6 +368,48 @@ describe('EvaluationsInsightsService — cost currency safety', () => {
     expect(cost.status).toBe('UNAVAILABLE');
     expect(cost.reason).toBe('COST_SOURCES_UNSUPPORTED');
     expect(cost.totalsByCurrency).toEqual([]);
+  });
+});
+
+describe('EvaluationsInsightsService — E5B person-level privacy gating', () => {
+  it('full tier reveals raw org-scoped driver references', async () => {
+    const { service } = buildService({ piiTier: 'full' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.piiTier).toBe('full');
+    expect(driver.status).toBe('AVAILABLE');
+    expect(driver.factors.map((f) => f.driverRef)).toEqual(expect.arrayContaining(['driver-a', 'driver-b']));
+  });
+
+  it('pseudonymous tier redacts driver references to non-reversible pseudonyms', async () => {
+    const { service } = buildService({ piiTier: 'pseudonymous' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.piiTier).toBe('pseudonymous');
+    expect(driver.status).toBe('AVAILABLE');
+    for (const factor of driver.factors) {
+      expect(factor.driverRef.startsWith('person-····')).toBe(true);
+    }
+    // No raw identity leaks in the serialized response.
+    const serialized = JSON.stringify(driver);
+    expect(serialized).not.toContain('driver-a');
+    expect(serialized).not.toContain('driver-b');
+  });
+
+  it('none tier denies person-level access server-side (UNAVAILABLE, no factors)', async () => {
+    const { service } = buildService({ piiTier: 'none' });
+    const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+    expect(driver.piiTier).toBe('none');
+    expect(driver.status).toBe('UNAVAILABLE');
+    expect(driver.reason).toBe('PERSON_LEVEL_ACCESS_DENIED');
+    expect(driver.factors).toEqual([]);
+    expect(JSON.stringify(driver)).not.toContain('driver-a');
+  });
+
+  it('summary applies the same person-level gate to its driverInfluence section', async () => {
+    const { service } = buildService({ piiTier: 'none' });
+    const summary = await service.getSummary(orgScope, actor, GEN);
+    expect(summary.sections.driverInfluence.status).toBe('UNAVAILABLE');
+    expect(summary.sections.driverInfluence.reason).toBe('PERSON_LEVEL_ACCESS_DENIED');
+    expect(JSON.stringify(summary.sections.driverInfluence)).not.toContain('driver-a');
   });
 });
 
