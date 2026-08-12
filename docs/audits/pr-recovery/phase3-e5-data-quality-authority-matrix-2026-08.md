@@ -1,5 +1,13 @@
 # Phase 3 – E5 Data-Quality / Freshness / Lineage Authority Matrix (2026-08)
 
+> **SUPERSEDED_BY_E5_2 (VALIDITY, 2026-08-12).** The VALIDITY dimension no longer
+> uses `not ERROR → COMPLETE`. It now reports UNAVAILABLE for ERROR/UNAVAILABLE/
+> NOT_APPLICABLE and UNKNOWN for AVAILABLE/PARTIAL/STALE (no independent validity
+> authority; never a fabricated COMPLETE). COMPLETENESS with a null ratio (unknown
+> expected baseline) reports UNKNOWN, not COMPLETE. TEMPORAL_APPLICABILITY COMPLETE
+> for served sections is backed by the E1 period-window authority. See
+> `phase3-e5-2-pseudonym-secret-validity-closure-2026-08.md`.
+
 Base main SHA: `960365a9b095a54f4656947ac2067a104e56bd8a` (E4 merge). E5A layers quality
 governance around the E1–E4 truths without becoming a second calculation engine
 (`PARALLEL_QUALITY_TRUTH_COUNT = 0`).

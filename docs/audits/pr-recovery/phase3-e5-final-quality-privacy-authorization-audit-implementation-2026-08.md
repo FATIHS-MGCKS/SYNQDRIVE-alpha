@@ -18,6 +18,11 @@
 > regression, all gates, all counters = 0) is recorded in
 > `phase3-e5-1-final-quality-privacy-audit-acceptance-2026-08.md`
 > (TESTED_CODE_SHA `121e127b`). Outcome: E5_READY_FOR_FINAL_MERGE_AUDIT.
+>
+> **SUPERSEDED_BY_E5_2 (2026-08-12).** E5.2 closed two follow-up blockers:
+> production pseudonym-secret fail-closed (no dev fallback in production) and honest
+> quality VALIDITY (never fabricated COMPLETE). See
+> `phase3-e5-2-pseudonym-secret-validity-closure-2026-08.md` (TESTED_CODE_SHA `9e9e4060`).
 
 Consolidated E5 (E5A + E5B + E5C) on branch
 `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08` (PR #1025, Draft).

@@ -8,6 +8,13 @@
 > original-ID fragment, replacing the earlier `person-····<slice>` form. See
 > `phase3-e5-1b-privacy-audit-hardening-test-report-2026-08.md` and
 > `phase3-e5-person-level-permission-authority-matrix-2026-08.csv`.
+>
+> **SUPERSEDED_BY_E5_2 (2026-08-12).** The pseudonym secret is now environment-aware
+> and fails closed in production: a missing/empty/placeholder/insufficient
+> `EVALUATIONS_PSEUDONYM_SECRET` never uses the dev fallback and makes the
+> pseudonymous disclosure path return UNAVAILABLE (no raw/truncated ids). The dev
+> fallback is reachable only when `NODE_ENV !== 'production'`. See
+> `phase3-e5-2-pseudonym-secret-validity-closure-2026-08.md`.
 
 ## Revision
 

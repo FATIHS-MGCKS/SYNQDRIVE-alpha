@@ -4,6 +4,13 @@ Branch: `integration/evaluations-e5-quality-privacy-authorization-audit-2026-08`
 Draft PR: #1025 (OPEN + DRAFT — not merged, not marked ready)
 Preconditions: `E5_1A_COMPLETED`, `E5_1B_COMPLETED` (both verified as ancestors).
 
+> **SUPERSEDED_BY_E5_2 (2026-08-12).** Two blockers found after this acceptance
+> were closed in E5.2: (1) production pseudonym-secret fail-closed (no dev fallback
+> in production; pseudonymous disclosure returns UNAVAILABLE when the secret is
+> missing/invalid); (2) quality VALIDITY no longer fabricates COMPLETE (served →
+> UNKNOWN; ERROR/UNAVAILABLE/NOT_APPLICABLE → UNAVAILABLE) and completeness
+> null-ratio → UNKNOWN. See `phase3-e5-2-pseudonym-secret-validity-closure-2026-08.md`.
+
 This is an integrated acceptance pass. No new capability work was required (no
 final gate exposed a defect); all changes prior to this doc are runtime-frozen.
 
