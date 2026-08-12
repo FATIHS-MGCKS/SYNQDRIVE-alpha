@@ -88,17 +88,33 @@ records. This work keeps that boundary and supersedes only its "deployment archi
 from" section, because the archive is now the output of `landingpage/tools/build-site.mjs` rather
 than three hand-maintained files plus two copied assets.
 
-**Merge hazard.** Neither branch is an ancestor of the other and `main` has neither. Since the
-extraction, this branch adds no `landingpage/` files at all, which changes the hazard rather than
-removing it: merging `cursor/professional-coming-soon-c50c` would **recreate** `landingpage/` in
-this repository, holding `index.html`, `styles.css`, `script.js` and a `README.md` describing a
-flat-archive deploy that no longer matches production. There would be no conflict to warn anyone,
-just a stale public page in a directory that should not exist here any more, deployable by mistake.
+**Merge hazard, resolved 2026-08-12.** Since the extraction this branch adds no `landingpage/`
+files at all, so merging `cursor/professional-coming-soon-c50c` would have **recreated** the
+directory with a stale public page — conflict-free, and therefore with nothing to warn anyone,
+while remaining deployable by mistake. That branch's PR was closed instead, and the two things on
+it worth keeping were carried over here: the boundary record (ported and updated above) and its
+in-app Changes and Architektur entries, reworked into the current v4.9.895 entry.
 
-If that branch is merged, drop its `landingpage/` files as part of the merge. The page itself is
-already preserved as the rollback snapshot at `rollback/coming-soon-2026-08-11/` in the landing
-repository, so nothing is lost. Keep and cross-reference the boundary record itself — it is the
-only place the `synqdrive.eu` / `app.synqdrive.eu` split is written down.
+The page itself is not lost. It shipped to `synqdrive.eu` on 2026-08-11 straight from that branch
+without being merged, and its `index.html` is byte-identical to the snapshot archived from the live
+site before the current page went out — so it is genuinely the predecessor, and it survives as the
+rollback payload at `rollback/coming-soon-2026-08-11/` in the landing repository. Only its source
+is gone from here, deliberately: a second deployable public page in this repository is a stale
+surface waiting to go live by accident.
+
+**In-app records.** `frontend/src/master/components/ChangesView.tsx` carries v4.9.895 for the
+landing page, and `ArchitekturView.tsx` carries a `Public Landing Page Hosting` integration entry
+describing the two-repository split and the raw-PNG seam. Adding them surfaced that the Changes
+view crashed whenever it fell back to its built-in list, which blanked the whole Master Admin shell
+because that shell has no error boundary: 48 of 1327 entries end their summary with `.join(' | ')`
+and so hold a string where the type promises lines. The conversion now lives in
+`changelog-fallback.ts` and is used by both the API and the fallback path.
+
+Worth knowing before editing that file: **TypeScript silently stops checking the contents of its
+literal.** A deliberate type error placed inside it is not reported, while the same error in a small
+file in the same project is, and the file does appear in `tsc --listFiles`. It is not a limit on the
+number of entries — an isolated file with 1300 entries still reports the error.
+`changelog-fallback.test.ts` guards the shape instead of relying on the compiler.
 
 ## Phone breakpoint rework (2026-08-12)
 
