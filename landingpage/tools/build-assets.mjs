@@ -59,11 +59,13 @@ const TARGETS = [
   },
   {
     // Phone crop of the same plan: the vehicle column, three days including the
-    // current-day marker, and six rows. Cropping rather than scaling keeps the
-    // plate and booking reference readable in a 350px column.
+    // current-day marker, and five rows. Cropping rather than scaling keeps the
+    // plate and booking reference readable in a 350px column. The height ends on
+    // a row boundary, and the five rows are the ones carrying bookings, so the
+    // plan does not read as mostly empty.
     source: 'bookings-timeline.png',
     out: 'landing-unified-operations-mobile.webp',
-    crop: [98, 221, 478, 362],
+    crop: [98, 226, 478, 300],
     width: 956,
     quality: 90,
     variants: 'single',

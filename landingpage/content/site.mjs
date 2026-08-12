@@ -56,7 +56,7 @@ const MEDIA = {
     file: 'landing-unified-operations',
     width: 1968,
     height: 1458,
-    mobile: { file: 'landing-unified-operations-mobile', width: 956, height: 724 },
+    mobile: { file: 'landing-unified-operations-mobile', width: 956, height: 600 },
   },
   vehicle: {
     file: 'landing-connected-vehicle',
