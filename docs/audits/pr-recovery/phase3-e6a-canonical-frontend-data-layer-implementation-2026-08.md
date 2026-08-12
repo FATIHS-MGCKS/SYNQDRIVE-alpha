@@ -84,8 +84,11 @@ existing endpoint contract; no browser-side tenant widening.
 
 ## 10. Feature flag semantics
 
-`EVALUATIONS_ANALYTICS_V2_MODE` (backend guard) returns 404 when off. The
-status-aware `requestResult` maps 404 → `FEATURE_DISABLED` (distinct from data),
+`EVALUATIONS_ANALYTICS_V2_MODE` (backend guard) returns 404 when off. **[SUPERSEDED
+BY E6A.1 — see the "E6A.1 Independent Review Correction" section below: a generic 404
+now maps to the neutral `NOT_FOUND`, NOT `FEATURE_DISABLED`, because the guard emits a
+non-disclosing generic 404 with no reliable discriminator.]** The original E6A
+status-aware `requestResult` mapped 404 → `FEATURE_DISABLED` (distinct from data),
 403 → `UNAUTHORIZED`, other non-2xx/network → `ERROR`. A disabled feature never
 becomes empty/zero/healthy data and never falls back to legacy analytics.
 `FEATURE_DISABLED_AS_EMPTY_COUNT = 0`, `LEGACY_ANALYTICS_FALLBACK_COUNT = 0`. Config
