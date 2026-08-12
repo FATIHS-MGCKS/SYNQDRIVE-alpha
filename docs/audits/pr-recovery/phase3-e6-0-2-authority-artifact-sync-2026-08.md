@@ -128,3 +128,38 @@ lines, never as active guidance.
 ## 14. Final decision
 
 E6_READY_FOR_IMPLEMENTATION
+
+## E6.0.2.1 Final PR #798 Contradiction Closure (2026-08-12)
+
+Independent review found two residual broad #798 salvage-matrix authority statements
+(and one adjacent one) that could override the symbol-specific classifications. Closed
+(docs-only):
+
+- `EvaluationsRiskCostCharts` row — old note "cost/pareto/downtime charts = E6" (too
+  broad) → corrected: ADAPT the chart SHELL/pattern ONLY; allowed content limited to
+  canonical E4 OPERATING_EXPENSES Money + canonical utilization/downtime facts +
+  status/reason/unsupported/PARTIAL; forbidden: maintenance/damage/fixed-cost
+  reconstruction, unsupported cost sums, mixed legacy Pareto/waterfall/aging,
+  estimatedExposure, predicted risk, forecast; historical resolvers/formulas not
+  reused unless individually proven canonical.
+- `shared/evaluations-insights/evaluations-risk-cost-visualizations.ts` row — removed
+  stale "cost/downtime resolvers within are E6-safe"; the OVERALL module is
+  BELONGS_TO_E8; nothing is E6-safe by parent-file inheritance; a helper is E6-usable
+  only if it merely formats/transforms already-canonical E4 OPERATING_EXPENSES/
+  utilization facts, classified individually.
+- `EvaluationsRiskCostVizPanel` row — tightened the same way (removed "viz
+  orchestration is E6-safe" wholesale wording).
+- Discovery-inventory `SUPERSEDED_BY_E6_0` banner — annotated that the "42 E6-safe"
+  figure was corrected to 18/10/6/14 (+8 E8 / 5 E9).
+
+PR #798 counters (recomputed from the updated CSV + blueprint §10):
+`PR798_SYMBOL_ROWS = 14` (grouped matrix rows); symbol-level split =
+`CANONICAL_RENDERABLE 18 / STATUS_ONLY 10 / GENERIC_VISUAL_PATTERN 14 / UNSAFE_LEGACY 6
+/ E8 8 / E9 5`.
+
+`STALE_PR798_COMPONENT_AUTHORITY_ROW_COUNT = 0`,
+`STALE_PR798_RESOLVER_AUTHORITY_ROW_COUNT = 0`,
+`CROSS_ARTIFACT_CONTRADICTION_COUNT = 0`, `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0`.
+No runtime/test/config/migration change. Verified against current-main E4 cost
+contract (OPERATING_EXPENSES only authoritative money; maintenance/damage UNAVAILABLE;
+fixed costs UNSUPPORTED). Final: E6_READY_FOR_IMPLEMENTATION.

@@ -6,8 +6,12 @@
 > canonical-compatible but points at E2/pre-recovery endpoints; specific unsafe units
 > exist (`useEvaluationsInvoiceData` PII+client math, `EvaluationsDataQualityAdminPanel`
 > client role gate + `deriveErrorRatePercent`, `EvaluationsRiskMatrixChart` client risk
-> scoring, `RisksSection` forecast block); PR #798 split = 42 E6-safe / 8 predictive /
-> 5 forecast; backend decision = E6_FRONTEND_ONLY; feature flag default `off`,
+> scoring, `RisksSection` forecast block); PR #798 split (E6.0 initial) = 42 "E6-safe" /
+> 8 predictive / 5 forecast — **NOTE: the "42 E6-safe" figure was further corrected by
+> E6.0.1/E6.0.2.1 to 18 E6_CANONICAL_RENDERABLE / 10 E6_STATUS_ONLY / 6 UNSAFE_LEGACY /
+> 14 generic (unsupported maintenance/damage/fixed cost + estimatedExposure are NOT
+> canonical); see the blueprint §10 and the salvage matrix**; backend decision =
+> E6_FRONTEND_ONLY; feature flag default `off`,
 > PRODUCTION_FLAG_STATE UNSET. The "UNKNOWN" items in §20 are resolved there. See
 > `phase3-e6-execution-blueprint-2026-08.md`,
 > `phase3-e6-component-salvage-matrix-2026-08.csv`,
