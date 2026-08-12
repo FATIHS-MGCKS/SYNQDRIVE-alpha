@@ -175,21 +175,24 @@ is unchanged.
 - Revision: `PRE_E6B1_SHA = f76fbe3b`; `E6B1_TESTED_CODE_SHA = a0c8027a` (runtime frozen;
   post-freeze commit docs-only).
 
-## E6B.1.1 — 404 Authority Comment Cleanup (documentation only)
+## E6B.1.1 – Final 404 Authority Cleanup
 
-- Runtime semantics were already correct and were **not** changed: a generic HTTP 404
-  maps to the neutral `NOT_FOUND`; a 404 alone is never `FEATURE_DISABLED`;
-  `FEATURE_DISABLED` requires a reliable machine-readable discriminator (none exists on
+- The executable runtime was already correct before this cleanup and was **not**
+  changed.
+- Generic HTTP 404 maps to `NOT_FOUND` (see `mapEvaluationsResult`: 403→UNAUTHORIZED,
+  404→NOT_FOUND, other non-success→ERROR).
+- HTTP 404 alone does not prove `FEATURE_DISABLED`.
+- `FEATURE_DISABLED` requires a reliable machine-readable discriminator (none exists on
   current main).
-- Corrected stale authority comments so they describe transport truth: `api.ts`
-  `requestResult()` JSDoc (now: preserves HTTP status; does not infer a feature-disabled
-  meaning from a bare 404) and `api.evaluations.analyticsInsightsSummary()` JSDoc (now:
-  generic 404 → neutral `NOT_FOUND`, non-disclosing guard, never `FEATURE_DISABLED`).
-- Marked the remaining stale current-authority statements in the E6A implementation and
-  test reports as **SUPERSEDED BY E6A.1** (history preserved, no longer read as current).
-- `EXECUTABLE_RUNTIME_CHANGE_COUNT = 0`, `TEST_LOGIC_CHANGE_COUNT = 0`,
-  `STALE_404_FEATURE_DISABLED_AUTHORITY_STATEMENT_COUNT = 0` (reverified). No backend/
-  Prisma/migration/config change; no E6C/E7/E8/E9 scope.
+- Two stale `api.ts` comments were corrected (comment-only): the `requestResult()`
+  JSDoc (now: preserves HTTP status; does not infer the cause of a 404;
+  FEATURE_DISABLED needs a separate reliable discriminator) and the
+  `analyticsInsightsSummary()` JSDoc (now: status-aware transport, generic 404 remains
+  NOT_FOUND, FEATURE_DISABLED only with a reliable discriminator). The remaining stale
+  current-authority statements in the E6A implementation/test reports are marked
+  **SUPERSEDED BY E6A.1** (history preserved).
+- No executable runtime behavior changed; no backend/database/config changes.
+- The E6B runtime remains accepted.
 
 ## 24. Risk review
 - Feature flag off by default on main → canonical analytics sections render neutral

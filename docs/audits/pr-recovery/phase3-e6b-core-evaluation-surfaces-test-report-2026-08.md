@@ -149,21 +149,31 @@ browsers); classified `ENVIRONMENT_SPECIFIC`, not a new E6 failure. The canonica
 fixtures already mock the finance endpoint at the same path used by the new
 `financeInsightsResult`, so no E2E change was required.
 
-## E6B.1.1 — 404 Authority Comment Cleanup (documentation only)
+## E6B.1.1 – Authority Consistency Verification
 
-Documentation/comment authority cleanup with no executable or test-logic change
-(`EXECUTABLE_RUNTIME_CHANGE_COUNT = 0`, `TEST_LOGIC_CHANGE_COUNT = 0`). Runtime was
-already correct and no tests were modified; the existing finance/canonical transport
-tests continue to assert the correct behavior:
-- generic 404 → `NOT_FOUND` (asserted `!= FEATURE_DISABLED`);
-- `FEATURE_DISABLED` requires a reliable discriminator (none exists on current main);
-- 403 → `UNAUTHORIZED`, 5xx/network → `ERROR`.
-Stale current-authority comments in `api.ts` (`requestResult` / `analyticsInsightsSummary`)
-and the E6A implementation/test reports were corrected or marked **SUPERSEDED BY E6A.1**;
-`STALE_404_FEATURE_DISABLED_AUTHORITY_STATEMENT_COUNT = 0` reverified. Gates re-run:
-frontend typecheck PASS; targeted `api.ts` lint = 273 both with/without the comment change
-(`PRE_EXISTING_IDENTICAL`, zero new); `evaluations-canonical` + finance-transport suites
-28/28 PASS.
+Documentation/comment authority cleanup only. Runtime was already correct; no tests
+were modified. The existing finance/canonical transport tests continue to assert the
+correct behavior (generic 404 → `NOT_FOUND` asserted `!= FEATURE_DISABLED`; 403 →
+`UNAUTHORIZED`; 5xx/network → `ERROR`; `FEATURE_DISABLED` requires a reliable
+discriminator). Gates re-run: frontend typecheck PASS; targeted `api.ts` lint = 273
+both with/without the comment change (`PRE_EXISTING_IDENTICAL`, zero new);
+`evaluations-canonical` + finance-transport suites 28/28 PASS.
+
+```
+STALE_404_FEATURE_DISABLED_AUTHORITY_STATEMENT_COUNT = 0
+EXECUTABLE_RUNTIME_CHANGE_COUNT = 0
+TEST_LOGIC_CHANGE_COUNT = 0
+BACKEND_RUNTIME_CHANGE_COUNT = 0
+PRISMA_CHANGE_COUNT = 0
+MIGRATION_CHANGE_COUNT = 0
+PRODUCTION_CONFIG_CHANGE_COUNT = 0
+PRODUCTION_DEPLOYMENT_COUNT = 0
+E6C_RUNTIME_SCOPE_COUNT = 0
+E7_RUNTIME_SCOPE_COUNT = 0
+E8_RUNTIME_SCOPE_COUNT = 0
+E9_RUNTIME_SCOPE_COUNT = 0
+IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0
+```
 
 ## Classification
 - `NEW_E6_FAILURE_COUNT = 0`, `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0`.

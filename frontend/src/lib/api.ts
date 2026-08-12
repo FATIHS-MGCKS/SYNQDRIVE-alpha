@@ -772,12 +772,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 /**
- * Status-aware request that does NOT throw on non-2xx (except the shared 401
- * redirect). It PRESERVES the HTTP status (and network failure as status 0) instead
- * of collapsing every failure into a thrown Error, so callers can classify 403, 404,
- * 5xx, etc. themselves. It does NOT interpret *why* a status occurred — in
- * particular it never infers a "feature-disabled" meaning from a bare 404. Used by
- * the canonical Evaluations (E6) data layer. Never returns fabricated data.
+ * Status-aware request that preserves HTTP status instead of collapsing non-2xx
+ * responses into a generic thrown Error (the shared 401 redirect aside). Canonical
+ * Evaluations callers use the preserved status to distinguish authorization,
+ * not-found, server and transport failures. This transport does not infer the cause
+ * of a 404; FEATURE_DISABLED requires a separate reliable discriminator. Never
+ * returns fabricated data.
  */
 export interface RequestResult<T> {
   readonly ok: boolean;
@@ -5969,11 +5969,10 @@ export const api = {
 
     /**
      * Canonical E4 analytics insights summary (composite). Status-aware transport
-     * (never fabricated data): a generic 404 is surfaced as the neutral NOT_FOUND —
-     * the FeatureGuard returns a deliberately non-disclosing 404, so a bare 404 is
-     * NOT proof of a disabled feature and is never mapped to FEATURE_DISABLED (which
-     * requires a reliable machine-readable discriminator that does not exist today).
-     * `periodType`/`stationIds` map to canonical E1 period / E2 station scope.
+     * preserves HTTP status without fabricating data. A generic 404 remains
+     * NOT_FOUND; FEATURE_DISABLED may only be asserted when a reliable
+     * machine-readable discriminator exists. `periodType`/`stationIds` map to
+     * canonical E1 period / E2 station scope.
      */
     analyticsInsightsSummary: (
       orgId: string,
