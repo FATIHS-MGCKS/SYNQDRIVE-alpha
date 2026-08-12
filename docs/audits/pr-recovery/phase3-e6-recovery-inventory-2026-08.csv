@@ -1,3 +1,4 @@
+# SUPERSEDED_BY_E6_0 (2026-08-12): component-level salvage classifications refined in phase3-e6-component-salvage-matrix-2026-08.csv; see also phase3-e6-execution-blueprint-2026-08.md
 artifact_type,artifact_id,title,branch,sha,state,path,historical_phase,classification,canonical_replacement,reuse_decision,risk,notes
 pr,#792,Metric State UX (Prompt 28/54),cursor/evaluations-metric-state-ux-8427,c82e44936217,OPEN,frontend,E6,E6_CANDIDATE,E1 EvaluationsMetricResponse.status,REUSABLE_WITH_ADAPTATION,low,Truthful availability badges/value; already tagged E6 UI in E5 source matrix
 pr,#793,Data-Quality panel for admins (Prompt 29/54),cursor/evaluations-data-quality-panel-8427,ff34b66f0074,OPEN,frontend,E6,E6_CANDIDATE,E5 EvaluationsQualityReport,REUSABLE_WITH_ADAPTATION,med,Bind to E5 quality dimensions; must not green-wash UNKNOWN

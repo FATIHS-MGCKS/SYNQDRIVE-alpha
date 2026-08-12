@@ -1,3 +1,4 @@
+# SUPERSEDED_BY_E6_0 (2026-08-12): component-level salvage classifications refined in phase3-e6-component-salvage-matrix-2026-08.csv; see also phase3-e6-execution-blueprint-2026-08.md
 concept,canonical_phase,canonical_owner,canonical_contract,historical_e6_source,status_authority,quality_authority,privacy_authority,reuse_decision,notes
 Revenue,E3,EvaluationsFinanceService,GET /evaluations/finance/insights (EvaluationsMetricResponse),PR#795 KPI strip; PR#794 finance section,E1 metric status,E5 quality report,n/a,PRESENT_ONLY,Present E3 money metrics; never sum invoices client-side
 Costs,E4,EvaluationsInsightsService,GET /insights/cost-model (EvaluationsCostModelSection),PR#798 cost viz,E1 status per category,E5 quality,n/a,PRESENT_ONLY,Cost model owns provenance/dedup; UI renders

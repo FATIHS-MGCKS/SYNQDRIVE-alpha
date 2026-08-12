@@ -1,5 +1,18 @@
 # Phase 3 — E6 Discovery, Recovery Inventory & Source Authority Reconstruction (2026-08)
 
+> **SUPERSEDED_BY_E6_0 (component-level, 2026-08-12).** This discovery is confirmed
+> and deepened by E6.0, which closed the remaining unknowns at file/symbol level:
+> the 8 candidate PRs are a stacked chain; the historical hook layer is largely
+> canonical-compatible but points at E2/pre-recovery endpoints; specific unsafe units
+> exist (`useEvaluationsInvoiceData` PII+client math, `EvaluationsDataQualityAdminPanel`
+> client role gate + `deriveErrorRatePercent`, `EvaluationsRiskMatrixChart` client risk
+> scoring, `RisksSection` forecast block); PR #798 split = 42 E6-safe / 8 predictive /
+> 5 forecast; backend decision = E6_FRONTEND_ONLY; feature flag default `off`,
+> PRODUCTION_FLAG_STATE UNSET. The "UNKNOWN" items in §20 are resolved there. See
+> `phase3-e6-execution-blueprint-2026-08.md`,
+> `phase3-e6-component-salvage-matrix-2026-08.csv`,
+> `phase3-e6-canonical-frontend-contract-matrix-2026-08.csv`.
+
 Discovery-only. NO implementation, cherry-pick, merge, runtime/test/config/Prisma
 change, deploy, or E7–E9 work was performed. Only evidence files under
 `docs/audits/pr-recovery/**` were created.
