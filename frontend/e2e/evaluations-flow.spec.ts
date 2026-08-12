@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-import { assertNoHorizontalOverflow, openEvaluationsPage } from './evaluations-fixtures';
+import {
+  assertNoHorizontalOverflow,
+  openEvaluationsPage,
+  getDriverAnalysisRequestCount,
+} from './evaluations-fixtures';
 
 /**
  * E6B canonical Auswertungen core flow (mocked canonical E1–E5 API). Replaces the
@@ -31,6 +35,28 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
 
     // No E7 (recommendations/actions) or E8/E9 (forecast/prediction) surfaces.
     await expect(page.getByText(/Empfohlene Maßnahmen|Maßnahmen-Center|Prognose|Forecast|MoM revenue/i)).toHaveCount(0);
+
+    // E6C: Data Quality panel is present and loaded with the page.
+    await expect(page.getByTestId('evaluations-data-quality')).toBeVisible();
+
+    await assertNoHorizontalOverflow(page);
+  });
+
+  test('E6C: Driver Influence request is lazy — only after explicit reveal', async ({ page }) => {
+    await openEvaluationsPage(page, { profile: 'full-org' });
+
+    await expect(page.getByTestId('evaluations-driver')).toBeVisible();
+    // No driver-analysis request before the reveal.
+    expect(getDriverAnalysisRequestCount()).toBe(0);
+
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver-content')).toBeVisible();
+    expect(getDriverAnalysisRequestCount()).toBe(1);
+
+    // Collapse + reopen must not refetch.
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await page.getByTestId('evaluations-driver-toggle').click();
+    expect(getDriverAnalysisRequestCount()).toBe(1);
 
     await assertNoHorizontalOverflow(page);
   });

@@ -94,11 +94,18 @@ const state = {
   insightsForbidden: false,
   // E6B canonical: when true, the E4/E5 feature-gated endpoints return a generic 404.
   canonicalFeatureDisabled: false,
+  // E6C: counts direct driver-analysis requests (lazy-reveal assertion).
+  driverAnalysisRequestCount: 0,
 };
 
 /** Toggle the canonical E4/E5 feature-disabled (generic 404) behavior for a test. */
 export function setCanonicalFeatureDisabled(disabled: boolean) {
   state.canonicalFeatureDisabled = disabled;
+}
+
+/** E6C: number of direct driver-analysis requests observed since the last reset. */
+export function getDriverAnalysisRequestCount(): number {
+  return state.driverAnalysisRequestCount;
 }
 
 // ── E6B canonical fixture builders (minimal valid wire shapes) ──
@@ -197,8 +204,74 @@ function canonicalQualityReport() {
     scope: CANON_SCOPE,
     period: CANON_PERIOD,
     calculationVersion: 'evaluations-quality-e5-v2',
-    sections: [],
+    sections: [
+      {
+        section: 'finance',
+        status: 'PARTIAL',
+        // All five E5 dimensions present with distinct states.
+        dimensions: {
+          FRESHNESS: 'UNKNOWN',
+          COMPLETENESS: 'PARTIAL',
+          PROVENANCE: 'COMPLETE',
+          VALIDITY: 'UNAVAILABLE',
+          TEMPORAL_APPLICABILITY: 'COMPLETE',
+        },
+        // Pipeline freshness (separate from business-event recency).
+        freshness: {
+          newestSourceAt: null,
+          oldestSourceAt: null,
+          lastSuccessfulImportAt: '2026-06-16T06:00:00.000Z',
+          evaluatedAt: EVAL_E2E_FIXED_NOW,
+          state: 'UNKNOWN',
+        },
+        businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
+        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 0, ratio: 0.8 },
+        requiredSourceClasses: ['OrgInvoice'],
+        lineage: [
+          { sourceCategory: 'OrgInvoice', sourceRef: 'src::opaque::e2e1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'v', reason: 'primary' },
+        ],
+        reason: null,
+      },
+      {
+        // Station-scoped nulls render neutrally.
+        section: 'utilization',
+        status: 'UNAVAILABLE',
+        dimensions: {
+          FRESHNESS: 'UNAVAILABLE',
+          COMPLETENESS: 'UNKNOWN',
+          PROVENANCE: 'UNKNOWN',
+          VALIDITY: 'UNKNOWN',
+          TEMPORAL_APPLICABILITY: 'UNKNOWN',
+        },
+        freshness: null,
+        businessEventRecency: null,
+        coverage: null,
+        requiredSourceClasses: [],
+        lineage: [],
+        reason: 'STATION_SCOPE_UNAVAILABLE',
+      },
+    ],
     overall: { status: 'PARTIAL', complete: false, reason: 'QUALITY_INCOMPLETE' },
+  };
+}
+
+// E6C: direct E5B driver-analysis response (separate from the summary's embedded slice).
+function canonicalDriverInfluence() {
+  return {
+    status: 'AVAILABLE',
+    calculationVersion: 'evaluations-driver-e5b-v1',
+    period: CANON_PERIOD,
+    scope: CANON_SCOPE,
+    coverage: null,
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    reason: null,
+    disclaimer: 'Statistical association only — not causation.',
+    confounders: ['seasonality', 'route mix'],
+    factors: [
+      { driverRef: 'driver::e2e::A', associatedDimension: 'HARSH_BRAKING', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
+      { driverRef: 'driver::e2e::B', associatedDimension: 'IDLING', associationShare: 0.4, sampleSize: 18, relationship: 'CORRELATES_WITH' },
+    ],
+    piiTier: 'pseudonymous',
   };
 }
 
@@ -412,6 +485,7 @@ export function resetEvaluationsMockState(profile: EvaluationsScenarioProfile = 
   state.customersError = false;
   state.insightsForbidden = false;
   state.canonicalFeatureDisabled = false;
+  state.driverAnalysisRequestCount = 0;
   state.invoices = [];
   state.insights = [];
   state.customers = [];
@@ -711,12 +785,21 @@ export async function installEvaluationsMocks(
       }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalInsightsSummary()) });
     }
-    // E5 quality (feature-gated) — E6C consumer; mocked for completeness.
+    // E5 quality (feature-gated) — E6C Data Quality panel.
     if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/quality`) && method === 'GET') {
       if (state.canonicalFeatureDisabled) {
         return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
       }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalQualityReport()) });
+    }
+    // E5B driver-analysis (E6C Driver Influence) — a SEPARATE direct request that must
+    // only fire after the explicit reveal. Count tracks lazy-request assertions.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/driver-analysis`) && method === 'GET') {
+      state.driverAnalysisRequestCount += 1;
+      if (state.canonicalFeatureDisabled) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalDriverInfluence()) });
     }
 
     return route.continue();

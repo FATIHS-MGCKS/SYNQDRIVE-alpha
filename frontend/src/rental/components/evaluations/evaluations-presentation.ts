@@ -7,7 +7,14 @@ import type { TranslationKey } from '../../i18n/translations/en';
 import type {
   EvaluationsMetricStatus,
   EvaluationsMetricResponse,
+  E5QualityDimension,
+  E5DimensionState,
+  EvaluationsSourceFreshness,
+  EvaluationsPiiTier,
 } from '../../lib/evaluations/evaluations-canonical.types';
+
+/** Pipeline freshness state (FRESH/STALE/UNKNOWN/ERROR) — distinct from E1 status. */
+export type EvaluationsFreshnessState = EvaluationsSourceFreshness['state'];
 
 export type EvaluationsStatusTone = 'positive' | 'warning' | 'watch' | 'neutral' | 'critical';
 
@@ -83,4 +90,69 @@ export function readNumericMetricForDisplay(
   if (!canShowMetricValue(status)) return { value: null, status };
   const raw = (metric as { value?: unknown }).value;
   return { value: typeof raw === 'number' ? raw : null, status };
+}
+
+// ── E6C: E5 data-quality dimension presentation (SEPARATE from E1 metric status) ──
+// The five E5 dimension states are their own vocabulary and must NOT be mapped onto
+// the E1 metric-status badge. COMPLETE→positive, PARTIAL→warning, UNKNOWN/UNAVAILABLE
+// stay neutral (never upgraded, never rendered as zero/healthy).
+
+export function dimensionStateTone(state: E5DimensionState): EvaluationsStatusTone {
+  switch (state) {
+    case 'COMPLETE':
+      return 'positive';
+    case 'PARTIAL':
+      return 'warning';
+    case 'UNKNOWN':
+    case 'UNAVAILABLE':
+    default:
+      return 'neutral';
+  }
+}
+
+export function dimensionStateLabelKey(state: E5DimensionState): TranslationKey {
+  return `evaluations.quality.dimensionState.${state}` as TranslationKey;
+}
+
+export function dimensionLabelKey(dimension: E5QualityDimension): TranslationKey {
+  return `evaluations.quality.dimension.${dimension}` as TranslationKey;
+}
+
+/** Ordered canonical dimensions (server supplies a record; we render a stable order). */
+export const E5_QUALITY_DIMENSIONS: readonly E5QualityDimension[] = [
+  'FRESHNESS',
+  'COMPLETENESS',
+  'PROVENANCE',
+  'VALIDITY',
+  'TEMPORAL_APPLICABILITY',
+];
+
+// ── Pipeline freshness state (distinct from business-event recency and E1 status) ──
+export function freshnessStateTone(state: EvaluationsFreshnessState): EvaluationsStatusTone {
+  switch (state) {
+    case 'FRESH':
+      return 'positive';
+    case 'STALE':
+      return 'watch';
+    case 'ERROR':
+      return 'critical';
+    case 'UNKNOWN':
+    default:
+      return 'neutral';
+  }
+}
+
+export function freshnessStateLabelKey(state: EvaluationsFreshnessState): TranslationKey {
+  return `evaluations.quality.freshnessState.${state}` as TranslationKey;
+}
+
+// ── E6C: driver influence presentation (server-authoritative; never derived) ──
+export function driverPiiTierLabelKey(tier: EvaluationsPiiTier): TranslationKey {
+  return `evaluations.driver.piiTier.${tier}` as TranslationKey;
+}
+
+export function driverRelationshipLabelKey(
+  relationship: 'ASSOCIATED_WITH' | 'CORRELATES_WITH',
+): TranslationKey {
+  return `evaluations.driver.relationship.${relationship}` as TranslationKey;
 }

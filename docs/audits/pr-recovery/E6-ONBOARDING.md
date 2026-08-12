@@ -39,13 +39,16 @@ Verträge (in `main` gemerged). E6 ist das Frontend (Presentation Layer) im PR #
 | E6A.1 | 404-Semantik + Hook-Lifecycle-Korrektur | ✅ |
 | E6B | Sichtbare Kern-Oberflächen (die Auswertungen-Seite) | ✅ |
 | E6B.1 | Finance-Transport-Status-Semantik + i18n („Eligible vehicles“) | ✅ |
-| E6B.1.1 | 404-Authority Kommentar-/Doku-Cleanup (docs/comment-only) | ✅ (aktueller Stand) |
-| **E6C** | Driver Influence UI + detailliertes Data-Quality-Panel | ⬜ offen (noch NICHT starten) |
-| **E7** | Recommendations / Actions | ⬜ offen |
+| E6B.1.1 | 404-Authority Kommentar-/Doku-Cleanup (docs/comment-only) | ✅ |
+| E6C | Driver Influence UI + detailliertes Data-Quality-Panel | ✅ (aktueller Stand) |
+| **E7** | Recommendations / Actions | ⬜ offen (noch NICHT starten) |
 | **E8** | Predictive Risk / `estimatedExposure` | ⬜ offen |
 | **E9** | Forecast UI | ⬜ offen |
 
-Absolute Stopp-Regel aktuell: **E6C nicht starten**, bis der User es explizit sagt.
+Absolute Stopp-Regel aktuell: **E7 nicht starten**, bis der User es explizit autorisiert
+(genauso wenig E8/E9 oder eine vollständige E6D-Neugestaltung). E6C ist abgeschlossen —
+Driver Influence UI (lazy) und das detaillierte Data-Quality-Panel liegen auf der
+bestehenden Auswertungen-Seite; siehe `phase3-e6c-driver-quality-surfaces-*`.
 
 ## 4. Leitplanken (gelten über alle Etappen)
 
