@@ -135,6 +135,27 @@ test.describe('landing product assets', () => {
     await capture(page, 'fleet-command', await contentClip(page));
   });
 
+  test('fleet command at phone width', async ({ page }) => {
+    // The phone breakpoint cannot reuse a crop of the wide capture: its rows run
+    // 616 CSS px across, which a 356px column renders at unreadable size. The
+    // product has its own narrow layout below 1024px, so capture that instead.
+    // Navigation still needs the desktop sidebar, so open the view wide first
+    // and only then shrink the viewport.
+    await page.setViewportSize({ width: 1720, height: 940 });
+    await openRental(page, { synqdrive_rental_fleet_tab: 'status' });
+    await clickSidebarNav(page, 'Fleet');
+    await expect(page.getByRole('heading', { name: /^Fleet$/ })).toBeVisible({ timeout: 45_000 });
+    await page
+      .getByRole('button', { name: /^All\s+\d+$/ })
+      .first()
+      .click()
+      .catch(() => undefined);
+
+    await page.setViewportSize({ width: 430, height: 1600 });
+    await settle(page, 2_600);
+    await capture(page, 'fleet-command-narrow');
+  });
+
   test('bookings workspace', async ({ page }) => {
     // Taller viewport so the whole fleet plan fits into one frame.
     await page.setViewportSize({ width: 1440, height: 1300 });
