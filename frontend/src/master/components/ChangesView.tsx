@@ -13,50 +13,20 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
+import {
+  normalizeChangelogEntries,
+  toSummaryLines,
+  type ChangelogEntry,
+  type RawChangelogEntry,
+} from './changelog-fallback';
 
 export interface ChangesViewProps {
   isDarkMode: boolean;
 }
 
-export interface ChangelogEntry {
-  id: string;
-  version: string;
-  title: string;
-  summary: string[];
-  reason: string | null;
-  previousBehavior: string | null;
-  details: string | null;
-  affectsArchitecture: boolean;
-  module: string | null;
-  createdAt: string;
-}
-
-/**
- * Shape of the hand-written list below, which is not yet normalized: 48 of its
- * entries end their summary with `.join(' | ')` and so hold one string rather
- * than the lines `ChangelogEntry` promises. Declaring that honestly is what
- * makes `toSummaryLines` obviously necessary instead of merely defensive.
- *
- * The mismatch went unnoticed because TypeScript silently stops checking the
- * contents of this file's literal: a deliberate type error placed inside it is
- * not reported, while the same error in a small file in the same project is. Do
- * not rely on the compiler to guard entries added here.
- */
-type RawChangelogEntry = Omit<ChangelogEntry, 'summary'> & { summary: string[] | string };
+export type { ChangelogEntry };
 
 const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Vehicle Intelligence', 'Automation'] as const;
-
-/** One string per line for a joined summary, so nothing is dropped. */
-function toSummaryLines(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.map((s) => String(s));
-  if (typeof raw === 'string' && raw !== '') return [raw];
-  return [];
-}
-
-/** The hand-written list, brought to the shape the view renders. */
-export function normalizeFallbackEntries(): ChangelogEntry[] {
-  return FALLBACK_ENTRIES.map((e) => ({ ...e, summary: toSummaryLines(e.summary) }));
-}
 
 export const FALLBACK_ENTRIES: RawChangelogEntry[] = [
   {
@@ -66,15 +36,16 @@ export const FALLBACK_ENTRIES: RawChangelogEntry[] = [
     summary: [
       'Die Changes-Ansicht stürzte mit "entry.summary.map is not a function" ab, sobald sie auf die eingebaute Liste zurückfiel. Weil die Master-Shell keine Error-Boundary hat, wurde dabei die gesamte Seite leer.',
       'Ursache: 48 der 1327 Einträge beenden ihre summary mit .join(" | ") und halten damit einen String statt der Zeilen, die der Typ zusagt.',
-      'Die Umwandlung liegt jetzt in normalizeFallbackEntries/toSummaryLines, die beide Wege gleich behandeln: ein zusammengefügter Text wird eine Zeile, nichts geht verloren. Die 48 historischen Einträge bleiben unverändert.',
-      'Der Fehler blieb unentdeckt, weil TypeScript den Inhalt dieser Datei stillschweigend nicht mehr prüft: ein absichtlich eingebauter Typfehler im großen Literal wird nicht gemeldet, derselbe Fehler in einer kleinen Datei desselben Projekts schon. Neuer Unit-Test changelog-fallback.test.ts sichert die Form ab.',
+      'Die Umwandlung liegt jetzt in changelog-fallback.ts (toSummaryLines, normalizeChangelogEntries) und wird von beiden Wegen genutzt: ein zusammengefügter Text wird eine Zeile, nichts geht verloren. Die 48 historischen Einträge bleiben unverändert.',
+      'Eigene Datei, weil react-refresh/only-export-components bei jedem weiteren Nicht-Komponenten-Export der Ansicht anschlägt und FALLBACK_ENTRIES dieses Budget bereits verbraucht.',
+      'Der Fehler blieb unentdeckt, weil TypeScript den Inhalt der großen Literal-Datei stillschweigend nicht mehr prüft: ein absichtlich eingebauter Typfehler darin wird nicht gemeldet, derselbe Fehler in einer kleinen Datei desselben Projekts schon. Neuer Unit-Test changelog-fallback.test.ts sichert die Form ab.',
     ],
     reason:
       'Die Ansicht ist die Stelle, an der Änderungen dokumentiert werden. Fällt sie auf die eingebaute Liste zurück, muss sie funktionieren, statt die Master-Oberfläche unbenutzbar zu machen.',
     previousBehavior:
       'Bei leerer API-Antwort blieb die komplette Master-Admin-Seite weiß, ohne Fehlermeldung für den Nutzer.',
     details:
-      'frontend/src/master/components/ChangesView.tsx (RawChangelogEntry, toSummaryLines, normalizeFallbackEntries), frontend/src/master/components/changelog-fallback.test.ts',
+      'frontend/src/master/components/changelog-fallback.ts (neu: ChangelogEntry, RawChangelogEntry, toSummaryLines, normalizeChangelogEntries), ChangesView.tsx (nutzt sie im Fallback- und API-Pfad), changelog-fallback.test.ts',
     affectsArchitecture: false,
     module: 'Master Admin',
     createdAt: '2026-08-12T08:10:00.000Z',
@@ -26444,7 +26415,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
       const arr = Array.isArray(res) ? res : [];
       const parsed = arr.map((row) => normalizeChangelogRow(row as Record<string, unknown>)).filter((x): x is ChangelogEntry => x != null);
       if (parsed.length === 0) {
-        setSourceRows(normalizeFallbackEntries());
+        setSourceRows(normalizeChangelogEntries(FALLBACK_ENTRIES));
         setUsingFallback(true);
       } else {
         setSourceRows(parsed);
