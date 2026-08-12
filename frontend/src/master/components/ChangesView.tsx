@@ -59,14 +59,15 @@ export const FALLBACK_ENTRIES: RawChangelogEntry[] = [
       'Zweisprachig ausgeliefert: Deutsch auf der Wurzel, Englisch unter /en/, wechselseitig über hreflang verknüpft.',
       'Alle Produktbilder sind echte Aufnahmen des SynqDrive-Frontends gegen einen synthetischen Demo-Mandanten. Keine Produktionsdaten, keine Kundendaten, keine Pixel-Zensur nötig.',
       'Eigene Telefon-Zuschnitte statt herunterskalierter Desktop-Bilder, damit Tabellen und Karten auf dem Telefon lesbar bleiben; die Fahrzeugliste nutzt das native Schmal-Layout des Produkts.',
-      'Die Seite lebt jetzt im eigenen Repository FATIHS-MGCKS/SynqDrive-Landing-Page. Im Produkt-Repository bleibt nur die Aufnahme-Harness, weil sie das echte Frontend fahren muss.',
+      'Die Seite lebt vollständig im eigenen Repository FATIHS-MGCKS/SynqDrive-Landing-Page: Templates, Inhalte, Build, Bilder und eigene QA. Dieses Repository baut nichts davon und enthält bewusst keine deploybare öffentliche Seite.',
+      'Produktbilder werden dort von Hand gepflegt; das committete assets/ ist die Wahrheit über den Live-Stand.',
     ],
     reason:
       'Der öffentliche Auftritt soll das Produkt zeigen statt es anzukündigen, und er soll unabhängig vom Produkt versioniert und deployt werden.',
     previousBehavior:
       'synqdrive.eu zeigte eine statische Coming-soon-Seite (live seit 2026-08-11, nie nach main gemerged). Sie ist als Rollback-Stand unter rollback/coming-soon-2026-08-11/ im Landingpage-Repository erhalten.',
     details:
-      'Landingpage-Repository: content/, src/, tools/, assets/, e2e/. Produkt-Repository: frontend/e2e/landing-assets.capture.spec.ts, frontend/e2e/landing-demo-tenant.ts, architecture/PUBLIC_LANDING_PAGE_2026-08-11.md, architecture/PUBLIC_LANDING_PAGE_HOSTING_BOUNDARY_2026-08-11.md',
+      'Landingpage-Repository: content/, src/, tools/, assets/, e2e/, docs/IMPLEMENTATION.md. Produkt-Repository: nur architecture/PUBLIC_LANDING_PAGE_HOSTING_BOUNDARY_2026-08-11.md sowie diese beiden In-App-Einträge.',
     affectsArchitecture: true,
     module: 'Public Website',
     createdAt: '2026-08-12T07:30:00.000Z',
