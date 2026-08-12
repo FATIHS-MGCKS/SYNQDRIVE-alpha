@@ -1,5 +1,22 @@
 # Phase 3 — E6.0 Historical Component Salvage & Execution Blueprint (2026-08)
 
+> **CORRECTED BY E6.0.1 (2026-08-12).** Independent review corrected four items;
+> where this document and the correction differ, the correction governs. See
+> `phase3-e6-0-1-blueprint-correction-2026-08.md`. Summary of overrides:
+> (A) #798 monetary reclassification — only OPERATING_EXPENSES (OrgInvoice) is
+> canonical money; UNPLANNED_MAINTENANCE + DAMAGE_REPAIR are served UNAVAILABLE and
+> ESTIMATED_FIXED_COSTS is UNSUPPORTED → render STATUS ONLY, never amounts; corrected
+> #798 split = 18 canonical / 10 status-only / 6 unsafe / 8 E8 / 5 E9 / 14 generic
+> (supersedes "E6_SAFE 42"). (B) `estimatedExposure` has no canonical contract →
+> REMOVE from E6 (E8). (C) generic Money MUST use the currency-aware
+> `finance-insights-adapter` formatter (no implicit EUR); historical
+> `evaluations-format.ts` `fmtEurMinor` is COPY_FORMATTING_PATTERN_ONLY, not
+> REUSE_AS_IS. (D) E3 Finance is FIXED MTD (not user-selectable) while E4/E5 follow
+> the global period selector → the UI must show Finance's MTD scope explicitly and
+> never imply the selector changes it. Plus legacy separation: dashboard-insights /
+> misuse-cases / raw entities are non-canonical and must not feed canonical E6
+> sections or act as fallbacks. New Money/Period/Legacy hard gates apply.
+
 Pre-implementation analysis only. NO runtime/test/Prisma/config/flag/VPS change,
 no cherry-pick/merge, no E7–E9. Only `docs/audits/pr-recovery/**` changed.
 
@@ -150,8 +167,13 @@ scoring, no association→causation upgrade. Salvage finding-card/drawer visuals
 | GENERIC_VISUAL | 14 | chart shells, tables, empty states, formatters, skeletons |
 | UNSAFE | 4 | cellTone(probability+impact); shared deriveErrorRatePercent; derivedDowntimePct fallback; (rawValue??0) accent |
 
-`PREDICTIVE_SYMBOL_COUNT = 8`, `FORECAST_SYMBOL_COUNT = 5`, `E6_SAFE_SYMBOL_COUNT = 42`.
-E6 keeps only current/historical costs & downtime from E4 cost-model + utilization.
+`PREDICTIVE_SYMBOL_COUNT = 8`, `FORECAST_SYMBOL_COUNT = 5`. **[CORRECTED BY E6.0.1]**
+the former `E6_SAFE_SYMBOL_COUNT = 42` is superseded: only OPERATING_EXPENSES money +
+downtime durations/counts + section currency/status/coverage are canonical → 18
+E6_CANONICAL_RENDERABLE; maintenance/damage/fixed cost amounts → 10 E6_STATUS_ONLY
+(render E4 UNAVAILABLE, no amount); client cost series/pareto/aging mixing unsupported
+categories → 6 UNSAFE_LEGACY_CALCULATION; `estimatedExposure` moves to E8. See §10b.
+E6 keeps only OPERATING_EXPENSES cost money + observed downtime from E4.
 `EvaluationsRiskMatrixChart` and shared `resolveRiskMatrix`/`scaleToFive`/exposure →
 BELONGS_TO_E8. `EvaluationsRisksSection` forecast block → BELONGS_TO_E9. Expected E6
 contamination after blueprint = 0.
@@ -241,11 +263,14 @@ mirror → E6 must add local client types (or new aliases).
 
 ## 18. Backend gap decision
 
-`BACKEND_DECISION = E6_FRONTEND_ONLY`. Every E6 section maps to an existing endpoint.
-`CANONICAL_API_GAP_COUNT = 0`. One data-availability limitation (not an API gap):
-downtime `blockedMs` is `null` on main (no authoritative blocked source) — E6 renders
-it UNAVAILABLE, does not fabricate. No adapter is required; the E4 composite
-`/insights/summary` already aggregates sections server-side.
+`BACKEND_DECISION = E6_FRONTEND_ONLY` (re-confirmed by E6.0.1 from actual contracts).
+Every E6 section maps to an existing endpoint. `TRUE_CANONICAL_API_GAP_COUNT = 0`.
+**[E6.0.1]** `INTENTIONALLY_UNSUPPORTED_CONCEPT_COUNT = 3` — maintenance/damage/fixed
+cost money are deliberately served UNAVAILABLE/UNSUPPORTED by E4; E6 renders that
+truth and MUST NOT build an adapter to manufacture them. `estimatedExposure` is
+out-of-scope predictive (E8), not an API gap. Data-availability limitation (not a
+gap): downtime `blockedMs` is `null` on main → render UNAVAILABLE. No adapter
+required; E4 composite `/insights/summary` aggregates server-side.
 
 ## 19. Feature flag runtime analysis
 
@@ -302,17 +327,33 @@ No composite percentage (E5 supplies none). `overall.complete` shown honestly
 ## 24. Money contract
 
 Currency comes from `EvaluationsMoney.currency` (per value); never inferred from
-locale. No float recomputation; `amountMinor` integer minor units; format only
-(minor→major for display). Mixed currency never silently summed (E4 cost-model exposes
-`mixedCurrency` + `totalsByCurrency[]`; render per-currency). Reuse
-`finance-insights-adapter` + `evaluations-format` formatters.
+locale; missing currency never defaults to EUR (render UNAVAILABLE). No float
+recomputation; `amountMinor` integer minor units; format only (minor→major for
+display via the currency's real minor-unit exponent). Mixed currency never silently
+summed (E4 cost-model exposes `mixedCurrency` + `totalsByCurrency[]`; render
+per-currency). **[CORRECTED BY E6.0.1]** the generic Money renderer MUST be the
+currency-aware `finance-insights-adapter` (`minorToMajorForPresentation` +
+`formatFinanceMoney`, backed by `Money.currency`); the historical
+`evaluations-format.ts` `fmtEurMinor` HARDCODES EUR and is
+COPY_FORMATTING_PATTERN_ONLY (usable only for known-EUR/percent contexts), NOT the
+generic Money renderer. Only OPERATING_EXPENSES is authoritative cost money; other
+cost categories are rendered as status, never amounts. Money hard gates:
+IMPLICIT_CURRENCY_FORMATTING_COUNT=0, HARDCODED_EUR_FOR_GENERIC_MONEY_COUNT=0,
+CLIENT_SIDE_CURRENCY_INFERENCE_COUNT=0, MIXED_CURRENCY_CLIENT_SUM_COUNT=0,
+UNAUTHORIZED_MONEY_RECONSTRUCTION_COUNT=0.
 
 ## 25. Period / timezone contract
 
-E6 period selector maps to `periodType` (single canonical enum); the response echoes
-`EvaluationsPeriodWindow` with `[start, endExclusive)` and `timezone` context — E6
-displays using that, never introduces a second date-range interpretation. E3 finance
-is fixed MTD (document in UI).
+E6 period selector maps to `periodType` (single canonical enum) and governs **E4
+analytics + E5 quality ONLY**; the response echoes `EvaluationsPeriodWindow` with
+`[start, endExclusive)` and `timezone` context — E6 displays using that, never
+introduces a second date-range interpretation. **[CORRECTED BY E6.0.1]** E3 Finance is
+FIXED `MTD` (server-set; the endpoint accepts no `periodType`) and is NOT
+user-selectable. The Finance & Receivables section MUST carry a persistent explicit
+"Monat bis heute (MTD)" scope and MUST NOT appear to change with the global selector;
+E6 MUST NOT recompute E3 finance client-side and MUST NOT hide the difference. Period
+hard gates: PERIOD_SCOPE_MISREPRESENTATION_COUNT=0, FINANCE_PERIOD_RECALCULATION_COUNT=0,
+GLOBAL_FILTER_FALSE_SCOPE_COUNT=0.
 
 ## 26. Station / tenant contract
 
@@ -328,7 +369,7 @@ station result.
 2. Data Status (E5 overall) — E5
 3. Executive Summary (KPI strip) — E4 summary + E3 finance
 4. Strengths & Weaknesses — E4
-5. Finance & Receivables — E3 (+E4 finance slice)
+5. Finance & Receivables — E3 (persistent MTD scope badge; not affected by global selector) [E6.0.1]
 6. Fleet Performance / Utilization — E4
 7. Current Costs & Downtime — E4 cost-model + utilization (no predicted)
 8. Driver Influence — E4/E5 (server tier)
@@ -359,7 +400,8 @@ mobile (§11). Downtime section renders UNAVAILABLE for `blockedMs` (data limita
 | CostDowntimeSection + cost/downtime charts + ChartDataTable | ADAPT (exclude risk-matrix) | #798 |
 | DriverInfluenceSection | NEW (render E4/E5 tier) | (no safe historical) |
 | DataQualitySection + StateBadge + SourceCard | ADAPT (drop client derivation/role gate) | #793 |
-| finance-insights-adapter / evaluations-format | REUSE_EXISTING | current/#794 |
+| finance-insights-adapter (currency-aware Money formatter) | REUSE_EXISTING | current | [E6.0.1] canonical Money boundary; generic `formatMoney({amountMinor,currency,locale})` |
+| evaluations-format (`fmtEurMinor`) | COPY_FORMATTING_PATTERN_ONLY | #794 | [E6.0.1] EUR-hardcoded; percent/known-EUR only, NOT generic Money |
 
 Avoid unnecessary abstraction; prefer existing repo conventions.
 
@@ -438,6 +480,15 @@ UNAVAILABLE_RENDERED_AS_ZERO_COUNT=0; PARTIAL_RENDERED_AS_COMPLETE_COUNT=0;
 UNKNOWN_RENDERED_AS_COMPLETE_COUNT=0; STALE_HIDDEN_COUNT=0; E7_RUNTIME_SCOPE_COUNT=0;
 E8_RUNTIME_SCOPE_COUNT=0; E9_RUNTIME_SCOPE_COUNT=0; SECOND_EVALUATIONS_PAGE_COUNT=0;
 NEW_PARALLEL_TRUTH_AUTHORITY_COUNT=0.
+
+**[ADDED BY E6.0.1]** Money: IMPLICIT_CURRENCY_FORMATTING_COUNT=0,
+HARDCODED_EUR_FOR_GENERIC_MONEY_COUNT=0, CLIENT_SIDE_CURRENCY_INFERENCE_COUNT=0,
+MIXED_CURRENCY_CLIENT_SUM_COUNT=0, UNAUTHORIZED_MONEY_RECONSTRUCTION_COUNT=0. Period:
+PERIOD_SCOPE_MISREPRESENTATION_COUNT=0, FINANCE_PERIOD_RECALCULATION_COUNT=0,
+GLOBAL_FILTER_FALSE_SCOPE_COUNT=0. Legacy:
+LEGACY_NONCANONICAL_ANALYTICS_IN_E6_COUNT=0, RAW_ENTITY_RECOMPUTATION_FALLBACK_COUNT=0,
+SECOND_ANALYTICS_TRUTH_COUNT=0, LEGACY_QUALITY_INFERENCE_COUNT=0. Privacy:
+CLIENT_SIDE_IDENTITY_RECONSTRUCTION_COUNT=0.
 
 ## 35. Remaining unknowns
 
