@@ -1,0 +1,20 @@
+concept,canonical_phase,canonical_owner,canonical_contract,historical_e6_source,status_authority,quality_authority,privacy_authority,reuse_decision,notes
+Revenue,E3,EvaluationsFinanceService,GET /evaluations/finance/insights (EvaluationsMetricResponse),PR#795 KPI strip; PR#794 finance section,E1 metric status,E5 quality report,n/a,PRESENT_ONLY,Present E3 money metrics; never sum invoices client-side
+Costs,E4,EvaluationsInsightsService,GET /insights/cost-model (EvaluationsCostModelSection),PR#798 cost viz,E1 status per category,E5 quality,n/a,PRESENT_ONLY,Cost model owns provenance/dedup; UI renders
+Profitability,E3/E4,EvaluationsFinanceService/EvaluationsInsightsService,finance insights + cost-model,PR#795,E1 status,E5 quality,n/a,PRESENT_ONLY,Derived margin already computed server-side
+Utilization,E4,EvaluationsInsightsService,GET /insights/utilization (EvaluationsUtilizationSection),PR#794 fleet performance,E1 status/section,E5 quality,n/a,PRESENT_ONLY,Station-scoped supported; PARTIAL preserved
+Strengths,E4,EvaluationsInsightsService,GET /insights/strengths (EvaluationsStrengthSection),PR#796 cockpit,E1 status; skipped->PARTIAL,E5 quality,n/a,PRESENT_ONLY,Render evaluatedDimensions/skippedDimensions honestly
+Weaknesses,E4,EvaluationsInsightsService,GET /insights/weaknesses (EvaluationsWeaknessSection),PR#796 cockpit,E1 status,E5 quality,n/a,PRESENT_ONLY,Same as strengths
+Driver Influence,E4+E5,EvaluationsInsightsService+EvaluationsPrivacyResolver,GET /insights/driver-analysis (EvaluationsDriverInfluenceSection incl piiTier),(none safe; historical predates E5B),E1 status,E5 quality,E5B server PII tier (full/pseudonymous/none) + HMAC + DRIVER hard-deny,PRESENT_SERVER_TIER_ONLY,Frontend renders returned tier + redacted refs; NO client PII logic
+Data Quality,E5,EvaluationsQualityService,GET /insights/quality (EvaluationsQualityReport),PR#793 data-quality panel,mirrors section status (never upgrades),E5 dimensions,n/a,PRESENT_ONLY,Multi-dimensional; no single score
+Freshness,E5,EvaluationsQualityService,EvaluationsQualityReport.sections[].freshness/businessEventRecency,PR#790 (E5 source),n/a,E5 (UNKNOWN without ingestion watermark),n/a,PRESENT_ONLY,Never fabricate freshness; recency != freshness
+Coverage,E4/E5,EvaluationsInsightsService/EvaluationsQualityService,section coverage + COMPLETENESS dimension,PR#793,E1 status,E5 COMPLETENESS,n/a,PRESENT_ONLY,No false full coverage
+Validity,E5,EvaluationsQualityService,EvaluationsQualityReport VALIDITY dimension,PR#793,n/a,E5 (UNKNOWN when no authority; never fabricated COMPLETE),n/a,PRESENT_ONLY,Render UNKNOWN honestly
+Provenance,E5,EvaluationsQualityService,EvaluationsQualityReport PROVENANCE + lineage,PR#790,n/a,E5 (composite; COMPLETE only all required source classes),n/a,PRESENT_ONLY,Finance requires invoice+payment
+Period,E1,EvaluationsAnalyticsScopeService,EvaluationsPeriodWindow,PR#754/#794 filters,n/a,n/a,n/a,PRESENT_ONLY,periodType selector; echoed on responses
+Timezone,E1,EvaluationsAnalyticsScopeService,EvaluationsTimezoneContext,PR#754,n/a,n/a,n/a,PRESENT_ONLY,report->station->org precedence
+Station,E2,EvaluationsAnalyticsScopeService,EvaluationsAuthorizedAnalyticsScope,PR#776/#774 filters,n/a,n/a,E2 station scope (narrow-only),PRESENT_ONLY,Station-scoped finance/cost/driver = UNAVAILABLE
+Tenant,E2,OrgScopingGuard+scope service,EvaluationsAuthorizedAnalyticsScope,PR#776,n/a,n/a,E2 org isolation,PRESENT_ONLY,Server-enforced; UI passes orgId only
+Privacy/Pseudonymization,E5,EvaluationsPrivacyResolver+pseudonymizePersonRef,evaluations-privacy.policy.ts (internal),PR#815/#816 (E5),n/a,n/a,E5B/E5.1B/E5.2.1 server authority,PRESENT_SERVER_TIER_ONLY,No client-side pseudonymization or permission checks
+Recommendations,E7,(reserved),n/a,PR#804/#806; IA section 8,n/a,n/a,n/a,RESERVED_E7,Contamination; do not implement in E6
+Forecast/Prediction,E8/E9,(reserved),n/a,PR#814; IA section 4,n/a,n/a,n/a,RESERVED_E8_E9,Contamination; do not implement in E6
