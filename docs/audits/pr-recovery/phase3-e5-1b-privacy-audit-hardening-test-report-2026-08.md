@@ -12,7 +12,7 @@ Precondition: `E5_1A_COMPLETED` (verified — E5.1A commit is an ancestor of the
 | current main | `960365a9b095a54f4656947ac2067a104e56bd8a` |
 | E5.1A ancestor check | PASS (`61cf4094` is ancestor of PR head) |
 
-TESTED_CODE_SHA: recorded in the follow-up commit on this branch (this report is committed together with the code; the pushed head is the tested SHA).
+TESTED_CODE_SHA: `a6004466b5da36c7df22ad488b105da913d3de1a` (code + tests of this change; a follow-up doc-only commit records this SHA).
 
 ## 1. Scope
 
