@@ -245,7 +245,11 @@ export class EvaluationsQualityService {
         requiredClasses: input.requiredSourceClasses,
         presentClasses,
       }),
+      // E5.2: no independent validity authority → UNKNOWN for served, never a
+      // fabricated COMPLETE from "not ERROR".
       VALIDITY: validityState(input.status),
+      // Temporal applicability is affirmed by the E1 period-window authority: a
+      // served section is computed for exactly the authorized period window.
       TEMPORAL_APPLICABILITY: isServed ? 'COMPLETE' : 'UNAVAILABLE',
     };
 

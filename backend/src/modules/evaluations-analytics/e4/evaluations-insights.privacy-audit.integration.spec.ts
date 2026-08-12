@@ -262,6 +262,35 @@ const GEN = new Date('2026-01-31T12:00:00.000Z');
       expect(JSON.stringify(denied[0].payload)).not.toContain(fx.driverAId);
     });
 
+    // E5.2: production-like config + missing pseudonym secret → fail closed.
+    it('production + missing pseudonym secret → authorized pseudonymous request discloses no factors', async () => {
+      const savedNodeEnv = process.env.NODE_ENV;
+      const savedSecret = process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      process.env.NODE_ENV = 'production';
+      delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      try {
+        const userId = await addMember(fx.orgAId, 'WORKER', {
+          evaluations: { read: true, write: false },
+        });
+        const section = await service.getDriverInfluence(
+          scope(fx.orgAId),
+          { id: userId, organizationId: fx.orgAId, platformRole: null },
+          GEN,
+        );
+        expect(section.piiTier).toBe('pseudonymous');
+        expect(section.status).toBe('UNAVAILABLE');
+        expect(section.reason).toBe('PSEUDONYMIZATION_UNAVAILABLE');
+        expect(section.factors).toEqual([]);
+        const serialized = JSON.stringify(section);
+        expect(serialized).not.toContain(fx.driverAId);
+        expect(serialized).not.toContain('do-not-use-in-production');
+      } finally {
+        process.env.NODE_ENV = savedNodeEnv;
+        if (savedSecret === undefined) delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+        else process.env.EVALUATIONS_PSEUDONYM_SECRET = savedSecret;
+      }
+    });
+
     // Actor integrity: audit actor comes from the resolved server context id.
     it('records the authenticated actor id, never a caller-supplied one', async () => {
       const userId = await addMember(fx.orgAId, 'ORG_ADMIN');

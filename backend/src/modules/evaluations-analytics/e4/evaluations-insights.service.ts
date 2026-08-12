@@ -45,7 +45,7 @@ import {
   canRevealPersonIdentity,
   pseudonymizePersonRef,
 } from '../privacy/evaluations-privacy.policy';
-import { getEvaluationsPseudonymSecret } from '../privacy/evaluations-privacy.config';
+import { resolveEvaluationsPseudonymSecret } from '../privacy/evaluations-privacy.config';
 import { EvaluationsAuditService } from '../audit/evaluations-audit.service';
 
 const COST_FORMULAE: Readonly<Record<string, string>> = {
@@ -590,19 +590,45 @@ export class EvaluationsInsightsService {
     // Field-level exposure: only a `full` tier may reveal raw driver identity;
     // a `pseudonymous` tier receives keyed, non-reversible pseudonyms.
     const revealIdentity = canRevealPersonIdentity(piiTier);
-    const pseudonymSecret = getEvaluationsPseudonymSecret();
-    const factors = influence.factors.map((factor) =>
-      revealIdentity
-        ? factor
-        : {
-            ...factor,
-            driverRef: pseudonymizePersonRef({
-              organizationId: scope.organizationId,
-              personId: factor.driverRef,
-              secret: pseudonymSecret,
-            }),
-          },
-    );
+
+    let factors: EvaluationsDriverInfluenceSection['factors'];
+    if (revealIdentity) {
+      // Full tier does NOT pseudonymize → never requires the pseudonym secret.
+      factors = influence.factors;
+    } else {
+      // Pseudonymous tier: the keyed secret is mandatory. In production a
+      // missing/empty/placeholder/insufficient secret makes secure
+      // pseudonymization UNAVAILABLE — fail closed (E5.2), never fall back to the
+      // dev key, never return raw/truncated ids. The secret value is never logged
+      // or placed in the response/audit.
+      const secretResolution = resolveEvaluationsPseudonymSecret();
+      if (!secretResolution.ok) {
+        await this.audit.recordPersonLevelAccess({
+          organizationId: scope.organizationId,
+          actorUserId: actor.id ?? null,
+          result: 'DENIED',
+          piiTier,
+          stationScoped: false,
+          factorCount: 0,
+          calculationVersion: E4_CALCULATION_VERSIONS.driverInfluence,
+        });
+        return {
+          ...base,
+          status: 'UNAVAILABLE',
+          coverage: null,
+          reason: 'PSEUDONYMIZATION_UNAVAILABLE',
+          factors: [],
+        };
+      }
+      factors = influence.factors.map((factor) => ({
+        ...factor,
+        driverRef: pseudonymizePersonRef({
+          organizationId: scope.organizationId,
+          personId: factor.driverRef,
+          secret: secretResolution.secret,
+        }),
+      }));
+    }
 
     const status: EvaluationsMetricStatus =
       influence.dimensionsAnalyzed.length === 0 ? 'UNAVAILABLE' : 'AVAILABLE';

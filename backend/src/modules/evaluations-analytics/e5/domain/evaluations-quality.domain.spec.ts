@@ -84,13 +84,39 @@ describe('E5.1A completeness (preserves E4 limitations, no false full coverage)'
   it('UNAVAILABLE section → UNAVAILABLE (never fabricated complete)', () => {
     expect(completenessState('UNAVAILABLE', null)).toBe('UNAVAILABLE');
   });
+  it('E5.2: null ratio (unknown expected baseline) → UNKNOWN, never fabricated COMPLETE', () => {
+    expect(
+      completenessState('AVAILABLE', {
+        expectedRecords: null,
+        availableRecords: 3,
+        excludedRecords: 0,
+        ratio: null,
+        missingSources: [],
+      }),
+    ).toBe('UNKNOWN');
+  });
+});
+
+describe('E5.2 VALIDITY (affirmative evidence, never fabricated COMPLETE)', () => {
+  it('served statuses report UNKNOWN (no independent validity authority) — never COMPLETE', () => {
+    expect(validityState('AVAILABLE')).toBe('UNKNOWN');
+    expect(validityState('PARTIAL')).toBe('UNKNOWN');
+    expect(validityState('STALE')).toBe('UNKNOWN');
+  });
+  it('ERROR / UNAVAILABLE / NOT_APPLICABLE → UNAVAILABLE (no valid result to attest)', () => {
+    expect(validityState('ERROR')).toBe('UNAVAILABLE');
+    expect(validityState('UNAVAILABLE')).toBe('UNAVAILABLE');
+    expect(validityState('NOT_APPLICABLE')).toBe('UNAVAILABLE');
+  });
+  it('never returns a fabricated COMPLETE for any status', () => {
+    const statuses = ['AVAILABLE', 'PARTIAL', 'STALE', 'ERROR', 'UNAVAILABLE', 'NOT_APPLICABLE'] as const;
+    for (const s of statuses) {
+      expect(validityState(s)).not.toBe('COMPLETE');
+    }
+  });
 });
 
 describe('E5.1A dimension helpers', () => {
-  it('validity is UNAVAILABLE only for ERROR', () => {
-    expect(validityState('AVAILABLE')).toBe('COMPLETE');
-    expect(validityState('ERROR')).toBe('UNAVAILABLE');
-  });
   it('weakest dimension wins', () => {
     expect(weakestDimension(['COMPLETE', 'UNKNOWN'])).toBe('UNKNOWN');
     expect(weakestDimension(['COMPLETE', 'PARTIAL'])).toBe('PARTIAL');

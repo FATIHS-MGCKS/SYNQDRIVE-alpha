@@ -208,4 +208,63 @@ describe('EvaluationsQualityService — station scope (no org-wide leakage)', ()
     expect(report.overall.status).toBe('UNAVAILABLE');
     expect(JSON.stringify(report)).not.toContain('org:org-a:OrgInvoice');
   });
+
+  it('E5.2: station-scoped UNAVAILABLE section fabricates no COMPLETE dimension', async () => {
+    const stationSummary = summaryFixture({
+      finance: { status: 'UNAVAILABLE', metrics: {}, reason: 'STATION_SCOPED_FINANCE_UNSUPPORTED' },
+      costModel: { status: 'UNAVAILABLE', coverage: null },
+      utilization: { status: 'UNAVAILABLE', coverage: null },
+      strengths: { status: 'UNAVAILABLE', coverage: null },
+      weaknesses: { status: 'UNAVAILABLE', coverage: null },
+      driverInfluence: { status: 'UNAVAILABLE', coverage: null },
+    });
+    const { service } = buildService({ summary: stationSummary });
+    const report = await service.getQualityReport(stationScope, actor, GEN);
+    for (const section of report.sections) {
+      expect(section.status).toBe('UNAVAILABLE');
+      // No dimension is fabricated COMPLETE when the section cannot be served.
+      for (const dim of Object.values(section.dimensions)) {
+        expect(dim).not.toBe('COMPLETE');
+      }
+      expect(section.dimensions.VALIDITY).toBe('UNAVAILABLE');
+      expect(section.dimensions.FRESHNESS).toBe('UNAVAILABLE');
+      expect(section.dimensions.COMPLETENESS).toBe('UNAVAILABLE');
+      expect(section.dimensions.PROVENANCE).toBe('UNAVAILABLE');
+      expect(section.dimensions.TEMPORAL_APPLICABILITY).toBe('UNAVAILABLE');
+    }
+  });
+});
+
+describe('E5.2 VALIDITY / dimension truth per section status', () => {
+  it('NOT_APPLICABLE section → VALIDITY not fabricated COMPLETE (UNAVAILABLE)', async () => {
+    const summary = summaryFixture({
+      driverInfluence: { status: 'NOT_APPLICABLE', coverage: null },
+    });
+    const { service } = buildService({ summary });
+    const report = await service.getQualityReport(orgScope, actor, GEN);
+    const di = report.sections.find((s) => s.section === 'driverInfluence');
+    expect(di?.status).toBe('NOT_APPLICABLE');
+    expect(di?.dimensions.VALIDITY).toBe('UNAVAILABLE');
+    expect(di?.dimensions.VALIDITY).not.toBe('COMPLETE');
+  });
+
+  it('ERROR section → VALIDITY UNAVAILABLE (preserved behavior)', async () => {
+    const summary = summaryFixture({
+      costModel: { status: 'ERROR', coverage: null },
+    });
+    const { service } = buildService({ summary });
+    const report = await service.getQualityReport(orgScope, actor, GEN);
+    const cost = report.sections.find((s) => s.section === 'costModel');
+    expect(cost?.status).toBe('ERROR');
+    expect(cost?.dimensions.VALIDITY).toBe('UNAVAILABLE');
+  });
+
+  it('AVAILABLE section → VALIDITY UNKNOWN (no validity authority; never fabricated COMPLETE)', async () => {
+    const { service } = buildService();
+    const report = await service.getQualityReport(orgScope, actor, GEN);
+    const finance = report.sections.find((s) => s.section === 'finance');
+    expect(finance?.status).toBe('AVAILABLE');
+    expect(finance?.dimensions.VALIDITY).toBe('UNKNOWN');
+    expect(finance?.dimensions.VALIDITY).not.toBe('COMPLETE');
+  });
 });

@@ -405,6 +405,59 @@ describe('EvaluationsInsightsService — E5B person-level privacy gating', () =>
     expect(serialized).not.toContain('driver-b');
   });
 
+  describe('E5.2 production pseudonym secret fail-closed', () => {
+    const savedEnv = process.env.NODE_ENV;
+    const savedSecret = process.env.EVALUATIONS_PSEUDONYM_SECRET;
+    afterEach(() => {
+      process.env.NODE_ENV = savedEnv;
+      if (savedSecret === undefined) delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      else process.env.EVALUATIONS_PSEUDONYM_SECRET = savedSecret;
+    });
+
+    it('pseudonymous tier + production + missing secret → fail closed (no factors, no raw id)', async () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      const { service, audit } = buildService({ piiTier: 'pseudonymous' });
+      const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+      expect(driver.status).toBe('UNAVAILABLE');
+      expect(driver.reason).toBe('PSEUDONYMIZATION_UNAVAILABLE');
+      expect(driver.factors).toEqual([]);
+      const serialized = JSON.stringify(driver);
+      expect(serialized).not.toContain('driver-a');
+      expect(serialized).not.toContain('driver-b');
+      // Never crosses into the durable-critical disclosure path (nothing disclosed).
+      expect(audit.recordCriticalPersonLevelDisclosure).not.toHaveBeenCalled();
+      // Denied/failed capability is auditable with safe metadata only.
+      expect(audit.recordPersonLevelAccess).toHaveBeenCalledTimes(1);
+      expect(audit.recordPersonLevelAccess.mock.calls[0][0].result).toBe('DENIED');
+    });
+
+    it('F: full tier + production + missing secret → unaffected (no pseudonymization runs)', async () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.EVALUATIONS_PSEUDONYM_SECRET;
+      const { service, audit } = buildService({ piiTier: 'full' });
+      const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+      expect(driver.status).toBe('AVAILABLE');
+      expect(driver.factors.map((f) => f.driverRef)).toEqual(
+        expect.arrayContaining(['driver-a', 'driver-b']),
+      );
+      // Full tier still records the durable-critical disclosure.
+      expect(audit.recordCriticalPersonLevelDisclosure).toHaveBeenCalledTimes(1);
+    });
+
+    it('pseudonymous tier + production + valid secret → pseudonymization works', async () => {
+      process.env.NODE_ENV = 'production';
+      process.env.EVALUATIONS_PSEUDONYM_SECRET = 'x'.repeat(48);
+      const { service } = buildService({ piiTier: 'pseudonymous' });
+      const driver = await service.getDriverInfluence(orgScope, actor, GEN);
+      expect(driver.status).toBe('AVAILABLE');
+      for (const factor of driver.factors) {
+        expect(factor.driverRef).toMatch(/^person-v1-[0-9a-f]{16}$/);
+      }
+      expect(JSON.stringify(driver)).not.toContain('driver-a');
+    });
+  });
+
   it('none tier denies person-level access server-side (UNAVAILABLE, no factors)', async () => {
     const { service, audit } = buildService({ piiTier: 'none' });
     const driver = await service.getDriverInfluence(orgScope, actor, GEN);

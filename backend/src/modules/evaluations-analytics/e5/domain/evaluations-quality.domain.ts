@@ -66,7 +66,10 @@ export function completenessState(
   if (coverage) {
     if (coverage.missingSources.length > 0) return 'PARTIAL';
     if (coverage.ratio === 1) return 'COMPLETE';
-    if (coverage.ratio === null) return status === 'AVAILABLE' ? 'COMPLETE' : 'PARTIAL';
+    // E5.2: a null ratio means the expected baseline is unknown, so completeness
+    // cannot be affirmed — report UNKNOWN rather than fabricating COMPLETE from a
+    // served status.
+    if (coverage.ratio === null) return 'UNKNOWN';
     return coverage.ratio >= 1 ? 'COMPLETE' : 'PARTIAL';
   }
   // No coverage object: only AVAILABLE can be COMPLETE; anything else is unknown.
@@ -80,8 +83,23 @@ export function freshnessDimensionState(state: EvaluationsSourceFreshnessState |
   return 'PARTIAL'; // STALE
 }
 
+/**
+ * E5.2 — VALIDITY is an affirmative-evidence dimension: it must reflect proof that
+ * a served result is structurally/domain valid, NOT merely that a metric was
+ * served (absence of error is not validity).
+ *
+ *  - ERROR / UNAVAILABLE / NOT_APPLICABLE → UNAVAILABLE (no valid result to attest).
+ *  - AVAILABLE / PARTIAL / STALE → UNKNOWN. E5 has no independent structural/domain
+ *    validity authority on current main; served data may still be structurally
+ *    valid, but we have no evidence of it, so we report UNKNOWN rather than a
+ *    fabricated COMPLETE. If a validity authority is later introduced, this is the
+ *    single place to attest COMPLETE from that evidence.
+ */
 export function validityState(status: EvaluationsMetricStatus): E5DimensionState {
-  return status === 'ERROR' ? 'UNAVAILABLE' : 'COMPLETE';
+  if (status === 'ERROR' || status === 'UNAVAILABLE' || status === 'NOT_APPLICABLE') {
+    return 'UNAVAILABLE';
+  }
+  return 'UNKNOWN';
 }
 
 /** Weakest-wins ordering used for conservative aggregation. */
