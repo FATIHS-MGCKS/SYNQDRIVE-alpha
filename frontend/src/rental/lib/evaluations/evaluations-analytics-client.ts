@@ -4,8 +4,10 @@
  * Thin mapping from the status-aware transport (`api.evaluations.*` →
  * `RequestResult`) to the discriminated `EvaluationsCanonicalResult`. It performs
  * NO business calculation, NO client aggregation, NO privacy/identity derivation,
- * and NO legacy fallback. A feature-disabled 404 becomes an explicit
- * `FEATURE_DISABLED` state (never empty/zero/healthy data).
+ * and NO legacy fallback. Per E6A.1, a generic HTTP 404 maps to the neutral
+ * `NOT_FOUND` state (never a fabricated `FEATURE_DISABLED`, never empty/zero/healthy
+ * data); `FEATURE_DISABLED` is reserved for a future reliable, non-leaking
+ * discriminator and is not emitted from a bare 404.
  */
 import { api } from '../../../lib/api';
 import type { RequestResult } from '../../../lib/api';

@@ -92,7 +92,115 @@ const state = {
   invoicesError: false,
   customersError: false,
   insightsForbidden: false,
+  // E6B canonical: when true, the E4/E5 feature-gated endpoints return a generic 404.
+  canonicalFeatureDisabled: false,
 };
+
+/** Toggle the canonical E4/E5 feature-disabled (generic 404) behavior for a test. */
+export function setCanonicalFeatureDisabled(disabled: boolean) {
+  state.canonicalFeatureDisabled = disabled;
+}
+
+// ── E6B canonical fixture builders (minimal valid wire shapes) ──
+const CANON_PERIOD = {
+  periodType: 'MTD',
+  start: '2026-06-01T00:00:00.000Z',
+  endExclusive: '2026-07-01T00:00:00.000Z',
+  reference: '2026-06-16T12:00:00.000Z',
+  timezone: {
+    effectiveTimezone: 'Europe/Berlin',
+    source: 'ORGANIZATION',
+    reportTimezone: null,
+    stationTimezone: null,
+    organizationTimezone: 'Europe/Berlin',
+  },
+  comparisonBasis: null,
+};
+
+function canonMoneyMetric(metricId: string, amountMinor: number, currency: string) {
+  return {
+    schemaVersion: '1.0.0',
+    metricId,
+    metricKind: 'OBSERVED',
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    period: CANON_PERIOD,
+    comparison: null,
+    dataCoverage: null,
+    sourceFreshness: null,
+    calculationVersion: 'v',
+    exclusions: [],
+    warnings: [],
+    status: 'AVAILABLE',
+    valueType: 'MONEY',
+    unit: 'CURRENCY_MINOR',
+    value: { amountMinor, currency },
+  };
+}
+
+function canonicalFinanceBundle() {
+  return {
+    organizationId: EVAL_E2E_ORG_ID,
+    period: CANON_PERIOD,
+    metrics: {
+      'fin.mtd_issued_revenue': canonMoneyMetric('fin.mtd_issued_revenue', 112000, 'EUR'),
+      'fin.mtd_paid_revenue': canonMoneyMetric('fin.mtd_paid_revenue', 90000, 'EUR'),
+      'fin.mtd_expenses': canonMoneyMetric('fin.mtd_expenses', 40000, 'EUR'),
+      'fin.mtd_net_result': canonMoneyMetric('fin.mtd_net_result', 72000, 'EUR'),
+      'fin.open_receivables': canonMoneyMetric('fin.open_receivables', 22000, 'EUR'),
+      'fin.overdue_receivables': canonMoneyMetric('fin.overdue_receivables', 5000, 'EUR'),
+    },
+  };
+}
+
+const CANON_SCOPE = { organizationId: EVAL_E2E_ORG_ID, stationIds: null, stationScoped: false };
+function canonSectionMeta(status: string) {
+  return { status, calculationVersion: 'v', period: CANON_PERIOD, scope: CANON_SCOPE, coverage: null, generatedAt: EVAL_E2E_FIXED_NOW, reason: null };
+}
+
+function canonicalInsightsSummary() {
+  return {
+    schemaVersion: '1.0.0',
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    scope: CANON_SCOPE,
+    period: CANON_PERIOD,
+    calculationVersion: 'analytics-summary-e4-v1',
+    sections: {
+      finance: { status: 'AVAILABLE', metrics: canonicalFinanceBundle().metrics, reason: null },
+      costModel: {
+        ...canonSectionMeta('PARTIAL'),
+        categories: [
+          { category: 'OPERATING_EXPENSES', nature: 'ACTUAL', status: 'AVAILABLE', totalsByCurrency: [{ amountMinor: 40000, currency: 'EUR' }], eventCount: 3, formula: 'x', sources: ['OrgInvoice'], reason: null },
+          { category: 'UNPLANNED_MAINTENANCE', nature: 'ACTUAL', status: 'UNAVAILABLE', totalsByCurrency: [], eventCount: 0, formula: 'x', sources: ['ServiceCase'], reason: 'UNPROVEN_CURRENCY' },
+        ],
+        totalsByCurrency: [{ amountMinor: 40000, currency: 'EUR' }],
+        reportingCurrency: 'EUR',
+        mixedCurrency: false,
+      },
+      utilization: {
+        ...canonSectionMeta('PARTIAL'),
+        utilizationPercent: { ...canonMoneyMetric('ops.fleet_utilization_pct', 0, 'EUR'), valueType: 'PERCENT', unit: 'PERCENT', value: 63.5, status: 'PARTIAL' },
+        occupancyBasis: 'SCHEDULED',
+        capacityMs: null, rentedMs: null, maintenanceMs: null, blockedMs: null, netCapacityMs: null,
+        eligibleVehicles: 12, overlappingBookingPairs: null, telemetryOfflineVehicles: null, telemetrySnapshotAsOf: null,
+      },
+      strengths: { ...canonSectionMeta('AVAILABLE'), strengths: [], evaluatedDimensions: ['FINANCE'], skippedDimensions: [] },
+      weaknesses: { ...canonSectionMeta('PARTIAL'), weaknesses: [], evaluatedDimensions: ['FINANCE'], skippedDimensions: [{ dimension: 'UTILIZATION', reason: 'SOURCE_PARTIAL' }] },
+      driverInfluence: { ...canonSectionMeta('UNAVAILABLE'), disclaimer: 'assoc only', confounders: [], factors: [], piiTier: 'none' },
+    },
+  };
+}
+
+function canonicalQualityReport() {
+  return {
+    schemaVersion: '1.0.0',
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    scope: CANON_SCOPE,
+    period: CANON_PERIOD,
+    calculationVersion: 'evaluations-quality-e5-v2',
+    sections: [],
+    overall: { status: 'PARTIAL', complete: false, reason: 'QUALITY_INCOMPLETE' },
+  };
+}
 
 function inv(overrides: Partial<InvoiceRow> & { id: string }): InvoiceRow {
   return {
@@ -303,6 +411,7 @@ export function resetEvaluationsMockState(profile: EvaluationsScenarioProfile = 
   state.invoicesError = false;
   state.customersError = false;
   state.insightsForbidden = false;
+  state.canonicalFeatureDisabled = false;
   state.invoices = [];
   state.insights = [];
   state.customers = [];
@@ -584,6 +693,32 @@ export async function installEvaluationsMocks(
       });
     }
 
+    // ── E6 canonical analytics endpoints ──
+    // E3 finance (always-on): drives the canonical Finance & Receivables section.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/finance/insights`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(canonicalFinanceBundle()),
+      });
+    }
+    // E4 insights summary (feature-gated): drives Executive/Strengths/Weaknesses/
+    // Utilization/Costs. When the feature is "disabled" the guard returns a generic
+    // 404 (no discriminator) → the UI must render neutral NOT_FOUND, not legacy data.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/summary`) && method === 'GET') {
+      if (state.canonicalFeatureDisabled) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalInsightsSummary()) });
+    }
+    // E5 quality (feature-gated) — E6C consumer; mocked for completeness.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/quality`) && method === 'GET') {
+      if (state.canonicalFeatureDisabled) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalQualityReport()) });
+    }
+
     return route.continue();
   });
 }
@@ -622,10 +757,12 @@ export async function openEvaluationsPage(
     profile?: EvaluationsScenarioProfile;
     theme?: 'light' | 'dark';
     user?: typeof mockUserFull;
+    canonicalFeatureDisabled?: boolean;
   },
 ) {
   const profile = options?.profile ?? 'full-org';
   resetEvaluationsMockState(profile);
+  if (options?.canonicalFeatureDisabled) state.canonicalFeatureDisabled = true;
 
   await installEvaluationsClockFreeze(page);
   await page.addInitScript(
