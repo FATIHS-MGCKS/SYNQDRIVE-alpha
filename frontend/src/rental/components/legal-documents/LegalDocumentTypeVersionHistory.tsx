@@ -308,7 +308,6 @@ export function LegalDocumentTypeVersionHistory({
     sort,
     order,
     applySort,
-    pageSize,
   } = useLegalDocumentVersionHistory(orgId, config.key);
 
   const documentById = new Map(documents.map((doc) => [doc.id, doc]));

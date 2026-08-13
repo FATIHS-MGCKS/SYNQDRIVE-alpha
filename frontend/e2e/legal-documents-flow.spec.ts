@@ -16,8 +16,11 @@ import {
 test.describe('Legal Documents — full lifecycle E2E (mocked API)', () => {
   test.describe.configure({ mode: 'serial', timeout: 180_000 });
 
-  test.beforeEach(({ }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop-1280', 'Legal flow specs run on desktop-1280 only');
+  test.beforeEach(() => {
+    test.skip(
+      test.info().project.name !== 'desktop-1280',
+      'Legal flow specs run on desktop-1280 only',
+    );
   });
 
   test('1–7 — Admin upload through activation and supersede', async ({ page }) => {

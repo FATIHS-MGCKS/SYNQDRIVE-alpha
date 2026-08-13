@@ -3,7 +3,6 @@ import { expect, test } from '@playwright/test';
 import {
   installLegalDocumentsFlowMocks,
   openLegalDocumentsAdminTab,
-  uploadDraftViaWizard,
 } from './legal-documents-flow-fixtures';
 
 test.describe('Legal Documents — responsive / mobile upload', () => {

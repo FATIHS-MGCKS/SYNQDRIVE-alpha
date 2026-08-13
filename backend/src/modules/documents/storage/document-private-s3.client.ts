@@ -2,7 +2,6 @@ import type { ConfigType } from '@nestjs/config';
 import documentsConfig from '@config/documents.config';
 import type { DocumentPrivateS3Operations } from './document-private-s3.operations';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type S3SdkModule = any;
 
 let cachedSdk: S3SdkModule | null = null;

@@ -11,10 +11,8 @@ import {
 } from '../../lib/legal-document-upload-wizard.constants';
 import { LEGAL_DOCUMENT_TYPE } from '../../lib/legal-document-types';
 import { useLanguage } from '../../i18n/LanguageContext';
-import {
-  LegalUploadFieldError,
-  legalUploadInputA11y,
-} from './legal-form-a11y';
+import { LegalUploadFieldError } from './legal-form-a11y';
+import { legalUploadInputA11y } from './legal-form-a11y.utils';
 
 const fieldClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-soft)] motion-reduce:transition-none';

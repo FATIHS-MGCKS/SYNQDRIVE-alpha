@@ -20,10 +20,6 @@ function t(key: TranslationKey, vars?: Record<string, string | number>): string 
   return text;
 }
 
-function makePdfFile(name = 'agb.pdf', size = 1024): File {
-  return new File([new Uint8Array(size)], name, { type: 'application/pdf' });
-}
-
 const baseForm = {
   ...EMPTY_LEGAL_UPLOAD_WIZARD_FORM,
   documentType: LEGAL_DOCUMENT_TYPE.TERMS_AND_CONDITIONS,

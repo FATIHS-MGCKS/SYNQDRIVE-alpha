@@ -28,8 +28,8 @@ import { LegalDocumentLifecycleImpactPanel } from './LegalDocumentLifecycleImpac
 import {
   FormErrorSummary,
   LegalLifecycleFieldError,
-  legalLifecycleInputA11y,
 } from '../legal-form-a11y';
+import { legalLifecycleInputA11y } from '../legal-form-a11y.utils';
 import { LEGAL_LIFECYCLE_ERROR_SUMMARY_ID } from '../legal-documents-a11y';
 
 const fieldClass =
