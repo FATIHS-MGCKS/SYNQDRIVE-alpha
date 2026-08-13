@@ -65,8 +65,12 @@ Documents authority scope.
 **backend/package.json**
 
 ```json
-"lint:legal-documents": "eslint \"src/modules/documents/**/*.ts\" \"src/modules/bookings/booking-pickup-gate/**/*.ts\" \"src/modules/notifications/**/legal-document*.ts\" \"src/modules/outbound-email/**/legal-document*.ts\" \"src/modules/outbound-email/**/booking-document*.ts\" \"src/config/legal-document*.ts\" \"src/workers/**/booking-document*.ts\""
+"lint:legal-documents": "eslint \"src/modules/documents/**/*.ts\" \"src/modules/bookings/booking-pickup-gate/**/*.ts\" \"src/modules/notifications/**/*legal-document*.ts\" \"src/modules/outbound-email/**/*legal-document*.ts\" \"src/modules/outbound-email/**/*booking-document*.ts\" \"src/config/legal-document*.ts\" \"src/workers/**/*booking-document*.ts\""
 ```
+
+> Note: the four `**/*<name>*.ts` filename globs shown above are the **corrected** forms
+> from CI-R2.1 below. The originally committed CI-R2 script used `**/<name>*.ts` for these
+> four expressions, which is fixed in the CI-R2.1 section.
 
 **frontend/package.json**
 
@@ -203,3 +207,49 @@ install step, or gate aggregation changed. No `continue-on-error` was added.
 - Vehicle Detail Playwright E2E.
 
 E6 is unchanged. E7 was not started. No deployment was performed.
+
+## CI-R2.1 – Backend Glob Coverage Correction
+
+Independent review found one precise scope defect in the CI-R2 backend `lint:legal-documents`
+script: four glob expressions omitted the **filename-leading** `*`, so they matched only files
+whose names *begin with* `legal-document`/`booking-document`, not files that merely *contain*
+those tokens.
+
+- Defective (before): `**/legal-document*.ts`, `**/booking-document*.ts` for notifications,
+  outbound-email (both), and workers.
+- Corrected (after): `**/*legal-document*.ts`, `**/*booking-document*.ts`.
+
+The four corrected expressions:
+
+- `src/modules/notifications/**/*legal-document*.ts`
+- `src/modules/outbound-email/**/*legal-document*.ts`
+- `src/modules/outbound-email/**/*booking-document*.ts`
+- `src/workers/**/*booking-document*.ts`
+
+Because of the missing leading `*`, four existing Legal Documents outbound-email files were
+outside the committed gate. All four are now covered:
+
+- `backend/src/modules/outbound-email/booking-legal-document-email.service.ts`
+- `backend/src/modules/outbound-email/booking-legal-document-email.service.spec.ts`
+- `backend/src/modules/outbound-email/dto/send-booking-documents-email.dto.ts`
+- `backend/src/modules/outbound-email/dto/send-frozen-booking-documents-email.dto.ts`
+
+Complete corrected backend script:
+
+```json
+"lint:legal-documents": "eslint \"src/modules/documents/**/*.ts\" \"src/modules/bookings/booking-pickup-gate/**/*.ts\" \"src/modules/notifications/**/*legal-document*.ts\" \"src/modules/outbound-email/**/*legal-document*.ts\" \"src/modules/outbound-email/**/*booking-document*.ts\" \"src/config/legal-document*.ts\" \"src/workers/**/*booking-document*.ts\""
+```
+
+### CI-R2.1 verification
+
+- `PREVIOUSLY_OMITTED_FILE_COUNT_NOW_COVERED` = 4, `OMITTED_LEGAL_DOCUMENT_FILE_COUNT_AFTER_FIX` = 0.
+- `backend npm run lint:legal-documents` → PASS (`0` errors, `0` warnings).
+- Explicit `npx eslint "src/modules/outbound-email/**/*legal-document*.ts" "src/modules/outbound-email/**/*booking-document*.ts"` → PASS (`0` errors, `0` warnings). The four files
+  already lint successfully — none were modified to make verification pass.
+- No runtime implementation changed. No frontend change. No workflow behavior change
+  (`lint:all` references = 0, `lint:legal-documents` references = 2, `WORKFLOW_CHANGE_REQUIRED` = NO).
+- No dependency, `package-lock.json`, ESLint-config, Prisma, migration, production-config, E6
+  or E7 change.
+- Unrelated CI failures remain out of scope. PR #1028 remains OPEN + Draft.
+
+Only two files changed in this correction: `backend/package.json` and this evidence document.
