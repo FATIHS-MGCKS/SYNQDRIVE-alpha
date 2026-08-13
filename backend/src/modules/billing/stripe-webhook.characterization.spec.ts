@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { StripeWebhookEventStatus } from '@prisma/client';
 import { StripeWebhookService } from './stripe-webhook.service';
 import * as stripeClientUtil from './stripe-client.util';
+import { StripeEnvironmentService } from '@shared/stripe/stripe-environment.service';
+import { StripeEnvironmentViolationError } from '@shared/stripe/stripe-environment.util';
 
 describe('StripeWebhookService characterization', () => {
   const dispatcher = {
@@ -30,11 +32,29 @@ describe('StripeWebhookService characterization', () => {
     webhooks: { constructEvent: jest.fn() },
   };
 
+  // Faithful StripeEnvironmentService double: accepts test-mode events, rejects a
+  // live-mode webhook with StripeEnvironmentViolationError (STRIPE_WEBHOOK_LIVEMODE_MISMATCH).
+  const stripeEnvironment = {
+    assertWebhookLivemode: jest.fn((livemode: boolean) => {
+      if (livemode) {
+        throw new StripeEnvironmentViolationError(
+          'STRIPE_WEBHOOK_LIVEMODE_MISMATCH',
+          'Stripe webhook livemode mismatch',
+        );
+      }
+    }),
+  } as unknown as StripeEnvironmentService;
+
   let service: StripeWebhookService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new StripeWebhookService(prisma as never, configService, dispatcher as never);
+    service = new StripeWebhookService(
+      prisma as never,
+      configService,
+      dispatcher as never,
+      stripeEnvironment,
+    );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
     dispatcher.resolveOrganizationId.mockResolvedValue('org-1');
     dispatcher.dispatch.mockResolvedValue({ outcome: 'processed', organizationId: 'org-1' });
@@ -69,6 +89,7 @@ describe('StripeWebhookService characterization', () => {
         prisma as never,
         noSecretConfig,
         dispatcher as never,
+        stripeEnvironment,
       );
 
       expect(() => localService.constructEvent(Buffer.from('{}'), 'sig')).toThrow(
