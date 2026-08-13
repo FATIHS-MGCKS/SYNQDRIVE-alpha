@@ -121,7 +121,7 @@ Arithmetic: 27 + 1 + 1 + 11 + 15 = **55**. `FALSE_POSITIVE_MIGRATION_FILE_COUNT`
 | 20 | `20260716250000_driving_impact_provenance` | `ALTER "trip_driving_impact"` | lower | MISSING_PREDECESSOR (`trip_driving_impact`) |
 | 21 | `20260716260000_driving_impact_braking_provenance` | `ALTER "trip_driving_impact"` | lower | ORDERING_DEFECT |
 | 22 | `20260716270000_driving_impact_load_components` | `ALTER "trip_driving_impact"` | lower | ORDERING_DEFECT |
-| 23 | `20260716310000_driving_attribution_roles` | refs trip/`trip_id` | lower | ORDERING_DEFECT |
+| 23 | `20260716310000_driving_attribution_roles` | **direct** `ALTER TABLE "vehicle_trips" ADD` `booking_customer_id`/`assigned_driver_id`/`actual_driver_id` | lower | ORDERING_DEFECT (direct vehicle_trips evolution DDL) |
 | 24 | `20260716320000_driver_attributions` | `CREATE TABLE` (FK → vehicle_trips) | lower | ORDERING_DEFECT |
 | 25 | `20260717180000_trip_driving_impact_authoritative_coverage` | `CREATE TYPE "TripDrivingImpactAnalysisStatus"`; `ALTER "trip_driving_impact"` | lower | ORDERING_DEFECT |
 | 26 | `20260717190000_dimo_braking_event_intake` | FK → `vehicle_trips`/`driving_events` | lower | ORDERING_DEFECT |
@@ -144,7 +144,7 @@ proves the *current physical production schema*.
 |---|---------------|--------------|------|----------------------|----------------------------|--------------------|--------------------------|-------------------|-----------------|
 | 1 | `DrivingEvent` / `driving_events` | 77c26dad | 7734 | YES | `df1b5a6e` (batch-c indexes), `07bf0bb6` (P24 provider identity + `tripAssignment`), `af2fb811` (braking intake relation) | 0 | `20260331000000` (ALTER+index), `20260413230000` (2 index), `20260716240000` (ALTER) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
 | 2 | `BrakeTripMetric` / `brake_trip_metrics` | 77c26dad | 9025 | NO | — | 0 | none | UNKNOWN_CURRENT_DATABASE_STATE | ORPHAN_REVIEW_REQUIRED |
-| 3 | `VehicleTrip` / `vehicle_trips` | 77c26dad | 9516 | YES | `c07f06b0` (analysis status), `575c7317` (Phase-4 attribution), `b89cb302`/`3dce7ed4`/`3b9012e6`/`02c6e76d` (DI-v2), `d4c7ac17`/`32dc81a0` (attribution), `d58d6c68`/`850e2306` (tire usage), `a7944b33` (battery session), `af2fb811`/`b0f68346` (braking) | 0 | `20260325161142`, `20260410000000`, `20260413230000`, `20260705140000`, `20260705200000`, `20260708044000`, `20260716220000` (ALTER/index/UPDATE); referenced camelCase in `20260425000000` | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
+| 3 | `VehicleTrip` / `vehicle_trips` | 77c26dad | 9516 | YES | 17 material (see §4a) | 0 | 9 files (see §5) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
 | 4 | `VehicleTripWaypoint` / `vehicle_trip_waypoints` | 77c26dad | 9691 | NO | — | 0 | `20260609000000` (ALTER SET) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
 | 5 | `TripBehaviorEvent` / `trip_behavior_events` | 77c26dad | 9775 | YES | `df1b5a6e` (composite index `tripId,eventCategory`) | 0 | `20260413230000` (CREATE INDEX) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
 | 6 | `VehicleTripDetectionState` / `vehicle_trip_detection_states` | 77c26dad | 13162 | NO | — | 0 | none | UNKNOWN_CURRENT_DATABASE_STATE | SCHEMA_PARITY_ONLY |
@@ -155,6 +155,40 @@ proves the *current physical production schema*.
 `TABLE_MODEL_EVOLUTION_OMISSION_COUNT` = 0; `TABLE_EVOLUTION_COMMIT_OMISSION_COUNT` = 0;
 `FALSE_UNKNOWN_REPOSITORY_TABLE_SHAPE_COUNT` = 0 (repo intended shapes are PROVEN — §18).
 
+### 4a. Complete `VehicleTrip` model-evolution provenance
+
+Independently revalidated with `git log -L '/^model VehicleTrip {/,/^}/:backend/prisma/schema.prisma'`,
+which is exhaustive for commits that changed lines inside the model block. The 22 touching commits
+classify as **1 introduction + 17 material non-merge + 3 merge (content attributed to sources) + 1
+formatting-only** (no double-counting of merges):
+
+| Commit | Date | Material VehicleTrip change |
+|--------|------|-----------------------------|
+| 77c26dad | 2026-04-10 | **Introduction** (initial shape — §18 A3) |
+| 17019787 | 2026-04-16 | `assignment_status`, `assignment_subject_type`, `assignment_subject_id`, `assigned_booking_id`, `is_private_trip`; aggregate counters `total_acceleration_events`, `hard_acceleration_events`, `total_braking_events`, `hard_braking_events`, `full_braking_events`, `cornering_events`, `abuse_events`, `speeding_events`; `trip_source`, `is_repaired`, `merge_parent_trip_id`; `quality_status`, `behavior_summary_status`, `driving_impact_status`; `repairs` relation (`TripRepair[]`); indexes `[tripSource]`, `[assignmentStatus, isPrivateTrip]`, `[assignmentSubjectType, assignmentSubjectId]`, `[assignedBookingId]` |
+| df1b5a6e | 2026-04-17 | composite index `[vehicleId, startTime]` (remaining diff is whitespace re-alignment — non-material) |
+| c8fcccad | 2026-06-15 | `misuseCases` relation (`MisuseCase[]`) |
+| 90d43466 | 2026-06-28 | `rpmWebhookCandidates` relation (`RpmWebhookCandidate[]`) |
+| c07f06b0 | 2026-07-05 | `trip_analysis_status` + `analysis_*` fields; `quality_status`/`behavior_summary_status`/`driving_impact_status` readiness fields; `tripAnalysisStatus` index |
+| 575c7317 | 2026-07-08 | Phase-4 attribution: `booking_link_source` (`TripBookingLinkSource`) + attribution wiring |
+| b89cb302 | 2026-07-16 | `tripAssessabilities` relation |
+| 3dce7ed4 | 2026-07-16 | `drivingEvidence` relation |
+| 3b9012e6 | 2026-07-16 | `drivingAnalysisRuns` relation |
+| 02c6e76d | 2026-07-16 | `drivingIntelligenceJobs` relation |
+| d4c7ac17 | 2026-07-17 | `booking_customer_id`, `assigned_driver_id`, `actual_driver_id` fields (P53 booking/driver split) |
+| 32dc81a0 | 2026-07-17 | `driverAttributions` relation (P54) |
+| d58d6c68 | 2026-07-16 | `tireTripUsageLedgers` relation |
+| 850e2306 | 2026-07-16 | `tire_usage_attribution_status`, `tire_usage_processed_at` fields; `tireUsageAttributionStatus` index |
+| a7944b33 | 2026-07-16 | `batteryMeasurementSessions` relation |
+| af2fb811 | 2026-07-17 | `dimoBrakingEventIntakes` relation |
+| b0f68346 | 2026-07-17 | `brakingEventLedgerEntries` relation |
+
+Non-material (excluded, not double-counted): merges `9ea43948`, `0f46a565`, `e707ce3e` (their
+material content is attributed to the source commits above); formatting-only `039d0221` (whitespace
+alignment of the relations block only — verified no field/relation/index change). Every current
+`VehicleTrip` field, relation and index is thereby traceable to its introduction or an enumerated
+material evolution commit.
+
 ## 5. CREATE-DDL vs EVOLUTION-DDL separation (tables)
 
 For every missing table the **clean creation DDL is missing** while **evolution DDL may exist**;
@@ -163,7 +197,7 @@ these are never conflated (`CREATE_EVOLUTION_DDL_CONFLATION_COUNT` = 0;
 
 | Table | CLEAN_CREATE_TABLE_DDL_COUNT | CLEAN_CREATE_TABLE_DDL_STATUS | EVOLUTION_DDL_FILE_COUNT | Evolution statement types | Assumes missing predecessor |
 |-------|------------------------------|-------------------------------|--------------------------|---------------------------|-----------------------------|
-| `vehicle_trips` | 0 | MISSING | 7 | ALTER TABLE, CREATE INDEX, UPDATE | YES |
+| `vehicle_trips` | 0 | MISSING | 9 | ALTER TABLE, CREATE INDEX, UPDATE (incl. camelCase `"VehicleTrip"` casing-defective ALTER/UPDATE in `20260425000000`) | YES |
 | `driving_events` | 0 | MISSING | 3 | ALTER TABLE, CREATE INDEX | YES |
 | `trip_behavior_events` | 0 | MISSING | 1 | CREATE INDEX | YES |
 | `vehicle_trip_waypoints` | 0 | MISSING | 1 | ALTER TABLE … SET (storage) | YES |
@@ -172,6 +206,24 @@ these are never conflated (`CREATE_EVOLUTION_DDL_CONFLATION_COUNT` = 0;
 | `trip_driving_impact` | 0 | MISSING | 5 | ALTER TABLE, DROP COLUMN, CREATE INDEX, UPDATE | YES |
 | `vehicle_trip_detection_states` | 0 | MISSING | 0 | (none) | n/a |
 | `brake_trip_metrics` | 0 | MISSING | 0 | (none) | n/a |
+
+`VEHICLE_TRIPS_EVOLUTION_DDL_FILE_COUNT` = **9**; `VEHICLE_TRIPS_CLEAN_CREATE_TABLE_DDL_COUNT` = 0
+(evolution DDL is never reinterpreted as clean creation DDL). The complete direct-mutation set for
+`vehicle_trips` (statements that directly `ALTER`/`UPDATE`/index the table, **excluding** FKs from
+other tables that merely reference it):
+
+1. `20260325161142_trip_architecture_refactor` — `ALTER TABLE "vehicle_trips"` (add/guarded add/drop) + `CREATE INDEX …trip_status`
+2. `20260410000000_add_enrichment_status_fields` — `ALTER TABLE "vehicle_trips" ADD` + index
+3. `20260413230000_add_composite_indexes_batch_c` — `CREATE INDEX … ON "vehicle_trips" (vehicle_id, start_time)`
+4. `20260425000000_retire_user_assignment_and_speeding_severity` — **direct** `UPDATE "VehicleTrip"` + `ALTER TABLE "VehicleTrip"` (camelCase — **casing-defective** direct evolution DDL, not a mere reference)
+5. `20260705140000_trip_analysis_status` — `ALTER TABLE "vehicle_trips" ADD` (analysis columns)
+6. `20260705200000_trip_analysis_status_guard` — `ALTER TABLE "vehicle_trips" ADD COLUMN IF NOT EXISTS`
+7. `20260708044000_trip_booking_link_source` — `ALTER TABLE "vehicle_trips" ADD` + `UPDATE "vehicle_trips"`
+8. `20260716220000_tire_trip_usage_attribution` — `ALTER TABLE "vehicle_trips" ADD` (tire-usage columns)
+9. `20260716310000_driving_attribution_roles` — `ALTER TABLE "vehicle_trips" ADD COLUMN "booking_customer_id"/"assigned_driver_id"/"actual_driver_id"`
+
+(The earlier CI-R3A.4 count of 7 omitted #4 — miscategorised as a camelCase "reference" — and #9 —
+miscategorised as a generic `trip_id` reference. SUPERSEDED BY CI-R3A.5.)
 
 ## 6. Enum authority matrix + CREATE/EVOLUTION separation (10 enums)
 
@@ -419,6 +471,34 @@ rows=43 unique_ids=43 dup_ids=0 bad_col_rows=0
 `ATOMIC_UNKNOWN_LEDGER_ROW_COUNT` = 43; `ATOMIC_UNKNOWN_UNIQUE_ID_COUNT` = 43;
 `ATOMIC_UNKNOWN_DUPLICATE_ID_COUNT` = 0; `ATOMIC_UNKNOWN_MISSING_COLUMN_ROW_COUNT` = 0.
 
+## 17a. CI-R3A.5 — VehicleTrip git-history + evolution-DDL authority completion
+
+Independent review rejected CI-R3A.4 for two proven authority gaps; both are now closed:
+
+- **VehicleTrip model-evolution history completed.** The prior matrix omitted four material
+  non-merge commits: `17019787` (assignment/source/repair fields, aggregate counters,
+  readiness/status fields, `repairs` relation, assignment/source indexes), `df1b5a6e`
+  (`[vehicleId, startTime]` composite index), `c8fcccad` (`misuseCases` relation), and `90d43466`
+  (`rpmWebhookCandidates` relation). The complete history was independently revalidated with
+  `git log -L` and is enumerated in §4a (1 introduction + **17 material** non-merge commits +
+  3 merges attributed to sources + 1 formatting-only), with per-field/relation/index provenance in
+  Appendix A3. `VEHICLE_TRIP_MISSING_MATERIAL_COMMITS_CORRECTED` = 4.
+- **`vehicle_trips` evolution-DDL inventory corrected 7 → 9** (§5). Added `20260425000000`
+  (direct `UPDATE`/`ALTER TABLE "VehicleTrip"` — a casing-defective **direct** mutation, not a mere
+  reference) and `20260716310000` (direct `ALTER TABLE "vehicle_trips" ADD` `booking_customer_id`,
+  `assigned_driver_id`, `actual_driver_id`). The §3a matrix row #23 is reclassified from a generic
+  `trip_id` reference to a direct `vehicle_trips` ALTER. `VEHICLE_TRIPS_EVOLUTION_DDL_FILE_COUNT` = 9;
+  `VEHICLE_TRIPS_CLEAN_CREATE_TABLE_DDL_COUNT` = 0 (evolution DDL is not reinterpreted as creation
+  DDL); `CREATE_EVOLUTION_DDL_CONFLATION_COUNT` = 0.
+
+The 55-file classified universe is unchanged (both files were already in the 27 direct set; only
+their per-file descriptions were corrected): `MIGRATION_SEARCH_UNIVERSE_FILE_COUNT` = 55;
+`DUPLICATE_MIGRATION_CLASSIFICATION_COUNT` = 0; `UNCLASSIFIED_MIGRATION_SEARCH_FILE_COUNT` = 0. The
+43-row atomic unknown ledger is preserved and re-validated (§10/§17). No migration, schema, runtime,
+test, workflow, dependency, config, database, or deployment change occurred; CI-R3B remains blocked;
+E7/E8/E9 not started. `TABLE_MODEL_EVOLUTION_OMISSION_COUNT` = 0;
+`TABLE_EVOLUTION_COMMIT_OMISSION_COUNT` = 0; `TABLE_EVOLUTION_DDL_OMISSION_COUNT` = 0.
+
 ## 18. Final audit status
 
 Introduction commits, schema positions, full initial/current shapes, per-model evolution,
@@ -493,6 +573,16 @@ driverAttributions, repairs, rpmWebhookCandidates, batteryMeasurementSessions, d
 brakingEventLedgerEntries); additional indexes (tripSource, [assignmentStatus, isPrivateTrip],
 [assignmentSubjectType, assignmentSubjectId], assignedBookingId, tripAnalysisStatus,
 tireUsageAttributionStatus, [vehicleId, startTime]). Changed = YES.
+
+Provenance of the current adds (see §4a for the full commit table): assignment/source/repair fields,
+aggregate counters, readiness/status fields, `repairs` relation and the assignment/source indexes →
+`17019787`; `[vehicleId, startTime]` → `df1b5a6e`; `misuseCases` → `c8fcccad`;
+`rpmWebhookCandidates` → `90d43466`; `booking_customer_id`/`assigned_driver_id`/`actual_driver_id`
+→ `d4c7ac17` (schema) materialised as SQL in `20260716310000`; analysis/readiness fields →
+`c07f06b0`; DI-v2 relations → `b89cb302`/`3dce7ed4`/`3b9012e6`/`02c6e76d`; `driverAttributions` →
+`32dc81a0`; tire-usage fields/relation → `d58d6c68`/`850e2306`; `batteryMeasurementSessions` →
+`a7944b33`; braking relations → `af2fb811`/`b0f68346`. `VEHICLE_TRIP_INITIAL_SHAPE_OMISSION_COUNT`
+= 0; `VEHICLE_TRIP_CURRENT_SHAPE_OMISSION_COUNT` = 0.
 
 ### A4. VehicleTripWaypoint → vehicle_trip_waypoints (intro 77c26dad, line 9691)
 
