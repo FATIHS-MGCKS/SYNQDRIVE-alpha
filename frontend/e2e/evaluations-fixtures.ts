@@ -5,6 +5,12 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
+import type {
+  EvaluationsDataCoverage,
+  EvaluationsDriverInfluenceSection,
+  E4DriverFactor,
+  EvaluationsQualityReport,
+} from '../src/rental/lib/evaluations/evaluations-canonical.types';
 
 export { assertNoHorizontalOverflow };
 
@@ -92,7 +98,241 @@ const state = {
   invoicesError: false,
   customersError: false,
   insightsForbidden: false,
+  // E6B canonical: when true, the E4/E5 feature-gated endpoints return a generic 404.
+  canonicalFeatureDisabled: false,
+  // E6C: counts direct driver-analysis requests (lazy-reveal assertion).
+  driverAnalysisRequestCount: 0,
+  // E6C.1: which driver scenario the driver-analysis route serves.
+  driverScenario: 'pseudonymous' as EvaluationsDriverScenario,
 };
+
+/** Toggle the canonical E4/E5 feature-disabled (generic 404) behavior for a test. */
+export function setCanonicalFeatureDisabled(disabled: boolean) {
+  state.canonicalFeatureDisabled = disabled;
+}
+
+/** E6C.1: select which driver-analysis scenario the mock serves. */
+export function setDriverScenario(scenario: EvaluationsDriverScenario) {
+  state.driverScenario = scenario;
+}
+
+/** E6C: number of direct driver-analysis requests observed since the last reset. */
+export function getDriverAnalysisRequestCount(): number {
+  return state.driverAnalysisRequestCount;
+}
+
+// ── E6B canonical fixture builders (minimal valid wire shapes) ──
+const CANON_PERIOD = {
+  periodType: 'MTD',
+  start: '2026-06-01T00:00:00.000Z',
+  endExclusive: '2026-07-01T00:00:00.000Z',
+  reference: '2026-06-16T12:00:00.000Z',
+  timezone: {
+    effectiveTimezone: 'Europe/Berlin',
+    source: 'ORGANIZATION',
+    reportTimezone: null,
+    stationTimezone: null,
+    organizationTimezone: 'Europe/Berlin',
+  },
+  comparisonBasis: null,
+};
+
+function canonMoneyMetric(metricId: string, amountMinor: number, currency: string) {
+  return {
+    schemaVersion: '1.0.0',
+    metricId,
+    metricKind: 'OBSERVED',
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    period: CANON_PERIOD,
+    comparison: null,
+    dataCoverage: null,
+    sourceFreshness: null,
+    calculationVersion: 'v',
+    exclusions: [],
+    warnings: [],
+    status: 'AVAILABLE',
+    valueType: 'MONEY',
+    unit: 'CURRENCY_MINOR',
+    value: { amountMinor, currency },
+  };
+}
+
+function canonicalFinanceBundle() {
+  return {
+    organizationId: EVAL_E2E_ORG_ID,
+    period: CANON_PERIOD,
+    metrics: {
+      'fin.mtd_issued_revenue': canonMoneyMetric('fin.mtd_issued_revenue', 112000, 'EUR'),
+      'fin.mtd_paid_revenue': canonMoneyMetric('fin.mtd_paid_revenue', 90000, 'EUR'),
+      'fin.mtd_expenses': canonMoneyMetric('fin.mtd_expenses', 40000, 'EUR'),
+      'fin.mtd_net_result': canonMoneyMetric('fin.mtd_net_result', 72000, 'EUR'),
+      'fin.open_receivables': canonMoneyMetric('fin.open_receivables', 22000, 'EUR'),
+      'fin.overdue_receivables': canonMoneyMetric('fin.overdue_receivables', 5000, 'EUR'),
+    },
+  };
+}
+
+const CANON_SCOPE = { organizationId: EVAL_E2E_ORG_ID, stationIds: null, stationScoped: false };
+function canonSectionMeta(status: string) {
+  return { status, calculationVersion: 'v', period: CANON_PERIOD, scope: CANON_SCOPE, coverage: null, generatedAt: EVAL_E2E_FIXED_NOW, reason: null };
+}
+
+function canonicalInsightsSummary() {
+  return {
+    schemaVersion: '1.0.0',
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    scope: CANON_SCOPE,
+    period: CANON_PERIOD,
+    calculationVersion: 'analytics-summary-e4-v1',
+    sections: {
+      finance: { status: 'AVAILABLE', metrics: canonicalFinanceBundle().metrics, reason: null },
+      costModel: {
+        ...canonSectionMeta('PARTIAL'),
+        categories: [
+          { category: 'OPERATING_EXPENSES', nature: 'ACTUAL', status: 'AVAILABLE', totalsByCurrency: [{ amountMinor: 40000, currency: 'EUR' }], eventCount: 3, formula: 'x', sources: ['OrgInvoice'], reason: null },
+          { category: 'UNPLANNED_MAINTENANCE', nature: 'ACTUAL', status: 'UNAVAILABLE', totalsByCurrency: [], eventCount: 0, formula: 'x', sources: ['ServiceCase'], reason: 'UNPROVEN_CURRENCY' },
+        ],
+        totalsByCurrency: [{ amountMinor: 40000, currency: 'EUR' }],
+        reportingCurrency: 'EUR',
+        mixedCurrency: false,
+      },
+      utilization: {
+        ...canonSectionMeta('PARTIAL'),
+        utilizationPercent: { ...canonMoneyMetric('ops.fleet_utilization_pct', 0, 'EUR'), valueType: 'PERCENT', unit: 'PERCENT', value: 63.5, status: 'PARTIAL' },
+        occupancyBasis: 'SCHEDULED',
+        capacityMs: null, rentedMs: null, maintenanceMs: null, blockedMs: null, netCapacityMs: null,
+        eligibleVehicles: 12, overlappingBookingPairs: null, telemetryOfflineVehicles: null, telemetrySnapshotAsOf: null,
+      },
+      strengths: { ...canonSectionMeta('AVAILABLE'), strengths: [], evaluatedDimensions: ['FINANCE'], skippedDimensions: [] },
+      weaknesses: { ...canonSectionMeta('PARTIAL'), weaknesses: [], evaluatedDimensions: ['FINANCE'], skippedDimensions: [{ dimension: 'UTILIZATION', reason: 'SOURCE_PARTIAL' }] },
+      driverInfluence: { ...canonSectionMeta('UNAVAILABLE'), disclaimer: 'assoc only', confounders: [], factors: [], piiTier: 'none' },
+    },
+  };
+}
+
+function canonicalQualityReport(): EvaluationsQualityReport {
+  return {
+    schemaVersion: '1.0.0',
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    scope: CANON_SCOPE,
+    period: CANON_PERIOD,
+    calculationVersion: 'evaluations-quality-e5-v2',
+    sections: [
+      {
+        // Served org-scoped section carrying canonical non-null coverage (finance
+        // coverage is ALWAYS null per the E5 service, so utilization is used here).
+        section: 'utilization',
+        // Utilization with a valid denominator mirrors the E4 PARTIAL status.
+        status: 'PARTIAL',
+        dimensions: {
+          FRESHNESS: 'UNKNOWN',
+          COMPLETENESS: 'PARTIAL',
+          PROVENANCE: 'COMPLETE', // both required lineages present
+          VALIDITY: 'UNKNOWN', // no independent validity authority
+          TEMPORAL_APPLICABILITY: 'COMPLETE',
+        },
+        // E5.1A: pipeline freshness UNKNOWN, all timestamps null (business recency separate).
+        freshness: {
+          newestSourceAt: null,
+          oldestSourceAt: null,
+          lastSuccessfulImportAt: null,
+          evaluatedAt: EVAL_E2E_FIXED_NOW,
+          state: 'UNKNOWN',
+        },
+        businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
+        // All five canonical coverage fields; missingSources are analytical limitations
+        // (distinct from requiredSourceClasses).
+        coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 20, ratio: 0.8, missingSources: ['SCHEDULED_OCCUPANCY_NOT_ACTUAL', 'VEHICLE_ELIGIBILITY_HISTORY', 'BLOCKED_HISTORY'] } satisfies EvaluationsDataCoverage,
+        requiredSourceClasses: ['BOOKINGS', 'MAINTENANCE'],
+        lineage: [
+          { sourceCategory: 'BOOKINGS', sourceRef: `org:${EVAL_E2E_ORG_ID}:Booking`, effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'evaluations-quality-e5-v2', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'MAINTENANCE', sourceRef: `org:${EVAL_E2E_ORG_ID}:ServiceCase`, effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'evaluations-quality-e5-v2', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+        ],
+        reason: 'SECTION_PARTIAL',
+      },
+      {
+        // Backend-reachable UNAVAILABLE section (same org scope; NOT station-scoped):
+        // finance coverage is null; dimensions stay UNAVAILABLE (never healthy/zero).
+        section: 'finance',
+        status: 'UNAVAILABLE',
+        dimensions: {
+          FRESHNESS: 'UNAVAILABLE',
+          COMPLETENESS: 'UNAVAILABLE',
+          PROVENANCE: 'UNAVAILABLE',
+          VALIDITY: 'UNAVAILABLE',
+          TEMPORAL_APPLICABILITY: 'UNAVAILABLE',
+        },
+        freshness: null,
+        businessEventRecency: null,
+        coverage: null,
+        requiredSourceClasses: ['FINANCE_INVOICE', 'FINANCE_PAYMENT'],
+        lineage: [],
+        reason: 'SECTION_UNAVAILABLE',
+      },
+    ],
+    overall: { status: 'PARTIAL', complete: false, reason: 'QUALITY_INCOMPLETE' },
+  };
+}
+
+// `noneAdversarial` is NOT backend-reachable (the executable authority never returns
+// none + factors); it exercises the component's defense-in-depth none-restricted branch.
+export type EvaluationsDriverScenario =
+  | 'full'
+  | 'pseudonymous'
+  | 'none'
+  | 'failClosed'
+  | 'notFound'
+  | 'noneAdversarial';
+
+// Canonical AVAILABLE driver coverage: availableRecords === factor count (2),
+// excludedRecords === unattributed count, expected/ratio null, missingSources empty
+// (the only observed dimension BOOKING_CANCELLATIONS was analyzed, not skipped).
+const CANON_DRIVER_COVERAGE = {
+  expectedRecords: null,
+  availableRecords: 2,
+  excludedRecords: 3,
+  ratio: null,
+  missingSources: [],
+} satisfies EvaluationsDataCoverage;
+
+const CANON_DRIVER_DISCLAIMER =
+  'Driver influence factors indicate statistical association only. Correlation is not causation; no causal claim is made about any individual driver.';
+
+// E6C: direct E5B driver-analysis response (separate from the summary's embedded slice).
+function canonicalDriverInfluence(scenario: EvaluationsDriverScenario): EvaluationsDriverInfluenceSection {
+  const base = {
+    calculationVersion: 'driver-influence-e4-v1',
+    period: CANON_PERIOD,
+    scope: CANON_SCOPE,
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    disclaimer: CANON_DRIVER_DISCLAIMER,
+    confounders: ['seasonality', 'route mix'],
+  } as const;
+  if (scenario === 'none') {
+    return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PERSON_LEVEL_ACCESS_DENIED', factors: [], piiTier: 'none' };
+  }
+  if (scenario === 'failClosed') {
+    // Pseudonymization fails only AFTER person-level access is granted → tier stays pseudonymous.
+    return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PSEUDONYMIZATION_UNAVAILABLE', factors: [], piiTier: 'pseudonymous' };
+  }
+  // associationShare === sampleSize / dimension total (6/10 = 0.6, 4/10 = 0.4).
+  const factors: E4DriverFactor[] = [
+    { driverRef: scenario === 'full' ? 'driver::raw::A' : 'driver::pseudo::A', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 6, relationship: 'ASSOCIATED_WITH' },
+    { driverRef: scenario === 'full' ? 'driver::raw::B' : 'driver::pseudo::B', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 4, relationship: 'ASSOCIATED_WITH' },
+  ];
+  if (scenario === 'noneAdversarial') {
+    // Malformed payload (none + factors) — references must still be suppressed by the UI.
+    return { ...base, status: 'AVAILABLE', coverage: CANON_DRIVER_COVERAGE, reason: null, factors, piiTier: 'none' };
+  }
+  return {
+    ...base,
+    status: 'AVAILABLE',
+    coverage: CANON_DRIVER_COVERAGE,
+    reason: null,
+    factors,
+    piiTier: scenario === 'full' ? 'full' : 'pseudonymous',
+  };
+}
 
 function inv(overrides: Partial<InvoiceRow> & { id: string }): InvoiceRow {
   return {
@@ -303,6 +543,9 @@ export function resetEvaluationsMockState(profile: EvaluationsScenarioProfile = 
   state.invoicesError = false;
   state.customersError = false;
   state.insightsForbidden = false;
+  state.canonicalFeatureDisabled = false;
+  state.driverAnalysisRequestCount = 0;
+  state.driverScenario = 'pseudonymous';
   state.invoices = [];
   state.insights = [];
   state.customers = [];
@@ -584,6 +827,41 @@ export async function installEvaluationsMocks(
       });
     }
 
+    // ── E6 canonical analytics endpoints ──
+    // E3 finance (always-on): drives the canonical Finance & Receivables section.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/finance/insights`) && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(canonicalFinanceBundle()),
+      });
+    }
+    // E4 insights summary (feature-gated): drives Executive/Strengths/Weaknesses/
+    // Utilization/Costs. When the feature is "disabled" the guard returns a generic
+    // 404 (no discriminator) → the UI must render neutral NOT_FOUND, not legacy data.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/summary`) && method === 'GET') {
+      if (state.canonicalFeatureDisabled) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalInsightsSummary()) });
+    }
+    // E5 quality (feature-gated) — E6C Data Quality panel.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/quality`) && method === 'GET') {
+      if (state.canonicalFeatureDisabled) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalQualityReport()) });
+    }
+    // E5B driver-analysis (E6C Driver Influence) — a SEPARATE direct request that must
+    // only fire after the explicit reveal. Count tracks lazy-request assertions.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/driver-analysis`) && method === 'GET') {
+      state.driverAnalysisRequestCount += 1;
+      if (state.canonicalFeatureDisabled || state.driverScenario === 'notFound') {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalDriverInfluence(state.driverScenario)) });
+    }
+
     return route.continue();
   });
 }
@@ -622,10 +900,12 @@ export async function openEvaluationsPage(
     profile?: EvaluationsScenarioProfile;
     theme?: 'light' | 'dark';
     user?: typeof mockUserFull;
+    canonicalFeatureDisabled?: boolean;
   },
 ) {
   const profile = options?.profile ?? 'full-org';
   resetEvaluationsMockState(profile);
+  if (options?.canonicalFeatureDisabled) state.canonicalFeatureDisabled = true;
 
   await installEvaluationsClockFreeze(page);
   await page.addInitScript(

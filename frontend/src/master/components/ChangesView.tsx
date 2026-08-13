@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e6c1-canonical-evidence-completeness-2026-08-12',
+    version: '4.9.893',
+    title: 'V4.9.893 — Evaluations E6C.1: canonical coverage + lineage evidence completeness',
+    summary: [
+      'Shared display-only coverage presenter renders every canonical EvaluationsDataCoverage field (expected/available/excluded/ratio/missingSources); null never becomes zero.',
+      'Data Quality now shows excludedRecords + missingSources (kept distinct from requiredSourceClasses) and lineage calculationVersion.',
+      'Driver Influence now renders canonical coverage independently of factors/reason; all prior lazy/privacy/association-only guarantees preserved.',
+      'Unit fixtures use `satisfies EvaluationsDataCoverage`; E2E quality/driver fixtures satisfy the coverage contract, use E5.1A-authoritative UNKNOWN pipeline freshness, and add the full driver scenario matrix (full/pseudonymous/none/fail-closed/404).',
+    ],
+    reason:
+      'Independent review found E6C omitted canonical coverage/lineage evidence; E6C.1 closes the evidence-completeness gap (presentation/tests only).',
+    previousBehavior:
+      'E6C rendered partial quality coverage (no excluded/missing sources), omitted lineage calculationVersion, and did not render Driver coverage.',
+    details:
+      'frontend/src/rental/components/evaluations/{EvaluationsCoverageDetails,DataQualityPanel,DriverInfluenceSection}.*, i18n evaluations.coverage.*, e2e evaluations-{fixtures,flow}, docs/audits/pr-recovery/phase3-e6c-*',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-12T22:20:00.000Z',
+  },
+  {
+    id: 'evaluations-e6c-driver-quality-surfaces-2026-08-12',
+    version: '4.9.892',
+    title: 'V4.9.892 — Evaluations E6C: Driver Influence UI + Data Quality panel',
+    summary: [
+      'Detailed Data Quality panel renders the canonical E5 report verbatim: all five dimensions (Freshness/Completeness/Provenance/Validity/Temporal applicability), pipeline freshness vs business-event recency as separate labels, coverage, required sources, and lineage (sourceRef shown as an opaque technical reference).',
+      'Lazy Driver Influence surface: the direct E5B driver-analysis request fires only after an explicit reveal; collapse/reopen does not refetch; piiTier and driverRef are rendered server-verbatim (no identity join, no role-derived authorization).',
+      'Association-only language (never causal); empty factors and station-scoped nulls use qualified neutral copy; generic 404 stays NOT_FOUND (never feature-disabled).',
+      'No global quality score, no dimension averaging, no remediation/recommendation; frontend-only, reusing the E6A hooks and E4/E5 contracts.',
+    ],
+    reason:
+      'Phase 3 E6C completes the canonical Evaluations presentation with the privacy-aware driver influence and detailed data-quality surfaces on the existing page.',
+    previousBehavior:
+      'E6B shipped the core surfaces; Driver Influence and the detailed Data Quality panel were deferred to E6C.',
+    details:
+      'frontend/src/rental/components/evaluations/{DataQualityPanel,DriverInfluenceSection,evaluations-presentation}.*, EvaluationsPage.tsx, i18n en/de evaluations.*, docs/audits/pr-recovery/phase3-e6c-*',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-12T21:00:00.000Z',
+  },
+  {
     id: 'evaluations-e2-tenant-analytics-foundation-v49887-2026-08-11',
     version: '4.9.887',
     title: 'V4.9.887 — Evaluations E2 Tenant-Safe Analytics Foundation',

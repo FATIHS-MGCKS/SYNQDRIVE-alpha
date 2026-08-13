@@ -8,7 +8,11 @@ import {
   resetEvaluationsMockState,
 } from './evaluations-fixtures';
 
-test.describe('Auswertungen — accessibility', () => {
+// E6B: these axe/keyboard checks target the pre-E6 page (KPI buttons + breakdown
+// dialog) that the canonical composition replaces. Canonical a11y coverage (axe on
+// the new sections, keyboard for the period control) is completed in E6D; skipped
+// here to avoid asserting against a removed legacy DOM.
+test.describe.skip('Auswertungen — accessibility', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-1280', 'A11y specs run on desktop-1280 only');
     resetEvaluationsMockState('full-org');

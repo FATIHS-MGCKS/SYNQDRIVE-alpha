@@ -10,7 +10,7 @@ import { TopBar } from './components/TopBar';
 import { TripsView } from './components/TripsView';
 import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
-import { FinancialInsightsView } from './components/FinancialInsightsView';
+import { EvaluationsPage } from './components/evaluations/EvaluationsPage';
 import { HealthErrorsView } from './components/HealthErrorsView';
 import { FleetHubView, type FleetHealthServiceNavState, type FleetTab, type FleetTabInput } from './components/FleetHubView';
 import {
@@ -982,11 +982,12 @@ function RentalAppContent() {
             />
           </VehicleDetailTabPanel>
         ) : currentView === 'financial-insights' ? (
-          /* V4.6.93 — Standalone Financial Insights page (replacement for the
-             retired Dashboard Finances tab). Aggregates real invoice data
-             (`/organizations/:orgId/invoices*`) end-to-end without mock
-             fallbacks. Lives next to other Insights pages, not under Finance. */
-          <FinancialInsightsView isDarkMode={isDarkMode} />
+          /* E6B — Canonical Auswertungen page. Presents E1–E5 canonical truth via
+             the E6A data layer (E4 insights summary + always-on E3 finance); no
+             legacy dashboard-insights / raw-invoice recomputation. Driver Influence
+             and the detailed Data Quality panel are added in E6C. Same route/view
+             id (`financial-insights`) — no second Evaluations page. */
+          <EvaluationsPage />
         ) : currentView === 'fleet' ? (
           <FleetHubView
             activeTab={fleetTab}
