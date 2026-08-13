@@ -130,11 +130,15 @@ npx vitest run src/rental/lib/evaluations src/rental/components/evaluations \
   src/rental/hooks/useEvaluationsFinanceBundle.test.tsx \
   src/rental/lib/finance-insights-adapter.test.ts
 ```
-Hinweis: Playwright-Browser sind in der Cloud-Agent-Sandbox nicht installiert →
-E2E wird nur in CI ausgeführt (als `ENVIRONMENT_SPECIFIC` klassifizieren, nicht als neuer Fehler).
-Bekannte rote CI-Checks (Backend Typecheck/Lint, Backend integration/Migration,
+Hinweis (korrigiert in E6 Final.1): Playwright-Browser sind in der Cloud-Agent-Sandbox
+nicht installiert. Die Evaluations-Flow-E2E (`frontend/e2e/evaluations-flow.spec.ts`) wird
+außerdem von **keinem** aktuellen CI-Workflow ausgeführt (die Playwright-CI-Jobs decken nur
+vehicle-detail und legal-documents ab — das ist **kein** Evaluations-E2E-Nachweis). Status:
+`ENVIRONMENT_SPECIFIC_NOT_EXECUTED` — sie ist authored evidence-of-intent, kein bestandenes
+Runtime-Gate. Die ausgeführte Evidenz sind die gezielten Unit-/Component-Tests, Typecheck
+und Build. Bekannte rote CI-Checks (Backend Typecheck/Lint, Backend integration/Migration,
 Security scan, „Playwright E2E (Vehicle Detail)“) sind vor-bestehend und identisch zur
-Baseline; E6 ist frontend-only.
+Baseline (`origin/main`); E6 ist frontend-only.
 
 ## 9. Copy-&-Paste-Einstieg für einen neuen Chat
 
@@ -143,7 +147,7 @@ Repo: FATIHS-MGCKS/SYNQDRIVE-alpha. Branch: integration/evaluations-e6-canonical
 
 Bitte lies zuerst docs/audits/pr-recovery/E6-ONBOARDING.md — dort stehen Plan, Etappen (E1–E9), Leitplanken, alle relevanten Dateien und Branches.
 
-Aktueller Stand: E1–E5 gemerged; im PR #1026 sind E6A, E6A.1, E6B, E6B.1, E6B.1.1 fertig. Als Nächstes offen: E6C (Driver Influence UI + Data-Quality-Panel), danach E7/E8/E9. E6C NICHT starten, bevor ich es sage.
+Aktueller Stand: E1–E5 sind in `main` gemerged; im PR #1026 sind E6A, E6A.1, E6B, E6B.1, E6B.1.1, E6C, E6C.1, E6C.1.1, E6C.1.2 und E6C.1.3 fertig, und der integrierte E6-Abnahme-Audit existiert (`phase3-e6-final-canonical-presentation-acceptance-2026-08.md`). Eine unabhängige Review fand Doku-/Evidenz-Korrekturen, die durch E6 Final.1 geschlossen wurden. PR #1026 bleibt Draft. Nächstes Gate: unabhängige finale Merge-Readiness-Review. NICHT ohne ausdrückliche Autorisierung Ready markieren oder mergen. E7 bleibt blockiert, bis PR #1026 die unabhängige Review bestanden hat, in `main` gemergt ist UND der User E7 ausdrücklich autorisiert; E7 muss auf einem NEUEN Branch/PR vom dann gemergten `main` starten. E6D/E7/E8/E9 jetzt NICHT starten.
 
 Leitplanken: keine Client-Neuberechnung von Business-Wahrheit; Money mit expliziter Währung; generischer 404 = NOT_FOUND (nie FEATURE_DISABLED ohne verlässlichen Discriminator); Finance = MTD/E3; keine Backend/Prisma/Migration-Änderungen; PR bleibt Draft; kein Deploy.
 ```

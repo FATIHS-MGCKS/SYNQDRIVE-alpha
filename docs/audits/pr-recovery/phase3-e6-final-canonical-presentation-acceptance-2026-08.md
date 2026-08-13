@@ -98,13 +98,25 @@ and are truthfully documented as deferred to E6D (never claimed as passing).
 - `npx vitest run src/rental/lib/evaluations src/rental/components/evaluations src/rental/hooks/useEvaluationsFinanceBundle.test.tsx src/rental/lib/finance-insights-adapter.test.ts`
   → `TARGETED_TEST_FILES = 13`, `TARGETED_TEST_COUNT = 135`, `TARGETED_TEST_FAILURE_COUNT = 0`.
   (The E6-only subset without the finance adapter suite is 12 files / 106 tests.)
-- Targeted ESLint (§9 set incl. `src/lib/api.ts`): `src/lib/api.ts` = 273 errors at HEAD AND
-  273 at `origin/main` (A/B verified) → `PRE_EXISTING_IDENTICAL` (pre-existing `no-explicit-any`
-  debt; the E6 additions add zero); E6-dedicated files (`lib/evaluations`, hooks,
-  `components/evaluations`) = 0 findings; e2e = 1 `no-empty-pattern` at
-  `evaluations-flow.spec.ts:19:20` (pre-existing/unchanged). `ESLINT_NEW_ERROR_COUNT = 0`,
-  `PRE_EXISTING_IDENTICAL_LINT_FINDING_COUNT = 274` (api.ts 273 + e2e 1),
-  `UNKNOWN_TEST_FAILURE_COUNT = 0`.
+- Targeted ESLint (§9 set), exact ESLint-JSON counts (errors vs warnings vs findings),
+  **[CORRECTED IN E6 Final.1 — the earlier "api.ts = 273 errors" / "PRE_EXISTING_IDENTICAL_LINT_FINDING_COUNT = 274"
+  figures were a text-grep miscount and are superseded]**:
+  - `src/lib/api.ts`: 271 errors + 3 warnings = 274 findings — rule breakdown: 270
+    `@typescript-eslint/no-explicit-any` errors, 1 `@typescript-eslint/no-unused-vars` error,
+    3 unused `eslint-disable` directive warnings. Verified in-place: `origin/main` `api.ts`
+    has the IDENTICAL 271/3 (274 findings, same rules) → `PRE_EXISTING_IDENTICAL`.
+  - `e2e/evaluations-flow.spec.ts`: 1 error (`no-empty-pattern`) / 0 warnings at HEAD;
+    `origin/main` has 2 `no-empty-pattern` errors → the E2E lint state IMPROVED from 2 → 1
+    (the remaining error is unchanged from `TESTED_RUNTIME_SHA`/`PRE_CORRECTION_HEAD`). Do NOT
+    claim the full E2E-file finding count is identical to `origin/main`.
+  - `e2e/evaluations-fixtures.ts` = 0 findings; E6-dedicated (`lib/evaluations`, hooks,
+    `components/evaluations`) = 0 findings.
+  - Combined current-head targeted totals: `HEAD_LINT_ERROR_COUNT = 272`,
+    `HEAD_LINT_WARNING_COUNT = 3`, `HEAD_LINT_FINDING_COUNT = 275`.
+  - Baseline: `ORIGIN_MAIN_API_LINT_FINDING_COUNT = 274`, `ORIGIN_MAIN_E2E_FLOW_ERROR_COUNT = 2`,
+    `CURRENT_E2E_FLOW_ERROR_COUNT = 1`, `PRE_FINAL_HEAD_IDENTICAL_LINT_FINDING_COUNT = 275`
+    (HEAD unchanged vs `TESTED_RUNTIME_SHA`/`PRE_CORRECTION_HEAD`). `ESLINT_NEW_ERROR_COUNT = 0`,
+    `UNKNOWN_TEST_FAILURE_COUNT = 0`.
 
 ## 9. E2E and CI honesty
 
@@ -152,7 +164,9 @@ excluded. `DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0`, `DOCUMENTED_TEST_EVIDENCE_MIS
   environment or CI (no browser; no workflow). It is evidence-of-intent, not a passing gate.
 - Legacy `evaluations-visual.spec.ts` + `evaluations-a11y.spec.ts` are skipped; full visual/
   a11y regression is deferred to E6D.
-- `src/lib/api.ts` carries pre-existing `no-explicit-any` debt (identical to main), untouched.
+- `src/lib/api.ts` carries pre-existing lint debt (identical in count and rules to
+  `origin/main`), untouched: 270 `no-explicit-any` errors + 1 `no-unused-vars` error +
+  3 unused-`eslint-disable` warnings (274 findings).
 - Pre-existing backend/dependency CI reds remain (identical to main); resolving them is out
   of E6 scope.
 
@@ -161,6 +175,29 @@ excluded. `DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0`, `DOCUMENTED_TEST_EVIDENCE_MIS
 The E6 runtime is frozen at `TESTED_CODE_SHA = 1bc0f910`. E7 (recommendations/actions) must
 begin on a NEW branch/PR created from `main` AFTER PR #1026 is independently reviewed and
 merged — not on this branch.
+
+## E6 Final.1 — Independent Evidence Correction
+
+Independent review of the E6 final audit found three documentation/evidence defects; all
+corrected here (documentation-only; runtime frozen at `TESTED_RUNTIME_SHA = 1bc0f910`):
+
+1. A stale current-phase statement in `E6-ONBOARDING.md` §9 (Copy-&-Paste block) still said
+   E6C was the next open/not-started phase — corrected to the current truth (E6A–E6C.1.3
+   complete in #1026; integrated acceptance audit done; next gate = independent final
+   merge-readiness review; E7 blocked until #1026 is reviewed + merged and explicitly
+   authorized, on a new branch/PR from merged `main`).
+2. A false onboarding claim that Evaluations E2E is executed "only in CI" — corrected:
+   no CI workflow runs `evaluations-flow.spec.ts`; status `ENVIRONMENT_SPECIFIC_NOT_EXECUTED`
+   (authored evidence-of-intent, not a passing gate); vehicle-detail/legal-documents
+   Playwright jobs are not Evaluations proof.
+3. Incorrect lint counts in §8 (the "api.ts = 273 errors" text-grep figure) — corrected to
+   the exact ESLint-JSON counts above (api.ts 271 errors + 3 warnings = 274; flow spec 1
+   error at HEAD vs 2 on main; fixtures/E6-dedicated 0).
+
+Runtime remained frozen; no test or fixture changed; no backend/Prisma/config/deployment
+change; E7 not started; PR #1026 remains OPEN + Draft.
+`DOCUMENTED_CURRENT_PHASE_MISMATCH_COUNT = 0`, `DOCUMENTED_TEST_EVIDENCE_MISMATCH_COUNT = 0`,
+`DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0`, `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0`.
 
 ## Final status
 
