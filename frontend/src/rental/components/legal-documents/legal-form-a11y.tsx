@@ -1,26 +1,6 @@
 import type { ReactNode } from 'react';
 import { legalLifecycleFieldErrorId, legalUploadFieldErrorId } from './legal-documents-a11y';
 
-type ErrorMap = Record<string, string | undefined>;
-
-export function legalUploadInputA11y(field: string, errors: ErrorMap) {
-  const message = errors[field];
-  if (!message) return {};
-  return {
-    'aria-invalid': true as const,
-    'aria-describedby': legalUploadFieldErrorId(field),
-  };
-}
-
-export function legalLifecycleInputA11y(field: string, errors: ErrorMap) {
-  const message = errors[field];
-  if (!message) return {};
-  return {
-    'aria-invalid': true as const,
-    'aria-describedby': legalLifecycleFieldErrorId(field),
-  };
-}
-
 export function LegalUploadFieldError({ field, message }: { field: string; message?: string }) {
   if (!message) return null;
   return (

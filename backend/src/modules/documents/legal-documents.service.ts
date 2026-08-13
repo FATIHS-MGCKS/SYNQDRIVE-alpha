@@ -119,7 +119,7 @@ export interface ScheduleLegalDocumentInput extends LegalDocumentStatusChangeInp
   validFrom: Date;
 }
 
-export interface LegalDocumentDto extends LegalDocumentApiResponse {}
+export type LegalDocumentDto = LegalDocumentApiResponse;
 
 type Tx = Prisma.TransactionClient;
 

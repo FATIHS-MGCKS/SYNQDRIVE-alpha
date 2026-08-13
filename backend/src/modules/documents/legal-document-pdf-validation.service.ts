@@ -229,7 +229,6 @@ export class LegalDocumentPdfValidationService {
 
   private async loadPdfParse(): Promise<PdfParseCtor> {
     if (this.pdfParseCtor) return this.pdfParseCtor;
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('pdf-parse');
     const ctor = (mod.PDFParse ?? mod.default?.PDFParse ?? mod.default ?? mod) as PdfParseCtor;
     this.pdfParseCtor = ctor;

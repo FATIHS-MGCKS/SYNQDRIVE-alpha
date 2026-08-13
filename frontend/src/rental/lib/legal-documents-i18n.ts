@@ -1,5 +1,4 @@
 import type { TranslationKey } from '../i18n/translations/en';
-import type { ConsumerInformationVariant } from './legal-document-types';
 import { LEGAL_DOCUMENT_TYPE, LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
 import type { LegalDocumentLifecycleAction } from './legal-document-lifecycle.types';
 

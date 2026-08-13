@@ -16,7 +16,6 @@ import { LEGAL_LIFECYCLE_ACTION_CONFIG } from './legal-document-lifecycle.consta
 import {
   formatLegalDocumentTypeTitle,
   formatLifecycleEventLabelI18n,
-  formatOptionLabel,
   lifecycleActionLabelKey,
   type LegalDocumentsTranslate,
 } from './legal-documents-i18n';
