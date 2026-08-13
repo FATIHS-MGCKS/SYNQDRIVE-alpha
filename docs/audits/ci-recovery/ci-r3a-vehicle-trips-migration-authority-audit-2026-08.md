@@ -4,6 +4,10 @@
 > dependency, or production artifact was changed. Disposable local PostgreSQL 16 was used for
 > read/write diagnostics only and then destroyed. This audit determines the safe, evidence-backed
 > repair strategy for CI-R3B; it does **not** implement it.
+>
+> This document incorporates the **CI-R3A.1 independent-review corrections** (see §14). All
+> earlier statements have been corrected in place for internal consistency; §14 records exactly
+> what changed and why.
 
 ## 1. Authoritative base and branch
 
@@ -14,9 +18,8 @@
 
 ## 2. Reproduced failure (independent)
 
-Disposable PostgreSQL 16 (`postgres:16-alpine`-equivalent native cluster,
-user `synqdrive`, trust auth, `127.0.0.1:5432`), fresh empty database
-`synqdrive_ci_r3a_empty`, then `npx prisma migrate deploy`:
+Disposable PostgreSQL 16 (native cluster, user `synqdrive`, trust auth, `127.0.0.1:5432`),
+fresh empty database `synqdrive_ci_r3a_empty`, then `npx prisma migrate deploy`:
 
 ```
 Applying migration `20260311224040_init`
@@ -38,13 +41,28 @@ ERROR: relation "vehicle_trips" does not exist   (routine RangeVarGetRelidExtend
 | `FIRST_MISSING_RELATION` | `vehicle_trips` |
 | Failing SQL statement | line 5: `ALTER TABLE "vehicle_trips" ADD COLUMN "trip_status" …` (unguarded) |
 | `SUCCESSFULLY_APPLIED_MIGRATION_COUNT_BEFORE_FAILURE` | 3 (`init`, `add_dimo_vehicle_snapshot_fields`, `add_rental_driving_analysis`) |
-| Later migration reached | No — replay halts at migration #4 |
 
-The result matches the expected baseline exactly.
+### 2a. Corrected replay-failure cascade (multiple defects, not one)
 
-### 2b. Independently confirmed SECOND (latent) defect — casing
+`vehicle_trips` is only the **first** of several missing-base and casing failures. Repairing one
+defect at a time (hypothetically) exposes the next, in this chronological order:
 
-A separate disposable database was seeded with a lowercase `vehicle_trips`, a lowercase
+| Order | Migration | Statement that fails | Missing/defective object |
+|-------|-----------|----------------------|--------------------------|
+| 1 | `20260325161142_trip_architecture_refactor` | `ALTER TABLE "vehicle_trips"` (line 5, unguarded) | `vehicle_trips` (missing base) |
+| 2 | `20260331000000_v3_hardware_type` | `ALTER TABLE "driving_events" ADD COLUMN …` (unguarded) | `driving_events` (missing base) |
+| 3 | `20260413230000_add_composite_indexes_batch_c` | `CREATE INDEX … ON "trip_behavior_events"` | `trip_behavior_events` (missing base) |
+| 4 | `20260425000000_retire_user_assignment_and_speeding_severity` | `UPDATE "VehicleTrip"` / `ALTER "TripDrivingImpact"` | **casing** (camelCase vs lowercase) |
+| 5 | `20260609000000_autovacuum_tuning` | `ALTER TABLE "vehicle_trip_tracking_runs"/"trip_repairs"/"vehicle_trip_waypoints" SET (…)` | 3 missing base tables |
+| 6 | `20260716250000_driving_impact_provenance` (and later) | `ALTER TABLE "trip_driving_impact"` | `trip_driving_impact` (missing base) |
+
+> Note: `20260331000000` and `20260413230000` are chronologically **before** `20260425000000`,
+> so the casing defect is not literally "the second" failure — it is the fourth in the cascade.
+> The earlier CI-R3A draft under-counted this.
+
+### 2b. Independently confirmed casing defect
+
+A separate disposable database was seeded with lowercase `vehicle_trips`, lowercase
 `trip_driving_impact`, and the `TripAssignment*` enums, then `20260425000000`'s SQL was run
 verbatim:
 
@@ -54,101 +72,144 @@ ERROR:  relation "VehicleTrip" does not exist
 LINE 1: UPDATE "VehicleTrip"
 ```
 
-This proves that **even after the base-table creation gap is repaired, a second replay
-failure occurs** at `20260425000000_retire_user_assignment_and_speeding_severity`, because
-that migration references camel-case `"VehicleTrip"` / `"TripDrivingImpact"` while the
-canonical tables are lowercase `vehicle_trips` / `trip_driving_impact`. Quoted identifiers
-are case-sensitive in PostgreSQL, so this is a genuine, independent defect.
+Quoted identifiers are case-sensitive in PostgreSQL, so `"VehicleTrip"`/`"TripDrivingImpact"`
+(camelCase) can never resolve to the canonical lowercase `vehicle_trips`/`trip_driving_impact`.
+This is a genuine, independent defect (order 4 above).
 
-## 3. Chronological migration authority matrix (trip lineage)
+## 3. Complete relevant-migration inventory
 
-| # | Migration | Statement(s) | Identifier / casing | Predecessor required | Predecessor present in fresh replay? | Idempotent? | Classification |
-|---|-----------|-------------|--------------------|----------------------|--------------------------------------|-------------|----------------|
-| 1 | `20260311224040_init` | creates `vehicle_latest_states`, billing, etc. — **no** `vehicle_trips` | n/a | — | — | mixed | HISTORICAL_VALID (but omits trip tables) |
-| 2 | `20260315000000_add_rental_driving_analysis` | no trip references | n/a | — | — | — | HISTORICAL_VALID |
-| 3 | `20260325161142_trip_architecture_refactor` | `CREATE TYPE "TripStatus"`; **`ALTER TABLE "vehicle_trips"` (unguarded)**; guarded ADD/DROP of legacy cols; `CREATE INDEX …trip_status_idx`; guarded `vehicle_latest_states` alter | lowercase `vehicle_trips` | `vehicle_trips` table | **NO** | partial (DO-blocks guard some; first ALTER unguarded) | **MISSING_PREDECESSOR** (first P3018) |
-| 4 | `20260410000000_add_enrichment_status_fields` | `ALTER TABLE "vehicle_trips" ADD …behavior_enrichment_status`; index | lowercase | `vehicle_trips` | NO (blocked earlier) | no | ORDERING_DEFECT (depends on missing base) |
-| 5 | `20260413230000_add_composite_indexes_batch_c` | `CREATE INDEX … ON "vehicle_trips" ("vehicle_id","start_time")` | lowercase | `vehicle_trips` (+ `vehicle_id`, `start_time`) | NO | no | ORDERING_DEFECT |
-| 6 | `20260425000000_retire_user_assignment_and_speeding_severity` | `UPDATE/ALTER "VehicleTrip"`; enum rename-rebuild of `TripAssignmentStatus`, `TripAssignmentSubjectType`; `ALTER "TripDrivingImpact" DROP COLUMN` | **camelCase** `VehicleTrip`, `TripDrivingImpact` | `VehicleTrip` table, `TripAssignment*` enums, `TripDrivingImpact` table, `assignment_*` cols | NO | no | **CASE_MISMATCH + MISSING_PREDECESSOR** |
-| 7 | `20260615140000_misuse_cases` | FK `trip_id → "vehicle_trips"("id")` | lowercase | `vehicle_trips(id)` | NO | no | ORDERING_DEFECT |
-| 8 | `20260705140000_trip_analysis_status` / `20260705200000_..._guard` | `ADD COLUMN IF NOT EXISTS` many analysis cols | lowercase | `vehicle_trips` | NO | **yes** (IF NOT EXISTS) | IDEMPOTENCY_RISK-free but ORDERING_DEFECT |
-| 9 | `20260708044000_trip_booking_link_source` | `CREATE TYPE "TripBookingLinkSource"`; `ALTER "vehicle_trips" ADD booking_link_source`; `UPDATE` | lowercase | `vehicle_trips` | NO | no | ORDERING_DEFECT |
-| 10 | `20260716150000_battery_v2_measurement_sessions` | FK `trip_id → "vehicle_trips"("id")` | lowercase | `vehicle_trips(id)` | NO | no | ORDERING_DEFECT |
-| 11 | `20260716250000` / `…260000` / `…270000_driving_impact_*` | `ALTER TABLE "trip_driving_impact"` | lowercase | `trip_driving_impact` | NO | no | ORDERING_DEFECT (missing base) |
-| 12 | `20260717180000_trip_driving_impact_authoritative_coverage` | `CREATE TYPE "TripDrivingImpactAnalysisStatus"`; `ALTER "trip_driving_impact"` | lowercase | `trip_driving_impact` | NO | no | ORDERING_DEFECT |
+Repository-wide search of every `*.sql` migration for `vehicle_trips`, `"VehicleTrip"`,
+`vehicle_trip_waypoints`, `"VehicleTripWaypoint"`, `trip_behavior_events`, `"TripBehaviorEvent"`,
+`driving_events`, `"DrivingEvent"`, `trip_driving_impact`, `"TripDrivingImpact"`,
+`vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`, `trip_repairs`, `"TripRepair"`,
+`TripStatus`, `TripSource`, `TripAssignmentStatus`, `TripAssignmentSubjectType`,
+`TripBookingLinkSource`, `trip_id`:
 
-The current Prisma model `VehicleTrip @@map("vehicle_trips")` (schema line 9516–9689) is the
-`CURRENT_CORRECT` canonical target: lowercase `vehicle_trips`.
+- `RELEVANT_MIGRATION_FILE_COUNT` = **27**
+- `MATRIXED_RELEVANT_MIGRATION_COUNT` = **27**
+- `UNMATRIXED_RELEVANT_MIGRATION_COUNT` = **0**
 
-## 4. Base-table creation-gap proof
+> Discrepancy with the prior independent estimate of "at least 28": a looser scan on the bare
+> substring `trip` also matches `sTRIPe` (billing/Stripe migrations) and `tire_trip_usage_*`
+> migrations that touch only `tire_trip_usage_ledger` (its own created table) — none of which
+> reference a trip **base** table. Verified: `20260716230000_tire_trip_usage_replay_safety`,
+> `20260717120000_driving_decision_audits`, `20260710100000_vehicle_driving_assessment_quality`,
+> and `20260716340000_rental_driving_analysis_versioning` contain **no** trip-base identifier.
+> `20260311224040_init` is relevant only as the base that **omits** the trip tables; it contains
+> no trip identifier and is therefore not part of the 27.
 
-Searched every `.sql` migration (case-sensitive and case-insensitive) for
-`CREATE TABLE … vehicle_trips` / `VehicleTrip`:
+### Chronological authority matrix (all 27)
 
-| Object | `CREATE TABLE` occurrences in all migrations | Status |
-|--------|---------------------------------------------|--------|
-| `vehicle_trips` | **0** | MISSING base |
-| `vehicle_trip_waypoints` | **0** | MISSING base |
-| `trip_driving_impact` | **0** | MISSING base |
-| `vehicle_trip_detection_states` | **0** | MISSING base |
-| `vehicle_trip_tracking_runs` | **0** | MISSING base |
-| `driving_events` | **0** | MISSING base |
-| `trip_assessabilities` | 1 (`20260716194500`) | present |
-| `driving_evidence` | 1 (`20260716200000`) | present |
+| # | Migration | Trip statement(s) | Casing | Predecessor present in fresh replay? | Idempotent? | Classification |
+|---|-----------|-------------------|--------|--------------------------------------|-------------|----------------|
+| 1 | `20260325161142_trip_architecture_refactor` | `CREATE TYPE "TripStatus"`; `ALTER "vehicle_trips"` (unguarded) + guarded ADD/DROP; `CREATE INDEX …trip_status` | lower | NO | partial | MISSING_PREDECESSOR (first P3018) |
+| 2 | `20260331000000_v3_hardware_type` | `CREATE TYPE "DrivingEventSource"`; `ALTER "driving_events"` (unguarded); index | lower | NO | no | MISSING_PREDECESSOR (`driving_events`) |
+| 3 | `20260410000000_add_enrichment_status_fields` | `ALTER "vehicle_trips" ADD behavior_enrichment_status`; index | lower | NO | no | ORDERING_DEFECT |
+| 4 | `20260413230000_add_composite_indexes_batch_c` | `CREATE INDEX CONCURRENTLY IF NOT EXISTS` on `vehicle_trips(vehicle_id,start_time)`, `driving_events(...)`, `trip_behavior_events(trip_id,event_category)` | lower | NO | index-guarded (table not) | MISSING_PREDECESSOR (`trip_behavior_events`) + ORDERING_DEFECT |
+| 5 | `20260425000000_retire_user_assignment_and_speeding_severity` | `UPDATE/ALTER "VehicleTrip"`; enum rebuild `TripAssignmentStatus`/`TripAssignmentSubjectType`; `ALTER "TripDrivingImpact" DROP COLUMN` | **camel** | NO | no | CASE_MISMATCH + MISSING_PREDECESSOR |
+| 6 | `20260609000000_autovacuum_tuning` | `ALTER "vehicle_trip_tracking_runs"/"trip_repairs"/"vehicle_trip_waypoints" SET (...)` | lower | NO | no | MISSING_PREDECESSOR (×3) |
+| 7 | `20260615140000_misuse_cases` | FK `trip_id → "vehicle_trips"("id")` | lower | NO | no | ORDERING_DEFECT |
+| 8 | `20260628150000_rpm_webhook_candidate` | references `vehicle_trips`/`trip_id` | lower | NO | no | ORDERING_DEFECT |
+| 9 | `20260705140000_trip_analysis_status` | `ALTER "vehicle_trips"` analysis cols | lower | NO | mixed | ORDERING_DEFECT |
+| 10 | `20260705200000_trip_analysis_status_guard` | `ADD COLUMN IF NOT EXISTS` analysis cols | lower | NO | **yes** | ORDERING_DEFECT (idempotent) |
+| 11 | `20260708044000_trip_booking_link_source` | `CREATE TYPE "TripBookingLinkSource"`; `ALTER "vehicle_trips" ADD booking_link_source`; `UPDATE` | lower | NO | no | ORDERING_DEFECT |
+| 12 | `20260716150000_battery_v2_measurement_sessions` | FK `trip_id → "vehicle_trips"("id")` | lower | NO | no | ORDERING_DEFECT |
+| 13 | `20260716194500_trip_assessabilities` | `CREATE TABLE trip_assessabilities` (FK to vehicle_trips) | lower | NO | no | ORDERING_DEFECT (own table OK; FK target missing) |
+| 14 | `20260716200000_driving_evidence` | `CREATE TABLE driving_evidence` (FK to vehicle_trips) | lower | NO | no | ORDERING_DEFECT |
+| 15 | `20260716203000_driving_analysis_runs` | `CREATE TABLE` (FK to vehicle_trips) | lower | NO | no | ORDERING_DEFECT |
+| 16 | `20260716210000_driving_intelligence_jobs` | `CREATE TABLE` (FK to vehicle_trips) | lower | NO | no | ORDERING_DEFECT |
+| 17 | `20260716210000_tire_trip_usage_ledger` | `CREATE TABLE` (FK to vehicle_trips) | lower | NO | no | ORDERING_DEFECT |
+| 18 | `20260716220000_tire_trip_usage_attribution` | `ALTER "vehicle_trips"` add tire-usage cols | lower | NO | no | ORDERING_DEFECT |
+| 19 | `20260716240000_driving_event_native_identity` | `ALTER "driving_events"` | lower | NO | no | ORDERING_DEFECT (`driving_events`) |
+| 20 | `20260716250000_driving_impact_provenance` | `ALTER "trip_driving_impact"` | lower | NO | no | MISSING_PREDECESSOR (`trip_driving_impact`) |
+| 21 | `20260716260000_driving_impact_braking_provenance` | `ALTER "trip_driving_impact"` | lower | NO | no | ORDERING_DEFECT |
+| 22 | `20260716270000_driving_impact_load_components` | `ALTER "trip_driving_impact"` | lower | NO | no | ORDERING_DEFECT |
+| 23 | `20260716310000_driving_attribution_roles` | references trip / `trip_id` | lower | NO | no | ORDERING_DEFECT |
+| 24 | `20260716320000_driver_attributions` | `CREATE TABLE driver_attributions` (FK to vehicle_trips) | lower | NO | no | ORDERING_DEFECT |
+| 25 | `20260717180000_trip_driving_impact_authoritative_coverage` | `CREATE TYPE "TripDrivingImpactAnalysisStatus"`; `ALTER "trip_driving_impact"` | lower | NO | no | ORDERING_DEFECT |
+| 26 | `20260717190000_dimo_braking_event_intake` | FK to `vehicle_trips`/`driving_events` | lower | NO | no | ORDERING_DEFECT |
+| 27 | `20260717200000_braking_event_ledger` | FK to `vehicle_trips` | lower | NO | no | ORDERING_DEFECT |
 
-`20260311224040_init` contains **zero** references to `vehicle_trip*`, `trip_driving_impact`,
-or `driving_events` (the only `trip` substrings are inside `stripe_*`). So the base table was
-never created by `init` and never by any later migration.
+## 4. Corrected missing base-object inventory
 
-- `VEHICLE_TRIPS_CREATE_BEFORE_FIRST_ALTER_COUNT` = **0**
-- `VEHICLE_TRIP_WAYPOINTS_CREATE_BEFORE_FIRST_REFERENCE_COUNT` = **0**
-- `TRIP_RELATED_ENUM_CREATE_COUNTS`: `TripStatus` = 1 (refactor, clean); `TripBookingLinkSource` = 1;
-  `TripDrivingImpactAnalysisStatus` = 1; **`TripAssignmentStatus` = 0 clean** (only rename-rebuild
-  in `20260425000000`, which assumes it already exists); **`TripAssignmentSubjectType` = 0 clean**
-  (same); **`TripSource` = 0** (used by schema with `@default(V2_LIVE)`, never created in any SQL).
+Searched every `.sql` migration for `CREATE TABLE` of each object.
 
-### Answers to the required creation-gap questions
+`MISSING_TRIP_BASE_TABLE_COUNT` = **8**; `KNOWN_MISSING_BASE_TABLE_OMISSION_COUNT` = **0**.
 
-1. **Which migration should have created the base table?** A pre-`20260325161142` "init-era"
-   migration (logically an extension of `20260311224040_init` or a dedicated
-   `…_vehicle_trips` migration). None exists.
-2. **Is its SQL present anywhere in committed history?** No (see §6).
-3. **Deleted, omitted, or assumed?** **Assumed to pre-exist.** The `VehicleTrip` model with
-   `@@map("vehicle_trips")` is present in `schema.prisma` since the initial commit, but the
-   committed `init` migration does not create it — evidence the original database was
-   materialized out-of-band (`prisma db push`) and the migration history was retrofitted
-   without a matching base-creation migration.
-4. **Exact table shape required immediately before `20260325161142`?** At minimum: `id` (PK,
-   FK target), plus whatever columns the refactor drops/alters (legacy cols, guarded) and the
-   columns later migrations reference-but-never-add (`assignment_status`,
-   `assignment_subject_type`, `assignment_subject_id`, `vehicle_id`, `start_time`). See §7.
-5. **Columns/enums/indexes/FKs belonging to the missing base creation:** `vehicle_trips` base
-   (id + pre-refactor columns), enums `TripAssignmentStatus`, `TripAssignmentSubjectType`,
-   `TripSource`; base tables `vehicle_trip_waypoints`, `trip_driving_impact`,
-   `vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`, `driving_events`.
-6. **Columns that must NOT be in the base (added later):** everything the refactor adds
-   unguarded (`trip_status`, `avg_consumption_*`, `energy_*`, `outside_temperature_start_c`,
-   `engine_temp_*`, `avg_rpm`, `avg_throttle_position`, `avg_engine_load`, `gap_ended`,
-   `enriched_at`), plus later additions (`behavior_enrichment_status` @ `20260410000000`,
-   `booking_link_source` @ `20260708044000`, `trip_analysis_status` + analysis_* @
-   `20260705*`, etc.).
-7. **Statements using wrong table casing:** `20260425000000` — 4 statements on `"VehicleTrip"`
-   (2× `UPDATE`, 2× `ALTER TABLE`) and 1 on `"TripDrivingImpact"` (`ALTER TABLE`).
-8. **Other trip base tables missing?** Yes — `vehicle_trip_waypoints`, `trip_driving_impact`,
-   `vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`, `driving_events` (§4 table).
+| # | Prisma model | Mapped table | `CREATE TABLE` count | First migration reference | Guarded? | Replay-blocking? | Confidence of shape |
+|---|-------------|--------------|----------------------|---------------------------|----------|------------------|---------------------|
+| 1 | `VehicleTrip` | `vehicle_trips` | 0 | `20260325161142` (unguarded ALTER) | no | **YES** | UNKNOWN (base DDL lost) |
+| 2 | `DrivingEvent` | `driving_events` | 0 | `20260331000000` (unguarded ALTER) | no | **YES** | UNKNOWN |
+| 3 | `TripBehaviorEvent` | `trip_behavior_events` | 0 | `20260413230000` (`CREATE INDEX`) | index guard only | **YES** | UNKNOWN |
+| 4 | `VehicleTripWaypoint` | `vehicle_trip_waypoints` | 0 | `20260609000000` (`ALTER … SET`) | no | **YES** | UNKNOWN (schema: id, trip_id, lat, lng, speed_kmh, heading, recorded_at) |
+| 5 | `VehicleTripTrackingRun` | `vehicle_trip_tracking_runs` | 0 | `20260609000000` (`ALTER … SET`) | no | **YES** | UNKNOWN |
+| 6 | `TripRepair` | `trip_repairs` | 0 | `20260609000000` (`ALTER … SET`) | no | **YES** | UNKNOWN |
+| 7 | `TripDrivingImpact` | `trip_driving_impact` | 0 | `20260425000000` (camel `ALTER`), then `20260716250000` (lower) | no | **YES** | UNKNOWN |
+| 8 | `VehicleTripDetectionState` | `vehicle_trip_detection_states` | 0 | **none** (0 migration references) | n/a | **NO** (schema drift only) | UNKNOWN |
 
-## 5. Identifier / casing analysis
+Present (not missing): `trip_assessabilities`, `driving_evidence`, `driving_analysis_runs`,
+`driving_intelligence_jobs`, `driver_attributions`, `tire_trip_usage_ledger`, `misuse_cases`,
+`rpm_webhook_candidates`, `braking_event_ledger`, `dimo_braking_event_intake`,
+`battery_measurement_sessions` (each has exactly 1 `CREATE TABLE`). `tire_trip_usage_attribution`
+is **not** a table (it is columns added to `vehicle_trips`).
 
-- `FIRST_LOWERCASE_VEHICLE_TRIPS_REFERENCE` = `20260325161142_trip_architecture_refactor` (line 5).
-- `FIRST_CAMELCASE_VEHICLETRIP_REFERENCE` = `20260425000000_retire_user_assignment_and_speeding_severity` (line 16).
-- `LOWERCASE_CAMELCASE_AUTHORITY_MISMATCH_COUNT` = **2 objects** (`VehicleTrip` vs `vehicle_trips`;
-  `TripDrivingImpact` vs `trip_driving_impact`), spanning **5 statements**, all inside the single
-  migration `20260425000000`. Canonical authority (current schema `@@map`) is lowercase; the
-  camelCase references are the defect.
+### Missing enums
 
-## 6. Git-history evidence
+| Enum | Clean `CREATE TYPE` count | Evidence |
+|------|---------------------------|----------|
+| `TripSource` | 0 | used by schema (`trip_source @default(V2_LIVE)`); never created in any SQL; `trip_source` column never added by any migration |
+| `TripAssignmentStatus` | 0 clean | only `20260425000000` "creates" it via rename-rebuild, which first `ALTER TYPE … RENAME TO …_old` (assumes it pre-exists) |
+| `TripAssignmentSubjectType` | 0 clean | same rename-rebuild predecessor assumption |
 
-Searched all local refs and history:
+Created enums (not missing): `TripStatus` (`20260325161142`), `DrivingEventSource`
+(`20260331000000`), `TripBookingLinkSource` (`20260708044000`), `TripDrivingImpactAnalysisStatus`
+(`20260717180000`).
+
+`TRIP_BEHAVIOR_EVENTS_CREATE_COUNT` = 0; `TRIP_BEHAVIOR_EVENTS_FIRST_REFERENCE` =
+`20260413230000_add_composite_indexes_batch_c`. `TRIP_REPAIRS_CREATE_COUNT` = 0;
+`TRIP_REPAIRS_FIRST_REFERENCE` = `20260609000000_autovacuum_tuning`.
+
+## 5. Corrected temporal column authority
+
+The refactor `20260325161142`'s **first unguarded** statement (`ALTER TABLE "vehicle_trips" ADD
+COLUMN "trip_status" …`) requires only that the **table exists** — it does not require any
+specific pre-existing column. All legacy DROPs and the three speeding ADDs are guarded.
+
+| Category | Columns | Classification | Required before `20260325161142`? |
+|----------|---------|----------------|-----------------------------------|
+| Legacy conditionally dropped | `dimo_mechanism`, `road_surface_type`, `road_surface_score`, `climate_factor`, `tire_wear_contrib_km`, `dtc_codes_found`, `avg_temperature_c` | **LEGACY_POSSIBLE / UNKNOWN_PREEXISTENCE** (guarded `DROP … IF EXISTS` proves only anticipation) | **NO** |
+| Guarded speeding adds | `speeding_percent`, `max_over_speed_kmh`, `speeding_segments` | **OPTIONAL_PREEXISTING_GUARDED** (migration creates them when absent) | **NO** |
+| Required by `20260413230000` | `vehicle_id`, `start_time` (composite index) | STRONGLY_DERIVED (first requirement at `20260413230000`) | NO |
+| Required by `20260425000000` | `assignment_status`, `assignment_subject_type`, `assignment_subject_id` | STRONGLY_DERIVED (first requirement at `20260425000000`) | NO |
+| Required only by later migrations | `id` (FK target first at `20260615140000`; structurally the PK at creation), `booking_link_source` (`20260708044000`), analysis_* (`20260705*`), etc. | STRONGLY_DERIVED / added-later | NO |
+| Creation point unknown | ~85 other current-schema columns | **UNKNOWN** | UNKNOWN |
+
+- Required strictly **before** `20260325161142`: **only table existence with a primary key** — no
+  specific data column is provably required at that instant.
+- `FALSE_PROVEN_BASE_COLUMN_COUNT` = **0** (all previously "proven mandatory base" columns are
+  reclassified to LEGACY_POSSIBLE / OPTIONAL_PREEXISTING_GUARDED / STRONGLY_DERIVED-by-later /
+  UNKNOWN).
+- `GUESSED_BASE_COLUMN_COUNT` = **0** (every column carries explicit evidence or is UNKNOWN).
+
+## 6. Corrected out-of-band-origin statement
+
+Repository evidence proves only that (a) the trip Prisma models existed since the initial commit
+`77c26dad` and (b) the committed migration history never creates the corresponding tables.
+Therefore an **external / non-versioned baseline must have existed** for the environments where
+these tables are present.
+
+- `OUT_OF_BAND_BASELINE_EXISTENCE` = **PROVEN**.
+- `OUT_OF_BAND_BASELINE_CREATION_METHOD` = **UNKNOWN** — could be `prisma db push`, manual SQL, an
+  untracked migration, a database dump/restore, or another external provisioning process. The
+  exact mechanism is **not** determinable from the repository and is **not** asserted as fact.
+
+## 7. Pre-refactor field-level contract
+
+See §5. The minimal provable pre-refactor contract is: table `vehicle_trips` exists with a
+primary key. Every data-column's pre-refactor existence is either STRONGLY_DERIVED from a later
+migration's first reference or UNKNOWN (original base DDL absent — §8). No column is guessed.
+
+## 8. Git-history evidence
 
 ```
 git log --all -S'CREATE TABLE "vehicle_trips"' -- backend/prisma      → (none)
@@ -157,167 +218,119 @@ git log --all -S'model VehicleTrip'   -- backend/prisma/schema.prisma → 77c26d
 git log --all -S'@@map("vehicle_trips")' -- …/schema.prisma           → 77c26dad (initial commit)
 ```
 
-- The `VehicleTrip` model **and** its `@@map("vehicle_trips")` exist from the very first commit
-  `77c26dad`. The `20260325161142_trip_architecture_refactor` migration is also present at
-  `77c26dad`, already altering a table nothing ever created.
-- No `CREATE TABLE` for `vehicle_trips` / `VehicleTrip` exists in **any** ref (branches,
-  remotes, initial commit).
-- `AUTHORITATIVE_ORIGINAL_BASE_DDL_FOUND` = **NO**. The original base DDL is unrecoverable from
-  the repository; it lived only in a `db push`-materialized database outside version control.
+- The `VehicleTrip` model **and** its `@@map("vehicle_trips")` exist from the first commit
+  `77c26dad`; `20260325161142` is also present there, already altering a table nothing creates.
+- No `CREATE TABLE` for any of the 8 missing base tables exists in **any** ref.
+- `AUTHORITATIVE_ORIGINAL_BASE_DDL_FOUND` = **NO**.
 
-## 7. Pre-refactor field-level contract (state required before `20260325161142`)
+## 9. Existing-database compatibility analysis (no production access)
 
-Confidence legend: **PROVEN** (directly required by committed SQL) / **STRONGLY_DERIVED**
-(required by a later committed migration) / **UNKNOWN** (cannot be proven from history).
+CI-R3B must satisfy **both**: **A.** an empty database replaying all 283 migrations, and **B.** an
+existing database where the trip tables exist and later migrations are already recorded in
+`_prisma_migrations`. Constraints: editing an already-applied migration risks a checksum/history
+conflict on B (unsafe by default); a retroactive insert must be fully idempotent to be a no-op on
+B; the casing defect fails on A regardless of the base bootstrap and cannot be neutralized by the
+base bootstrap alone.
 
-| SQL column | Type (schema) | Evidence source | Confidence | Base membership |
-|------------|---------------|-----------------|------------|-----------------|
-| `id` | text/uuid PK | FK targets `vehicle_trips("id")` (`20260615140000`, `20260716150000`) | PROVEN | base |
-| `dimo_mechanism` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped by refactor) |
-| `road_surface_type` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped) |
-| `road_surface_score` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped) |
-| `climate_factor` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped) |
-| `tire_wear_contrib_km` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped) |
-| `dtc_codes_found` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped) |
-| `avg_temperature_c` | — | refactor `DROP COLUMN IF EXISTS` | PROVEN (legacy) | base (dropped) |
-| `speeding_percent` | double | refactor guarded ADD ("may already exist") | STRONGLY_DERIVED | base (uncertain) |
-| `max_over_speed_kmh` | double | refactor guarded ADD | STRONGLY_DERIVED | base (uncertain) |
-| `speeding_segments` | int | refactor guarded ADD | STRONGLY_DERIVED | base (uncertain) |
-| `vehicle_id` | text | index `("vehicle_id","start_time")` (`20260413230000`) + FK to Vehicle | STRONGLY_DERIVED | base |
-| `start_time` | timestamp | same composite index | STRONGLY_DERIVED | base |
-| `assignment_status` | enum | `UPDATE "VehicleTrip" SET assignment_status …` (`20260425000000`); never added by any migration | STRONGLY_DERIVED | base (missing predecessor) |
-| `assignment_subject_type` | enum | `UPDATE "VehicleTrip"` (`20260425000000`); never added | STRONGLY_DERIVED | base |
-| `assignment_subject_id` | text | `UPDATE "VehicleTrip"` (`20260425000000`); never added | STRONGLY_DERIVED | base |
-| ~85 other current-schema columns (`driver_name`, `end_time`, `distance_km`, `driving_score`, all `*_count`/`*_events`, detection/tracking cols, etc.) | various | present only in current schema; no migration creates them and no pre-refactor migration references them | **UNKNOWN** | cannot classify base vs later without lost DDL |
+## 10. Repair-option decision matrix
 
-- Columns that must exist **before** the refactor: `id`, the 7 legacy dropped columns, the 3
-  guarded speeding columns, `vehicle_id`, `start_time`, `assignment_*` (proven/derived above).
-- Columns **added by** the refactor: `trip_status`, `avg_consumption_l_per_100km`,
-  `fuel_confidence`, `energy_used_kwh`, `avg_consumption_kwh_per_100km`, `energy_confidence`,
-  `outside_temperature_start_c`, `engine_temp_start_c`, `engine_temp_end_c`, `avg_rpm`,
-  `avg_throttle_position`, `avg_engine_load`, `gap_ended`, `enriched_at`.
-- Columns added by **later** migrations: `behavior_enrichment_status` (`20260410000000`),
-  `booking_link_source` (`20260708044000`), `trip_analysis_status`/`analysis_*`/`quality_status`/
-  `behavior_summary_status` (`20260705200000`, idempotent), etc.
-- Legacy columns conditionally removed by the refactor: the 7 `DROP COLUMN IF EXISTS` above.
-- Columns visible only in the current Prisma schema: the ~85 UNKNOWN rows.
-- **`GUESSED_BASE_COLUMN_COUNT` = 0** — every column is classified by explicit evidence; none
-  is invented. Columns that cannot be proven are labelled UNKNOWN rather than assumed.
+| Opt | Strategy | Empty-DB (A) | Existing-DB (B) | Checksum | Data-loss | Repairs history? | Only hides? | Verdict |
+|-----|----------|-------------|-----------------|----------|-----------|------------------|-------------|---------|
+| A | Edit `20260311224040_init` | fixes base | edits applied migration | breaks | none | partial | no | REJECTED_UNSAFE |
+| B | Edit `20260325161142` | fixes base | edits applied migration | breaks | none | partial | partly | REJECTED_UNSAFE |
+| C | Restore authoritative missing migration | would fix | new file | none | none | yes | no | INSUFFICIENT_AUTHORITY (no such file exists) |
+| **D** | New retroactive, fully-idempotent bootstrap before the refactor (creates all 8 tables + 3 enums, `IF NOT EXISTS`) | creates missing base | no-op on B | none | none | yes | no | **SAFE_CANDIDATE (base-gap only)** |
+| E | End-of-history migration | too late | n/a | none | none | no | no | REJECTED_UNSAFE (wrong order) |
+| F | Squash/replace history | fixes A | forces baseline reset | high | high | resets | partly | REJECTED_UNSAFE |
+| G | CI-only bootstrap SQL | greens CI | n/a | none | none | no | yes | REJECTED_UNSAFE (hides defect) |
+| H | `prisma db push` | drift | drift | n/a | possible | no | yes | REJECTED_UNSAFE |
+| I | `migrate resolve --applied` | leaves table absent on A | n/a | n/a | correctness risk | no | yes | REJECTED_UNSAFE |
+| **J** | **Guarded retroactive pre/post casing-compat migrations** (rename lowercase → camelCase before `20260425000000`, back after) | can pass | **runtime-visible wrong-casing window + guard must gate on prod applied-state** | none (new files) | none if guarded | works around, does not repair | partly | **INSUFFICIENT_AUTHORITY** |
 
-## 8. Existing-database compatibility analysis (no production access)
+### Option J detailed analysis (casing repair without editing the applied migration)
 
-CI-R3B must satisfy **both** targets:
+- **Does Prisma apply new migrations interleaved around an applied one?** Yes — `migrate deploy`
+  applies every pending migration in lexicographic order regardless of interleaving; a
+  pre-`20260425000000` new file (M1) and a post file (M2) both run on B (M1 out-of-order, which
+  `deploy` permits though `migrate dev` would flag).
+- **Existing-DB (B) hazard:** on B the canonical tables are lowercase and `20260425000000` is
+  already recorded (so it will **not** re-run). A naive guard "rename to camelCase if lowercase
+  exists and camelCase absent" is **true** on B → M1 would rename the **live** table to
+  `"VehicleTrip"`; M2 renames it back. Because M1 and M2 are **separate migrations = separate
+  transactions**, there is a **runtime-visible window** where the live table has the wrong name
+  → runtime availability risk. Avoiding this requires the guard to detect that `20260425000000`
+  is already applied (i.e. read `_prisma_migrations`), which is fragile and depends on prod state.
+- **PostgreSQL mechanics:** `ALTER TABLE … RENAME` preserves FKs, indexes, sequences and OIDs;
+  the enum rename/rebuild inside `20260425000000` is independent of table names — so the rename
+  mechanics themselves are safe.
+- **Testability:** the fresh-DB path is fully testable; the existing-DB safety hinges on prod
+  `_prisma_migrations` applied-state and live casing, which are unknown → cannot be proven safe
+  without production authority.
+- **Verdict:** `INSUFFICIENT_AUTHORITY`. It is, however, a genuine **in-repository, append-only
+  alternative** to editing the applied migration — so the earlier claim that editing
+  `20260425000000` is "the only in-repository remedy" is **withdrawn**.
 
-- **A. Empty database** replaying all 283 migrations from scratch (the CI job).
-- **B. Existing database** where `vehicle_trips` (and the other trip tables) already exist and
-  later migrations are already recorded in `_prisma_migrations` (production/staging created via
-  `db push` + retrofit).
+`UNASSESSED_CASING_REPAIR_STRATEGY_COUNT` = **0** (evaluated: B edit; J pre/post rename; and the
+"pre-create enums in final form" idea, which still fails because `20260425000000` references
+camelCase tables and re-runs the rename-rebuild).
 
-Requirements and constraints:
+## 11. Provisional CI-R3B contract (specification only — not implementation-ready)
 
-- **Checksums**: `prisma migrate deploy` records a checksum per applied migration. Editing any
-  already-applied migration risks a checksum/history conflict on B. **Default: unsafe.**
-- **Already-applied migrations**: on B, `20260325161142`, `20260425000000`, etc. are (presumably)
-  already recorded applied; a repair must not require them to re-run or to change.
-- **Inserting an earlier-timestamped migration**: adding a bootstrap dated before
-  `20260325161142` means, on B, Prisma sees a not-yet-applied migration ordered *before*
-  applied ones. `migrate deploy` still applies pending migrations, but the bootstrap **must be
-  fully idempotent** (no-op when objects already exist) to be safe on B, and reviewers must
-  accept Prisma's out-of-order/"gap" reporting.
-- **Idempotency**: every DDL in a retroactive bootstrap must use `CREATE TABLE IF NOT EXISTS`,
-  `CREATE TYPE` guarded by `DO $$ … IF NOT EXISTS (pg_type) … $$`, `ADD COLUMN IF NOT EXISTS`,
-  `CREATE INDEX IF NOT EXISTS`, and guarded FK creation, so B is untouched and A is created.
-- **Data preservation**: a bootstrap that only creates-if-absent never drops or rewrites data on B.
-- **Casing (§2b/§5)**: on A, `20260425000000` fails regardless of the base bootstrap because it
-  references camelCase `"VehicleTrip"`/`"TripDrivingImpact"`. Making A pass requires either
-  (i) editing `20260425000000` to lowercase (an **already-applied** migration edit → unsafe by
-  default, checksum impact on B unproven) or (ii) knowing B's actual table casing and applied
-  state. This is the blocking unknown.
-
-## 9. Repair-option decision matrix
-
-| Opt | Strategy | Empty-DB (A) | Existing-DB (B) | Checksum impact | Data-loss risk | Repairs real history? | Only hides? | Verdict |
-|-----|----------|-------------|-----------------|-----------------|----------------|-----------------------|-------------|---------|
-| A | Edit `20260311224040_init` to add trip tables | fixes base | edits an applied migration | **breaks** (checksum) | none | partially | no | REJECTED_UNSAFE |
-| B | Edit `20260325161142` (add guarded CREATE) | fixes base | edits an applied migration | **breaks** | none | partially | partly | REJECTED_UNSAFE |
-| C | Restore an authoritative missing pre-refactor migration | would fix base | new file, safe | none (new) | none | yes | no | **INSUFFICIENT_AUTHORITY** (no such file exists — §6) |
-| **D** | **New retroactive, fully-idempotent bootstrap migration before the refactor** | **creates missing base objects** | **no-op via IF NOT EXISTS** | none (new file) | none | yes (captures the real gap) | no | **SAFE_CANDIDATE (for the creation gap)** |
-| E | Normal end-of-history migration | too late — refactor already failed at #4 | n/a | none | none | no | no | REJECTED_UNSAFE (wrong order) |
-| F | Squash/replace entire migration history | fixes A | forces baseline reset on B | high | high | resets, not repairs | partly | REJECTED_UNSAFE (needs prod coordination) |
-| G | CI-only bootstrap SQL outside migrations | greens CI | n/a | none | none | no | **yes** | REJECTED_UNSAFE (hides defect) |
-| H | `prisma db push` | diverges from migrations | drift | n/a | possible | no | yes | REJECTED_UNSAFE |
-| I | `migrate resolve --applied` to skip failures | greens CI | leaves table absent on A | n/a | data-correctness risk | no | yes | REJECTED_UNSAFE |
-
-**Leading candidate:** Option **D** for the base-table/enum creation gap. **However**, Option D
-alone does **not** resolve the `20260425000000` casing defect (§2b), whose only in-repo remedy
-is editing an already-applied migration (Option B-class, unsafe by default).
-
-## 10. Proposed CI-R3B implementation contract (specification only)
-
-- **Proposed path**: `backend/prisma/migrations/20260325161141_vehicle_trips_bootstrap/migration.sql`
-  (timestamp one second before `20260325161142` so it applies immediately prior to the refactor).
-- **Historical files changed**: none (new directory only).
-- **Authority for each DDL element**: `id` + legacy/derived columns and enums from the §7
-  PROVEN/STRONGLY_DERIVED set; the remaining base column set and the full shape of the other
-  missing base tables require the **current Prisma schema as canonical authority**, gated behind
-  `IF NOT EXISTS` — this is the item that needs explicit reviewer authorization because it means
-  reconstructing base shape from the schema (see critical unknowns §11).
-- **Objects it may create (all idempotent)**: enums `TripAssignmentStatus`,
-  `TripAssignmentSubjectType`, `TripSource`; tables `vehicle_trips`, `vehicle_trip_waypoints`,
-  `trip_driving_impact`, `vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`,
-  `driving_events`, restricted to columns **not** added by any later migration.
-- **Fresh-DB behavior**: creates the base so migrations #4+ apply.
-- **Existing-DB behavior**: every statement `IF NOT EXISTS` → no-op, no data change.
-- **Idempotency strategy**: `CREATE TABLE IF NOT EXISTS`, enum-guard `DO`-blocks,
-  `ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, guarded FK.
-- **Data-preservation strategy**: create-if-absent only; never `DROP`/`UPDATE` existing rows.
-- **Required verification databases**: (1) empty → full 283-migration replay must pass end-to-end;
-  (2) simulated existing DB (schema pre-created) → bootstrap must be a no-op and later migrations
-  still succeed.
-- **Required CI jobs**: `Legal Documents — Production Readiness CI / Migration tests (PostgreSQL)`
-  and `Backend integration tests`.
-- **Rollback/stop conditions**: stop if the empty replay still fails at `20260425000000`
-  (casing) — that defect requires a separately-authorized decision (edit an applied migration or
-  prod-coordinated remedy).
-- **Files allowed in CI-R3B**: the single new migration directory (+ its evidence doc);
-  and — only if separately authorized — the casing correction to `20260425000000`.
-- **Files forbidden in CI-R3B**: `schema.prisma`, any other existing migration, runtime, tests,
-  workflows, dependencies, lockfiles, production config.
+- **Base-gap bootstrap (Option D)** — proposed new
+  `backend/prisma/migrations/20260325161141_trip_bootstrap/migration.sql`, fully idempotent:
+  - Tables (`CREATE TABLE IF NOT EXISTS`): `vehicle_trips`, `driving_events`,
+    `trip_behavior_events`, `vehicle_trip_waypoints`, `vehicle_trip_tracking_runs`, `trip_repairs`,
+    `trip_driving_impact`, `vehicle_trip_detection_states`.
+  - Enums (guarded `CREATE TYPE`): `TripSource`, `TripAssignmentStatus`, `TripAssignmentSubjectType`.
+  - `PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = **11** (8 tables + 3 enums);
+    `PROVISIONAL_BOOTSTRAP_OMITTED_OBJECT_COUNT` = **0**.
+  - Authority: proven/derived columns from migration references; the remainder of each table's
+    shape requires the **current Prisma schema as canonical authority behind `IF NOT EXISTS`
+    guards** — flagged as an unknown requiring reviewer authorization (§12), **not** silently
+    promoted to historical authority.
+- **Casing repair** — treated **separately** from the base bootstrap; status
+  `INSUFFICIENT_AUTHORITY` (Options B and J both require prod authority).
+- `BASE_GAP_STRATEGY_STATUS` = **SAFE_CANDIDATE**.
+- `CASING_STRATEGY_STATUS` = **INSUFFICIENT_AUTHORITY**.
+- `END_TO_END_R3B_STRATEGY_STATUS` = **BLOCKED** (no single safe end-to-end strategy for both A
+  and B until §12 authority is obtained).
 
 ### Recommendation counters (audit findings, not authorization)
 
 | Counter | Value |
 |---------|-------|
-| `HISTORICAL_APPLIED_MIGRATION_EDIT_REQUIRED` | YES — to clear the `20260425000000` casing defect (blocked on authority) |
-| `RETROACTIVE_MIGRATION_REQUIRED` | YES — Option D bootstrap |
+| `HISTORICAL_APPLIED_MIGRATION_EDIT_REQUIRED` | UNKNOWN — avoidable via Option J only if prod authority proves it safe; otherwise required for casing |
+| `RETROACTIVE_MIGRATION_REQUIRED` | YES — Option D bootstrap (+ possibly J for casing) |
 | `CURRENT_SCHEMA_CHANGE_REQUIRED` | NO |
 | `RUNTIME_CHANGE_REQUIRED` | NO |
 | `TEST_LOGIC_CHANGE_REQUIRED` | NO |
 | `WORKFLOW_CHANGE_REQUIRED` | NO |
-| `PRODUCTION_DATA_REPAIR_REQUIRED` | NO (idempotent bootstrap preserves data) |
-| `PRODUCTION_DEPLOYMENT_REQUIRED` | NO (within CI-R3B; deploy handled by normal release) |
+| `PRODUCTION_DATA_REPAIR_REQUIRED` | NO |
+| `PRODUCTION_DEPLOYMENT_REQUIRED` | NO (within CI-R3B) |
 
-## 11. Critical unknowns (`IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = 6)
+## 12. Critical unknowns (`IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = 12)
 
-1. **Exact pre-refactor column set of `vehicle_trips`** — ~85 current-schema columns cannot be
-   proven pre-refactor vs added-by-lost-migration (§7 UNKNOWN rows).
-2. **`TripSource` enum origin** — used by the schema (`@default(V2_LIVE)`) but created by no SQL.
-3. **Production `_prisma_migrations` state of `20260425000000`** — is it recorded applied? its
-   stored checksum?
-4. **Production actual table casing** — is the live table `vehicle_trips`/`trip_driving_impact`
-   (lowercase) or camelCase? Determines whether the casing edit is even needed on B.
-5. **Whether editing `20260425000000` (checksum change) is acceptable on B** — unprovable without #3.
-6. **Full DDL of the 5 other missing base tables** (`vehicle_trip_waypoints`,
-   `trip_driving_impact`, `vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`,
-   `driving_events`) — same schema-vs-history authority gap as #1.
+1. Exact historical `vehicle_trips` column shape.
+2. Exact historical `driving_events` column shape.
+3. Exact historical `trip_behavior_events` column shape.
+4. Exact historical `vehicle_trip_waypoints` column shape.
+5. Exact historical `vehicle_trip_detection_states` column shape.
+6. Exact historical `vehicle_trip_tracking_runs` column shape.
+7. Exact historical `trip_repairs` column shape.
+8. Exact historical `trip_driving_impact` column shape.
+9. Missing enum origins (`TripSource`, `TripAssignmentStatus`, `TripAssignmentSubjectType`).
+10. Actual existing-database table casing (lowercase vs camelCase on prod/staging).
+11. Existing `_prisma_migrations` applied-state and checksums (esp. for `20260425000000`).
+12. A proven-safe casing-repair mechanism (Option B vs J) given (10) and (11).
 
-`GUESSED_BASE_COLUMN_COUNT` = 0.
+`GUESSED_BASE_COLUMN_COUNT` = 0. `STALE_CRITICAL_UNKNOWN_COUNT` = **0** (the prior count of 6 is
+superseded; the eight table contracts are counted distinctly rather than collapsed).
 
-## 12. Scope counters
+## 13. Scope counters
 
 | Counter | Value |
 |---------|-------|
-| `CHANGED_FILE_COUNT` | 1 |
+| `CHANGED_FILE_COUNT` / `CORRECTION_CHANGED_FILE_COUNT` | 1 |
 | `HISTORICAL_MIGRATION_EDIT_COUNT` | 0 |
 | `NEW_MIGRATION_COUNT` | 0 |
 | `SCHEMA_CHANGE_COUNT` | 0 |
@@ -329,29 +342,54 @@ is editing an already-applied migration (Option B-class, unsafe by default).
 | `PRODUCTION_CONFIG_CHANGE_COUNT` | 0 |
 | `PRODUCTION_DATABASE_ACCESS_COUNT` | 0 |
 | `PRODUCTION_DEPLOYMENT_COUNT` | 0 |
-| `E6_CHANGE_COUNT` | 0 |
-| `E7_RUNTIME_SCOPE_COUNT` | 0 |
-| `E8_RUNTIME_SCOPE_COUNT` | 0 |
-| `E9_RUNTIME_SCOPE_COUNT` | 0 |
+| `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
+| `E6_CHANGE_COUNT` / `E7`/`E8`/`E9_RUNTIME_SCOPE_COUNT` | 0 |
 | `OUT_OF_SCOPE_FILE_COUNT` | 0 |
 
-Diagnostics used a disposable local PostgreSQL 16 cluster (`/tmp`, trust auth, destroyed after
-use). No remote/production `DATABASE_URL` was ever used.
+Diagnostics used a disposable local PostgreSQL 16 cluster (destroyed after use). No
+remote/production `DATABASE_URL` was ever used.
 
-## 13. Final audit status
+## 14. CI-R3A.1 — Independent Review Corrections
 
-The fresh-database failure is independently reproduced; the complete vehicle-trip lineage,
-creation gap, casing/ordering defects, and git-history absence of authoritative DDL are
-documented; the pre-refactor contract contains zero guessed columns and every unknown is
-recorded; repair alternatives are evaluated.
+Independent review of the initial CI-R3A report found four mandatory correction categories; all
+are now integrated above and summarized here:
 
-Option **D** (retroactive, idempotent bootstrap) is the leading, safe candidate for the
-base-table/enum **creation gap**. But a single end-to-end safe CI-R3B strategy **cannot yet be
-finalized** because (a) the exact historical base column set is unprovable from the repository
-(original DDL lost), and (b) the independent **casing defect** in the already-committed,
-likely-already-applied `20260425000000` cannot be repaired safely without production
-`_prisma_migrations` authority (applied-state + checksum) and knowledge of the live table
-casing — editing an applied migration is unsafe by default.
+1. **Two omitted missing base tables added** — `trip_behavior_events` (0 `CREATE`; first
+   referenced by `20260413230000` `CREATE INDEX`) and `trip_repairs` (0 `CREATE`; first
+   referenced by `20260609000000` `ALTER … SET`). `MISSING_TRIP_BASE_TABLE_COUNT` corrected from
+   6 to **8** (§4). The provisional bootstrap now includes both (§11).
+2. **Complete relevant-migration inventory** — repository-wide scan yields
+   `RELEVANT_MIGRATION_FILE_COUNT` = **27**, all matrixed (§3), including the previously omitted
+   `20260331000000`, `20260609000000`, `20260628150000`, `20260705200000`, `20260716194500`,
+   `20260716200000`, `20260716203000`, `20260716210000` (×2), `20260716220000`, `20260716240000`,
+   `20260716250000`, `20260716260000`, `20260716270000`, `20260716310000`, `20260716320000`,
+   `20260717190000`, `20260717200000`. `UNMATRIXED_RELEVANT_MIGRATION_COUNT` = 0. The corrected
+   cascade (§2a) shows `driving_events` (`20260331000000`) and `trip_behavior_events`
+   (`20260413230000`) fail **before** the casing defect at `20260425000000`.
+3. **Temporal column authority corrected** — legacy conditionally-dropped columns reclassified as
+   LEGACY_POSSIBLE / UNKNOWN_PREEXISTENCE; guarded speeding columns as
+   OPTIONAL_PREEXISTING_GUARDED; `vehicle_id`/`start_time`/`assignment_*`/`id` bucketed by their
+   first committed requirement. No column is required strictly before the refactor except table
+   existence. `FALSE_PROVEN_BASE_COLUMN_COUNT` = 0; `GUESSED_BASE_COLUMN_COUNT` = 0 (§5).
+4. **Out-of-band origin corrected** — `OUT_OF_BAND_BASELINE_EXISTENCE = PROVEN`,
+   `OUT_OF_BAND_BASELINE_CREATION_METHOD = UNKNOWN`; `prisma db push` is no longer stated as fact
+   (§6).
 
-**Status: CI_R3A_AUTHORITY_BLOCKED** — audit complete; CI-R3B implementation requires the
-authority items in §11 (2)–(6) before a single safe strategy can be committed.
+Additional: the repair matrix now evaluates **Option J** (guarded retroactive pre/post casing
+migrations) and withdraws the claim that editing `20260425000000` is the only in-repository
+remedy; `UNASSESSED_CASING_REPAIR_STRATEGY_COUNT` = 0 (§10). Critical unknowns recalculated to
+**12** (§12). No implementation, migration, schema, production access, or deployment occurred.
+
+## 15. Final audit status
+
+The audit correction is complete: every relevant migration is matrixed, all 8 missing trip base
+tables and 3 missing enums are recorded with zero omissions, false-proven column classifications
+are removed, the out-of-band origin is stated accurately, and casing alternatives (including the
+append-only Option J) are evaluated. Option **D** is a SAFE_CANDIDATE for the base-gap; the casing
+repair remains INSUFFICIENT_AUTHORITY; and a single safe end-to-end CI-R3B strategy cannot be
+finalized because the twelve authority items in §12 (exact historical table shapes, enum origins,
+live table casing, `_prisma_migrations` state/checksums, and a proven casing-repair mechanism)
+remain unresolved.
+
+**Status: CI_R3A_AUTHORITY_BLOCKED** — audit complete and corrected; CI-R3B implementation
+requires the §12 authority before a single safe strategy can be committed.
