@@ -40,15 +40,24 @@ Verträge (in `main` gemerged). E6 ist das Frontend (Presentation Layer) im PR #
 | E6B | Sichtbare Kern-Oberflächen (die Auswertungen-Seite) | ✅ |
 | E6B.1 | Finance-Transport-Status-Semantik + i18n („Eligible vehicles“) | ✅ |
 | E6B.1.1 | 404-Authority Kommentar-/Doku-Cleanup (docs/comment-only) | ✅ |
-| E6C | Driver Influence UI + detailliertes Data-Quality-Panel | ✅ (aktueller Stand) |
+| E6C | Driver Influence UI + detailliertes Data-Quality-Panel | ✅ |
+| E6C.1 / .1.1 / .1.2 / .1.3 | Canonical coverage/lineage rendering + fixture-authority + E2E-Evidenz-Closure | ✅ |
+| **E6 Final Audit** | Integrierter Abnahme-/Merge-Readiness-Audit (docs-only) | ✅ (aktueller Stand) |
 | **E7** | Recommendations / Actions | ⬜ offen (noch NICHT starten) |
 | **E8** | Predictive Risk / `estimatedExposure` | ⬜ offen |
 | **E9** | Forecast UI | ⬜ offen |
 
-Absolute Stopp-Regel aktuell: **E7 nicht starten**, bis der User es explizit autorisiert
-(genauso wenig E8/E9 oder eine vollständige E6D-Neugestaltung). E6C ist abgeschlossen —
-Driver Influence UI (lazy) und das detaillierte Data-Quality-Panel liegen auf der
-bestehenden Auswertungen-Seite; siehe `phase3-e6c-driver-quality-surfaces-*`.
+Aktueller Stand/Nächstes Gate: **E6 ist runtime-frozen**; der integrierte E6-Abnahme-
+Audit (Merge-Readiness) ist abgeschlossen — siehe
+`phase3-e6-final-canonical-presentation-acceptance-2026-08.md` (Status
+`E6_READY_FOR_FINAL_MERGE_AUDIT`). Nächster Schritt ist die unabhängige Review + der
+finale Merge-Audit von PR #1026.
+
+Absolute Stopp-Regel aktuell: **E7 nicht starten**, bis (a) der User es explizit
+autorisiert UND (b) PR #1026 nach unabhängiger Review in `main` gemerged ist. E7 muss auf
+einem NEUEN Branch/PR vom gemergten `main` beginnen. Ebenso bleiben E8/E9 und eine
+vollständige E6D-Neugestaltung ausgeschlossen. E6C ist abgeschlossen (Driver Influence UI
+lazy + detailliertes Data-Quality-Panel auf der bestehenden Auswertungen-Seite).
 
 ## 4. Leitplanken (gelten über alle Etappen)
 
@@ -62,8 +71,9 @@ bestehenden Auswertungen-Seite; siehe `phase3-e6c-driver-quality-surfaces-*`.
 - Finance = **MTD/E3** (globaler Analytics-Zeitraum ändert Finance nicht).
 - Genau **eine** Auswertungen-Seite/Route (`financial-insights`), keine zweite Seite.
 - Kein Backend/Prisma/Migration/Prod-Config im Frontend-Scope; **kein Deploy**; PR bleibt Draft.
-- E6C-/E7-/E8-/E9-Inhalte NICHT vorwegnehmen (keine Driver-Influence-UI, kein
-  Data-Quality-Panel, keine Recommendations/Actions, kein `estimatedExposure`, kein Forecast).
+- E6C ist bereits umgesetzt (Driver-Influence-UI + Data-Quality-Panel sind jetzt Teil von
+  E6). NICHT vorwegnehmen bleiben nur **E7/E8/E9** (Recommendations/Actions,
+  `estimatedExposure`/Predictive Risk, Forecast) und eine vollständige **E6D**-Neugestaltung.
 
 ## 5. Plan-/Beweis-Dokumente (die eigentliche „Story“)
 
