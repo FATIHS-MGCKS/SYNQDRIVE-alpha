@@ -43,7 +43,11 @@ no new `any`, no `as never` for the env dependency, no runtime-guard change).
 - Targeted jest (`stripe-webhook.characterization`, `stripe-webhook.service`, `workflow-dry-run`):
   27 passed, **2 failed** — see below.
 
-## Discovered: 2 PRE-EXISTING runtime spec failures (OUT OF SCOPE for CI-R1)
+> **UPDATE — SUPERSEDED BY THE "CI-R1.1" SECTION BELOW.** The two pre-existing runtime
+> spec failures documented in this section were closed within CI-R1 (test-only, no
+> production change). They no longer require a separate CI-R2 package.
+
+## Discovered: 2 PRE-EXISTING runtime spec failures (initially deferred; closed in CI-R1.1)
 Running the specs (now that they compile) surfaced two pre-existing **runtime** failures
 that are NOT TypeScript errors, are NOT executed by any CI job (the "Backend unit tests"
 CI job runs only `test:vehicle-detail:verify:unit`), are broken on `main`, and are
@@ -78,3 +82,45 @@ This PR is responsible only for the two duplicated backend Typecheck checks. The
 baseline-red categories (global backend lint, backend integration tests, PostgreSQL
 migration tests, dependency/security scan, Vehicle Detail Playwright E2E) are explicitly
 out of scope and unchanged. Not all repository CI is green. E6 is unchanged; E7 not started.
+
+## CI-R1.1 — Targeted Runtime Spec Drift Closure
+
+Independent review flagged that the targeted Jest gate was still 27 passed / 2 failed after
+the initial CI-R1 typecheck fix. Both failures were **latent test drift on `main`** (not
+TypeScript errors, not executed by any CI job). They are now closed — **test-only, no
+production runtime change**.
+
+- `PRE_CORRECTION_TARGETED_TEST_PASS_COUNT = 27`, `PRE_CORRECTION_TARGETED_TEST_FAIL_COUNT = 2`.
+- Retry characterization: `stripe-webhook.characterization.spec.ts` now follows the existing
+  duplicate/retry contract — a previously seen non-terminal event is reprocessed (dispatch
+  runs, status `processed`) AND flagged `duplicate: true`; no new row is created and the
+  existing row is updated via the retry path. The `duplicate` meaning was not redefined and
+  idempotency/payload-conflict behavior was not weakened. Test renamed to describe both facts.
+- Workflow LIVE fixture: `workflow-dry-run.service.spec.ts` `makePrisma()` now mocks
+  `orgWorkflowActionRun.findUnique`, and the LIVE test's `TasksService` mock adds
+  `findActiveByDedup` (→ null) alongside `upsertByDedup`, so the test drives the real
+  current flow: run lookup → run create → action idempotency lookup → action-run create →
+  rollout permission → active-task dedup lookup → task upsert → action-run update →
+  workflow-run update. No fake terminal action run; idempotency lookup not bypassed.
+- DRY_RUN live guard strengthened: `refuses execution without LIVE mode` now asserts that
+  `assertLiveExecution` rejects BEFORE any rollout evaluation or side effect —
+  `rollout.canExecuteLiveAction`, `tasksService.findActiveByDedup`, `tasksService.upsertByDedup`,
+  `prisma.orgWorkflowApproval.create`, `prisma.vehicle.findFirst`, and `prisma.vehicle.update`
+  are all verified NOT called.
+
+### CI-R1.1 gate results
+- Targeted Jest: `TARGETED_TEST_SUITE_COUNT = 3`, `TARGETED_TEST_PASS_COUNT = 29`,
+  `TARGETED_TEST_FAIL_COUNT = 0` → **PASS**.
+- Backend `tsc --noEmit -p tsconfig.json` → **PASS** (0 errors).
+- Frontend `tsc -b` → **PASS**.
+- Targeted ESLint (3 specs) → **PASS**.
+- Backend `nest build` → **PASS**.
+- Scope: `PRODUCTION_RUNTIME_CHANGE_COUNT = 0`, `NEW_TEST_FILE_CHANGE_COUNT = 2`
+  (`stripe-webhook.characterization.spec.ts`, `workflow-dry-run.service.spec.ts`),
+  `DEPENDENCY_CHANGE_COUNT = 0`, `LOCKFILE_CHANGE_COUNT = 0`, `PRISMA_CHANGE_COUNT = 0`,
+  `MIGRATION_CHANGE_COUNT = 0`, `WORKFLOW_FILE_CHANGE_COUNT = 0`, `FRONTEND_CHANGE_COUNT = 0`,
+  `E6_CHANGE_COUNT = 0`, `E7_RUNTIME_SCOPE_COUNT = 0`, `OUT_OF_SCOPE_FILE_COUNT = 0`.
+
+Not all repository CI is green. The five known unrelated baseline failures remain outside
+CI-R1 (global backend lint, PostgreSQL migration tests, backend integration tests,
+dependency/security scan, Vehicle Detail Playwright E2E). E6 unchanged; E7 not started.

@@ -119,7 +119,7 @@ describe('StripeWebhookService characterization', () => {
       expect(dispatcher.dispatch).not.toHaveBeenCalled();
     });
 
-    it('re-processes event when prior row exists but is not PROCESSED', async () => {
+    it('reprocesses a previously seen non-terminal event and still flags it as a duplicate/retry', async () => {
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_retry',
         type: 'invoice.paid',
@@ -127,6 +127,7 @@ describe('StripeWebhookService characterization', () => {
         livemode: false,
         data: { object: { id: 'in_retry' } },
       });
+      // Prior row exists and is NON-terminal (RECEIVED) → eligible for retry.
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
         stripeEventId: 'evt_retry',
         status: StripeWebhookEventStatus.RECEIVED,
@@ -136,10 +137,15 @@ describe('StripeWebhookService characterization', () => {
 
       const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
 
-      expect(result.duplicate).toBe(false);
+      // Current production contract (resolveBillingWebhookIngestAction → 'retry'):
+      // the event is reprocessed (dispatch runs, status 'processed') AND remains flagged
+      // as a duplicate because the event id was already known. No new row is created;
+      // the existing row is updated via the retry path.
+      expect(result.duplicate).toBe(true);
       expect(result.status).toBe('processed');
       expect(dispatcher.dispatch).toHaveBeenCalled();
       expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
+      expect(prisma.stripeWebhookEvent.update).toHaveBeenCalled();
     });
 
     it('creates webhook event row on first ingest', async () => {

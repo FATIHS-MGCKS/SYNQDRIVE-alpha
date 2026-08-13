@@ -53,6 +53,7 @@ function makePrisma() {
       count: jest.fn(),
     },
     orgWorkflowActionRun: {
+      findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
@@ -204,7 +205,10 @@ describe('WorkflowDryRunService', () => {
 describe('WorkflowActionExecutorService live guard', () => {
   it('refuses execution without LIVE mode', async () => {
     const prisma = makePrisma();
-    const tasksService = { upsertByDedup: jest.fn() } as unknown as TasksService;
+    const tasksService = {
+      findActiveByDedup: jest.fn(),
+      upsertByDedup: jest.fn(),
+    } as unknown as TasksService;
     const rollout = makeRolloutServiceMock();
     const executor = new WorkflowActionExecutorService(prisma, tasksService, rollout as never);
 
@@ -227,7 +231,13 @@ describe('WorkflowActionExecutorService live guard', () => {
       ),
     ).rejects.toThrow(/side effects are only permitted in LIVE/);
 
+    // assertLiveExecution must reject BEFORE any rollout evaluation or side effect.
+    expect(rollout.canExecuteLiveAction).not.toHaveBeenCalled();
+    expect(tasksService.findActiveByDedup).not.toHaveBeenCalled();
     expect(tasksService.upsertByDedup).not.toHaveBeenCalled();
+    expect(prisma.orgWorkflowApproval.create).not.toHaveBeenCalled();
+    expect(prisma.vehicle.findFirst).not.toHaveBeenCalled();
+    expect(prisma.vehicle.update).not.toHaveBeenCalled();
   });
 });
 
@@ -248,8 +258,10 @@ describe('WorkflowEngineService LIVE mode', () => {
   }
 
   it('executes supported actions when LIVE mode is explicit', async () => {
+    // (fixture setup below models the current action-idempotency + dedup lookup path)
     const prisma = makePrisma();
     const tasksService = {
+      findActiveByDedup: jest.fn().mockResolvedValue(null),
       upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }),
     } as unknown as TasksService;
     const rollout = makeRolloutServiceMock();
