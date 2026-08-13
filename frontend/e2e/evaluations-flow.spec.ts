@@ -41,9 +41,17 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     // on the served (utilization) section; required vs missing sources stay distinct.
     const quality = page.getByTestId('evaluations-data-quality');
     await expect(quality).toBeVisible();
-    await expect(quality.getByTestId('evaluations-quality-coverage-excluded').first()).toContainText('20');
-    await expect(quality.getByTestId('evaluations-quality-coverage-missing-sources').first()).toContainText('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
-    await expect(quality.getByTestId('evaluations-quality-section-utilization')).toContainText('BOOKINGS'); // required source (distinct)
+    const util = quality.getByTestId('evaluations-quality-section-utilization');
+    await expect(util.getByTestId('evaluations-quality-coverage-excluded')).toContainText('20');
+    await expect(util.getByTestId('evaluations-quality-coverage-missing-sources')).toContainText('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
+    await expect(util).toContainText('BOOKINGS'); // required source (distinct from missing sources)
+    // Canonical E5 lineage (version + org:<org>:<model> sourceRef) renders verbatim.
+    await expect(util.getByTestId('evaluations-quality-lineage')).toContainText('evaluations-quality-e5-v2');
+    await expect(util.getByTestId('evaluations-quality-lineage')).toContainText('org:org-evaluations-e2e:Booking');
+    // Finance quality section: null coverage renders the neutral German unavailable copy, not zero.
+    const financeQuality = quality.getByTestId('evaluations-quality-section-finance');
+    await expect(financeQuality.getByTestId('evaluations-quality-coverage')).toContainText('Für diesen Bereich nicht verfügbar');
+    await expect(financeQuality.getByTestId('evaluations-quality-coverage')).not.toContainText('0%');
 
     await assertNoHorizontalOverflow(page);
   });
@@ -65,7 +73,8 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     const cov = page.getByTestId('evaluations-driver-coverage');
     await expect(cov.getByTestId('evaluations-driver-coverage-available')).toContainText('2');
     await expect(cov.getByTestId('evaluations-driver-coverage-excluded')).toContainText('3');
-    await expect(cov.getByTestId('evaluations-driver-coverage-missing-sources')).toContainText('No missing sources reported');
+    // Locale is `de` → assert the German no-missing-sources copy.
+    await expect(cov.getByTestId('evaluations-driver-coverage-missing-sources')).toContainText('Keine fehlenden Quellen gemeldet');
 
     // Collapse + reopen must not refetch.
     await page.getByTestId('evaluations-driver-toggle').click();
@@ -91,12 +100,22 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     await expect(page.getByTestId('evaluations-driver-piitier-pseudonymous')).toBeVisible();
     await expect(page.getByTestId('evaluations-driver-content')).toContainText('driver::pseudo::A');
 
-    // none / PERSON_LEVEL_ACCESS_DENIED → no reference, reason visible
+    // none / PERSON_LEVEL_ACCESS_DENIED → none badge, reason, no reference, empty state
     setDriverScenario('none');
     await openEvaluationsPage(page, { profile: 'full-org' });
     setDriverScenario('none');
     await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver-piitier-none')).toBeVisible();
     await expect(page.getByTestId('evaluations-driver')).toContainText('PERSON_LEVEL_ACCESS_DENIED');
+    await expect(page.getByTestId('evaluations-driver-empty')).toBeVisible();
+    await expect(page.getByTestId('evaluations-driver')).not.toContainText('driver::');
+
+    // Adversarial (malformed none + factors) → references suppressed via none-restricted.
+    setDriverScenario('noneAdversarial');
+    await openEvaluationsPage(page, { profile: 'full-org' });
+    setDriverScenario('noneAdversarial');
+    await page.getByTestId('evaluations-driver-toggle').click();
+    await expect(page.getByTestId('evaluations-driver-none-restricted')).toBeVisible();
     await expect(page.getByTestId('evaluations-driver')).not.toContainText('driver::');
 
     // fail-closed → pseudonymous tier badge + reason visible, no reference

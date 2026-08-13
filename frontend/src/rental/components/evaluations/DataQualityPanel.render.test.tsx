@@ -68,9 +68,10 @@ function report(): EvaluationsQualityReport {
     calculationVersion: 'evaluations-quality-e5-v2',
     sections: [
       {
-        // Served org-scoped section carrying canonical non-null coverage.
+        // Served org-scoped section carrying canonical non-null coverage. A utilization
+        // result with a valid denominator mirrors the E4 PARTIAL status (SECTION_PARTIAL).
         section: 'utilization',
-        status: 'AVAILABLE',
+        status: 'PARTIAL',
         dimensions: {
           FRESHNESS: 'UNKNOWN', // no ingestion authority → UNKNOWN (never COMPLETE)
           COMPLETENESS: 'PARTIAL',
@@ -90,11 +91,13 @@ function report(): EvaluationsQualityReport {
         businessEventRecency: { newestAt: '2026-06-15T00:00:00.000Z', oldestAt: '2026-06-01T00:00:00.000Z' },
         coverage: COVERAGE_UTILIZATION,
         requiredSourceClasses: ['BOOKINGS', 'MAINTENANCE'],
+        // Canonical E5 lineage: sourceRef = `org:<orgId>:<model>`, calculationVersion
+        // = E5 quality version.
         lineage: [
-          { sourceCategory: 'BOOKINGS', sourceRef: 'src::opaque::bk1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
-          { sourceCategory: 'MAINTENANCE', sourceRef: 'src::opaque::mt1', effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'BOOKINGS', sourceRef: 'org:org-a:Booking', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'evaluations-quality-e5-v2', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'MAINTENANCE', sourceRef: 'org:org-a:ServiceCase', effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'evaluations-quality-e5-v2', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
         ],
-        reason: null,
+        reason: 'SECTION_PARTIAL',
       },
       {
         // Backend-reachable UNAVAILABLE section: null coverage; dimensions stay
@@ -200,16 +203,24 @@ describe('E6C DataQualityPanel', () => {
     expect(text).toContain('SCHEDULED_OCCUPANCY_NOT_ACTUAL'); // missing source (distinct concept)
   });
 
-  it('renders lineage calculationVersion', () => {
+  it('renders canonical E5 lineage calculationVersion', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
     const lineage = container.querySelector('[data-testid="evaluations-quality-lineage"]')!;
-    expect(lineage.textContent ?? '').toContain('lineage-calc-v7');
+    expect(lineage.textContent ?? '').toContain('evaluations-quality-e5-v2');
   });
 
-  it('lineage sourceRef is shown verbatim without entity reconstruction', () => {
+  it('lineage sourceRef (org:<org>:<model>) is shown verbatim without entity reconstruction', () => {
     render(createElement(DataQualityPanel, { quality: settled(report()) }));
     const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
-    expect(util.querySelector('[data-testid="evaluations-quality-lineage"]')?.textContent ?? '').toContain('src::opaque::bk1');
+    expect(util.querySelector('[data-testid="evaluations-quality-lineage"]')?.textContent ?? '').toContain('org:org-a:Booking');
+  });
+
+  it('utilization section status is PARTIAL (mirrored, not upgraded) with SECTION_PARTIAL reason', () => {
+    render(createElement(DataQualityPanel, { quality: settled(report()) }));
+    const util = container.querySelector('[data-testid="evaluations-quality-section-utilization"]')!;
+    expect(util.querySelector('[data-testid="evaluations-status-PARTIAL"]')).not.toBeNull();
+    expect(util.querySelector('[data-testid="evaluations-status-AVAILABLE"]')).toBeNull();
+    expect(util.textContent ?? '').toContain('SECTION_PARTIAL');
   });
 
   it('generic 404 renders neutral NOT_FOUND copy (never feature disabled)', () => {

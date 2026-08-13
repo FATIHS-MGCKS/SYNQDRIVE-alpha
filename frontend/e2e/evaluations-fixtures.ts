@@ -5,7 +5,12 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow } from './document-upload-fixtures';
-import type { EvaluationsDataCoverage } from '../src/rental/lib/evaluations/evaluations-canonical.types';
+import type {
+  EvaluationsDataCoverage,
+  EvaluationsDriverInfluenceSection,
+  E4DriverFactor,
+  EvaluationsQualityReport,
+} from '../src/rental/lib/evaluations/evaluations-canonical.types';
 
 export { assertNoHorizontalOverflow };
 
@@ -205,7 +210,7 @@ function canonicalInsightsSummary() {
   };
 }
 
-function canonicalQualityReport() {
+function canonicalQualityReport(): EvaluationsQualityReport {
   return {
     schemaVersion: '1.0.0',
     generatedAt: EVAL_E2E_FIXED_NOW,
@@ -217,7 +222,8 @@ function canonicalQualityReport() {
         // Served org-scoped section carrying canonical non-null coverage (finance
         // coverage is ALWAYS null per the E5 service, so utilization is used here).
         section: 'utilization',
-        status: 'AVAILABLE',
+        // Utilization with a valid denominator mirrors the E4 PARTIAL status.
+        status: 'PARTIAL',
         dimensions: {
           FRESHNESS: 'UNKNOWN',
           COMPLETENESS: 'PARTIAL',
@@ -239,10 +245,10 @@ function canonicalQualityReport() {
         coverage: { expectedRecords: 100, availableRecords: 80, excludedRecords: 20, ratio: 0.8, missingSources: ['SCHEDULED_OCCUPANCY_NOT_ACTUAL', 'VEHICLE_ELIGIBILITY_HISTORY', 'BLOCKED_HISTORY'] } satisfies EvaluationsDataCoverage,
         requiredSourceClasses: ['BOOKINGS', 'MAINTENANCE'],
         lineage: [
-          { sourceCategory: 'BOOKINGS', sourceRef: 'src::opaque::bk1', effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
-          { sourceCategory: 'MAINTENANCE', sourceRef: 'src::opaque::mt1', effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'lineage-calc-v7', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'BOOKINGS', sourceRef: `org:${EVAL_E2E_ORG_ID}:Booking`, effectiveTimestamp: '2026-06-15T00:00:00.000Z', calculationVersion: 'evaluations-quality-e5-v2', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
+          { sourceCategory: 'MAINTENANCE', sourceRef: `org:${EVAL_E2E_ORG_ID}:ServiceCase`, effectiveTimestamp: '2026-06-10T00:00:00.000Z', calculationVersion: 'evaluations-quality-e5-v2', reason: 'SOURCE_CLASS_BUSINESS_EVENT_RECENCY' },
         ],
-        reason: null,
+        reason: 'SECTION_PARTIAL',
       },
       {
         // Backend-reachable UNAVAILABLE section (same org scope; NOT station-scoped):
@@ -268,7 +274,15 @@ function canonicalQualityReport() {
   };
 }
 
-export type EvaluationsDriverScenario = 'full' | 'pseudonymous' | 'none' | 'failClosed' | 'notFound';
+// `noneAdversarial` is NOT backend-reachable (the executable authority never returns
+// none + factors); it exercises the component's defense-in-depth none-restricted branch.
+export type EvaluationsDriverScenario =
+  | 'full'
+  | 'pseudonymous'
+  | 'none'
+  | 'failClosed'
+  | 'notFound'
+  | 'noneAdversarial';
 
 // Canonical AVAILABLE driver coverage: availableRecords === factor count (2),
 // excludedRecords === unattributed count, expected/ratio null, missingSources empty
@@ -281,16 +295,19 @@ const CANON_DRIVER_COVERAGE = {
   missingSources: [],
 } satisfies EvaluationsDataCoverage;
 
+const CANON_DRIVER_DISCLAIMER =
+  'Driver influence factors indicate statistical association only. Correlation is not causation; no causal claim is made about any individual driver.';
+
 // E6C: direct E5B driver-analysis response (separate from the summary's embedded slice).
-function canonicalDriverInfluence(scenario: EvaluationsDriverScenario) {
+function canonicalDriverInfluence(scenario: EvaluationsDriverScenario): EvaluationsDriverInfluenceSection {
   const base = {
-    calculationVersion: 'evaluations-driver-e5b-v1',
+    calculationVersion: 'driver-influence-e4-v1',
     period: CANON_PERIOD,
     scope: CANON_SCOPE,
     generatedAt: EVAL_E2E_FIXED_NOW,
-    disclaimer: 'Statistical association only — not causation.',
+    disclaimer: CANON_DRIVER_DISCLAIMER,
     confounders: ['seasonality', 'route mix'],
-  };
+  } as const;
   if (scenario === 'none') {
     return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PERSON_LEVEL_ACCESS_DENIED', factors: [], piiTier: 'none' };
   }
@@ -298,10 +315,15 @@ function canonicalDriverInfluence(scenario: EvaluationsDriverScenario) {
     // Pseudonymization fails only AFTER person-level access is granted → tier stays pseudonymous.
     return { ...base, status: 'UNAVAILABLE', coverage: null, reason: 'PSEUDONYMIZATION_UNAVAILABLE', factors: [], piiTier: 'pseudonymous' };
   }
-  const factors = [
-    { driverRef: scenario === 'full' ? 'driver::raw::A' : 'driver::pseudo::A', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
-    { driverRef: scenario === 'full' ? 'driver::raw::B' : 'driver::pseudo::B', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 18, relationship: 'ASSOCIATED_WITH' },
+  // associationShare === sampleSize / dimension total (6/10 = 0.6, 4/10 = 0.4).
+  const factors: E4DriverFactor[] = [
+    { driverRef: scenario === 'full' ? 'driver::raw::A' : 'driver::pseudo::A', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 6, relationship: 'ASSOCIATED_WITH' },
+    { driverRef: scenario === 'full' ? 'driver::raw::B' : 'driver::pseudo::B', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 4, relationship: 'ASSOCIATED_WITH' },
   ];
+  if (scenario === 'noneAdversarial') {
+    // Malformed payload (none + factors) — references must still be suppressed by the UI.
+    return { ...base, status: 'AVAILABLE', coverage: CANON_DRIVER_COVERAGE, reason: null, factors, piiTier: 'none' };
+  }
   return {
     ...base,
     status: 'AVAILABLE',

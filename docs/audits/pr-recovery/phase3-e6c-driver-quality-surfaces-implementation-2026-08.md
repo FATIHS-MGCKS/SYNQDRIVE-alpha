@@ -159,6 +159,13 @@ tests/i18n only — no backend, no canonical contract, no business/privacy autho
 
 ## E6C.1.1 — Canonical Fixture Authority Closure
 
+**[PARTIALLY SUPERSEDED BY E6C.1.2 — see the E6C.1.2 section below. E6C.1.1 fixed several
+fixtures but left driver `calculationVersion` (`evaluations-driver-e5b-v1`),
+sampleSize/associationShare mismatches (42/18 vs 0.6/0.4), a one-factor/availableRecords-2
+mismatch, a non-canonical none+factors "none" unit test, quality `AVAILABLE`/`null`-reason
+utilization status, and non-canonical lineage sourceRef/calculationVersion. Those are
+corrected in E6C.1.2.]**
+
 Fixtures/tests/docs only — no production runtime, backend, API, hook, canonical
 contract, config, or deployment change (the E6C.1 runtime presentation was already
 correct and is untouched).
@@ -187,3 +194,43 @@ correct and is untouched).
   only vehicle-detail and legal-documents Playwright); the prior "validated in CI" claim
   is corrected to authored-but-not-executed. `DOCUMENTED_RUNTIME_MISMATCH_COUNT = 0`.
 - No E7/E8/E9; no `api.ts`/canonical hook/`EvaluationsPage` composition change.
+
+## E6C.1.2 — Final Fixture Authority Closure
+
+Fixtures/tests/docs only — the E6C production runtime remained untouched (verified: zero
+diff in `EvaluationsCoverageDetails.tsx`, `DataQualityPanel.tsx`, `DriverInfluenceSection.tsx`,
+hooks, `lib/evaluations`, `api.ts`, backend, shared, prisma, .github).
+
+- Driver `calculationVersion` now matches E4 authority: `driver-influence-e4-v1`.
+- Factor `sampleSize`/`associationShare` are mathematically consistent (6/10 = 0.6,
+  4/10 = 0.4); the render assertion is `n=6`.
+- Every AVAILABLE driver coverage `availableRecords` equals `factors.length` (the unit
+  helper derives coverage from the factor count; the pseudonymous single-factor case is
+  `availableRecords: 1`).
+- Backend-reachable canonical scenarios: `none` = UNAVAILABLE / PERSON_LEVEL_ACCESS_DENIED
+  / `coverage: null` / `factors: []` (renders the empty state, not none-restricted);
+  `PSEUDONYMIZATION_UNAVAILABLE` = `piiTier: pseudonymous` / UNAVAILABLE / null coverage /
+  no factors; insufficient evidence = UNAVAILABLE / DRIVER_EVIDENCE_INSUFFICIENT /
+  `availableRecords: 0` / `missingSources: ['BOOKING_CANCELLATIONS']`; AVAILABLE-empty =
+  AVAILABLE / reason null / `factors: []` / non-null coverage with `availableRecords: 0`.
+  The none-restricted branch (not backend-reachable) is covered by an explicitly-labelled
+  ADVERSARIAL malformed-payload test (unit) and E2E scenario (`noneAdversarial`), not
+  counted as canonical.
+- Driver disclaimer uses the exact backend authority text.
+- Quality utilization mirrors PARTIAL with reason `SECTION_PARTIAL`; lineage
+  `calculationVersion = evaluations-quality-e5-v2` and `sourceRef = org:<orgId>:<model>`
+  (`org:org-a:Booking` / `org:org-a:ServiceCase` in unit; `org:org-evaluations-e2e:…` in
+  E2E). Finance quality stays UNAVAILABLE with null coverage under one org scope.
+- E2E assertions use the configured German locale (`Keine fehlenden Quellen gemeldet`,
+  `Für diesen Bereich nicht verfügbar`) and add the none-restricted, lineage
+  (version + sourceRef), and finance null-coverage assertions, scoped per section test id.
+- Fully-typed fixtures (`satisfies` / real `EvaluationsPeriodWindow`; typed
+  `EvaluationsDriverInfluenceSection` + `E4DriverFactor[]` / `EvaluationsQualityReport`);
+  no `as unknown`/`as any` added.
+- `evaluations-flow.spec.ts` is still NOT run by any CI workflow (CI Playwright =
+  vehicle-detail + legal-documents only); local execution fails at browser launch
+  (`chromium_headless_shell` missing) → `EVALUATIONS_E2E_STATUS =
+  ENVIRONMENT_SPECIFIC_NOT_EXECUTED`. The spec now parses and collects cleanly (a
+  duplicate `const finance` was fixed).
+- No backend/API/hook/contract/config/deployment change; no E7/E8/E9.
+  `DOCUMENTED_AUTHORITY_MISMATCH_COUNT = 0`.

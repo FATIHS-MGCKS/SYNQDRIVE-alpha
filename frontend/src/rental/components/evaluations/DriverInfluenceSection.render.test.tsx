@@ -27,27 +27,16 @@ const PERIOD = {
   comparisonBasis: null,
 } satisfies EvaluationsPeriodWindow;
 
-// Canonical AVAILABLE driver coverage (executable authority): availableRecords equals
-// the analyzed factor count, excludedRecords is the unattributed count, expected/ratio
-// are null, and missingSources mirrors dimensionsSkippedInsufficient (empty when the
-// only observed dimension, BOOKING_CANCELLATIONS, was analyzed).
-const DRIVER_COVERAGE_2_FACTORS = {
-  expectedRecords: null,
-  availableRecords: 2,
-  excludedRecords: 3,
-  ratio: null,
-  missingSources: [],
-} satisfies EvaluationsDataCoverage;
-
-// Insufficient-evidence authority: no dimension analyzed → factors [], coverage
-// availableRecords 0, missingSources ['BOOKING_CANCELLATIONS'].
-const DRIVER_COVERAGE_INSUFFICIENT = {
-  expectedRecords: null,
-  availableRecords: 0,
-  excludedRecords: 4,
-  ratio: null,
-  missingSources: ['BOOKING_CANCELLATIONS'],
-} satisfies EvaluationsDataCoverage;
+// Canonical driver coverage (executable authority): availableRecords ALWAYS equals the
+// analyzed factor count, excludedRecords is the unattributed count, expected/ratio are
+// null, and missingSources mirrors dimensionsSkippedInsufficient.
+function driverCoverage(
+  availableRecords: number,
+  excludedRecords: number,
+  missingSources: readonly string[],
+): EvaluationsDataCoverage {
+  return { expectedRecords: null, availableRecords, excludedRecords, ratio: null, missingSources };
+}
 
 const driverMock =
   vi.fn<(orgId: string, req?: unknown) => Promise<RequestResult<EvaluationsDriverInfluenceSection>>>();
@@ -101,13 +90,16 @@ function driverData(
 ): EvaluationsDriverInfluenceSection {
   const base: EvaluationsDriverInfluenceSection = {
     status: 'AVAILABLE',
-    calculationVersion: 'evaluations-driver-e5b-v1',
+    calculationVersion: 'driver-influence-e4-v1',
     period: PERIOD,
     scope: { organizationId: 'org-a', stationIds: null, stationScoped: false },
-    coverage: factors.length > 0 ? DRIVER_COVERAGE_2_FACTORS : null,
+    // availableRecords === factors.length (executable authority). Empty/none/failClosed
+    // cases override coverage explicitly via `extra`.
+    coverage: factors.length > 0 ? driverCoverage(factors.length, 3, []) : null,
     generatedAt: '2026-06-16T12:00:00.000Z',
     reason: null,
-    disclaimer: 'Association only, not causation.',
+    disclaimer:
+      'Driver influence factors indicate statistical association only. Correlation is not causation; no causal claim is made about any individual driver.',
     confounders: ['seasonality'],
     factors,
     piiTier,
@@ -116,9 +108,10 @@ function driverData(
 }
 
 // Canonical analyzed dimension is BOOKING_CANCELLATIONS (association-only).
+// associationShare === sampleSize / dimension total (6/10 = 0.6, 4/10 = 0.4).
 const FACTORS: E4DriverFactor[] = [
-  { driverRef: 'driver-REF-1', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 42, relationship: 'ASSOCIATED_WITH' },
-  { driverRef: 'driver-REF-2', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 18, relationship: 'ASSOCIATED_WITH' },
+  { driverRef: 'driver-REF-1', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.6, sampleSize: 6, relationship: 'ASSOCIATED_WITH' },
+  { driverRef: 'driver-REF-2', associatedDimension: 'BOOKING_CANCELLATIONS', associationShare: 0.4, sampleSize: 4, relationship: 'ASSOCIATED_WITH' },
 ];
 
 describe('E6C DriverInfluenceSection — lazy request lifecycle', () => {
@@ -171,7 +164,26 @@ describe('E6C DriverInfluenceSection — privacy tiers & rendering', () => {
     expect(container.querySelector('[data-testid="evaluations-driver-piitier-pseudonymous"]')).not.toBeNull();
   });
 
-  it('none tier renders no driver references', async () => {
+  it('none tier (canonical: PERSON_LEVEL_ACCESS_DENIED, factors []) renders no driver references + reason', async () => {
+    // Backend-reachable none: UNAVAILABLE, factors [], coverage null.
+    driverMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: driverData('none', [], { status: 'UNAVAILABLE', reason: 'PERSON_LEVEL_ACCESS_DENIED', coverage: null }),
+    });
+    render();
+    toggle();
+    await flush();
+    expect(container.textContent ?? '').not.toContain('driver-REF-1');
+    expect(container.querySelector('[data-testid="evaluations-driver-piitier-none"]')).not.toBeNull();
+    expect(container.textContent ?? '').toContain('PERSON_LEVEL_ACCESS_DENIED');
+    // Canonical empty factors → the empty state (not the adversarial none-restricted branch).
+    expect(container.querySelector('[data-testid="evaluations-driver-empty"]')).not.toBeNull();
+  });
+
+  it('ADVERSARIAL (malformed server payload): none tier + factors → references still suppressed (none-restricted)', async () => {
+    // NOT backend-reachable — the executable authority never returns none + factors.
+    // Defense-in-depth: even if a malformed payload arrived, no reference may leak.
     driverMock.mockResolvedValue({ ok: true, status: 200, data: driverData('none', FACTORS) });
     render();
     toggle();
@@ -180,40 +192,36 @@ describe('E6C DriverInfluenceSection — privacy tiers & rendering', () => {
     expect(container.querySelector('[data-testid="evaluations-driver-none-restricted"]')).not.toBeNull();
   });
 
-  it('fail-closed reason remains visible (e.g. PERSON_LEVEL_ACCESS_DENIED)', async () => {
-    driverMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      data: driverData('none', [], { status: 'UNAVAILABLE', reason: 'PERSON_LEVEL_ACCESS_DENIED' }),
-    });
-    render();
-    toggle();
-    await flush();
-    expect(container.textContent ?? '').toContain('PERSON_LEVEL_ACCESS_DENIED');
-  });
-
   it('renders associationShare and sampleSize without re-ranking, plus disclaimer & confounders, no causal language', async () => {
     driverMock.mockResolvedValue({ ok: true, status: 200, data: driverData('full', FACTORS) });
     render();
     toggle();
     await flush();
     const text = container.textContent ?? '';
-    expect(text).toContain('60%'); // associationShare 0.6
-    expect(text).toContain('n=42'); // sampleSize
-    expect(text).toContain('Association only, not causation.'); // disclaimer verbatim
+    expect(text).toContain('60%'); // associationShare 0.6 (= 6/10)
+    expect(text).toContain('n=6'); // sampleSize
+    expect(text).toContain('statistical association only'); // canonical disclaimer verbatim
     expect(text).toContain('seasonality'); // confounder verbatim
     for (const banned of ['caused', 'responsible for', 'blame', 'proves']) {
       expect(text.toLowerCase()).not.toContain(banned);
     }
   });
 
-  it('empty factors (AVAILABLE) show qualified neutral copy, not "no driver influence"', async () => {
-    driverMock.mockResolvedValue({ ok: true, status: 200, data: driverData('full', []) });
+  it('empty factors (AVAILABLE, backend-reachable) keep non-null coverage with availableRecords 0; qualified copy', async () => {
+    // A dimension was analyzed but no driver met the per-driver minimum: AVAILABLE,
+    // reason null, factors [], coverage non-null with availableRecords 0.
+    driverMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: driverData('full', [], { status: 'AVAILABLE', reason: null, coverage: driverCoverage(0, 2, []) }),
+    });
     render();
     toggle();
     await flush();
     expect(container.querySelector('[data-testid="evaluations-driver-empty"]')).not.toBeNull();
     expect((container.textContent ?? '').toLowerCase()).not.toContain('no driver influence');
+    const cov = container.querySelector('[data-testid="evaluations-driver-coverage"]')!;
+    expect(cov.querySelector('[data-testid="evaluations-driver-coverage-available"]')?.textContent ?? '').toContain('0');
   });
 });
 
@@ -240,7 +248,7 @@ describe('E6C.1.1 DriverInfluenceSection — canonical coverage authority', () =
     driverMock.mockResolvedValue({
       ok: true,
       status: 200,
-      data: driverData('full', [], { status: 'UNAVAILABLE', reason: 'DRIVER_EVIDENCE_INSUFFICIENT', coverage: DRIVER_COVERAGE_INSUFFICIENT }),
+      data: driverData('full', [], { status: 'UNAVAILABLE', reason: 'DRIVER_EVIDENCE_INSUFFICIENT', coverage: driverCoverage(0, 4, ['BOOKING_CANCELLATIONS']) }),
     });
     render();
     toggle();
