@@ -234,3 +234,27 @@ hooks, `lib/evaluations`, `api.ts`, backend, shared, prisma, .github).
   duplicate `const finance` was fixed).
 - No backend/API/hook/contract/config/deployment change; no E7/E8/E9.
   `DOCUMENTED_AUTHORITY_MISMATCH_COUNT = 0`.
+
+## E6C.1.3 — Final E2E Evidence Closure
+
+E2E-assertion + documentation only (single runtime-adjacent file changed:
+`e2e/evaluations-flow.spec.ts`; no fixture payloads, no production runtime, backend, API,
+hook, or canonical contract change).
+
+- The E6C runtime and the accepted E6C.1.2 fixtures were already correct and remained
+  untouched.
+- Utilization quality PARTIAL/non-AVAILABLE is now explicitly asserted in E2E
+  (`evaluations-status-PARTIAL` visible; `evaluations-status-AVAILABLE` count 0) — the
+  server status is never upgraded.
+- `requiredSourceClasses` is asserted through the "Benötigte Quellen" block (BOOKINGS,
+  MAINTENANCE); `coverage.missingSources` is asserted through its own test id; the two
+  concepts are proven distinct (required block excludes SCHEDULED_OCCUPANCY_NOT_ACTUAL;
+  missing block excludes BOOKINGS/MAINTENANCE).
+- Null finance coverage is proven to contain the neutral German unavailable copy and NO
+  digit at all (`not.toContainText(/\d/)`) — no fabricated numeric zero.
+- The targeted ESLint baseline is exactly ONE unchanged finding
+  (`evaluations-flow.spec.ts` `no-empty-pattern`); the earlier claim of a fixtures
+  `no-explicit-any` finding under the targeted command was inaccurate and is corrected.
+- `evaluations-flow.spec.ts` remains environment-specific and is not run by any current CI
+  workflow; `EVALUATIONS_E2E_STATUS = ENVIRONMENT_SPECIFIC_NOT_EXECUTED`.
+- No E7/E8/E9; no config/deployment change.

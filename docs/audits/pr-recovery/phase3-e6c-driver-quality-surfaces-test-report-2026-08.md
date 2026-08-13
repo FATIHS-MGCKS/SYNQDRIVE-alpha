@@ -215,10 +215,11 @@ SUPERSEDED BY E6C.1.1 / E6C.1.2):**
   → `TARGETED_TEST_FILES = 12`, `TARGETED_TEST_COUNT = 106`, all PASS
   (DataQualityPanel 13, DriverInfluenceSection 15, others unchanged).
 - Targeted ESLint on the four changed files: E6C unit tests PASS (0). e2e:
-  `PRE_EXISTING_IDENTICAL_NO_REGRESSION` — exact findings: `evaluations-flow.spec.ts` = 1
-  (`no-empty-pattern` in the E6B `beforeEach(({}, …))`), `evaluations-fixtures.ts` = 1
-  (`no-explicit-any` in the pre-existing clock-freeze helper `(globalThis as any).Date`).
-  `ESLINT_NEW_ERROR_COUNT = 0`, `PRE_EXISTING_IDENTICAL_LINT_FINDING_COUNT = 2`.
+  `PRE_EXISTING_IDENTICAL_NO_REGRESSION` — **[CORRECTED IN E6C.1.3]** the targeted command
+  produces exactly ONE finding: `evaluations-flow.spec.ts` 19:20 `no-empty-pattern` (the
+  pre-existing E6B `beforeEach(({}, …))`); `evaluations-fixtures.ts` produces NO finding
+  under this command. `ESLINT_NEW_ERROR_COUNT = 0`,
+  `PRE_EXISTING_IDENTICAL_LINT_FINDING_COUNT = 1`.
 - `npm run test:evaluations:e2e:flow` → `EVALUATIONS_E2E_STATUS =
   ENVIRONMENT_SPECIFIC_NOT_EXECUTED`; the spec now parses and collects (a duplicate
   `const finance` was fixed), and fails only at browser launch:
@@ -250,6 +251,51 @@ NONCANONICAL_DRIVER_E2E_FIXTURE_COUNT = 0
 NONCANONICAL_QUALITY_UNIT_FIXTURE_COUNT = 0
 NONCANONICAL_QUALITY_E2E_FIXTURE_COUNT = 0
 DOCUMENTED_AUTHORITY_MISMATCH_COUNT = 0
+PRODUCTION_RUNTIME_CHANGE_COUNT = 0
+BACKEND_RUNTIME_CHANGE_COUNT = 0
+API_RUNTIME_CHANGE_COUNT = 0
+HOOK_RUNTIME_CHANGE_COUNT = 0
+CANONICAL_CONTRACT_CHANGE_COUNT = 0
+PRODUCTION_CONFIG_CHANGE_COUNT = 0
+PRODUCTION_DEPLOYMENT_COUNT = 0
+E7_RUNTIME_SCOPE_COUNT = 0
+E8_RUNTIME_SCOPE_COUNT = 0
+E9_RUNTIME_SCOPE_COUNT = 0
+IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT = 0
+```
+
+`EVALUATIONS_E2E_STATUS = ENVIRONMENT_SPECIFIC_NOT_EXECUTED`.
+
+## E6C.1.3 — Final E2E Assertion Verification
+
+E2E-assertion + doc-only closure. Commands + results at this revision:
+
+- `npx vitest run src/rental/lib/evaluations src/rental/components/evaluations src/rental/hooks/useEvaluationsFinanceBundle.test.tsx`
+  → `TARGETED_TEST_FILES = 12`, `TARGETED_TEST_COUNT = 106`, all PASS (unchanged; no unit
+  fixture edited).
+- `npx tsc -b` → PASS; `npx vite build` → PASS.
+- `npx eslint e2e/evaluations-fixtures.ts e2e/evaluations-flow.spec.ts src/rental/components/evaluations/DataQualityPanel.render.test.tsx src/rental/components/evaluations/DriverInfluenceSection.render.test.tsx`
+  → exactly ONE finding: `evaluations-flow.spec.ts` 19:20 `no-empty-pattern` (pre-existing).
+  `ESLINT_NEW_ERROR_COUNT = 0`, `PRE_EXISTING_IDENTICAL_LINT_FINDING_COUNT = 1`,
+  `ESLINT_BASELINE = PRE_EXISTING_IDENTICAL_NO_REGRESSION`.
+- `npm run test:evaluations:e2e:flow` → `EVALUATIONS_E2E_STATUS =
+  ENVIRONMENT_SPECIFIC_NOT_EXECUTED` (browser executable missing; not run by CI).
+
+Counters (verified 0):
+```
+UTILIZATION_PARTIAL_E2E_ASSERTION_MISSING_COUNT = 0
+QUALITY_STATUS_UPGRADE_E2E_REGRESSION_COUNT = 0
+REQUIRED_SOURCES_BLOCK_E2E_ASSERTION_MISSING_COUNT = 0
+REQUIRED_SOURCE_MISSING_SOURCE_E2E_COLLAPSE_COUNT = 0
+QUALITY_NULL_COVERAGE_E2E_ASSERTION_MISSING_COUNT = 0
+NULL_COVERAGE_NUMERIC_ZERO_E2E_COUNT = 0
+E2E_EXISTING_AUTHORITY_ASSERTION_REMOVAL_COUNT = 0
+E2E_REQUIRED_ASSERTION_MISSING_COUNT = 0
+DOCUMENTED_ESLINT_FINDING_COUNT_MISMATCH = 0
+DOCUMENTED_EVIDENCE_MISMATCH_COUNT = 0
+ACCEPTED_E6C_1_2_FIXTURE_CHANGE_COUNT = 0
+E2E_FIXTURE_CHANGE_COUNT = 0
+UNIT_TEST_FIXTURE_CHANGE_COUNT = 0
 PRODUCTION_RUNTIME_CHANGE_COUNT = 0
 BACKEND_RUNTIME_CHANGE_COUNT = 0
 API_RUNTIME_CHANGE_COUNT = 0

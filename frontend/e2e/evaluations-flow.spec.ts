@@ -42,16 +42,30 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     const quality = page.getByTestId('evaluations-data-quality');
     await expect(quality).toBeVisible();
     const util = quality.getByTestId('evaluations-quality-section-utilization');
+    // Server-provided PARTIAL status is mirrored, never upgraded to AVAILABLE.
+    await expect(util.getByTestId('evaluations-status-PARTIAL')).toBeVisible();
+    await expect(util.getByTestId('evaluations-status-AVAILABLE')).toHaveCount(0);
     await expect(util.getByTestId('evaluations-quality-coverage-excluded')).toContainText('20');
-    await expect(util.getByTestId('evaluations-quality-coverage-missing-sources')).toContainText('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
-    await expect(util).toContainText('BOOKINGS'); // required source (distinct from missing sources)
+    // requiredSourceClasses (Benötigte Quellen block) and coverage.missingSources are
+    // asserted separately and proven NOT collapsed into one another.
+    const requiredSources = util.getByText('Benötigte Quellen', { exact: true }).locator('..');
+    await expect(requiredSources).toContainText('BOOKINGS');
+    await expect(requiredSources).toContainText('MAINTENANCE');
+    await expect(requiredSources).not.toContainText('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
+    const missingSources = util.getByTestId('evaluations-quality-coverage-missing-sources');
+    await expect(missingSources).toContainText('SCHEDULED_OCCUPANCY_NOT_ACTUAL');
+    await expect(missingSources).not.toContainText('BOOKINGS');
+    await expect(missingSources).not.toContainText('MAINTENANCE');
     // Canonical E5 lineage (version + org:<org>:<model> sourceRef) renders verbatim.
     await expect(util.getByTestId('evaluations-quality-lineage')).toContainText('evaluations-quality-e5-v2');
     await expect(util.getByTestId('evaluations-quality-lineage')).toContainText('org:org-evaluations-e2e:Booking');
-    // Finance quality section: null coverage renders the neutral German unavailable copy, not zero.
+    // Finance quality section: null coverage renders the neutral German unavailable copy,
+    // with NO numeric value at all (no fabricated zero / expected / ratio numbers).
     const financeQuality = quality.getByTestId('evaluations-quality-section-finance');
-    await expect(financeQuality.getByTestId('evaluations-quality-coverage')).toContainText('Für diesen Bereich nicht verfügbar');
-    await expect(financeQuality.getByTestId('evaluations-quality-coverage')).not.toContainText('0%');
+    const financeCoverage = financeQuality.getByTestId('evaluations-quality-coverage');
+    await expect(financeCoverage).toContainText('Für diesen Bereich nicht verfügbar');
+    await expect(financeCoverage).not.toContainText('0%');
+    await expect(financeCoverage).not.toContainText(/\d/);
 
     await assertNoHorizontalOverflow(page);
   });
