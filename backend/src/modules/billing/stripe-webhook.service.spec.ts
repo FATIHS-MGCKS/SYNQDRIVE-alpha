@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma, StripeWebhookEventStatus } from '@prisma/client';
 import { StripeWebhookService } from './stripe-webhook.service';
 import * as stripeClientUtil from './stripe-client.util';
+import { StripeEnvironmentService } from '@shared/stripe/stripe-environment.service';
+import { StripeEnvironmentViolationError } from '@shared/stripe/stripe-environment.util';
 
 const EMPTY_BODY_HASH = '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a';
 
@@ -33,11 +35,29 @@ describe('StripeWebhookService ingest', () => {
     webhooks: { constructEvent: jest.fn() },
   };
 
+  // Faithful StripeEnvironmentService double: accepts test-mode events, rejects a
+  // live-mode webhook with StripeEnvironmentViolationError (STRIPE_WEBHOOK_LIVEMODE_MISMATCH).
+  const stripeEnvironment = {
+    assertWebhookLivemode: jest.fn((livemode: boolean) => {
+      if (livemode) {
+        throw new StripeEnvironmentViolationError(
+          'STRIPE_WEBHOOK_LIVEMODE_MISMATCH',
+          'Stripe webhook livemode mismatch',
+        );
+      }
+    }),
+  } as unknown as StripeEnvironmentService;
+
   let service: StripeWebhookService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new StripeWebhookService(prisma as never, configService, dispatcher as never);
+    service = new StripeWebhookService(
+      prisma as never,
+      configService,
+      dispatcher as never,
+      stripeEnvironment,
+    );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
     dispatcher.resolveOrganizationId.mockResolvedValue('org-1');
     dispatcher.dispatch.mockResolvedValue({ outcome: 'processed', organizationId: 'org-1' });
@@ -56,9 +76,12 @@ describe('StripeWebhookService ingest', () => {
       data: { object: { id: 'in_live' } },
     });
 
-    await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toThrow(
-      BadRequestException,
-    );
+    // Environment mismatch is enforced by the shared Stripe environment authority
+    // (StripeEnvironmentViolationError / STRIPE_WEBHOOK_LIVEMODE_MISMATCH), not a generic 400.
+    await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toMatchObject({
+      name: 'StripeEnvironmentViolationError',
+      code: 'STRIPE_WEBHOOK_LIVEMODE_MISMATCH',
+    });
     expect(dispatcher.dispatch).not.toHaveBeenCalled();
   });
 

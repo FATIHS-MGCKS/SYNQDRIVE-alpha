@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { StripeWebhookEventStatus } from '@prisma/client';
 import { StripeWebhookService } from './stripe-webhook.service';
 import * as stripeClientUtil from './stripe-client.util';
+import { StripeEnvironmentService } from '@shared/stripe/stripe-environment.service';
+import { StripeEnvironmentViolationError } from '@shared/stripe/stripe-environment.util';
 
 describe('StripeWebhookService characterization', () => {
   const dispatcher = {
@@ -30,11 +32,29 @@ describe('StripeWebhookService characterization', () => {
     webhooks: { constructEvent: jest.fn() },
   };
 
+  // Faithful StripeEnvironmentService double: accepts test-mode events, rejects a
+  // live-mode webhook with StripeEnvironmentViolationError (STRIPE_WEBHOOK_LIVEMODE_MISMATCH).
+  const stripeEnvironment = {
+    assertWebhookLivemode: jest.fn((livemode: boolean) => {
+      if (livemode) {
+        throw new StripeEnvironmentViolationError(
+          'STRIPE_WEBHOOK_LIVEMODE_MISMATCH',
+          'Stripe webhook livemode mismatch',
+        );
+      }
+    }),
+  } as unknown as StripeEnvironmentService;
+
   let service: StripeWebhookService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new StripeWebhookService(prisma as never, configService, dispatcher as never);
+    service = new StripeWebhookService(
+      prisma as never,
+      configService,
+      dispatcher as never,
+      stripeEnvironment,
+    );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
     dispatcher.resolveOrganizationId.mockResolvedValue('org-1');
     dispatcher.dispatch.mockResolvedValue({ outcome: 'processed', organizationId: 'org-1' });
@@ -69,6 +89,7 @@ describe('StripeWebhookService characterization', () => {
         prisma as never,
         noSecretConfig,
         dispatcher as never,
+        stripeEnvironment,
       );
 
       expect(() => localService.constructEvent(Buffer.from('{}'), 'sig')).toThrow(
@@ -98,7 +119,7 @@ describe('StripeWebhookService characterization', () => {
       expect(dispatcher.dispatch).not.toHaveBeenCalled();
     });
 
-    it('re-processes event when prior row exists but is not PROCESSED', async () => {
+    it('reprocesses a previously seen non-terminal event and still flags it as a duplicate/retry', async () => {
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_retry',
         type: 'invoice.paid',
@@ -106,6 +127,7 @@ describe('StripeWebhookService characterization', () => {
         livemode: false,
         data: { object: { id: 'in_retry' } },
       });
+      // Prior row exists and is NON-terminal (RECEIVED) → eligible for retry.
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
         stripeEventId: 'evt_retry',
         status: StripeWebhookEventStatus.RECEIVED,
@@ -115,10 +137,15 @@ describe('StripeWebhookService characterization', () => {
 
       const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
 
-      expect(result.duplicate).toBe(false);
+      // Current production contract (resolveBillingWebhookIngestAction → 'retry'):
+      // the event is reprocessed (dispatch runs, status 'processed') AND remains flagged
+      // as a duplicate because the event id was already known. No new row is created;
+      // the existing row is updated via the retry path.
+      expect(result.duplicate).toBe(true);
       expect(result.status).toBe('processed');
       expect(dispatcher.dispatch).toHaveBeenCalled();
       expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
+      expect(prisma.stripeWebhookEvent.update).toHaveBeenCalled();
     });
 
     it('creates webhook event row on first ingest', async () => {
