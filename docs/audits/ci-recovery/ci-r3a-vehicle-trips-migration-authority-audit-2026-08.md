@@ -169,7 +169,7 @@ formatting-only** (no double-counting of merges):
 | df1b5a6e | 2026-04-17 | composite index `[vehicleId, startTime]` (remaining diff is whitespace re-alignment — non-material) |
 | c8fcccad | 2026-06-15 | `misuseCases` relation (`MisuseCase[]`) |
 | 90d43466 | 2026-06-28 | `rpmWebhookCandidates` relation (`RpmWebhookCandidate[]`) |
-| c07f06b0 | 2026-07-05 | `trip_analysis_status` + `analysis_*` fields; `quality_status`/`behavior_summary_status`/`driving_impact_status` readiness fields; `tripAnalysisStatus` index |
+| c07f06b0 | 2026-07-05 | `trip_analysis_status` + the `analysis_*` fields; `[tripAnalysisStatus]` index (the three readiness fields `quality_status`/`behavior_summary_status`/`driving_impact_status` were introduced earlier by `17019787`, not here) |
 | 575c7317 | 2026-07-08 | Phase-4 attribution: `booking_link_source` (`TripBookingLinkSource`) + attribution wiring |
 | b89cb302 | 2026-07-16 | `tripAssessabilities` relation |
 | 3dce7ed4 | 2026-07-16 | `drivingEvidence` relation |
@@ -499,6 +499,34 @@ test, workflow, dependency, config, database, or deployment change occurred; CI-
 E7/E8/E9 not started. `TABLE_MODEL_EVOLUTION_OMISSION_COUNT` = 0;
 `TABLE_EVOLUTION_COMMIT_OMISSION_COUNT` = 0; `TABLE_EVOLUTION_DDL_OMISSION_COUNT` = 0.
 
+## 17b. CI-R3A.6 — Final VehicleTrip Field-Provenance Correction
+
+Independent review found one residual provenance error: the readiness fields `quality_status`,
+`behavior_summary_status`, `driving_impact_status` were correctly attributed to `17019787` but were
+**additionally and incorrectly** attributed to `c07f06b0`. Verified against Git:
+
+- `READINESS_FIELD_TRUE_INTRO_COMMIT` = `17019787` — `git show 17019787` adds `quality_status`,
+  `behavior_summary_status`, `driving_impact_status`.
+- `POST_TRIP_ANALYSIS_TRUE_INTRO_COMMIT` = `c07f06b0` — `git show c07f06b0` adds **only**
+  `trip_analysis_status`, `analysis_queued_at`, `analysis_started_at`, `analysis_partial_at`,
+  `analysis_completed_at`, `analysis_failed_at`, `analysis_failed_reason`, `analysis_latency_ms`,
+  `analysis_stages_json`, and the `[tripAnalysisStatus]` index.
+
+The three readiness fields were removed from the `c07f06b0` descriptions in §4a and Appendix A3;
+they remain attributed exclusively to `17019787`. Attribution now:
+
+- `QUALITY_STATUS_INTRO_ATTRIBUTION` = 17019787; `BEHAVIOR_SUMMARY_STATUS_INTRO_ATTRIBUTION` =
+  17019787; `DRIVING_IMPACT_STATUS_INTRO_ATTRIBUTION` = 17019787.
+- `TRIP_ANALYSIS_STATUS_INTRO_ATTRIBUTION` = c07f06b0; `ANALYSIS_FIELDS_INTRO_ATTRIBUTION` =
+  c07f06b0; `TRIP_ANALYSIS_STATUS_INDEX_INTRO_ATTRIBUTION` = c07f06b0.
+- `FALSE_FIELD_INTRODUCTION_ATTRIBUTION_COUNT` = 0; `DUPLICATE_FIELD_INTRODUCTION_ATTRIBUTION_COUNT`
+  = 0; `STALE_C07_READINESS_ATTRIBUTION_COUNT` = 0.
+
+No model-history commit or DDL file was added or removed: the 17 material non-merge commit inventory
+(§4a), the nine-file `vehicle_trips` evolution-DDL inventory (§5), the 55-file universe (§3), and the
+43-row atomic ledger (§10) are all unchanged. No executable or production change occurred. CI-R3A
+remains authority-blocked; CI-R3B and E7/E8/E9 remain unstarted.
+
 ## 18. Final audit status
 
 Introduction commits, schema positions, full initial/current shapes, per-model evolution,
@@ -578,8 +606,11 @@ Provenance of the current adds (see §4a for the full commit table): assignment/
 aggregate counters, readiness/status fields, `repairs` relation and the assignment/source indexes →
 `17019787`; `[vehicleId, startTime]` → `df1b5a6e`; `misuseCases` → `c8fcccad`;
 `rpmWebhookCandidates` → `90d43466`; `booking_customer_id`/`assigned_driver_id`/`actual_driver_id`
-→ `d4c7ac17` (schema) materialised as SQL in `20260716310000`; analysis/readiness fields →
-`c07f06b0`; DI-v2 relations → `b89cb302`/`3dce7ed4`/`3b9012e6`/`02c6e76d`; `driverAttributions` →
+→ `d4c7ac17` (schema) materialised as SQL in `20260716310000`; `trip_analysis_status`, the
+`analysis_*` fields and the `[tripAnalysisStatus]` index → `c07f06b0` (the three readiness fields
+`quality_status`/`behavior_summary_status`/`driving_impact_status` are attributed exclusively to
+`17019787`, above); DI-v2 relations → `b89cb302`/`3dce7ed4`/`3b9012e6`/`02c6e76d`;
+`driverAttributions` →
 `32dc81a0`; tire-usage fields/relation → `d58d6c68`/`850e2306`; `batteryMeasurementSessions` →
 `a7944b33`; braking relations → `af2fb811`/`b0f68346`. `VEHICLE_TRIP_INITIAL_SHAPE_OMISSION_COUNT`
 = 0; `VEHICLE_TRIP_CURRENT_SHAPE_OMISSION_COUNT` = 0.
