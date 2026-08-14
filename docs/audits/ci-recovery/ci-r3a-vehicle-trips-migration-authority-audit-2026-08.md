@@ -147,7 +147,7 @@ proves the *current physical production schema*.
 | # | Model / table | Intro commit | Line | Changed since intro? | Material evolution commits | Clean CREATE TABLE | Evolution-DDL migrations | Live-DB authority | Bootstrap class |
 |---|---------------|--------------|------|----------------------|----------------------------|--------------------|--------------------------|-------------------|-----------------|
 | 1 | `DrivingEvent` / `driving_events` | 77c26dad | 7734 | YES | `df1b5a6e` (batch-c indexes), `07bf0bb6` (P24 provider identity + `tripAssignment`), `af2fb811` (braking intake relation) | 0 | `20260331000000` (ALTER+index), `20260413230000` (2 index), `20260716240000` (ALTER) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
-| 2 | `BrakeTripMetric` / `brake_trip_metrics` | 77c26dad | 9025 | NO | — | 0 | none | UNKNOWN_CURRENT_DATABASE_STATE | ORPHAN_REVIEW_REQUIRED |
+| 2 | `BrakeTripMetric` / `brake_trip_metrics` | 77c26dad | 9025 | NO | — | 0 | none | CAPTURED (§17d — 11 cols/2 constraints/3 indexes) | PRODUCT_APPROVED_REMOVAL |
 | 3 | `VehicleTrip` / `vehicle_trips` | 77c26dad | 9516 | YES | 17 material (see §4a) | 0 | 9 files (see §5) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
 | 4 | `VehicleTripWaypoint` / `vehicle_trip_waypoints` | 77c26dad | 9691 | NO | — | 0 | `20260609000000` (ALTER SET) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
 | 5 | `TripBehaviorEvent` / `trip_behavior_events` | 77c26dad | 9775 | YES | `df1b5a6e` (composite index `tripId,eventCategory`) | 0 | `20260413230000` (CREATE INDEX) | UNKNOWN_CURRENT_DATABASE_STATE | BOOTSTRAP_REPLAY_REQUIRED |
@@ -367,9 +367,10 @@ selection + 1 orphan decision = **43**.
 `ATOMIC_UNKNOWN_UNIQUE_ID_COUNT` = **43**. `PRODUCTION_AUTHORITY_RESOLVED_UNKNOWN_COUNT` (U001–U041) =
 **41** (CI-R3A.7.1). `INDEPENDENT_REVIEW_CORRECTION_LEDGER_ROW_COUNT` (U042) = **1** (CI-R3A.8.1 §17f +
 CI-R3A.8.2 §17g + CI-R3A.8.3 §17h; CI-R3A.9 §17i entry authorization).
-`PRODUCT_DECISION_LEDGER_ROW_COUNT` (U043) = **1**. `U042_RESOLVED_COUNT` = 0;
-`U043_RESOLVED_COUNT` = **1**. `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = **1**
-(U042 CI-R3B acceptance gates 2–7 — executable proof; U043 product decision resolved).
+`PRODUCT_DECISION_LEDGER_ROW_COUNT` (U043) = **1**. `U042_RESOLVED_COUNT` = **0** (final technical
+acceptance only — `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` = 1; `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` = 0).
+`U043_RESOLVED_COUNT` = **1**. `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = **0**.
+`R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` = **1** (CI-R3B acceptance gates 2–7 — final acceptance only).
 `ATOMIC_UNKNOWN_DUPLICATE_ID_COUNT` = 0;
 `ATOMIC_UNKNOWN_MISSING_COLUMN_ROW_COUNT` = 0; `GROUPED_UNKNOWN_RANGE_COUNT` = 0;
 `GROUPED_UNCOUNTED_CRITICAL_UNKNOWN_COUNT` = 0; `UNMATRIXED_IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = 0;
@@ -389,15 +390,18 @@ authority.
 | BOOTSTRAP_REPLAY_REQUIRED | tables `vehicle_trips`, `driving_events`, `trip_behavior_events`, `vehicle_trip_waypoints`, `vehicle_trip_tracking_runs`, `trip_repairs`, `trip_driving_impact`; enums `TripAssignmentStatus`, `TripAssignmentSubjectType`, `DrivingEventType` | 10 |
 | BOOTSTRAP_EVENTUAL_REPLAY_REQUIRED | enums to build `trip_behavior_events` at parity: `BehaviorEventCategory`, `BehaviorEventClassification` | 2 |
 | SCHEMA_PARITY_ONLY | table `vehicle_trip_detection_states`; enums `TripSource`, `TripDetectionState`, `TripTrackingRunType`, `VehicleDetectionProfile`, `DetectionConfidence` | 6 |
-| ORPHAN_REVIEW_REQUIRED | table `brake_trip_metrics` | 1 |
+| PRODUCT_APPROVED_REMOVAL | table `brake_trip_metrics` (present in production; approved for controlled removal; excluded from bootstrap) | 1 |
 
 - `BOOTSTRAP_REPLAY_REQUIRED_COUNT` = 10; `BOOTSTRAP_EVENTUAL_REPLAY_REQUIRED_COUNT` = 2;
-  `SCHEMA_PARITY_ONLY_COUNT` = 6; `ORPHAN_REVIEW_REQUIRED_COUNT` = 1 (sums to 19).
-- `PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 (excludes the orphan pending U043).
+  `SCHEMA_PARITY_ONLY_COUNT` = 6; `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` = 1 (sums to 19).
+- `ORPHAN_REVIEW_REQUIRED_COUNT` = **0**; `U043_PENDING_OBJECT_COUNT` = **0**.
+- `PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 (excludes `brake_trip_metrics` because the product owner
+  approved controlled deprecation and removal).
 - `PROVISIONAL_BOOTSTRAP_OMITTED_OBJECT_COUNT` = 0.
 - `INSUFFICIENT_AUTHORITY_COUNT` = **0** — U043 product decision resolved (§17i); `brake_trip_metrics`
-  removal is approved for a future scoped implementation but not executed here. Option **D** bootstrap
-  targets remain authorized against captured lowercase production shapes.
+  is **PRODUCT_APPROVED_REMOVAL**; removal is approved for a future scoped implementation but not
+  executed here. Option **D** bootstrap targets remain authorized against captured lowercase production
+  shapes.
 - `BASE_GAP_STRATEGY_STATUS` = SAFE_CANDIDATE (**production-authorized** — §17d);
   `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY (U042 — Option J candidate until CI-R3B proof;
   CI-R3A.9 §17i);
@@ -409,18 +413,19 @@ Per-object rationale: the 7 replay-required tables + 3 replay-required enums are
 by a migration (ALTER/INDEX/FK/rebuild) and block replay; `BehaviorEventCategory`/
 `BehaviorEventClassification` are eventual because `trip_behavior_events` (replay-required) has
 columns typed on them; the 6 schema-parity objects are never referenced by any migration but exist
-in the schema; `brake_trip_metrics` is orphan (no migration ref, no code reader/writer).
+in the schema; `brake_trip_metrics` is **PRODUCT_APPROVED_REMOVAL** — present in production, approved
+for controlled removal, excluded from bootstrap, no migration ref, no code reader/writer
+(`U043_REMOVAL_IMPLEMENTATION_COUNT` = 0).
 
 ## 12. Scope counters
 
-Scope is reported per commit. **Current phase = CI-R3A.9** (final authority closure and controlled
-CI-R3B entry authorization; U043 product-owner decision recorded):
+Scope is reported per commit. **Current phase = CI-R3A.9.1** (final authority consistency cleanup):
 
 | Counter | Value |
 |---------|-------|
 | `CHANGED_FILE_COUNT` | 2 |
-| `AUDIT_REPORT_CHANGE_COUNT` | 1 (this file — §17i + ledger/status updates) |
-| `DECISION_PACKAGE_FILE_CHANGE_COUNT` | 1 (`ci-r3a8-u042-u043-decision-package-2026-08.md`, §12) |
+| `AUDIT_REPORT_CHANGE_COUNT` | 1 (this file — §17j + inventory/blocker corrections) |
+| `DECISION_PACKAGE_FILE_CHANGE_COUNT` | 1 (`ci-r3a8-u042-u043-decision-package-2026-08.md`, §13) |
 | `DOCUMENTATION_FILE_CHANGE_COUNT` | 2 |
 | `JSON_EVIDENCE_CHANGE_COUNT` | 0 |
 | `JSON_EVIDENCE_HASH_MATCH` | YES |
@@ -430,19 +435,19 @@ CI-R3B entry authorization; U043 product-owner decision recorded):
 | `PRODUCTION_DATABASE_ACCESS_COUNT` | 0 |
 | `PRODUCTION_DEPLOYMENT_COUNT` / `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E6`/`E7`/`E8`/`E9` scope / `OUT_OF_SCOPE_FILE_COUNT` | 0 |
-| `CI_R3A83_INDEPENDENT_REVIEW` | PASS |
-| `U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` | YES |
-| `U043_RESOLVED_COUNT` | 1 |
+| `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` | 1 |
+| `ORPHAN_REVIEW_REQUIRED_COUNT` | 0 |
+| `U043_PENDING_OBJECT_COUNT` | 0 |
 | `U043_REMOVAL_IMPLEMENTATION_COUNT` | 0 |
-| `CI_R3B_START_BLOCKER_COUNT` | 0 |
-| `R3B_ACCEPTANCE_GATE_PENDING_COUNT` | 6 |
-| `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | 0 |
-| `STALE_U043_AWAITING_DECISION_CLAIM_COUNT` | 0 |
-| `STALE_U043_NO_APPROVAL_CLAIM_COUNT` | 0 |
-| `STALE_U042_FULL_ENTRY_BLOCK_CLAIM_COUNT` | 0 |
-| `FALSE_OPTION_J_FINAL_ACCEPTANCE_CLAIM_COUNT` | 0 |
-| `FALSE_CI_R3B_IMPLEMENTED_CLAIM_COUNT` | 0 |
-| `FALSE_PRODUCTION_AUTHORIZATION_CLAIM_COUNT` | 0 |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 0 |
+| `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` | 1 |
+| `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` | 1 |
+| `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` | 0 |
+| `STALE_ORPHAN_PENDING_U043_CLAIM_COUNT` | 0 |
+| `STALE_ORPHAN_REVIEW_REQUIRED_CURRENT_AUTHORITY_COUNT` | 0 |
+| `MISCLASSIFIED_R3B_ACCEPTANCE_AS_IMPLEMENTATION_BLOCKER_COUNT` | 0 |
+| `UNQUALIFIED_OPTION_J_NOT_INDEPENDENTLY_APPROVED_CLAIM_COUNT` | 0 |
+| `STALE_CURRENT_AUTHORITY_COUNT` | 0 |
 
 Prior phase **CI-R3A.8** (historical, for reference):
 
@@ -466,7 +471,7 @@ Prior phase **CI-R3A.8** (historical, for reference):
 `STALE_DDL_AUTHORITY_CLAIM_COUNT` = 0 (creation vs evolution DDL separated — §5/§6);
 `STALE_CHECKSUM_CRITICALITY_CLAIM_COUNT` = 0 (checksum unknowns removed — §9/§10);
 `STALE_MODEL_HISTORY_CLAIM_COUNT` = 0 (`TripRepair` = 17019787; not all nine at 77c26dad);
-`STALE_U042_U043_STATUS_CLAIM_COUNT` = 0 (current statuses in §17i; §17e–§17h marked superseded where needed);
+`STALE_U042_U043_STATUS_CLAIM_COUNT` = 0 (current statuses in §17j; §17e–§17i marked superseded where needed);
 `STALE_U042_ATOMIC_WORKFLOW_CLAIM_COUNT` = 0;
 `STALE_U042_ZERO_PARTIAL_PERSISTENCE_CLAIM_COUNT` = 0;
 `STALE_U042_COMPLETE_GUARD_AUTHORITY_CLAIM_COUNT` = 0;
@@ -488,7 +493,12 @@ Prior phase **CI-R3A.8** (historical, for reference):
 `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` = 0;
 `FALSE_OPTION_J_FINAL_ACCEPTANCE_CLAIM_COUNT` = 0;
 `FALSE_CI_R3B_IMPLEMENTED_CLAIM_COUNT` = 0;
-`FALSE_PRODUCTION_AUTHORIZATION_CLAIM_COUNT` = 0.
+`FALSE_PRODUCTION_AUTHORIZATION_CLAIM_COUNT` = 0;
+`STALE_ORPHAN_PENDING_U043_CLAIM_COUNT` = 0;
+`STALE_ORPHAN_REVIEW_REQUIRED_CURRENT_AUTHORITY_COUNT` = 0;
+`MISCLASSIFIED_R3B_ACCEPTANCE_AS_IMPLEMENTATION_BLOCKER_COUNT` = 0;
+`UNQUALIFIED_OPTION_J_NOT_INDEPENDENTLY_APPROVED_CLAIM_COUNT` = 0;
+`STALE_CURRENT_AUTHORITY_COUNT` = 0.
 Superseded prior values (universe 54; 56 grouped unknowns; grouped ID ranges; "all nine models at
 77c26dad") are marked "SUPERSEDED BY CI-R3A.4".
 
@@ -761,7 +771,7 @@ a recorded technical recommendation (`DEPRECATE_AND_REMOVE_CANDIDATE`).
 | `PRODUCTION_AUTHORITY_RESOLVED_UNKNOWN_COUNT` | 41 (U001–U041) |
 | `RECOMMENDATION_ONLY_UNKNOWN_COUNT` | 1 (U042) |
 | `PRODUCT_DECISION_UNKNOWN_COUNT` | 1 (U043) |
-| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 2 |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 2 (**SUPERSEDED BY CI-R3A.9.1** — was 2 at §17e delivery) |
 | `CI_R3A71_PRODUCTION_AUTHORITY_CAPTURE_STATUS` | **SUCCESS** |
 
 Prior failure token `CI_R3A7_PRODUCTION_AUTHORITY_CAPTURE_FAILED` is superseded when §17d preconditions
@@ -842,7 +852,7 @@ product-owner approval — now recorded. Removal is **not** implemented in CI-R3
 |---------|-------|
 | `DECISION_PACKAGE_COMPLETED_COUNT` | 1 |
 | `U042_RESOLVED_COUNT` / `U043_RESOLVED_COUNT` | 0 / 0 |
-| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 2 |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 2 (**SUPERSEDED BY CI-R3A.9.1** — was 2 at §17e delivery) |
 | `PRODUCTION_DATABASE_ACCESS_COUNT` (this phase) | 0 |
 | `NEW_MIGRATION_COUNT` / `HISTORICAL_MIGRATION_EDIT_COUNT` / `PRISMA_SCHEMA_CHANGE_COUNT` | 0 / 0 / 0 |
 | `RUNTIME_CHANGE_COUNT` / `TEST_LOGIC_CHANGE_COUNT` / `WORKFLOW_CHANGE_COUNT` | 0 / 0 / 0 |
@@ -1181,8 +1191,52 @@ Superseded current-authority claims (**SUPERSEDED BY CI-R3A.9**):
 | `FALSE_CI_R3B_IMPLEMENTED_CLAIM_COUNT` | **0** |
 | `FALSE_PRODUCTION_AUTHORIZATION_CLAIM_COUNT` | **0** |
 
-`CI_R3A9_AUTHORITY_STATUS` = **COMPLETED** — CI-R3A authority closed; controlled CI-R3B entry
-authorized after review and merge; executable proof and removal implementation remain outstanding.
+`CI_R3A9_AUTHORITY_STATUS` = **COMPLETED** — superseded for inventory/blocker consistency by §17j.
+
+## 17j. CI-R3A.9.1 — Final authority consistency cleanup
+
+Independent review of CI-R3A.9 found three current-authority inconsistencies. This phase corrects them
+only; no migration, schema, runtime, test, workflow, dependency, production access or deployment
+occurred.
+
+| Correction | Authority |
+|------------|-----------|
+| U043 disposition | `brake_trip_metrics` reclassified from ORPHAN_REVIEW_REQUIRED to **PRODUCT_APPROVED_REMOVAL** in §4 matrix and §11 contract; present in production until separately controlled removal |
+| Blocker vs acceptance | `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0; `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` = 1; gates 2–7 block final acceptance only |
+| Historical Option J | decision-package §5 Option-J “not independently approved” explicitly **HISTORICAL — SUPERSEDED BY CI-R3A.9** |
+
+| Counter | Value |
+|---------|-------|
+| `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` | **1** |
+| `ORPHAN_REVIEW_REQUIRED_COUNT` | **0** |
+| `U043_PENDING_OBJECT_COUNT` | **0** |
+| `U043_REMOVAL_IMPLEMENTATION_COUNT` | **0** |
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** |
+| `U043_RESOLVED_COUNT` | **1** |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` | **1** |
+| `R3B_ACCEPTANCE_GATE_TOTAL_COUNT` | **7** |
+| `R3B_ACCEPTANCE_GATE_PASSED_COUNT` | **1** |
+| `R3B_ACCEPTANCE_GATE_PENDING_COUNT` | **6** |
+| `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` | **1** |
+| `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` | **0** |
+| `U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` | **YES** |
+| `U042_FINAL_TECHNICAL_ACCEPTANCE` | **NO** |
+| `U042_PRODUCTION_AUTHORIZED` | **NO** |
+| `CI_R3A_AUTHORITY_STATUS` | **CI_R3A_AUTHORITY_COMPLETED** |
+| `CI_R3B_ENTRY_STATUS` | **AUTHORIZED_AFTER_CI_R3A_REVIEW_AND_MERGE** |
+| `CI_R3B_START_BLOCKER_COUNT` | **0** |
+| `R3B_FINAL_ACCEPTANCE` / `R3B_MERGE_AUTHORIZED` / `R3B_DEPLOYMENT_AUTHORIZED` | **NO** / **NO** / **NO** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+| `STALE_ORPHAN_PENDING_U043_CLAIM_COUNT` | **0** |
+| `STALE_ORPHAN_REVIEW_REQUIRED_CURRENT_AUTHORITY_COUNT` | **0** |
+| `MISCLASSIFIED_R3B_ACCEPTANCE_AS_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `UNQUALIFIED_OPTION_J_NOT_INDEPENDENTLY_APPROVED_CLAIM_COUNT` | **0** |
+| `STALE_CURRENT_AUTHORITY_COUNT` | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+`CI_R3A91_CORRECTION_STATUS` = **COMPLETED** — current-authority inventory, blocker classification
+and historical Option-J wording aligned; CI-R3B not started.
 
 ## 18. Final audit status
 
@@ -1193,13 +1247,15 @@ CREATE-vs-evolution DDL separation, the 55-file classified universe, a mechanica
 **D** is a SAFE_CANDIDATE for the base-gap and is **production-authorized** against captured lowercase
 shapes; casing repair remains an Option J **candidate** authorized for controlled non-production CI-R3B
 proof only (`INSUFFICIENT_AUTHORITY` for final acceptance — U042, §17i); `brake_trip_metrics`
-product-owner decision **DEPRECATE_AND_REMOVE** recorded (U043, §17i); removal not implemented.
+product-owner decision **DEPRECATE_AND_REMOVE** recorded (U043, §17i); classified
+**PRODUCT_APPROVED_REMOVAL** (§17j); removal not implemented.
 
-**Status: CI_R3A9_AUTHORITY_COMPLETED** — repository audit authority complete; live propositions U001–U041
-resolved from committed sanitized evidence; U042 passes independent review for controlled CI-R3B entry
-(executable acceptance gates 2–7 pending); U043 product decision approved (`U043_RESOLVED_COUNT` = 1).
-No CI-R3B implementation, production access or deployment in CI-R3A.9. Controlled CI-R3B may begin
-after this record passes independent review and PR #1029 merges. E7/E8/E9 remain unstarted.
+**Status: CI_R3A91_CORRECTION_COMPLETED** — repository audit authority complete; U042 controlled CI-R3B
+entry authorized (`U042_ENTRY_AUTHORITY_RESOLVED_COUNT` = 1; final acceptance gates 2–7 pending);
+U043 product decision approved (`U043_RESOLVED_COUNT` = 1; `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` = 1).
+`REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0. No CI-R3B implementation, production access or
+deployment in CI-R3A.9.1. Controlled CI-R3B may begin after independent review and PR #1029 merge.
+E7/E8/E9 remain unstarted.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 

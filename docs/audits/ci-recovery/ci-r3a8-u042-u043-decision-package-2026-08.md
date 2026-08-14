@@ -1,11 +1,11 @@
 # CI-R3A.8 — U042 / U043 decision authority package
 
-**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** (analysis and decision authority only)
+**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** + **CI-R3A.9.1** (analysis and decision authority only)
 **Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08`
 **Base HEAD analysed:** `03de93b9179011525e12fd90f1399a501e2a7e5e`
-**Latest correction:** CI-R3A.9 (final authority closure and controlled CI-R3B entry authorization)
-**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17i)
-**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8–CI-R3A.9)
+**Latest correction:** CI-R3A.9.1 (final authority consistency cleanup)
+**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17j)
+**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8–CI-R3A.9.1)
 
 Pinned Prisma authority (read from `backend/package-lock.json` at analysed HEAD):
 
@@ -635,14 +635,14 @@ owned sequences.
 
 ---
 
-## 5. U042 decision classification (CI-R3A.8.1)
+## 5. U042 decision classification — historical CI-R3A.8.1 authority; superseded by CI-R3A.9 §12
 
 | Option | Mechanism | Empty-DB replay | Existing production DB | Classification |
 |--------|-----------|-----------------|------------------------|----------------|
 | **B** | Edit the applied migration `20260425000000` (rewrite identifiers) | would pass | mutates the checksum of a migration already recorded finished; breaks history integrity for every deployed database | `OPTION_B_STATUS` = **REJECTED_UNSAFE** |
 | **E/F (end-of-history)** | Append a repair migration after the current head | never reached — deploy aborts at `20260425000000` (D8) | no effect on the defect | `END_OF_HISTORY_REPAIR_STATUS` = **REJECTED_TOO_LATE** |
 | **Dummy compatibility tables** | Create throwaway `"VehicleTrip"`/`"TripDrivingImpact"` relations to satisfy the identifiers | fails at S5 (`2BP01`, D1) | pollutes the schema with ghost relations | `DUMMY_TABLE_STATUS` = **REJECTED** |
-| **J (guarded retroactive pre/post shim)** | Append-only guard-first shims immediately before/after the target; target byte-identical | ordering (§2) + dependency proof (§4) documented; guard model corrected (§3); cross-migration persistence windows documented (§2b); recovery/fault-injection proof **not yet executed** | intended PRE-NOOP01 + POST-NOOP01 path when all fail-closed predicates false — not independently approved | **candidate only** — not safe, not accepted, not recovery-proven |
+| **J (guarded retroactive pre/post shim)** | Append-only guard-first shims immediately before/after the target; target byte-identical | ordering (§2) + dependency proof (§4) documented; guard model corrected (§3); cross-migration persistence windows documented (§2b); recovery/fault-injection proof **not yet executed** | intended PRE-NOOP01 + POST-NOOP01 path when all fail-closed predicates false — **HISTORICAL — SUPERSEDED BY CI-R3A.9** (formerly “not independently approved”) | **candidate only** — not safe, not finally accepted, not recovery-proven |
 | **No repair** | Leave the history broken | fresh replay stays red | production unaffected but no reproducible environment provisioning | rejected — the CI gate remains red |
 
 ### 5a. U042 status (CI-R3A.8.1 — historical; current authority §12)
@@ -689,6 +689,12 @@ Mandatory CI-R3B acceptance gates:
 | `R3B_MERGE_AUTHORIZED` | **NO** |
 | `R3B_DEPLOYMENT_AUTHORIZED` | **NO** |
 | `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | **0** |
+| `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` | **1** (CI-R3B acceptance gates 2–7 — blocks final acceptance, merge and deployment only) |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` | **1** |
+| `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` | **0** |
+| `U042_RESOLVED_COUNT` | **0** (final technical acceptance only — see `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` / `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT`) |
+| `MISCLASSIFIED_R3B_ACCEPTANCE_AS_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
 
 Gates 2–7 are CI-R3B **acceptance** gates — they must pass before final acceptance, merge or
 deployment. They are **not** preconditions that forbid writing the implementation being tested.
@@ -830,9 +836,10 @@ accepted authority audit found 0 runtime readers and 0 runtime writers. **This t
 the removal.** Removal requires a separate scoped implementation and validation step. No schema,
 migration or runtime change occurs in CI-R3A.9.
 
-For CI-R3B bootstrap scope: U043 product authority is resolved; `brake_trip_metrics` remains outside
-Option D bootstrap (`PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 of 19) until a future removal
-implementation completes.
+For CI-R3B bootstrap scope: `brake_trip_metrics` is classified **PRODUCT_APPROVED_REMOVAL** (§13);
+it remains present in production until a separately controlled removal is implemented and is excluded
+from Option D bootstrap (`PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 of 19) because the product owner
+approved controlled deprecation and removal — not because U043 is pending.
 
 ---
 
@@ -868,8 +875,7 @@ implemented in this phase.
 
 ## 10. Scope, safety and phase counters
 
-Current phase = **CI-R3A.9** (final authority closure and controlled CI-R3B entry authorization;
-U043 product-owner decision recorded):
+Current phase = **CI-R3A.9.1** (final authority consistency cleanup):
 
 | Counter | Value |
 |---------|-------|
@@ -890,43 +896,36 @@ U043 product-owner decision recorded):
 | `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E7_E8_E9_RUNTIME_SCOPE_COUNT` | 0 |
 | `OUT_OF_SCOPE_FILE_COUNT` | 0 |
-| `CI_R3A83_INDEPENDENT_REVIEW` | **PASS** |
-| `CI_R3A83_CRITICAL_FINDING_COUNT` | **0** |
-| `U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` | **YES** |
-| `U042_FINAL_TECHNICAL_ACCEPTANCE` | **NO** |
-| `U042_PRODUCTION_AUTHORIZED` | **NO** |
-| `U043_REMOVAL_IMPLEMENTATION_COUNT` | **0** |
-| `CI_R3B_START_BLOCKER_COUNT` | **0** (after PR #1029 independent review and merge) |
-| `R3B_ACCEPTANCE_GATE_PENDING_COUNT` | **6** |
-| `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | **0** |
-| `STALE_U043_AWAITING_DECISION_CLAIM_COUNT` | **0** |
-| `STALE_U043_NO_APPROVAL_CLAIM_COUNT` | **0** |
-| `STALE_U042_FULL_ENTRY_BLOCK_CLAIM_COUNT` | **0** |
-| `FALSE_OPTION_J_FINAL_ACCEPTANCE_CLAIM_COUNT` | **0** |
-| `FALSE_CI_R3B_IMPLEMENTED_CLAIM_COUNT` | **0** |
-| `FALSE_PRODUCTION_AUTHORIZATION_CLAIM_COUNT` | **0** |
-| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **1** (U042 CI-R3B acceptance gates 2–7 — executable proof) |
+| `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` | 1 |
+| `ORPHAN_REVIEW_REQUIRED_COUNT` | 0 |
+| `U043_PENDING_OBJECT_COUNT` | 0 |
+| `U043_REMOVAL_IMPLEMENTATION_COUNT` | 0 |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` | **1** |
+| `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` | **1** |
+| `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` | **0** |
+| `STALE_ORPHAN_PENDING_U043_CLAIM_COUNT` | **0** |
+| `STALE_ORPHAN_REVIEW_REQUIRED_CURRENT_AUTHORITY_COUNT` | **0** |
+| `MISCLASSIFIED_R3B_ACCEPTANCE_AS_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `UNQUALIFIED_OPTION_J_NOT_INDEPENDENTLY_APPROVED_CLAIM_COUNT` | **0** |
+| `STALE_CURRENT_AUTHORITY_COUNT` | **0** |
 | `CONNECTION_URI_OUTPUT_COUNT` / `PASSWORD_OUTPUT_COUNT` / `TOKEN_OUTPUT_COUNT` | 0 |
 | `PRIVATE_KEY_OUTPUT_COUNT` / `VPS_ENDPOINT_OUTPUT_COUNT` / `CREDENTIAL_PATH_OUTPUT_COUNT` | 0 |
 | `SECRET_VALUE_OUTPUT_COUNT` / `PROHIBITED_INFRASTRUCTURE_METADATA_COUNT` | 0 |
 
 ## 11. Final status
 
-- **U042** — CI-R3A.8 through CI-R3A.8.3 authority corrections remain valid and passed independent
-  review (`CI_R3A83_INDEPENDENT_REVIEW` = PASS). Option J remains a **candidate** until executable
-  proof passes. Controlled CI-R3B entry is authorized for isolated non-production implementation and
-  testing (`U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` = YES). Entry authorization does **not** mean
-  the strategy is safe, finally accepted, replay-proven, recovery-proven or production-authorized.
-  Final acceptance remains gated by CI-R3B acceptance gates 2–7 (§5a).
-- **U043** — product owner decision **DEPRECATE_AND_REMOVE** recorded (`U043_STATUS` =
-  `PRODUCT_OWNER_DECISION_APPROVED`; `U043_RESOLVED_COUNT` = 1). Independent evidence review **PASS**.
-  No removal implemented in this phase (`U043_REMOVAL_IMPLEMENTATION_COUNT` = 0).
-- No migration, schema, runtime or test change; no production access or deployment; JSON evidence
-  byte-identical; CI-R3B implementation has **not** started; CI-R3B may begin only after this commit
-  passes independent review and PR #1029 is merged.
+- **U042** — controlled CI-R3B entry authorized (`U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` = YES;
+  `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` = 1). Final technical acceptance not yet proven
+  (`U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` = 0). CI-R3B acceptance gates 2–7 block final acceptance,
+  merge and deployment only — not controlled implementation start
+  (`REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0).
+- **U043** — product owner decision **DEPRECATE_AND_REMOVE** recorded; `brake_trip_metrics`
+  classified **PRODUCT_APPROVED_REMOVAL**; no current-authority orphan-review or pending-U043 state.
+- No migration, schema, runtime or test change; JSON evidence byte-identical; CI-R3B not started.
 
-**Status: CI_R3A9_AUTHORITY_COMPLETED** — awaiting independent review of this closure record and PR
-#1029 merge before controlled CI-R3B work begins on a dedicated branch from updated `main`.
+**Status: CI_R3A91_CORRECTION_COMPLETED** — awaiting independent review and PR #1029 merge before
+controlled CI-R3B work begins.
 
 ## 12. CI-R3A.9 — Final authority closure and controlled CI-R3B entry
 
@@ -978,6 +977,10 @@ deployed until all mandatory acceptance gates in §5a pass.
 | `R3B_MERGE_AUTHORIZED` | **NO** |
 | `R3B_DEPLOYMENT_AUTHORIZED` | **NO** |
 | `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | **0** |
+| `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` | **1** |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` | **1** |
+| `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` | **0** |
 
 ### 12c. U043 — binding product-owner decision
 
@@ -1008,3 +1011,36 @@ step. No schema, migration or runtime change occurs in CI-R3A.9.
 CI-R3A authority is complete. PR #1029 must still pass independent review and be merged. CI-R3B
 starts afterward on a dedicated branch from updated `main`. CI-R3B implementation, replay and
 fault-injection evidence remain outstanding.
+
+## 13. CI-R3A.9.1 — Final authority consistency cleanup
+
+Independent review of CI-R3A.9 found three current-authority inconsistencies. This phase corrects
+them only; no executable behavior or evidence changed.
+
+| Correction | Authority |
+|------------|-----------|
+| U043 disposition | `brake_trip_metrics` reclassified from ORPHAN_REVIEW_REQUIRED to **PRODUCT_APPROVED_REMOVAL**; exists in production until separately controlled removal; excluded from bootstrap because removal was approved |
+| Blocker vs acceptance | `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0; CI-R3B acceptance gates 2–7 are final-acceptance blockers only (`R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` = 1) |
+| Historical Option J table | §5 Option-J row “not independently approved” explicitly marked **HISTORICAL — SUPERSEDED BY CI-R3A.9** |
+
+| Counter | Value |
+|---------|-------|
+| `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` | **1** |
+| `ORPHAN_REVIEW_REQUIRED_COUNT` | **0** |
+| `U043_PENDING_OBJECT_COUNT` | **0** |
+| `U043_REMOVAL_IMPLEMENTATION_COUNT` | **0** |
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** |
+| `U043_RESOLVED_COUNT` | **1** |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` | **1** |
+| `U042_ENTRY_AUTHORITY_RESOLVED_COUNT` | **1** |
+| `U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` | **0** |
+| `STALE_ORPHAN_PENDING_U043_CLAIM_COUNT` | **0** |
+| `STALE_ORPHAN_REVIEW_REQUIRED_CURRENT_AUTHORITY_COUNT` | **0** |
+| `MISCLASSIFIED_R3B_ACCEPTANCE_AS_IMPLEMENTATION_BLOCKER_COUNT` | **0** |
+| `UNQUALIFIED_OPTION_J_NOT_INDEPENDENTLY_APPROVED_CLAIM_COUNT` | **0** |
+| `STALE_CURRENT_AUTHORITY_COUNT` | **0** |
+| `CI_R3A_AUTHORITY_STATUS` | **CI_R3A_AUTHORITY_COMPLETED** |
+| `CI_R3B_ENTRY_STATUS` | **AUTHORIZED_AFTER_CI_R3A_REVIEW_AND_MERGE** |
+| `CI_R3B_START_BLOCKER_COUNT` | **0** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
