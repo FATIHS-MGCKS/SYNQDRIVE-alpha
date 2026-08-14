@@ -246,7 +246,7 @@ BEGIN
         ALTER TABLE driving_events
             ADD CONSTRAINT driving_events_trip_id_fkey
             FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id)
-            ON UPDATE CASCADE ON DELETE SET;
+            ON UPDATE CASCADE ON DELETE SET NULL;
     END IF;
 END $$;
 
@@ -399,7 +399,7 @@ BEGIN
         ALTER TABLE trip_repairs
             ADD CONSTRAINT trip_repairs_trip_id_fkey
             FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id)
-            ON UPDATE CASCADE ON DELETE SET;
+            ON UPDATE CASCADE ON DELETE SET NULL;
     END IF;
 END $$;
 
