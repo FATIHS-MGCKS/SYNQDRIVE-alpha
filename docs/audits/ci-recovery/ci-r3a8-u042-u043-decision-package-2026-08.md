@@ -1,11 +1,11 @@
 # CI-R3A.8 — U042 / U043 decision authority package
 
-**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** (analysis and decision authority only)
+**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** (analysis and decision authority only)
 **Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08`
 **Base HEAD analysed:** `03de93b9179011525e12fd90f1399a501e2a7e5e`
-**Latest correction:** CI-R3A.8.2 (U042 post-shim self-row lifecycle and guard-semantics correction)
-**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e, §17f, §17g)
-**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8 / CI-R3A.8.1 / CI-R3A.8.2)
+**Latest correction:** CI-R3A.8.3 (U042 guard definition, source authority and counter integrity)
+**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e, §17f, §17g, §17h)
+**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8 / CI-R3A.8.1 / CI-R3A.8.2 / CI-R3A.8.3)
 
 Pinned Prisma authority (read from `backend/package-lock.json` at analysed HEAD):
 
@@ -146,7 +146,7 @@ Consequences (authoritative):
 - `prisma migrate deploy` aborts at the first failing migration file; it does not roll back earlier
   successfully applied migration files.
 
-### 1d. Pinned Prisma engine migration lifecycle (CI-R3A.8.2)
+### 1d. Pinned Prisma engine migration lifecycle (CI-R3A.8.2 / CI-R3A.8.3)
 
 Independently inspected upstream Prisma engines at commit **`605197351a3c8bdd595af2d2a9bc3025bca48ea2`**
 (matching `@prisma/engines-version` **5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2** in
@@ -154,12 +154,11 @@ Independently inspected upstream Prisma engines at commit **`605197351a3c8bdd595
 
 | File (pinned commit) | Role |
 |----------------------|------|
-| `schema-engine/commands/src/commands/apply_migrations.rs` | per-migration orchestration |
+| `schema-engine/core/src/commands/apply_migrations.rs` | per-migration orchestration |
 | `schema-engine/connectors/sql-schema-connector/src/sql_migration_persistence.rs` | `_prisma_migrations` row writes |
 
-The user-facing path alias `schema-engine/core/src/commands/apply_migrations.rs` refers to the same
-orchestration module family; at this pinned commit the authoritative file is under
-`schema-engine/commands/src/commands/`.
+At this pinned commit, `schema-engine/commands/src/commands/apply_migrations.rs` **does not exist**
+(**SUPERSEDED BY CI-R3A.8.3** — CI-R3A.8.2 incorrectly documented that path as authoritative).
 
 Confirmed execution order inside `apply_migrations()` for each unapplied migration:
 
@@ -170,19 +169,26 @@ Confirmed execution order inside `apply_migrations()` for each unapplied migrati
 4. on success: `record_migration_finished(id)` → SET `finished_at`
 5. on failure: `record_failed_step(id, logs)` → write logs; **`finished_at` is not set**
 
-Additional preflight authority (`detect_failed_migrations()` in the same file): before applying any
-new migration, Prisma scans existing rows where `finished_at IS NULL AND rolled_back_at IS NULL` and
-aborts deploy if any exist. That is a **between-migration** preflight — not an in-script requirement
+Additional preflight authority (`detect_failed_migrations()` in the orchestration file): before
+applying any new migration, Prisma scans existing rows where `finished_at IS NULL AND rolled_back_at IS NULL`
+and aborts deploy if any exist. That is a **between-migration** preflight — not an in-script requirement
 that the current migration's own row already has `finished_at` set.
 
 | Counter | Value |
 |---------|-------|
 | `PINNED_PRISMA_CLI_VERSION` | **5.22.0** |
 | `PINNED_PRISMA_ENGINE_COMMIT` | **605197351a3c8bdd595af2d2a9bc3025bca48ea2** |
+| `PINNED_ORCHESTRATION_SOURCE_PATH` | **schema-engine/core/src/commands/apply_migrations.rs** |
+| `PINNED_PERSISTENCE_SOURCE_PATH` | **schema-engine/connectors/sql-schema-connector/src/sql_migration_persistence.rs** |
+| `PINNED_ORCHESTRATION_SOURCE_EXISTS` | **YES** |
+| `PINNED_PERSISTENCE_SOURCE_EXISTS` | **YES** |
+| `FALSE_COMMANDS_SOURCE_PATH_EXISTS` | **NO** |
 | `PINNED_ENGINE_SOURCE_VERIFIED` | **YES** |
 | `MIGRATION_ROW_CREATED_BEFORE_SCRIPT` | **YES** |
 | `FINISHED_AT_NULL_DURING_SCRIPT` | **YES** |
 | `FINISHED_AT_SET_AFTER_SCRIPT_SUCCESS` | **YES** |
+| `STALE_FALSE_PRISMA_SOURCE_PATH_COUNT` | **0** |
+| `FALSE_SOURCE_PATH_ALIAS_CLAIM_COUNT` | **0** |
 
 ---
 
@@ -247,16 +253,17 @@ can persist across files even when each individual file's own submission is atom
 
 ---
 
-## 3. Precedence-ordered deterministic guard model (CI-R3A.8.2)
+## 3. Precedence-ordered deterministic guard model (CI-R3A.8.2 / CI-R3A.8.3)
 
 The CI-R3A.8 G01–G17 table is **superseded**. CI-R3A.8.1 corrected transaction scope and introduced
-first-match evaluation, but still contained two defects corrected here:
+first-match evaluation. CI-R3A.8.2 corrected self-row lifecycle and raw/effective predicate semantics.
+CI-R3A.8.3 completes guard definitions and counter accounting:
 
-1. **POST-FC01 was self-blocking** — it treated the post-shim's own normal active migration row
-   (`finished_at` NULL during `apply_script`) as a failure condition, preventing POST-ACT01 and
-   POST-NOOP01 from ever executing. **SUPERSEDED BY CI-R3A.8.2**.
-2. **Raw predicates were described as mutually exclusive** — first-match precedence makes
-   **effective outcomes** disjoint, but raw predicates may overlap. **SUPERSEDED BY CI-R3A.8.2**.
+1. **POST-FC01 was self-blocking** — **SUPERSEDED BY CI-R3A.8.2**.
+2. **Raw predicates were described as mutually exclusive** — **SUPERSEDED BY CI-R3A.8.2**.
+3. **POST-PRE-FC05–POST-PRE-FC10 were referenced but not individually defined** — **SUPERSEDED BY CI-R3A.8.3**.
+4. **Guard-row counters contained impossible arithmetic** (e.g. "20 pre-shim rows", fail-closed total 23) —
+   **SUPERSEDED BY CI-R3A.8.3**.
 
 Both shims are **guard-first**: they read catalog state and `_prisma_migrations`, evaluate ordered
 predicates, and either perform a complete allowed action or raise. They are **not** executable
@@ -352,12 +359,29 @@ That rule matched the normal active self-row and blocked POST-ACT01 / POST-NOOP0
 
 Fail-closed **history** predicates (distinct from the expected self-row):
 
-| Row | RAW_PREDICATE | Classification |
-|-----|---------------|----------------|
-| POST-PRE-FC01 | two or more unresolved active rows (`finished_at` NULL AND `rolled_back_at` NULL) for the post-shim `migration_name` | FAIL_CLOSED |
-| POST-PRE-FC02 | a finished post-shim row (`finished_at` NOT NULL, `rolled_back_at` NULL) **and** an additional unresolved row for the same `migration_name` coexist | FAIL_CLOSED |
-| POST-PRE-FC03 | the current self-row has `rolled_back_at` NOT NULL | FAIL_CLOSED |
-| POST-PRE-FC04 | any older row for the post-shim `migration_name` is unresolved **and** is not the current self-row id | FAIL_CLOSED |
+| Row | Category | RAW_PREDICATE | Classification | Action |
+|-----|----------|---------------|----------------|--------|
+| POST-PRE-FC01 | history | two or more unresolved active rows (`finished_at` NULL AND `rolled_back_at` NULL) for the post-shim `migration_name` | FAIL_CLOSED | abort |
+| POST-PRE-FC02 | history | a finished post-shim row (`finished_at` NOT NULL, `rolled_back_at` NULL) **and** an additional unresolved row for the same `migration_name` coexist | FAIL_CLOSED | abort |
+| POST-PRE-FC03 | history | the current self-row has `rolled_back_at` NOT NULL | FAIL_CLOSED | abort |
+| POST-PRE-FC04 | history | any older row for the post-shim `migration_name` is unresolved **and** is not the current self-row id | FAIL_CLOSED | abort |
+| POST-PRE-FC05 | catalog | for either logical table, both its lowercase and PascalCase relation exist simultaneously (`vehicle_trips` and `"VehicleTrip"`, or `trip_driving_impact` and `"TripDrivingImpact"`) | FAIL_CLOSED | abort before rename/no-op |
+| POST-PRE-FC06 | catalog | for either logical table, neither its lowercase nor PascalCase relation exists | FAIL_CLOSED | abort before rename/no-op |
+| POST-PRE-FC07 | catalog | exactly one affected logical table is lowercase while the other affected logical table is PascalCase (e.g. `vehicle_trips` + `"TripDrivingImpact"`, or `"VehicleTrip"` + `trip_driving_impact`) | FAIL_CLOSED | abort before rename/no-op |
+| POST-PRE-FC08 | catalog | one or both temporary enum types exist: `TripAssignmentStatus_old`, `TripAssignmentSubjectType_old` | FAIL_CLOSED | abort before rename/no-op |
+| POST-PRE-FC09 | catalog | replacement `TripAssignmentStatus` type missing; or replacement `TripAssignmentSubjectType` type missing; or `TripAssignmentStatus` contains retired `ASSIGNED_USER`; or `TripAssignmentSubjectType` contains retired `USER`; or final ordered label sets do not match accepted authority | FAIL_CLOSED | abort before rename/no-op |
+| POST-PRE-FC10 | catalog | target migration row absent; or target `finished_at` is NULL; or target `rolled_back_at` is NOT NULL; or an affected relation is outside schema `public`; or an affected relation is not an ordinary table; or a conflicting relation name or incompatible catalog object exists | FAIL_CLOSED | abort before rename/no-op |
+| POST-ACT01 | action | POST-PRE-FC01–POST-PRE-FC10 all false; PascalCase relations present; lowercase relations absent; fresh replay path | FRESH_REPLAY_ACTION | rename to lowercase |
+| POST-NOOP01 | action | POST-PRE-FC01–POST-PRE-FC10 all false; lowercase relations present; PascalCase relations absent; existing-applied path | EXISTING_APPLIED_NOOP | no-op |
+
+| Counter | Value |
+|---------|-------|
+| `POST_SHIM_HISTORY_FAIL_CLOSED_ROW_COUNT` | **4** (POST-PRE-FC01–04) |
+| `POST_SHIM_CATALOG_FAIL_CLOSED_ROW_COUNT` | **6** (POST-PRE-FC05–10) |
+| `DEFINED_POST_PRE_FC01_FC10_ROW_COUNT` | **10** |
+| `UNDEFINED_POST_PRE_GUARD_ROW_REFERENCE_COUNT` | **0** |
+| `MISSING_POST_PRE_GUARD_ROW_ID_COUNT` | **0** |
+| `DUPLICATE_POST_PRE_GUARD_ROW_ID_COUNT` | **0** |
 
 #### 3.3.2 PHASE A — precondition evaluation (before action SQL)
 
@@ -366,7 +390,7 @@ Before executing rename/no-op SQL, require (for the chosen path):
 | Requirement | POST-ACT01 (fresh replay) | POST-NOOP01 (existing-applied) |
 |-------------|---------------------------|--------------------------------|
 | exactly one expected current active post-shim self-row (§3.3.1) | YES | YES |
-| POST-PRE-FC01–POST-PRE-FC04 all false | YES | YES |
+| POST-PRE-FC01–POST-PRE-FC10 all false (§3.3.1 guard table) | YES | YES |
 | target migration finished; `rolled_back_at` NULL | YES | YES |
 | PascalCase relations present | YES | NO |
 | lowercase relations absent | YES | NO |
@@ -374,7 +398,6 @@ Before executing rename/no-op SQL, require (for the chosen path):
 | PascalCase relations absent | NO | YES |
 | replacement enums present; `_old` absent; retired labels absent | YES | YES |
 | relation kinds = ordinary tables in `public`; no conflicting names | YES | YES |
-| POST-PRE catalog fail-closed rows POST-PRE-FC05–POST-PRE-FC10 all false (duplicate/missing/mixed casing; `_old` residue; missing replacement enums; retired labels; target unfinished) | YES | YES |
 
 `POST_SHIM_PRECONDITION_PHASE_PRESENT` = **YES**
 
@@ -416,51 +439,107 @@ completed executable replay.
 
 #### Fresh replay path → POST-ACT01
 
-At post-shim execution (after target finished successfully):
+At post-shim execution (after target finished successfully), all ten POST-PRE-FC guards are false when:
 
-- exactly one expected current active post-shim self-row (`finished_at` NULL, `rolled_back_at` NULL)
-- PascalCase relations present; lowercase absent
-- enum final state valid; POST-PRE-FC01–POST-PRE-FC04 false; Phase A catalog predicates false
+| Guard | Why false on fresh replay path |
+|-------|--------------------------------|
+| POST-PRE-FC01 | exactly one expected current active self-row; no second unresolved row |
+| POST-PRE-FC02 | no finished prior post-shim row coexisting with an additional unresolved row |
+| POST-PRE-FC03 | current self-row `rolled_back_at` is NULL |
+| POST-PRE-FC04 | no older unresolved row other than the current self-row |
+| POST-PRE-FC05 | PascalCase present and lowercase absent — not both simultaneously |
+| POST-PRE-FC06 | both PascalCase relations exist |
+| POST-PRE-FC07 | both relations are PascalCase (not mixed) |
+| POST-PRE-FC08 | target enum rebuild completed; no `_old` enum types remain |
+| POST-PRE-FC09 | replacement enums present with accepted final label sets; retired labels absent |
+| POST-PRE-FC10 | target row finished; relations are ordinary tables in `public`; no conflicting catalog objects |
 
 → **POST-ACT01 is reachable.** After action, postconditions pass; `apply_script` returns; Prisma sets
 `finished_at`.
 
 | Counter | Value |
 |---------|-------|
+| `POST_ACT01_ALL_PRECONDITIONS_ENUMERATED` | **YES** |
+| `POST_ACT01_FALSE_GUARD_COUNT` | **10** |
 | `POST_ACT01_FRESH_REPLAY_REACHABLE` | **YES** |
 | `POST_ACTION_PATH_SELF_BLOCKED` | **NO** |
 
 #### Existing-applied path → POST-NOOP01
 
-When the retroactive post-shim is first applied to an already-lowercase database:
+When the retroactive post-shim is first applied to an already-lowercase database, all ten POST-PRE-FC
+guards are false when:
 
-- exactly one expected current active post-shim self-row
-- target row already finished; lowercase present; PascalCase absent; enum final state valid
+| Guard | Why false on existing-applied path |
+|-------|------------------------------------|
+| POST-PRE-FC01 | exactly one expected current active self-row |
+| POST-PRE-FC02 | no contradictory finished + unresolved post-shim history |
+| POST-PRE-FC03 | current self-row `rolled_back_at` is NULL |
+| POST-PRE-FC04 | no stale unresolved older attempt |
+| POST-PRE-FC05 | lowercase present and PascalCase absent — not both simultaneously |
+| POST-PRE-FC06 | both lowercase relations exist |
+| POST-PRE-FC07 | both relations are lowercase (not mixed) |
+| POST-PRE-FC08 | no `_old` enum types |
+| POST-PRE-FC09 | replacement enums present with accepted final label sets |
+| POST-PRE-FC10 | target row finished; relations are ordinary tables in `public` |
 
 → **POST-NOOP01 is reachable** (no-op action; postconditions trivially pass).
 
 | Counter | Value |
 |---------|-------|
+| `POST_NOOP01_ALL_PRECONDITIONS_ENUMERATED` | **YES** |
+| `POST_NOOP01_FALSE_GUARD_COUNT` | **10** |
 | `POST_NOOP01_EXISTING_APPLIED_REACHABLE` | **YES** |
 | `POST_NOOP_PATH_SELF_BLOCKED` | **NO** |
 
-### 3a. Guard counters (CI-R3A.8.2)
+### 3a. Guard counters (CI-R3A.8.3)
+
+#### Pre-shim accounting
+
+| Counter | Value | Derivation |
+|---------|-------|------------|
+| `U042_PRE_SHIM_FAIL_CLOSED_ROW_COUNT` | **9** | PRE-FC01–PRE-FC09 |
+| `U042_PRE_SHIM_ACTION_NOOP_ROW_COUNT` | **2** | PRE-ACT01, PRE-NOOP01 |
+| `U042_PRE_SHIM_OUTCOME_ROW_COUNT` | **11** | 9 + 2 |
+
+#### Post-shim accounting
+
+| Counter | Value | Derivation |
+|---------|-------|------------|
+| `U042_POST_SHIM_HISTORY_FAIL_CLOSED_ROW_COUNT` | **4** | POST-PRE-FC01–04 |
+| `U042_POST_SHIM_CATALOG_FAIL_CLOSED_ROW_COUNT` | **6** | POST-PRE-FC05–10 |
+| `U042_POST_SHIM_FAIL_CLOSED_ROW_COUNT` | **10** | 4 + 6 |
+| `U042_POST_SHIM_ACTION_NOOP_ROW_COUNT` | **2** | POST-ACT01, POST-NOOP01 |
+| `U042_POST_SHIM_OUTCOME_ROW_COUNT` | **12** | 10 + 2 |
+
+#### Total guard accounting
+
+| Counter | Value | Derivation |
+|---------|-------|------------|
+| `U042_FAIL_CLOSED_ROW_COUNT` | **19** | 9 + 4 + 6 |
+| `U042_ACTION_NOOP_ROW_COUNT` | **4** | 2 + 2 |
+| `U042_GUARD_OUTCOME_ROW_COUNT` | **23** | 11 + 12 = 19 + 4 |
+| `U042_GUARD_COUNTER_ARITHMETIC_MISMATCH_COUNT` | **0** |
+
+The postcondition assertion phase (§3.3.4) is **not** counted as a guard outcome row.
 
 | Counter | Value |
 |---------|-------|
-| `U042_GUARD_OUTCOME_ROW_COUNT` | **20** pre-shim rows + **4** POST-PRE-FC history rows + **2** action paths + postcondition phase (not counted as outcome rows) |
 | `U042_GUARD_STATE_SPACE_STATUS` | **INCOMPLETE_PENDING_EXECUTABLE_REPLAY** |
 | `U042_FRESH_REPLAY_ACTION_ROW_COUNT` | **2** (PRE-ACT01, POST-ACT01) |
 | `U042_EXISTING_APPLIED_NOOP_ROW_COUNT` | **2** (PRE-NOOP01, POST-NOOP01) |
-| `U042_FAIL_CLOSED_ROW_COUNT` | **13** pre-shim (PRE-FC01–PRE-FC09) + **4** post-shim history (POST-PRE-FC01–04) + **6** post-shim catalog (POST-PRE-FC05–10) = **23** |
 | `U042_UNCLASSIFIED_STATE_COUNT` | **NOT_PROVEN_ZERO** |
 | `U042_PARTIAL_PERSISTENCE_RISK_PRESENT` | **YES** |
 | `U042_ZERO_PARTIAL_PERSISTENCE_PROVEN` | **NO** |
 | `U042_PRODUCTION_RENAME_COUNT` | **0** (when effective path is PRE-NOOP01 + POST-NOOP01) |
 | `U042_PRODUCTION_DATA_MUTATION_COUNT` | **0** |
+| `STALE_PRE_SHIM_OUTCOME_COUNT_20_CLAIM_COUNT` | **0** |
+| `STALE_PRE_SHIM_FAIL_CLOSED_COUNT_13_CLAIM_COUNT` | **0** |
+| `STALE_TOTAL_FAIL_CLOSED_COUNT_23_CLAIM_COUNT` | **0** |
 
-Historical: `U042_GUARD_TRUTH_TABLE_ROW_COUNT` = 17 (G01–G17, superseded); CI-R3A.8.1
-`U042_GUARD_ROW_OVERLAP_COUNT` = 0 (superseded by raw/effective semantics).
+Historical (**SUPERSEDED BY CI-R3A.8.3**): CI-R3A.8.2 claimed `U042_GUARD_OUTCOME_ROW_COUNT` = 20
+pre-shim rows + misc post-shim parts; `U042_FAIL_CLOSED_ROW_COUNT` = 23 via 13 + 4 + 6. CI-R3A.8.1
+`U042_GUARD_ROW_OVERLAP_COUNT` = 0 (superseded by raw/effective semantics — §3.0). G01–G17 table
+superseded.
 
 ### 3.5 Recovery states (authority documentation only)
 
@@ -765,7 +844,7 @@ implemented in this phase.
 
 ## 10. Scope, safety and phase counters
 
-Current phase = **CI-R3A.8.2** (U042 post-shim self-row lifecycle and guard-semantics correction;
+Current phase = **CI-R3A.8.3** (U042 guard definition, source authority and counter integrity;
 U043 substance unchanged):
 
 | Counter | Value |
@@ -788,7 +867,16 @@ U043 substance unchanged):
 | `OUT_OF_SCOPE_FILE_COUNT` | 0 |
 | `DECISION_PACKAGE_COMPLETED_COUNT` | 1 (CI-R3A.8 delivery) |
 | `CI_R3A81_CORRECTION_COMPLETED_COUNT` | 1 (historical — CI-R3A.8.1) |
-| `CI_R3A82_CORRECTION_COMPLETED_COUNT` | 1 |
+| `CI_R3A82_CORRECTION_COMPLETED_COUNT` | 1 (historical — CI-R3A.8.2) |
+| `CI_R3A83_CORRECTION_COMPLETED_COUNT` | 1 |
+| `U042_GUARD_COUNTER_ARITHMETIC_MISMATCH_COUNT` | 0 |
+| `DEFINED_POST_PRE_FC01_FC10_ROW_COUNT` | 10 |
+| `UNDEFINED_POST_PRE_GUARD_ROW_REFERENCE_COUNT` | 0 |
+| `STALE_FALSE_PRISMA_SOURCE_PATH_COUNT` | 0 |
+| `FALSE_SOURCE_PATH_ALIAS_CLAIM_COUNT` | 0 |
+| `STALE_PRE_SHIM_OUTCOME_COUNT_20_CLAIM_COUNT` | 0 |
+| `STALE_PRE_SHIM_FAIL_CLOSED_COUNT_13_CLAIM_COUNT` | 0 |
+| `STALE_TOTAL_FAIL_CLOSED_COUNT_23_CLAIM_COUNT` | 0 |
 | `POST_SHIM_PHASE_COUNT` | 3 |
 | `POSTCONDITION_REQUIRES_SELF_FINISHED_AT_COUNT` | 0 |
 | `STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` | 0 |
@@ -808,11 +896,11 @@ U043 substance unchanged):
 
 - **U042** — CI-R3A.8 statement, ordering and dependency authority remain valid. CI-R3A.8.1 corrected
   transaction scope (§1c), two persistence windows (§2b), recovery states (§3.5) and fault-injection
-  requirements (§3.6). CI-R3A.8.2 corrects the remaining independent-review defects: the former
-  POST-FC01 rule was self-blocking (§3.3.1); the post-shim now uses three explicit phases
-  (precondition / action / in-script postcondition — §3.3); POST-ACT01 and POST-NOOP01 are logically
-  reachable (§3.4); raw guard predicates may overlap but effective first-match outcomes are disjoint
-  (§3.0). Option J remains a **candidate only**: `INDEPENDENT_REVIEW_CORRECTION_REQUIRED`;
+  requirements (§3.6). CI-R3A.8.2 corrected self-row lifecycle (§3.3.1), three-phase post-shim model,
+  raw/effective guard semantics (§3.0) and reachability proofs. CI-R3A.8.3 corrects the pinned Prisma
+  orchestration source path (§1d), individually defines POST-PRE-FC01–POST-PRE-FC10 (§3.3.1 guard
+  table), and rebalances all guard counters to the 23-outcome / 19 fail-closed / 4 action-no-op model
+  (§3a). Option J remains a **candidate only**: `INDEPENDENT_REVIEW_CORRECTION_REQUIRED`;
   `CASING_STRATEGY_STATUS` = `INSUFFICIENT_AUTHORITY`. No executable replay is claimed in this phase.
   Executable replay plus fault-injection and recovery proof remain mandatory before CI-R3B may begin.
 - **U043** — independent evidence review **PASS**; substance unchanged (45 classified hits, 0 runtime
@@ -822,5 +910,5 @@ U043 substance unchanged):
 - No migration, schema, runtime or test change; no production access; the accepted JSON evidence is
   byte-identical; CI-R3B remains blocked; E7/E8/E9 remain unstarted.
 
-**Status: CI_R3A82_CORRECTION_COMPLETED** — awaiting independent review (U042 executable replay +
+**Status: CI_R3A83_CORRECTION_COMPLETED** — awaiting independent review (U042 executable replay +
 fault-injection/recovery proof) and product-owner decision (U043).

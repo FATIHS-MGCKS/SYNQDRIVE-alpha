@@ -358,14 +358,14 @@ selection + 1 orphan decision = **43**.
 | U039 | vehicle_trips | Live table identifier casing (lowercase vs camelCase)? | JSON casing: relname lowercase; camelCase ghost absent (§17d) | — | decides casing-repair need + Option J direction | pg_class | no casing repair until known | **RESOLVED (lowercase)** |
 | U040 | trip_driving_impact | Live table identifier casing (lowercase vs camelCase)? | JSON casing: relname lowercase; camelCase ghost absent (§17d) | — | decides casing-repair need + Option J direction | pg_class | no casing repair until known | **RESOLVED (lowercase)** |
 | U041 | 20260425000000 | Is this migration recorded applied in target _prisma_migrations? | JSON migration_metadata: finished, not rolled back, applied_steps_count=0 (§17d) | — | Option J guard branches on applied-state | _prisma_migrations | no Option J guard until known | **RESOLVED (APPLIED)** |
-| U042 | casing repair | Which mechanism (Option B edit vs Option J append) is safe? | JSON casing + U041; CI-R3A.8 statement/ordering/dependency authority; CI-R3A.8.1 transaction/persistence/recovery correction (§17f); CI-R3A.8.2 post-shim self-row and guard-semantics correction (§17g) | independent approval + pinned-engine replay + fault-injection/recovery proof | end-to-end replay must pass 20260425000000 safely across separate migration boundaries | reviewer sign-off + executable replay + F01–F04 gates | no casing repair until approved and replay/recovery-proven | **INDEPENDENT_REVIEW_CORRECTION_REQUIRED** |
+| U042 | casing repair | Which mechanism (Option B edit vs Option J append) is safe? | JSON casing + U041; CI-R3A.8 statement/ordering/dependency authority; CI-R3A.8.1 transaction/persistence/recovery correction (§17f); CI-R3A.8.2 post-shim self-row and guard-semantics correction (§17g); CI-R3A.8.3 guard definition and counter integrity (§17h) | independent approval + pinned-engine replay + fault-injection/recovery proof | end-to-end replay must pass 20260425000000 safely across separate migration boundaries | reviewer sign-off + executable replay + F01–F04 gates | no casing repair until approved and replay/recovery-proven | **INDEPENDENT_REVIEW_CORRECTION_REQUIRED** |
 | U043 | brake_trip_metrics | Should it be bootstrapped or removed from the schema? | JSON table present (11 cols/2 constraints/3 indexes); 0 migration refs (§4); CI-R3A.8 search: 0 runtime readers/writers, 0 contracts (§17e); independent evidence review PASS (§17f) | explicit product-owner decision (retain vs destructive removal) | determines inclusion in bootstrap vs schema removal | product/architecture owner | no action until decided | **AWAITING_PRODUCT_OWNER_DECISION** |
 
 <!-- ATOMIC_UNKNOWN_LEDGER_END -->
 
 `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = `ATOMIC_UNKNOWN_LEDGER_ROW_COUNT` =
 `ATOMIC_UNKNOWN_UNIQUE_ID_COUNT` = **43**. `PRODUCTION_AUTHORITY_RESOLVED_UNKNOWN_COUNT` (U001–U041) =
-**41** (CI-R3A.7.1). `INDEPENDENT_REVIEW_CORRECTION_LEDGER_ROW_COUNT` (U042) = **1** (CI-R3A.8.1 §17f + CI-R3A.8.2 §17g).
+**41** (CI-R3A.7.1). `INDEPENDENT_REVIEW_CORRECTION_LEDGER_ROW_COUNT` (U042) = **1** (CI-R3A.8.1 §17f + CI-R3A.8.2 §17g + CI-R3A.8.3 §17h).
 `PRODUCT_DECISION_LEDGER_ROW_COUNT` (U043) = **1**. `U042_RESOLVED_COUNT` = 0;
 `U043_RESOLVED_COUNT` = 0. `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = **2**
 (U042 independent approval + executable replay/fault-injection/recovery proof; U043 product-owner decision).
@@ -400,7 +400,7 @@ authority.
   now authorized against captured lowercase production shapes.
 - `BASE_GAP_STRATEGY_STATUS` = SAFE_CANDIDATE (**production-authorized** — §17d);
   `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY (U042 — Option J candidate only; CI-R3A.8.1 §17f +
-  CI-R3A.8.2 §17g; cross-migration recovery unresolved);
+  CI-R3A.8.2 §17g; CI-R3A.8.3 §17h; cross-migration recovery unresolved);
   `END_TO_END_R3B_STRATEGY_STATUS` = BLOCKED (U042 executable replay + fault-injection/recovery
   proof; U043 product decision). `CI_R3B_IMPLEMENTATION_COUNT` = 0.
 
@@ -412,13 +412,13 @@ in the schema; `brake_trip_metrics` is orphan (no migration ref, no code reader/
 
 ## 12. Scope counters
 
-Scope is reported per commit. **Current phase = CI-R3A.8.2** (U042 post-shim self-row lifecycle and
-guard-semantics correction; U043 substance unchanged):
+Scope is reported per commit. **Current phase = CI-R3A.8.3** (U042 guard definition, source authority
+and counter integrity; U043 substance unchanged):
 
 | Counter | Value |
 |---------|-------|
 | `CHANGED_FILE_COUNT` | 2 |
-| `AUDIT_REPORT_CHANGE_COUNT` | 1 (this file — §17g + U042 cross-reference updates) |
+| `AUDIT_REPORT_CHANGE_COUNT` | 1 (this file — §17h + U042 cross-reference updates) |
 | `DECISION_PACKAGE_FILE_CHANGE_COUNT` | 1 (`ci-r3a8-u042-u043-decision-package-2026-08.md`, corrected) |
 | `DOCUMENTATION_FILE_CHANGE_COUNT` | 2 |
 | `JSON_EVIDENCE_CHANGE_COUNT` | 0 (`ci-r3a7-production-catalog-evidence-2026-08.json` byte-identical) |
@@ -428,6 +428,17 @@ guard-semantics correction; U043 substance unchanged):
 | `PRODUCTION_DATABASE_ACCESS_COUNT` | 0 |
 | `PRODUCTION_DEPLOYMENT_COUNT` / `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E6`/`E7`/`E8`/`E9` scope / `OUT_OF_SCOPE_FILE_COUNT` | 0 |
+| `U042_GUARD_OUTCOME_ROW_COUNT` | 23 |
+| `U042_FAIL_CLOSED_ROW_COUNT` | 19 |
+| `U042_ACTION_NOOP_ROW_COUNT` | 4 |
+| `U042_GUARD_COUNTER_ARITHMETIC_MISMATCH_COUNT` | 0 |
+| `DEFINED_POST_PRE_FC01_FC10_ROW_COUNT` | 10 |
+| `UNDEFINED_POST_PRE_GUARD_ROW_REFERENCE_COUNT` | 0 |
+| `STALE_FALSE_PRISMA_SOURCE_PATH_COUNT` | 0 |
+| `FALSE_SOURCE_PATH_ALIAS_CLAIM_COUNT` | 0 |
+| `STALE_PRE_SHIM_OUTCOME_COUNT_20_CLAIM_COUNT` | 0 |
+| `STALE_PRE_SHIM_FAIL_CLOSED_COUNT_13_CLAIM_COUNT` | 0 |
+| `STALE_TOTAL_FAIL_CLOSED_COUNT_23_CLAIM_COUNT` | 0 |
 | `POST_SHIM_PHASE_COUNT` | 3 |
 | `POSTCONDITION_REQUIRES_SELF_FINISHED_AT_COUNT` | 0 |
 | `STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` | 0 |
@@ -456,7 +467,7 @@ Prior phase **CI-R3A.8** (historical, for reference):
 `STALE_DDL_AUTHORITY_CLAIM_COUNT` = 0 (creation vs evolution DDL separated — §5/§6);
 `STALE_CHECKSUM_CRITICALITY_CLAIM_COUNT` = 0 (checksum unknowns removed — §9/§10);
 `STALE_MODEL_HISTORY_CLAIM_COUNT` = 0 (`TripRepair` = 17019787; not all nine at 77c26dad);
-`STALE_U042_U043_STATUS_CLAIM_COUNT` = 0 (current statuses in §17f/§17g; §17e marked superseded where needed);
+`STALE_U042_U043_STATUS_CLAIM_COUNT` = 0 (current statuses in §17f/§17g/§17h; §17e marked superseded where needed);
 `STALE_U042_ATOMIC_WORKFLOW_CLAIM_COUNT` = 0;
 `STALE_U042_ZERO_PARTIAL_PERSISTENCE_CLAIM_COUNT` = 0;
 `STALE_U042_COMPLETE_GUARD_AUTHORITY_CLAIM_COUNT` = 0;
@@ -464,7 +475,14 @@ Prior phase **CI-R3A.8** (historical, for reference):
 `STALE_U042_AUTHORITY_CLAIM_COUNT` = 0;
 `STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` = 0;
 `STALE_RAW_GUARD_MUTUAL_EXCLUSIVITY_CLAIM_COUNT` = 0;
-`STALE_UNQUALIFIED_GUARD_OVERLAP_ZERO_CLAIM_COUNT` = 0.
+`STALE_UNQUALIFIED_GUARD_OVERLAP_ZERO_CLAIM_COUNT` = 0;
+`STALE_FALSE_PRISMA_SOURCE_PATH_COUNT` = 0;
+`FALSE_SOURCE_PATH_ALIAS_CLAIM_COUNT` = 0;
+`UNDEFINED_POST_PRE_GUARD_ROW_REFERENCE_COUNT` = 0;
+`STALE_PRE_SHIM_OUTCOME_COUNT_20_CLAIM_COUNT` = 0;
+`STALE_PRE_SHIM_FAIL_CLOSED_COUNT_13_CLAIM_COUNT` = 0;
+`STALE_TOTAL_FAIL_CLOSED_COUNT_23_CLAIM_COUNT` = 0;
+`U042_GUARD_COUNTER_ARITHMETIC_MISMATCH_COUNT` = 0.
 Superseded prior values (universe 54; 56 grouped unknowns; grouped ID ranges; "all nine models at
 77c26dad") are marked "SUPERSEDED BY CI-R3A.4".
 
@@ -879,7 +897,9 @@ occurred. U043 substance is unchanged.
 #### Pinned Prisma execution sequence
 
 Independently verified at engine commit **`605197351a3c8bdd595af2d2a9bc3025bca48ea2`** (CLI **5.22.0**)
-in `schema-engine/commands/src/commands/apply_migrations.rs` and
+in `schema-engine/core/src/commands/apply_migrations.rs` (**SUPERSEDED BY CI-R3A.8.3** — CI-R3A.8.2
+incorrectly cited `schema-engine/commands/src/commands/apply_migrations.rs`, which does not exist at
+this commit) and
 `schema-engine/connectors/sql-schema-connector/src/sql_migration_persistence.rs`:
 
 1. `record_migration_started` → INSERT `_prisma_migrations` row (`started_at` populated; `finished_at`
@@ -924,7 +944,7 @@ relevant for prior **unresolved** failed rows — it must not be misrepresented 
 
 | Phase | Name | Authority |
 |-------|------|-----------|
-| A | Precondition evaluation | POST-PRE-FC01–04 (history) + catalog predicates before action SQL |
+| A | Precondition evaluation | POST-PRE-FC01–10 (history + catalog) before action SQL |
 | B | Action | POST-ACT01 (fresh replay rename) or POST-NOOP01 (existing-applied no-op) — candidate only |
 | C | In-script postcondition assertions | verify lowercase final state; self-row still `finished_at` NULL inside `apply_script` |
 
@@ -991,9 +1011,103 @@ only to a genuinely failed or abandoned post-shim attempt after `apply_script` f
 | `PRODUCTION_DATABASE_ACCESS_COUNT` (this phase) | **0** |
 | `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
 
-`CI_R3A82_CORRECTION_STATUS` = **COMPLETED** — U042 documentation authority corrected for self-row
-lifecycle and guard semantics; executable replay plus fault-injection/recovery proof still required;
-U043 product decision still open; CI-R3B remains blocked; E7/E8/E9 remain unstarted.
+`CI_R3A82_CORRECTION_STATUS` = **COMPLETED** — superseded for source-path, guard-definition and counter
+accounting by §17h; self-row and raw/effective semantics remain valid.
+
+## 17h. CI-R3A.8.3 — Guard definition and counter integrity correction
+
+Independent review identified three remaining U042 authority defects in CI-R3A.8.2. This phase is
+documentation-only; no migration, schema, runtime, test, workflow, dependency or production change
+occurred. U043 substance is unchanged.
+
+#### Pinned Prisma source paths (corrected)
+
+| Counter | Value |
+|---------|-------|
+| `PINNED_ORCHESTRATION_SOURCE_PATH` | **schema-engine/core/src/commands/apply_migrations.rs** |
+| `PINNED_PERSISTENCE_SOURCE_PATH` | **schema-engine/connectors/sql-schema-connector/src/sql_migration_persistence.rs** |
+| `PINNED_ORCHESTRATION_SOURCE_EXISTS` | **YES** |
+| `PINNED_PERSISTENCE_SOURCE_EXISTS` | **YES** |
+| `FALSE_COMMANDS_SOURCE_PATH_EXISTS` | **NO** |
+| `STALE_FALSE_PRISMA_SOURCE_PATH_COUNT` | **0** |
+| `FALSE_SOURCE_PATH_ALIAS_CLAIM_COUNT` | **0** |
+
+CI-R3A.8.2 incorrectly documented `schema-engine/commands/src/commands/apply_migrations.rs` as the
+authoritative orchestration file and described the core path as a user-facing alias. At pinned commit
+`605197351a3c8bdd595af2d2a9bc3025bca48ea2`, only the core path exists. Execution sequence
+(record_migration_started → apply_script → record_successful_step → record_migration_finished) remains
+valid.
+
+#### POST-PRE-FC05–POST-PRE-FC10 individually defined
+
+All ten post-shim precondition guards are now defined in the decision package §3.3.1 guard table:
+
+| Category | Rows | Count |
+|----------|------|-------|
+| history fail-closed | POST-PRE-FC01–04 | 4 |
+| catalog fail-closed | POST-PRE-FC05–10 | 6 |
+| action/no-op | POST-ACT01, POST-NOOP01 | 2 |
+
+| Counter | Value |
+|---------|-------|
+| `DEFINED_POST_PRE_FC01_FC10_ROW_COUNT` | **10** |
+| `UNDEFINED_POST_PRE_GUARD_ROW_REFERENCE_COUNT` | **0** |
+| `MISSING_POST_PRE_GUARD_ROW_ID_COUNT` | **0** |
+| `DUPLICATE_POST_PRE_GUARD_ROW_ID_COUNT` | **0** |
+
+#### Complete 23-outcome guard accounting
+
+| Segment | Fail-closed | Action/no-op | Outcome total |
+|---------|-------------|--------------|---------------|
+| pre-shim | 9 (PRE-FC01–09) | 2 (PRE-ACT01, PRE-NOOP01) | 11 |
+| post-shim | 10 (POST-PRE-FC01–10) | 2 (POST-ACT01, POST-NOOP01) | 12 |
+| **total** | **19** | **4** | **23** |
+
+| Counter | Value |
+|---------|-------|
+| `U042_PRE_SHIM_OUTCOME_ROW_COUNT` | **11** |
+| `U042_POST_SHIM_OUTCOME_ROW_COUNT` | **12** |
+| `U042_FAIL_CLOSED_ROW_COUNT` | **19** |
+| `U042_ACTION_NOOP_ROW_COUNT` | **4** |
+| `U042_GUARD_OUTCOME_ROW_COUNT` | **23** |
+| `U042_GUARD_COUNTER_ARITHMETIC_MISMATCH_COUNT` | **0** |
+
+Historical CI-R3A.8.2 counters (**SUPERSEDED BY CI-R3A.8.3**): "20 pre-shim rows"; pre-shim
+fail-closed 13; total fail-closed 23.
+
+#### Reachability revalidated against all ten POST-PRE-FC guards
+
+| Path | Counters |
+|------|----------|
+| Fresh replay → POST-ACT01 | `POST_ACT01_ALL_PRECONDITIONS_ENUMERATED` = YES; `POST_ACT01_FALSE_GUARD_COUNT` = 10; reachable |
+| Existing-applied → POST-NOOP01 | `POST_NOOP01_ALL_PRECONDITIONS_ENUMERATED` = YES; `POST_NOOP01_FALSE_GUARD_COUNT` = 10; reachable |
+
+Self-row lifecycle, three-phase post-shim model and R04 correction from §17g remain valid. No
+executable replay claimed.
+
+#### Superseded CI-R3A.8.2 claims (must not appear as current authority)
+
+- `schema-engine/commands/src/commands/apply_migrations.rs` as authoritative path — **SUPERSEDED BY CI-R3A.8.3**
+- core path described as user-facing alias — **SUPERSEDED BY CI-R3A.8.3**
+- POST-PRE-FC05–10 referenced without individual definitions — **SUPERSEDED BY CI-R3A.8.3**
+- `U042_GUARD_OUTCOME_ROW_COUNT` = 20 pre-shim rows — **SUPERSEDED BY CI-R3A.8.3**
+- `U042_FAIL_CLOSED_ROW_COUNT` = 23 — **SUPERSEDED BY CI-R3A.8.3** (correct total = 19)
+
+| Counter | Value |
+|---------|-------|
+| `STALE_PRE_SHIM_OUTCOME_COUNT_20_CLAIM_COUNT` | **0** |
+| `STALE_PRE_SHIM_FAIL_CLOSED_COUNT_13_CLAIM_COUNT` | **0** |
+| `STALE_TOTAL_FAIL_CLOSED_COUNT_23_CLAIM_COUNT` | **0** |
+| `U043_INDEPENDENT_EVIDENCE_REVIEW` | **PASS** (substance unchanged) |
+| `U043_STATUS` | **AWAITING_PRODUCT_OWNER_DECISION** |
+| `U043_RESOLVED_COUNT` | **0** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+| `PRODUCTION_DATABASE_ACCESS_COUNT` (this phase) | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+`CI_R3A83_CORRECTION_STATUS` = **COMPLETED** — U042 guard definitions, source paths and counter
+accounting corrected; executable replay plus fault-injection/recovery proof still required; U043 product
+decision still open; CI-R3B remains blocked; E7/E8/E9 remain unstarted.
 
 ## 18. Final audit status
 
@@ -1003,14 +1117,15 @@ CREATE-vs-evolution DDL separation, the 55-file classified universe, a mechanica
 `ci-r3a7-production-catalog-evidence-2026-08.json`)** are complete and internally consistent. Option
 **D** is a SAFE_CANDIDATE for the base-gap and is **production-authorized** against captured lowercase
 shapes; casing repair remains an Option J **candidate only** with unresolved cross-migration recovery
-(`INSUFFICIENT_AUTHORITY` — U042, §17f/§17g); orphan `brake_trip_metrics` remains a product decision
+(`INSUFFICIENT_AUTHORITY` — U042, §17f/§17g/§17h); orphan `brake_trip_metrics` remains a product decision
 (U043, §17e/§17f).
 
-**Status: CI_R3A82_CORRECTION_COMPLETED** — repository audit complete; live propositions U001–U041
-resolved from committed sanitized evidence; U042 Option J candidate documented with CI-R3A.8.2
-self-row/guard-semantics correction (§17g) but executable replay + fault-injection/recovery proof still
-pending; U043 evidence review PASS with product decision still open. No executable replay claimed in
-CI-R3A.8.2. CI-R3B implementation remains blocked on both blockers; E7/E8/E9 remain unstarted.
+**Status: CI_R3A83_CORRECTION_COMPLETED** — repository audit complete; live propositions U001–U041
+resolved from committed sanitized evidence; U042 Option J candidate documented with CI-R3A.8.3 guard
+definition, source-path and counter-integrity correction (§17h) but executable replay +
+fault-injection/recovery proof still pending; U043 evidence review PASS with product decision still open.
+No executable replay claimed in CI-R3A.8.3. CI-R3B implementation remains blocked on both blockers;
+E7/E8/E9 remain unstarted.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 
