@@ -46,11 +46,11 @@
   },
   "classification_totals": {
     "TOTAL": 626,
-    "VALID": 556,
-    "INTENTIONAL": 35,
-    "MISSING_HISTORY": 28,
+    "VALID": 554,
+    "INTENTIONAL": 19,
+    "MISSING_HISTORY": 39,
     "ORDERING_DEFECT": 7,
-    "CONDITIONAL_SAFE": 0,
+    "CONDITIONAL_SAFE": 7,
     "FALSE_POSITIVE": 0,
     "UNRESOLVED": 0
   },
@@ -6211,12 +6211,12 @@
       "required_object_type": "column",
       "required_property": "dimo_mechanism",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:6",
         "-- Drop removed columns (safe: only if they exist) DO $$ BEGIN IF EXISTS ( SELEC\u2026"
@@ -6235,12 +6235,12 @@
       "required_object_type": "column",
       "required_property": "road_surface_type",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:7",
         "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_nam\u2026"
@@ -6259,12 +6259,12 @@
       "required_object_type": "column",
       "required_property": "road_surface_score",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:8",
         "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_nam\u2026"
@@ -6283,12 +6283,12 @@
       "required_object_type": "column",
       "required_property": "climate_factor",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:9",
         "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_nam\u2026"
@@ -6307,12 +6307,12 @@
       "required_object_type": "column",
       "required_property": "tire_wear_contrib_km",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:10",
         "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_nam\u2026"
@@ -6331,12 +6331,12 @@
       "required_object_type": "column",
       "required_property": "dtc_codes_found",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:11",
         "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_nam\u2026"
@@ -6355,12 +6355,12 @@
       "required_object_type": "column",
       "required_property": "avg_temperature_c",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": true,
-      "classification": "INTENTIONAL",
+      "classification": "CONDITIONAL_SAFE",
       "evidence": [
         "migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:12",
         "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_nam\u2026"
@@ -7411,12 +7411,12 @@
       "required_object_type": "column",
       "required_property": "source",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 20,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": false,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260331000000_v3_hardware_type/migration.sql:statement:5",
         "-- 5. Index for source-based lookups (e.g. delete TELEMETRY_EVENTS on re-enrichm\u2026"
@@ -11299,12 +11299,12 @@
       "required_object_type": "column",
       "required_property": "level",
       "required_schema": "public",
-      "first_creator_migration": "20260311224040_init",
-      "creator_order": 1,
-      "creator_statement_order": 63,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "VALID",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260412040000_audit_consent_provenance/migration.sql:statement:25",
         "CREATE INDEX IF NOT EXISTS \"activity_logs_level_idx\" ON \"activity_logs\"(\"level\")"
@@ -11779,12 +11779,12 @@
       "required_object_type": "column",
       "required_property": "consent_id",
       "required_schema": "public",
-      "first_creator_migration": "20260408120000_high_mobility_phase1",
-      "creator_order": 9,
-      "creator_statement_order": 24,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "VALID",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260412040000_audit_consent_provenance/migration.sql:statement:37",
         "CREATE INDEX IF NOT EXISTS \"vdsl_consent_id_idx\" ON \"vehicle_data_source_links\"(\u2026"
@@ -12067,12 +12067,12 @@
       "required_object_type": "column",
       "required_property": "vehicle_id",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:1",
         "-- ============================================================================ \u2026"
@@ -12091,12 +12091,12 @@
       "required_object_type": "column",
       "required_property": "start_time",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 11,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:1",
         "-- ============================================================================ \u2026"
@@ -12283,12 +12283,12 @@
       "required_object_type": "column",
       "required_property": "vehicle_id",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 20,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:4",
         "-- \u2500\u2500 DrivingEvent \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 \u2026"
@@ -12307,12 +12307,12 @@
       "required_object_type": "column",
       "required_property": "recorded_at",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 20,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:4",
         "-- \u2500\u2500 DrivingEvent \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 \u2026"
@@ -12355,12 +12355,12 @@
       "required_object_type": "column",
       "required_property": "trip_id",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 20,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:5",
         "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"driving_events_trip_id_event_type_idx\" \u2026"
@@ -12379,12 +12379,12 @@
       "required_object_type": "column",
       "required_property": "event_type",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 20,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:5",
         "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"driving_events_trip_id_event_type_idx\" \u2026"
@@ -12427,12 +12427,12 @@
       "required_object_type": "column",
       "required_property": "trip_id",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 27,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:6",
         "-- \u2500\u2500 TripBehaviorEvent \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 \u2026"
@@ -12451,12 +12451,12 @@
       "required_object_type": "column",
       "required_property": "event_category",
       "required_schema": "public",
-      "first_creator_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
-      "creator_order": 4,
-      "creator_statement_order": 27,
+      "first_creator_migration": null,
+      "creator_order": null,
+      "creator_statement_order": null,
       "guarded": true,
       "guard_semantically_safe": null,
-      "classification": "INTENTIONAL",
+      "classification": "MISSING_HISTORY",
       "evidence": [
         "migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:6",
         "-- \u2500\u2500 TripBehaviorEvent \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 \u2026"
@@ -15152,13 +15152,169 @@
       "creator_statement_order": null
     }
   ],
-  "repair_topology_candidate": [
+  "implementation_authority": {
+    "primary_historical_defects": [
+      "InsightType",
+      "battery_evidence",
+      "brake_health_current",
+      "org_invoices",
+      "org_tasks",
+      "vehicle_driving_impact_current",
+      "vehicle_dtc_events"
+    ],
+    "required_repair_closure_objects": [
+      "BatteryEvidenceScope",
+      "BatteryEvidenceSourceType",
+      "BatteryEvidenceValueType",
+      "DtcSeverity",
+      "OrgInvoiceStatus",
+      "OrgInvoiceType",
+      "TaskPriority",
+      "TaskStatus",
+      "org_invoices_invoice_number_seq"
+    ],
+    "total_implementation_objects": [
+      "BatteryEvidenceScope",
+      "BatteryEvidenceSourceType",
+      "BatteryEvidenceValueType",
+      "DtcSeverity",
+      "InsightType",
+      "OrgInvoiceStatus",
+      "OrgInvoiceType",
+      "TaskPriority",
+      "TaskStatus",
+      "battery_evidence",
+      "brake_health_current",
+      "org_invoices",
+      "org_invoices_invoice_number_seq",
+      "org_tasks",
+      "vehicle_driving_impact_current",
+      "vehicle_dtc_events"
+    ]
+  },
+  "repair_topology": [
     {
-      "insertion_slot": 1,
-      "insert_after": "20260412020000_hm_latest_state_tables",
-      "insert_before": "20260412030000_platform_hardening_phase1",
-      "objects_created": [
+      "slot": 1,
+      "after_migration": "20260412020000_hm_latest_state_tables",
+      "before_migration": "20260412030000_platform_hardening_phase1",
+      "objects_types_sequences_created": [
+        "TaskPriority",
+        "TaskStatus",
         "org_tasks"
+      ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TYPE",
+          "object": "TaskPriority",
+          "object_type": "enum",
+          "justification": "required by org_tasks column types"
+        },
+        {
+          "order": 2,
+          "action": "CREATE TYPE",
+          "object": "TaskStatus",
+          "object_type": "enum",
+          "justification": "required by org_tasks column types"
+        },
+        {
+          "order": 3,
+          "action": "CREATE TABLE",
+          "object": "org_tasks",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 4,
+          "action": "CREATE INDEX",
+          "object": "org_tasks_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']"
+        },
+        {
+          "order": 5,
+          "action": "CREATE INDEX",
+          "object": "org_tasks_status_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['status']"
+        },
+        {
+          "order": 6,
+          "action": "CREATE INDEX",
+          "object": "org_tasks_fine_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['fine_id']"
+        },
+        {
+          "order": 7,
+          "action": "CREATE INDEX",
+          "object": "org_tasks_invoice_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['invoice_id']"
+        }
+      ],
+      "deferred_actions": [
+        {
+          "order": 8,
+          "action": "ADD CONSTRAINT",
+          "object": "org_tasks_fine_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['fine_id'] -> fines",
+          "fk": {
+            "local_columns": [
+              "fine_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "fines",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:OrgTask.fineId->@Fine"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
+            "chronology_evidence": [
+              "fines has no CREATE TABLE in scope before org_tasks first consumer; 20260412030000 only adds audit columns"
+            ],
+            "defer_until_object_available": "fines"
+          }
+        },
+        {
+          "order": 9,
+          "action": "ADD CONSTRAINT",
+          "object": "org_tasks_invoice_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['invoice_id'] -> org_invoices",
+          "fk": {
+            "local_columns": [
+              "invoice_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "org_invoices",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:OrgTask.invoiceId->@OrgInvoice"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
+            "chronology_evidence": [
+              "org_invoices repair slot 4 is after org_tasks slot 1; first consumer does not enforce FK"
+            ],
+            "defer_until_repair_slot": 4
+          }
+        }
+      ],
+      "first_consumers_protected": [
+        "20260412030000_platform_hardening_phase1"
       ],
       "must_execute_after": [
         "20260412020000_hm_latest_state_tables"
@@ -15166,18 +15322,62 @@
       "must_execute_before": [
         "20260412030000_platform_hardening_phase1"
       ],
-      "first_consumer_protected": [
-        "20260412030000_platform_hardening_phase1"
-      ],
-      "share_bootstrap": [],
-      "reason": "Derived from corrected MISSING_HISTORY/ORDERING_DEFECT matrix + exact contracts"
+      "closure_validated": true
     },
     {
-      "insertion_slot": 2,
-      "insert_after": "20260412040000_audit_consent_provenance",
-      "insert_before": "20260413183000_brake_health_canonical_refactor",
-      "objects_created": [
+      "slot": 2,
+      "after_migration": "20260412040000_audit_consent_provenance",
+      "before_migration": "20260413183000_brake_health_canonical_refactor",
+      "objects_types_sequences_created": [
         "brake_health_current"
+      ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TABLE",
+          "object": "brake_health_current",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 2,
+          "action": "ADD CONSTRAINT",
+          "object": "brake_health_current_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:BrakeHealthCurrent.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          }
+        },
+        {
+          "order": 3,
+          "action": "CREATE INDEX",
+          "object": "brake_health_current_organization_id_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id', 'vehicle_id']"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260413183000_brake_health_canonical_refactor"
       ],
       "must_execute_after": [
         "20260412040000_audit_consent_provenance"
@@ -15185,18 +15385,165 @@
       "must_execute_before": [
         "20260413183000_brake_health_canonical_refactor"
       ],
-      "first_consumer_protected": [
-        "20260413183000_brake_health_canonical_refactor"
-      ],
-      "share_bootstrap": [],
-      "reason": "Derived from corrected MISSING_HISTORY/ORDERING_DEFECT matrix + exact contracts"
+      "closure_validated": true
     },
     {
-      "insertion_slot": 3,
-      "insert_after": "20260413183000_brake_health_canonical_refactor",
-      "insert_before": "20260413220000_battery_evidence_unique_dedup",
-      "objects_created": [
+      "slot": 3,
+      "after_migration": "20260413183000_brake_health_canonical_refactor",
+      "before_migration": "20260413220000_battery_evidence_unique_dedup",
+      "objects_types_sequences_created": [
+        "BatteryEvidenceScope",
+        "BatteryEvidenceSourceType",
+        "BatteryEvidenceValueType",
         "battery_evidence"
+      ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TYPE",
+          "object": "BatteryEvidenceScope",
+          "object_type": "enum",
+          "justification": "required by battery_evidence column types"
+        },
+        {
+          "order": 2,
+          "action": "CREATE TYPE",
+          "object": "BatteryEvidenceSourceType",
+          "object_type": "enum",
+          "justification": "required by battery_evidence column types"
+        },
+        {
+          "order": 3,
+          "action": "CREATE TYPE",
+          "object": "BatteryEvidenceValueType",
+          "object_type": "enum",
+          "justification": "required by battery_evidence column types"
+        },
+        {
+          "order": 4,
+          "action": "CREATE TABLE",
+          "object": "battery_evidence",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 5,
+          "action": "ADD CONSTRAINT",
+          "object": "battery_evidence_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:BatteryEvidence.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "vehicles exists from init migration"
+            ]
+          }
+        },
+        {
+          "order": 6,
+          "action": "CREATE INDEX",
+          "object": "battery_evidence_vehicle_id_scope_value_type_observed_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id', 'scope', 'value_type', 'observed_at']"
+        },
+        {
+          "order": 7,
+          "action": "CREATE INDEX",
+          "object": "battery_evidence_source_type_observed_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['source_type', 'observed_at']"
+        },
+        {
+          "order": 8,
+          "action": "CREATE INDEX",
+          "object": "battery_evidence_document_extraction_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['document_extraction_id']"
+        },
+        {
+          "order": 9,
+          "action": "CREATE INDEX",
+          "object": "battery_evidence_service_event_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['service_event_id']"
+        }
+      ],
+      "deferred_actions": [
+        {
+          "order": 10,
+          "action": "ADD CONSTRAINT",
+          "object": "battery_evidence_document_extraction_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['document_extraction_id'] -> vehicle_document_extractions",
+          "fk": {
+            "local_columns": [
+              "document_extraction_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicle_document_extractions",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:BatteryEvidence.documentExtractionId->@VehicleDocumentExtraction"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
+            "chronology_evidence": [
+              "nullable FK target table has no CREATE in scan scope; first consumer only dedups/indexes"
+            ],
+            "defer_until_object_available": "vehicle_document_extractions"
+          }
+        },
+        {
+          "order": 11,
+          "action": "ADD CONSTRAINT",
+          "object": "battery_evidence_service_event_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['service_event_id'] -> vehicle_service_events",
+          "fk": {
+            "local_columns": [
+              "service_event_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicle_service_events",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:BatteryEvidence.serviceEventId->@VehicleServiceEvent"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
+            "chronology_evidence": [
+              "nullable optional link; first consumer does not require FK enforcement"
+            ]
+          }
+        }
+      ],
+      "first_consumers_protected": [
+        "20260413220000_battery_evidence_unique_dedup"
       ],
       "must_execute_after": [
         "20260413183000_brake_health_canonical_refactor"
@@ -15204,39 +15551,231 @@
       "must_execute_before": [
         "20260413220000_battery_evidence_unique_dedup"
       ],
-      "first_consumer_protected": [
-        "20260413220000_battery_evidence_unique_dedup"
-      ],
-      "share_bootstrap": [],
-      "reason": "Derived from corrected MISSING_HISTORY/ORDERING_DEFECT matrix + exact contracts"
+      "closure_validated": true
     },
     {
-      "insertion_slot": 4,
-      "insert_after": "20260413220000_battery_evidence_unique_dedup",
-      "insert_before": "20260413230000_add_composite_indexes_batch_c",
-      "objects_created": [
+      "slot": 4,
+      "after_migration": "20260413220000_battery_evidence_unique_dedup",
+      "before_migration": "20260413230000_add_composite_indexes_batch_c",
+      "objects_types_sequences_created": [
+        "DtcSeverity",
+        "OrgInvoiceStatus",
+        "OrgInvoiceType",
         "org_invoices",
         "vehicle_dtc_events"
       ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TYPE",
+          "object": "OrgInvoiceStatus",
+          "object_type": "enum",
+          "justification": "required by org_invoices column types"
+        },
+        {
+          "order": 2,
+          "action": "CREATE TYPE",
+          "object": "OrgInvoiceType",
+          "object_type": "enum",
+          "justification": "required by org_invoices column types"
+        },
+        {
+          "order": 3,
+          "action": "CREATE SEQUENCE",
+          "object": "org_invoices_invoice_number_seq",
+          "object_type": "sequence",
+          "justification": "supports org_invoices.invoice_number autoincrement"
+        },
+        {
+          "order": 4,
+          "action": "CREATE TABLE",
+          "object": "org_invoices",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 5,
+          "action": "CREATE INDEX",
+          "object": "org_invoices_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']"
+        },
+        {
+          "order": 6,
+          "action": "CREATE INDEX",
+          "object": "org_invoices_customer_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['customer_id']"
+        },
+        {
+          "order": 7,
+          "action": "CREATE INDEX",
+          "object": "org_invoices_booking_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['booking_id']"
+        },
+        {
+          "order": 8,
+          "action": "CREATE INDEX",
+          "object": "org_invoices_status_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['status']"
+        },
+        {
+          "order": 9,
+          "action": "CREATE INDEX",
+          "object": "org_invoices_type_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['type']"
+        },
+        {
+          "order": 10,
+          "action": "CREATE INDEX",
+          "object": "org_invoices_invoice_date_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['invoice_date']"
+        },
+        {
+          "order": 11,
+          "action": "ADD CONSTRAINT",
+          "object": "org_invoices_invoice_number_key",
+          "object_type": "unique",
+          "justification": "unique ['invoice_number']"
+        },
+        {
+          "order": 12,
+          "action": "CREATE TYPE",
+          "object": "DtcSeverity",
+          "object_type": "enum",
+          "justification": "required by vehicle_dtc_events column types"
+        },
+        {
+          "order": 13,
+          "action": "CREATE TABLE",
+          "object": "vehicle_dtc_events",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 14,
+          "action": "ADD CONSTRAINT",
+          "object": "vehicle_dtc_events_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:VehicleDtcEvent.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "vehicles exists from init migration"
+            ]
+          }
+        },
+        {
+          "order": 15,
+          "action": "CREATE INDEX",
+          "object": "vehicle_dtc_events_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id']"
+        },
+        {
+          "order": 16,
+          "action": "CREATE INDEX",
+          "object": "vehicle_dtc_events_dtc_code_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['dtc_code']"
+        },
+        {
+          "order": 17,
+          "action": "CREATE INDEX",
+          "object": "vehicle_dtc_events_is_active_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['is_active']"
+        },
+        {
+          "order": 18,
+          "action": "CREATE INDEX",
+          "object": "vehicle_dtc_events_first_seen_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['first_seen_at']"
+        }
+      ],
+      "deferred_actions": [
+        {
+          "order": 19,
+          "action": "ADD CONSTRAINT",
+          "object": "org_tasks_invoice_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "deferred from org_tasks slot 1; org_invoices now available",
+          "fk": {
+            "local_columns": [
+              "invoice_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "org_invoices",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:OrgTask.invoiceId->@OrgInvoice"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
+            "chronology_evidence": [
+              "org_invoices repair slot 4 is after org_tasks slot 1; first consumer does not enforce FK"
+            ],
+            "defer_until_repair_slot": 4
+          },
+          "source_repair_object": "org_tasks"
+        }
+      ],
+      "first_consumers_protected": [
+        "20260413230000_add_composite_indexes_batch_c",
+        "20260413230000_add_composite_indexes_batch_c"
+      ],
       "must_execute_after": [
         "20260413220000_battery_evidence_unique_dedup"
       ],
       "must_execute_before": [
         "20260413230000_add_composite_indexes_batch_c"
       ],
-      "first_consumer_protected": [
-        "20260413230000_add_composite_indexes_batch_c",
-        "20260413230000_add_composite_indexes_batch_c"
-      ],
-      "share_bootstrap": [],
-      "reason": "Derived from corrected MISSING_HISTORY/ORDERING_DEFECT matrix + exact contracts"
+      "closure_validated": true
     },
     {
-      "insertion_slot": 5,
-      "insert_after": "20260417160000_add_mqtt_only_hm_sync_status",
-      "insert_before": "20260417180000_add_battery_critical_insight_type",
-      "objects_created": [
+      "slot": 5,
+      "after_migration": "20260417160000_add_mqtt_only_hm_sync_status",
+      "before_migration": "20260417180000_add_battery_critical_insight_type",
+      "objects_types_sequences_created": [
         "InsightType"
+      ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TABLE",
+          "object": "InsightType",
+          "object_type": "table",
+          "justification": "primary repair object"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260417180000_add_battery_critical_insight_type"
       ],
       "must_execute_after": [
         "20260417160000_add_mqtt_only_hm_sync_status"
@@ -15244,18 +15783,62 @@
       "must_execute_before": [
         "20260417180000_add_battery_critical_insight_type"
       ],
-      "first_consumer_protected": [
-        "20260417180000_add_battery_critical_insight_type"
-      ],
-      "share_bootstrap": [],
-      "reason": "Derived from corrected MISSING_HISTORY/ORDERING_DEFECT matrix + exact contracts"
+      "closure_validated": true
     },
     {
-      "insertion_slot": 6,
-      "insert_after": "20260421120000_add_pickup_overdue_insight_type",
-      "insert_before": "20260422010000_vehicle_current_safety_score",
-      "objects_created": [
+      "slot": 6,
+      "after_migration": "20260421120000_add_pickup_overdue_insight_type",
+      "before_migration": "20260422010000_vehicle_current_safety_score",
+      "objects_types_sequences_created": [
         "vehicle_driving_impact_current"
+      ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TABLE",
+          "object": "vehicle_driving_impact_current",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 2,
+          "action": "ADD CONSTRAINT",
+          "object": "vehicle_driving_impact_current_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:VehicleDrivingImpactCurrent.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "vehicles exists from init migration"
+            ]
+          }
+        },
+        {
+          "order": 3,
+          "action": "CREATE INDEX",
+          "object": "vehicle_driving_impact_current_organization_id_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id', 'vehicle_id']"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260422010000_vehicle_current_safety_score"
       ],
       "must_execute_after": [
         "20260421120000_add_pickup_overdue_insight_type"
@@ -15263,11 +15846,7 @@
       "must_execute_before": [
         "20260422010000_vehicle_current_safety_score"
       ],
-      "first_consumer_protected": [
-        "20260422010000_vehicle_current_safety_score"
-      ],
-      "share_bootstrap": [],
-      "reason": "Derived from corrected MISSING_HISTORY/ORDERING_DEFECT matrix + exact contracts"
+      "closure_validated": true
     }
   ]
 }

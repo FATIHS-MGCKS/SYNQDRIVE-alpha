@@ -32,42 +32,98 @@ def parse_balanced_paren(text: str, open_idx: int) -> tuple[str, int]:
     raise ValueError("unbalanced parentheses")
 
 
-def parse_default(expr: str) -> dict[str, Any]:
+def parse_default(expr: str, prisma_type: str = "String") -> dict[str, Any]:
     m = re.search(r"@default\(", expr)
     if not m:
+        if "@updatedAt" in expr:
+            return {
+                "prisma_default": None,
+                "postgres_default": None,
+                "default_semantics": "NO_DATABASE_DEFAULT",
+                "generation": None,
+            }
         return {
             "prisma_default": None,
             "postgres_default": None,
-            "default_semantics": None,
+            "default_semantics": "NO_DATABASE_DEFAULT",
+            "generation": None,
         }
     inner, _ = parse_balanced_paren(expr, m.end() - 1)
     inner = inner.strip()
-    semantics = "literal"
-    pg: str | None = None
+    generation: dict[str, Any] | None = None
+
     if inner in {"now()", "CURRENT_TIMESTAMP"}:
-        semantics = "database_default"
-        pg = "CURRENT_TIMESTAMP"
-    elif inner == "uuid()":
-        semantics = "application_or_prisma_generated_uuid"
-    elif inner == "cuid()":
-        semantics = "application_or_prisma_generated_cuid"
-    elif inner == "autoincrement()":
-        semantics = "postgresql_sequence_autoincrement"
-    elif inner in {"true", "false"}:
-        semantics = "literal_boolean"
-        pg = inner.upper()
-    elif re.fullmatch(r"-?\d+", inner):
-        semantics = "literal_integer"
-        pg = inner
-    elif inner.startswith('"') or inner.startswith("'"):
-        semantics = "literal_string"
-        pg = inner.strip('"').strip("'")
-    elif re.fullmatch(r"[A-Z_][A-Z0-9_]*", inner):
-        semantics = "enum_literal"
+        return {
+            "prisma_default": inner,
+            "postgres_default": "CURRENT_TIMESTAMP",
+            "default_semantics": "DATABASE_DEFAULT",
+            "generation": None,
+        }
+    if inner == "uuid()":
+        return {
+            "prisma_default": inner,
+            "postgres_default": None,
+            "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+            "generation": {"mechanism": "prisma_client_uuid_v4"},
+        }
+    if inner == "cuid()":
+        return {
+            "prisma_default": inner,
+            "postgres_default": None,
+            "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+            "generation": {"mechanism": "prisma_client_cuid"},
+        }
+    if inner == "autoincrement()":
+        return {
+            "prisma_default": inner,
+            "postgres_default": None,
+            "default_semantics": "IDENTITY_OR_SEQUENCE_GENERATED",
+            "generation": {
+                "mechanism": "postgresql_serial_sequence",
+                "sequence_naming": "table_column_seq",
+            },
+        }
+    if inner in {"true", "false"}:
+        return {
+            "prisma_default": inner,
+            "postgres_default": inner.upper(),
+            "default_semantics": "DATABASE_DEFAULT",
+            "generation": None,
+        }
+    if re.fullmatch(r"-?\d+", inner):
+        return {
+            "prisma_default": inner,
+            "postgres_default": inner,
+            "default_semantics": "DATABASE_DEFAULT",
+            "generation": None,
+        }
+    if re.fullmatch(r"-?\d+\.\d+", inner):
+        return {
+            "prisma_default": inner,
+            "postgres_default": inner,
+            "default_semantics": "DATABASE_DEFAULT",
+            "generation": None,
+        }
+    if inner.startswith('"') or inner.startswith("'"):
+        lit = inner.strip('"').strip("'")
+        return {
+            "prisma_default": inner,
+            "postgres_default": f"'{lit}'",
+            "default_semantics": "DATABASE_DEFAULT",
+            "generation": None,
+        }
+    if re.fullmatch(r"[A-Z_][A-Z0-9_]*", inner):
+        return {
+            "prisma_default": inner,
+            "postgres_default": f"'{inner}'::\"{prisma_type}\"",
+            "default_semantics": "DATABASE_DEFAULT",
+            "generation": None,
+        }
     return {
         "prisma_default": inner,
-        "postgres_default": pg,
-        "default_semantics": semantics,
+        "postgres_default": None,
+        "default_semantics": "UNKNOWN",
+        "generation": None,
     }
 
 
@@ -203,7 +259,7 @@ def extract_model_contract(schema: str, model_name: str) -> dict[str, Any]:
         map_m = re.search(r'@map\("([^"]+)"\)', combined)
         column = map_m.group(1) if map_m else re.sub(r"(?<!^)(?=[A-Z])", "_", prisma_field).lower()
         nullable = "?" in combined.split("//")[0].split()[1] if len(combined.split()) > 1 else False
-        default_info = parse_default(combined)
+        default_info = parse_default(combined, type_token)
         pg_type = prisma_scalar_to_postgres(type_token, combined)
         col = {
             "prisma_field": prisma_field,
@@ -309,18 +365,17 @@ def extract_model_contract(schema: str, model_name: str) -> dict[str, Any]:
                         }
                     )
 
-    enum_deps = []
+    enum_deps_map: dict[str, dict[str, Any]] = {}
     for col in columns:
         if col["prisma_type"] in parsed.enums:
-            enum_deps.append(
-                {
-                    "schema": "public",
-                    "name": col["prisma_type"],
-                    "labels": parsed.enums[col["prisma_type"]],
-                    "order_material": True,
-                    "evidence": [f"schema:enum {col['prisma_type']}"],
-                }
-            )
+            enum_deps_map[col["prisma_type"]] = {
+                "schema": "public",
+                "name": col["prisma_type"],
+                "labels": parsed.enums[col["prisma_type"]],
+                "order_material": True,
+                "evidence": [f"schema:enum {col['prisma_type']}"],
+            }
+    enum_deps = list(enum_deps_map.values())
 
     return {
         "table": table,

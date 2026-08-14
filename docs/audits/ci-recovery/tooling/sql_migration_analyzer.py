@@ -241,7 +241,24 @@ def creator_for_table(ctx: AnalyzerContext, table: str) -> CreatorRef | None:
 
 
 def creator_for_column(ctx: AnalyzerContext, table: str, column: str) -> CreatorRef | None:
-    return ctx.column_creators.get(table, {}).get(column) or creator_for_table(ctx, table)
+    """Return explicit column creation authority only — never fall back to table creator."""
+    return ctx.column_creators.get(table, {}).get(column)
+
+
+def column_exists_at_boundary(state: SchemaState, table: str, column: str) -> bool:
+    return table in state.tables and column in state.columns.get(table, set())
+
+
+def resolve_column_dependency(
+    ctx: AnalyzerContext,
+    state: SchemaState,
+    table: str,
+    column: str,
+) -> CreatorRef | None:
+    """Column must exist in current statement state or have an explicit column creator."""
+    if column_exists_at_boundary(state, table, column):
+        return creator_for_column(ctx, table, column)
+    return creator_for_column(ctx, table, column)
 
 
 def creator_for_type(ctx: AnalyzerContext, typ: str) -> CreatorRef | None:
@@ -473,7 +490,7 @@ def check_statement_dependencies(
                     ref_table,
                     "column",
                     ref_col,
-                    creator_for_column(ctx, ref_table, ref_col),
+                    resolve_column_dependency(ctx, state, ref_table, ref_col),
                     "IF NOT EXISTS" in upper,
                     guard_safe,
                 )
@@ -493,7 +510,7 @@ def check_statement_dependencies(
             table,
             "column",
             col,
-            creator_for_column(ctx, table, col),
+            resolve_column_dependency(ctx, state, table, col),
             guarded,
             guard_safe,
         )
@@ -546,7 +563,7 @@ def check_statement_dependencies(
             table,
             "column",
             col,
-            creator_for_column(ctx, table, col),
+            resolve_column_dependency(ctx, state, table, col),
             "IF EXISTS" in m.group(0).upper() or guarded,
             guard_safe if guarded else None,
         )
@@ -581,7 +598,7 @@ def check_statement_dependencies(
                 table,
                 "column",
                 col,
-                creator_for_column(ctx, table, col),
+                resolve_column_dependency(ctx, state, table, col),
                 "IF NOT EXISTS" in m.group(0).upper(),
                 None,
             )
@@ -676,7 +693,7 @@ def check_statement_dependencies(
                 ref_table,
                 "column",
                 ref_col,
-                creator_for_column(ctx, ref_table, ref_col),
+                resolve_column_dependency(ctx, state, ref_table, ref_col),
                 guarded,
                 guard_safe,
                 notes=f"constraint={con_name}",

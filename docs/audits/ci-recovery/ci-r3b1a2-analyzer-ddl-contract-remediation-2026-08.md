@@ -220,7 +220,9 @@ Evidence commits: `77c26dad` (most objects), `17019787` (`battery_evidence`).
 
 ## Terminal status
 
-**CI_R3B1A2_ANALYZER_DDL_AUTHORITY_REMEDIATED**
+**Outcome:** `CI_R3B1A2_ANALYZER_DDL_AUTHORITY_REMEDIATED`
+
+> **Supersession (CI-R3B1A.3):** R3B1A.2 predecessor contracts and shallow repair topology are **superseded** by `ci-r3b1a3-*` artifacts (dependency closure, FK chronology/deferral, deduplicated enum authority, resolved default/generation semantics, closure-validated repair topology). R3B1A.2 matrix artifact remains regenerated in place with corrected column-level classifications.
 
 Awaiting independent review before historical predecessor repair implementation (R3B.2 not started).
 
