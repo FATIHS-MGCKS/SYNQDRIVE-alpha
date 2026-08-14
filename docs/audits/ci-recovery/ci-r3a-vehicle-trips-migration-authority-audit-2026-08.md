@@ -21,8 +21,8 @@
 > CI-R3B bootstrap **exclusion** of `brake_trip_metrics`: the transitional bootstrap inventory is **19**
 > objects, not 18. The U043 product decision (`DEPRECATE_AND_REMOVE`) is unchanged and remains
 > unimplemented. Full contract:
-> `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`. **CI-R3B.0.1 (§17l)** separates
-> bootstrap predecessor shape from final accepted shape; predecessor ledger:
+> `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`. **CI-R3B.0.1 (§17l)** and
+> **CI-R3B.0.2 (§17m)** separate minimal replay predecessor shape from final accepted shape; ledger:
 > `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`.
 
 ## 1. Authoritative base and branch
@@ -1370,7 +1370,7 @@ axis and no longer subtracts objects from the bootstrap.
 `CI_R3B0_CONTRACT_LOCK_STATUS` = **COMPLETED** — bootstrap/parity contract locked; CI-R3B.1
 implementation awaits independent review.
 
-## 17l. CI-R3B.0.1 — Bootstrap predecessor-shape authority correction
+## 17l. CI-R3B.0.1 — Bootstrap predecessor-shape authority correction (**SUPERSEDED BY CI-R3B.0.2 §17m**)
 
 Independent review of CI-R3B.0 identified a **second executable contradiction**: the contract
 required the Option-D bootstrap to create all 19 objects at **final accepted production shape**, but
@@ -1408,8 +1408,33 @@ Historical (**SUPERSEDED BY CI-R3B.0.1**): “create all 19 at accepted/final sh
 | `CURRENT_ALL_19_ACCEPTED_SHAPE_CLAIM_COUNT` | **0** |
 | `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
 
-`CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_STATUS` = **COMPLETED** — predecessor ledger controls CI-R3B.1
-bootstrap DDL; CI-R3B.1 awaits independent review.
+`CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_STATUS` = **COMPLETED** — superseded by §17m for SQL-ready authority.
+
+## 17m. CI-R3B.0.2 — Complete replay-safe predecessor and final-parity authority
+
+Independent review of CI-R3B.0.1 proved the predecessor ledger was still non-executable:
+
+1. `driving_events` referenced future type `DrivingEventTripAssignment` at bootstrap.
+2. Predecessor indexes referenced columns deliberately omitted (for example `organization_id`).
+3. 53 predecessor index entries had empty `btree ()` column lists.
+4. Downstream DDL matrix was incomplete (missing DROP TYPE and CREATE UNIQUE INDEX rows).
+5. Committed replay leaves `vehicle_trips.trip_status` DEFAULT `'COMPLETED'` while accepted JSON requires `'ONGOING'`.
+
+CI-R3B.0.2 is documentation-only. Corrected authority:
+
+| Field | Value |
+|-------|-------|
+| `BOOTSTRAP_SHAPE_AUTHORITY` | **MINIMAL_REPLAY_PREDECESSOR_SHAPE** |
+| `FINAL_SHAPE_AUTHORITY` | accepted JSON + **post-replay reconciliation** |
+| `BOOTSTRAP_TABLE_OBJECT_COUNT` / `BOOTSTRAP_ENUM_OBJECT_COUNT` | **9** / **10** |
+| `R3B_PLANNED_NEW_MIGRATION_COUNT` | **4** (includes `20260814130000_ci_r3b_post_replay_parity_reconciliation`) |
+| `POST_REPLAY_RECONCILIATION_REQUIRED` | **YES** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** (`trip_status`) |
+| `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` | **0** |
+
+Full ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md` (§3 matrix, §4 predecessor, §5 convergence).
+
+`CI_R3B02_REPLAY_AUTHORITY_STATUS` = **COMPLETED** — CI-R3B.1 awaits independent review.
 
 ## 18. Final audit status
 
@@ -1423,12 +1448,9 @@ proof only (`INSUFFICIENT_AUTHORITY` for final acceptance — U042, §17i); `bra
 product-owner decision **DEPRECATE_AND_REMOVE** recorded (U043, §17i); its executable disposition is
 **TRANSITIONAL_BOOTSTRAP_REQUIRED** (§17k); removal not implemented.
 
-**Status: CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_COMPLETED** — repository audit authority complete; U042 controlled
-CI-R3B entry authorized; U043 product decision approved and unimplemented; CI-R3B executable contract
-and 19-row predecessor ledger locked (`§17k`, `§17l`); `R3B_FINAL_PARITY_EXCEPTION_COUNT` = 0.
-`REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0. PR #1029 merged (`1948f00d`). No CI-R3B migration,
-schema, runtime, production access or deployment in CI-R3B.0 / CI-R3B.0.1. CI-R3B.1 follows independent
-review. E7/E8/E9 unstarted.
+**Status: CI_R3B02_REPLAY_AUTHORITY_COMPLETED** — repository audit authority complete; minimal replay
+predecessor ledger and post-replay reconciliation authority locked (§17m); U043 approved and
+unimplemented; CI-R3B.1 not started; E7/E8/E9 unstarted.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 

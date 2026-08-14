@@ -1,9 +1,9 @@
-# CI-R3B — Executable migration contract (CI-R3B.0 contract lock; CI-R3B.0.1 predecessor-shape correction)
+# CI-R3B — Executable migration contract (CI-R3B.0–CI-R3B.0.2)
 
-**Phase:** CI-R3B.0 — executable contract lock; **CI-R3B.0.1** — bootstrap predecessor-shape authority correction
+**Phase:** CI-R3B.0 contract lock; CI-R3B.0.1 predecessor correction; **CI-R3B.0.2** replay-safe SQL-ready authority
 **Branch:** `fix/ci-r3b-vehicle-trips-migration-replay-2026-08`
 **Scope:** documentation and authority reconciliation only
-**Predecessor-shape ledger:** `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`
+**Minimal predecessor ledger:** `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`
 
 > **No migration file, Prisma schema, runtime, test, workflow or dependency was created or changed in
 > CI-R3B.0. No production access. No deployment. E7/E8/E9 not started.**
@@ -197,49 +197,40 @@ creation) so it is a no-op on any database that already holds the table — incl
 
 ---
 
-## 4. Two-shape authority model (CI-R3B.0.1)
+## 4. Two-shape authority model (CI-R3B.0.1; corrected CI-R3B.0.2)
 
 Independent review of CI-R3B.0 found a **non-executable** requirement: creating all 19 bootstrap
 objects directly at their **final accepted production shape** would pre-create columns, indexes and
-types that later migrations add **unguardedly**, causing duplicate-object replay failures (for example
-`vehicle_trips.trip_status` / `TripStatus` in `20260325161142`, and `driving_events.organization_id`
-/ `DrivingEventSource` in `20260331000000`).
+types that later migrations add **unguardedly**, causing duplicate-object replay failures.
+
+CI-R3B.0.1 introduced predecessor vs final separation. CI-R3B.0.2 corrects the predecessor ledger to
+**MINIMAL_REPLAY_PREDECESSOR_SHAPE** — SQL-ready, mechanically complete, with a post-replay
+reconciliation slot for the one proven default delta (`vehicle_trips.trip_status`).
 
 | Field | Value |
 |-------|-------|
 | `BOOTSTRAP_INSERTION_POINT` | `20260325161141` |
-| `BOOTSTRAP_SHAPE_AUTHORITY` | **PREDECESSOR_AT_INSERTION_POINT** — exact per-object rows in `ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md` |
-| `FINAL_SHAPE_AUTHORITY` | **ACCEPTED_CI_R3A71_PRODUCTION_JSON** (`ci-r3a7-production-catalog-evidence-2026-08.json`) — authoritative **after** full replay |
+| `BOOTSTRAP_SHAPE_AUTHORITY` | **MINIMAL_REPLAY_PREDECESSOR_SHAPE** — ledger §4 |
+| `FINAL_SHAPE_AUTHORITY` | **ACCEPTED_CI_R3A71_PRODUCTION_JSON** + post-replay reconciliation — ledger §5 |
 | `BOOTSTRAP_PREDECESSOR_EQUALS_FINAL_FOR_ALL_OBJECTS` | **NO** |
-| `FULL_REPLAY_MUST_PRODUCE_FINAL_ACCEPTED_SHAPE` | **YES** |
+| `FULL_REPLAY_MUST_PRODUCE_FINAL_ACCEPTED_SHAPE` | **YES** (committed history + reconciliation) |
 | `EARLY_BOOTSTRAP_FINAL_SHAPE_EXECUTABLE` | **NO** |
-| `EXECUTABLE_BOOTSTRAP_SHAPE_CONTRADICTION_COUNT` | **1** (resolved by this correction) |
+| `POST_REPLAY_RECONCILIATION_REQUIRED` | **YES** |
+| `POST_REPLAY_RECONCILIATION_IMPLEMENTED` | **NO** |
 | `FINAL_PARITY_EXCEPTION_COUNT` | **0** |
+
+Historical (**SUPERSEDED BY CI-R3B.0.2**): `BOOTSTRAP_SHAPE_AUTHORITY` = `PREDECESSOR_AT_INSERTION_POINT`
+with incomplete index definitions, future-type references, and missing final-convergence authority.
 
 Binding rules:
 
-- The Option-D bootstrap creates all **19** required objects at their exact **insertion-point
-  predecessor shape** enumerated in the predecessor ledger — not at final accepted shape by default.
-- Committed downstream migrations **evolve** those objects toward the accepted CI-R3A.7.1 production
-  catalog.
-- Final accepted shape from the production JSON is **post-replay** authority, not automatic
-  bootstrap-state authority.
-- Final shape may be used at bootstrap **only** when predecessor-equals-final status is **proven**
-  from repository evidence (`brake_trip_metrics` — ledger `U-BT-009`; parity-only objects whose
-  downstream evolution is absent or guarded-only).
-- Bootstrap predecessor DDL must **not** overlap any later **unguarded** downstream DDL (columns,
-  indexes, constraints, types).
-- Bootstrap predecessor DDL must **not** reference PostgreSQL types that do not yet exist at the
-  insertion point (for example `"TripStatus"` before `20260325161142`, `"DrivingEventSource"` before
-  `20260331000000`).
-- CI-R3B.1 implementation **must not** start until the 19-row predecessor ledger has
-  `BOOTSTRAP_PREDECESSOR_SHAPE_UNKNOWN_COUNT` = 0 and `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = 0
-  (both **0** as of CI-R3B.0.1).
-- `brake_trip_metrics` remains **TRANSITIONAL_BOOTSTRAP_REQUIRED** with U043 product disposition
-  **DEPRECATE_AND_REMOVE** unchanged.
+- Option-D bootstrap creates all **19** objects at **minimal replay predecessor shape** (ledger §4).
+- Committed downstream migrations evolve objects toward the accepted catalog.
+- One proven post-committed delta remains: `vehicle_trips.trip_status` DEFAULT `'COMPLETED'` → `'ONGOING'`.
+- Authorized reconciliation (planned, not created): `20260814130000_ci_r3b_post_replay_parity_reconciliation`.
+- CI-R3B.1 must not start until ledger validation counters are all zero (`IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = 0).
 
-Historical (**SUPERSEDED BY CI-R3B.0.1**): “idempotently create all 19 objects at accepted shape” /
-“all 19 objects, idempotent, accepted shape” — replaced by predecessor-shape authority above.
+Historical (**SUPERSEDED BY CI-R3B.0.1 / CI-R3B.0.2**): “create all 19 at accepted/final shape at bootstrap”.
 
 ## 5. Resolved bootstrap inventory (19 objects)
 
@@ -268,7 +259,15 @@ Historical (**SUPERSEDED BY CI-R3B.0.1**): “idempotently create all 19 objects
 | 18 | `VehicleDetectionProfile` | enum | 4 ordered labels | SCHEMA_PARITY_ONLY | no migration references it |
 | 19 | `DetectionConfidence` | enum | 3 ordered labels | SCHEMA_PARITY_ONLY | no migration references it |
 
-### 5a. Bootstrap accounting
+### 5a. Physical kind accounting (CI-R3B.0.2)
+
+| Counter | Value | Members |
+|---------|-------|---------|
+| `BOOTSTRAP_TABLE_OBJECT_COUNT` | **9** | all tables listed in §5 inventory |
+| `BOOTSTRAP_ENUM_OBJECT_COUNT` | **10** | all enums listed in §5 inventory |
+| `BOOTSTRAP_TOTAL_OBJECT_COUNT` | **19** | 9 + 10 |
+
+### 5b. Executable classification accounting
 
 | Counter | Value | Members |
 |---------|-------|---------|
@@ -301,17 +300,20 @@ Planned append-only files (**none created in CI-R3B.0**;
 
 | Slot | Path | Timestamp | Purpose |
 |------|------|-----------|---------|
-| bootstrap (Option D) | `backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql` | 2026-03-25 16:11:41 | idempotently create all 19 objects at exact **bootstrap predecessor shape** (lowercase); see predecessor ledger |
+| bootstrap (Option D) | `backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql` | 2026-03-25 16:11:41 | idempotently create all 19 objects at **minimal replay predecessor shape** (lowercase); see ledger §4 |
 | pre-shim (Option J) | `backend/prisma/migrations/20260424235959_ci_r3b_trip_casing_pre_shim/migration.sql` | 2026-04-24 23:59:59 | guard-first rename to PascalCase on the fresh-replay path; no-op on existing-applied |
 | **target (unchanged)** | `backend/prisma/migrations/20260425000000_retire_user_assignment_and_speeding_severity/migration.sql` | 2026-04-25 00:00:00 | **must remain byte-identical** |
 | post-shim (Option J) | `backend/prisma/migrations/20260425000001_ci_r3b_trip_casing_post_shim/migration.sql` | 2026-04-25 00:00:01 | guard-first rename back to lowercase; no-op on existing-applied |
+| post-replay reconciliation | `backend/prisma/migrations/20260814130000_ci_r3b_post_replay_parity_reconciliation/migration.sql` | 2026-08-14 13:00:00 | final-state deltas after committed history; **not created in CI-R3B.0.2** |
 
 | Counter | Value |
 |---------|-------|
-| `R3B_PLANNED_NEW_MIGRATION_COUNT` | **3** (bootstrap, pre-shim, post-shim) |
+| `R3B_PLANNED_NEW_MIGRATION_COUNT` | **4** (bootstrap, pre-shim, post-shim, post-replay reconciliation) |
+| `POST_REPLAY_RECONCILIATION_REQUIRED` | **YES** |
+| `POST_REPLAY_RECONCILIATION_IMPLEMENTED` | **NO** |
 | `R3B_PLANNED_EXISTING_MIGRATION_EDIT_COUNT` | **0** |
 | `TARGET_MIGRATION_SHA256_AT_BASELINE` | `1c18164be77dead4db2ff500123754e8c924c9094bc09c41f2408dbcd56a4974` |
-| `CANDIDATE_DIRECTORY_ALREADY_EXISTS_COUNT` | **0** (all three verified absent at `1948f00d`) |
+| `CANDIDATE_DIRECTORY_ALREADY_EXISTS_COUNT` | **0** (all four verified absent; reconciliation slot sorts after `20260811060000_evaluations_entity_references`) |
 
 Ordering proof re-verified against the committed directory listing at `1948f00d`:
 
@@ -332,11 +334,28 @@ fail-closed + 4 action/no-op) is the decision package §3–§3a and is not rest
 
 ### CI-R3B.1 — implementation and replay proof
 
-- implement the Option-D bootstrap (all 19 objects, idempotent, **exact predecessor shape** per
-  `ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`) and the Option-J guarded pre/post shims
+### Authorized post-replay reconciliation (minimum proven delta)
+
+After minimal bootstrap + all committed downstream migrations, exactly one default mismatch is proven
+against accepted CI-R3A.7.1 JSON / `schema.prisma`:
+
+```sql
+ALTER TABLE "vehicle_trips"
+  ALTER COLUMN "trip_status"
+  SET DEFAULT 'ONGOING'::"TripStatus";
+```
+
+Evidence: `20260325161142` adds DEFAULT `'COMPLETED'`; accepted JSON and `VehicleTrip.tripStatus @default(ONGOING)`
+require `'ONGOING'`. No later committed migration alters this default. Full convergence ledger: predecessor
+file §5.
+
+- implement the Option-D bootstrap (all 19 objects, idempotent, **minimal replay predecessor shape** per
+  ledger §4) and the Option-J guarded pre/post shims
 - prove pinned-engine target-file atomicity (`TARGET_FILE_ATOMICITY_AUTHORITY` currently
   `PINNED_BEHAVIOR_REQUIRES_REPLAY_CONFIRMATION`)
+- implement and apply the post-replay reconciliation migration for proven final-state deltas
 - clean fresh PostgreSQL replay: `prisma migrate deploy` from an empty database reaching current head
+  **plus** reconciliation migration
 - exact retained schema parity against `ci-r3a7-production-catalog-evidence-2026-08.json`
 - no existing migration mutation and no checksum mutation
 
@@ -424,13 +443,13 @@ Claims that must not appear as current authority anywhere in CI-R3A/CI-R3B docum
 
 ---
 
-## 10. CI-R3B.0 / CI-R3B.0.1 scope counters
+## 10. CI-R3B.0 / CI-R3B.0.1 / CI-R3B.0.2 scope counters
 
 | Counter | Value |
 |---------|-------|
 | `CHANGED_FILE_COUNT` | 4 |
-| `NEW_DOCUMENTATION_FILE_COUNT` | 1 (predecessor ledger; CI-R3B.0 created this executable contract) |
-| `UPDATED_AUTHORITY_FILE_COUNT` | 3 (this file, master audit §17l, decision package §15) |
+| `NEW_FILE_COUNT` | 0 |
+| `UPDATED_AUTHORITY_FILE_COUNT` | 4 (all four CI-R3B authority documents) |
 | `MIGRATION_CHANGE_COUNT` / `NEW_MIGRATION_COUNT` / `HISTORICAL_MIGRATION_EDIT_COUNT` | 0 / 0 / 0 |
 | `SCHEMA_CHANGE_COUNT` | 0 |
 | `RUNTIME_CHANGE_COUNT` / `TEST_LOGIC_CHANGE_COUNT` / `WORKFLOW_CHANGE_COUNT` | 0 / 0 / 0 |
@@ -442,13 +461,11 @@ Claims that must not appear as current authority anywhere in CI-R3A/CI-R3B docum
 
 ## 11. Final status
 
-- CI-R3B.0 proved and locked the `brake_trip_metrics` bootstrap/parity contradiction resolution.
-- CI-R3B.0.1 corrects the **bootstrap-shape authority**: predecessor shape and final accepted shape
-  are distinct; the 19-row predecessor ledger controls bootstrap DDL; downstream replay produces
-  the accepted CI-R3A.7.1 catalog.
-- U043 remains **approved but unimplemented**; no production drop is authorized by CI-R3B.
-- No migration, schema, runtime or test change exists yet; CI-R3B.1 implementation follows only after
-  independent review of this contract and predecessor ledger.
+- CI-R3B.0 locked the `brake_trip_metrics` bootstrap/parity contradiction.
+- CI-R3B.0.1 separated bootstrap predecessor from final accepted shape.
+- CI-R3B.0.2 delivers a **SQL-ready minimal replay predecessor ledger**, complete downstream DDL matrix,
+  final-convergence ledger, and authorized fourth post-replay reconciliation migration.
+- U043 remains **approved but unimplemented**; `brake_trip_metrics` remains transitional bootstrap-required.
+- No migration, schema, runtime or test change; CI-R3B.1 awaits independent review.
 
-**Status: CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_COMPLETED** — awaiting independent review before CI-R3B.1
-implementation.
+**Status: CI_R3B02_REPLAY_AUTHORITY_COMPLETED** — awaiting independent review before CI-R3B.1 implementation.

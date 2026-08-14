@@ -1,188 +1,196 @@
-# CI-R3B — Bootstrap predecessor-shape ledger (CI-R3B.0.1)
+# CI-R3B — Bootstrap minimal replay predecessor ledger (CI-R3B.0.2)
 
-**Phase:** CI-R3B.0.1 — bootstrap predecessor-shape authority correction
+**Phase:** CI-R3B.0.2 — complete replay-safe predecessor and final-parity authority
 **Branch:** `fix/ci-r3b-vehicle-trips-migration-replay-2026-08`
 **Scope:** documentation authority only — no migrations, schema, runtime or production changes
 
-This ledger separates **BOOTSTRAP_PREDECESSOR_SHAPE** (exact schema immediately after insertion
-point `20260325161141` and before `20260325161142`) from **FINAL_ACCEPTED_SHAPE** (accepted
-CI-R3A.7.1 production catalog after full migration replay).
+This ledger defines **MINIMAL_REPLAY_PREDECESSOR_SHAPE** (exact schema immediately after insertion
+point `20260325161141` and before `20260325161142`) and **FINAL_ACCEPTED_SHAPE** (accepted
+CI-R3A.7.1 production catalog after full committed replay **plus** authorized post-replay
+reconciliation).
 
-## 0. Two-shape authority model
+Historical predecessor terminology from CI-R3B.0.1 is **SUPERSEDED BY CI-R3B.0.2**.
+
+## 0. Authority model
 
 | Field | Value |
 |-------|-------|
 | `BOOTSTRAP_INSERTION_POINT` | `20260325161141` |
-| `BOOTSTRAP_SHAPE_AUTHORITY` | `PREDECESSOR_AT_INSERTION_POINT` (this ledger) |
-| `FINAL_SHAPE_AUTHORITY` | `ACCEPTED_CI_R3A71_PRODUCTION_JSON` (`ci-r3a7-production-catalog-evidence-2026-08.json`) |
+| `BOOTSTRAP_SHAPE_AUTHORITY` | `MINIMAL_REPLAY_PREDECESSOR_SHAPE` (this ledger §4) |
+| `FINAL_SHAPE_AUTHORITY` | `ACCEPTED_CI_R3A71_PRODUCTION_JSON` + post-replay reconciliation (§6) |
 | `BOOTSTRAP_PREDECESSOR_EQUALS_FINAL_FOR_ALL_OBJECTS` | **NO** |
-| `FULL_REPLAY_MUST_PRODUCE_FINAL_ACCEPTED_SHAPE` | **YES** |
+| `EARLY_BOOTSTRAP_FINAL_SHAPE_EXECUTABLE` | **NO** |
 | `FINAL_PARITY_EXCEPTION_COUNT` | **0** |
+| `POST_REPLAY_RECONCILIATION_REQUIRED` | **YES** |
+| `POST_REPLAY_RECONCILIATION_IMPLEMENTED` | **NO** |
 
-## 1. Bootstrap inventory accounting
+## 1. Object inventory accounting
 
 | Counter | Value |
 |---------|-------|
-| `BOOTSTRAP_TABLE_OBJECT_COUNT` | **11** |
-| `BOOTSTRAP_ENUM_OBJECT_COUNT` | **2** |
-| `BOOTSTRAP_PARITY_ONLY_TYPE_COUNT` | **6** |
+| `BOOTSTRAP_TABLE_OBJECT_COUNT` | **9** |
+| `BOOTSTRAP_ENUM_OBJECT_COUNT` | **10** |
 | `BOOTSTRAP_TOTAL_OBJECT_COUNT` | **19** |
+| `BOOTSTRAP_REPLAY_REQUIRED_COUNT` | **11** |
+| `BOOTSTRAP_EVENTUAL_REPLAY_REQUIRED_COUNT` | **2** |
+| `SCHEMA_PARITY_ONLY_COUNT` | **6** |
 | `BOOTSTRAP_OBJECT_LEDGER_ROW_COUNT` | **19** |
-| `BOOTSTRAP_OBJECT_LEDGER_UNIQUE_ID_COUNT` | **19** |
-| `BOOTSTRAP_OBJECT_LEDGER_DUPLICATE_ID_COUNT` | **0** |
-| `BOOTSTRAP_OBJECT_LEDGER_MISSING_OBJECT_COUNT` | **0** |
 
-Partition: **11** BOOTSTRAP_REPLAY_REQUIRED (8 tables + 3 enums), **2** BOOTSTRAP_EVENTUAL_REPLAY_REQUIRED enums, **6** SCHEMA_PARITY_ONLY (1 table + 5 enums).
+Executable classification (11 + 2 + 6 = 19) is separate from physical kind counts (9 tables + 10 enums = 19).
 
-## 2. Overlap and classification counters
+## 2. CI-R3B.0.1 defect baseline (**SUPERSEDED BY CI-R3B.0.2**)
+
+| Defect | CI-R3B.0.1 state | CI-R3B.0.2 correction |
+|--------|------------------|------------------------|
+| Future type reference | `trip_assignment` referenced `DrivingEventTripAssignment` | Removed; `DRIVING_EVENTS_FUTURE_TYPE_REFERENCE_COUNT` = **0** |
+| Invalid predecessor indexes | Indexes on omitted columns listed | Removed; `BOOTSTRAP_INDEX_REFERENCES_MISSING_COLUMN_COUNT` = **0** |
+| Empty index definitions | 53 `btree ()` entries | Full definitions from accepted JSON `definition` field |
+| Index count mismatch | driving_events claimed 7, listed 10 | Counts match enumerations |
+| Incomplete downstream matrix | Missing DROP TYPE / CREATE UNIQUE INDEX rows | Exhaustive matrix §3 |
+| Final default mismatch | `trip_status` DEFAULT COMPLETED vs ONGOING | Post-replay reconciliation §6 |
+
+## 3. Downstream DDL matrix (post-`20260325161141`)
+
+`DOWNSTREAM_DDL_STATEMENT_COUNT` = **128**; `DOWNSTREAM_DDL_MATRIX_ROW_COUNT` = **128**.
+
+| # | Migration | Operation | Object | Element | Guarded | Predecessor precondition | Bootstrap treatment | Resulting state |
+|---|-----------|-----------|--------|---------|---------|--------------------------|---------------------|-----------------|
+| 1 | `20260325161142_trip_architecture_refactor` | CREATE TYPE | `TripStatus` | `TripStatus` | NO | type `TripStatus` absent | Must be absent at minimal bootstrap predecessor | Evolves toward final accepted shape |
+| 2 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `trip_status` | NO | table `vehicle_trips` present; column `trip_status` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 3 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `avg_consumption_l_per_100km` | NO | table `vehicle_trips` present; column `avg_consumption_l_per_100km` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 4 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `fuel_confidence` | NO | table `vehicle_trips` present; column `fuel_confidence` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 5 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `energy_used_kwh` | NO | table `vehicle_trips` present; column `energy_used_kwh` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 6 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `avg_consumption_kwh_per_100km` | NO | table `vehicle_trips` present; column `avg_consumption_kwh_per_100km` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 7 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `energy_confidence` | NO | table `vehicle_trips` present; column `energy_confidence` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 8 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `outside_temperature_start_c` | NO | table `vehicle_trips` present; column `outside_temperature_start_c` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 9 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `engine_temp_start_c` | NO | table `vehicle_trips` present; column `engine_temp_start_c` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 10 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `engine_temp_end_c` | NO | table `vehicle_trips` present; column `engine_temp_end_c` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 11 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `avg_rpm` | NO | table `vehicle_trips` present; column `avg_rpm` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 12 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `avg_throttle_position` | NO | table `vehicle_trips` present; column `avg_throttle_position` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 13 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `avg_engine_load` | NO | table `vehicle_trips` present; column `avg_engine_load` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 14 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `gap_ended` | NO | table `vehicle_trips` present; column `gap_ended` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 15 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `enriched_at` | NO | table `vehicle_trips` present; column `enriched_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 16 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `speeding_percent` | YES | table `vehicle_trips` present; column `speeding_percent` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 17 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `max_over_speed_kmh` | YES | table `vehicle_trips` present; column `max_over_speed_kmh` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 18 | `20260325161142_trip_architecture_refactor` | ADD COLUMN | `vehicle_trips` | `speeding_segments` | YES | table `vehicle_trips` present; column `speeding_segments` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 19 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `dimo_mechanism` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 20 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `road_surface_type` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 21 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `road_surface_score` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 22 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `climate_factor` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 23 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `tire_wear_contrib_km` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 24 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `dtc_codes_found` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 25 | `20260325161142_trip_architecture_refactor` | DROP COLUMN | `vehicle_trips` | `avg_temperature_c` | YES | table `vehicle_trips` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 26 | `20260325161142_trip_architecture_refactor` | CREATE INDEX | `vehicle_trips` | `vehicle_trips_trip_status_idx` | NO | table `vehicle_trips` and indexed columns present; index `vehicle_trips_trip_status_idx` absent | Minimal predecessor must omit index (unguarded downstream create) | Evolves toward final accepted shape |
+| 27 | `20260331000000_v3_hardware_type` | CREATE TYPE | `DrivingEventSource` | `DrivingEventSource` | NO | type `DrivingEventSource` absent | Must be absent at minimal bootstrap predecessor | Evolves toward final accepted shape |
+| 28 | `20260331000000_v3_hardware_type` | ADD COLUMN | `driving_events` | `organization_id` | NO | table `driving_events` present; column `organization_id` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 29 | `20260331000000_v3_hardware_type` | ADD COLUMN | `driving_events` | `source` | NO | table `driving_events` present; column `source` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 30 | `20260331000000_v3_hardware_type` | ADD COLUMN | `driving_events` | `metadata_json` | NO | table `driving_events` present; column `metadata_json` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 31 | `20260331000000_v3_hardware_type` | CREATE INDEX | `driving_events` | `driving_events_source_idx` | NO | table `driving_events` and indexed columns present; index `driving_events_source_idx` absent | Minimal predecessor must omit index (unguarded downstream create) | Evolves toward final accepted shape |
+| 32 | `20260410000000_add_enrichment_status_fields` | ADD COLUMN | `vehicle_trips` | `behavior_enrichment_status` | YES | table `vehicle_trips` present; column `behavior_enrichment_status` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 33 | `20260410000000_add_enrichment_status_fields` | ADD COLUMN | `vehicle_trips` | `behavior_enrichment_attempts` | YES | table `vehicle_trips` present; column `behavior_enrichment_attempts` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 34 | `20260410000000_add_enrichment_status_fields` | ADD COLUMN | `vehicle_trips` | `behavior_enrichment_error` | YES | table `vehicle_trips` present; column `behavior_enrichment_error` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 35 | `20260410000000_add_enrichment_status_fields` | ADD COLUMN | `vehicle_trips` | `behavior_enrichment_started_at` | YES | table `vehicle_trips` present; column `behavior_enrichment_started_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 36 | `20260410000000_add_enrichment_status_fields` | ADD COLUMN | `vehicle_trips` | `driving_impact_computed_at` | YES | table `vehicle_trips` present; column `driving_impact_computed_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 37 | `20260410000000_add_enrichment_status_fields` | CREATE INDEX | `vehicle_trips` | `vehicle_trips_behavior_enrichment_status_idx` | YES | table `vehicle_trips` and indexed columns present; index `vehicle_trips_behavior_enrichment_status_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 38 | `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | `vehicle_trips` | `vehicle_trips_vehicle_id_start_time_idx` | YES | table `vehicle_trips` and indexed columns present; index `vehicle_trips_vehicle_id_start_time_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 39 | `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | `driving_events` | `driving_events_vehicle_id_recorded_at_idx` | YES | table `driving_events` and indexed columns present; index `driving_events_vehicle_id_recorded_at_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 40 | `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | `driving_events` | `driving_events_trip_id_event_type_idx` | YES | table `driving_events` and indexed columns present; index `driving_events_trip_id_event_type_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 41 | `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | `trip_behavior_events` | `trip_behavior_events_trip_id_event_category_idx` | YES | table `trip_behavior_events` and indexed columns present; index `trip_behavior_events_trip_id_event_category_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 42 | `20260425000000_retire_user_assignment_and_speeding_severity` | UPDATE | `vehicle_trips` | `row data` | NO | table `vehicle_trips` present; referenced columns present | Table and columns present at execution time; not a bootstrap-create element | Evolves toward final accepted shape |
+| 43 | `20260425000000_retire_user_assignment_and_speeding_severity` | ALTER TYPE RENAME | `TripAssignmentStatus` | `TripAssignmentStatus_old` | NO | source type `TripAssignmentStatus` present; destination `TripAssignmentStatus_old` absent | Bootstrap enum present with full predecessor label set including retired labels | Evolves toward final accepted shape |
+| 44 | `20260425000000_retire_user_assignment_and_speeding_severity` | CREATE TYPE | `TripAssignmentStatus` | `TripAssignmentStatus` | NO | type `TripAssignmentStatus` absent | Downstream evolution toward final accepted shape | Evolves toward final accepted shape |
+| 45 | `20260425000000_retire_user_assignment_and_speeding_severity` | ALTER COLUMN TYPE | `vehicle_trips` | `assignment_status` | NO | table `vehicle_trips` present; column `assignment_status` and destination type present | Downstream evolution toward final accepted shape | Evolves toward final accepted shape |
+| 46 | `20260425000000_retire_user_assignment_and_speeding_severity` | DROP TYPE | `TripAssignmentStatus_old` | `TripAssignmentStatus_old` | NO | type `TripAssignmentStatus_old` present; no remaining dependencies | Renamed predecessor type present from prior RENAME in same migration | Evolves toward final accepted shape |
+| 47 | `20260425000000_retire_user_assignment_and_speeding_severity` | UPDATE | `vehicle_trips` | `row data` | NO | table `vehicle_trips` present; referenced columns present | Table and columns present at execution time; not a bootstrap-create element | Evolves toward final accepted shape |
+| 48 | `20260425000000_retire_user_assignment_and_speeding_severity` | ALTER TYPE RENAME | `TripAssignmentSubjectType` | `TripAssignmentSubjectType_old` | NO | source type `TripAssignmentSubjectType` present; destination `TripAssignmentSubjectType_old` absent | Bootstrap enum present with full predecessor label set including retired labels | Evolves toward final accepted shape |
+| 49 | `20260425000000_retire_user_assignment_and_speeding_severity` | CREATE TYPE | `TripAssignmentSubjectType` | `TripAssignmentSubjectType` | NO | type `TripAssignmentSubjectType` absent | Downstream evolution toward final accepted shape | Evolves toward final accepted shape |
+| 50 | `20260425000000_retire_user_assignment_and_speeding_severity` | ALTER COLUMN TYPE | `vehicle_trips` | `assignment_subject_type` | NO | table `vehicle_trips` present; column `assignment_subject_type` and destination type present | Downstream evolution toward final accepted shape | Evolves toward final accepted shape |
+| 51 | `20260425000000_retire_user_assignment_and_speeding_severity` | DROP TYPE | `TripAssignmentSubjectType_old` | `TripAssignmentSubjectType_old` | NO | type `TripAssignmentSubjectType_old` present; no remaining dependencies | Renamed predecessor type present from prior RENAME in same migration | Evolves toward final accepted shape |
+| 52 | `20260425000000_retire_user_assignment_and_speeding_severity` | DROP COLUMN | `trip_driving_impact` | `speeding_severity_score` | YES | table `trip_driving_impact` present; column may be present or absent (IF EXISTS) | Column may exist in predecessor; downstream removes if present | Evolves toward final accepted shape |
+| 53 | `20260609000000_autovacuum_tuning` | ALTER TABLE SET | `vehicle_trip_tracking_runs` | `storage parameters` | NO | table `vehicle_trip_tracking_runs` present | Table present; SET is storage-only; no bootstrap shape change required | Evolves toward final accepted shape |
+| 54 | `20260609000000_autovacuum_tuning` | ALTER TABLE SET | `trip_repairs` | `storage parameters` | NO | table `trip_repairs` present | Table present; SET is storage-only; no bootstrap shape change required | Evolves toward final accepted shape |
+| 55 | `20260609000000_autovacuum_tuning` | ALTER TABLE SET | `vehicle_trip_waypoints` | `storage parameters` | NO | table `vehicle_trip_waypoints` present | Table present; SET is storage-only; no bootstrap shape change required | Evolves toward final accepted shape |
+| 56 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `trip_analysis_status` | NO | table `vehicle_trips` present; column `trip_analysis_status` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 57 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_queued_at` | NO | table `vehicle_trips` present; column `analysis_queued_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 58 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_started_at` | NO | table `vehicle_trips` present; column `analysis_started_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 59 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_partial_at` | NO | table `vehicle_trips` present; column `analysis_partial_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 60 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_completed_at` | NO | table `vehicle_trips` present; column `analysis_completed_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 61 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_failed_at` | NO | table `vehicle_trips` present; column `analysis_failed_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 62 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_failed_reason` | NO | table `vehicle_trips` present; column `analysis_failed_reason` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 63 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_latency_ms` | NO | table `vehicle_trips` present; column `analysis_latency_ms` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 64 | `20260705140000_trip_analysis_status` | ADD COLUMN | `vehicle_trips` | `analysis_stages_json` | NO | table `vehicle_trips` present; column `analysis_stages_json` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 65 | `20260705140000_trip_analysis_status` | CREATE INDEX | `vehicle_trips` | `vehicle_trips_trip_analysis_status_idx` | NO | table `vehicle_trips` and indexed columns present; index `vehicle_trips_trip_analysis_status_idx` absent | Minimal predecessor must omit index (unguarded downstream create) | Evolves toward final accepted shape |
+| 66 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `trip_analysis_status` | YES | table `vehicle_trips` present; column `trip_analysis_status` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 67 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_queued_at` | YES | table `vehicle_trips` present; column `analysis_queued_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 68 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_started_at` | YES | table `vehicle_trips` present; column `analysis_started_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 69 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_partial_at` | YES | table `vehicle_trips` present; column `analysis_partial_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 70 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_completed_at` | YES | table `vehicle_trips` present; column `analysis_completed_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 71 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_failed_at` | YES | table `vehicle_trips` present; column `analysis_failed_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 72 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_failed_reason` | YES | table `vehicle_trips` present; column `analysis_failed_reason` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 73 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_latency_ms` | YES | table `vehicle_trips` present; column `analysis_latency_ms` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 74 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `analysis_stages_json` | YES | table `vehicle_trips` present; column `analysis_stages_json` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 75 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `quality_status` | YES | table `vehicle_trips` present; column `quality_status` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 76 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `behavior_summary_status` | YES | table `vehicle_trips` present; column `behavior_summary_status` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 77 | `20260705200000_trip_analysis_status_guard` | ADD COLUMN | `vehicle_trips` | `driving_impact_status` | YES | table `vehicle_trips` present; column `driving_impact_status` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 78 | `20260705200000_trip_analysis_status_guard` | CREATE INDEX | `vehicle_trips` | `vehicle_trips_trip_analysis_status_idx` | YES | table `vehicle_trips` and indexed columns present; index `vehicle_trips_trip_analysis_status_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 79 | `20260708044000_trip_booking_link_source` | CREATE TYPE | `TripBookingLinkSource` | `TripBookingLinkSource` | NO | type `TripBookingLinkSource` absent | Must be absent at minimal bootstrap predecessor | Evolves toward final accepted shape |
+| 80 | `20260708044000_trip_booking_link_source` | ADD COLUMN | `vehicle_trips` | `booking_link_source` | NO | table `vehicle_trips` present; column `booking_link_source` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 81 | `20260708044000_trip_booking_link_source` | UPDATE | `vehicle_trips` | `row data` | NO | table `vehicle_trips` present; referenced columns present | Table and columns present at execution time; not a bootstrap-create element | Evolves toward final accepted shape |
+| 82 | `20260716220000_tire_trip_usage_attribution` | ADD COLUMN | `vehicle_trips` | `tire_usage_attribution_status` | YES | table `vehicle_trips` present; column `tire_usage_attribution_status` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 83 | `20260716220000_tire_trip_usage_attribution` | ADD COLUMN | `vehicle_trips` | `tire_usage_processed_at` | YES | table `vehicle_trips` present; column `tire_usage_processed_at` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 84 | `20260716220000_tire_trip_usage_attribution` | CREATE INDEX | `vehicle_trips` | `vehicle_trips_tire_usage_attribution_status_idx` | YES | table `vehicle_trips` and indexed columns present; index `vehicle_trips_tire_usage_attribution_status_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 85 | `20260716230000_driving_event_type_native_mapper` | ALTER TYPE ADD VALUE | `DrivingEventType` | `UNMAPPED_PROVIDER_EVENT` | YES | type `DrivingEventType` present | Bootstrap enum present with prior label set; ADD VALUE extends toward final | Evolves toward final accepted shape |
+| 86 | `20260716230000_driving_event_type_native_mapper` | ALTER TYPE ADD VALUE | `DrivingEventType` | `SAFETY_COLLISION` | YES | type `DrivingEventType` present | Bootstrap enum present with prior label set; ADD VALUE extends toward final | Evolves toward final accepted shape |
+| 87 | `20260716240000_driving_event_native_identity` | CREATE TYPE | `DrivingEventTripAssignment` | `DrivingEventTripAssignment` | NO | type `DrivingEventTripAssignment` absent | Must be absent at minimal bootstrap predecessor | Evolves toward final accepted shape |
+| 88 | `20260716240000_driving_event_native_identity` | ADD COLUMN | `driving_events` | `provider` | YES | table `driving_events` present; column `provider` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 89 | `20260716240000_driving_event_native_identity` | ADD COLUMN | `driving_events` | `provider_event_name` | YES | table `driving_events` present; column `provider_event_name` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 90 | `20260716240000_driving_event_native_identity` | ADD COLUMN | `driving_events` | `provider_source_id` | YES | table `driving_events` present; column `provider_source_id` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 91 | `20260716240000_driving_event_native_identity` | ADD COLUMN | `driving_events` | `provider_fingerprint` | YES | table `driving_events` present; column `provider_fingerprint` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 92 | `20260716240000_driving_event_native_identity` | ADD COLUMN | `driving_events` | `trip_assignment` | YES | table `driving_events` present; column `trip_assignment` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 93 | `20260716240000_driving_event_native_identity` | CREATE UNIQUE INDEX | `driving_events` | `driving_events_org_provider_fingerprint` | YES | table `driving_events` and indexed columns present; index `driving_events_org_provider_fingerprint` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 94 | `20260716240000_driving_event_native_identity` | CREATE INDEX | `driving_events` | `driving_events_vehicle_id_trip_assignment_idx` | YES | table `driving_events` and indexed columns present; index `driving_events_vehicle_id_trip_assignment_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 95 | `20260716240000_driving_event_native_identity` | CREATE INDEX | `driving_events` | `driving_events_organization_id_vehicle_id_recorded_at_idx` | YES | table `driving_events` and indexed columns present; index `driving_events_organization_id_vehicle_id_recorded_at_idx` absent; IF NOT EXISTS no-op | Minimal predecessor omits index | Evolves toward final accepted shape |
+| 96 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `primary_source` | YES | table `trip_driving_impact` present; column `primary_source` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 97 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `measured_share` | YES | table `trip_driving_impact` present; column `measured_share` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 98 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `provider_classified_share` | YES | table `trip_driving_impact` present; column `provider_classified_share` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 99 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `reconstructed_share` | YES | table `trip_driving_impact` present; column `reconstructed_share` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 100 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `estimated_proxy_share` | YES | table `trip_driving_impact` present; column `estimated_proxy_share` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 101 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `context_only_share` | YES | table `trip_driving_impact` present; column `context_only_share` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 102 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `native_event_count` | YES | table `trip_driving_impact` present; column `native_event_count` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 103 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `hf_event_count` | YES | table `trip_driving_impact` present; column `hf_event_count` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 104 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `measurement_coverage` | YES | table `trip_driving_impact` present; column `measurement_coverage` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 105 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `hardware_profile` | YES | table `trip_driving_impact` present; column `hardware_profile` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 106 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `capability_version` | YES | table `trip_driving_impact` present; column `capability_version` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 107 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `health_eligibility` | YES | table `trip_driving_impact` present; column `health_eligibility` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 108 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `provenance_maturity` | YES | table `trip_driving_impact` present; column `provenance_maturity` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 109 | `20260716250000_driving_impact_provenance` | ADD COLUMN | `trip_driving_impact` | `provenance_version` | YES | table `trip_driving_impact` present; column `provenance_version` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 110 | `20260716260000_driving_impact_braking_provenance` | ADD COLUMN | `trip_driving_impact` | `p95_negative_decel_measured` | YES | table `trip_driving_impact` present; column `p95_negative_decel_measured` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 111 | `20260716260000_driving_impact_braking_provenance` | ADD COLUMN | `trip_driving_impact` | `p95_negative_decel_proxy` | YES | table `trip_driving_impact` present; column `p95_negative_decel_proxy` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 112 | `20260716260000_driving_impact_braking_provenance` | ADD COLUMN | `trip_driving_impact` | `mean_brake_energy_proxy_per_km` | YES | table `trip_driving_impact` present; column `mean_brake_energy_proxy_per_km` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 113 | `20260716270000_driving_impact_load_components` | ADD COLUMN | `trip_driving_impact` | `load_components_json` | YES | table `trip_driving_impact` present; column `load_components_json` absent; referenced types available; guarded no-op if present | Minimal predecessor omits column | Evolves toward final accepted shape |
+| 114 | `20260716310000_driving_attribution_roles` | ADD COLUMN | `vehicle_trips` | `booking_customer_id` | NO | table `vehicle_trips` present; column `booking_customer_id` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 115 | `20260716310000_driving_attribution_roles` | ADD COLUMN | `vehicle_trips` | `assigned_driver_id` | NO | table `vehicle_trips` present; column `assigned_driver_id` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 116 | `20260716310000_driving_attribution_roles` | ADD COLUMN | `vehicle_trips` | `actual_driver_id` | NO | table `vehicle_trips` present; column `actual_driver_id` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 117 | `20260717180000_trip_driving_impact_authoritative_coverage` | CREATE TYPE | `TripDrivingImpactAnalysisStatus` | `TripDrivingImpactAnalysisStatus` | NO | type `TripDrivingImpactAnalysisStatus` absent | Must be absent at minimal bootstrap predecessor | Evolves toward final accepted shape |
+| 118 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `authoritative_distance_km` | NO | table `trip_driving_impact` present; column `authoritative_distance_km` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 119 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `source_version` | NO | table `trip_driving_impact` present; column `source_version` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 120 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `source_fingerprint` | NO | table `trip_driving_impact` present; column `source_fingerprint` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 121 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `analysis_status` | NO | table `trip_driving_impact` present; column `analysis_status` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 122 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `calculated_at` | NO | table `trip_driving_impact` present; column `calculated_at` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 123 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `source_completeness` | NO | table `trip_driving_impact` present; column `source_completeness` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 124 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `trip_distance_km_at_source` | NO | table `trip_driving_impact` present; column `trip_distance_km_at_source` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 125 | `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | `trip_driving_impact` | `distance_discrepancy_km` | NO | table `trip_driving_impact` present; column `distance_discrepancy_km` absent; referenced types available | Minimal predecessor must omit column (unguarded downstream add) | Evolves toward final accepted shape |
+| 126 | `20260717180000_trip_driving_impact_authoritative_coverage` | UPDATE | `trip_driving_impact` | `row data` | NO | table `trip_driving_impact` present; referenced columns present | Table and columns present at execution time; not a bootstrap-create element | Evolves toward final accepted shape |
+| 127 | `20260717180000_trip_driving_impact_authoritative_coverage` | CREATE INDEX | `trip_driving_impact` | `trip_driving_impact_analysis_status_idx` | NO | table `trip_driving_impact` and indexed columns present; index `trip_driving_impact_analysis_status_idx` absent | Minimal predecessor must omit index (unguarded downstream create) | Evolves toward final accepted shape |
+| 128 | `20260717180000_trip_driving_impact_authoritative_coverage` | CREATE INDEX | `trip_driving_impact` | `trip_driving_impact_source_fingerprint_idx` | NO | table `trip_driving_impact` and indexed columns present; index `trip_driving_impact_source_fingerprint_idx` absent | Minimal predecessor must omit index (unguarded downstream create) | Evolves toward final accepted shape |
 
 | Counter | Value |
 |---------|-------|
-| `PROVEN_IMMEDIATE_UNGUARDED_COLUMN_OVERLAP_COUNT` | **17** |
-| `PROVEN_IMMEDIATE_UNGUARDED_INDEX_OVERLAP_COUNT` | **2** |
-| `PROVEN_LATE_TYPE_DEPENDENCY_COUNT` | **2** |
-| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_TYPE_OVERLAP_COUNT` | **0** |
-| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_COLUMN_OVERLAP_COUNT` | **0** |
-| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_CONSTRAINT_OVERLAP_COUNT` | **0** |
-| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_INDEX_OVERLAP_COUNT` | **0** |
-| `BOOTSTRAP_REFERENCES_NOT_YET_CREATED_TYPE_COUNT` | **0** |
 | `UNCLASSIFIED_DOWNSTREAM_EVOLUTION_DDL_COUNT` | **0** |
-| `BOOTSTRAP_PREDECESSOR_SHAPE_UNKNOWN_COUNT` | **0** |
-| `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` | **0** |
+| `MISCLASSIFIED_DOWNSTREAM_PRECONDITION_COUNT` | **0** |
+| `DUPLICATE_DOWNSTREAM_DDL_MATRIX_ROW_COUNT` | **0** |
 
-## 3. Downstream evolution matrix (post-`20260325161141`)
-
-| Migration | Operation | Object | Target | Guarded | Required predecessor condition | Bootstrap treatment | Final replay effect |
-|-----------|-----------|--------|--------|---------|-------------------------------|---------------------|---------------------|
-| `20260325161142_trip_architecture_refactor` | CREATE TYPE | TripStatus | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | trip_status | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | avg_consumption_l_per_100km | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | fuel_confidence | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | energy_used_kwh | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | avg_consumption_kwh_per_100km | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | energy_confidence | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | outside_temperature_start_c | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | engine_temp_start_c | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | engine_temp_end_c | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | avg_rpm | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | avg_throttle_position | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | avg_engine_load | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | gap_ended | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | enriched_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | speeding_percent | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | max_over_speed_kmh | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | ADD COLUMN | vehicle_trips | speeding_segments | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | dimo_mechanism | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | road_surface_type | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | road_surface_score | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | climate_factor | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | tire_wear_contrib_km | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | dtc_codes_found | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | DROP COLUMN | vehicle_trips | avg_temperature_c | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260325161142_trip_architecture_refactor` | CREATE INDEX | vehicle_trips | vehicle_trips_trip_status_idx | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260331000000_v3_hardware_type` | CREATE TYPE | DrivingEventSource | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260331000000_v3_hardware_type` | ADD COLUMN | driving_events | organization_id | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260331000000_v3_hardware_type` | ADD COLUMN | driving_events | source | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260331000000_v3_hardware_type` | ADD COLUMN | driving_events | metadata_json | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260331000000_v3_hardware_type` | CREATE INDEX | driving_events | driving_events_source_idx | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260410000000_add_enrichment_status_fields` | ADD COLUMN | vehicle_trips | behavior_enrichment_status | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260410000000_add_enrichment_status_fields` | ADD COLUMN | vehicle_trips | behavior_enrichment_attempts | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260410000000_add_enrichment_status_fields` | ADD COLUMN | vehicle_trips | behavior_enrichment_error | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260410000000_add_enrichment_status_fields` | ADD COLUMN | vehicle_trips | behavior_enrichment_started_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260410000000_add_enrichment_status_fields` | ADD COLUMN | vehicle_trips | driving_impact_computed_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260410000000_add_enrichment_status_fields` | CREATE INDEX | vehicle_trips | vehicle_trips_behavior_enrichment_status_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | vehicle_trips | vehicle_trips_vehicle_id_start_time_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | driving_events | driving_events_vehicle_id_recorded_at_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | driving_events | driving_events_trip_id_event_type_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260413230000_add_composite_indexes_batch_c` | CREATE INDEX | trip_behavior_events | trip_behavior_events_trip_id_event_category_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | UPDATE | vehicle_trips | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | ALTER TYPE | TripAssignmentStatus | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | RENAME TYPE | TripAssignmentStatus | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | CREATE TYPE | TripAssignmentStatus | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | UPDATE | vehicle_trips | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | ALTER TYPE | TripAssignmentSubjectType | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | RENAME TYPE | TripAssignmentSubjectType | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | CREATE TYPE | TripAssignmentSubjectType | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260425000000_retire_user_assignment_and_speeding_severity` | DROP COLUMN | trip_driving_impact | speeding_severity_score | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260609000000_autovacuum_tuning` | ALTER TABLE SET | vehicle_trip_tracking_runs | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260609000000_autovacuum_tuning` | ALTER TABLE SET | trip_repairs | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260609000000_autovacuum_tuning` | ALTER TABLE SET | vehicle_trip_waypoints | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | trip_analysis_status | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_queued_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_started_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_partial_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_completed_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_failed_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_failed_reason | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_latency_ms | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | ADD COLUMN | vehicle_trips | analysis_stages_json | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705140000_trip_analysis_status` | CREATE INDEX | vehicle_trips | vehicle_trips_trip_analysis_status_idx | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | trip_analysis_status | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_queued_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_started_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_partial_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_completed_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_failed_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_failed_reason | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_latency_ms | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | analysis_stages_json | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | quality_status | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | behavior_summary_status | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | ADD COLUMN | vehicle_trips | driving_impact_status | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260705200000_trip_analysis_status_guard` | CREATE INDEX | vehicle_trips | vehicle_trips_trip_analysis_status_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260708044000_trip_booking_link_source` | CREATE TYPE | TripBookingLinkSource | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260708044000_trip_booking_link_source` | ADD COLUMN | vehicle_trips | booking_link_source | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260708044000_trip_booking_link_source` | UPDATE | vehicle_trips | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716220000_tire_trip_usage_attribution` | ADD COLUMN | vehicle_trips | tire_usage_attribution_status | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716220000_tire_trip_usage_attribution` | ADD COLUMN | vehicle_trips | tire_usage_processed_at | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716220000_tire_trip_usage_attribution` | CREATE INDEX | vehicle_trips | vehicle_trips_tire_usage_attribution_status_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716230000_driving_event_type_native_mapper` | ALTER TYPE | DrivingEventType | UNMAPPED_PROVIDER_EVENT | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716230000_driving_event_type_native_mapper` | ALTER TYPE | DrivingEventType | SAFETY_COLLISION | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | CREATE TYPE | DrivingEventTripAssignment | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | ADD COLUMN | driving_events | provider | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | ADD COLUMN | driving_events | provider_event_name | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | ADD COLUMN | driving_events | provider_source_id | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | ADD COLUMN | driving_events | provider_fingerprint | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | ADD COLUMN | driving_events | trip_assignment | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | CREATE INDEX | driving_events | driving_events_vehicle_id_trip_assignment_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716240000_driving_event_native_identity` | CREATE INDEX | driving_events | driving_events_organization_id_vehicle_id_recorded_at_idx | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | primary_source | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | measured_share | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | provider_classified_share | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | reconstructed_share | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | estimated_proxy_share | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | context_only_share | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | native_event_count | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | hf_event_count | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | measurement_coverage | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | hardware_profile | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | capability_version | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | health_eligibility | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | provenance_maturity | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716250000_driving_impact_provenance` | ADD COLUMN | trip_driving_impact | provenance_version | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716260000_driving_impact_braking_provenance` | ADD COLUMN | trip_driving_impact | p95_negative_decel_measured | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716260000_driving_impact_braking_provenance` | ADD COLUMN | trip_driving_impact | p95_negative_decel_proxy | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716260000_driving_impact_braking_provenance` | ADD COLUMN | trip_driving_impact | mean_brake_energy_proxy_per_km | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716270000_driving_impact_load_components` | ADD COLUMN | trip_driving_impact | load_components_json | YES | See §4 row for object | May match final shape; downstream no-ops if already present | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716310000_driving_attribution_roles` | ADD COLUMN | vehicle_trips | booking_customer_id | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716310000_driving_attribution_roles` | ADD COLUMN | vehicle_trips | assigned_driver_id | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260716310000_driving_attribution_roles` | ADD COLUMN | vehicle_trips | actual_driver_id | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | CREATE TYPE | TripDrivingImpactAnalysisStatus | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | authoritative_distance_km | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | source_version | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | source_fingerprint | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | analysis_status | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | calculated_at | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | source_completeness | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | trip_distance_km_at_source | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | ADD COLUMN | trip_driving_impact | distance_discrepancy_km | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | UPDATE | trip_driving_impact | — | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | CREATE INDEX | trip_driving_impact | trip_driving_impact_analysis_status_idx | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-| `20260717180000_trip_driving_impact_authoritative_coverage` | CREATE INDEX | trip_driving_impact | trip_driving_impact_source_fingerprint_idx | NO | See §4 row for object | Must be absent at bootstrap predecessor | Evolves toward accepted CI-R3A.7.1 shape |
-
-Matrix row count: **125**. Every downstream statement touching the 19 bootstrap objects or prerequisite types is classified (`UNCLASSIFIED_DOWNSTREAM_EVOLUTION_DDL_COUNT` = 0).
-
-## 4. Nineteen-object predecessor-shape ledger
+## 4. Nineteen-object minimal replay predecessor ledger
 
 ### U-BT-001 — `vehicle_trips`
 
@@ -194,17 +202,17 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260325161142_trip_architecture_refactor` |
 | 6 | Every downstream migration that changes it | `20260325161142_trip_architecture_refactor`, `20260410000000_add_enrichment_status_fields`, `20260413230000_add_composite_indexes_batch_c`, `20260425000000_retire_user_assignment_and_speeding_severity`, `20260705140000_trip_analysis_status`, `20260705200000_trip_analysis_status_guard`, `20260708044000_trip_booking_link_source`, `20260716220000_tire_trip_usage_attribution`, `20260716310000_driving_attribution_roles` |
-| 7 | Bootstrap-time columns | 83 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **70** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `vehicle_trips_pkey` PRIMARY KEY |
+| 11 | Primary keys | `vehicle_trips_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `vehicle_trips_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 11 indexes (enumerated below) |
-| 16 | Dependency order | Create enums ['DetectionConfidence', 'TripAssignmentStatus', 'TripAssignmentSubjectType', 'TripSource', 'VehicleDetectionProfile'] before `vehicle_trips` when referenced; `vehicle_trips` must exist before `20260325161142_trip_architecture_refactor` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: `actual_driver_id`, `analysis_completed_at`, `analysis_failed_at`, `analysis_failed_reason`, `analysis_latency_ms`, `analysis_partial_at`, `analysis_queued_at`, `analysis_stages_json`, `analysis_started_at`, `assigned_driver_id`, `avg_consumption_kwh_per_100km`, `avg_consumption_l_per_100km`, `avg_engine_load`, `avg_rpm`, `avg_throttle_position`, `booking_customer_id`, `booking_link_source`, `energy_confidence`, `energy_used_kwh`, `engine_temp_end_c`, `engine_temp_start_c`, `enriched_at`, `fuel_confidence`, `gap_ended`, `outside_temperature_start_c`, `trip_analysis_status`, `trip_status`; indexes: `vehicle_trips_trip_analysis_status_idx`, `vehicle_trips_trip_status_idx` |
+| 15 | Indexes | **8** indexes (enumerated below) |
+| 16 | Dependency order | Create enums ['DetectionConfidence', 'TripAssignmentStatus', 'TripAssignmentSubjectType', 'TripSource', 'VehicleDetectionProfile'] before table when referenced; table must exist before `20260325161142_trip_architecture_refactor` |
+| 17 | Deliberately omitted (introduced later) | columns: `actual_driver_id`, `analysis_completed_at`, `analysis_failed_at`, `analysis_failed_reason`, `analysis_latency_ms`, `analysis_partial_at`, `analysis_queued_at`, `analysis_stages_json`, `analysis_started_at`, `assigned_driver_id`, `avg_consumption_kwh_per_100km`, `avg_consumption_l_per_100km`, `avg_engine_load`, `avg_rpm`, `avg_throttle_position`, `behavior_enrichment_attempts`, `behavior_enrichment_error`, `behavior_enrichment_started_at`, `behavior_enrichment_status`, `behavior_summary_status`, `booking_customer_id`, `booking_link_source`, `driving_impact_computed_at`, `driving_impact_status`, `energy_confidence`, `energy_used_kwh`, `engine_temp_end_c`, `engine_temp_start_c`, `enriched_at`, `fuel_confidence`, `gap_ended`, `max_over_speed_kmh`, `outside_temperature_start_c`, `quality_status`, `speeding_percent`, `speeding_segments`, `tire_usage_attribution_status`, `tire_usage_processed_at`, `trip_analysis_status`, `trip_status`; indexes: `vehicle_trips_behavior_enrichment_status_idx`, `vehicle_trips_tire_usage_attribution_status_idx`, `vehicle_trips_trip_analysis_status_idx`, `vehicle_trips_trip_status_idx`, `vehicle_trips_vehicle_id_start_time_idx` |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
@@ -217,100 +225,84 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 1 | `id` | text | NOT NULL |
 | 2 | `vehicle_id` | text | NOT NULL |
 | 3 | `dimo_segment_id` | text | NULL |
-| 5 | `driver_name` | text | NULL |
-| 6 | `assignment_status` | "TripAssignmentStatus" | NULL |
-| 7 | `assignment_subject_type` | "TripAssignmentSubjectType" | NULL |
-| 8 | `assignment_subject_id` | text | NULL |
-| 9 | `assigned_booking_id` | text | NULL |
-| 10 | `is_private_trip` | boolean | NOT NULL DEFAULT false |
-| 11 | `start_time` | timestamp(3) without time zone | NOT NULL |
-| 12 | `end_time` | timestamp(3) without time zone | NULL |
-| 13 | `start_latitude` | double precision | NULL |
-| 14 | `start_longitude` | double precision | NULL |
-| 15 | `end_latitude` | double precision | NULL |
-| 16 | `end_longitude` | double precision | NULL |
-| 17 | `distance_km` | double precision | NULL |
-| 18 | `duration_minutes` | double precision | NULL |
-| 19 | `avg_speed_kmh` | double precision | NULL |
-| 20 | `max_speed_kmh` | double precision | NULL |
-| 21 | `driving_score` | double precision | NULL |
-| 22 | `fuel_used_liters` | double precision | NULL |
-| 28 | `city_share_percent` | double precision | NULL |
-| 29 | `highway_share_percent` | double precision | NULL |
-| 30 | `country_share_percent` | double precision | NULL |
-| 37 | `speeding_percent` | double precision | NULL |
-| 38 | `max_over_speed_kmh` | double precision | NULL |
-| 39 | `speeding_segments` | integer | NULL |
-| 40 | `speeding_sections_json` | jsonb | NULL |
-| 41 | `speeding_section_count` | integer | NULL |
-| 42 | `speeding_distance_m` | integer | NULL |
-| 43 | `speeding_duration_s` | integer | NULL |
-| 44 | `speeding_exposure_pct` | double precision | NULL |
-| 45 | `avg_over_speed_kmh` | double precision | NULL |
-| 46 | `harsh_brake_count` | integer | NOT NULL DEFAULT 0 |
-| 47 | `harsh_accel_count` | integer | NOT NULL DEFAULT 0 |
-| 48 | `harsh_corner_count` | integer | NOT NULL DEFAULT 0 |
-| 49 | `acceleration_event_count` | integer | NOT NULL DEFAULT 0 |
-| 50 | `braking_event_count` | integer | NOT NULL DEFAULT 0 |
-| 51 | `abuse_event_count` | integer | NOT NULL DEFAULT 0 |
-| 52 | `hard_acceleration_count` | integer | NOT NULL DEFAULT 0 |
-| 53 | `hard_braking_count` | integer | NOT NULL DEFAULT 0 |
-| 54 | `full_braking_count` | integer | NOT NULL DEFAULT 0 |
-| 55 | `total_acceleration_events` | integer | NOT NULL DEFAULT 0 |
-| 56 | `hard_acceleration_events` | integer | NOT NULL DEFAULT 0 |
-| 57 | `total_braking_events` | integer | NOT NULL DEFAULT 0 |
-| 58 | `hard_braking_events` | integer | NOT NULL DEFAULT 0 |
-| 59 | `full_braking_events` | integer | NOT NULL DEFAULT 0 |
-| 60 | `cornering_events` | integer | NOT NULL DEFAULT 0 |
-| 61 | `abuse_events` | integer | NOT NULL DEFAULT 0 |
-| 62 | `speeding_events` | integer | NOT NULL DEFAULT 0 |
-| 63 | `possible_impact_count` | integer | NOT NULL DEFAULT 0 |
-| 64 | `kickdown_count` | integer | NOT NULL DEFAULT 0 |
-| 65 | `cold_engine_abuse_count` | integer | NOT NULL DEFAULT 0 |
-| 66 | `long_idle_count` | integer | NOT NULL DEFAULT 0 |
-| 67 | `abuse_score` | double precision | NULL |
-| 68 | `behavior_summary_json` | jsonb | NULL |
-| 69 | `behavior_enriched_at` | timestamp(3) without time zone | NULL |
-| 70 | `behavior_enrichment_status` | text | NULL |
-| 71 | `behavior_enrichment_attempts` | integer | NOT NULL DEFAULT 0 |
-| 72 | `behavior_enrichment_error` | text | NULL |
-| 73 | `behavior_enrichment_started_at` | timestamp(3) without time zone | NULL |
-| 74 | `driving_impact_computed_at` | timestamp(3) without time zone | NULL |
-| 75 | `detection_profile` | "VehicleDetectionProfile" | NULL |
-| 76 | `start_detection_mode` | text | NULL |
-| 77 | `end_detection_mode` | text | NULL |
-| 78 | `start_confidence` | "DetectionConfidence" | NULL |
-| 79 | `end_confidence` | "DetectionConfidence" | NULL |
-| 80 | `possible_start_at` | timestamp(3) without time zone | NULL |
-| 81 | `possible_end_at` | timestamp(3) without time zone | NULL |
-| 82 | `first_activity_at` | timestamp(3) without time zone | NULL |
-| 83 | `last_activity_at` | timestamp(3) without time zone | NULL |
-| 84 | `route_tracking_started_at` | timestamp(3) without time zone | NULL |
-| 85 | `driving_tracking_started_at` | timestamp(3) without time zone | NULL |
-| 86 | `raw_detection_meta` | jsonb | NULL |
-| 89 | `trip_source` | "TripSource" | NOT NULL DEFAULT 'V2_LIVE'::"TripSource" |
-| 90 | `is_repaired` | boolean | NOT NULL DEFAULT false |
-| 91 | `merge_parent_trip_id` | text | NULL |
-| 92 | `quality_status` | text | NULL |
-| 93 | `behavior_summary_status` | text | NULL |
-| 94 | `driving_impact_status` | text | NULL |
-| 95 | `created_at` | timestamp(3) without time zone | NOT NULL DEFAULT CURRENT_TIMESTAMP |
-| 106 | `tire_usage_attribution_status` | text | NULL |
-| 107 | `tire_usage_processed_at` | timestamp(3) without time zone | NULL |
+| 4 | `driver_name` | text | NULL |
+| 5 | `assignment_status` | "TripAssignmentStatus" | NULL |
+| 6 | `assignment_subject_type` | "TripAssignmentSubjectType" | NULL |
+| 7 | `assignment_subject_id` | text | NULL |
+| 8 | `assigned_booking_id` | text | NULL |
+| 9 | `is_private_trip` | boolean | NOT NULL DEFAULT false |
+| 10 | `start_time` | timestamp(3) without time zone | NOT NULL |
+| 11 | `end_time` | timestamp(3) without time zone | NULL |
+| 12 | `start_latitude` | double precision | NULL |
+| 13 | `start_longitude` | double precision | NULL |
+| 14 | `end_latitude` | double precision | NULL |
+| 15 | `end_longitude` | double precision | NULL |
+| 16 | `distance_km` | double precision | NULL |
+| 17 | `duration_minutes` | double precision | NULL |
+| 18 | `avg_speed_kmh` | double precision | NULL |
+| 19 | `max_speed_kmh` | double precision | NULL |
+| 20 | `driving_score` | double precision | NULL |
+| 21 | `fuel_used_liters` | double precision | NULL |
+| 22 | `city_share_percent` | double precision | NULL |
+| 23 | `highway_share_percent` | double precision | NULL |
+| 24 | `country_share_percent` | double precision | NULL |
+| 25 | `speeding_sections_json` | jsonb | NULL |
+| 26 | `speeding_section_count` | integer | NULL |
+| 27 | `speeding_distance_m` | integer | NULL |
+| 28 | `speeding_duration_s` | integer | NULL |
+| 29 | `speeding_exposure_pct` | double precision | NULL |
+| 30 | `avg_over_speed_kmh` | double precision | NULL |
+| 31 | `harsh_brake_count` | integer | NOT NULL DEFAULT 0 |
+| 32 | `harsh_accel_count` | integer | NOT NULL DEFAULT 0 |
+| 33 | `harsh_corner_count` | integer | NOT NULL DEFAULT 0 |
+| 34 | `acceleration_event_count` | integer | NOT NULL DEFAULT 0 |
+| 35 | `braking_event_count` | integer | NOT NULL DEFAULT 0 |
+| 36 | `abuse_event_count` | integer | NOT NULL DEFAULT 0 |
+| 37 | `hard_acceleration_count` | integer | NOT NULL DEFAULT 0 |
+| 38 | `hard_braking_count` | integer | NOT NULL DEFAULT 0 |
+| 39 | `full_braking_count` | integer | NOT NULL DEFAULT 0 |
+| 40 | `total_acceleration_events` | integer | NOT NULL DEFAULT 0 |
+| 41 | `hard_acceleration_events` | integer | NOT NULL DEFAULT 0 |
+| 42 | `total_braking_events` | integer | NOT NULL DEFAULT 0 |
+| 43 | `hard_braking_events` | integer | NOT NULL DEFAULT 0 |
+| 44 | `full_braking_events` | integer | NOT NULL DEFAULT 0 |
+| 45 | `cornering_events` | integer | NOT NULL DEFAULT 0 |
+| 46 | `abuse_events` | integer | NOT NULL DEFAULT 0 |
+| 47 | `speeding_events` | integer | NOT NULL DEFAULT 0 |
+| 48 | `possible_impact_count` | integer | NOT NULL DEFAULT 0 |
+| 49 | `kickdown_count` | integer | NOT NULL DEFAULT 0 |
+| 50 | `cold_engine_abuse_count` | integer | NOT NULL DEFAULT 0 |
+| 51 | `long_idle_count` | integer | NOT NULL DEFAULT 0 |
+| 52 | `abuse_score` | double precision | NULL |
+| 53 | `behavior_summary_json` | jsonb | NULL |
+| 54 | `behavior_enriched_at` | timestamp(3) without time zone | NULL |
+| 55 | `detection_profile` | "VehicleDetectionProfile" | NULL |
+| 56 | `start_detection_mode` | text | NULL |
+| 57 | `end_detection_mode` | text | NULL |
+| 58 | `start_confidence` | "DetectionConfidence" | NULL |
+| 59 | `end_confidence` | "DetectionConfidence" | NULL |
+| 60 | `possible_start_at` | timestamp(3) without time zone | NULL |
+| 61 | `possible_end_at` | timestamp(3) without time zone | NULL |
+| 62 | `first_activity_at` | timestamp(3) without time zone | NULL |
+| 63 | `last_activity_at` | timestamp(3) without time zone | NULL |
+| 64 | `route_tracking_started_at` | timestamp(3) without time zone | NULL |
+| 65 | `driving_tracking_started_at` | timestamp(3) without time zone | NULL |
+| 66 | `raw_detection_meta` | jsonb | NULL |
+| 67 | `trip_source` | "TripSource" | NOT NULL DEFAULT 'V2_LIVE'::"TripSource" |
+| 68 | `is_repaired` | boolean | NOT NULL DEFAULT false |
+| 69 | `merge_parent_trip_id` | text | NULL |
+| 70 | `created_at` | timestamp(3) without time zone | NOT NULL DEFAULT CURRENT_TIMESTAMP |
 
 #### Predecessor indexes
 
-- `vehicle_trips_assigned_booking_id_idx` btree ()
-- `vehicle_trips_assignment_status_is_private_trip_idx` btree ()
-- `vehicle_trips_assignment_subject_type_assignment_subject_id_idx` btree ()
-- `vehicle_trips_behavior_enrichment_status_idx` btree ()
-- `vehicle_trips_dimo_segment_id_key` btree ()
-- `vehicle_trips_pkey` btree ()
-- `vehicle_trips_start_time_idx` btree ()
-- `vehicle_trips_tire_usage_attribution_status_idx` btree ()
-- `vehicle_trips_trip_source_idx` btree ()
-- `vehicle_trips_vehicle_id_idx` btree ()
-- `vehicle_trips_vehicle_id_start_time_idx` btree ()
+- `vehicle_trips_assigned_booking_id_idx` btree (`assigned_booking_id`)
+- `vehicle_trips_assignment_status_is_private_trip_idx` btree (`assignment_status`, `is_private_trip`)
+- `vehicle_trips_assignment_subject_type_assignment_subject_id_idx` btree (`assignment_subject_type`, `assignment_subject_id`)
+- `vehicle_trips_dimo_segment_id_key` UNIQUE btree (`dimo_segment_id`)
+- `vehicle_trips_pkey` UNIQUE btree (`id`)
+- `vehicle_trips_start_time_idx` btree (`start_time`)
+- `vehicle_trips_trip_source_idx` btree (`trip_source`)
+- `vehicle_trips_vehicle_id_idx` btree (`vehicle_id`)
 
 ### U-BT-002 — `driving_events`
 
@@ -322,17 +314,17 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260331000000_v3_hardware_type` |
 | 6 | Every downstream migration that changes it | `20260331000000_v3_hardware_type`, `20260413230000_add_composite_indexes_batch_c`, `20260716240000_driving_event_native_identity` |
-| 7 | Bootstrap-time columns | 17 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **13** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `driving_events_pkey` PRIMARY KEY |
+| 11 | Primary keys | `driving_events_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `driving_events_trip_id_fkey` FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE SET NULL; `driving_events_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 7 indexes (enumerated below) |
-| 16 | Dependency order | Create enum `DrivingEventType` before `driving_events`; `driving_events` must exist before `20260331000000_v3_hardware_type`; do not reference `DrivingEventSource`, `DrivingEventTripAssignment` or `organization_id` at bootstrap |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: `metadata_json`, `organization_id`, `source`; indexes: `driving_events_source_idx` |
+| 15 | Indexes | **5** indexes (enumerated below) |
+| 16 | Dependency order | Create enums ['DrivingEventType'] before table when referenced; table must exist before `20260331000000_v3_hardware_type` |
+| 17 | Deliberately omitted (introduced later) | columns: `metadata_json`, `organization_id`, `provider`, `provider_event_name`, `provider_fingerprint`, `provider_source_id`, `source`, `trip_assignment`; indexes: `driving_events_org_provider_fingerprint`, `driving_events_organization_id_vehicle_id_recorded_at_idx`, `driving_events_source_idx`, `driving_events_trip_id_event_type_idx`, `driving_events_vehicle_id_recorded_at_idx`, `driving_events_vehicle_id_trip_assignment_idx` |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
@@ -344,35 +336,25 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 |-----|--------|------|----------------------|
 | 1 | `id` | text | NOT NULL |
 | 2 | `vehicle_id` | text | NOT NULL |
-| 4 | `event_type` | "DrivingEventType" | NOT NULL |
-| 6 | `severity` | double precision | NOT NULL DEFAULT 0 |
-| 7 | `latitude` | double precision | NULL |
-| 8 | `longitude` | double precision | NULL |
-| 9 | `speed_kmh` | double precision | NULL |
-| 10 | `delta_kmh` | double precision | NULL |
-| 11 | `duration_ms` | integer | NULL |
-| 12 | `driver_name` | text | NULL |
-| 13 | `trip_id` | text | NULL |
-| 15 | `recorded_at` | timestamp(3) without time zone | NOT NULL |
-| 16 | `created_at` | timestamp(3) without time zone | NOT NULL DEFAULT CURRENT_TIMESTAMP |
-| 17 | `provider` | text | NULL |
-| 18 | `provider_event_name` | text | NULL |
-| 19 | `provider_source_id` | text | NULL |
-| 20 | `provider_fingerprint` | text | NULL |
-| 21 | `trip_assignment` | "DrivingEventTripAssignment" | NOT NULL DEFAULT 'UNASSIGNED'::"DrivingEventTripAssignment" |
+| 3 | `event_type` | "DrivingEventType" | NOT NULL |
+| 4 | `severity` | double precision | NOT NULL DEFAULT 0 |
+| 5 | `latitude` | double precision | NULL |
+| 6 | `longitude` | double precision | NULL |
+| 7 | `speed_kmh` | double precision | NULL |
+| 8 | `delta_kmh` | double precision | NULL |
+| 9 | `duration_ms` | integer | NULL |
+| 10 | `driver_name` | text | NULL |
+| 11 | `trip_id` | text | NULL |
+| 12 | `recorded_at` | timestamp(3) without time zone | NOT NULL |
+| 13 | `created_at` | timestamp(3) without time zone | NOT NULL DEFAULT CURRENT_TIMESTAMP |
 
 #### Predecessor indexes
 
-- `driving_events_event_type_idx` btree ()
-- `driving_events_org_provider_fingerprint` btree ()
-- `driving_events_organization_id_vehicle_id_recorded_at_idx` btree ()
-- `driving_events_pkey` btree ()
-- `driving_events_recorded_at_idx` btree ()
-- `driving_events_trip_id_event_type_idx` btree ()
-- `driving_events_trip_id_idx` btree ()
-- `driving_events_vehicle_id_idx` btree ()
-- `driving_events_vehicle_id_recorded_at_idx` btree ()
-- `driving_events_vehicle_id_trip_assignment_idx` btree ()
+- `driving_events_pkey` UNIQUE btree (`id`)
+- `driving_events_vehicle_id_idx` btree (`vehicle_id`)
+- `driving_events_recorded_at_idx` btree (`recorded_at`)
+- `driving_events_event_type_idx` btree (`event_type`)
+- `driving_events_trip_id_idx` btree (`trip_id`)
 
 ### U-BT-003 — `trip_behavior_events`
 
@@ -384,19 +366,19 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260413230000_add_composite_indexes_batch_c` |
 | 6 | Every downstream migration that changes it | `20260413230000_add_composite_indexes_batch_c` |
-| 7 | Bootstrap-time columns | 20 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **20** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `trip_behavior_events_pkey` PRIMARY KEY |
+| 11 | Primary keys | `trip_behavior_events_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `trip_behavior_events_trip_id_fkey` FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE CASCADE; `trip_behavior_events_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 6 indexes (enumerated below) |
-| 16 | Dependency order | Create enums ['BehaviorEventCategory', 'BehaviorEventClassification'] before `trip_behavior_events` when referenced; `trip_behavior_events` must exist before `20260413230000_add_composite_indexes_batch_c` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: none; indexes: none |
+| 15 | Indexes | **5** indexes (enumerated below) |
+| 16 | Dependency order | Create enums ['BehaviorEventCategory', 'BehaviorEventClassification'] before table when referenced; table must exist before `20260413230000_add_composite_indexes_batch_c` |
+| 17 | Deliberately omitted (introduced later) | columns: none; indexes: `trip_behavior_events_trip_id_event_category_idx` |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
-| 19 | Predecessor equals final shape | **YES** |
+| 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
 | 21 | Unresolved authority | none |
 
@@ -427,12 +409,11 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 
 #### Predecessor indexes
 
-- `trip_behavior_events_event_category_idx` btree ()
-- `trip_behavior_events_pkey` btree ()
-- `trip_behavior_events_started_at_idx` btree ()
-- `trip_behavior_events_trip_id_event_category_idx` btree ()
-- `trip_behavior_events_trip_id_idx` btree ()
-- `trip_behavior_events_vehicle_id_idx` btree ()
+- `trip_behavior_events_event_category_idx` btree (`event_category`)
+- `trip_behavior_events_pkey` UNIQUE btree (`id`)
+- `trip_behavior_events_started_at_idx` btree (`started_at`)
+- `trip_behavior_events_trip_id_idx` btree (`trip_id`)
+- `trip_behavior_events_vehicle_id_idx` btree (`vehicle_id`)
 
 ### U-BT-004 — `vehicle_trip_waypoints`
 
@@ -444,19 +425,19 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260609000000_autovacuum_tuning` |
 | 6 | Every downstream migration that changes it | `20260609000000_autovacuum_tuning` |
-| 7 | Bootstrap-time columns | 7 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **7** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `vehicle_trip_waypoints_pkey` PRIMARY KEY |
+| 11 | Primary keys | `vehicle_trip_waypoints_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `vehicle_trip_waypoints_trip_id_fkey` FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 3 indexes (enumerated below) |
-| 16 | Dependency order | Create enums [] before `vehicle_trip_waypoints` when referenced; `vehicle_trip_waypoints` must exist before `20260609000000_autovacuum_tuning` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: none; indexes: none |
+| 15 | Indexes | **3** indexes (enumerated below) |
+| 16 | Dependency order | Create enums [] before table when referenced; table must exist before `20260609000000_autovacuum_tuning` |
+| 17 | Deliberately omitted (introduced later) | columns: none; indexes: none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
-| 19 | Predecessor equals final shape | **YES** |
+| 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
 | 21 | Unresolved authority | none |
 
@@ -474,9 +455,9 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 
 #### Predecessor indexes
 
-- `vehicle_trip_waypoints_pkey` btree ()
-- `vehicle_trip_waypoints_recorded_at_idx` btree ()
-- `vehicle_trip_waypoints_trip_id_idx` btree ()
+- `vehicle_trip_waypoints_pkey` UNIQUE btree (`id`)
+- `vehicle_trip_waypoints_recorded_at_idx` btree (`recorded_at`)
+- `vehicle_trip_waypoints_trip_id_idx` btree (`trip_id`)
 
 ### U-BT-005 — `vehicle_trip_tracking_runs`
 
@@ -488,19 +469,19 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260609000000_autovacuum_tuning` |
 | 6 | Every downstream migration that changes it | `20260609000000_autovacuum_tuning` |
-| 7 | Bootstrap-time columns | 16 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **16** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `vehicle_trip_tracking_runs_pkey` PRIMARY KEY |
+| 11 | Primary keys | `vehicle_trip_tracking_runs_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `vehicle_trip_tracking_runs_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 5 indexes (enumerated below) |
-| 16 | Dependency order | Create enums ['TripDetectionState', 'TripTrackingRunType'] before `vehicle_trip_tracking_runs` when referenced; `vehicle_trip_tracking_runs` must exist before `20260609000000_autovacuum_tuning` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: none; indexes: none |
+| 15 | Indexes | **5** indexes (enumerated below) |
+| 16 | Dependency order | Create enums ['TripDetectionState', 'TripTrackingRunType'] before table when referenced; table must exist before `20260609000000_autovacuum_tuning` |
+| 17 | Deliberately omitted (introduced later) | columns: none; indexes: none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
-| 19 | Predecessor equals final shape | **YES** |
+| 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
 | 21 | Unresolved authority | none |
 
@@ -527,11 +508,11 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 
 #### Predecessor indexes
 
-- `vehicle_trip_tracking_runs_created_at_idx` btree ()
-- `vehicle_trip_tracking_runs_pkey` btree ()
-- `vehicle_trip_tracking_runs_run_type_idx` btree ()
-- `vehicle_trip_tracking_runs_trip_id_idx` btree ()
-- `vehicle_trip_tracking_runs_vehicle_id_idx` btree ()
+- `vehicle_trip_tracking_runs_created_at_idx` btree (`created_at`)
+- `vehicle_trip_tracking_runs_pkey` UNIQUE btree (`id`)
+- `vehicle_trip_tracking_runs_run_type_idx` btree (`run_type`)
+- `vehicle_trip_tracking_runs_trip_id_idx` btree (`trip_id`)
+- `vehicle_trip_tracking_runs_vehicle_id_idx` btree (`vehicle_id`)
 
 ### U-BT-006 — `trip_repairs`
 
@@ -543,19 +524,19 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260609000000_autovacuum_tuning` |
 | 6 | Every downstream migration that changes it | `20260609000000_autovacuum_tuning` |
-| 7 | Bootstrap-time columns | 12 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **12** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `trip_repairs_pkey` PRIMARY KEY |
+| 11 | Primary keys | `trip_repairs_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `trip_repairs_trip_id_fkey` FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE SET NULL; `trip_repairs_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 6 indexes (enumerated below) |
-| 16 | Dependency order | Create enums [] before `trip_repairs` when referenced; `trip_repairs` must exist before `20260609000000_autovacuum_tuning` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: none; indexes: none |
+| 15 | Indexes | **6** indexes (enumerated below) |
+| 16 | Dependency order | Create enums [] before table when referenced; table must exist before `20260609000000_autovacuum_tuning` |
+| 17 | Deliberately omitted (introduced later) | columns: none; indexes: none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
-| 19 | Predecessor equals final shape | **YES** |
+| 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
 | 21 | Unresolved authority | none |
 
@@ -578,12 +559,12 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 
 #### Predecessor indexes
 
-- `trip_repairs_created_at_idx` btree ()
-- `trip_repairs_pkey` btree ()
-- `trip_repairs_repair_type_idx` btree ()
-- `trip_repairs_status_idx` btree ()
-- `trip_repairs_trip_id_idx` btree ()
-- `trip_repairs_vehicle_id_idx` btree ()
+- `trip_repairs_created_at_idx` btree (`created_at`)
+- `trip_repairs_pkey` UNIQUE btree (`id`)
+- `trip_repairs_repair_type_idx` btree (`repair_type`)
+- `trip_repairs_status_idx` btree (`status`)
+- `trip_repairs_trip_id_idx` btree (`trip_id`)
+- `trip_repairs_vehicle_id_idx` btree (`vehicle_id`)
 
 ### U-BT-007 — `trip_driving_impact`
 
@@ -595,17 +576,17 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `20260425000000_retire_user_assignment_and_speeding_severity` |
 | 6 | Every downstream migration that changes it | `20260425000000_retire_user_assignment_and_speeding_severity`, `20260716250000_driving_impact_provenance`, `20260716260000_driving_impact_braking_provenance`, `20260716270000_driving_impact_load_components`, `20260717180000_trip_driving_impact_authoritative_coverage` |
-| 7 | Bootstrap-time columns | 53 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **35** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `trip_driving_impact_pkey` PRIMARY KEY |
+| 11 | Primary keys | `trip_driving_impact_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `trip_driving_impact_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 4 indexes (enumerated below) |
-| 16 | Dependency order | Create enums [] before `trip_driving_impact` when referenced; `trip_driving_impact` must exist before `20260425000000_retire_user_assignment_and_speeding_severity` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: `analysis_status`, `authoritative_distance_km`, `calculated_at`, `distance_discrepancy_km`, `source_completeness`, `source_fingerprint`, `source_version`, `trip_distance_km_at_source`; indexes: `trip_driving_impact_analysis_status_idx`, `trip_driving_impact_source_fingerprint_idx` |
+| 15 | Indexes | **4** indexes (enumerated below) |
+| 16 | Dependency order | Create enums [] before table when referenced; table must exist before `20260425000000_retire_user_assignment_and_speeding_severity` |
+| 17 | Deliberately omitted (introduced later) | columns: `analysis_status`, `authoritative_distance_km`, `calculated_at`, `capability_version`, `context_only_share`, `distance_discrepancy_km`, `estimated_proxy_share`, `hardware_profile`, `health_eligibility`, `hf_event_count`, `load_components_json`, `mean_brake_energy_proxy_per_km`, `measured_share`, `measurement_coverage`, `native_event_count`, `p95_negative_decel_measured`, `p95_negative_decel_proxy`, `primary_source`, `provenance_maturity`, `provenance_version`, `provider_classified_share`, `reconstructed_share`, `source_completeness`, `source_fingerprint`, `source_version`, `trip_distance_km_at_source`; indexes: `trip_driving_impact_analysis_status_idx`, `trip_driving_impact_source_fingerprint_idx` |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
@@ -650,31 +631,13 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 33 | `source_summary_json` | jsonb | NULL |
 | 34 | `created_at` | timestamp(3) without time zone | NOT NULL DEFAULT CURRENT_TIMESTAMP |
 | 35 | `updated_at` | timestamp(3) without time zone | NOT NULL |
-| 36 | `primary_source` | text | NULL |
-| 37 | `measured_share` | double precision | NULL |
-| 38 | `provider_classified_share` | double precision | NULL |
-| 39 | `reconstructed_share` | double precision | NULL |
-| 40 | `estimated_proxy_share` | double precision | NULL |
-| 41 | `context_only_share` | double precision | NULL |
-| 42 | `native_event_count` | integer | NULL |
-| 43 | `hf_event_count` | integer | NULL |
-| 44 | `measurement_coverage` | double precision | NULL |
-| 45 | `hardware_profile` | text | NULL |
-| 46 | `capability_version` | text | NULL |
-| 47 | `health_eligibility` | text | NULL |
-| 48 | `provenance_maturity` | text | NULL |
-| 49 | `provenance_version` | text | NULL |
-| 50 | `p95_negative_decel_measured` | double precision | NULL |
-| 51 | `p95_negative_decel_proxy` | double precision | NULL |
-| 52 | `mean_brake_energy_proxy_per_km` | double precision | NULL |
-| 53 | `load_components_json` | jsonb | NULL |
 
 #### Predecessor indexes
 
-- `trip_driving_impact_organization_id_vehicle_id_idx` btree ()
-- `trip_driving_impact_pkey` btree ()
-- `trip_driving_impact_trip_id_key` btree ()
-- `trip_driving_impact_vehicle_id_trip_started_at_idx` btree ()
+- `trip_driving_impact_organization_id_vehicle_id_idx` btree (`organization_id`, `vehicle_id`)
+- `trip_driving_impact_pkey` UNIQUE btree (`id`)
+- `trip_driving_impact_trip_id_key` UNIQUE btree (`trip_id`)
+- `trip_driving_impact_vehicle_id_trip_started_at_idx` btree (`vehicle_id`, `trip_started_at`)
 
 ### U-BT-008 — `vehicle_trip_detection_states`
 
@@ -686,19 +649,19 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `none` |
 | 6 | Every downstream migration that changes it | none |
-| 7 | Bootstrap-time columns | 30 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **30** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `vehicle_trip_detection_states_pkey` PRIMARY KEY |
+| 11 | Primary keys | `vehicle_trip_detection_states_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `vehicle_trip_detection_states_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 5 indexes (enumerated below) |
-| 16 | Dependency order | Create enums ['DetectionConfidence', 'TripDetectionState', 'VehicleDetectionProfile'] before `vehicle_trip_detection_states` when referenced; `vehicle_trip_detection_states` must exist before `downstream FK migrations` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: none; indexes: none |
+| 15 | Indexes | **5** indexes (enumerated below) |
+| 16 | Dependency order | Create enums ['DetectionConfidence', 'TripDetectionState', 'VehicleDetectionProfile'] before table when referenced; table must exist before `downstream references` |
+| 17 | Deliberately omitted (introduced later) | columns: none; indexes: none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
-| 19 | Predecessor equals final shape | **YES** |
+| 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
 | 21 | Unresolved authority | none |
 
@@ -739,11 +702,11 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 
 #### Predecessor indexes
 
-- `vehicle_trip_detection_states_organization_id_idx` btree ()
-- `vehicle_trip_detection_states_pkey` btree ()
-- `vehicle_trip_detection_states_state_idx` btree ()
-- `vehicle_trip_detection_states_vehicle_id_key` btree ()
-- `vehicle_trip_detection_states_worker_locked_until_idx` btree ()
+- `vehicle_trip_detection_states_organization_id_idx` btree (`organization_id`)
+- `vehicle_trip_detection_states_pkey` UNIQUE btree (`id`)
+- `vehicle_trip_detection_states_state_idx` btree (`state`)
+- `vehicle_trip_detection_states_vehicle_id_key` UNIQUE btree (`vehicle_id`)
+- `vehicle_trip_detection_states_worker_locked_until_idx` btree (`worker_locked_until`)
 
 ### U-BT-009 — `brake_trip_metrics`
 
@@ -755,17 +718,17 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 4 | Bootstrap insertion point | `20260325161141` |
 | 5 | First downstream migration | `none` |
 | 6 | Every downstream migration that changes it | none |
-| 7 | Bootstrap-time columns | 11 columns (enumerated below) |
+| 7 | Bootstrap-time columns | **11** columns (enumerated below) |
 | 8 | Bootstrap-time PostgreSQL types | per-column below |
 | 9 | Nullability | per-column below |
 | 10 | Defaults | per-column below |
-| 11 | Primary keys | `brake_trip_metrics_pkey` PRIMARY KEY |
+| 11 | Primary keys | `brake_trip_metrics_pkey` PRIMARY KEY (id) |
 | 12 | Foreign keys | `brake_trip_metrics_vehicle_id_fkey` FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE |
 | 13 | Unique constraints | none beyond PK |
 | 14 | Check constraints | none recorded in accepted JSON |
-| 15 | Indexes | 3 indexes (enumerated below) |
-| 16 | Dependency order | Create enums [] before `brake_trip_metrics` when referenced; `brake_trip_metrics` must exist before `downstream FK migrations` |
-| 17 | Deliberately omitted (later unguarded DDL) | columns: none; indexes: none |
+| 15 | Indexes | **3** indexes (enumerated below) |
+| 16 | Dependency order | Create enums [] before table when referenced; table must exist before `downstream references` |
+| 17 | Deliberately omitted (introduced later) | columns: none; indexes: none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON; master audit Appendix A; migration SQL ≥ `20260325161142` |
@@ -789,9 +752,9 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 
 #### Predecessor indexes
 
-- `brake_trip_metrics_pkey` btree ()
-- `brake_trip_metrics_recorded_at_idx` btree ()
-- `brake_trip_metrics_vehicle_id_idx` btree ()
+- `brake_trip_metrics_pkey` UNIQUE btree (`id`)
+- `brake_trip_metrics_recorded_at_idx` btree (`recorded_at`)
+- `brake_trip_metrics_vehicle_id_idx` btree (`vehicle_id`)
 
 ### U-BT-010 — `TripAssignmentStatus`
 
@@ -813,7 +776,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `TripAssignmentStatus` |
-| 17 | Deliberately omitted (later unguarded DDL) | none — predecessor **includes** retired label `ASSIGNED_USER` required by `20260425000000` RENAME/rebuild |
+| 17 | Deliberately omitted (introduced later) | none — includes retired `ASSIGNED_USER` required by `20260425000000` RENAME/rebuild |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -839,7 +802,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `TripAssignmentSubjectType` |
-| 17 | Deliberately omitted (later unguarded DDL) | none — predecessor **includes** retired label `USER` required by `20260425000000` RENAME/rebuild |
+| 17 | Deliberately omitted (introduced later) | none — includes retired `USER` required by `20260425000000` RENAME/rebuild |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -865,7 +828,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `DrivingEventType` |
-| 17 | Deliberately omitted (later unguarded DDL) | `UNMAPPED_PROVIDER_EVENT`, `SAFETY_COLLISION` (added by guarded `ALTER TYPE … ADD VALUE IF NOT EXISTS` in `20260716230000_driving_event_type_native_mapper`) |
+| 17 | Deliberately omitted (introduced later) | `UNMAPPED_PROVIDER_EVENT`, `SAFETY_COLLISION` (downstream guarded ADD VALUE in `20260716230000`) |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **NO** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -891,7 +854,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `BehaviorEventCategory` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -917,7 +880,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `BehaviorEventClassification` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -943,7 +906,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `TripSource` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -969,7 +932,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `TripDetectionState` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -995,7 +958,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `TripTrackingRunType` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -1021,7 +984,7 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `VehicleDetectionProfile` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
@@ -1047,13 +1010,64 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | 14 | Check constraints | n/a |
 | 15 | Indexes | n/a |
 | 16 | Dependency order | Must exist before columns referencing `DetectionConfidence` |
-| 17 | Deliberately omitted (later unguarded DDL) | none |
+| 17 | Deliberately omitted (introduced later) | none |
 | 18 | Final accepted shape source | `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` |
 | 19 | Predecessor equals final shape | **YES** |
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
 | 21 | Unresolved authority | none |
 
-## 5. Special authority
+## 5. Post-replay final-convergence ledger
+
+After minimal bootstrap + all committed downstream migrations, compare resulting state to accepted
+CI-R3A.7.1 JSON. Any remaining delta requires the authorized post-replay reconciliation migration
+(`20260814130000_ci_r3b_post_replay_parity_reconciliation` — planned, not created).
+
+| Object | Property | After committed history | Final accepted | Producer | Reconciliation |
+|--------|----------|----------------------|----------------|----------|----------------|
+| `vehicle_trips` | column `trip_status` DEFAULT | `'COMPLETED'::"TripStatus"` | `'ONGOING'::"TripStatus"` | COMMITTED_DOWNSTREAM_MIGRATION (`20260325161142`) | POST_REPLAY_RECONCILIATION (authorized) |
+| `TripAssignmentStatus` | enum labels | 5/3 bootstrap + RENAME/rebuild migration | 4 labels | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | none |
+| `TripAssignmentSubjectType` | enum labels | 5/3 bootstrap + RENAME/rebuild migration | 2 labels | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | none |
+| `DrivingEventType` | enum labels | 6 bootstrap + 2 guarded ADD VALUE | 8 labels | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | none |
+| `BehaviorEventCategory` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+| `BehaviorEventClassification` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+| `TripSource` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+| `TripDetectionState` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+| `TripTrackingRunType` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+| `VehicleDetectionProfile` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+| `DetectionConfidence` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+
+| Counter | Value |
+|---------|-------|
+| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** |
+| `FINAL_CONVERGENCE_UNCLASSIFIED_PROPERTY_COUNT` | **0** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** |
+| `FINAL_REPLAY_TYPE_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
+| `FINAL_REPLAY_NULLABILITY_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
+| `FINAL_REPLAY_CONSTRAINT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
+| `FINAL_REPLAY_INDEX_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
+
+## 6. Validation counters (mechanical)
+
+| Counter | Value |
+|---------|-------|
+| `INCOMPLETE_PREDECESSOR_INDEX_DEFINITION_COUNT` | **0** |
+| `PREDECESSOR_INDEX_COUNT_MISMATCH_COUNT` | **0** |
+| `PREDECESSOR_COLUMN_COUNT_MISMATCH_COUNT` | **0** |
+| `PREDECESSOR_CONSTRAINT_COUNT_MISMATCH_COUNT` | **0** |
+| `BOOTSTRAP_REFERENCES_NOT_YET_CREATED_TYPE_COUNT` | **0** |
+| `BOOTSTRAP_INDEX_REFERENCES_MISSING_COLUMN_COUNT` | **0** |
+| `BOOTSTRAP_DEFAULT_REFERENCES_UNAVAILABLE_TYPE_OR_VALUE_COUNT` | **0** |
+| `DRIVING_EVENTS_PREDECESSOR_COLUMN_COUNT` | **13** |
+| `DRIVING_EVENTS_PREDECESSOR_INDEX_COUNT` | **5** |
+| `DRIVING_EVENTS_FUTURE_TYPE_REFERENCE_COUNT` | **0** |
+| `DRIVING_EVENTS_INDEX_MISSING_COLUMN_REFERENCE_COUNT` | **0** |
+| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_TYPE_OVERLAP_COUNT` | **0** |
+| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_COLUMN_OVERLAP_COUNT` | **0** |
+| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_CONSTRAINT_OVERLAP_COUNT` | **0** |
+| `BOOTSTRAP_DOWNSTREAM_UNGUARDED_INDEX_OVERLAP_COUNT` | **0** |
+| `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` | **0** |
+
+## 7. Special authority
 
 | Field | Value |
 |-------|-------|
@@ -1061,6 +1075,6 @@ Matrix row count: **125**. Every downstream statement touching the 19 bootstrap 
 | `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** (approved; not implemented) |
 | `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
 
-## 6. Final status
+## 8. Final status
 
-**Status: CI_R3B01_PREDECESSOR_SHAPE_LEDGER_COMPLETED**
+**Status: CI_R3B02_REPLAY_AUTHORITY_LEDGER_COMPLETED**
