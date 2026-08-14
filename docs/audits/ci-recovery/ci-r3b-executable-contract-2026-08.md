@@ -443,7 +443,7 @@ Claims that must not appear as current authority anywhere in CI-R3A/CI-R3B docum
 
 ---
 
-## 10. CI-R3B.0 / CI-R3B.0.1 / CI-R3B.0.2 scope counters
+## 10. CI-R3B.0 / CI-R3B.0.1 / CI-R3B.0.2 / CI-R3B.0.2.1 scope counters
 
 | Counter | Value |
 |---------|-------|
@@ -459,13 +459,43 @@ Claims that must not appear as current authority anywhere in CI-R3A/CI-R3B docum
 | `E7_E8_E9_RUNTIME_SCOPE_COUNT` / `OUT_OF_SCOPE_FILE_COUNT` | 0 / 0 |
 | `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 
-## 11. Final status
+## 11. CI-R3B.0.2.1 — 19-object final-convergence ledger completion
+
+Independent review of CI-R3B.0.2 found the final-convergence ledger incomplete:
+
+| Defect | CI-R3B.0.2 state | CI-R3B.0.2.1 correction |
+|--------|------------------|-------------------------|
+| Object row count | declared 19, actual 11 | **19** physical object rows in ledger §5.1 |
+| Missing table rows | 8 tables absent | all **9** table rows present |
+| Assignment enum notation | ambiguous `5/3 bootstrap` | precise bootstrap counts (5 and 3 separately) |
+| Zero mismatch counters | not sufficiently proven | mechanically verified state A/B counters |
+
+Corrected final-convergence authority (ledger §5):
+
+| Counter | Value |
+|---------|-------|
+| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** |
+| `FINAL_CONVERGENCE_TABLE_ROW_COUNT` / `FINAL_CONVERGENCE_ENUM_ROW_COUNT` | **9** / **10** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_COUNT` | **54** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** (`vehicle_trips.trip_status`) |
+| `FINAL_REPLAY_*_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | all **0** |
+| `FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` | **YES** |
+| `STALE_FINAL_CONVERGENCE_19_OBJECT_CLAIM_COUNT` | **0** |
+| `STALE_AMBIGUOUS_ASSIGNMENT_ENUM_COUNT_CLAIM` | **0** |
+| `MIRRORED_AUTHORITY_MISMATCH_COUNT` | **0** |
+
+Historical incomplete convergence table (**SUPERSEDED BY CI-R3B.0.2.1**): 11-row partial ledger with
+missing tables and ambiguous Assignment enum wording.
+
+## 12. Final status
 
 - CI-R3B.0 locked the `brake_trip_metrics` bootstrap/parity contradiction.
 - CI-R3B.0.1 separated bootstrap predecessor from final accepted shape.
 - CI-R3B.0.2 delivers a **SQL-ready minimal replay predecessor ledger**, complete downstream DDL matrix,
-  final-convergence ledger, and authorized fourth post-replay reconciliation migration.
+  and authorized fourth post-replay reconciliation migration.
+- CI-R3B.0.2.1 completes the **19-object final-convergence ledger** with all table property categories
+  and precise enum label-set proof.
 - U043 remains **approved but unimplemented**; `brake_trip_metrics` remains transitional bootstrap-required.
 - No migration, schema, runtime or test change; CI-R3B.1 awaits independent review.
 
-**Status: CI_R3B02_REPLAY_AUTHORITY_COMPLETED** — awaiting independent review before CI-R3B.1 implementation.
+**Status: CI_R3B021_FINAL_CONVERGENCE_COMPLETED** — awaiting independent review before CI-R3B.1 implementation.

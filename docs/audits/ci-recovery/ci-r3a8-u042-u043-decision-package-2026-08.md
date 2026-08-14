@@ -1236,4 +1236,28 @@ ALTER TABLE "vehicle_trips"
 
 Ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`.
 
-`CI_R3B02_REPLAY_AUTHORITY_STATUS` = **COMPLETED** — CI-R3B.1 awaits independent review.
+`CI_R3B02_REPLAY_AUTHORITY_STATUS` = **COMPLETED** — superseded by §17 for final-convergence completion.
+
+## 17. CI-R3B.0.2.1 — 19-object final-convergence ledger completion
+
+Independent review found CI-R3B.0.2 declared `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` = 19 but listed only
+11 object rows (eight tables missing; Assignment enums used ambiguous `5/3 bootstrap` notation). Prior
+zero mismatch counters were not sufficiently proven.
+
+Corrected authority (ledger §5):
+
+| Field | Value |
+|-------|-------|
+| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** (physical rows in §5.1) |
+| `FINAL_CONVERGENCE_TABLE_ROW_COUNT` / `FINAL_CONVERGENCE_ENUM_ROW_COUNT` | **9** / **10** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_COUNT` | **54** |
+| `TripAssignmentStatus` bootstrap labels | **5** (not ambiguous 5/3) |
+| `TripAssignmentSubjectType` bootstrap labels | **3** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** |
+| `FINAL_REPLAY_*_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | all **0** |
+| `FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` | **YES** |
+| `STALE_FINAL_CONVERGENCE_19_OBJECT_CLAIM_COUNT` | **0** |
+| `STALE_AMBIGUOUS_ASSIGNMENT_ENUM_COUNT_CLAIM` | **0** |
+| `CI_R3B1_IMPLEMENTATION_COUNT` | **0** |
+
+`CI_R3B021_FINAL_CONVERGENCE_STATUS` = **COMPLETED** — CI-R3B.1 awaits independent review.

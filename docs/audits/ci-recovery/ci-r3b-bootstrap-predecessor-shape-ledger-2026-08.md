@@ -1,6 +1,6 @@
 # CI-R3B — Bootstrap minimal replay predecessor ledger (CI-R3B.0.2)
 
-**Phase:** CI-R3B.0.2 — complete replay-safe predecessor and final-parity authority
+**Phase:** CI-R3B.0.2 / CI-R3B.0.2.1 — complete replay-safe predecessor and final-parity authority
 **Branch:** `fix/ci-r3b-vehicle-trips-migration-replay-2026-08`
 **Scope:** documentation authority only — no migrations, schema, runtime or production changes
 
@@ -1016,35 +1016,141 @@ Executable classification (11 + 2 + 6 = 19) is separate from physical kind count
 | 20 | Repository evidence | accepted JSON enum labels; master audit §6 |
 | 21 | Unresolved authority | none |
 
-## 5. Post-replay final-convergence ledger
+## 5. Post-replay final-convergence ledger (CI-R3B.0.2.1)
 
-After minimal bootstrap + all committed downstream migrations, compare resulting state to accepted
-CI-R3A.7.1 JSON. Any remaining delta requires the authorized post-replay reconciliation migration
-(`20260814130000_ci_r3b_post_replay_parity_reconciliation` — planned, not created).
+After minimal bootstrap + all committed downstream migrations (**state A**), compare resulting state to
+accepted CI-R3A.7.1 JSON. Any remaining delta requires the authorized post-replay reconciliation migration
+(`20260814130000_ci_r3b_post_replay_parity_reconciliation` — planned, not created). After that migration
+(**state B**), all property categories must match accepted JSON.
 
-| Object | Property | After committed history | Final accepted | Producer | Reconciliation |
-|--------|----------|----------------------|----------------|----------|----------------|
-| `vehicle_trips` | column `trip_status` DEFAULT | `'COMPLETED'::"TripStatus"` | `'ONGOING'::"TripStatus"` | COMMITTED_DOWNSTREAM_MIGRATION (`20260325161142`) | POST_REPLAY_RECONCILIATION (authorized) |
-| `TripAssignmentStatus` | enum labels | 5/3 bootstrap + RENAME/rebuild migration | 4 labels | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | none |
-| `TripAssignmentSubjectType` | enum labels | 5/3 bootstrap + RENAME/rebuild migration | 2 labels | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | none |
-| `DrivingEventType` | enum labels | 6 bootstrap + 2 guarded ADD VALUE | 8 labels | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | none |
-| `BehaviorEventCategory` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
-| `BehaviorEventClassification` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
-| `TripSource` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
-| `TripDetectionState` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
-| `TripTrackingRunType` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
-| `VehicleDetectionProfile` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
-| `DetectionConfidence` | enum labels | bootstrap labels equal final | accepted JSON | BOOTSTRAP | none |
+Historical incomplete ledger (**SUPERSEDED BY CI-R3B.0.2.1**): declared `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` = 19
+but only 11 object rows were present; eight table rows missing; Assignment enums used ambiguous `5/3 bootstrap` notation.
+
+### 5.1 Nineteen-object convergence inventory
+
+| # | Object | Kind | Property categories accounted | State A vs accepted final | Producer | Default Δ | Type Δ | Null Δ | Constraint Δ | Index Δ | Reconciliation |
+|---|--------|------|------------------------------|---------------------------|----------|-----------|--------|--------|--------------|---------|----------------|
+| 1 | `vehicle_trips` | table | columns 110/110; types 110/110; nullability 110/110; defaults 109/110; constraints 2/2; indexes 13/13 | Bootstrap 70 cols + 8 idx → committed history 110 cols, 2 constraints, 13 indexes. After committed history: `trip_status` DEFAULT `'COMPLETED'::"TripStatus"` (`20260325161142`). Accepted final: `'ONGOING'::"TripStatus"`. All other 109 column defaults match accepted JSON. | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION (+ POST_REPLAY_RECONCILIATION for default) | 1 | 0 | 0 | 0 | 0 | POST_REPLAY_RECONCILIATION required for `trip_status` DEFAULT only |
+| 2 | `driving_events` | table | columns 21/21; types 21/21; nullability 21/21; defaults 21/21; constraints 3/3; indexes 11/11 | Bootstrap 13 cols + 5 idx → committed history 21 cols, 3 constraints, 11 indexes. All 21 column defaults match accepted JSON after downstream guarded/unguarded adds (`20260331000000`, `20260716240000`). | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | 0 | 0 | 0 | 0 | 0 | none |
+| 3 | `trip_behavior_events` | table | columns 20/20; types 20/20; nullability 20/20; defaults 20/20; constraints 3/3; indexes 6/6 | Bootstrap 20 cols + 5 idx → committed history 20 cols, 3 constraints, 6 indexes. All 20 column defaults match accepted JSON; one index added downstream (`20260413230000`). | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | 0 | 0 | 0 | 0 | 0 | none |
+| 4 | `vehicle_trip_waypoints` | table | columns 7/7; types 7/7; nullability 7/7; defaults 7/7; constraints 2/2; indexes 3/3 | Bootstrap 7 cols + 3 idx → committed history 7 cols, 2 constraints, 3 indexes. All 7 column defaults match accepted JSON; no downstream column/index DDL after bootstrap. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 5 | `vehicle_trip_tracking_runs` | table | columns 16/16; types 16/16; nullability 16/16; defaults 16/16; constraints 2/2; indexes 5/5 | Bootstrap 16 cols + 5 idx → committed history 16 cols, 2 constraints, 5 indexes. All 16 column defaults match accepted JSON; `20260609000000_autovacuum_tuning` ALTER TABLE SET only (storage, not shape). | BOOTSTRAP (+ COMMITTED_DOWNSTREAM_MIGRATION for storage SET only) | 0 | 0 | 0 | 0 | 0 | none |
+| 6 | `trip_repairs` | table | columns 12/12; types 12/12; nullability 12/12; defaults 12/12; constraints 3/3; indexes 6/6 | Bootstrap 12 cols + 6 idx → committed history 12 cols, 3 constraints, 6 indexes. All 12 column defaults match accepted JSON; `20260609000000_autovacuum_tuning` ALTER TABLE SET only. | BOOTSTRAP (+ COMMITTED_DOWNSTREAM_MIGRATION for storage SET only) | 0 | 0 | 0 | 0 | 0 | none |
+| 7 | `trip_driving_impact` | table | columns 61/61; types 61/61; nullability 61/61; defaults 61/61; constraints 2/2; indexes 6/6 | Bootstrap 35 cols + 4 idx → committed history 61 cols, 2 constraints, 6 indexes. All 61 column defaults match accepted JSON after unguarded downstream adds and one guarded DROP COLUMN (`20260425000000`, `20260717180000`). | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | 0 | 0 | 0 | 0 | 0 | none |
+| 8 | `vehicle_trip_detection_states` | table | columns 30/30; types 30/30; nullability 30/30; defaults 30/30; constraints 2/2; indexes 5/5 | Bootstrap 30 cols + 5 idx → committed history 30 cols, 2 constraints, 5 indexes. All 30 column defaults match accepted JSON; no downstream shape DDL. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 9 | `brake_trip_metrics` | table | columns 11/11; types 11/11; nullability 11/11; defaults 11/11; constraints 2/2; indexes 3/3 | Bootstrap 11 cols + 3 idx → committed history 11 cols, 2 constraints, 3 indexes. All 11 column defaults match accepted JSON; no downstream shape DDL (transitional bootstrap-only table). | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 10 | `TripAssignmentStatus` | enum | enum label set (ordered count and membership) | Bootstrap: 5 labels: ASSIGNED_DRIVER, ASSIGNED_USER, ASSIGNED_BOOKING_CUSTOMER, PRIVATE_UNASSIGNED, UNKNOWN_ASSIGNMENT. Downstream: `20260425000000_retire_user_assignment_and_speeding_severity`: ALTER TYPE RENAME → CREATE TYPE → ALTER COLUMN → DROP TYPE removes label `ASSIGNED_USER`. After committed history: 4 labels: ASSIGNED_DRIVER, ASSIGNED_BOOKING_CUSTOMER, PRIVATE_UNASSIGNED, UNKNOWN_ASSIGNMENT. | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | 0 | 0 | 0 | 0 | 0 | none |
+| 11 | `TripAssignmentSubjectType` | enum | enum label set (ordered count and membership) | Bootstrap: 3 labels: DRIVER, USER, BOOKING_CUSTOMER. Downstream: `20260425000000_retire_user_assignment_and_speeding_severity`: ALTER TYPE RENAME → CREATE TYPE → ALTER COLUMN → DROP TYPE removes label `USER`. After committed history: 2 labels: DRIVER, BOOKING_CUSTOMER. | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | 0 | 0 | 0 | 0 | 0 | none |
+| 12 | `DrivingEventType` | enum | enum label set (ordered count and membership) | Bootstrap: 6 labels: HARSH_BRAKING, EXTREME_BRAKING, HARSH_ACCELERATION, HARSH_CORNERING, SPEEDING, IDLE_EXCESSIVE. Downstream: `20260716230000_driving_event_type_native_mapper`: ADD VALUE `UNMAPPED_PROVIDER_EVENT`, `SAFETY_COLLISION`. After committed history: 8 labels: HARSH_BRAKING, EXTREME_BRAKING, HARSH_ACCELERATION, HARSH_CORNERING, SPEEDING, IDLE_EXCESSIVE, UNMAPPED_PROVIDER_EVENT, SAFETY_COLLISION. | BOOTSTRAP + COMMITTED_DOWNSTREAM_MIGRATION | 0 | 0 | 0 | 0 | 0 | none |
+| 13 | `BehaviorEventCategory` | enum | enum label set (ordered count and membership) | Bootstrap: 3 labels: ACCELERATION, BRAKING, ABUSE. Downstream: none (bootstrap label set equals final accepted set). After committed history: 3 labels: ACCELERATION, BRAKING, ABUSE. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 14 | `BehaviorEventClassification` | enum | enum label set (ordered count and membership) | Bootstrap: 7 labels: LIGHT, MODERATE, HARD, EXTREME, WARNING, SEVERE, CRITICAL. Downstream: none (bootstrap label set equals final accepted set). After committed history: 7 labels: LIGHT, MODERATE, HARD, EXTREME, WARNING, SEVERE, CRITICAL. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 15 | `TripSource` | enum | enum label set (ordered count and membership) | Bootstrap: 2 labels: V2_LIVE, REPAIRED. Downstream: none (bootstrap label set equals final accepted set). After committed history: 2 labels: V2_LIVE, REPAIRED. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 16 | `TripDetectionState` | enum | enum label set (ordered count and membership) | Bootstrap: 6 labels: RESTING, POSSIBLE_START, ACTIVE_TRIP, IDLE_WITHIN_TRIP, POSSIBLE_END, ENDED. Downstream: none (bootstrap label set equals final accepted set). After committed history: 6 labels: RESTING, POSSIBLE_START, ACTIVE_TRIP, IDLE_WITHIN_TRIP, POSSIBLE_END, ENDED. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 17 | `TripTrackingRunType` | enum | enum label set (ordered count and membership) | Bootstrap: 5 labels: POSSIBLE_START_VALIDATION, ACTIVE_TRACKING, POSSIBLE_END_CHECK, END_VALIDATION, FINALIZATION_CHECK. Downstream: none (bootstrap label set equals final accepted set). After committed history: 5 labels: POSSIBLE_START_VALIDATION, ACTIVE_TRACKING, POSSIBLE_END_CHECK, END_VALIDATION, FINALIZATION_CHECK. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 18 | `VehicleDetectionProfile` | enum | enum label set (ordered count and membership) | Bootstrap: 4 labels: ICE, EV, HYBRID, UNKNOWN. Downstream: none (bootstrap label set equals final accepted set). After committed history: 4 labels: ICE, EV, HYBRID, UNKNOWN. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+| 19 | `DetectionConfidence` | enum | enum label set (ordered count and membership) | Bootstrap: 3 labels: LOW, MEDIUM, HIGH. Downstream: none (bootstrap label set equals final accepted set). After committed history: 3 labels: LOW, MEDIUM, HIGH. | BOOTSTRAP | 0 | 0 | 0 | 0 | 0 | none |
+
+### 5.2 Table property-category proof (9 tables × 6 categories = 54)
+
+Each table row in §5.1 explicitly accounts for all six property categories. Mechanical accepted JSON totals:
+
+| Table | Columns | Constraints | Indexes |
+|-------|---------|-------------|---------|
+| `vehicle_trips` | 110 | 2 | 13 |
+| `driving_events` | 21 | 3 | 11 |
+| `trip_behavior_events` | 20 | 3 | 6 |
+| `vehicle_trip_waypoints` | 7 | 2 | 3 |
+| `vehicle_trip_tracking_runs` | 16 | 2 | 5 |
+| `trip_repairs` | 12 | 3 | 6 |
+| `trip_driving_impact` | 61 | 2 | 6 |
+| `vehicle_trip_detection_states` | 30 | 2 | 5 |
+| `brake_trip_metrics` | 11 | 2 | 3 |
+
+Per-table category reconciliation (columns / PostgreSQL types / nullability / defaults / constraints / indexes):
+
+| Table | Columns | Types | Nullability | Defaults | Constraints | Indexes | Committed-history convergence | Reconciliation |
+|-------|---------|-------|-------------|----------|-------------|---------|--------------------------------|----------------|
+| `vehicle_trips` | 110=110 | 110=110 | 110=110 | 109=110 (**1** Δ: `trip_status`) | 2=2 | 13=13 | all except one default | POST_REPLAY for `trip_status` DEFAULT |
+| `driving_events` | 21=21 | 21=21 | 21=21 | 21=21 | 3=3 | 11=11 | full | none |
+| `trip_behavior_events` | 20=20 | 20=20 | 20=20 | 20=20 | 3=3 | 6=6 | full | none |
+| `vehicle_trip_waypoints` | 7=7 | 7=7 | 7=7 | 7=7 | 2=2 | 3=3 | full | none |
+| `vehicle_trip_tracking_runs` | 16=16 | 16=16 | 16=16 | 16=16 | 2=2 | 5=5 | full | none |
+| `trip_repairs` | 12=12 | 12=12 | 12=12 | 12=12 | 3=3 | 6=6 | full | none |
+| `trip_driving_impact` | 61=61 | 61=61 | 61=61 | 61=61 | 2=2 | 6=6 | full | none |
+| `vehicle_trip_detection_states` | 30=30 | 30=30 | 30=30 | 30=30 | 2=2 | 5=5 | full | none |
+| `brake_trip_metrics` | 11=11 | 11=11 | 11=11 | 11=11 | 2=2 | 3=3 | full | none |
+
+Evidence path: minimal predecessor §4 (U-BT-001…U-BT-009) + downstream DDL matrix §3 + accepted JSON column/constraint/index records.
+
+### 5.3 Enum label-set proof (10 enums)
+
+| Enum | Bootstrap labels (count) | Downstream transformation | Final labels (count) | Match after history | Reconciliation |
+|------|-------------------------|----------------------------|----------------------|---------------------|----------------|
+| `TripAssignmentStatus` | 5: ASSIGNED_DRIVER, ASSIGNED_USER, ASSIGNED_BOOKING_CUSTOMER, PRIVATE_UNASSIGNED, UNKNOWN_ASSIGNMENT | `20260425000000`: RENAME/rebuild removes ASSIGNED_USER | 4: ASSIGNED_DRIVER, ASSIGNED_BOOKING_CUSTOMER, PRIVATE_UNASSIGNED, UNKNOWN_ASSIGNMENT | YES | none |
+| `TripAssignmentSubjectType` | 3: DRIVER, USER, BOOKING_CUSTOMER | `20260425000000`: RENAME/rebuild removes USER | 2: DRIVER, BOOKING_CUSTOMER | YES | none |
+| `DrivingEventType` | 6: HARSH_BRAKING, EXTREME_BRAKING, HARSH_ACCELERATION, HARSH_CORNERING, SPEEDING, IDLE_EXCESSIVE | `20260716230000`: ADD VALUE UNMAPPED_PROVIDER_EVENT, SAFETY_COLLISION | 8 (accepted JSON order) | YES | none |
+| `BehaviorEventCategory` | 3: ACCELERATION, BRAKING, ABUSE | none | 3 | YES | none |
+| `BehaviorEventClassification` | 7: LIGHT, MODERATE, HARD, EXTREME, WARNING, SEVERE, CRITICAL | none | 7 | YES | none |
+| `TripSource` | 2: V2_LIVE, REPAIRED | none | 2 | YES | none |
+| `TripDetectionState` | 6: RESTING, POSSIBLE_START, ACTIVE_TRIP, IDLE_WITHIN_TRIP, POSSIBLE_END, ENDED | none | 6 | YES | none |
+| `TripTrackingRunType` | 5: POSSIBLE_START_VALIDATION, ACTIVE_TRACKING, POSSIBLE_END_CHECK, END_VALIDATION, FINALIZATION_CHECK | none | 5 | YES | none |
+| `VehicleDetectionProfile` | 4: ICE, EV, HYBRID, UNKNOWN | none | 4 | YES | none |
+| `DetectionConfidence` | 3: LOW, MEDIUM, HIGH | none | 3 | YES | none |
+
+### 5.4 State A vs state B mismatch counters
+
+**State A** = minimal bootstrap + all committed downstream migrations (reconciliation not applied).
 
 | Counter | Value |
 |---------|-------|
-| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** |
-| `FINAL_CONVERGENCE_UNCLASSIFIED_PROPERTY_COUNT` | **0** |
 | `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** |
 | `FINAL_REPLAY_TYPE_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
 | `FINAL_REPLAY_NULLABILITY_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
 | `FINAL_REPLAY_CONSTRAINT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
 | `FINAL_REPLAY_INDEX_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **0** |
+
+The single pre-reconciliation default mismatch: `vehicle_trips.trip_status` DEFAULT `'COMPLETED'::"TripStatus"` (producer: `20260325161142_trip_architecture_refactor`) vs accepted `'ONGOING'::"TripStatus"`.
+
+**State B** = state A + authorized post-replay reconciliation migration (planned, not implemented).
+
+| Counter | Value |
+|---------|-------|
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | **0** |
+| `FINAL_REPLAY_TYPE_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | **0** |
+| `FINAL_REPLAY_NULLABILITY_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | **0** |
+| `FINAL_REPLAY_CONSTRAINT_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | **0** |
+| `FINAL_REPLAY_INDEX_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | **0** |
+
+Authorized reconciliation statement (minimum proven delta):
+
+```sql
+ALTER TABLE "vehicle_trips"
+  ALTER COLUMN "trip_status"
+  SET DEFAULT 'ONGOING'::"TripStatus";
+```
+
+### 5.5 Final-convergence inventory counters
+
+| Counter | Value |
+|---------|-------|
+| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** |
+| `FINAL_CONVERGENCE_LEDGER_UNIQUE_OBJECT_COUNT` | **19** |
+| `FINAL_CONVERGENCE_TABLE_ROW_COUNT` | **9** |
+| `FINAL_CONVERGENCE_ENUM_ROW_COUNT` | **10** |
+| `FINAL_CONVERGENCE_OBJECT_OMISSION_COUNT` | **0** |
+| `FINAL_CONVERGENCE_DUPLICATE_OBJECT_COUNT` | **0** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_COUNT` | **54** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_OMISSION_COUNT` | **0** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_UNCLASSIFIED_COUNT` | **0** |
+| `FINAL_CONVERGENCE_UNCLASSIFIED_PROPERTY_COUNT` | **0** |
+| `AMBIGUOUS_ENUM_BOOTSTRAP_COUNT_CLAIM_COUNT` | **0** |
+| `ENUM_FINAL_LABELSET_MISMATCH_COUNT` | **0** |
+| `ENUM_FINAL_LABELSET_OMISSION_COUNT` | **0** |
+| `POST_REPLAY_RECONCILIATION_REQUIRED` | **YES** |
+| `POST_REPLAY_RECONCILIATION_IMPLEMENTED` | **NO** |
+| `FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` | **YES** |
+
+`FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` = YES means the documented four-migration plan (bootstrap, pre-shim, target, post-shim, **plus** reconciliation) is sufficient if implemented and replayed successfully. It does **not** mean CI-R3B.1 or an executable reconciliation migration already exists.
 
 ## 6. Validation counters (mechanical)
 

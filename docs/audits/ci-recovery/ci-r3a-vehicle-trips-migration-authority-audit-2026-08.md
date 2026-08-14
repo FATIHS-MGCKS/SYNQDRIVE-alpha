@@ -1434,7 +1434,36 @@ CI-R3B.0.2 is documentation-only. Corrected authority:
 
 Full ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md` (§3 matrix, §4 predecessor, §5 convergence).
 
-`CI_R3B02_REPLAY_AUTHORITY_STATUS` = **COMPLETED** — CI-R3B.1 awaits independent review.
+`CI_R3B02_REPLAY_AUTHORITY_STATUS` = **COMPLETED** — superseded by §17n for final-convergence completion.
+
+## 17n. CI-R3B.0.2.1 — 19-object final-convergence ledger completion
+
+Independent review of CI-R3B.0.2 found:
+
+1. declared `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` = 19 but only 11 object rows present;
+2. eight table convergence rows missing;
+3. Assignment enums used ambiguous `5/3 bootstrap` notation;
+4. zero mismatch/unknown counters not sufficiently proven.
+
+CI-R3B.0.2.1 is documentation-only. Corrected authority:
+
+| Field | Value |
+|-------|-------|
+| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** (§5.1 physical rows) |
+| `FINAL_CONVERGENCE_TABLE_ROW_COUNT` / `FINAL_CONVERGENCE_ENUM_ROW_COUNT` | **9** / **10** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_COUNT` | **54** |
+| `TripAssignmentStatus` bootstrap label count | **5** |
+| `TripAssignmentSubjectType` bootstrap label count | **3** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** |
+| `FINAL_REPLAY_*_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | all **0** |
+| `FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` | **YES** |
+| `STALE_FINAL_CONVERGENCE_19_OBJECT_CLAIM_COUNT` | **0** |
+| `STALE_AMBIGUOUS_ASSIGNMENT_ENUM_COUNT_CLAIM` | **0** |
+| `MIRRORED_AUTHORITY_MISMATCH_COUNT` | **0** |
+
+Full ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md` (§5).
+
+`CI_R3B021_FINAL_CONVERGENCE_STATUS` = **COMPLETED** — CI-R3B.1 awaits independent review.
 
 ## 18. Final audit status
 
@@ -1448,9 +1477,9 @@ proof only (`INSUFFICIENT_AUTHORITY` for final acceptance — U042, §17i); `bra
 product-owner decision **DEPRECATE_AND_REMOVE** recorded (U043, §17i); its executable disposition is
 **TRANSITIONAL_BOOTSTRAP_REQUIRED** (§17k); removal not implemented.
 
-**Status: CI_R3B02_REPLAY_AUTHORITY_COMPLETED** — repository audit authority complete; minimal replay
-predecessor ledger and post-replay reconciliation authority locked (§17m); U043 approved and
-unimplemented; CI-R3B.1 not started; E7/E8/E9 unstarted.
+**Status: CI_R3B021_FINAL_CONVERGENCE_COMPLETED** — repository audit authority complete; minimal replay
+predecessor ledger, complete 19-object final-convergence ledger (§17n), and post-replay reconciliation
+authority locked; U043 approved and unimplemented; CI-R3B.1 not started; E7/E8/E9 unstarted.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 
