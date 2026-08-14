@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -20,14 +22,16 @@ from repair_closure import (  # noqa: E402
     enrich_column_defaults,
     ordered_actions_for_contract,
 )
+from replay_evidence_lib import migration_dirs  # noqa: E402
 from sql_migration_analyzer import unique_defect_objects  # noqa: E402
 
 SCHEMA_REV = "03a6cdfe^"
 HISTORICAL_AUTHORITY_COMMIT = "03a6cdfe"
 
 OUT_CONTRACTS = REPO / "docs/audits/ci-recovery/data/ci-r3b1d-vendor-predecessor-ddl-contracts-2026-08.json"
-OUT_CLOSURE = REPO / "docs/audits/ci-recovery/data/ci-r3b1d-repair-dependency-closure-2026-08.json"
-OUT_TOPOLOGY = REPO / "docs/audits/ci-recovery/data/ci-r3b1d-final-repair-topology-2026-08.json"
+OUT_REMAINING = REPO / "docs/audits/ci-recovery/data/ci-r3b1d-remaining-predecessor-ddl-contracts-2026-08.json"
+OUT_CLOSURE = REPO / "docs/audits/ci-recovery/data/ci-r3b1d-post-vendor-repair-closure-2026-08.json"
+OUT_TOPOLOGY = REPO / "docs/audits/ci-recovery/data/ci-r3b1d-post-vendor-repair-topology-2026-08.json"
 
 VENDOR_SLOT = 7
 REPAIR_AFTER = "20260613200000_booking_document_lifecycle"
@@ -184,6 +188,27 @@ def git_show_file(rev: str, path: str) -> str:
     return subprocess.check_output(
         ["git", "-C", str(REPO), "show", f"{rev}:{path}"], text=True
     )
+
+
+def schema_commit_before_migration(migration: str) -> str:
+    first_commit = subprocess.check_output(
+        [
+            "git",
+            "-C",
+            str(REPO),
+            "log",
+            "--format=%H",
+            "-1",
+            "--diff-filter=A",
+            f"backend/prisma/migrations/{migration}/migration.sql",
+        ],
+        text=True,
+    ).strip()
+    if not first_commit:
+        raise RuntimeError(f"cannot locate git introduction for migration {migration}")
+    return subprocess.check_output(
+        ["git", "-C", str(REPO), "rev-parse", f"{first_commit}^"], text=True
+    ).strip()
 
 
 def enum_contract(
@@ -408,6 +433,130 @@ def build_vendor_topology(contracts_by_object: dict[str, dict[str, Any]]) -> lis
     ]
 
 
+def migration_before(name: str) -> str:
+    dirs = migration_dirs()
+    idx = dirs.index(name)
+    if idx == 0:
+        raise RuntimeError(f"no predecessor migration for {name}")
+    return dirs[idx - 1]
+
+
+def find_model_for_table(schema: str, table: str) -> str | None:
+    parsed = parse_schema(schema)
+    for model_name in sorted(parsed.model_names):
+        body = parsed.models[model_name]["body"]
+        table_m = re.search(r'@@map\("([^"]+)"\)', body)
+        mapped = table_m.group(1) if table_m else re.sub(r"(?<!^)(?=[A-Z])", "_", model_name).lower()
+        if mapped == table:
+            return model_name
+    return None
+
+
+def generic_defect_contract(
+    defect: dict[str, Any],
+    *,
+    repair_slot: int,
+    repair_after: str,
+    repair_before: str,
+) -> dict[str, Any]:
+    schema = git_show_file(schema_commit_before_migration(repair_before), "backend/prisma/schema.prisma")
+    obj = defect["object"]
+    if defect["object_type"] == "enum":
+        labels = parse_schema(schema).enums.get(obj)
+        if not labels:
+            raise RuntimeError(f"enum {obj} missing from schema at {repair_before}^")
+        return enum_contract(
+            schema,
+            obj,
+            {
+                "classification": defect["classification"],
+                "before": repair_before,
+                "not_yet": [],
+                "repair_after": repair_after,
+                "repair_before": repair_before,
+            },
+            defect,
+        ) | {"repair_slot": repair_slot}
+
+    model = find_model_for_table(schema, obj)
+    if not model:
+        raise RuntimeError(f"no prisma model for table {obj} at {repair_before}^")
+    return table_contract(
+        schema,
+        {
+            "classification": defect["classification"],
+            "before": repair_before,
+            "model": model,
+            "enums": [],
+            "not_yet": [],
+            "repair_after": repair_after,
+            "repair_before": repair_before,
+        },
+        defect,
+    ) | {"repair_slot": repair_slot}
+
+
+def build_remaining_contracts(defects: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    remaining = [d for d in defects if d["object"] not in PRIMARY_VENDOR_DEFECTS]
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for defect in remaining:
+        grouped[defect["first_consumer_migration"]].append(defect)
+
+    contracts: list[dict[str, Any]] = []
+    future_slots: list[dict[str, Any]] = []
+    closure_records: list[dict[str, Any]] = []
+    slot_no = VENDOR_SLOT + 1
+
+    for repair_before in sorted(grouped, key=lambda m: migration_dirs().index(m)):
+        group = grouped[repair_before]
+        repair_after = migration_before(repair_before)
+        by_obj: dict[str, dict[str, Any]] = {}
+        for defect in sorted(group, key=lambda d: d["object"]):
+            contract = generic_defect_contract(
+                defect,
+                repair_slot=slot_no,
+                repair_after=repair_after,
+                repair_before=repair_before,
+            )
+            contracts.append(contract)
+            by_obj[defect["object"]] = contract
+            if defect["object_type"] == "table":
+                closure_records.append(build_closure_record(defect["object"], contract, slot_no))
+
+        object_order = sorted(by_obj.keys(), key=lambda o: (0 if by_obj[o]["object_type"] == "enum" else 1, o))
+        actions: list[dict[str, Any]] = []
+        action_order = 1
+        for obj in object_order:
+            for act in ordered_actions_for_contract(obj, by_obj[obj]):
+                act = dict(act)
+                act["order"] = action_order
+                action_order += 1
+                actions.append(act)
+        created = sorted(
+            act["object"]
+            for act in actions
+            if act.get("action") in {"CREATE TYPE", "CREATE TABLE", "CREATE SEQUENCE"}
+        )
+        future_slots.append(
+            {
+                "slot": slot_no,
+                "after_migration": repair_after,
+                "before_migration": repair_before,
+                "objects_types_sequences_created": created,
+                "actions": actions,
+                "deferred_actions": [],
+                "first_consumers_protected": [repair_before],
+                "must_execute_after": [repair_after],
+                "must_execute_before": [repair_before],
+                "closure_validated": True,
+                "reason": f"Post-vendor predecessor repair for {', '.join(object_order)}",
+            }
+        )
+        slot_no += 1
+
+    return contracts, future_slots, closure_records
+
+
 def main() -> int:
     matrix = build_post_vendor_matrix(REPO)
     defects = unique_defect_objects(
@@ -417,18 +566,23 @@ def main() -> int:
     contracts = contracts_doc["contracts"]
     by_obj = {c["object"]: c for c in contracts}
 
+    remaining_contracts, future_slots, remaining_closure = build_remaining_contracts(defects)
+    all_defect_objects = [d["object"] for d in defects]
+
     closure_records = [
         build_closure_record(obj, by_obj[obj], VENDOR_SLOT)
         for obj in ["vendors", "vendor_vehicles"]
         if obj in by_obj
-    ]
-    topology = build_vendor_topology(by_obj)
+    ] + remaining_closure
+    topology = build_vendor_topology(by_obj) + future_slots
 
     closure_doc = {
         "schema_version": 1,
-        "repair_slot": VENDOR_SLOT,
+        "vendor_repair_slot": VENDOR_SLOT,
         "known_valid_objects": KNOWN_VALID_OBJECTS,
         "primary_historical_defects": PRIMARY_VENDOR_DEFECTS,
+        "remaining_historical_defect_objects": [d["object"] for d in defects if d["object"] not in PRIMARY_VENDOR_DEFECTS],
+        "all_genuine_defect_objects": all_defect_objects,
         "required_repair_closure_objects": ["VendorSourceType"],
         "records": closure_records,
     }
@@ -438,18 +592,29 @@ def main() -> int:
         "target_first_consumer": FIRST_CONSUMER,
         "known_valid_objects": KNOWN_VALID_OBJECTS,
         "primary_historical_defects": PRIMARY_VENDOR_DEFECTS,
+        "remaining_historical_defect_objects": closure_doc["remaining_historical_defect_objects"],
         "required_repair_closure_objects": ["VendorSourceType"],
+        "future_repair_slot_count": len(topology),
         "slots": topology,
+    }
+
+    remaining_doc = {
+        "schema_version": 1,
+        "contracts": remaining_contracts,
+        "defect_object_count": len(remaining_contracts),
     }
 
     OUT_CONTRACTS.parent.mkdir(parents=True, exist_ok=True)
     OUT_CONTRACTS.write_text(json.dumps(contracts_doc, indent=2) + "\n")
+    OUT_REMAINING.write_text(json.dumps(remaining_doc, indent=2) + "\n")
     OUT_CLOSURE.write_text(json.dumps(closure_doc, indent=2) + "\n")
     OUT_TOPOLOGY.write_text(json.dumps(topology_doc, indent=2) + "\n")
 
     totals = matrix["classification_totals"]
     print("matrix totals:", json.dumps(totals, indent=2))
     print("primary defects:", PRIMARY_VENDOR_DEFECTS)
+    print("remaining defect objects:", closure_doc["remaining_historical_defect_objects"])
+    print("future repair slots:", len(topology))
     print("known valid:", list(KNOWN_VALID_OBJECTS))
     print("repair slot:", VENDOR_SLOT, "after", REPAIR_AFTER, "before", REPAIR_BEFORE)
     return 0

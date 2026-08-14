@@ -107,6 +107,36 @@ class GoldenTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ex.verify_checksum("deadbeef" * 8)
 
+    def test_special_executor_constructor_path_refuses_wrong_pinned_hash(self) -> None:
+        from ci_r3b1c_special_composite_index import SpecialCompositeIndexExecutor
+        from replay_evidence_lib import SPECIAL_MIGRATION_EXPECTED_SHA256, sha256_file, SPECIAL_MIGRATION_PATH
+
+        ex = SpecialCompositeIndexExecutor(accepted_sha256="0" * 64)
+        with self.assertRaises(RuntimeError):
+            ex.verify_checksum(sha256_file(SPECIAL_MIGRATION_PATH))
+        self.assertEqual(SPECIAL_MIGRATION_EXPECTED_SHA256, sha256_file(SPECIAL_MIGRATION_PATH))
+
+    def test_create_unique_index_concurrently_detected(self) -> None:
+        from replay_evidence_lib import TRANSACTION_PATTERNS
+
+        sql = "CREATE UNIQUE INDEX CONCURRENTLY \"x\" ON \"y\"(\"z\");"
+        matched = any(
+            label == "CREATE UNIQUE INDEX CONCURRENTLY" and pattern.search(sql)
+            for label, pattern, cls in TRANSACTION_PATTERNS
+        )
+        self.assertTrue(matched)
+
+    def test_non_concurrent_unique_index_not_transaction_special(self) -> None:
+        from replay_evidence_lib import TRANSACTION_PATTERNS
+
+        sql = 'CREATE UNIQUE INDEX "x" ON "y"("z");'
+        special = [
+            label
+            for label, pattern, cls in TRANSACTION_PATTERNS
+            if cls == "SPECIAL_EXECUTION_REQUIRED" and pattern.search(sql)
+        ]
+        self.assertEqual(special, [])
+
 
 def main() -> int:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(GoldenTests)

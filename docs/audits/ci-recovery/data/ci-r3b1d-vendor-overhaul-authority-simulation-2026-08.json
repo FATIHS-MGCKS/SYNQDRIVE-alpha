@@ -1,0 +1,40 @@
+{
+  "disposable": true,
+  "production_connection": false,
+  "migration_directories": 293,
+  "replay_to_vendor_blocker": {
+    "last_applied_migration": "20260613200000_booking_document_lifecycle",
+    "failure_ordinal": 49,
+    "sqlstate": "42704",
+    "error_message": "type \"VendorCategory\" does not exist",
+    "special_migrations_handled": 1,
+    "migrations_applied_count": 48
+  },
+  "predecessor_fixture": "compiled slot 7 topology SQL (not committed migration)",
+  "vendor_overhaul_sql": "backend/prisma/migrations/20260613210000_vendor_management_overhaul/migration.sql",
+  "vendor_overhaul_modified": false,
+  "post_condition_verification": {
+    "VendorCategory_base_labels_present": true,
+    "VendorCategory_overhaul_labels_added": true,
+    "VendorCategory_label_count": 16,
+    "ActivityEntity_vendor_labels": true,
+    "VendorSource_exists": true,
+    "VendorVehicleRelationType_exists": true,
+    "vendors.source": true,
+    "vendors.external_place_id": true,
+    "vendors.address_line2": true,
+    "vendor_vehicles.relation_type": true,
+    "vendor_vehicles.is_preferred": true,
+    "vendor_vehicles.priority": true,
+    "vendor_vehicles.valid_from": true,
+    "vendor_vehicles.valid_until": true,
+    "vendor_vehicles.updated_at": true,
+    "org_invoices.vendor_id": true,
+    "org_invoices_vendor_id_idx": true,
+    "org_invoices_vendor_id_fkey": true,
+    "vendors_table_exists": true,
+    "vendor_vehicles_table_exists": true,
+    "pass": true
+  },
+  "pass": true
+}

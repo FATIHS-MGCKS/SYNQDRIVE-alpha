@@ -1,0 +1,4163 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "object": "WorkflowStatus",
+      "object_type": "enum",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260616140000_workflow_automation_runtime",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "first_consumer": "20260616140000_workflow_automation_runtime",
+      "repair_slot": 8,
+      "schema": "public",
+      "type_name": "WorkflowStatus",
+      "labels": [
+        "ACTIVE",
+        "DRAFT",
+        "DISABLED"
+      ],
+      "order_material": true,
+      "creator": null,
+      "relation": null,
+      "columns": [],
+      "primary_key": null,
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260616120000_station_operational_module",
+        "before": "20260616140000_workflow_automation_runtime",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:enum WorkflowStatus",
+        "matrix:first_consumer=20260616140000_workflow_automation_runtime"
+      ]
+    },
+    {
+      "object": "org_workflows",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260616140000_workflow_automation_runtime",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "OrgWorkflow",
+      "first_consumer": "20260616140000_workflow_automation_runtime",
+      "repair_slot": 8,
+      "relation": {
+        "schema": "public",
+        "name": "org_workflows"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "name",
+          "column": "name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.name"
+          ]
+        },
+        {
+          "prisma_field": "description",
+          "column": "description",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.description"
+          ]
+        },
+        {
+          "prisma_field": "category",
+          "column": "category",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.category"
+          ]
+        },
+        {
+          "prisma_field": "trigger",
+          "column": "trigger",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.trigger"
+          ]
+        },
+        {
+          "prisma_field": "conditions",
+          "column": "conditions",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": false,
+          "prisma_default": "\"[]\"",
+          "postgres_default": "'[]'",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.conditions"
+          ]
+        },
+        {
+          "prisma_field": "actions",
+          "column": "actions",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.actions"
+          ]
+        },
+        {
+          "prisma_field": "scope",
+          "column": "scope",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": false,
+          "prisma_default": "\"{\\\"type\\\":\\\"organization\\\"}\"",
+          "postgres_default": "'{\\\"type\\\":\\\"organization\\\"}'",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.scope"
+          ]
+        },
+        {
+          "prisma_field": "status",
+          "column": "status",
+          "prisma_type": "WorkflowStatus",
+          "postgres_type": "\"WorkflowStatus\"",
+          "nullable": false,
+          "prisma_default": "DRAFT",
+          "postgres_default": "'DRAFT'::\"WorkflowStatus\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.status"
+          ]
+        },
+        {
+          "prisma_field": "createdById",
+          "column": "created_by_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.createdById"
+          ]
+        },
+        {
+          "prisma_field": "createdByName",
+          "column": "created_by_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.createdByName"
+          ]
+        },
+        {
+          "prisma_field": "updatedById",
+          "column": "updated_by_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.updatedById"
+          ]
+        },
+        {
+          "prisma_field": "updatedByName",
+          "column": "updated_by_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.updatedByName"
+          ]
+        },
+        {
+          "prisma_field": "lastTriggeredAt",
+          "column": "last_triggered_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.lastTriggeredAt"
+          ]
+        },
+        {
+          "prisma_field": "triggerCount",
+          "column": "trigger_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.triggerCount"
+          ]
+        },
+        {
+          "prisma_field": "isTemplate",
+          "column": "is_template",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.isTemplate"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWorkflow.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "org_workflows_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:OrgWorkflow:@id"
+        ]
+      },
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:OrgWorkflow:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence": [
+            "schema:OrgWorkflow:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "category"
+          ],
+          "evidence": [
+            "schema:OrgWorkflow:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "WorkflowStatus",
+          "labels": [
+            "ACTIVE",
+            "DRAFT",
+            "DISABLED"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum WorkflowStatus"
+          ]
+        }
+      ],
+      "create_time_prerequisites": [
+        "WorkflowStatus"
+      ],
+      "required_before_first_consumer": [],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260616120000_station_operational_module",
+        "before": "20260616140000_workflow_automation_runtime",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model OrgWorkflow",
+        "matrix:first_consumer=20260616140000_workflow_automation_runtime"
+      ]
+    },
+    {
+      "object": "tires",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260617120000_tire_identity_mounted_dismounted",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "Tire",
+      "first_consumer": "20260617120000_tire_identity_mounted_dismounted",
+      "repair_slot": 9,
+      "relation": {
+        "schema": "public",
+        "name": "tires"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "tireSetId",
+          "column": "tire_set_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.tireSetId"
+          ]
+        },
+        {
+          "prisma_field": "brand",
+          "column": "brand",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.brand"
+          ]
+        },
+        {
+          "prisma_field": "tireModel",
+          "column": "tire_model",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.tireModel"
+          ]
+        },
+        {
+          "prisma_field": "width",
+          "column": "width",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.width"
+          ]
+        },
+        {
+          "prisma_field": "aspectRatio",
+          "column": "aspect_ratio",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.aspectRatio"
+          ]
+        },
+        {
+          "prisma_field": "rimDiameter",
+          "column": "rim_diameter",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.rimDiameter"
+          ]
+        },
+        {
+          "prisma_field": "loadIndex",
+          "column": "load_index",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.loadIndex"
+          ]
+        },
+        {
+          "prisma_field": "speedIndex",
+          "column": "speed_index",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.speedIndex"
+          ]
+        },
+        {
+          "prisma_field": "seasonType",
+          "column": "season_type",
+          "prisma_type": "TireSeason",
+          "postgres_type": "\"TireSeason\"",
+          "nullable": false,
+          "prisma_default": "ALL_SEASON",
+          "postgres_default": "'ALL_SEASON'::\"TireSeason\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.seasonType"
+          ]
+        },
+        {
+          "prisma_field": "runflat",
+          "column": "runflat",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.runflat"
+          ]
+        },
+        {
+          "prisma_field": "reinforced",
+          "column": "reinforced",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.reinforced"
+          ]
+        },
+        {
+          "prisma_field": "dotCode",
+          "column": "dot_code",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.dotCode"
+          ]
+        },
+        {
+          "prisma_field": "productionWeek",
+          "column": "production_week",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.productionWeek"
+          ]
+        },
+        {
+          "prisma_field": "productionYear",
+          "column": "production_year",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.productionYear"
+          ]
+        },
+        {
+          "prisma_field": "installedPosition",
+          "column": "installed_position",
+          "prisma_type": "TirePosition",
+          "postgres_type": "\"TirePosition\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.installedPosition"
+          ]
+        },
+        {
+          "prisma_field": "currentPosition",
+          "column": "current_position",
+          "prisma_type": "TirePosition",
+          "postgres_type": "\"TirePosition\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.currentPosition"
+          ]
+        },
+        {
+          "prisma_field": "initialTreadDepthMm",
+          "column": "initial_tread_depth_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.initialTreadDepthMm"
+          ]
+        },
+        {
+          "prisma_field": "legalMinTreadMm",
+          "column": "legal_min_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.6",
+          "postgres_default": "1.6",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.legalMinTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "targetReplaceTreadMm",
+          "column": "target_replace_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "3.0",
+          "postgres_default": "3.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.targetReplaceTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "estimatedTreadMm",
+          "column": "estimated_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.estimatedTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "estimatedWearPercent",
+          "column": "estimated_wear_percent",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.estimatedWearPercent"
+          ]
+        },
+        {
+          "prisma_field": "estimatedRemainingKm",
+          "column": "estimated_remaining_km",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.estimatedRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "wearRateMmPer1000km",
+          "column": "wear_rate_mm_per_1000km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.wearRateMmPer1000km"
+          ]
+        },
+        {
+          "prisma_field": "healthStatus",
+          "column": "health_status",
+          "prisma_type": "TireHealthStatus",
+          "postgres_type": "\"TireHealthStatus\"",
+          "nullable": false,
+          "prisma_default": "EXCELLENT",
+          "postgres_default": "'EXCELLENT'::\"TireHealthStatus\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.healthStatus"
+          ]
+        },
+        {
+          "prisma_field": "confidenceScore",
+          "column": "confidence_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.confidenceScore"
+          ]
+        },
+        {
+          "prisma_field": "confidenceLabel",
+          "column": "confidence_label",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.confidenceLabel"
+          ]
+        },
+        {
+          "prisma_field": "totalKmOnTire",
+          "column": "total_km_on_tire",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.totalKmOnTire"
+          ]
+        },
+        {
+          "prisma_field": "cityKm",
+          "column": "city_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.cityKm"
+          ]
+        },
+        {
+          "prisma_field": "highwayKm",
+          "column": "highway_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.highwayKm"
+          ]
+        },
+        {
+          "prisma_field": "ruralKm",
+          "column": "rural_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.ruralKm"
+          ]
+        },
+        {
+          "prisma_field": "harshAccelEvents",
+          "column": "harsh_accel_events",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.harshAccelEvents"
+          ]
+        },
+        {
+          "prisma_field": "harshBrakeEvents",
+          "column": "harsh_brake_events",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.harshBrakeEvents"
+          ]
+        },
+        {
+          "prisma_field": "highLateralEvents",
+          "column": "high_lateral_events",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.highLateralEvents"
+          ]
+        },
+        {
+          "prisma_field": "burnoutEvents",
+          "column": "burnout_events",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.burnoutEvents"
+          ]
+        },
+        {
+          "prisma_field": "lastRecalculatedAt",
+          "column": "last_recalculated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.lastRecalculatedAt"
+          ]
+        },
+        {
+          "prisma_field": "active",
+          "column": "active",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "true",
+          "postgres_default": "TRUE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.active"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Tire.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "tires_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:Tire:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:Tire.vehicleId->@Vehicle"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation vehicles preexists"
+          ]
+        },
+        {
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:Tire.tireSetId->@VehicleTireSetup"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id",
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:Tire:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "vehicle_id",
+            "active"
+          ],
+          "evidence": [
+            "schema:Tire:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "tire_set_id"
+          ],
+          "evidence": [
+            "schema:Tire:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "TireHealthStatus",
+          "labels": [
+            "EXCELLENT",
+            "GOOD",
+            "MODERATE",
+            "POOR",
+            "REPLACE_NOW"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum TireHealthStatus"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "TirePosition",
+          "labels": [
+            "FRONT_LEFT",
+            "FRONT_RIGHT",
+            "REAR_LEFT",
+            "REAR_RIGHT"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum TirePosition"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "TireSeason",
+          "labels": [
+            "SUMMER",
+            "WINTER",
+            "ALL_SEASON",
+            "TRACK",
+            "OTHER"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum TireSeason"
+          ]
+        }
+      ],
+      "create_time_prerequisites": [
+        "TireHealthStatus",
+        "TirePosition",
+        "TireSeason"
+      ],
+      "required_before_first_consumer": [
+        "['vehicle_id']->vehicles.['id']",
+        "['tire_set_id']->vehicle_tire_setups.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260617120000_pricing_tariffs",
+        "before": "20260617120000_tire_identity_mounted_dismounted",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model Tire",
+        "matrix:first_consumer=20260617120000_tire_identity_mounted_dismounted"
+      ]
+    },
+    {
+      "object": "vehicle_damage_images",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260618180000_vehicle_damage_lifecycle",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "VehicleDamageImage",
+      "first_consumer": "20260618180000_vehicle_damage_lifecycle",
+      "repair_slot": 10,
+      "relation": {
+        "schema": "public",
+        "name": "vehicle_damage_images"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamageImage.id"
+          ]
+        },
+        {
+          "prisma_field": "damageId",
+          "column": "damage_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamageImage.damageId"
+          ]
+        },
+        {
+          "prisma_field": "imageData",
+          "column": "image_data",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamageImage.imageData"
+          ]
+        },
+        {
+          "prisma_field": "caption",
+          "column": "caption",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamageImage.caption"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamageImage.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "vehicle_damage_images_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:VehicleDamageImage:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "damage_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicle_damages",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:VehicleDamageImage.damageId->@VehicleDamage"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "damage_id"
+          ],
+          "evidence": [
+            "schema:VehicleDamageImage:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['damage_id']->vehicle_damages.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260617200000_hm_service_no_tracking_insight",
+        "before": "20260618180000_vehicle_damage_lifecycle",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model VehicleDamageImage",
+        "matrix:first_consumer=20260618180000_vehicle_damage_lifecycle"
+      ]
+    },
+    {
+      "object": "vehicle_damages",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260618180000_vehicle_damage_lifecycle",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "VehicleDamage",
+      "first_consumer": "20260618180000_vehicle_damage_lifecycle",
+      "repair_slot": 10,
+      "relation": {
+        "schema": "public",
+        "name": "vehicle_damages"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.id"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "damageType",
+          "column": "damage_type",
+          "prisma_type": "DamageType",
+          "postgres_type": "\"DamageType\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.damageType"
+          ]
+        },
+        {
+          "prisma_field": "severity",
+          "column": "severity",
+          "prisma_type": "DamageSeverity",
+          "postgres_type": "\"DamageSeverity\"",
+          "nullable": false,
+          "prisma_default": "MINOR",
+          "postgres_default": "'MINOR'::\"DamageSeverity\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.severity"
+          ]
+        },
+        {
+          "prisma_field": "description",
+          "column": "description",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.description"
+          ]
+        },
+        {
+          "prisma_field": "locationX",
+          "column": "location_x",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.locationX"
+          ]
+        },
+        {
+          "prisma_field": "locationY",
+          "column": "location_y",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.locationY"
+          ]
+        },
+        {
+          "prisma_field": "locationLabel",
+          "column": "location_label",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.locationLabel"
+          ]
+        },
+        {
+          "prisma_field": "estimatedCostCents",
+          "column": "estimated_cost_cents",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.estimatedCostCents"
+          ]
+        },
+        {
+          "prisma_field": "reportedBy",
+          "column": "reported_by",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.reportedBy"
+          ]
+        },
+        {
+          "prisma_field": "repairedAt",
+          "column": "repaired_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.repairedAt"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDamage.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "vehicle_damages_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:VehicleDamage:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:VehicleDamage.vehicleId->@Vehicle"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation vehicles preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:VehicleDamage:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "damage_type"
+          ],
+          "evidence": [
+            "schema:VehicleDamage:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "DamageSeverity",
+          "labels": [
+            "MINOR",
+            "MODERATE",
+            "MAJOR",
+            "CRITICAL"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum DamageSeverity"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "DamageType",
+          "labels": [
+            "SCRATCH",
+            "DENT",
+            "CRACK",
+            "BROKEN_PART",
+            "PAINT_DAMAGE",
+            "GLASS_DAMAGE",
+            "TIRE_DAMAGE",
+            "INTERIOR_DAMAGE",
+            "OTHER"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum DamageType"
+          ]
+        }
+      ],
+      "create_time_prerequisites": [
+        "DamageSeverity",
+        "DamageType"
+      ],
+      "required_before_first_consumer": [
+        "['vehicle_id']->vehicles.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260617200000_hm_service_no_tracking_insight",
+        "before": "20260618180000_vehicle_damage_lifecycle",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model VehicleDamage",
+        "matrix:first_consumer=20260618180000_vehicle_damage_lifecycle"
+      ]
+    },
+    {
+      "object": "org_whatsapp_configs",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260620190000_whatsapp_business_platform",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "OrgWhatsAppConfig",
+      "first_consumer": "20260620190000_whatsapp_business_platform",
+      "repair_slot": 11,
+      "relation": {
+        "schema": "public",
+        "name": "org_whatsapp_configs"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "isConnected",
+          "column": "is_connected",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.isConnected"
+          ]
+        },
+        {
+          "prisma_field": "isActive",
+          "column": "is_active",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.isActive"
+          ]
+        },
+        {
+          "prisma_field": "phoneNumber",
+          "column": "phone_number",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.phoneNumber"
+          ]
+        },
+        {
+          "prisma_field": "businessName",
+          "column": "business_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.businessName"
+          ]
+        },
+        {
+          "prisma_field": "aiMode",
+          "column": "ai_mode",
+          "prisma_type": "WhatsAppAiMode",
+          "postgres_type": "\"WhatsAppAiMode\"",
+          "nullable": false,
+          "prisma_default": "SUGGEST_ONLY",
+          "postgres_default": "'SUGGEST_ONLY'::\"WhatsAppAiMode\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.aiMode"
+          ]
+        },
+        {
+          "prisma_field": "aiCanCreateTasks",
+          "column": "ai_can_create_tasks",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.aiCanCreateTasks"
+          ]
+        },
+        {
+          "prisma_field": "aiCanCreateSupport",
+          "column": "ai_can_create_support",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.aiCanCreateSupport"
+          ]
+        },
+        {
+          "prisma_field": "aiCanUseBookings",
+          "column": "ai_can_use_bookings",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "true",
+          "postgres_default": "TRUE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.aiCanUseBookings"
+          ]
+        },
+        {
+          "prisma_field": "aiCanContactVendors",
+          "column": "ai_can_contact_vendors",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.aiCanContactVendors"
+          ]
+        },
+        {
+          "prisma_field": "aiEscalationEnabled",
+          "column": "ai_escalation_enabled",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "true",
+          "postgres_default": "TRUE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.aiEscalationEnabled"
+          ]
+        },
+        {
+          "prisma_field": "connectedAt",
+          "column": "connected_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.connectedAt"
+          ]
+        },
+        {
+          "prisma_field": "connectedByName",
+          "column": "connected_by_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.connectedByName"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "org_whatsapp_configs_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:OrgWhatsAppConfig:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:OrgWhatsAppConfig.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [
+        {
+          "name": "org_whatsapp_configs_organization_id_key",
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:OrgWhatsAppConfig.organizationId@unique"
+          ]
+        }
+      ],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:OrgWhatsAppConfig:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "WhatsAppAiMode",
+          "labels": [
+            "OFF",
+            "SUGGEST_ONLY",
+            "AUTO_SIMPLE",
+            "FULL"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum WhatsAppAiMode"
+          ]
+        }
+      ],
+      "create_time_prerequisites": [
+        "WhatsAppAiMode"
+      ],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260620180000_voice_assistant_tool_permissions",
+        "before": "20260620190000_whatsapp_business_platform",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model OrgWhatsAppConfig",
+        "matrix:first_consumer=20260620190000_whatsapp_business_platform"
+      ]
+    },
+    {
+      "object": "whatsapp_conversations",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260620190000_whatsapp_business_platform",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "WhatsAppConversation",
+      "first_consumer": "20260620190000_whatsapp_business_platform",
+      "repair_slot": 11,
+      "relation": {
+        "schema": "public",
+        "name": "whatsapp_conversations"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "contactPhone",
+          "column": "contact_phone",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.contactPhone"
+          ]
+        },
+        {
+          "prisma_field": "contactName",
+          "column": "contact_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.contactName"
+          ]
+        },
+        {
+          "prisma_field": "lastMessageAt",
+          "column": "last_message_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.lastMessageAt"
+          ]
+        },
+        {
+          "prisma_field": "lastMessagePreview",
+          "column": "last_message_preview",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.lastMessagePreview"
+          ]
+        },
+        {
+          "prisma_field": "unreadCount",
+          "column": "unread_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.unreadCount"
+          ]
+        },
+        {
+          "prisma_field": "status",
+          "column": "status",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "\"open\"",
+          "postgres_default": "'open'",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.status"
+          ]
+        },
+        {
+          "prisma_field": "assignedTo",
+          "column": "assigned_to",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.assignedTo"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppConversation.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "whatsapp_conversations_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:WhatsAppConversation:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:WhatsAppConversation.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [
+        {
+          "name": "whatsapp_conversations_organization_id_contact_phone_key",
+          "columns": [
+            "organization_id",
+            "contact_phone"
+          ],
+          "evidence": [
+            "schema:WhatsAppConversation:@@unique"
+          ]
+        }
+      ],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:WhatsAppConversation:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "last_message_at"
+          ],
+          "evidence": [
+            "schema:WhatsAppConversation:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260620180000_voice_assistant_tool_permissions",
+        "before": "20260620190000_whatsapp_business_platform",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model WhatsAppConversation",
+        "matrix:first_consumer=20260620190000_whatsapp_business_platform"
+      ]
+    },
+    {
+      "object": "whatsapp_messages",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260620190000_whatsapp_business_platform",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "WhatsAppMessage",
+      "first_consumer": "20260620190000_whatsapp_business_platform",
+      "repair_slot": 11,
+      "relation": {
+        "schema": "public",
+        "name": "whatsapp_messages"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "conversationId",
+          "column": "conversation_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.conversationId"
+          ]
+        },
+        {
+          "prisma_field": "direction",
+          "column": "direction",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.direction"
+          ]
+        },
+        {
+          "prisma_field": "senderType",
+          "column": "sender_type",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.senderType"
+          ]
+        },
+        {
+          "prisma_field": "senderName",
+          "column": "sender_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.senderName"
+          ]
+        },
+        {
+          "prisma_field": "content",
+          "column": "content",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.content"
+          ]
+        },
+        {
+          "prisma_field": "aiGenerated",
+          "column": "ai_generated",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.aiGenerated"
+          ]
+        },
+        {
+          "prisma_field": "aiSuggested",
+          "column": "ai_suggested",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.aiSuggested"
+          ]
+        },
+        {
+          "prisma_field": "status",
+          "column": "status",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "\"sent\"",
+          "postgres_default": "'sent'",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.status"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:WhatsAppMessage.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "whatsapp_messages_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:WhatsAppMessage:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:WhatsAppMessage.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        },
+        {
+          "local_columns": [
+            "conversation_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "whatsapp_conversations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:WhatsAppMessage.conversationId->@WhatsAppConversation"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "conversation_id",
+            "created_at"
+          ],
+          "evidence": [
+            "schema:WhatsAppMessage:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:WhatsAppMessage:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']",
+        "['conversation_id']->whatsapp_conversations.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260620180000_voice_assistant_tool_permissions",
+        "before": "20260620190000_whatsapp_business_platform",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model WhatsAppMessage",
+        "matrix:first_consumer=20260620190000_whatsapp_business_platform"
+      ]
+    },
+    {
+      "object": "tire_health_snapshots",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "TireHealthSnapshot",
+      "first_consumer": "20260716180000_tire_evidence_ground_truth_provenance",
+      "repair_slot": 12,
+      "relation": {
+        "schema": "public",
+        "name": "tire_health_snapshots"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "tireId",
+          "column": "tire_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.tireId"
+          ]
+        },
+        {
+          "prisma_field": "tireSetId",
+          "column": "tire_set_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.tireSetId"
+          ]
+        },
+        {
+          "prisma_field": "snapshotDate",
+          "column": "snapshot_date",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.snapshotDate"
+          ]
+        },
+        {
+          "prisma_field": "odometerKm",
+          "column": "odometer_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.odometerKm"
+          ]
+        },
+        {
+          "prisma_field": "estimatedTreadMm",
+          "column": "estimated_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.estimatedTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "estimatedWearPercent",
+          "column": "estimated_wear_percent",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.estimatedWearPercent"
+          ]
+        },
+        {
+          "prisma_field": "estimatedRemainingKm",
+          "column": "estimated_remaining_km",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.estimatedRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "citySharePercent",
+          "column": "city_share_percent",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.citySharePercent"
+          ]
+        },
+        {
+          "prisma_field": "highwaySharePercent",
+          "column": "highway_share_percent",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.highwaySharePercent"
+          ]
+        },
+        {
+          "prisma_field": "ruralSharePercent",
+          "column": "rural_share_percent",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.ruralSharePercent"
+          ]
+        },
+        {
+          "prisma_field": "confidenceScore",
+          "column": "confidence_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.confidenceScore"
+          ]
+        },
+        {
+          "prisma_field": "wearRateMmPer1000km",
+          "column": "wear_rate_mm_per_1000km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.wearRateMmPer1000km"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireHealthSnapshot.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "tire_health_snapshots_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:TireHealthSnapshot:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:TireHealthSnapshot.vehicleId->@Vehicle"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation vehicles preexists"
+          ]
+        },
+        {
+          "local_columns": [
+            "tire_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "tires",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:TireHealthSnapshot.tireId->@Tire"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        },
+        {
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:TireHealthSnapshot.tireSetId->@VehicleTireSetup"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "vehicle_id",
+            "snapshot_date"
+          ],
+          "evidence": [
+            "schema:TireHealthSnapshot:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "tire_id",
+            "snapshot_date"
+          ],
+          "evidence": [
+            "schema:TireHealthSnapshot:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "tire_set_id"
+          ],
+          "evidence": [
+            "schema:TireHealthSnapshot:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['vehicle_id']->vehicles.['id']",
+        "['tire_id']->tires.['id']",
+        "['tire_set_id']->vehicle_tire_setups.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260716180000_battery_capability_lifecycle",
+        "before": "20260716180000_tire_evidence_ground_truth_provenance",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model TireHealthSnapshot",
+        "matrix:first_consumer=20260716180000_tire_evidence_ground_truth_provenance"
+      ]
+    },
+    {
+      "object": "tire_wear_data_points",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "TireWearDataPoint",
+      "first_consumer": "20260716180000_tire_evidence_ground_truth_provenance",
+      "repair_slot": 12,
+      "relation": {
+        "schema": "public",
+        "name": "tire_wear_data_points"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "tireSetId",
+          "column": "tire_set_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.tireSetId"
+          ]
+        },
+        {
+          "prisma_field": "axle",
+          "column": "axle",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.axle"
+          ]
+        },
+        {
+          "prisma_field": "distanceKm",
+          "column": "distance_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.distanceKm"
+          ]
+        },
+        {
+          "prisma_field": "predictedTreadMm",
+          "column": "predicted_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.predictedTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "actualTreadMm",
+          "column": "actual_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.actualTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "initialTreadMm",
+          "column": "initial_tread_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.initialTreadMm"
+          ]
+        },
+        {
+          "prisma_field": "climateFactor",
+          "column": "climate_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": "1.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.climateFactor"
+          ]
+        },
+        {
+          "prisma_field": "roadSurfaceFactor",
+          "column": "road_surface_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": "1.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.roadSurfaceFactor"
+          ]
+        },
+        {
+          "prisma_field": "roadTypeFactor",
+          "column": "road_type_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": "1.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.roadTypeFactor"
+          ]
+        },
+        {
+          "prisma_field": "drivingStyleFactor",
+          "column": "driving_style_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": "1.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.drivingStyleFactor"
+          ]
+        },
+        {
+          "prisma_field": "regenFactor",
+          "column": "regen_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": "1.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.regenFactor"
+          ]
+        },
+        {
+          "prisma_field": "curbWeightKg",
+          "column": "curb_weight_kg",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.curbWeightKg"
+          ]
+        },
+        {
+          "prisma_field": "tireWidthMm",
+          "column": "tire_width_mm",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.tireWidthMm"
+          ]
+        },
+        {
+          "prisma_field": "tireSeason",
+          "column": "tire_season",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.tireSeason"
+          ]
+        },
+        {
+          "prisma_field": "residualError",
+          "column": "residual_error",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.residualError"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:TireWearDataPoint.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "tire_wear_data_points_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:TireWearDataPoint:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:TireWearDataPoint.vehicleId->@Vehicle"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation vehicles preexists"
+          ]
+        },
+        {
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:TireWearDataPoint.tireSetId->@VehicleTireSetup"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:TireWearDataPoint:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "tire_set_id"
+          ],
+          "evidence": [
+            "schema:TireWearDataPoint:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:TireWearDataPoint:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['vehicle_id']->vehicles.['id']",
+        "['tire_set_id']->vehicle_tire_setups.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260716180000_battery_capability_lifecycle",
+        "before": "20260716180000_tire_evidence_ground_truth_provenance",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model TireWearDataPoint",
+        "matrix:first_consumer=20260716180000_tire_evidence_ground_truth_provenance"
+      ]
+    },
+    {
+      "object": "TireSetupStatus",
+      "object_type": "enum",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260716183000_tire_lifecycle_invariants",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "first_consumer": "20260716183000_tire_lifecycle_invariants",
+      "repair_slot": 13,
+      "schema": "public",
+      "type_name": "TireSetupStatus",
+      "labels": [
+        "ACTIVE",
+        "STORED",
+        "DISCARDED",
+        "SOLD"
+      ],
+      "order_material": true,
+      "creator": null,
+      "relation": null,
+      "columns": [],
+      "primary_key": null,
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260716180000_tire_evidence_ground_truth_provenance",
+        "before": "20260716183000_tire_lifecycle_invariants",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:enum TireSetupStatus",
+        "matrix:first_consumer=20260716183000_tire_lifecycle_invariants"
+      ]
+    },
+    {
+      "object": "TireEventType",
+      "object_type": "enum",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260716200000_tire_odometer_anchor_backfill_event",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "first_consumer": "20260716200000_tire_odometer_anchor_backfill_event",
+      "repair_slot": 14,
+      "schema": "public",
+      "type_name": "TireEventType",
+      "labels": [
+        "ROTATION",
+        "TIRE_CHANGE",
+        "MEASUREMENT",
+        "RECALCULATION",
+        "ALERT",
+        "INSTALL",
+        "REMOVE"
+      ],
+      "order_material": true,
+      "creator": null,
+      "relation": null,
+      "columns": [],
+      "primary_key": null,
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260716200000_driving_evidence",
+        "before": "20260716200000_tire_odometer_anchor_backfill_event",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:enum TireEventType",
+        "matrix:first_consumer=20260716200000_tire_odometer_anchor_backfill_event"
+      ]
+    },
+    {
+      "object": "dashboard_insight_runs",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260724130000_dashboard_insight_calculation_meta",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "DashboardInsightRun",
+      "first_consumer": "20260724130000_dashboard_insight_calculation_meta",
+      "repair_slot": 15,
+      "relation": {
+        "schema": "public",
+        "name": "dashboard_insight_runs"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "trigger",
+          "column": "trigger",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.trigger"
+          ]
+        },
+        {
+          "prisma_field": "startedAt",
+          "column": "started_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.startedAt"
+          ]
+        },
+        {
+          "prisma_field": "finishedAt",
+          "column": "finished_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.finishedAt"
+          ]
+        },
+        {
+          "prisma_field": "durationMs",
+          "column": "duration_ms",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.durationMs"
+          ]
+        },
+        {
+          "prisma_field": "candidateCount",
+          "column": "candidate_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.candidateCount"
+          ]
+        },
+        {
+          "prisma_field": "publishedCount",
+          "column": "published_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.publishedCount"
+          ]
+        },
+        {
+          "prisma_field": "errorMessage",
+          "column": "error_message",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.errorMessage"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsightRun.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "dashboard_insight_runs_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:DashboardInsightRun:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:DashboardInsightRun.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:DashboardInsightRun:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "created_at"
+          ],
+          "evidence": [
+            "schema:DashboardInsightRun:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+        "before": "20260724130000_dashboard_insight_calculation_meta",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model DashboardInsightRun",
+        "matrix:first_consumer=20260724130000_dashboard_insight_calculation_meta"
+      ]
+    },
+    {
+      "object": "dashboard_insights",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260724130000_dashboard_insight_calculation_meta",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "DashboardInsight",
+      "first_consumer": "20260724130000_dashboard_insight_calculation_meta",
+      "repair_slot": 15,
+      "relation": {
+        "schema": "public",
+        "name": "dashboard_insights"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "runId",
+          "column": "run_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.runId"
+          ]
+        },
+        {
+          "prisma_field": "type",
+          "column": "type",
+          "prisma_type": "InsightType",
+          "postgres_type": "\"InsightType\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.type"
+          ]
+        },
+        {
+          "prisma_field": "severity",
+          "column": "severity",
+          "prisma_type": "InsightSeverity",
+          "postgres_type": "\"InsightSeverity\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.severity"
+          ]
+        },
+        {
+          "prisma_field": "priority",
+          "column": "priority",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.priority"
+          ]
+        },
+        {
+          "prisma_field": "title",
+          "column": "title",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.title"
+          ]
+        },
+        {
+          "prisma_field": "message",
+          "column": "message",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.message"
+          ]
+        },
+        {
+          "prisma_field": "actionLabel",
+          "column": "action_label",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.actionLabel"
+          ]
+        },
+        {
+          "prisma_field": "actionType",
+          "column": "action_type",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.actionType"
+          ]
+        },
+        {
+          "prisma_field": "entityScope",
+          "column": "entity_scope",
+          "prisma_type": "InsightEntityScope",
+          "postgres_type": "\"InsightEntityScope\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.entityScope"
+          ]
+        },
+        {
+          "prisma_field": "entityIds",
+          "column": "entity_ids",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.entityIds"
+          ]
+        },
+        {
+          "prisma_field": "timeContext",
+          "column": "time_context",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.timeContext"
+          ]
+        },
+        {
+          "prisma_field": "metrics",
+          "column": "metrics",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.metrics"
+          ]
+        },
+        {
+          "prisma_field": "reasons",
+          "column": "reasons",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.reasons"
+          ]
+        },
+        {
+          "prisma_field": "confidence",
+          "column": "confidence",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": "1.0",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.confidence"
+          ]
+        },
+        {
+          "prisma_field": "dedupeKey",
+          "column": "dedupe_key",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.dedupeKey"
+          ]
+        },
+        {
+          "prisma_field": "groupKey",
+          "column": "group_key",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.groupKey"
+          ]
+        },
+        {
+          "prisma_field": "isGrouped",
+          "column": "is_grouped",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.isGrouped"
+          ]
+        },
+        {
+          "prisma_field": "groupCount",
+          "column": "group_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "1",
+          "postgres_default": "1",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.groupCount"
+          ]
+        },
+        {
+          "prisma_field": "isActive",
+          "column": "is_active",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "true",
+          "postgres_default": "TRUE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.isActive"
+          ]
+        },
+        {
+          "prisma_field": "expiresAt",
+          "column": "expires_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.expiresAt"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:DashboardInsight.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "dashboard_insights_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:DashboardInsight:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:DashboardInsight.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        },
+        {
+          "local_columns": [
+            "run_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "dashboard_insight_runs",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:DashboardInsight.runId->@DashboardInsightRun"
+          ],
+          "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+          "chronology_evidence": [
+            "default: required before first consumer"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id",
+            "is_active"
+          ],
+          "evidence": [
+            "schema:DashboardInsight:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "run_id"
+          ],
+          "evidence": [
+            "schema:DashboardInsight:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "dedupe_key"
+          ],
+          "evidence": [
+            "schema:DashboardInsight:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "type"
+          ],
+          "evidence": [
+            "schema:DashboardInsight:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "InsightEntityScope",
+          "labels": [
+            "VEHICLE",
+            "STATION",
+            "VEHICLE_GROUP",
+            "FLEET"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum InsightEntityScope"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "InsightSeverity",
+          "labels": [
+            "CRITICAL",
+            "WARNING",
+            "OPPORTUNITY",
+            "INFO"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum InsightSeverity"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "InsightType",
+          "labels": [
+            "TIGHT_HANDOVER",
+            "RETURN_NEEDS_INSPECTION",
+            "STATION_SHORTAGE",
+            "LOW_UTILIZATION",
+            "SERVICE_WINDOW",
+            "SERVICE_BEFORE_BOOKING",
+            "BATTERY_CRITICAL",
+            "TIRE_CRITICAL",
+            "BRAKE_CRITICAL",
+            "SERVICE_OVERDUE",
+            "PICKUP_OVERDUE",
+            "TUV_OVERDUE",
+            "BOKRAFT_OVERDUE",
+            "HM_SERVICE_NO_TRACKING",
+            "DRIVING_ASSESSMENT_DEVICE_QUALITY"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum InsightType"
+          ]
+        }
+      ],
+      "create_time_prerequisites": [
+        "InsightEntityScope",
+        "InsightSeverity",
+        "InsightType"
+      ],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']",
+        "['run_id']->dashboard_insight_runs.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+        "before": "20260724130000_dashboard_insight_calculation_meta",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model DashboardInsight",
+        "matrix:first_consumer=20260724130000_dashboard_insight_calculation_meta"
+      ]
+    },
+    {
+      "object": "chat_messages",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260725120000_chat_message_structured_payload",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "ChatMessage",
+      "first_consumer": "20260725120000_chat_message_structured_payload",
+      "repair_slot": 16,
+      "relation": {
+        "schema": "public",
+        "name": "chat_messages"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:ChatMessage.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:ChatMessage.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "role",
+          "column": "role",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:ChatMessage.role"
+          ]
+        },
+        {
+          "prisma_field": "content",
+          "column": "content",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:ChatMessage.content"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:ChatMessage.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "chat_messages_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:ChatMessage:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:ChatMessage.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id",
+            "created_at"
+          ],
+          "evidence": [
+            "schema:ChatMessage:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260724200000_iam_audit_outbox_processing_status_column",
+        "before": "20260725120000_chat_message_structured_payload",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model ChatMessage",
+        "matrix:first_consumer=20260725120000_chat_message_structured_payload"
+      ]
+    }
+  ],
+  "defect_object_count": 15
+}

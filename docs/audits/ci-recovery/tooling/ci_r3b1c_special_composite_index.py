@@ -14,11 +14,13 @@ from replay_evidence_lib import (
     DATA,
     PgConfig,
     SPECIAL_MIGRATION,
+    SPECIAL_MIGRATION_EXPECTED_SHA256,
     SPECIAL_MIGRATION_PATH,
     compare_migration_to_script,
     parse_create_index_statements,
     psql,
     sha256_file,
+    special_migration_hash_status,
 )
 
 SCRIPT_PATH = BACKEND / "scripts/apply-composite-indexes.ts"
@@ -121,7 +123,8 @@ class SpecialCompositeIndexExecutor:
 
     def __init__(self, cfg: PgConfig | None = None, accepted_sha256: str | None = None) -> None:
         self.cfg = cfg or PgConfig()
-        self.accepted_sha256 = accepted_sha256 or sha256_file(self.migration_path)
+        self.accepted_sha256 = accepted_sha256 or SPECIAL_MIGRATION_EXPECTED_SHA256
+        self.observed_sha256 = sha256_file(self.migration_path)
         self.sql_text = self.migration_path.read_text()
         self.expected_indexes = parse_create_index_statements(self.sql_text)
         self.statements = [
@@ -159,7 +162,8 @@ class SpecialCompositeIndexExecutor:
             reconciliation = {"migration": self.migration, "operation": "prisma migrate resolve --applied", "validated_before_resolve": True}
         return {
             "migration": self.migration,
-            "migration_sha256": self.accepted_sha256,
+            "accepted_sha256": self.accepted_sha256,
+            "observed_sha256": self.observed_sha256,
             "statement_count": len(self.statements),
             "semantic_equivalence": equiv,
             "index_validation": validation,
@@ -168,8 +172,10 @@ class SpecialCompositeIndexExecutor:
 
 
 def build_authority() -> dict[str, Any]:
+    hash_status = special_migration_hash_status()
     executor = SpecialCompositeIndexExecutor()
     equiv = compare_migration_to_script(executor.sql_text, SCRIPT_PATH)
+    authorized = hash_status["match"] and equiv["semantic_equivalent"]
     return {
         "schema_version": 1,
         "strategy": "B_deterministic_special_executor_plus_migration_state_reconciliation",
@@ -182,8 +188,10 @@ def build_authority() -> dict[str, Any]:
         "special_migrations": [
             {
                 "migration": SPECIAL_MIGRATION,
-                "migration_path": str(SPECIAL_MIGRATION_PATH.relative_to(BACKEND.parent.parent)),
-                "migration_sha256": executor.accepted_sha256,
+                "migration_path": str(SPECIAL_MIGRATION_PATH.relative_to(REPO := BACKEND.parent.parent)),
+                "accepted_sha256": hash_status["accepted_sha256"],
+                "observed_sha256": hash_status["observed_sha256"],
+                "sha256_match": hash_status["match"],
                 "reason": "CREATE INDEX CONCURRENTLY incompatible with Prisma transactional migrate deploy",
                 "normal_execution_result": "FAIL",
                 "special_executor": "ci_r3b1c_special_composite_index.SpecialCompositeIndexExecutor",
@@ -193,7 +201,7 @@ def build_authority() -> dict[str, Any]:
                 "post_execution_validation": ["pg_catalog index definition match for all statements"],
                 "migration_state_reconciliation_required": True,
                 "resumption_strategy": "prisma migrate resolve --applied then continue migrate deploy",
-                "authorized": equiv["semantic_equivalent"],
+                "authorized": authorized,
             }
         ],
     }

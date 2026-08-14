@@ -29,14 +29,35 @@ R3B1B_REPAIR_MIGRATIONS = [
 
 SPECIAL_MIGRATION = "20260413230000_add_composite_indexes_batch_c"
 SPECIAL_MIGRATION_PATH = MIG_ROOT / SPECIAL_MIGRATION / "migration.sql"
+# Pinned at CI-R3B1C from pre-implementation migration manifest / Git history — never derive at runtime.
+SPECIAL_MIGRATION_EXPECTED_SHA256 = "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496"
+HARNESS_AUTHORITY_PATH = DATA / "ci-r3b1d-replay-harness-authority-2026-08.json"
+SPECIAL_REPLAY_AUTHORITY_PATH = DATA / "ci-r3b1c-special-replay-authority-2026-08.json"
+
+REPLAY_INPUT_MANIFEST_PATHS: list[str] = [
+    "backend/prisma/migrations/*/migration.sql",
+    "docs/audits/ci-recovery/data/ci-r3b1c-special-replay-authority-2026-08.json",
+    "docs/audits/ci-recovery/data/ci-r3b1a32-final-repair-topology-2026-08.json",
+    "docs/audits/ci-recovery/data/ci-r3b1a32-deferred-fk-resolution-2026-08.json",
+    "docs/audits/ci-recovery/tooling/replay_evidence_lib.py",
+    "docs/audits/ci-recovery/tooling/ci_r3b1c_special_composite_index.py",
+    "docs/audits/ci-recovery/tooling/ci_r3b1c_full_replay_harness.py",
+    "docs/audits/ci-recovery/tooling/ci_r3b1d_build_replay_harness_authority.py",
+    "docs/audits/ci-recovery/data/ci-r3b1d-replay-harness-authority-2026-08.json",
+]
+# Generated outputs listed for provenance but excluded from manifest digest (avoid self-hash loop).
+REPLAY_INPUT_MANIFEST_HASH_EXCLUDE: set[str] = {
+    "docs/audits/ci-recovery/data/ci-r3b1d-replay-harness-authority-2026-08.json",
+}
 
 CREATE_INDEX_RE = re.compile(
-    r'CREATE\s+INDEX\s+(?P<concurrently>CONCURRENTLY\s+)?(?P<ifnotexists>IF\s+NOT\s+EXISTS\s+)?'
+    r"CREATE\s+(?P<unique>UNIQUE\s+)?INDEX\s+(?P<concurrently>CONCURRENTLY\s+)?(?P<ifnotexists>IF\s+NOT\s+EXISTS\s+)?"
     r'"(?P<name>[^"]+)"\s+ON\s+"(?P<table>[^"]+)"\s*\((?P<cols>[^)]+)\)',
     re.IGNORECASE | re.DOTALL,
 )
 
 TRANSACTION_PATTERNS: list[tuple[str, re.Pattern[str], str]] = [
+    ("CREATE UNIQUE INDEX CONCURRENTLY", re.compile(r"\bCREATE\s+UNIQUE\s+INDEX\s+CONCURRENTLY\b", re.I), "SPECIAL_EXECUTION_REQUIRED"),
     ("CREATE INDEX CONCURRENTLY", re.compile(r"\bCREATE\s+INDEX\s+CONCURRENTLY\b", re.I), "SPECIAL_EXECUTION_REQUIRED"),
     ("DROP INDEX CONCURRENTLY", re.compile(r"\bDROP\s+INDEX\s+CONCURRENTLY\b", re.I), "SPECIAL_EXECUTION_REQUIRED"),
     ("REINDEX CONCURRENTLY", re.compile(r"\bREINDEX\b[^;]*\bCONCURRENTLY\b", re.I), "SPECIAL_EXECUTION_REQUIRED"),
@@ -75,13 +96,56 @@ def migration_dirs() -> list[str]:
     return sorted(p.name for p in MIG_ROOT.iterdir() if p.is_dir() and not p.name.startswith("."))
 
 
+def replay_input_manifest_files() -> list[dict[str, str]]:
+    files: list[dict[str, str]] = []
+    for pattern in REPLAY_INPUT_MANIFEST_PATHS:
+        if "*" in pattern:
+            for path in sorted(REPO.glob(pattern)):
+                if path.is_file():
+                    rel = str(path.relative_to(REPO))
+                    files.append({"path": rel, "sha256": sha256_file(path)})
+        else:
+            path = REPO / pattern
+            if path.is_file():
+                files.append({"path": pattern, "sha256": sha256_file(path)})
+    return files
+
+
+def replay_input_manifest_digest_files() -> list[dict[str, str]]:
+    return [f for f in replay_input_manifest_files() if f["path"] not in REPLAY_INPUT_MANIFEST_HASH_EXCLUDE]
+
+
 def replay_input_manifest_sha256() -> str:
-    parts: list[str] = []
-    for mig in migration_dirs():
-        rel = f"backend/prisma/migrations/{mig}/migration.sql"
-        path = REPO / rel
-        parts.append(f"{rel}\0{sha256_file(path)}")
-    return sha256_text("\n".join(parts))
+    files = replay_input_manifest_digest_files()
+    canonical = "\n".join(f"{f['path']}\0{f['sha256']}" for f in files)
+    return sha256_text(canonical)
+
+
+def replay_provenance(base_commit_sha: str | None = None) -> dict[str, str | bool]:
+    commit = base_commit_sha or subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
+    dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO, text=True).strip()
+    allowed_dirty_prefixes = ("?? docs/audits/ci-recovery/", " M docs/audits/ci-recovery/", "A  docs/audits/ci-recovery/")
+    non_allowed = [
+        line
+        for line in dirty.splitlines()
+        if line.strip() and not any(line.startswith(p) or line.startswith("?? docs/audits/ci-recovery/tooling/__pycache__") for p in allowed_dirty_prefixes)
+    ]
+    return {
+        "BASE_COMMIT_SHA": commit,
+        "BASE_GIT_TREE_SHA": git_tree_sha(commit),
+        "REPLAY_INPUT_MANIFEST_SHA256": replay_input_manifest_sha256(),
+        "working_tree_clean_at_replay_start": len(non_allowed) == 0,
+    }
+
+
+def special_migration_hash_status() -> dict[str, Any]:
+    observed = sha256_file(SPECIAL_MIGRATION_PATH)
+    return {
+        "migration": SPECIAL_MIGRATION,
+        "accepted_sha256": SPECIAL_MIGRATION_EXPECTED_SHA256,
+        "observed_sha256": observed,
+        "match": observed == SPECIAL_MIGRATION_EXPECTED_SHA256,
+    }
 
 
 def psql(cfg: PgConfig, db: str, sql: str, *, file: Path | None = None, tuples_only: bool = False) -> subprocess.CompletedProcess[str]:
@@ -210,7 +274,7 @@ def parse_create_index_statements(sql_text: str) -> list[dict[str, Any]]:
                 "index_name": m.group("name"),
                 "relation": m.group("table"),
                 "columns": cols,
-                "unique": False,
+                "unique": bool(m.group("unique")),
                 "concurrently": bool(m.group("concurrently")),
                 "if_not_exists": bool(m.group("ifnotexists")),
                 "predicate": None,
