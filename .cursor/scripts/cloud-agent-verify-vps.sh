@@ -6,9 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 SSH_USER="$(cloud_agent_ssh_user)"
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 PG_PORT="${CLOUD_AGENT_VPS_PG_PORT:-5432}"
 

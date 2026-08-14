@@ -75,7 +75,7 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 |------|-------------|---------------------|---------------------|
 | `CLOUD_AGENT_SSH_PRIVATE_KEY` | **Runtime Secret** | Required | Required |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` | `mein-vps.internal` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` (optional) | `root` (optional) |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | `synqdrive-admin` (optional) | `synqdrive-admin` (optional) |
 | `TAILSCALE_AUTH_KEY` | **Runtime Secret** | **omit** | Required |
 | `DATABASE_URL` | **Runtime Secret** | omit (unless needed) | Optional (prod DB via tailnet) |
 | `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` | Runtime Secret | As needed for task | As needed |
@@ -117,7 +117,7 @@ Manual verification inside a Cloud Agent shell:
 
 ```bash
 bash .cursor/scripts/cloud-agent-verify-vps.sh
-ssh ${CLOUD_AGENT_SSH_USER:-root}@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
+ssh ${CLOUD_AGENT_SSH_USER:-synqdrive-admin}@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
 ```
 
 Path B only — HTTP(S) via Tailscale proxy:
@@ -136,7 +136,7 @@ No Tailscale account or auth key required. Same deploy script as path B.
 |------|------|-------|
 | `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret | Your `id_ed25519` private key (full PEM) |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | `synqdrive-admin` |
 
 **Do not add** `TAILSCALE_AUTH_KEY`.
 
@@ -147,7 +147,7 @@ No Tailscale account or auth key required. Same deploy script as path B.
 **Test in Cloud Agent terminal:**
 
 ```bash
-ssh -o BatchMode=yes root@srv1374778.hstgr.cloud hostname
+ssh -o BatchMode=yes synqdrive-admin@srv1374778.hstgr.cloud hostname
 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 

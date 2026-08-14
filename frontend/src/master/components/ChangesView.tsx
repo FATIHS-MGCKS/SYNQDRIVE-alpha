@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'cloud-agent-deploy-ssh-synqdrive-admin-default-2026-08-14',
+    version: '4.9.894',
+    title: 'V4.9.894 — Cloud Agent deploy: synqdrive-admin SSH default',
+    summary: [
+      'cloud-agent-ssh-common defaults CLOUD_AGENT_SSH_USER to synqdrive-admin; legacy root remaps to synqdrive-admin.',
+      'cloud-agent-deploy always escalates vps-deploy-release.sh via sudo -n -H (root SSH disabled on Hostinger 2A.2).',
+      'AGENTS.md and vps-deploy skill document synqdrive-admin; resend/twilio VPS sync scripts use the same default.',
+    ],
+    reason:
+      'Production VPS accepts SSH only for synqdrive-admin; root and malformed CLOUD_AGENT_SSH_USER values caused deploy and CI-R3A production capture failures.',
+    previousBehavior:
+      'Deploy scripts defaulted to root and remapped to synqdrive-admin only on *.hstgr.cloud when user was exactly root.',
+    details:
+      '.cursor/scripts/cloud-agent-{ssh-common,deploy,verify-vps,ssh-common.test}.sh, AGENTS.md, .cursor/skills/vps-deploy/SKILL.md, backend/scripts/ops/sync-{resend,twilio}-env-to-vps.sh',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-08-14T04:10:00.000Z',
+  },
+  {
     id: 'evaluations-e6c1-canonical-evidence-completeness-2026-08-12',
     version: '4.9.893',
     title: 'V4.9.893 — Evaluations E6C.1: canonical coverage + lineage evidence completeness',
