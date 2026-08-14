@@ -1,0 +1,17 @@
+{
+  "disposable": true,
+  "production_connection": false,
+  "results": [
+    {
+      "slot": 8,
+      "pass": false,
+      "stderr": "TICE:  relation \"organizations\" already exists, skipping\npsql:/tmp/ci_r3b1d1_slot8.sql:3: NOTICE:  relation \"vehicles\" already exists, skipping\npsql:/tmp/ci_r3b1d1_slot8.sql:4: NOTICE:  relation \"vehicle_tire_setups\" already exists, skipping\npsql:/tmp/ci_r3b1d1_slot8.sql:37: ERROR:  invalid input syntax for type json\nLINE 10: \"scope\" JSONB NOT NULL DEFAULT '{\\\"type\\\":\\\"organization\\\"}'...\n                                        ^\nDETAIL:  Token \"\\\" is invalid.\nCONTEXT:  JSON data, line 1: {\\...\n"
+    },
+    {
+      "slot": 10,
+      "pass": true,
+      "stderr": "psql:/tmp/ci_r3b1d1_slot10.sql:2: NOTICE:  relation \"organizations\" already exists, skipping\npsql:/tmp/ci_r3b1d1_slot10.sql:3: NOTICE:  relation \"vehicles\" already exists, skipping\npsql:/tmp/ci_r3b1d1_slot10.sql:4: NOTICE:  relation \"vehicle_tire_setups\" already exists, skipping\n"
+    }
+  ],
+  "pass": false
+}

@@ -1,11 +1,13 @@
 # CI-R3A.8 — U042 / U043 decision authority package
 
-**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** + **CI-R3A.9.1** (analysis and decision authority only)
-**Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08`
-**Base HEAD analysed:** `03de93b9179011525e12fd90f1399a501e2a7e5e`
-**Latest correction:** CI-R3A.9.1 (final authority consistency cleanup)
-**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17j)
-**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8–CI-R3A.9.1)
+**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** + **CI-R3A.9.1** + **CI-R3B.0** + **CI-R3B.0.1** + **CI-R3B.0.2** (analysis and decision authority only)
+**Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08` (CI-R3A.8–CI-R3A.9.1, merged as `1948f00d`); `fix/ci-r3b-vehicle-trips-migration-replay-2026-08` (CI-R3B.0–CI-R3B.0.2)
+**Base HEAD analysed:** `03de93b9179011525e12fd90f1399a501e2a7e5e` (CI-R3B.0 re-verified against `main @ 1948f00d8423816beb5a76c2182f9c9bc6260857`)
+**Latest correction:** CI-R3B.0.2 (minimal replay predecessor + final convergence — §16)
+**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17m)
+**CI-R3B executable contract:** `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`
+**CI-R3B predecessor ledger:** `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`
+**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8–CI-R3B.0)
 
 Pinned Prisma authority (read from `backend/package-lock.json` at analysed HEAD):
 
@@ -676,7 +678,7 @@ Mandatory CI-R3B acceptance gates:
 | 2 | pinned-engine replay confirmation of target-file atomicity (`TARGET_FILE_ATOMICITY_AUTHORITY`) | pending |
 | 3 | full `prisma migrate deploy` replay on a **fresh empty database** reaching the current head | pending |
 | 4 | all four fault-injection gates F01–F04 executed with documented evidence | pending |
-| 5 | proof that the replayed schema equals the accepted CI-R3A.7.1 shape | pending |
+| 5 | proof that the replayed schema equals the accepted CI-R3A.7.1 shape (all 9 tables incl. `brake_trip_metrics` + all 10 enums — §14) | pending |
 | 6 | proof that on an already-applied production-like database both shims resolve to PRE-NOOP01 + POST-NOOP01 when all fail-closed predicates are false | pending |
 | 7 | no edit to any existing migration file and no checksum mutation | pending |
 
@@ -836,10 +838,16 @@ accepted authority audit found 0 runtime readers and 0 runtime writers. **This t
 the removal.** Removal requires a separate scoped implementation and validation step. No schema,
 migration or runtime change occurs in CI-R3A.9.
 
-For CI-R3B bootstrap scope: `brake_trip_metrics` is classified **PRODUCT_APPROVED_REMOVAL** (§13);
-it remains present in production until a separately controlled removal is implemented and is excluded
-from Option D bootstrap (`PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 of 19) because the product owner
-approved controlled deprecation and removal — not because U043 is pending.
+For CI-R3B bootstrap scope (**current authority: §14 — CI-R3B.0**): the product disposition remains
+**PRODUCT_APPROVED_REMOVAL** and the table remains present in production until a separately scoped
+removal is implemented, while its **executable** disposition is **TRANSITIONAL_BOOTSTRAP_REQUIRED** —
+the CI-R3B bootstrap must create it so acceptance gate 5 parity holds
+(`R3B_TRANSITIONAL_BOOTSTRAP_OBJECT_COUNT` = 19; `R3B_FINAL_PARITY_EXCEPTION_COUNT` = 0).
+
+Historical (**SUPERSEDED BY CI-R3B.0 §14**): `brake_trip_metrics` excluded from the Option D bootstrap
+with `PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 of 19. That exclusion applied a product-disposition
+decision to an executable-parity inventory; approval to remove is not removal
+(`PRODUCT_REMOVAL_IMPLEMENTED_COUNT` = 0).
 
 ---
 
@@ -875,12 +883,12 @@ implemented in this phase.
 
 ## 10. Scope, safety and phase counters
 
-Current phase = **CI-R3A.9.1** (final authority consistency cleanup):
+Current phase = **CI-R3B.0** (executable contract lock):
 
 | Counter | Value |
 |---------|-------|
-| `CHANGED_FILE_COUNT` | 2 |
-| `DOCUMENTATION_FILE_CHANGE_COUNT` | 2 |
+| `CHANGED_FILE_COUNT` | 3 |
+| `DOCUMENTATION_FILE_CHANGE_COUNT` | 3 |
 | `JSON_EVIDENCE_CHANGE_COUNT` | 0 |
 | `JSON_EVIDENCE_HASH_MATCH` | YES |
 | `HISTORICAL_MIGRATION_EDIT_COUNT` | 0 |
@@ -896,7 +904,11 @@ Current phase = **CI-R3A.9.1** (final authority consistency cleanup):
 | `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E7_E8_E9_RUNTIME_SCOPE_COUNT` | 0 |
 | `OUT_OF_SCOPE_FILE_COUNT` | 0 |
-| `PRODUCT_APPROVED_REMOVAL_OBJECT_COUNT` | 1 |
+| `PRODUCT_APPROVED_REMOVAL_COUNT` | 1 |
+| `PRODUCT_REMOVAL_IMPLEMENTED_COUNT` | 0 |
+| `PRODUCTION_DROP_AUTHORIZED` | NO |
+| `R3B_TRANSITIONAL_BOOTSTRAP_OBJECT_COUNT` | 19 |
+| `R3B_FINAL_PARITY_EXCEPTION_COUNT` | 0 |
 | `ORPHAN_REVIEW_REQUIRED_COUNT` | 0 |
 | `U043_PENDING_OBJECT_COUNT` | 0 |
 | `U043_REMOVAL_IMPLEMENTATION_COUNT` | 0 |
@@ -920,12 +932,17 @@ Current phase = **CI-R3A.9.1** (final authority consistency cleanup):
   (`U042_FINAL_ACCEPTANCE_RESOLVED_COUNT` = 0). CI-R3B acceptance gates 2–7 block final acceptance,
   merge and deployment only — not controlled implementation start
   (`REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0).
-- **U043** — product owner decision **DEPRECATE_AND_REMOVE** recorded; `brake_trip_metrics`
-  classified **PRODUCT_APPROVED_REMOVAL**; no current-authority orphan-review or pending-U043 state.
-- No migration, schema, runtime or test change; JSON evidence byte-identical; CI-R3B not started.
+- **U043** — product owner decision **DEPRECATE_AND_REMOVE** recorded and unchanged; product
+  disposition **PRODUCT_APPROVED_REMOVAL**, executable disposition
+  **TRANSITIONAL_BOOTSTRAP_REQUIRED** (§14); removal not implemented; no current-authority
+  orphan-review or pending-U043 state.
+- **CI-R3B contract** — executable bootstrap/parity contract locked at **19** transitional objects
+  with `R3B_FINAL_PARITY_EXCEPTION_COUNT` = 0 (§14).
+- No migration, schema, runtime or test change; JSON evidence byte-identical; CI-R3B.1 implementation
+  not started.
 
-**Status: CI_R3A91_CORRECTION_COMPLETED** — awaiting independent review and PR #1029 merge before
-controlled CI-R3B work begins.
+**Status: CI_R3B0_CONTRACT_LOCK_COMPLETED** — PR #1029 merged (`1948f00d`); the CI-R3B.0 contract lock
+awaits independent review before CI-R3B.1 implementation begins.
 
 ## 12. CI-R3A.9 — Final authority closure and controlled CI-R3B entry
 
@@ -1019,7 +1036,7 @@ them only; no executable behavior or evidence changed.
 
 | Correction | Authority |
 |------------|-----------|
-| U043 disposition | `brake_trip_metrics` reclassified from ORPHAN_REVIEW_REQUIRED to **PRODUCT_APPROVED_REMOVAL**; exists in production until separately controlled removal; excluded from bootstrap because removal was approved |
+| U043 disposition | `brake_trip_metrics` reclassified from ORPHAN_REVIEW_REQUIRED to **PRODUCT_APPROVED_REMOVAL**; exists in production until separately controlled removal; excluded from bootstrap because removal was approved (**bootstrap exclusion SUPERSEDED BY CI-R3B.0 §14** — the table is transitionally bootstrapped; the product disposition is unchanged) |
 | Blocker vs acceptance | `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0; CI-R3B acceptance gates 2–7 are final-acceptance blockers only (`R3B_FINAL_ACCEPTANCE_BLOCKER_GROUP_COUNT` = 1) |
 | Historical Option J table | §5 Option-J row “not independently approved” explicitly marked **HISTORICAL — SUPERSEDED BY CI-R3A.9** |
 
@@ -1044,3 +1061,203 @@ them only; no executable behavior or evidence changed.
 | `CI_R3B_ENTRY_STATUS` | **AUTHORIZED_AFTER_CI_R3A_REVIEW_AND_MERGE** |
 | `CI_R3B_START_BLOCKER_COUNT` | **0** |
 | `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+
+## 14. CI-R3B.0 — Executable Contract Reconciliation
+
+This section supersedes **only** the earlier CI-R3B bootstrap **exclusion** of `brake_trip_metrics`
+and the derived 18-object accounting. Historical evidence is not rewritten, and the U043 product
+decision is **not** reversed. Full contract:
+`docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`; master audit §17k.
+
+CI-R3B.0 is documentation and authority reconciliation only: no migration created or edited, no
+Prisma schema edit, no runtime/test/workflow/dependency change, no production access, no deployment,
+no E7/E8/E9 work.
+
+### 14a. Proven contradiction (verified at `main @ 1948f00d`)
+
+| ID | Proposition | Result |
+|----|-------------|--------|
+| A | `brake_trip_metrics` present in accepted production-catalog evidence (11 cols / 2 constraints / 3 indexes) | **YES** |
+| B | `model BrakeTripMetric` (line 9025), `@@map("brake_trip_metrics")` (9042) and `Vehicle.brakeTripMetrics` (2940) still in `schema.prisma` | **YES** |
+| C | committed migrations creating the table | **0** (0 references of any kind under `backend/prisma/migrations/**`) |
+| D | U043 product decision | **DEPRECATE_AND_REMOVE**, approved, not implemented |
+| E | accepted bootstrap inventory excluded it (`PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18) | **YES** |
+| F | exact fresh-replay parity with accepted CI-R3A.7.1 shape required (§5a gate 5; §4 D7) | **YES** |
+
+| Counter | Value |
+|---------|-------|
+| `BRAKE_TRIP_METRICS_IN_PRODUCTION_EVIDENCE` | **YES** |
+| `BRAKE_TRIP_METRICS_IN_SCHEMA_PRISMA` | **YES** |
+| `BRAKE_TRIP_METRICS_CREATE_MIGRATION_COUNT` | **0** |
+| `BRAKE_TRIP_METRICS_EXCLUDED_FROM_ACCEPTED_BOOTSTRAP` | **YES** (superseded here) |
+| `R3B_EXACT_PARITY_REQUIRED` | **YES** |
+| `EXECUTABLE_CONTRACT_CONTRADICTION_CONFIRMED` | **YES** |
+
+Gate 5 was unreachable: the CI-R3B bootstrap is the only authorized creator of the table, yet the
+accepted inventory omitted it. The omission applied a product-disposition decision to an
+executable-parity inventory.
+
+### 14b. Locked transitional authority
+
+`R3B_TRANSITIONAL_BRAKE_TRIP_METRICS_STRATEGY` = **BOOTSTRAP_UNTIL_SEPARATE_REMOVAL**
+
+| Field | Value |
+|-------|-------|
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** (unchanged, still approved) |
+| `U043_PRODUCT_OWNER_APPROVAL_PRESENT` | **YES** |
+| `BRAKE_TRIP_METRICS_EXECUTABLE_DISPOSITION` | **TRANSITIONAL_BOOTSTRAP_REQUIRED** |
+| `PRODUCT_APPROVED_REMOVAL_COUNT` | **1** |
+| `PRODUCT_REMOVAL_IMPLEMENTED_COUNT` | **0** |
+| `PRODUCTION_DROP_AUTHORIZED` | **NO** |
+| `R3B_BRAKE_TRIP_METRICS_DROP_COUNT` | **0** |
+| `R3B_PRISMA_MODEL_REMOVAL_COUNT` | **0** |
+| `U043_SEPARATE_REMOVAL_PHASE_REQUIRED` | **YES** |
+| `U043_FRESH_PREFLIGHT_REQUIRED` | **YES** |
+| `R3B_FINAL_PARITY_EXCEPTION_COUNT` | **0** |
+
+The Prisma schema still owns the model, so CI-R3B must preserve exact fresh-replay parity by
+temporarily creating `brake_trip_metrics` with its accepted shape (11 columns, `brake_trip_metrics_pkey`,
+`brake_trip_metrics_vehicle_id_fkey`, and the `_pkey`/`_recorded_at_idx`/`_vehicle_id_idx` indexes),
+idempotently. The table is included **only until** the separately scoped removal phase, which must
+update schema ownership and run a fresh authorized production preflight (§9 gates). CI-R3B must not
+drop the production table and must not remove the Prisma model or its back-relation.
+
+### 14c. Reconciled bootstrap accounting (19 objects)
+
+| Counter | Value | Members |
+|---------|-------|---------|
+| `BOOTSTRAP_REPLAY_REQUIRED_COUNT` | **11** | tables `vehicle_trips`, `driving_events`, `trip_behavior_events`, `vehicle_trip_waypoints`, `vehicle_trip_tracking_runs`, `trip_repairs`, `trip_driving_impact`, `brake_trip_metrics` (transitional); enums `TripAssignmentStatus`, `TripAssignmentSubjectType`, `DrivingEventType` |
+| `BOOTSTRAP_EVENTUAL_REPLAY_REQUIRED_COUNT` | **2** | `BehaviorEventCategory`, `BehaviorEventClassification` |
+| `SCHEMA_PARITY_ONLY_COUNT` | **6** | table `vehicle_trip_detection_states`; enums `TripSource`, `TripDetectionState`, `TripTrackingRunType`, `VehicleDetectionProfile`, `DetectionConfidence` |
+| `R3B_TRANSITIONAL_BOOTSTRAP_OBJECT_COUNT` | **19** | 11 + 2 + 6 |
+| `R3B_BOOTSTRAP_OMITTED_OBJECT_COUNT` | **0** | — |
+
+`PRODUCT_APPROVED_REMOVAL` is a product-disposition label on a separate axis and no longer subtracts
+objects from the executable bootstrap partition.
+
+### 14d. Planned CI-R3B.1 migration layout (nothing created here)
+
+| Slot | Path |
+|------|------|
+| bootstrap (Option D) | `backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql` |
+| pre-shim (Option J) | `backend/prisma/migrations/20260424235959_ci_r3b_trip_casing_pre_shim/migration.sql` |
+| target (byte-identical) | `backend/prisma/migrations/20260425000000_retire_user_assignment_and_speeding_severity/migration.sql` |
+| post-shim (Option J) | `backend/prisma/migrations/20260425000001_ci_r3b_trip_casing_post_shim/migration.sql` |
+
+`R3B_PLANNED_NEW_MIGRATION_COUNT` = **3**; `CANDIDATE_MIGRATION_FILE_CREATED_COUNT` = **0**;
+`EXISTING_MIGRATION_EDIT_COUNT` = **0**; `CHECKSUM_MUTATION_COUNT` = **0**;
+`TARGET_MIGRATION_SHA256_AT_BASELINE` = `1c18164be77dead4db2ff500123754e8c924c9094bc09c41f2408dbcd56a4974`.
+Ordering, guard model (§3–§3a), recovery states (§3.5) and fault-injection gates (§3.6) are unchanged.
+
+### 14e. Superseded claims (**SUPERSEDED BY CI-R3B.0**)
+
+- executable CI-R3B bootstrap contains exactly 18 objects — **NO** (19)
+- `brake_trip_metrics` must be absent from a fresh replay — **NO** (must be created)
+- U043 removal already implemented — **NO**
+- exact parity can pass while the table is excluded — **NO**
+- CI-R3B may drop the production table — **NO**
+- CI-R3B already implemented or accepted — **NO**
+
+| Counter | Value |
+|---------|-------|
+| `STALE_R3B_BOOTSTRAP_18_CURRENT_CLAIM_COUNT` | **0** |
+| `FALSE_U043_REMOVAL_IMPLEMENTED_CLAIM_COUNT` | **0** |
+| `FALSE_R3B_PRODUCTION_DROP_AUTHORITY_CLAIM_COUNT` | **0** |
+| `FALSE_U043_REVERSAL_CLAIM_COUNT` | **0** |
+| `R3B_PARITY_CONTRADICTION_COUNT` | **0** |
+| `FALSE_CI_R3B_IMPLEMENTED_CLAIM_COUNT` | **0** |
+| `STALE_CURRENT_AUTHORITY_COUNT` | **0** |
+| `R3B_ACCEPTANCE_GATE_TOTAL_COUNT` / `…_PASSED_COUNT` / `…_PENDING_COUNT` | **7** / **1** / **6** |
+| `R3B_FINAL_ACCEPTANCE` / `R3B_MERGE_AUTHORIZED` / `R3B_DEPLOYMENT_AUTHORIZED` | **NO** / **NO** / **NO** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+| `PRODUCTION_DATABASE_ACCESS_COUNT` (this phase) | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+`CI_R3B0_CONTRACT_LOCK_STATUS` = **COMPLETED** — bootstrap/parity contract locked; CI-R3B.1
+implementation awaits independent review.
+
+## 15. CI-R3B.0.1 — Bootstrap predecessor-shape authority correction (**SUPERSEDED BY CI-R3B.0.2 §16**)
+
+CI-R3B.0.1 corrects a non-executable requirement in CI-R3B.0: the bootstrap must **not** create all 19
+objects at final accepted production shape when downstream migrations add the same elements
+unguardedly. Full authority:
+
+- executable contract: `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md` (§4 two-shape model)
+- predecessor ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`
+- master audit: §17l
+
+| Field | Value |
+|-------|-------|
+| `BOOTSTRAP_SHAPE_AUTHORITY` | predecessor at insertion point `20260325161141` |
+| `FINAL_SHAPE_AUTHORITY` | accepted CI-R3A.7.1 production JSON (post-replay) |
+| `EARLY_BOOTSTRAP_FINAL_SHAPE_EXECUTABLE` | **NO** |
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** (unchanged; removal not implemented) |
+| `BRAKE_TRIP_METRICS_EXECUTABLE_DISPOSITION` | **TRANSITIONAL_BOOTSTRAP_REQUIRED** |
+| `FINAL_PARITY_EXCEPTION_COUNT` | **0** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+| `PRODUCTION_DATABASE_ACCESS_COUNT` | **0** |
+| `PRODUCTION_DEPLOYMENT_COUNT` | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+Historical (**SUPERSEDED BY CI-R3B.0.1**): bootstrap creates all 19 at accepted/final shape.
+
+| Counter | Value |
+|---------|-------|
+| `STALE_BOOTSTRAP_FINAL_SHAPE_AUTHORITY_CLAIM_COUNT` | **0** |
+| `CURRENT_ALL_19_ACCEPTED_SHAPE_CLAIM_COUNT` | **0** |
+| `BOOTSTRAP_PREDECESSOR_SHAPE_UNKNOWN_COUNT` | **0** |
+| `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` | **0** |
+
+`CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_STATUS` = **COMPLETED** — superseded by §16.
+
+## 16. CI-R3B.0.2 — Complete replay-safe predecessor and final-parity authority
+
+Corrects five proven CI-R3B.0.1 ledger defects (future type references, invalid indexes, empty index
+definitions, incomplete downstream matrix, `trip_status` default mismatch). Authority:
+
+| Field | Value |
+|-------|-------|
+| `BOOTSTRAP_SHAPE_AUTHORITY` | **MINIMAL_REPLAY_PREDECESSOR_SHAPE** |
+| `BOOTSTRAP_TABLE_OBJECT_COUNT` / `BOOTSTRAP_ENUM_OBJECT_COUNT` | **9** / **10** |
+| `R3B_PLANNED_NEW_MIGRATION_COUNT` | **4** |
+| `POST_REPLAY_RECONCILIATION_REQUIRED` | **YES** |
+| `POST_REPLAY_RECONCILIATION_IMPLEMENTED` | **NO** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** |
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** (unchanged) |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+
+Minimum authorized reconciliation:
+
+```sql
+ALTER TABLE "vehicle_trips"
+  ALTER COLUMN "trip_status"
+  SET DEFAULT 'ONGOING'::"TripStatus";
+```
+
+Ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`.
+
+`CI_R3B02_REPLAY_AUTHORITY_STATUS` = **COMPLETED** — superseded by §17 for final-convergence completion.
+
+## 17. CI-R3B.0.2.1 — 19-object final-convergence ledger completion
+
+Independent review found CI-R3B.0.2 declared `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` = 19 but listed only
+11 object rows (eight tables missing; Assignment enums used ambiguous `5/3 bootstrap` notation). Prior
+zero mismatch counters were not sufficiently proven.
+
+Corrected authority (ledger §5):
+
+| Field | Value |
+|-------|-------|
+| `FINAL_CONVERGENCE_LEDGER_OBJECT_COUNT` | **19** (physical rows in §5.1) |
+| `FINAL_CONVERGENCE_TABLE_ROW_COUNT` / `FINAL_CONVERGENCE_ENUM_ROW_COUNT` | **9** / **10** |
+| `FINAL_CONVERGENCE_TABLE_PROPERTY_CATEGORY_COUNT` | **54** |
+| `TripAssignmentStatus` bootstrap labels | **5** (not ambiguous 5/3) |
+| `TripAssignmentSubjectType` bootstrap labels | **3** |
+| `FINAL_REPLAY_DEFAULT_MISMATCH_COUNT_AFTER_COMMITTED_HISTORY` | **1** |
+| `FINAL_REPLAY_*_MISMATCH_COUNT_AFTER_AUTHORIZED_RECONCILIATION` | all **0** |
+| `FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` | **YES** |
+| `STALE_FINAL_CONVERGENCE_19_OBJECT_CLAIM_COUNT` | **0** |
+| `STALE_AMBIGUOUS_ASSIGNMENT_ENUM_COUNT_CLAIM` | **0** |
+| `CI_R3B1_IMPLEMENTATION_COUNT` | **0** |
+
+`CI_R3B021_FINAL_CONVERGENCE_STATUS` = **COMPLETED** — CI-R3B.1 awaits independent review.

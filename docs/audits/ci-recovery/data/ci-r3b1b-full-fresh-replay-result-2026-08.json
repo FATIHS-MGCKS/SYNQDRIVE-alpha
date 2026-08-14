@@ -1,0 +1,206 @@
+{
+  "PRE_R3B1B_SHA": "6df19ad57b742da51adccd6e8e614bca293c5ec1",
+  "REPLAY_TESTED_TREE_OR_SHA": "6df19ad57b742da51adccd6e8e614bca293c5ec1",
+  "branch": "fix/ci-r3b-vehicle-trips-migration-replay-2026-08",
+  "pr": 1031,
+  "postgresql_version": "16.14",
+  "database_identifier": "synqdrive_r3b1b_replay",
+  "disposable": true,
+  "production_connection": false,
+  "migration_count": 293,
+  "applied_count": 22,
+  "failed_count": 1,
+  "manual_intervention_count": 0,
+  "first_failed_migration": "20260413230000_add_composite_indexes_batch_c",
+  "last_applied_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+  "failure_classification": "D_unrelated_historical_replay_defect",
+  "failure_sqlstate": "25001",
+  "failure_message": "CREATE INDEX CONCURRENTLY cannot run inside a transaction block",
+  "full_replay_pass": false,
+  "six_repair_slot_results": [
+    {
+      "slot": 1,
+      "migration_path": "backend/prisma/migrations/20260412025000_ci_r3b_historical_predecessor_slot1/migration.sql",
+      "executed_successfully": true,
+      "objects_created": {
+        "TaskPriority": false,
+        "TaskStatus": false,
+        "org_tasks": true
+      },
+      "first_historical_consumer": "20260412030000_platform_hardening_phase1",
+      "consumer_executed_successfully": true,
+      "consumer_blocked_by_unrelated_defect": false,
+      "pass": false
+    },
+    {
+      "slot": 2,
+      "migration_path": "backend/prisma/migrations/20260412610000_ci_r3b_historical_predecessor_slot2/migration.sql",
+      "executed_successfully": true,
+      "objects_created": {
+        "brake_health_current": true
+      },
+      "first_historical_consumer": "20260413183000_brake_health_canonical_refactor",
+      "consumer_executed_successfully": true,
+      "consumer_blocked_by_unrelated_defect": false,
+      "pass": true
+    },
+    {
+      "slot": 3,
+      "migration_path": "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql",
+      "executed_successfully": true,
+      "objects_created": {
+        "vehicle_document_extractions": true,
+        "battery_evidence": true
+      },
+      "first_historical_consumer": "20260413220000_battery_evidence_unique_dedup",
+      "consumer_executed_successfully": true,
+      "consumer_blocked_by_unrelated_defect": false,
+      "pass": true
+    },
+    {
+      "slot": 4,
+      "migration_path": "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql",
+      "executed_successfully": true,
+      "objects_created": {
+        "org_invoices": true,
+        "vehicle_dtc_events": true,
+        "org_invoices_invoice_number_seq": true
+      },
+      "first_historical_consumer": "20260413230000_add_composite_indexes_batch_c",
+      "consumer_executed_successfully": false,
+      "consumer_blocked_by_unrelated_defect": true,
+      "pass": true
+    },
+    {
+      "slot": 5,
+      "migration_path": "backend/prisma/migrations/20260417170000_ci_r3b_historical_predecessor_slot5/migration.sql",
+      "executed_successfully": true,
+      "objects_created": {
+        "InsightType": true
+      },
+      "first_historical_consumer": "20260417180000_add_battery_critical_insight_type",
+      "consumer_executed_successfully": null,
+      "pass": true
+    },
+    {
+      "slot": 6,
+      "migration_path": "backend/prisma/migrations/20260421180000_ci_r3b_historical_predecessor_slot6/migration.sql",
+      "executed_successfully": true,
+      "objects_created": {
+        "vehicle_driving_impact_current": true
+      },
+      "first_historical_consumer": "20260422010000_vehicle_current_safety_score",
+      "consumer_executed_successfully": null,
+      "pass": true
+    }
+  ],
+  "static_sql_review": {
+    "issues": [],
+    "pass": true
+  },
+  "guard_safety": {
+    "pass": true,
+    "canonical_schema_push": "PASS",
+    "repair_results": [
+      {
+        "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+        "ok": true,
+        "error": "psql:/workspace/backend/prisma/migrations/20260412025000_ci_r3b_historical_predecessor_slot1/migration.sql:34: NOTICE:  relation \"org_tasks\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260412025000_ci_r3b_historical_predecessor_slot1/migration.sql:36: NOTICE:  relation \"org_tasks_organization_id_idx\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260412025000_ci_r3b_historical_predecessor_slot1/migration.sql:38: NOTICE:  relation \"org_tasks_status_i"
+      },
+      {
+        "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+        "ok": true,
+        "error": "psql:/workspace/backend/prisma/migrations/20260412610000_ci_r3b_historical_predecessor_slot2/migration.sql:48: NOTICE:  relation \"brake_health_current\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260412610000_ci_r3b_historical_predecessor_slot2/migration.sql:61: NOTICE:  relation \"brake_health_current_organization_id_vehicle_id_idx\" already exists, skipping"
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "ok": true,
+        "error": "psql:/workspace/backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:32: NOTICE:  relation \"vehicle_document_extractions\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:45: NOTICE:  relation \"vehicle_document_extractions_vehicle_id_idx\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:47: NOTI"
+      },
+      {
+        "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "ok": true,
+        "error": "psql:/workspace/backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:46: NOTICE:  relation \"org_invoices\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:48: NOTICE:  relation \"org_invoices_organization_id_idx\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:50: NOTICE:  relation \"org_invoices"
+      },
+      {
+        "migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+        "ok": true,
+        "error": "DO"
+      },
+      {
+        "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+        "ok": true,
+        "error": "psql:/workspace/backend/prisma/migrations/20260421180000_ci_r3b_historical_predecessor_slot6/migration.sql:36: NOTICE:  relation \"vehicle_driving_impact_current\" already exists, skipping\npsql:/workspace/backend/prisma/migrations/20260421180000_ci_r3b_historical_predecessor_slot6/migration.sql:49: NOTICE:  relation \"vehicle_driving_impact_current_organization_id_vehicle_id_idx\" already exists, skipping"
+      }
+    ],
+    "destructive_mutations": 0,
+    "unexpected_failures": 0
+  },
+  "slot56_targeted_test": {
+    "pass": true,
+    "slot5": {
+      "slot": 5,
+      "mode": "isolated_empty_db",
+      "executed": true,
+      "InsightType_enum": [
+        "TIGHT_HANDOVER",
+        "RETURN_NEEDS_INSPECTION",
+        "STATION_SHORTAGE",
+        "LOW_UTILIZATION",
+        "SERVICE_WINDOW",
+        "SERVICE_BEFORE_BOOKING"
+      ],
+      "InsightType_enum_expected": [
+        "TIGHT_HANDOVER",
+        "RETURN_NEEDS_INSPECTION",
+        "STATION_SHORTAGE",
+        "LOW_UTILIZATION",
+        "SERVICE_WINDOW",
+        "SERVICE_BEFORE_BOOKING"
+      ],
+      "InsightType_table_absent": true,
+      "error": "DO"
+    },
+    "slot6": {
+      "slot": 6,
+      "mode": "minimal_fixture_vehicles_table",
+      "executed": true,
+      "vehicle_driving_impact_current": true,
+      "vehicle_fk": true,
+      "error": "CREATE TABLE\nDO\nCREATE INDEX"
+    },
+    "note": "Predecessor-chain replay to slot 5/6 boundaries blocked by unrelated migration 20260413230000_add_composite_indexes_batch_c (SQLSTATE 25001)"
+  },
+  "high_risk_runtime_partial": {
+    "org_tasks": "PASS",
+    "org_tasks_invoice_fk": "PASS",
+    "battery_evidence": "PASS",
+    "battery_evidence_document_extraction_fk": "PASS",
+    "vehicle_document_extractions": "PASS",
+    "org_invoices": "PASS",
+    "org_invoices_unique_index": "PASS",
+    "vehicle_dtc_events": "PASS",
+    "DtcSeverity": "PASS",
+    "InsightType": "FAIL"
+  },
+  "existing_migration_immutability": {
+    "modified": 0,
+    "deleted": 0,
+    "renamed": 0,
+    "target_sha_match": true,
+    "target_sha256": "1c18164be77dead4db2ff500123754e8c924c9094bc09c41f2408dbcd56a4974"
+  },
+  "r3b_19_object_parity": {
+    "status": "NOT_RUN",
+    "reason": "full replay did not reach target or reconciliation"
+  },
+  "mismatch_counters": {
+    "default": null,
+    "type": null,
+    "nullability": null,
+    "constraint": null,
+    "index": null,
+    "enum": null
+  },
+  "final_status": "CI_R3B1B_HISTORICAL_PREDECESSOR_REPAIR_FULL_REPLAY_FAILED"
+}

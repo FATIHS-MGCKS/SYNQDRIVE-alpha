@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "slot": 7,
+      "index": "vendor_vehicles_vehicle_id_idx",
+      "table": "vendor_vehicles",
+      "columns": [
+        "vehicle_id"
+      ],
+      "action_order": 9,
+      "valid": true
+    },
+    {
+      "slot": 7,
+      "index": "vendor_vehicles_vendor_id_idx",
+      "table": "vendor_vehicles",
+      "columns": [
+        "vendor_id"
+      ],
+      "action_order": 10,
+      "valid": true
+    },
+    {
+      "slot": 7,
+      "index": "vendors_category_idx",
+      "table": "vendors",
+      "columns": [
+        "category"
+      ],
+      "action_order": 11,
+      "valid": true
+    },
+    {
+      "slot": 7,
+      "index": "vendors_organization_id_idx",
+      "table": "vendors",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 12,
+      "valid": true
+    },
+    {
+      "slot": 8,
+      "index": "org_workflows_category_idx",
+      "table": "org_workflows",
+      "columns": [
+        "category"
+      ],
+      "action_order": 3,
+      "valid": true
+    },
+    {
+      "slot": 8,
+      "index": "org_workflows_organization_id_idx",
+      "table": "org_workflows",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 4,
+      "valid": true
+    },
+    {
+      "slot": 8,
+      "index": "org_workflows_status_idx",
+      "table": "org_workflows",
+      "columns": [
+        "status"
+      ],
+      "action_order": 5,
+      "valid": true
+    },
+    {
+      "slot": 9,
+      "index": "tires_organization_id_vehicle_id_idx",
+      "table": "tires",
+      "columns": [
+        "organization_id",
+        "vehicle_id"
+      ],
+      "action_order": 7,
+      "valid": true
+    },
+    {
+      "slot": 9,
+      "index": "tires_tire_set_id_idx",
+      "table": "tires",
+      "columns": [
+        "tire_set_id"
+      ],
+      "action_order": 8,
+      "valid": true
+    },
+    {
+      "slot": 9,
+      "index": "tires_vehicle_id_active_idx",
+      "table": "tires",
+      "columns": [
+        "vehicle_id",
+        "active"
+      ],
+      "action_order": 9,
+      "valid": true
+    },
+    {
+      "slot": 10,
+      "index": "vehicle_damage_images_damage_id_idx",
+      "table": "vehicle_damage_images",
+      "columns": [
+        "damage_id"
+      ],
+      "action_order": 7,
+      "valid": true
+    },
+    {
+      "slot": 10,
+      "index": "vehicle_damages_damage_type_idx",
+      "table": "vehicle_damages",
+      "columns": [
+        "damage_type"
+      ],
+      "action_order": 8,
+      "valid": true
+    },
+    {
+      "slot": 10,
+      "index": "vehicle_damages_vehicle_id_idx",
+      "table": "vehicle_damages",
+      "columns": [
+        "vehicle_id"
+      ],
+      "action_order": 9,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "index": "org_whatsapp_configs_organization_id_idx",
+      "table": "org_whatsapp_configs",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 11,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "index": "whatsapp_conversations_last_message_at_idx",
+      "table": "whatsapp_conversations",
+      "columns": [
+        "last_message_at"
+      ],
+      "action_order": 12,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "index": "whatsapp_conversations_organization_id_idx",
+      "table": "whatsapp_conversations",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 13,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "index": "whatsapp_messages_conversation_id_created_at_idx",
+      "table": "whatsapp_messages",
+      "columns": [
+        "conversation_id",
+        "created_at"
+      ],
+      "action_order": 14,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "index": "whatsapp_messages_organization_id_idx",
+      "table": "whatsapp_messages",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 15,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "index": "tire_health_snapshots_tire_id_snapshot_date_idx",
+      "table": "tire_health_snapshots",
+      "columns": [
+        "tire_id",
+        "snapshot_date"
+      ],
+      "action_order": 8,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "index": "tire_health_snapshots_tire_set_id_idx",
+      "table": "tire_health_snapshots",
+      "columns": [
+        "tire_set_id"
+      ],
+      "action_order": 9,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "index": "tire_health_snapshots_vehicle_id_snapshot_date_idx",
+      "table": "tire_health_snapshots",
+      "columns": [
+        "vehicle_id",
+        "snapshot_date"
+      ],
+      "action_order": 10,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "index": "tire_wear_data_points_organization_id_idx",
+      "table": "tire_wear_data_points",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 11,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "index": "tire_wear_data_points_tire_set_id_idx",
+      "table": "tire_wear_data_points",
+      "columns": [
+        "tire_set_id"
+      ],
+      "action_order": 12,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "index": "tire_wear_data_points_vehicle_id_idx",
+      "table": "tire_wear_data_points",
+      "columns": [
+        "vehicle_id"
+      ],
+      "action_order": 13,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "index": "dashboard_insight_runs_created_at_idx",
+      "table": "dashboard_insight_runs",
+      "columns": [
+        "created_at"
+      ],
+      "action_order": 9,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "index": "dashboard_insight_runs_organization_id_idx",
+      "table": "dashboard_insight_runs",
+      "columns": [
+        "organization_id"
+      ],
+      "action_order": 10,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "index": "dashboard_insights_dedupe_key_idx",
+      "table": "dashboard_insights",
+      "columns": [
+        "dedupe_key"
+      ],
+      "action_order": 11,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "index": "dashboard_insights_organization_id_is_active_idx",
+      "table": "dashboard_insights",
+      "columns": [
+        "organization_id",
+        "is_active"
+      ],
+      "action_order": 12,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "index": "dashboard_insights_run_id_idx",
+      "table": "dashboard_insights",
+      "columns": [
+        "run_id"
+      ],
+      "action_order": 13,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "index": "dashboard_insights_type_idx",
+      "table": "dashboard_insights",
+      "columns": [
+        "type"
+      ],
+      "action_order": 14,
+      "valid": true
+    },
+    {
+      "slot": 16,
+      "index": "chat_messages_organization_id_created_at_idx",
+      "table": "chat_messages",
+      "columns": [
+        "organization_id",
+        "created_at"
+      ],
+      "action_order": 3,
+      "valid": true
+    }
+  ]
+}

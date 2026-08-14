@@ -1,0 +1,2277 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1",
+  "supersedes": "ci-r3b1d-post-vendor-repair-topology-2026-08.json",
+  "target_first_consumer": "20260613210000_vendor_management_overhaul",
+  "known_valid_objects": {
+    "ActivityEntity": {
+      "classification": "VALID",
+      "object_type": "enum",
+      "reason": "Created in init migration; extended by audit migrations before vendor overhaul",
+      "creator_migration": "20260311224040_init",
+      "evidence": [
+        "backend/prisma/migrations/20260311224040_init/migration.sql:CREATE TYPE ActivityEntity",
+        "backend/prisma/migrations/20260412040000_audit_consent_provenance/migration.sql:ALTER TYPE ActivityEntity"
+      ]
+    },
+    "org_invoices": {
+      "classification": "VALID",
+      "object_type": "table",
+      "reason": "Historical predecessor repaired in CI-R3B1B slot 4",
+      "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "evidence": [
+        "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:CREATE TABLE org_invoices",
+        "ci-r3b1b-historical-predecessor-repair-full-replay-2026-08.md:slot 4"
+      ]
+    }
+  },
+  "primary_historical_defects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles"
+  ],
+  "remaining_historical_defect_objects": [
+    "WorkflowStatus",
+    "org_workflows",
+    "tires",
+    "vehicle_damages",
+    "vehicle_damage_images",
+    "org_whatsapp_configs",
+    "whatsapp_conversations",
+    "whatsapp_messages",
+    "tire_health_snapshots",
+    "tire_wear_data_points",
+    "TireSetupStatus",
+    "TireEventType",
+    "dashboard_insight_runs",
+    "dashboard_insights",
+    "chat_messages"
+  ],
+  "all_genuine_defect_objects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles",
+    "WorkflowStatus",
+    "org_workflows",
+    "tires",
+    "vehicle_damages",
+    "vehicle_damage_images",
+    "org_whatsapp_configs",
+    "whatsapp_conversations",
+    "whatsapp_messages",
+    "tire_health_snapshots",
+    "tire_wear_data_points",
+    "TireSetupStatus",
+    "TireEventType",
+    "dashboard_insight_runs",
+    "dashboard_insights",
+    "chat_messages"
+  ],
+  "future_repair_slot_count": 10,
+  "slots": [
+    {
+      "slot": 7,
+      "after_migration": "20260613200000_booking_document_lifecycle",
+      "before_migration": "20260613210000_vendor_management_overhaul",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "VendorCategory",
+        "VendorSourceType",
+        "vendor_vehicles",
+        "vendors"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "VendorCategory",
+          "object_type": "enum",
+          "labels": [
+            "WORKSHOP",
+            "SERVICE_PARTNER",
+            "PAINT_SHOP",
+            "BODY_REPAIR",
+            "AUTO_GLASS",
+            "TIRE_DEALER",
+            "PARTS_DEALER",
+            "DETAILING",
+            "TUV_STATION",
+            "ONLINE_SUPPLIER",
+            "OTHER"
+          ],
+          "justification": "enum repair object VendorCategory",
+          "source_contracts": [
+            "VendorCategory",
+            "vendors"
+          ],
+          "evidence": [
+            "contract:VendorCategory:CREATE TYPE",
+            "contract:vendors:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot7:create-type:VendorCategory"
+        },
+        {
+          "action": "CREATE TYPE",
+          "object": "VendorSourceType",
+          "object_type": "enum",
+          "labels": [
+            "LOCAL_BUSINESS",
+            "ONLINE_VENDOR"
+          ],
+          "justification": "enum repair object VendorSourceType",
+          "source_contracts": [
+            "VendorSourceType",
+            "vendors"
+          ],
+          "evidence": [
+            "contract:VendorSourceType:CREATE TYPE",
+            "contract:vendors:CREATE TYPE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot7:create-type:VendorSourceType"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "vendor_vehicles",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "contract:vendor_vehicles:CREATE TABLE"
+          ],
+          "order": 3,
+          "graph_node_id": "slot7:create-table:vendor_vehicles"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "vendors",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "vendors"
+          ],
+          "evidence": [
+            "contract:vendors:CREATE TABLE"
+          ],
+          "order": 4,
+          "graph_node_id": "slot7:create-table:vendors"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:VendorVehicle.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          },
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "contract:vendor_vehicles:ADD CONSTRAINT"
+          ],
+          "order": 5,
+          "graph_node_id": "slot7:add-constraint:vendor_vehicles_vehicle_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vendor_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "Deferred vendors FK resolved after vendors CREATE in slot 7",
+          "fk": {
+            "local_columns": [
+              "vendor_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vendors",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:VendorVehicle.vendorId->@Vendor"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_REPAIR_SLOT",
+            "chronology_evidence": [
+              "vendors repair object in same slot 7 bootstrap; FK enforced after vendors CREATE TABLE"
+            ],
+            "defer_until_repair_slot": 7
+          },
+          "source_repair_object": "vendor_vehicles",
+          "resolves_deferred_from_slot": 7,
+          "resolution_type": "same_repair_slot",
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "deferred-fk:vendor_vehicles_vendor_id_fkey"
+          ],
+          "order": 6,
+          "graph_node_id": "slot7:add-constraint:vendor_vehicles_vendor_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vendors_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:Vendor.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "vendors"
+          ],
+          "evidence": [
+            "contract:vendors:ADD CONSTRAINT"
+          ],
+          "order": 7,
+          "graph_node_id": "slot7:add-constraint:vendors_organization_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vendor_id_vehicle_id_key",
+          "object_type": "unique",
+          "justification": "unique ['vendor_id', 'vehicle_id']",
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "contract:vendor_vehicles:ADD CONSTRAINT"
+          ],
+          "order": 8,
+          "graph_node_id": "slot7:add-constraint:vendor_vehicles_vendor_id_vehicle_id_key"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vendor_vehicles_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id']",
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "contract:vendor_vehicles:CREATE INDEX"
+          ],
+          "order": 9,
+          "graph_node_id": "slot7:create-index:vendor_vehicles_vehicle_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vendor_vehicles_vendor_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vendor_id']",
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "contract:vendor_vehicles:CREATE INDEX"
+          ],
+          "order": 10,
+          "graph_node_id": "slot7:create-index:vendor_vehicles_vendor_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vendors_category_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['category']",
+          "source_contracts": [
+            "vendors"
+          ],
+          "evidence": [
+            "contract:vendors:CREATE INDEX"
+          ],
+          "order": 11,
+          "graph_node_id": "slot7:create-index:vendors_category_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vendors_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "vendors"
+          ],
+          "evidence": [
+            "contract:vendors:CREATE INDEX"
+          ],
+          "order": 12,
+          "graph_node_id": "slot7:create-index:vendors_organization_id_idx"
+        }
+      ],
+      "deferred_actions": [
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vendor_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "Deferred vendors FK resolved after vendors CREATE in slot 7",
+          "fk": {
+            "local_columns": [
+              "vendor_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vendors",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:VendorVehicle.vendorId->@Vendor"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_REPAIR_SLOT",
+            "chronology_evidence": [
+              "vendors repair object in same slot 7 bootstrap; FK enforced after vendors CREATE TABLE"
+            ],
+            "defer_until_repair_slot": 7
+          },
+          "source_repair_object": "vendor_vehicles",
+          "resolves_deferred_from_slot": 7,
+          "resolution_type": "same_repair_slot",
+          "source_contracts": [
+            "vendor_vehicles"
+          ],
+          "evidence": [
+            "deferred-fk:vendor_vehicles_vendor_id_fkey"
+          ],
+          "order": 6,
+          "graph_node_id": "slot7:add-constraint:vendor_vehicles_vendor_id_fkey"
+        }
+      ],
+      "first_consumers_protected": [
+        "20260613210000_vendor_management_overhaul"
+      ],
+      "must_execute_after": [
+        "20260613200000_booking_document_lifecycle"
+      ],
+      "must_execute_before": [
+        "20260613210000_vendor_management_overhaul"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 12,
+        "edge_count": 10,
+        "duplicate_create_records": [
+          {
+            "canonical_key": [
+              "public",
+              "enum",
+              "VendorCategory"
+            ],
+            "merged_into": "VendorCategory",
+            "duplicate_justification": "required by vendors column types"
+          },
+          {
+            "canonical_key": [
+              "public",
+              "enum",
+              "VendorSourceType"
+            ],
+            "merged_into": "VendorSourceType",
+            "duplicate_justification": "required by vendors column types"
+          }
+        ],
+        "cycles": [],
+        "topological_order": [
+          "slot7:create-type:VendorCategory",
+          "slot7:create-type:VendorSourceType",
+          "slot7:create-table:vendor_vehicles",
+          "slot7:create-table:vendors",
+          "slot7:add-constraint:vendor_vehicles_vehicle_id_fkey",
+          "slot7:add-constraint:vendor_vehicles_vendor_id_fkey",
+          "slot7:add-constraint:vendors_organization_id_fkey",
+          "slot7:add-constraint:vendor_vehicles_vendor_id_vehicle_id_key",
+          "slot7:create-index:vendor_vehicles_vehicle_id_idx",
+          "slot7:create-index:vendor_vehicles_vendor_id_idx",
+          "slot7:create-index:vendors_category_idx",
+          "slot7:create-index:vendors_organization_id_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Vendor predecessor repair slot between booking_document_lifecycle and vendor_management_overhaul"
+    },
+    {
+      "slot": 8,
+      "after_migration": "20260616120000_station_operational_module",
+      "before_migration": "20260616140000_workflow_automation_runtime",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "WorkflowStatus",
+        "org_workflows"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "WorkflowStatus",
+          "object_type": "enum",
+          "labels": [
+            "ACTIVE",
+            "DRAFT",
+            "DISABLED"
+          ],
+          "justification": "enum repair object WorkflowStatus",
+          "source_contracts": [
+            "WorkflowStatus",
+            "org_workflows"
+          ],
+          "evidence": [
+            "contract:WorkflowStatus:CREATE TYPE",
+            "contract:org_workflows:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot8:create-type:WorkflowStatus"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "org_workflows",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "org_workflows"
+          ],
+          "evidence": [
+            "contract:org_workflows:CREATE TABLE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot8:create-table:org_workflows"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "org_workflows_category_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['category']",
+          "source_contracts": [
+            "org_workflows"
+          ],
+          "evidence": [
+            "contract:org_workflows:CREATE INDEX"
+          ],
+          "order": 3,
+          "graph_node_id": "slot8:create-index:org_workflows_category_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "org_workflows_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "org_workflows"
+          ],
+          "evidence": [
+            "contract:org_workflows:CREATE INDEX"
+          ],
+          "order": 4,
+          "graph_node_id": "slot8:create-index:org_workflows_organization_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "org_workflows_status_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['status']",
+          "source_contracts": [
+            "org_workflows"
+          ],
+          "evidence": [
+            "contract:org_workflows:CREATE INDEX"
+          ],
+          "order": 5,
+          "graph_node_id": "slot8:create-index:org_workflows_status_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260616140000_workflow_automation_runtime"
+      ],
+      "must_execute_after": [
+        "20260616120000_station_operational_module"
+      ],
+      "must_execute_before": [
+        "20260616140000_workflow_automation_runtime"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 5,
+        "edge_count": 4,
+        "duplicate_create_records": [
+          {
+            "canonical_key": [
+              "public",
+              "enum",
+              "WorkflowStatus"
+            ],
+            "merged_into": "WorkflowStatus",
+            "duplicate_justification": "required by org_workflows column types"
+          }
+        ],
+        "cycles": [],
+        "topological_order": [
+          "slot8:create-type:WorkflowStatus",
+          "slot8:create-table:org_workflows",
+          "slot8:create-index:org_workflows_category_idx",
+          "slot8:create-index:org_workflows_organization_id_idx",
+          "slot8:create-index:org_workflows_status_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for WorkflowStatus, org_workflows"
+    },
+    {
+      "slot": 9,
+      "after_migration": "20260617120000_pricing_tariffs",
+      "before_migration": "20260617120000_tire_identity_mounted_dismounted",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "TireHealthStatus",
+        "TirePosition",
+        "TireSeason",
+        "tires"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "TireHealthStatus",
+          "object_type": "enum",
+          "justification": "required by tires column types",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot9:create-type:TireHealthStatus"
+        },
+        {
+          "action": "CREATE TYPE",
+          "object": "TirePosition",
+          "object_type": "enum",
+          "justification": "required by tires column types",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE TYPE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot9:create-type:TirePosition"
+        },
+        {
+          "action": "CREATE TYPE",
+          "object": "TireSeason",
+          "object_type": "enum",
+          "justification": "required by tires column types",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE TYPE"
+          ],
+          "order": 3,
+          "graph_node_id": "slot9:create-type:TireSeason"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "tires",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE TABLE"
+          ],
+          "order": 4,
+          "graph_node_id": "slot9:create-table:tires"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tires_tire_set_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['tire_set_id'] -> vehicle_tire_setups",
+          "fk": {
+            "local_columns": [
+              "tire_set_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicle_tire_setups",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:Tire.tireSetId->@VehicleTireSetup"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:ADD CONSTRAINT"
+          ],
+          "order": 5,
+          "graph_node_id": "slot9:add-constraint:tires_tire_set_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tires_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:Tire.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          },
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:ADD CONSTRAINT"
+          ],
+          "order": 6,
+          "graph_node_id": "slot9:add-constraint:tires_vehicle_id_fkey"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tires_organization_id_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id', 'vehicle_id']",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE INDEX"
+          ],
+          "order": 7,
+          "graph_node_id": "slot9:create-index:tires_organization_id_vehicle_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tires_tire_set_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['tire_set_id']",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE INDEX"
+          ],
+          "order": 8,
+          "graph_node_id": "slot9:create-index:tires_tire_set_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tires_vehicle_id_active_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id', 'active']",
+          "source_contracts": [
+            "tires"
+          ],
+          "evidence": [
+            "contract:tires:CREATE INDEX"
+          ],
+          "order": 9,
+          "graph_node_id": "slot9:create-index:tires_vehicle_id_active_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260617120000_tire_identity_mounted_dismounted"
+      ],
+      "must_execute_after": [
+        "20260617120000_pricing_tariffs"
+      ],
+      "must_execute_before": [
+        "20260617120000_tire_identity_mounted_dismounted"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 9,
+        "edge_count": 8,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot9:create-type:TireHealthStatus",
+          "slot9:create-type:TirePosition",
+          "slot9:create-type:TireSeason",
+          "slot9:create-table:tires",
+          "slot9:add-constraint:tires_tire_set_id_fkey",
+          "slot9:add-constraint:tires_vehicle_id_fkey",
+          "slot9:create-index:tires_organization_id_vehicle_id_idx",
+          "slot9:create-index:tires_tire_set_id_idx",
+          "slot9:create-index:tires_vehicle_id_active_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for tires"
+    },
+    {
+      "slot": 10,
+      "after_migration": "20260617200000_hm_service_no_tracking_insight",
+      "before_migration": "20260618180000_vehicle_damage_lifecycle",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "DamageSeverity",
+        "DamageType",
+        "vehicle_damage_images",
+        "vehicle_damages"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "DamageSeverity",
+          "object_type": "enum",
+          "justification": "required by vehicle_damages column types",
+          "source_contracts": [
+            "vehicle_damages"
+          ],
+          "evidence": [
+            "contract:vehicle_damages:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot10:create-type:DamageSeverity"
+        },
+        {
+          "action": "CREATE TYPE",
+          "object": "DamageType",
+          "object_type": "enum",
+          "justification": "required by vehicle_damages column types",
+          "source_contracts": [
+            "vehicle_damages"
+          ],
+          "evidence": [
+            "contract:vehicle_damages:CREATE TYPE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot10:create-type:DamageType"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "vehicle_damage_images",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "vehicle_damage_images"
+          ],
+          "evidence": [
+            "contract:vehicle_damage_images:CREATE TABLE"
+          ],
+          "order": 3,
+          "graph_node_id": "slot10:create-table:vehicle_damage_images"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "vehicle_damages",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "vehicle_damages"
+          ],
+          "evidence": [
+            "contract:vehicle_damages:CREATE TABLE"
+          ],
+          "order": 4,
+          "graph_node_id": "slot10:create-table:vehicle_damages"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vehicle_damage_images_damage_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['damage_id'] -> vehicle_damages",
+          "fk": {
+            "local_columns": [
+              "damage_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicle_damages",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:VehicleDamageImage.damageId->@VehicleDamage"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "vehicle_damage_images"
+          ],
+          "evidence": [
+            "contract:vehicle_damage_images:ADD CONSTRAINT"
+          ],
+          "order": 5,
+          "graph_node_id": "slot10:add-constraint:vehicle_damage_images_damage_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "vehicle_damages_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:VehicleDamage.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          },
+          "source_contracts": [
+            "vehicle_damages"
+          ],
+          "evidence": [
+            "contract:vehicle_damages:ADD CONSTRAINT"
+          ],
+          "order": 6,
+          "graph_node_id": "slot10:add-constraint:vehicle_damages_vehicle_id_fkey"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vehicle_damage_images_damage_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['damage_id']",
+          "source_contracts": [
+            "vehicle_damage_images"
+          ],
+          "evidence": [
+            "contract:vehicle_damage_images:CREATE INDEX"
+          ],
+          "order": 7,
+          "graph_node_id": "slot10:create-index:vehicle_damage_images_damage_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vehicle_damages_damage_type_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['damage_type']",
+          "source_contracts": [
+            "vehicle_damages"
+          ],
+          "evidence": [
+            "contract:vehicle_damages:CREATE INDEX"
+          ],
+          "order": 8,
+          "graph_node_id": "slot10:create-index:vehicle_damages_damage_type_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "vehicle_damages_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id']",
+          "source_contracts": [
+            "vehicle_damages"
+          ],
+          "evidence": [
+            "contract:vehicle_damages:CREATE INDEX"
+          ],
+          "order": 9,
+          "graph_node_id": "slot10:create-index:vehicle_damages_vehicle_id_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260618180000_vehicle_damage_lifecycle"
+      ],
+      "must_execute_after": [
+        "20260617200000_hm_service_no_tracking_insight"
+      ],
+      "must_execute_before": [
+        "20260618180000_vehicle_damage_lifecycle"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 9,
+        "edge_count": 8,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot10:create-type:DamageSeverity",
+          "slot10:create-type:DamageType",
+          "slot10:create-table:vehicle_damage_images",
+          "slot10:create-table:vehicle_damages",
+          "slot10:add-constraint:vehicle_damage_images_damage_id_fkey",
+          "slot10:add-constraint:vehicle_damages_vehicle_id_fkey",
+          "slot10:create-index:vehicle_damage_images_damage_id_idx",
+          "slot10:create-index:vehicle_damages_damage_type_idx",
+          "slot10:create-index:vehicle_damages_vehicle_id_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for vehicle_damage_images, vehicle_damages"
+    },
+    {
+      "slot": 11,
+      "after_migration": "20260620180000_voice_assistant_tool_permissions",
+      "before_migration": "20260620190000_whatsapp_business_platform",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "WhatsAppAiMode",
+        "org_whatsapp_configs",
+        "whatsapp_conversations",
+        "whatsapp_messages"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "WhatsAppAiMode",
+          "object_type": "enum",
+          "justification": "required by org_whatsapp_configs column types",
+          "source_contracts": [
+            "org_whatsapp_configs"
+          ],
+          "evidence": [
+            "contract:org_whatsapp_configs:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot11:create-type:WhatsAppAiMode"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "org_whatsapp_configs",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "org_whatsapp_configs"
+          ],
+          "evidence": [
+            "contract:org_whatsapp_configs:CREATE TABLE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot11:create-table:org_whatsapp_configs"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "whatsapp_conversations",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "whatsapp_conversations"
+          ],
+          "evidence": [
+            "contract:whatsapp_conversations:CREATE TABLE"
+          ],
+          "order": 3,
+          "graph_node_id": "slot11:create-table:whatsapp_conversations"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "whatsapp_messages",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "whatsapp_messages"
+          ],
+          "evidence": [
+            "contract:whatsapp_messages:CREATE TABLE"
+          ],
+          "order": 4,
+          "graph_node_id": "slot11:create-table:whatsapp_messages"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "org_whatsapp_configs_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:OrgWhatsAppConfig.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "org_whatsapp_configs"
+          ],
+          "evidence": [
+            "contract:org_whatsapp_configs:ADD CONSTRAINT"
+          ],
+          "order": 5,
+          "graph_node_id": "slot11:add-constraint:org_whatsapp_configs_organization_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "whatsapp_conversations_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:WhatsAppConversation.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "whatsapp_conversations"
+          ],
+          "evidence": [
+            "contract:whatsapp_conversations:ADD CONSTRAINT"
+          ],
+          "order": 6,
+          "graph_node_id": "slot11:add-constraint:whatsapp_conversations_organization_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "whatsapp_messages_conversation_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['conversation_id'] -> whatsapp_conversations",
+          "fk": {
+            "local_columns": [
+              "conversation_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "whatsapp_conversations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:WhatsAppMessage.conversationId->@WhatsAppConversation"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "whatsapp_messages"
+          ],
+          "evidence": [
+            "contract:whatsapp_messages:ADD CONSTRAINT"
+          ],
+          "order": 7,
+          "graph_node_id": "slot11:add-constraint:whatsapp_messages_conversation_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "whatsapp_messages_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:WhatsAppMessage.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "whatsapp_messages"
+          ],
+          "evidence": [
+            "contract:whatsapp_messages:ADD CONSTRAINT"
+          ],
+          "order": 8,
+          "graph_node_id": "slot11:add-constraint:whatsapp_messages_organization_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "org_whatsapp_configs_organization_id_key",
+          "object_type": "unique",
+          "justification": "unique ['organization_id']",
+          "source_contracts": [
+            "org_whatsapp_configs"
+          ],
+          "evidence": [
+            "contract:org_whatsapp_configs:ADD CONSTRAINT"
+          ],
+          "order": 9,
+          "graph_node_id": "slot11:add-constraint:org_whatsapp_configs_organization_id_key"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "whatsapp_conversations_organization_id_contact_phone_key",
+          "object_type": "unique",
+          "justification": "unique ['organization_id', 'contact_phone']",
+          "source_contracts": [
+            "whatsapp_conversations"
+          ],
+          "evidence": [
+            "contract:whatsapp_conversations:ADD CONSTRAINT"
+          ],
+          "order": 10,
+          "graph_node_id": "slot11:add-constraint:whatsapp_conversations_organization_id_contact_phone_key"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "org_whatsapp_configs_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "org_whatsapp_configs"
+          ],
+          "evidence": [
+            "contract:org_whatsapp_configs:CREATE INDEX"
+          ],
+          "order": 11,
+          "graph_node_id": "slot11:create-index:org_whatsapp_configs_organization_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "whatsapp_conversations_last_message_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['last_message_at']",
+          "source_contracts": [
+            "whatsapp_conversations"
+          ],
+          "evidence": [
+            "contract:whatsapp_conversations:CREATE INDEX"
+          ],
+          "order": 12,
+          "graph_node_id": "slot11:create-index:whatsapp_conversations_last_message_at_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "whatsapp_conversations_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "whatsapp_conversations"
+          ],
+          "evidence": [
+            "contract:whatsapp_conversations:CREATE INDEX"
+          ],
+          "order": 13,
+          "graph_node_id": "slot11:create-index:whatsapp_conversations_organization_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "whatsapp_messages_conversation_id_created_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['conversation_id', 'created_at']",
+          "source_contracts": [
+            "whatsapp_messages"
+          ],
+          "evidence": [
+            "contract:whatsapp_messages:CREATE INDEX"
+          ],
+          "order": 14,
+          "graph_node_id": "slot11:create-index:whatsapp_messages_conversation_id_created_at_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "whatsapp_messages_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "whatsapp_messages"
+          ],
+          "evidence": [
+            "contract:whatsapp_messages:CREATE INDEX"
+          ],
+          "order": 15,
+          "graph_node_id": "slot11:create-index:whatsapp_messages_organization_id_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260620190000_whatsapp_business_platform"
+      ],
+      "must_execute_after": [
+        "20260620180000_voice_assistant_tool_permissions"
+      ],
+      "must_execute_before": [
+        "20260620190000_whatsapp_business_platform"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 15,
+        "edge_count": 11,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot11:create-type:WhatsAppAiMode",
+          "slot11:create-table:org_whatsapp_configs",
+          "slot11:create-table:whatsapp_conversations",
+          "slot11:create-table:whatsapp_messages",
+          "slot11:add-constraint:org_whatsapp_configs_organization_id_fkey",
+          "slot11:add-constraint:whatsapp_conversations_organization_id_fkey",
+          "slot11:add-constraint:whatsapp_messages_conversation_id_fkey",
+          "slot11:add-constraint:whatsapp_messages_organization_id_fkey",
+          "slot11:add-constraint:org_whatsapp_configs_organization_id_key",
+          "slot11:add-constraint:whatsapp_conversations_organization_id_contact_phone_key",
+          "slot11:create-index:org_whatsapp_configs_organization_id_idx",
+          "slot11:create-index:whatsapp_conversations_last_message_at_idx",
+          "slot11:create-index:whatsapp_conversations_organization_id_idx",
+          "slot11:create-index:whatsapp_messages_conversation_id_created_at_idx",
+          "slot11:create-index:whatsapp_messages_organization_id_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for org_whatsapp_configs, whatsapp_conversations, whatsapp_messages"
+    },
+    {
+      "slot": 12,
+      "after_migration": "20260716180000_battery_capability_lifecycle",
+      "before_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "tire_health_snapshots",
+        "tire_wear_data_points"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TABLE",
+          "object": "tire_health_snapshots",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:CREATE TABLE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot12:create-table:tire_health_snapshots"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "tire_wear_data_points",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "tire_wear_data_points"
+          ],
+          "evidence": [
+            "contract:tire_wear_data_points:CREATE TABLE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot12:create-table:tire_wear_data_points"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tire_health_snapshots_tire_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['tire_id'] -> tires",
+          "fk": {
+            "local_columns": [
+              "tire_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "tires",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:TireHealthSnapshot.tireId->@Tire"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:ADD CONSTRAINT"
+          ],
+          "order": 3,
+          "graph_node_id": "slot12:add-constraint:tire_health_snapshots_tire_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tire_health_snapshots_tire_set_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['tire_set_id'] -> vehicle_tire_setups",
+          "fk": {
+            "local_columns": [
+              "tire_set_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicle_tire_setups",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:TireHealthSnapshot.tireSetId->@VehicleTireSetup"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:ADD CONSTRAINT"
+          ],
+          "order": 4,
+          "graph_node_id": "slot12:add-constraint:tire_health_snapshots_tire_set_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tire_health_snapshots_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:TireHealthSnapshot.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          },
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:ADD CONSTRAINT"
+          ],
+          "order": 5,
+          "graph_node_id": "slot12:add-constraint:tire_health_snapshots_vehicle_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tire_wear_data_points_tire_set_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['tire_set_id'] -> vehicle_tire_setups",
+          "fk": {
+            "local_columns": [
+              "tire_set_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicle_tire_setups",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "SET NULL",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:TireWearDataPoint.tireSetId->@VehicleTireSetup"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "tire_wear_data_points"
+          ],
+          "evidence": [
+            "contract:tire_wear_data_points:ADD CONSTRAINT"
+          ],
+          "order": 6,
+          "graph_node_id": "slot12:add-constraint:tire_wear_data_points_tire_set_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "tire_wear_data_points_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:TireWearDataPoint.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          },
+          "source_contracts": [
+            "tire_wear_data_points"
+          ],
+          "evidence": [
+            "contract:tire_wear_data_points:ADD CONSTRAINT"
+          ],
+          "order": 7,
+          "graph_node_id": "slot12:add-constraint:tire_wear_data_points_vehicle_id_fkey"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tire_health_snapshots_tire_id_snapshot_date_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['tire_id', 'snapshot_date']",
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:CREATE INDEX"
+          ],
+          "order": 8,
+          "graph_node_id": "slot12:create-index:tire_health_snapshots_tire_id_snapshot_date_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tire_health_snapshots_tire_set_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['tire_set_id']",
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:CREATE INDEX"
+          ],
+          "order": 9,
+          "graph_node_id": "slot12:create-index:tire_health_snapshots_tire_set_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tire_health_snapshots_vehicle_id_snapshot_date_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id', 'snapshot_date']",
+          "source_contracts": [
+            "tire_health_snapshots"
+          ],
+          "evidence": [
+            "contract:tire_health_snapshots:CREATE INDEX"
+          ],
+          "order": 10,
+          "graph_node_id": "slot12:create-index:tire_health_snapshots_vehicle_id_snapshot_date_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tire_wear_data_points_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "tire_wear_data_points"
+          ],
+          "evidence": [
+            "contract:tire_wear_data_points:CREATE INDEX"
+          ],
+          "order": 11,
+          "graph_node_id": "slot12:create-index:tire_wear_data_points_organization_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tire_wear_data_points_tire_set_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['tire_set_id']",
+          "source_contracts": [
+            "tire_wear_data_points"
+          ],
+          "evidence": [
+            "contract:tire_wear_data_points:CREATE INDEX"
+          ],
+          "order": 12,
+          "graph_node_id": "slot12:create-index:tire_wear_data_points_tire_set_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "tire_wear_data_points_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id']",
+          "source_contracts": [
+            "tire_wear_data_points"
+          ],
+          "evidence": [
+            "contract:tire_wear_data_points:CREATE INDEX"
+          ],
+          "order": 13,
+          "graph_node_id": "slot12:create-index:tire_wear_data_points_vehicle_id_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260716180000_tire_evidence_ground_truth_provenance"
+      ],
+      "must_execute_after": [
+        "20260716180000_battery_capability_lifecycle"
+      ],
+      "must_execute_before": [
+        "20260716180000_tire_evidence_ground_truth_provenance"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 13,
+        "edge_count": 11,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot12:create-table:tire_health_snapshots",
+          "slot12:create-table:tire_wear_data_points",
+          "slot12:add-constraint:tire_health_snapshots_tire_id_fkey",
+          "slot12:add-constraint:tire_health_snapshots_tire_set_id_fkey",
+          "slot12:add-constraint:tire_health_snapshots_vehicle_id_fkey",
+          "slot12:add-constraint:tire_wear_data_points_tire_set_id_fkey",
+          "slot12:add-constraint:tire_wear_data_points_vehicle_id_fkey",
+          "slot12:create-index:tire_health_snapshots_tire_id_snapshot_date_idx",
+          "slot12:create-index:tire_health_snapshots_tire_set_id_idx",
+          "slot12:create-index:tire_health_snapshots_vehicle_id_snapshot_date_idx",
+          "slot12:create-index:tire_wear_data_points_organization_id_idx",
+          "slot12:create-index:tire_wear_data_points_tire_set_id_idx",
+          "slot12:create-index:tire_wear_data_points_vehicle_id_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for tire_health_snapshots, tire_wear_data_points"
+    },
+    {
+      "slot": 13,
+      "after_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "before_migration": "20260716183000_tire_lifecycle_invariants",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "TireSetupStatus"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "TireSetupStatus",
+          "object_type": "enum",
+          "labels": [
+            "ACTIVE",
+            "STORED",
+            "DISCARDED",
+            "SOLD"
+          ],
+          "justification": "enum repair object TireSetupStatus",
+          "source_contracts": [
+            "TireSetupStatus"
+          ],
+          "evidence": [
+            "contract:TireSetupStatus:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot13:create-type:TireSetupStatus"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260716183000_tire_lifecycle_invariants"
+      ],
+      "must_execute_after": [
+        "20260716180000_tire_evidence_ground_truth_provenance"
+      ],
+      "must_execute_before": [
+        "20260716183000_tire_lifecycle_invariants"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 1,
+        "edge_count": 0,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot13:create-type:TireSetupStatus"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for TireSetupStatus"
+    },
+    {
+      "slot": 14,
+      "after_migration": "20260716200000_driving_evidence",
+      "before_migration": "20260716200000_tire_odometer_anchor_backfill_event",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "TireEventType"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "TireEventType",
+          "object_type": "enum",
+          "labels": [
+            "ROTATION",
+            "TIRE_CHANGE",
+            "MEASUREMENT",
+            "RECALCULATION",
+            "ALERT",
+            "INSTALL",
+            "REMOVE"
+          ],
+          "justification": "enum repair object TireEventType",
+          "source_contracts": [
+            "TireEventType"
+          ],
+          "evidence": [
+            "contract:TireEventType:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot14:create-type:TireEventType"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260716200000_tire_odometer_anchor_backfill_event"
+      ],
+      "must_execute_after": [
+        "20260716200000_driving_evidence"
+      ],
+      "must_execute_before": [
+        "20260716200000_tire_odometer_anchor_backfill_event"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 1,
+        "edge_count": 0,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot14:create-type:TireEventType"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for TireEventType"
+    },
+    {
+      "slot": 15,
+      "after_migration": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+      "before_migration": "20260724130000_dashboard_insight_calculation_meta",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "InsightEntityScope",
+        "InsightSeverity",
+        "InsightType",
+        "dashboard_insight_runs",
+        "dashboard_insights"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TYPE",
+          "object": "InsightEntityScope",
+          "object_type": "enum",
+          "justification": "required by dashboard_insights column types",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE TYPE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot15:create-type:InsightEntityScope"
+        },
+        {
+          "action": "CREATE TYPE",
+          "object": "InsightSeverity",
+          "object_type": "enum",
+          "justification": "required by dashboard_insights column types",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE TYPE"
+          ],
+          "order": 2,
+          "graph_node_id": "slot15:create-type:InsightSeverity"
+        },
+        {
+          "action": "CREATE TYPE",
+          "object": "InsightType",
+          "object_type": "enum",
+          "justification": "required by dashboard_insights column types",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE TYPE"
+          ],
+          "order": 3,
+          "graph_node_id": "slot15:create-type:InsightType"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "dashboard_insight_runs",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "dashboard_insight_runs"
+          ],
+          "evidence": [
+            "contract:dashboard_insight_runs:CREATE TABLE"
+          ],
+          "order": 4,
+          "graph_node_id": "slot15:create-table:dashboard_insight_runs"
+        },
+        {
+          "action": "CREATE TABLE",
+          "object": "dashboard_insights",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE TABLE"
+          ],
+          "order": 5,
+          "graph_node_id": "slot15:create-table:dashboard_insights"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "dashboard_insight_runs_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:DashboardInsightRun.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "dashboard_insight_runs"
+          ],
+          "evidence": [
+            "contract:dashboard_insight_runs:ADD CONSTRAINT"
+          ],
+          "order": 6,
+          "graph_node_id": "slot15:add-constraint:dashboard_insight_runs_organization_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "dashboard_insights_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:DashboardInsight.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:ADD CONSTRAINT"
+          ],
+          "order": 7,
+          "graph_node_id": "slot15:add-constraint:dashboard_insights_organization_id_fkey"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "dashboard_insights_run_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['run_id'] -> dashboard_insight_runs",
+          "fk": {
+            "local_columns": [
+              "run_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "dashboard_insight_runs",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:DashboardInsight.runId->@DashboardInsightRun"
+            ],
+            "chronology": "REQUIRED_BEFORE_FIRST_CONSUMER",
+            "chronology_evidence": [
+              "default: required before first consumer"
+            ]
+          },
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:ADD CONSTRAINT"
+          ],
+          "order": 8,
+          "graph_node_id": "slot15:add-constraint:dashboard_insights_run_id_fkey"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "dashboard_insight_runs_created_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['created_at']",
+          "source_contracts": [
+            "dashboard_insight_runs"
+          ],
+          "evidence": [
+            "contract:dashboard_insight_runs:CREATE INDEX"
+          ],
+          "order": 9,
+          "graph_node_id": "slot15:create-index:dashboard_insight_runs_created_at_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "dashboard_insight_runs_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']",
+          "source_contracts": [
+            "dashboard_insight_runs"
+          ],
+          "evidence": [
+            "contract:dashboard_insight_runs:CREATE INDEX"
+          ],
+          "order": 10,
+          "graph_node_id": "slot15:create-index:dashboard_insight_runs_organization_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "dashboard_insights_dedupe_key_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['dedupe_key']",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE INDEX"
+          ],
+          "order": 11,
+          "graph_node_id": "slot15:create-index:dashboard_insights_dedupe_key_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "dashboard_insights_organization_id_is_active_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id', 'is_active']",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE INDEX"
+          ],
+          "order": 12,
+          "graph_node_id": "slot15:create-index:dashboard_insights_organization_id_is_active_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "dashboard_insights_run_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['run_id']",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE INDEX"
+          ],
+          "order": 13,
+          "graph_node_id": "slot15:create-index:dashboard_insights_run_id_idx"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "dashboard_insights_type_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['type']",
+          "source_contracts": [
+            "dashboard_insights"
+          ],
+          "evidence": [
+            "contract:dashboard_insights:CREATE INDEX"
+          ],
+          "order": 14,
+          "graph_node_id": "slot15:create-index:dashboard_insights_type_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260724130000_dashboard_insight_calculation_meta"
+      ],
+      "must_execute_after": [
+        "20260723240000_rental_rule_revisions_one_draft_per_scope"
+      ],
+      "must_execute_before": [
+        "20260724130000_dashboard_insight_calculation_meta"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 14,
+        "edge_count": 13,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot15:create-type:InsightEntityScope",
+          "slot15:create-type:InsightSeverity",
+          "slot15:create-type:InsightType",
+          "slot15:create-table:dashboard_insight_runs",
+          "slot15:create-table:dashboard_insights",
+          "slot15:add-constraint:dashboard_insight_runs_organization_id_fkey",
+          "slot15:add-constraint:dashboard_insights_organization_id_fkey",
+          "slot15:add-constraint:dashboard_insights_run_id_fkey",
+          "slot15:create-index:dashboard_insight_runs_created_at_idx",
+          "slot15:create-index:dashboard_insight_runs_organization_id_idx",
+          "slot15:create-index:dashboard_insights_dedupe_key_idx",
+          "slot15:create-index:dashboard_insights_organization_id_is_active_idx",
+          "slot15:create-index:dashboard_insights_run_id_idx",
+          "slot15:create-index:dashboard_insights_type_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for dashboard_insight_runs, dashboard_insights"
+    },
+    {
+      "slot": 16,
+      "after_migration": "20260724200000_iam_audit_outbox_processing_status_column",
+      "before_migration": "20260725120000_chat_message_structured_payload",
+      "preexisting_authority_state": {
+        "sources": [
+          "repair_closure.PREEXISTING_TABLES",
+          "ci-r3b1d-post-vendor-repair-closure known_valid_objects",
+          "cumulative objects_types_sequences_created from prior repair slots"
+        ],
+        "known_valid_objects": [
+          "ActivityEntity",
+          "org_invoices"
+        ]
+      },
+      "objects_types_sequences_created": [
+        "chat_messages"
+      ],
+      "actions": [
+        {
+          "action": "CREATE TABLE",
+          "object": "chat_messages",
+          "object_type": "table",
+          "justification": "primary repair object",
+          "source_contracts": [
+            "chat_messages"
+          ],
+          "evidence": [
+            "contract:chat_messages:CREATE TABLE"
+          ],
+          "order": 1,
+          "graph_node_id": "slot16:create-table:chat_messages"
+        },
+        {
+          "action": "ADD CONSTRAINT",
+          "object": "chat_messages_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:ChatMessage.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          },
+          "source_contracts": [
+            "chat_messages"
+          ],
+          "evidence": [
+            "contract:chat_messages:ADD CONSTRAINT"
+          ],
+          "order": 2,
+          "graph_node_id": "slot16:add-constraint:chat_messages_organization_id_fkey"
+        },
+        {
+          "action": "CREATE INDEX",
+          "object": "chat_messages_organization_id_created_at_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id', 'created_at']",
+          "source_contracts": [
+            "chat_messages"
+          ],
+          "evidence": [
+            "contract:chat_messages:CREATE INDEX"
+          ],
+          "order": 3,
+          "graph_node_id": "slot16:create-index:chat_messages_organization_id_created_at_idx"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260725120000_chat_message_structured_payload"
+      ],
+      "must_execute_after": [
+        "20260724200000_iam_audit_outbox_processing_status_column"
+      ],
+      "must_execute_before": [
+        "20260725120000_chat_message_structured_payload"
+      ],
+      "graph_validation": {
+        "valid": true,
+        "node_count": 3,
+        "edge_count": 2,
+        "duplicate_create_records": [],
+        "cycles": [],
+        "topological_order": [
+          "slot16:create-table:chat_messages",
+          "slot16:add-constraint:chat_messages_organization_id_fkey",
+          "slot16:create-index:chat_messages_organization_id_created_at_idx"
+        ]
+      },
+      "closure_validated": true,
+      "reason": "Post-vendor predecessor repair for chat_messages"
+    }
+  ]
+}

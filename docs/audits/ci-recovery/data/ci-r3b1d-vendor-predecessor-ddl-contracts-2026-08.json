@@ -1,0 +1,873 @@
+{
+  "schema_version": 1,
+  "historical_schema_revision": "03a6cdfe^",
+  "historical_authority_commit": "03a6cdfe",
+  "known_valid_objects": {
+    "ActivityEntity": {
+      "classification": "VALID",
+      "object_type": "enum",
+      "reason": "Created in init migration; extended by audit migrations before vendor overhaul",
+      "creator_migration": "20260311224040_init",
+      "evidence": [
+        "backend/prisma/migrations/20260311224040_init/migration.sql:CREATE TYPE ActivityEntity",
+        "backend/prisma/migrations/20260412040000_audit_consent_provenance/migration.sql:ALTER TYPE ActivityEntity"
+      ]
+    },
+    "org_invoices": {
+      "classification": "VALID",
+      "object_type": "table",
+      "reason": "Historical predecessor repaired in CI-R3B1B slot 4",
+      "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "evidence": [
+        "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:CREATE TABLE org_invoices",
+        "ci-r3b1b-historical-predecessor-repair-full-replay-2026-08.md:slot 4"
+      ]
+    }
+  },
+  "primary_historical_defects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles"
+  ],
+  "contracts": [
+    {
+      "object": "VendorCategory",
+      "object_type": "enum",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260613210000_vendor_management_overhaul",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "first_consumer": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "schema": "public",
+      "type_name": "VendorCategory",
+      "labels": [
+        "WORKSHOP",
+        "SERVICE_PARTNER",
+        "PAINT_SHOP",
+        "BODY_REPAIR",
+        "AUTO_GLASS",
+        "TIRE_DEALER",
+        "PARTS_DEALER",
+        "DETAILING",
+        "TUV_STATION",
+        "ONLINE_SUPPLIER",
+        "OTHER"
+      ],
+      "order_material": true,
+      "creator": null,
+      "relation": null,
+      "columns": [],
+      "primary_key": null,
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [],
+      "deferred_constraints": [],
+      "not_present_yet": [
+        {
+          "name": "INSURANCE",
+          "object_type": "enum_label",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Label added by vendor management overhaul"
+        },
+        {
+          "name": "APPRAISER",
+          "object_type": "enum_label",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Label added by vendor management overhaul"
+        },
+        {
+          "name": "TOWING",
+          "object_type": "enum_label",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Label added by vendor management overhaul"
+        },
+        {
+          "name": "DEALERSHIP",
+          "object_type": "enum_label",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Label added by vendor management overhaul"
+        },
+        {
+          "name": "OEM_SERVICE",
+          "object_type": "enum_label",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Label added by vendor management overhaul"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260613200000_booking_document_lifecycle",
+        "before": "20260613210000_vendor_management_overhaul",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:enum VendorCategory",
+        "matrix:first_consumer=20260613210000_vendor_management_overhaul"
+      ]
+    },
+    {
+      "object": "vendors",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260613210000_vendor_management_overhaul",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "Vendor",
+      "first_consumer": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "relation": {
+        "schema": "public",
+        "name": "vendors"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "name",
+          "column": "name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.name"
+          ]
+        },
+        {
+          "prisma_field": "category",
+          "column": "category",
+          "prisma_type": "VendorCategory",
+          "postgres_type": "\"VendorCategory\"",
+          "nullable": false,
+          "prisma_default": "WORKSHOP",
+          "postgres_default": "'WORKSHOP'::\"VendorCategory\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.category"
+          ]
+        },
+        {
+          "prisma_field": "sourceType",
+          "column": "source_type",
+          "prisma_type": "VendorSourceType",
+          "postgres_type": "\"VendorSourceType\"",
+          "nullable": false,
+          "prisma_default": "LOCAL_BUSINESS",
+          "postgres_default": "'LOCAL_BUSINESS'::\"VendorSourceType\"",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.sourceType"
+          ]
+        },
+        {
+          "prisma_field": "street",
+          "column": "street",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.street"
+          ]
+        },
+        {
+          "prisma_field": "city",
+          "column": "city",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.city"
+          ]
+        },
+        {
+          "prisma_field": "postalCode",
+          "column": "postal_code",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.postalCode"
+          ]
+        },
+        {
+          "prisma_field": "country",
+          "column": "country",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.country"
+          ]
+        },
+        {
+          "prisma_field": "latitude",
+          "column": "latitude",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.latitude"
+          ]
+        },
+        {
+          "prisma_field": "longitude",
+          "column": "longitude",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.longitude"
+          ]
+        },
+        {
+          "prisma_field": "website",
+          "column": "website",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.website"
+          ]
+        },
+        {
+          "prisma_field": "phone",
+          "column": "phone",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.phone"
+          ]
+        },
+        {
+          "prisma_field": "email",
+          "column": "email",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.email"
+          ]
+        },
+        {
+          "prisma_field": "notes",
+          "column": "notes",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.notes"
+          ]
+        },
+        {
+          "prisma_field": "contactName",
+          "column": "contact_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.contactName"
+          ]
+        },
+        {
+          "prisma_field": "contactRole",
+          "column": "contact_role",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.contactRole"
+          ]
+        },
+        {
+          "prisma_field": "contactPhone",
+          "column": "contact_phone",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.contactPhone"
+          ]
+        },
+        {
+          "prisma_field": "contactEmail",
+          "column": "contact_email",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.contactEmail"
+          ]
+        },
+        {
+          "prisma_field": "contactNotes",
+          "column": "contact_notes",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.contactNotes"
+          ]
+        },
+        {
+          "prisma_field": "isActive",
+          "column": "is_active",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "true",
+          "postgres_default": "TRUE",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.isActive"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:Vendor.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "vendors_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:Vendor:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:Vendor.organizationId->@Organization"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation organizations preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:Vendor:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "category"
+          ],
+          "evidence": [
+            "schema:Vendor:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "VendorCategory",
+          "labels": [
+            "WORKSHOP",
+            "SERVICE_PARTNER",
+            "PAINT_SHOP",
+            "BODY_REPAIR",
+            "AUTO_GLASS",
+            "TIRE_DEALER",
+            "PARTS_DEALER",
+            "DETAILING",
+            "TUV_STATION",
+            "ONLINE_SUPPLIER",
+            "OTHER"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum VendorCategory"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "VendorSourceType",
+          "labels": [
+            "LOCAL_BUSINESS",
+            "ONLINE_VENDOR"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum VendorSourceType"
+          ]
+        }
+      ],
+      "create_time_prerequisites": [
+        "VendorCategory",
+        "VendorSourceType"
+      ],
+      "required_before_first_consumer": [
+        "['organization_id']->organizations.['id']"
+      ],
+      "deferred_constraints": [],
+      "not_present_yet": [
+        {
+          "name": "source",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "VendorSource column added by vendor management overhaul"
+        },
+        {
+          "name": "external_place_id",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Mapbox POI column added by vendor management overhaul"
+        },
+        {
+          "name": "address_line2",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Address extension added by vendor management overhaul"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260613200000_booking_document_lifecycle",
+        "before": "20260613210000_vendor_management_overhaul",
+        "can_share_bootstrap_with": [
+          "vendor_vehicles"
+        ],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model Vendor",
+        "matrix:first_consumer=20260613210000_vendor_management_overhaul"
+      ]
+    },
+    {
+      "object": "vendor_vehicles",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260613210000_vendor_management_overhaul",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "historical_prisma_model": "VendorVehicle",
+      "first_consumer": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "relation": {
+        "schema": "public",
+        "name": "vendor_vehicles"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "APPLICATION_OR_PRISMA_GENERATED",
+          "generation": null,
+          "evidence": [
+            "schema:VendorVehicle.id"
+          ]
+        },
+        {
+          "prisma_field": "vendorId",
+          "column": "vendor_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VendorVehicle.vendorId"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VendorVehicle.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "notes",
+          "column": "notes",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": "NO_DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VendorVehicle.notes"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "DATABASE_DEFAULT",
+          "generation": null,
+          "evidence": [
+            "schema:VendorVehicle.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "vendor_vehicles_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:VendorVehicle:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vendor_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vendors",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": false,
+          "evidence": [
+            "schema:VendorVehicle.vendorId->@Vendor"
+          ],
+          "chronology": "CAN_BE_DEFERRED_TO_LATER_REPAIR_SLOT",
+          "chronology_evidence": [
+            "vendors repair object in same slot 7 bootstrap; FK enforced after vendors CREATE TABLE"
+          ],
+          "defer_until_repair_slot": 7
+        },
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:VendorVehicle.vehicleId->@Vehicle"
+          ],
+          "chronology": "REQUIRED_AT_TABLE_CREATE",
+          "chronology_evidence": [
+            "referenced relation vehicles preexists"
+          ]
+        }
+      ],
+      "unique_constraints": [
+        {
+          "name": "vendor_vehicles_vendor_id_vehicle_id_key",
+          "columns": [
+            "vendor_id",
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:VendorVehicle:@@unique"
+          ]
+        }
+      ],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "vendor_id"
+          ],
+          "evidence": [
+            "schema:VendorVehicle:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:VendorVehicle:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [
+        "['vehicle_id']->vehicles.['id']"
+      ],
+      "deferred_constraints": [
+        {
+          "local_columns": [
+            "vendor_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vendors",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": false,
+          "evidence": [
+            "schema:VendorVehicle.vendorId->@Vendor"
+          ],
+          "chronology": "CAN_BE_DEFERRED_TO_LATER_REPAIR_SLOT",
+          "chronology_evidence": [
+            "vendors repair object in same slot 7 bootstrap; FK enforced after vendors CREATE TABLE"
+          ],
+          "defer_until_repair_slot": 7
+        }
+      ],
+      "not_present_yet": [
+        {
+          "name": "relation_type",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "VendorVehicleRelationType column added by vendor management overhaul"
+        },
+        {
+          "name": "is_preferred",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Lifecycle metadata added by vendor management overhaul"
+        },
+        {
+          "name": "priority",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Lifecycle metadata added by vendor management overhaul"
+        },
+        {
+          "name": "valid_from",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Lifecycle metadata added by vendor management overhaul"
+        },
+        {
+          "name": "valid_until",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Lifecycle metadata added by vendor management overhaul"
+        },
+        {
+          "name": "updated_at",
+          "object_type": "column",
+          "introduced_by_migration": "20260613210000_vendor_management_overhaul",
+          "reason_excluded": "Lifecycle metadata added by vendor management overhaul"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260613200000_booking_document_lifecycle",
+        "before": "20260613210000_vendor_management_overhaul",
+        "can_share_bootstrap_with": [
+          "vendors"
+        ],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:model VendorVehicle",
+        "matrix:first_consumer=20260613210000_vendor_management_overhaul"
+      ]
+    },
+    {
+      "object": "VendorSourceType",
+      "object_type": "enum",
+      "classification": "REPAIR_CLOSURE",
+      "required_before_migration": "20260613210000_vendor_management_overhaul",
+      "historical_authority_commit": "03a6cdfe",
+      "historical_schema_revision": "03a6cdfe^",
+      "first_consumer": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "schema": "public",
+      "type_name": "VendorSourceType",
+      "labels": [
+        "LOCAL_BUSINESS",
+        "ONLINE_VENDOR"
+      ],
+      "order_material": true,
+      "creator": null,
+      "relation": null,
+      "columns": [],
+      "primary_key": null,
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [],
+      "enum_dependencies": [],
+      "create_time_prerequisites": [],
+      "required_before_first_consumer": [],
+      "deferred_constraints": [],
+      "not_present_yet": [],
+      "repair_insertion": {
+        "after": "20260613200000_booking_document_lifecycle",
+        "before": "20260613210000_vendor_management_overhaul",
+        "can_share_bootstrap_with": [
+          "vendors"
+        ],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:03a6cdfe:enum VendorSourceType",
+        "closure:required by vendors.source_type column"
+      ]
+    }
+  ]
+}

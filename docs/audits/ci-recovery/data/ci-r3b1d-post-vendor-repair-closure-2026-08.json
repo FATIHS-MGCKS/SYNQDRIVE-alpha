@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "vendor_repair_slot": 7,
+  "known_valid_objects": {
+    "ActivityEntity": {
+      "classification": "VALID",
+      "object_type": "enum",
+      "reason": "Created in init migration; extended by audit migrations before vendor overhaul",
+      "creator_migration": "20260311224040_init",
+      "evidence": [
+        "backend/prisma/migrations/20260311224040_init/migration.sql:CREATE TYPE ActivityEntity",
+        "backend/prisma/migrations/20260412040000_audit_consent_provenance/migration.sql:ALTER TYPE ActivityEntity"
+      ]
+    },
+    "org_invoices": {
+      "classification": "VALID",
+      "object_type": "table",
+      "reason": "Historical predecessor repaired in CI-R3B1B slot 4",
+      "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "evidence": [
+        "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:CREATE TABLE org_invoices",
+        "ci-r3b1b-historical-predecessor-repair-full-replay-2026-08.md:slot 4"
+      ]
+    }
+  },
+  "primary_historical_defects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles"
+  ],
+  "remaining_historical_defect_objects": [
+    "WorkflowStatus",
+    "org_workflows",
+    "tires",
+    "vehicle_damages",
+    "vehicle_damage_images",
+    "org_whatsapp_configs",
+    "whatsapp_conversations",
+    "whatsapp_messages",
+    "tire_health_snapshots",
+    "tire_wear_data_points",
+    "TireSetupStatus",
+    "TireEventType",
+    "dashboard_insight_runs",
+    "dashboard_insights",
+    "chat_messages"
+  ],
+  "all_genuine_defect_objects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles",
+    "WorkflowStatus",
+    "org_workflows",
+    "tires",
+    "vehicle_damages",
+    "vehicle_damage_images",
+    "org_whatsapp_configs",
+    "whatsapp_conversations",
+    "whatsapp_messages",
+    "tire_health_snapshots",
+    "tire_wear_data_points",
+    "TireSetupStatus",
+    "TireEventType",
+    "dashboard_insight_runs",
+    "dashboard_insights",
+    "chat_messages"
+  ],
+  "required_repair_closure_objects": [
+    "VendorSourceType"
+  ],
+  "records": [
+    {
+      "repair_object": "vendors",
+      "object_type": "table",
+      "repair_boundary": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "direct_dependencies": [
+        "VendorCategory",
+        "VendorSourceType"
+      ],
+      "transitive_dependencies": [
+        "VendorCategory",
+        "VendorSourceType",
+        "organizations"
+      ],
+      "must_exist_before": [
+        "VendorCategory",
+        "VendorSourceType"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "vendor_vehicles",
+      "object_type": "table",
+      "repair_boundary": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "vehicles"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [
+        "fk:['vendor_id']->vendors"
+      ],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "org_workflows",
+      "object_type": "table",
+      "repair_boundary": "20260616140000_workflow_automation_runtime",
+      "repair_slot": 8,
+      "direct_dependencies": [
+        "WorkflowStatus"
+      ],
+      "transitive_dependencies": [
+        "WorkflowStatus"
+      ],
+      "must_exist_before": [
+        "WorkflowStatus"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "tires",
+      "object_type": "table",
+      "repair_boundary": "20260617120000_tire_identity_mounted_dismounted",
+      "repair_slot": 9,
+      "direct_dependencies": [
+        "TireHealthStatus",
+        "TirePosition",
+        "TireSeason"
+      ],
+      "transitive_dependencies": [
+        "TireHealthStatus",
+        "TirePosition",
+        "TireSeason",
+        "vehicles"
+      ],
+      "must_exist_before": [
+        "TireHealthStatus",
+        "TirePosition",
+        "TireSeason"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "vehicle_damage_images",
+      "object_type": "table",
+      "repair_boundary": "20260618180000_vehicle_damage_lifecycle",
+      "repair_slot": 10,
+      "direct_dependencies": [],
+      "transitive_dependencies": [],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "vehicle_damages",
+      "object_type": "table",
+      "repair_boundary": "20260618180000_vehicle_damage_lifecycle",
+      "repair_slot": 10,
+      "direct_dependencies": [
+        "DamageSeverity",
+        "DamageType"
+      ],
+      "transitive_dependencies": [
+        "DamageSeverity",
+        "DamageType",
+        "vehicles"
+      ],
+      "must_exist_before": [
+        "DamageSeverity",
+        "DamageType"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "org_whatsapp_configs",
+      "object_type": "table",
+      "repair_boundary": "20260620190000_whatsapp_business_platform",
+      "repair_slot": 11,
+      "direct_dependencies": [
+        "WhatsAppAiMode"
+      ],
+      "transitive_dependencies": [
+        "WhatsAppAiMode",
+        "organizations"
+      ],
+      "must_exist_before": [
+        "WhatsAppAiMode"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "whatsapp_conversations",
+      "object_type": "table",
+      "repair_boundary": "20260620190000_whatsapp_business_platform",
+      "repair_slot": 11,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "organizations"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "whatsapp_messages",
+      "object_type": "table",
+      "repair_boundary": "20260620190000_whatsapp_business_platform",
+      "repair_slot": 11,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "organizations"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "tire_health_snapshots",
+      "object_type": "table",
+      "repair_boundary": "20260716180000_tire_evidence_ground_truth_provenance",
+      "repair_slot": 12,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "vehicles"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "tire_wear_data_points",
+      "object_type": "table",
+      "repair_boundary": "20260716180000_tire_evidence_ground_truth_provenance",
+      "repair_slot": 12,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "vehicles"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "dashboard_insight_runs",
+      "object_type": "table",
+      "repair_boundary": "20260724130000_dashboard_insight_calculation_meta",
+      "repair_slot": 15,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "organizations"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "dashboard_insights",
+      "object_type": "table",
+      "repair_boundary": "20260724130000_dashboard_insight_calculation_meta",
+      "repair_slot": 15,
+      "direct_dependencies": [
+        "InsightEntityScope",
+        "InsightSeverity",
+        "InsightType"
+      ],
+      "transitive_dependencies": [
+        "InsightEntityScope",
+        "InsightSeverity",
+        "InsightType",
+        "organizations"
+      ],
+      "must_exist_before": [
+        "InsightEntityScope",
+        "InsightSeverity",
+        "InsightType"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "chat_messages",
+      "object_type": "table",
+      "repair_boundary": "20260725120000_chat_message_structured_payload",
+      "repair_slot": 16,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "organizations"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [],
+      "closure_complete": true
+    }
+  ]
+}

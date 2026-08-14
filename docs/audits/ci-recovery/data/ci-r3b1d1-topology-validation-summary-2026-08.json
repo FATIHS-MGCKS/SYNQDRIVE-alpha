@@ -1,0 +1,839 @@
+{
+  "slots_validated": 10,
+  "total_actions": 82,
+  "total_graph_edges": 67,
+  "duplicate_creates": 0,
+  "graph_cycles": 0,
+  "invalid_fk_actions": 0,
+  "invalid_index_actions": 0,
+  "invalid_type_dependencies": 0,
+  "invalid_sequence_dependencies": 0,
+  "invalid_table_actions": 0,
+  "cross_slot_duplicate_creates": 0,
+  "unresolved_deferred_endpoints": 0,
+  "slot_results": [
+    {
+      "slot": 7,
+      "action_count": 12,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 7,
+          "constraint": "vendor_vehicles_vehicle_id_fkey",
+          "local_relation": "vendor_vehicles",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 5,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 7,
+          "constraint": "vendor_vehicles_vendor_id_fkey",
+          "local_relation": "vendor_vehicles",
+          "local_columns": [
+            "vendor_id"
+          ],
+          "referenced_relation": "vendors",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 6,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 7,
+          "constraint": "vendors_organization_id_fkey",
+          "local_relation": "vendors",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 7,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 7,
+          "index": "vendor_vehicles_vehicle_id_idx",
+          "table": "vendor_vehicles",
+          "columns": [
+            "vehicle_id"
+          ],
+          "action_order": 9,
+          "valid": true
+        },
+        {
+          "slot": 7,
+          "index": "vendor_vehicles_vendor_id_idx",
+          "table": "vendor_vehicles",
+          "columns": [
+            "vendor_id"
+          ],
+          "action_order": 10,
+          "valid": true
+        },
+        {
+          "slot": 7,
+          "index": "vendors_category_idx",
+          "table": "vendors",
+          "columns": [
+            "category"
+          ],
+          "action_order": 11,
+          "valid": true
+        },
+        {
+          "slot": 7,
+          "index": "vendors_organization_id_idx",
+          "table": "vendors",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 12,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 8,
+      "action_count": 5,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [],
+      "index_proofs": [
+        {
+          "slot": 8,
+          "index": "org_workflows_category_idx",
+          "table": "org_workflows",
+          "columns": [
+            "category"
+          ],
+          "action_order": 3,
+          "valid": true
+        },
+        {
+          "slot": 8,
+          "index": "org_workflows_organization_id_idx",
+          "table": "org_workflows",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 4,
+          "valid": true
+        },
+        {
+          "slot": 8,
+          "index": "org_workflows_status_idx",
+          "table": "org_workflows",
+          "columns": [
+            "status"
+          ],
+          "action_order": 5,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 9,
+      "action_count": 9,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 9,
+          "constraint": "tires_tire_set_id_fkey",
+          "local_relation": "tires",
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_relation": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 5,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 9,
+          "constraint": "tires_vehicle_id_fkey",
+          "local_relation": "tires",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 6,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 9,
+          "index": "tires_organization_id_vehicle_id_idx",
+          "table": "tires",
+          "columns": [
+            "organization_id",
+            "vehicle_id"
+          ],
+          "action_order": 7,
+          "valid": true
+        },
+        {
+          "slot": 9,
+          "index": "tires_tire_set_id_idx",
+          "table": "tires",
+          "columns": [
+            "tire_set_id"
+          ],
+          "action_order": 8,
+          "valid": true
+        },
+        {
+          "slot": 9,
+          "index": "tires_vehicle_id_active_idx",
+          "table": "tires",
+          "columns": [
+            "vehicle_id",
+            "active"
+          ],
+          "action_order": 9,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 10,
+      "action_count": 9,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 10,
+          "constraint": "vehicle_damage_images_damage_id_fkey",
+          "local_relation": "vehicle_damage_images",
+          "local_columns": [
+            "damage_id"
+          ],
+          "referenced_relation": "vehicle_damages",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 5,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 10,
+          "constraint": "vehicle_damages_vehicle_id_fkey",
+          "local_relation": "vehicle_damages",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 6,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 10,
+          "index": "vehicle_damage_images_damage_id_idx",
+          "table": "vehicle_damage_images",
+          "columns": [
+            "damage_id"
+          ],
+          "action_order": 7,
+          "valid": true
+        },
+        {
+          "slot": 10,
+          "index": "vehicle_damages_damage_type_idx",
+          "table": "vehicle_damages",
+          "columns": [
+            "damage_type"
+          ],
+          "action_order": 8,
+          "valid": true
+        },
+        {
+          "slot": 10,
+          "index": "vehicle_damages_vehicle_id_idx",
+          "table": "vehicle_damages",
+          "columns": [
+            "vehicle_id"
+          ],
+          "action_order": 9,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 11,
+      "action_count": 15,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 11,
+          "constraint": "org_whatsapp_configs_organization_id_fkey",
+          "local_relation": "org_whatsapp_configs",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 5,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "constraint": "whatsapp_conversations_organization_id_fkey",
+          "local_relation": "whatsapp_conversations",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 6,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "constraint": "whatsapp_messages_conversation_id_fkey",
+          "local_relation": "whatsapp_messages",
+          "local_columns": [
+            "conversation_id"
+          ],
+          "referenced_relation": "whatsapp_conversations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 7,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "constraint": "whatsapp_messages_organization_id_fkey",
+          "local_relation": "whatsapp_messages",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 8,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 11,
+          "index": "org_whatsapp_configs_organization_id_idx",
+          "table": "org_whatsapp_configs",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 11,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "index": "whatsapp_conversations_last_message_at_idx",
+          "table": "whatsapp_conversations",
+          "columns": [
+            "last_message_at"
+          ],
+          "action_order": 12,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "index": "whatsapp_conversations_organization_id_idx",
+          "table": "whatsapp_conversations",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 13,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "index": "whatsapp_messages_conversation_id_created_at_idx",
+          "table": "whatsapp_messages",
+          "columns": [
+            "conversation_id",
+            "created_at"
+          ],
+          "action_order": 14,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "index": "whatsapp_messages_organization_id_idx",
+          "table": "whatsapp_messages",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 15,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 12,
+      "action_count": 13,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 12,
+          "constraint": "tire_health_snapshots_tire_id_fkey",
+          "local_relation": "tire_health_snapshots",
+          "local_columns": [
+            "tire_id"
+          ],
+          "referenced_relation": "tires",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 3,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "constraint": "tire_health_snapshots_tire_set_id_fkey",
+          "local_relation": "tire_health_snapshots",
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_relation": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 4,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "constraint": "tire_health_snapshots_vehicle_id_fkey",
+          "local_relation": "tire_health_snapshots",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 5,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "constraint": "tire_wear_data_points_tire_set_id_fkey",
+          "local_relation": "tire_wear_data_points",
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_relation": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 6,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "constraint": "tire_wear_data_points_vehicle_id_fkey",
+          "local_relation": "tire_wear_data_points",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 7,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 12,
+          "index": "tire_health_snapshots_tire_id_snapshot_date_idx",
+          "table": "tire_health_snapshots",
+          "columns": [
+            "tire_id",
+            "snapshot_date"
+          ],
+          "action_order": 8,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "index": "tire_health_snapshots_tire_set_id_idx",
+          "table": "tire_health_snapshots",
+          "columns": [
+            "tire_set_id"
+          ],
+          "action_order": 9,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "index": "tire_health_snapshots_vehicle_id_snapshot_date_idx",
+          "table": "tire_health_snapshots",
+          "columns": [
+            "vehicle_id",
+            "snapshot_date"
+          ],
+          "action_order": 10,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "index": "tire_wear_data_points_organization_id_idx",
+          "table": "tire_wear_data_points",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 11,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "index": "tire_wear_data_points_tire_set_id_idx",
+          "table": "tire_wear_data_points",
+          "columns": [
+            "tire_set_id"
+          ],
+          "action_order": 12,
+          "valid": true
+        },
+        {
+          "slot": 12,
+          "index": "tire_wear_data_points_vehicle_id_idx",
+          "table": "tire_wear_data_points",
+          "columns": [
+            "vehicle_id"
+          ],
+          "action_order": 13,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 13,
+      "action_count": 1,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [],
+      "index_proofs": [],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 14,
+      "action_count": 1,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [],
+      "index_proofs": [],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 15,
+      "action_count": 14,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 15,
+          "constraint": "dashboard_insight_runs_organization_id_fkey",
+          "local_relation": "dashboard_insight_runs",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 6,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "constraint": "dashboard_insights_organization_id_fkey",
+          "local_relation": "dashboard_insights",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 7,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "constraint": "dashboard_insights_run_id_fkey",
+          "local_relation": "dashboard_insights",
+          "local_columns": [
+            "run_id"
+          ],
+          "referenced_relation": "dashboard_insight_runs",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 8,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 15,
+          "index": "dashboard_insight_runs_created_at_idx",
+          "table": "dashboard_insight_runs",
+          "columns": [
+            "created_at"
+          ],
+          "action_order": 9,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "index": "dashboard_insight_runs_organization_id_idx",
+          "table": "dashboard_insight_runs",
+          "columns": [
+            "organization_id"
+          ],
+          "action_order": 10,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "index": "dashboard_insights_dedupe_key_idx",
+          "table": "dashboard_insights",
+          "columns": [
+            "dedupe_key"
+          ],
+          "action_order": 11,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "index": "dashboard_insights_organization_id_is_active_idx",
+          "table": "dashboard_insights",
+          "columns": [
+            "organization_id",
+            "is_active"
+          ],
+          "action_order": 12,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "index": "dashboard_insights_run_id_idx",
+          "table": "dashboard_insights",
+          "columns": [
+            "run_id"
+          ],
+          "action_order": 13,
+          "valid": true
+        },
+        {
+          "slot": 15,
+          "index": "dashboard_insights_type_idx",
+          "table": "dashboard_insights",
+          "columns": [
+            "type"
+          ],
+          "action_order": 14,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    },
+    {
+      "slot": 16,
+      "action_count": 3,
+      "duplicate_create_count": 0,
+      "graph_cycles": 0,
+      "invalid_prerequisites": 0,
+      "simulation_errors": [],
+      "fk_proofs": [
+        {
+          "slot": 16,
+          "constraint": "chat_messages_organization_id_fkey",
+          "local_relation": "chat_messages",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_relation": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "action_order": 2,
+          "local_relation_available_before": true,
+          "local_columns_available_before": true,
+          "referenced_relation_available_before": true,
+          "referenced_columns_available_before": true,
+          "valid": true
+        }
+      ],
+      "index_proofs": [
+        {
+          "slot": 16,
+          "index": "chat_messages_organization_id_created_at_idx",
+          "table": "chat_messages",
+          "columns": [
+            "organization_id",
+            "created_at"
+          ],
+          "action_order": 3,
+          "valid": true
+        }
+      ],
+      "final_state_valid": true,
+      "pass": true
+    }
+  ],
+  "cross_slot_duplicates": [],
+  "pass": true,
+  "known_r3b1d_defects_reproduced": {
+    "slot8_workflowstatus_create_count": 2,
+    "slot10_fk_action_order": 2,
+    "slot10_vehicle_damages_create_order": 6,
+    "slot10_fk_before_parent_table": true
+  },
+  "PRE_R3B1D1_SHA": "6fbdb05be4b53c53a2afb0771547c4a5a6dfbbdb",
+  "primary_defect_count": 18,
+  "repair_slot_count": 10
+}

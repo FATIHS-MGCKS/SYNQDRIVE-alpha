@@ -1,0 +1,346 @@
+{
+  "PRE_R3B1C_SHA": "30e77a49141d15ad035b675973e584f836aef29d",
+  "REPLAY_TESTED_TREE_SHA": "68c8c7cbbb114ed849868b616992ee2c58bc0960",
+  "REPLAY_INPUT_MANIFEST_SHA256": "2c569076e7f8d5c1874086396a813df5132ecde3c1b817bf938550a90caa7c2a",
+  "branch": "fix/ci-r3b-vehicle-trips-migration-replay-2026-08",
+  "pr": 1031,
+  "postgresql_version": "PostgreSQL 16.14 (Ubuntu 16.14",
+  "database_identifier": "synqdrive_r3b1c_replay",
+  "disposable": true,
+  "production_connection": false,
+  "migration_directories": 293,
+  "normal_migrations_applied": 48,
+  "special_migrations_handled": 1,
+  "migration_state_reconciliations": [
+    {
+      "migration": "20260413230000_add_composite_indexes_batch_c",
+      "operation": "prisma migrate resolve --applied",
+      "validated_before_resolve": true
+    }
+  ],
+  "manual_operator_db_interventions": 0,
+  "automated_special_replay_steps": [
+    {
+      "migration": "20260413230000_add_composite_indexes_batch_c",
+      "migration_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+      "statement_count": 14,
+      "semantic_equivalence": {
+        "migration_statement_count": 14,
+        "script_statement_count": 14,
+        "missing_in_script": [],
+        "unexpected_in_script": [],
+        "semantic_equivalent": true
+      },
+      "index_validation": {
+        "missing_indexes": [],
+        "definition_mismatches": [],
+        "pass": true
+      },
+      "migration_state_reconciliation": {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "operation": "prisma migrate resolve --applied",
+        "validated_before_resolve": true
+      }
+    }
+  ],
+  "full_replay_pass": false,
+  "first_failed_migration": "20260613210000_vendor_management_overhaul",
+  "failure_ordinal": 49,
+  "sqlstate": "42704",
+  "error_message": "type \"VendorCategory\" does not exist",
+  "failure_classification": "UNRELATED_HISTORICAL_DEFECT",
+  "last_applied_migration": "20260613200000_booking_document_lifecycle",
+  "slot_runtime": [
+    {
+      "slot": 1,
+      "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "TaskPriority": "PASS",
+        "TaskStatus": "PASS",
+        "org_tasks": "PASS"
+      },
+      "first_consumer": "20260412030000_platform_hardening_phase1",
+      "consumer_status": "PASS",
+      "deferred_constraints_resolved": []
+    },
+    {
+      "slot": 2,
+      "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "brake_health_current": "PASS"
+      },
+      "first_consumer": "20260413183000_brake_health_canonical_refactor",
+      "consumer_status": "PASS",
+      "deferred_constraints_resolved": []
+    },
+    {
+      "slot": 3,
+      "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "DocumentExtractionStatus": "PASS",
+        "DocumentExtractionType": "PASS",
+        "vehicle_document_extractions": "PASS",
+        "BatteryEvidenceScope": "PASS",
+        "BatteryEvidenceSourceType": "PASS",
+        "BatteryEvidenceValueType": "PASS",
+        "battery_evidence": "PASS"
+      },
+      "first_consumer": "20260613000000_document_extraction_pipeline",
+      "consumer_status": "PASS",
+      "deferred_constraints_resolved": [
+        "battery_evidence.document_extraction_id -> vehicle_document_extractions.id"
+      ]
+    },
+    {
+      "slot": 4,
+      "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "OrgInvoiceStatus": "PASS",
+        "OrgInvoiceType": "PASS",
+        "org_invoices_invoice_number_seq": "PASS",
+        "org_invoices": "PASS",
+        "DtcSeverity": "PASS",
+        "vehicle_dtc_events": "PASS"
+      },
+      "first_consumer": "20260413230000_add_composite_indexes_batch_c",
+      "consumer_status": "FAIL",
+      "deferred_constraints_resolved": [
+        "org_tasks.invoice_id -> org_invoices.id"
+      ]
+    },
+    {
+      "slot": 5,
+      "migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "InsightType": "PASS"
+      },
+      "first_consumer": "20260417180000_add_battery_critical_insight_type",
+      "consumer_status": "PASS",
+      "deferred_constraints_resolved": []
+    },
+    {
+      "slot": 6,
+      "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "vehicle_driving_impact_current": "PASS"
+      },
+      "first_consumer": "20260422010000_vehicle_current_safety_score",
+      "consumer_status": "PASS",
+      "deferred_constraints_resolved": []
+    }
+  ],
+  "high_risk_runtime": {
+    "org_tasks": "PASS",
+    "brake_health_current": "PASS",
+    "battery_evidence": "PASS",
+    "vehicle_document_extractions": "PASS",
+    "org_invoices": "PASS",
+    "vehicle_dtc_events": "PASS",
+    "vehicle_driving_impact_current": "PASS",
+    "InsightType": "PASS"
+  },
+  "composite_index_proof": {
+    "expected_count": 14,
+    "actual_valid_count": 14,
+    "missing": [],
+    "definition_mismatches": [],
+    "indexes": [
+      {
+        "index_name": "vehicle_trips_vehicle_id_start_time_idx",
+        "table_name": "vehicle_trips",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "vehicle_id",
+          "start_time"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "vehicle_dtc_events_vehicle_id_last_seen_at_idx",
+        "table_name": "vehicle_dtc_events",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "vehicle_id",
+          "last_seen_at"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "vehicle_dtc_events_vehicle_id_is_active_idx",
+        "table_name": "vehicle_dtc_events",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "vehicle_id",
+          "is_active"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "driving_events_vehicle_id_recorded_at_idx",
+        "table_name": "driving_events",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "vehicle_id",
+          "recorded_at"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "driving_events_trip_id_event_type_idx",
+        "table_name": "driving_events",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "trip_id",
+          "event_type"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "trip_behavior_events_trip_id_event_category_idx",
+        "table_name": "trip_behavior_events",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "trip_id",
+          "event_category"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "dimo_poll_logs_vehicle_id_created_at_idx",
+        "table_name": "dimo_poll_logs",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "vehicle_id",
+          "created_at"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "activity_logs_organization_id_created_at_idx",
+        "table_name": "activity_logs",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "organization_id",
+          "created_at"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "bookings_vehicle_id_status_start_date_idx",
+        "table_name": "bookings",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "vehicle_id",
+          "status",
+          "start_date"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "bookings_organization_id_status_idx",
+        "table_name": "bookings",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "organization_id",
+          "status"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "org_invoices_organization_id_status_idx",
+        "table_name": "org_invoices",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "organization_id",
+          "status"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "org_invoices_organization_id_invoice_date_idx",
+        "table_name": "org_invoices",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "organization_id",
+          "invoice_date"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "org_tasks_organization_id_status_idx",
+        "table_name": "org_tasks",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "organization_id",
+          "status"
+        ],
+        "predicate": null
+      },
+      {
+        "index_name": "org_tasks_organization_id_due_date_idx",
+        "table_name": "org_tasks",
+        "is_unique": false,
+        "is_valid": true,
+        "is_ready": true,
+        "access_method": "btree",
+        "columns": [
+          "organization_id",
+          "due_date"
+        ],
+        "predicate": null
+      }
+    ],
+    "pass": true
+  },
+  "r3b_parity": {
+    "pass": false,
+    "status": "NOT_RUN",
+    "reason": "replay incomplete"
+  },
+  "final_status": "CI_R3B1C_COMPOSITE_INDEX_REPLAY_RESOLUTION_PARTIAL"
+}
