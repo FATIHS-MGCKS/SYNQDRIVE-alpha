@@ -1,0 +1,192 @@
+{
+  "expected_count": 14,
+  "actual_valid_count": 14,
+  "missing": [],
+  "definition_mismatches": [],
+  "indexes": [
+    {
+      "index_name": "vehicle_trips_vehicle_id_start_time_idx",
+      "table_name": "vehicle_trips",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "vehicle_id",
+        "start_time"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "vehicle_dtc_events_vehicle_id_last_seen_at_idx",
+      "table_name": "vehicle_dtc_events",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "vehicle_id",
+        "last_seen_at"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "vehicle_dtc_events_vehicle_id_is_active_idx",
+      "table_name": "vehicle_dtc_events",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "vehicle_id",
+        "is_active"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "driving_events_vehicle_id_recorded_at_idx",
+      "table_name": "driving_events",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "vehicle_id",
+        "recorded_at"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "driving_events_trip_id_event_type_idx",
+      "table_name": "driving_events",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "trip_id",
+        "event_type"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "trip_behavior_events_trip_id_event_category_idx",
+      "table_name": "trip_behavior_events",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "trip_id",
+        "event_category"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "dimo_poll_logs_vehicle_id_created_at_idx",
+      "table_name": "dimo_poll_logs",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "vehicle_id",
+        "created_at"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "activity_logs_organization_id_created_at_idx",
+      "table_name": "activity_logs",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "organization_id",
+        "created_at"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "bookings_vehicle_id_status_start_date_idx",
+      "table_name": "bookings",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "vehicle_id",
+        "status",
+        "start_date"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "bookings_organization_id_status_idx",
+      "table_name": "bookings",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "organization_id",
+        "status"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "org_invoices_organization_id_status_idx",
+      "table_name": "org_invoices",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "organization_id",
+        "status"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "org_invoices_organization_id_invoice_date_idx",
+      "table_name": "org_invoices",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "organization_id",
+        "invoice_date"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "org_tasks_organization_id_status_idx",
+      "table_name": "org_tasks",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "organization_id",
+        "status"
+      ],
+      "predicate": null
+    },
+    {
+      "index_name": "org_tasks_organization_id_due_date_idx",
+      "table_name": "org_tasks",
+      "is_unique": false,
+      "is_valid": true,
+      "is_ready": true,
+      "access_method": "btree",
+      "columns": [
+        "organization_id",
+        "due_date"
+      ],
+      "predicate": null
+    }
+  ],
+  "pass": true
+}

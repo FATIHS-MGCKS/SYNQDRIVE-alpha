@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "strategy": "B_deterministic_special_executor_plus_migration_state_reconciliation",
+  "execution_model": {
+    "canonical_command": "npx prisma migrate deploy",
+    "prisma_version": "^5.20.0",
+    "transaction_wrapped": true,
+    "proof": "Observed SQLSTATE 25001 on CREATE INDEX CONCURRENTLY during migrate deploy on disposable DB"
+  },
+  "special_migrations": [
+    {
+      "migration": "20260413230000_add_composite_indexes_batch_c",
+      "migration_path": "workspace/backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql",
+      "migration_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+      "reason": "CREATE INDEX CONCURRENTLY incompatible with Prisma transactional migrate deploy",
+      "normal_execution_result": "FAIL",
+      "special_executor": "ci_r3b1c_special_composite_index.SpecialCompositeIndexExecutor",
+      "statement_count": 14,
+      "semantic_equivalence_validated": true,
+      "script_comparison": {
+        "migration_statement_count": 14,
+        "script_statement_count": 14,
+        "missing_in_script": [],
+        "unexpected_in_script": [],
+        "semantic_equivalent": true
+      },
+      "post_execution_validation": [
+        "pg_catalog index definition match for all statements"
+      ],
+      "migration_state_reconciliation_required": true,
+      "resumption_strategy": "prisma migrate resolve --applied then continue migrate deploy",
+      "authorized": true
+    }
+  ]
+}
