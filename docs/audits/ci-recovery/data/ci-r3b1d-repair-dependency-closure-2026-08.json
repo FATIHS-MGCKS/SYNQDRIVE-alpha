@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "repair_slot": 7,
+  "known_valid_objects": {
+    "ActivityEntity": {
+      "classification": "VALID",
+      "object_type": "enum",
+      "reason": "Created in init migration; extended by audit migrations before vendor overhaul",
+      "creator_migration": "20260311224040_init",
+      "evidence": [
+        "backend/prisma/migrations/20260311224040_init/migration.sql:CREATE TYPE ActivityEntity",
+        "backend/prisma/migrations/20260412040000_audit_consent_provenance/migration.sql:ALTER TYPE ActivityEntity"
+      ]
+    },
+    "org_invoices": {
+      "classification": "VALID",
+      "object_type": "table",
+      "reason": "Historical predecessor repaired in CI-R3B1B slot 4",
+      "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "evidence": [
+        "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:CREATE TABLE org_invoices",
+        "ci-r3b1b-historical-predecessor-repair-full-replay-2026-08.md:slot 4"
+      ]
+    }
+  },
+  "primary_historical_defects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles"
+  ],
+  "required_repair_closure_objects": [
+    "VendorSourceType"
+  ],
+  "records": [
+    {
+      "repair_object": "vendors",
+      "object_type": "table",
+      "repair_boundary": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "direct_dependencies": [
+        "VendorCategory",
+        "VendorSourceType"
+      ],
+      "transitive_dependencies": [
+        "VendorCategory",
+        "VendorSourceType",
+        "organizations"
+      ],
+      "must_exist_before": [
+        "VendorCategory",
+        "VendorSourceType"
+      ],
+      "can_be_deferred": [],
+      "closure_complete": true
+    },
+    {
+      "repair_object": "vendor_vehicles",
+      "object_type": "table",
+      "repair_boundary": "20260613210000_vendor_management_overhaul",
+      "repair_slot": 7,
+      "direct_dependencies": [],
+      "transitive_dependencies": [
+        "vehicles"
+      ],
+      "must_exist_before": [],
+      "can_be_deferred": [
+        "fk:['vendor_id']->vendors"
+      ],
+      "closure_complete": true
+    }
+  ]
+}
