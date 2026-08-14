@@ -4,6 +4,8 @@
 **PR:** [#1031](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1031)  
 **Outcome:** `CI_R3B1A1_HISTORICAL_DEPENDENCY_AUTHORITY_HARDENED`
 
+> **Supersession (CI-R3B1A.2):** The R3B1A.1 analyzer output (619-row matrix and predecessor contracts in `ci-r3b1a1-*` artifacts) is **superseded** as static authority candidate due to semantic analyzer defects (Prisma types as PostgreSQL types, relation navigation fields as columns, truncated defaults, missing FK/unique authority, migration-level vs statement-level ordering). **Current authority candidate:** `ci-r3b1a2-*` artifacts and `ci-r3b1a2-analyzer-ddl-contract-remediation-2026-08.md`. Full R3B.1 fresh replay status remains **FAILED**.
+
 ---
 
 ## Baseline

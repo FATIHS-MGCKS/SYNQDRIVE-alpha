@@ -1,0 +1,2903 @@
+{
+  "schema_version": 2,
+  "supersedes": "ci-r3b1a1-predecessor-ddl-contracts-2026-08.json",
+  "contracts": [
+    {
+      "object": "org_tasks",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260412030000_platform_hardening_phase1",
+      "historical_authority_commit": "77c26dad",
+      "historical_prisma_model": "OrgTask",
+      "first_consumer": "20260412030000_platform_hardening_phase1",
+      "relation": {
+        "schema": "public",
+        "name": "org_tasks"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "application_or_prisma_generated_uuid",
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.id"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "title",
+          "column": "title",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.title"
+          ]
+        },
+        {
+          "prisma_field": "description",
+          "column": "description",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.description"
+          ]
+        },
+        {
+          "prisma_field": "category",
+          "column": "category",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.category"
+          ]
+        },
+        {
+          "prisma_field": "status",
+          "column": "status",
+          "prisma_type": "TaskStatus",
+          "postgres_type": "\"TaskStatus\"",
+          "nullable": false,
+          "prisma_default": "OPEN",
+          "postgres_default": null,
+          "default_semantics": "enum_literal",
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.status"
+          ]
+        },
+        {
+          "prisma_field": "priority",
+          "column": "priority",
+          "prisma_type": "TaskPriority",
+          "postgres_type": "\"TaskPriority\"",
+          "nullable": false,
+          "prisma_default": "MEDIUM",
+          "postgres_default": null,
+          "default_semantics": "enum_literal",
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.priority"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "fineId",
+          "column": "fine_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.fineId"
+          ]
+        },
+        {
+          "prisma_field": "invoiceId",
+          "column": "invoice_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.invoiceId"
+          ]
+        },
+        {
+          "prisma_field": "assignedTo",
+          "column": "assigned_to",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.assignedTo"
+          ]
+        },
+        {
+          "prisma_field": "dueDate",
+          "column": "due_date",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.dueDate"
+          ]
+        },
+        {
+          "prisma_field": "completedAt",
+          "column": "completed_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.completedAt"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "database_default",
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgTask.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "org_tasks_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:OrgTask:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "fine_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "fines",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:OrgTask.fineId->@Fine"
+          ]
+        },
+        {
+          "local_columns": [
+            "invoice_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "org_invoices",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:OrgTask.invoiceId->@OrgInvoice"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:OrgTask:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence": [
+            "schema:OrgTask:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "fine_id"
+          ],
+          "evidence": [
+            "schema:OrgTask:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "invoice_id"
+          ],
+          "evidence": [
+            "schema:OrgTask:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "TaskStatus",
+          "labels": [
+            "OPEN",
+            "IN_PROGRESS",
+            "DONE",
+            "CANCELLED"
+          ],
+          "order_material": true,
+          "first_consumer": "20260412030000_platform_hardening_phase1",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:77c26dad:enum TaskStatus"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "TaskPriority",
+          "labels": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "URGENT"
+          ],
+          "order_material": true,
+          "first_consumer": "20260412030000_platform_hardening_phase1",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:77c26dad:enum TaskPriority"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "TaskStatus",
+          "labels": [
+            "OPEN",
+            "IN_PROGRESS",
+            "DONE",
+            "CANCELLED"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum TaskStatus"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "TaskPriority",
+          "labels": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "URGENT"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum TaskPriority"
+          ]
+        }
+      ],
+      "not_present_yet": [
+        {
+          "name": "created_by_user_id",
+          "object_type": "column",
+          "introduced_by_migration": "20260412030000_platform_hardening_phase1",
+          "reason_excluded": "Added by first consumer migration, not part of predecessor bootstrap"
+        },
+        {
+          "name": "updated_by_user_id",
+          "object_type": "column",
+          "introduced_by_migration": "20260412030000_platform_hardening_phase1",
+          "reason_excluded": "Added by first consumer migration, not part of predecessor bootstrap"
+        },
+        {
+          "name": "org_tasks_created_by_user_id_idx",
+          "object_type": "index",
+          "introduced_by_migration": "20260412030000_platform_hardening_phase1",
+          "reason_excluded": "Index on later column"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260412020000_hm_latest_state_tables",
+        "before": "20260412030000_platform_hardening_phase1",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:77c26dad:model OrgTask",
+        "matrix:first_consumer=20260412030000_platform_hardening_phase1"
+      ]
+    },
+    {
+      "object": "brake_health_current",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260413183000_brake_health_canonical_refactor",
+      "historical_authority_commit": "77c26dad",
+      "historical_prisma_model": "BrakeHealthCurrent",
+      "first_consumer": "20260413183000_brake_health_canonical_refactor",
+      "relation": {
+        "schema": "public",
+        "name": "brake_health_current"
+      },
+      "columns": [
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "isInitialized",
+          "column": "is_initialized",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "literal_boolean",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.isInitialized"
+          ]
+        },
+        {
+          "prisma_field": "anchorServiceDate",
+          "column": "anchor_service_date",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.anchorServiceDate"
+          ]
+        },
+        {
+          "prisma_field": "anchorOdometerKm",
+          "column": "anchor_odometer_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.anchorOdometerKm"
+          ]
+        },
+        {
+          "prisma_field": "frontPadAnchorMm",
+          "column": "front_pad_anchor_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontPadAnchorMm"
+          ]
+        },
+        {
+          "prisma_field": "frontPadEstimatedMm",
+          "column": "front_pad_estimated_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontPadEstimatedMm"
+          ]
+        },
+        {
+          "prisma_field": "frontPadHealthPct",
+          "column": "front_pad_health_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontPadHealthPct"
+          ]
+        },
+        {
+          "prisma_field": "frontPadRemainingKm",
+          "column": "front_pad_remaining_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontPadRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "frontPadWearRateMmPerKm",
+          "column": "front_pad_wear_rate_mm_per_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontPadWearRateMmPerKm"
+          ]
+        },
+        {
+          "prisma_field": "frontPadKFactor",
+          "column": "front_pad_k_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": null,
+          "default_semantics": "literal",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontPadKFactor"
+          ]
+        },
+        {
+          "prisma_field": "rearPadAnchorMm",
+          "column": "rear_pad_anchor_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearPadAnchorMm"
+          ]
+        },
+        {
+          "prisma_field": "rearPadEstimatedMm",
+          "column": "rear_pad_estimated_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearPadEstimatedMm"
+          ]
+        },
+        {
+          "prisma_field": "rearPadHealthPct",
+          "column": "rear_pad_health_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearPadHealthPct"
+          ]
+        },
+        {
+          "prisma_field": "rearPadRemainingKm",
+          "column": "rear_pad_remaining_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearPadRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "rearPadWearRateMmPerKm",
+          "column": "rear_pad_wear_rate_mm_per_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearPadWearRateMmPerKm"
+          ]
+        },
+        {
+          "prisma_field": "rearPadKFactor",
+          "column": "rear_pad_k_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": null,
+          "default_semantics": "literal",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearPadKFactor"
+          ]
+        },
+        {
+          "prisma_field": "frontDiscAnchorMm",
+          "column": "front_disc_anchor_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontDiscAnchorMm"
+          ]
+        },
+        {
+          "prisma_field": "frontDiscEstimatedMm",
+          "column": "front_disc_estimated_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontDiscEstimatedMm"
+          ]
+        },
+        {
+          "prisma_field": "frontDiscHealthPct",
+          "column": "front_disc_health_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontDiscHealthPct"
+          ]
+        },
+        {
+          "prisma_field": "frontDiscRemainingKm",
+          "column": "front_disc_remaining_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontDiscRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "frontDiscWearRateMmPerKm",
+          "column": "front_disc_wear_rate_mm_per_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontDiscWearRateMmPerKm"
+          ]
+        },
+        {
+          "prisma_field": "frontDiscKFactor",
+          "column": "front_disc_k_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": null,
+          "default_semantics": "literal",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.frontDiscKFactor"
+          ]
+        },
+        {
+          "prisma_field": "rearDiscAnchorMm",
+          "column": "rear_disc_anchor_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearDiscAnchorMm"
+          ]
+        },
+        {
+          "prisma_field": "rearDiscEstimatedMm",
+          "column": "rear_disc_estimated_mm",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearDiscEstimatedMm"
+          ]
+        },
+        {
+          "prisma_field": "rearDiscHealthPct",
+          "column": "rear_disc_health_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearDiscHealthPct"
+          ]
+        },
+        {
+          "prisma_field": "rearDiscRemainingKm",
+          "column": "rear_disc_remaining_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearDiscRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "rearDiscWearRateMmPerKm",
+          "column": "rear_disc_wear_rate_mm_per_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearDiscWearRateMmPerKm"
+          ]
+        },
+        {
+          "prisma_field": "rearDiscKFactor",
+          "column": "rear_disc_k_factor",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": "1.0",
+          "postgres_default": null,
+          "default_semantics": "literal",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.rearDiscKFactor"
+          ]
+        },
+        {
+          "prisma_field": "padsHealthPct",
+          "column": "pads_health_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.padsHealthPct"
+          ]
+        },
+        {
+          "prisma_field": "padsRemainingKm",
+          "column": "pads_remaining_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.padsRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "discsHealthPct",
+          "column": "discs_health_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.discsHealthPct"
+          ]
+        },
+        {
+          "prisma_field": "discsRemainingKm",
+          "column": "discs_remaining_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.discsRemainingKm"
+          ]
+        },
+        {
+          "prisma_field": "confidenceScore",
+          "column": "confidence_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.confidenceScore"
+          ]
+        },
+        {
+          "prisma_field": "confidenceLabel",
+          "column": "confidence_label",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.confidenceLabel"
+          ]
+        },
+        {
+          "prisma_field": "hasAlert",
+          "column": "has_alert",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "false",
+          "postgres_default": "FALSE",
+          "default_semantics": "literal_boolean",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.hasAlert"
+          ]
+        },
+        {
+          "prisma_field": "distanceSinceAnchorKm",
+          "column": "distance_since_anchor_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.distanceSinceAnchorKm"
+          ]
+        },
+        {
+          "prisma_field": "calibrationCount",
+          "column": "calibration_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "literal_integer",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.calibrationCount"
+          ]
+        },
+        {
+          "prisma_field": "modelVersion",
+          "column": "model_version",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "\"1.0.0\"",
+          "postgres_default": "1.0.0",
+          "default_semantics": "literal_string",
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.modelVersion"
+          ]
+        },
+        {
+          "prisma_field": "lastRecalculatedAt",
+          "column": "last_recalculated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.lastRecalculatedAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BrakeHealthCurrent.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "brake_health_current_pkey",
+        "columns": [
+          "vehicle_id"
+        ],
+        "evidence": [
+          "schema:BrakeHealthCurrent:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:BrakeHealthCurrent.vehicleId->@Vehicle"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id",
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:BrakeHealthCurrent:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "not_present_yet": [
+        {
+          "name": "state_class",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        },
+        {
+          "name": "anchor_validation_status",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        },
+        {
+          "name": "model_coverage_ratio",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        },
+        {
+          "name": "modeled_distance_km",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        },
+        {
+          "name": "modeled_trip_count",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        },
+        {
+          "name": "modeling_source",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        },
+        {
+          "name": "baseline_warnings",
+          "object_type": "column",
+          "introduced_by_migration": "20260413183000_brake_health_canonical_refactor",
+          "reason_excluded": "Canonical refactor column"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260412040000_audit_consent_provenance",
+        "before": "20260413183000_brake_health_canonical_refactor",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:77c26dad:model BrakeHealthCurrent",
+        "matrix:first_consumer=20260413183000_brake_health_canonical_refactor"
+      ]
+    },
+    {
+      "object": "battery_evidence",
+      "object_type": "table",
+      "classification": "ORDERING_DEFECT",
+      "required_before_migration": "20260413220000_battery_evidence_unique_dedup",
+      "historical_authority_commit": "17019787",
+      "historical_prisma_model": "BatteryEvidence",
+      "first_consumer": "20260413220000_battery_evidence_unique_dedup",
+      "relation": {
+        "schema": "public",
+        "name": "battery_evidence"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "application_or_prisma_generated_uuid",
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.id"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "scope",
+          "column": "scope",
+          "prisma_type": "BatteryEvidenceScope",
+          "postgres_type": "\"BatteryEvidenceScope\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.scope"
+          ]
+        },
+        {
+          "prisma_field": "sourceType",
+          "column": "source_type",
+          "prisma_type": "BatteryEvidenceSourceType",
+          "postgres_type": "\"BatteryEvidenceSourceType\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.sourceType"
+          ]
+        },
+        {
+          "prisma_field": "valueType",
+          "column": "value_type",
+          "prisma_type": "BatteryEvidenceValueType",
+          "postgres_type": "\"BatteryEvidenceValueType\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.valueType"
+          ]
+        },
+        {
+          "prisma_field": "numericValue",
+          "column": "numeric_value",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.numericValue"
+          ]
+        },
+        {
+          "prisma_field": "unit",
+          "column": "unit",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.unit"
+          ]
+        },
+        {
+          "prisma_field": "observedAt",
+          "column": "observed_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.observedAt"
+          ]
+        },
+        {
+          "prisma_field": "provider",
+          "column": "provider",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.provider"
+          ]
+        },
+        {
+          "prisma_field": "confidence",
+          "column": "confidence",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.confidence"
+          ]
+        },
+        {
+          "prisma_field": "quality",
+          "column": "quality",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.quality"
+          ]
+        },
+        {
+          "prisma_field": "documentExtractionId",
+          "column": "document_extraction_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.documentExtractionId"
+          ]
+        },
+        {
+          "prisma_field": "serviceEventId",
+          "column": "service_event_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.serviceEventId"
+          ]
+        },
+        {
+          "prisma_field": "metadataJson",
+          "column": "metadata_json",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.metadataJson"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "database_default",
+          "generation": null,
+          "evidence": [
+            "schema:BatteryEvidence.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "battery_evidence_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:BatteryEvidence:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:BatteryEvidence.vehicleId->@Vehicle"
+          ]
+        },
+        {
+          "local_columns": [
+            "document_extraction_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicle_document_extractions",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:BatteryEvidence.documentExtractionId->@VehicleDocumentExtraction"
+          ]
+        },
+        {
+          "local_columns": [
+            "service_event_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicle_service_events",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:BatteryEvidence.serviceEventId->@VehicleServiceEvent"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "vehicle_id",
+            "scope",
+            "value_type",
+            "observed_at"
+          ],
+          "evidence": [
+            "schema:BatteryEvidence:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "source_type",
+            "observed_at"
+          ],
+          "evidence": [
+            "schema:BatteryEvidence:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "document_extraction_id"
+          ],
+          "evidence": [
+            "schema:BatteryEvidence:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "service_event_id"
+          ],
+          "evidence": [
+            "schema:BatteryEvidence:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "BatteryEvidenceScope",
+          "labels": [
+            "LV",
+            "HV"
+          ],
+          "order_material": true,
+          "first_consumer": "20260413220000_battery_evidence_unique_dedup",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:17019787:enum BatteryEvidenceScope"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "BatteryEvidenceSourceType",
+          "labels": [
+            "PROVIDER_REPORTED",
+            "TELEMETRY_DERIVED",
+            "MODEL_DERIVED",
+            "MANUAL_REPORT",
+            "DOCUMENT_CONFIRMED",
+            "WORKSHOP_MEASUREMENT",
+            "HM_SUPPLEMENTARY"
+          ],
+          "order_material": true,
+          "first_consumer": "20260413220000_battery_evidence_unique_dedup",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:17019787:enum BatteryEvidenceSourceType"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "BatteryEvidenceValueType",
+          "labels": [
+            "SOH_PERCENT",
+            "SOC_PERCENT",
+            "RANGE_KM",
+            "VOLTAGE_V",
+            "RESTING_VOLTAGE_V",
+            "CRANKING_VOLTAGE_V",
+            "CHARGING_VOLTAGE_V",
+            "BATTERY_TEMPERATURE_C",
+            "CHARGING_POWER_KW",
+            "ADDED_ENERGY_KWH",
+            "CURRENT_ENERGY_KWH",
+            "CURRENT_VOLTAGE_V",
+            "GROSS_CAPACITY_KWH"
+          ],
+          "order_material": true,
+          "first_consumer": "20260413220000_battery_evidence_unique_dedup",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:17019787:enum BatteryEvidenceValueType"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "BatteryEvidenceScope",
+          "labels": [
+            "LV",
+            "HV"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum BatteryEvidenceScope"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "BatteryEvidenceSourceType",
+          "labels": [
+            "PROVIDER_REPORTED",
+            "TELEMETRY_DERIVED",
+            "MODEL_DERIVED",
+            "MANUAL_REPORT",
+            "DOCUMENT_CONFIRMED",
+            "WORKSHOP_MEASUREMENT",
+            "HM_SUPPLEMENTARY"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum BatteryEvidenceSourceType"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "BatteryEvidenceValueType",
+          "labels": [
+            "SOH_PERCENT",
+            "SOC_PERCENT",
+            "RANGE_KM",
+            "VOLTAGE_V",
+            "RESTING_VOLTAGE_V",
+            "CRANKING_VOLTAGE_V",
+            "CHARGING_VOLTAGE_V",
+            "BATTERY_TEMPERATURE_C",
+            "CHARGING_POWER_KW",
+            "ADDED_ENERGY_KWH",
+            "CURRENT_ENERGY_KWH",
+            "CURRENT_VOLTAGE_V",
+            "GROSS_CAPACITY_KWH"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum BatteryEvidenceValueType"
+          ]
+        }
+      ],
+      "not_present_yet": [
+        {
+          "name": "battery_evidence_dedup_key",
+          "object_type": "index",
+          "introduced_by_migration": "20260413220000_battery_evidence_unique_dedup",
+          "reason_excluded": "Dedup unique index introduced by first consumer"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260413183000_brake_health_canonical_refactor",
+        "before": "20260413220000_battery_evidence_unique_dedup",
+        "can_share_bootstrap_with": [],
+        "creator_migration": "20260614120300_battery_health_tables_guard"
+      },
+      "evidence": [
+        "schema:17019787:model BatteryEvidence",
+        "matrix:first_consumer=20260413220000_battery_evidence_unique_dedup"
+      ]
+    },
+    {
+      "object": "org_invoices",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260413230000_add_composite_indexes_batch_c",
+      "historical_authority_commit": "77c26dad",
+      "historical_prisma_model": "OrgInvoice",
+      "first_consumer": "20260413230000_add_composite_indexes_batch_c",
+      "relation": {
+        "schema": "public",
+        "name": "org_invoices"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "application_or_prisma_generated_uuid",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.id"
+          ]
+        },
+        {
+          "prisma_field": "invoiceNumber",
+          "column": "invoice_number",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "autoincrement()",
+          "postgres_default": null,
+          "default_semantics": "postgresql_sequence_autoincrement",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.invoiceNumber"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "type",
+          "column": "type",
+          "prisma_type": "OrgInvoiceType",
+          "postgres_type": "\"OrgInvoiceType\"",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.type"
+          ]
+        },
+        {
+          "prisma_field": "customerId",
+          "column": "customer_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.customerId"
+          ]
+        },
+        {
+          "prisma_field": "vendorName",
+          "column": "vendor_name",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.vendorName"
+          ]
+        },
+        {
+          "prisma_field": "bookingId",
+          "column": "booking_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.bookingId"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "title",
+          "column": "title",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.title"
+          ]
+        },
+        {
+          "prisma_field": "description",
+          "column": "description",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.description"
+          ]
+        },
+        {
+          "prisma_field": "lineItems",
+          "column": "line_items",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.lineItems"
+          ]
+        },
+        {
+          "prisma_field": "subtotalCents",
+          "column": "subtotal_cents",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "literal_integer",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.subtotalCents"
+          ]
+        },
+        {
+          "prisma_field": "taxCents",
+          "column": "tax_cents",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "0",
+          "postgres_default": "0",
+          "default_semantics": "literal_integer",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.taxCents"
+          ]
+        },
+        {
+          "prisma_field": "totalCents",
+          "column": "total_cents",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.totalCents"
+          ]
+        },
+        {
+          "prisma_field": "currency",
+          "column": "currency",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "\"EUR\"",
+          "postgres_default": "EUR",
+          "default_semantics": "literal_string",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.currency"
+          ]
+        },
+        {
+          "prisma_field": "invoiceDate",
+          "column": "invoice_date",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "database_default",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.invoiceDate"
+          ]
+        },
+        {
+          "prisma_field": "dueDate",
+          "column": "due_date",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.dueDate"
+          ]
+        },
+        {
+          "prisma_field": "status",
+          "column": "status",
+          "prisma_type": "OrgInvoiceStatus",
+          "postgres_type": "\"OrgInvoiceStatus\"",
+          "nullable": false,
+          "prisma_default": "DRAFT",
+          "postgres_default": null,
+          "default_semantics": "enum_literal",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.status"
+          ]
+        },
+        {
+          "prisma_field": "templateId",
+          "column": "template_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.templateId"
+          ]
+        },
+        {
+          "prisma_field": "imageUrl",
+          "column": "image_url",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.imageUrl"
+          ]
+        },
+        {
+          "prisma_field": "extractedData",
+          "column": "extracted_data",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.extractedData"
+          ]
+        },
+        {
+          "prisma_field": "notes",
+          "column": "notes",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.notes"
+          ]
+        },
+        {
+          "prisma_field": "paidAt",
+          "column": "paid_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.paidAt"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "database_default",
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.createdAt"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:OrgInvoice.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "org_invoices_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:OrgInvoice:@id"
+        ]
+      },
+      "foreign_keys": [],
+      "unique_constraints": [
+        {
+          "name": "org_invoices_invoice_number_key",
+          "columns": [
+            "invoice_number"
+          ],
+          "evidence": [
+            "schema:OrgInvoice.invoiceNumber@unique"
+          ]
+        }
+      ],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "evidence": [
+            "schema:OrgInvoice:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "customer_id"
+          ],
+          "evidence": [
+            "schema:OrgInvoice:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "booking_id"
+          ],
+          "evidence": [
+            "schema:OrgInvoice:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "status"
+          ],
+          "evidence": [
+            "schema:OrgInvoice:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "type"
+          ],
+          "evidence": [
+            "schema:OrgInvoice:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "invoice_date"
+          ],
+          "evidence": [
+            "schema:OrgInvoice:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "OrgInvoiceType",
+          "labels": [
+            "OUTGOING_BOOKING",
+            "OUTGOING_MANUAL",
+            "INCOMING_VENDOR",
+            "INCOMING_UPLOADED"
+          ],
+          "order_material": true,
+          "first_consumer": "20260413230000_add_composite_indexes_batch_c",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:77c26dad:enum OrgInvoiceType"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "OrgInvoiceStatus",
+          "labels": [
+            "DRAFT",
+            "SENT",
+            "PAID",
+            "OVERDUE",
+            "CANCELLED"
+          ],
+          "order_material": true,
+          "first_consumer": "20260413230000_add_composite_indexes_batch_c",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:77c26dad:enum OrgInvoiceStatus"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "OrgInvoiceType",
+          "labels": [
+            "OUTGOING_BOOKING",
+            "OUTGOING_MANUAL",
+            "INCOMING_VENDOR",
+            "INCOMING_UPLOADED"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum OrgInvoiceType"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "OrgInvoiceStatus",
+          "labels": [
+            "DRAFT",
+            "SENT",
+            "PAID",
+            "OVERDUE",
+            "CANCELLED"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum OrgInvoiceStatus"
+          ]
+        }
+      ],
+      "not_present_yet": [
+        {
+          "name": "org_invoices_organization_id_due_date_idx",
+          "object_type": "index",
+          "introduced_by_migration": "20260413230000_add_composite_indexes_batch_c",
+          "reason_excluded": "Composite index added by first consumer batch"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260413220000_battery_evidence_unique_dedup",
+        "before": "20260413230000_add_composite_indexes_batch_c",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:77c26dad:model OrgInvoice",
+        "matrix:first_consumer=20260413230000_add_composite_indexes_batch_c"
+      ]
+    },
+    {
+      "object": "vehicle_dtc_events",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260413230000_add_composite_indexes_batch_c",
+      "historical_authority_commit": "77c26dad",
+      "historical_prisma_model": "VehicleDtcEvent",
+      "first_consumer": "20260413230000_add_composite_indexes_batch_c",
+      "relation": {
+        "schema": "public",
+        "name": "vehicle_dtc_events"
+      },
+      "columns": [
+        {
+          "prisma_field": "id",
+          "column": "id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": "uuid()",
+          "postgres_default": null,
+          "default_semantics": "application_or_prisma_generated_uuid",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.id"
+          ]
+        },
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "dtcCode",
+          "column": "dtc_code",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.dtcCode"
+          ]
+        },
+        {
+          "prisma_field": "description",
+          "column": "description",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.description"
+          ]
+        },
+        {
+          "prisma_field": "severity",
+          "column": "severity",
+          "prisma_type": "DtcSeverity",
+          "postgres_type": "\"DtcSeverity\"",
+          "nullable": false,
+          "prisma_default": "WARNING",
+          "postgres_default": null,
+          "default_semantics": "enum_literal",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.severity"
+          ]
+        },
+        {
+          "prisma_field": "isActive",
+          "column": "is_active",
+          "prisma_type": "Boolean",
+          "postgres_type": "BOOLEAN",
+          "nullable": false,
+          "prisma_default": "true",
+          "postgres_default": "TRUE",
+          "default_semantics": "literal_boolean",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.isActive"
+          ]
+        },
+        {
+          "prisma_field": "firstSeenAt",
+          "column": "first_seen_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.firstSeenAt"
+          ]
+        },
+        {
+          "prisma_field": "lastSeenAt",
+          "column": "last_seen_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.lastSeenAt"
+          ]
+        },
+        {
+          "prisma_field": "clearedAt",
+          "column": "cleared_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.clearedAt"
+          ]
+        },
+        {
+          "prisma_field": "occurrenceCount",
+          "column": "occurrence_count",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "1",
+          "postgres_default": "1",
+          "default_semantics": "literal_integer",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.occurrenceCount"
+          ]
+        },
+        {
+          "prisma_field": "rawPayload",
+          "column": "raw_payload",
+          "prisma_type": "Json",
+          "postgres_type": "JSONB",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.rawPayload"
+          ]
+        },
+        {
+          "prisma_field": "createdAt",
+          "column": "created_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": "now()",
+          "postgres_default": "CURRENT_TIMESTAMP",
+          "default_semantics": "database_default",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDtcEvent.createdAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "vehicle_dtc_events_pkey",
+        "columns": [
+          "id"
+        ],
+        "evidence": [
+          "schema:VehicleDtcEvent:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:VehicleDtcEvent.vehicleId->@Vehicle"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:VehicleDtcEvent:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "dtc_code"
+          ],
+          "evidence": [
+            "schema:VehicleDtcEvent:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "is_active"
+          ],
+          "evidence": [
+            "schema:VehicleDtcEvent:@@index"
+          ]
+        },
+        {
+          "columns": [
+            "first_seen_at"
+          ],
+          "evidence": [
+            "schema:VehicleDtcEvent:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [
+        {
+          "schema": "public",
+          "name": "DtcSeverity",
+          "labels": [
+            "INFO",
+            "WARNING",
+            "CRITICAL"
+          ],
+          "order_material": true,
+          "first_consumer": "20260413230000_add_composite_indexes_batch_c",
+          "creator": null,
+          "classification": "MISSING_HISTORY",
+          "evidence": [
+            "schema:77c26dad:enum DtcSeverity"
+          ]
+        },
+        {
+          "schema": "public",
+          "name": "DtcSeverity",
+          "labels": [
+            "INFO",
+            "WARNING",
+            "CRITICAL"
+          ],
+          "order_material": true,
+          "evidence": [
+            "schema:enum DtcSeverity"
+          ]
+        }
+      ],
+      "not_present_yet": [
+        {
+          "name": "vehicle_dtc_events_vehicle_id_last_seen_at_idx",
+          "object_type": "index",
+          "introduced_by_migration": "20260413230000_add_composite_indexes_batch_c",
+          "reason_excluded": "Composite index added by first consumer batch"
+        },
+        {
+          "name": "vehicle_dtc_events_vehicle_id_is_active_idx",
+          "object_type": "index",
+          "introduced_by_migration": "20260413230000_add_composite_indexes_batch_c",
+          "reason_excluded": "Composite index added by first consumer batch"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260413220000_battery_evidence_unique_dedup",
+        "before": "20260413230000_add_composite_indexes_batch_c",
+        "can_share_bootstrap_with": [
+          "org_invoices"
+        ],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:77c26dad:model VehicleDtcEvent",
+        "matrix:first_consumer=20260413230000_add_composite_indexes_batch_c"
+      ]
+    },
+    {
+      "object": "vehicle_driving_impact_current",
+      "object_type": "table",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260422010000_vehicle_current_safety_score",
+      "historical_authority_commit": "77c26dad",
+      "historical_prisma_model": "VehicleDrivingImpactCurrent",
+      "first_consumer": "20260422010000_vehicle_current_safety_score",
+      "relation": {
+        "schema": "public",
+        "name": "vehicle_driving_impact_current"
+      },
+      "columns": [
+        {
+          "prisma_field": "vehicleId",
+          "column": "vehicle_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.vehicleId"
+          ]
+        },
+        {
+          "prisma_field": "organizationId",
+          "column": "organization_id",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.organizationId"
+          ]
+        },
+        {
+          "prisma_field": "windowDays",
+          "column": "window_days",
+          "prisma_type": "Int",
+          "postgres_type": "INTEGER",
+          "nullable": false,
+          "prisma_default": "30",
+          "postgres_default": "30",
+          "default_semantics": "literal_integer",
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.windowDays"
+          ]
+        },
+        {
+          "prisma_field": "windowStartedAt",
+          "column": "window_started_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.windowStartedAt"
+          ]
+        },
+        {
+          "prisma_field": "windowEndedAt",
+          "column": "window_ended_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.windowEndedAt"
+          ]
+        },
+        {
+          "prisma_field": "distanceKmWindow",
+          "column": "distance_km_window",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.distanceKmWindow"
+          ]
+        },
+        {
+          "prisma_field": "citySharePct",
+          "column": "city_share_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.citySharePct"
+          ]
+        },
+        {
+          "prisma_field": "highwaySharePct",
+          "column": "highway_share_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.highwaySharePct"
+          ]
+        },
+        {
+          "prisma_field": "countryRoadSharePct",
+          "column": "country_road_share_pct",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.countryRoadSharePct"
+          ]
+        },
+        {
+          "prisma_field": "hardAccelPer100Km",
+          "column": "hard_accel_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.hardAccelPer100Km"
+          ]
+        },
+        {
+          "prisma_field": "extremeAccelPer100Km",
+          "column": "extreme_accel_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.extremeAccelPer100Km"
+          ]
+        },
+        {
+          "prisma_field": "hardBrakePer100Km",
+          "column": "hard_brake_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.hardBrakePer100Km"
+          ]
+        },
+        {
+          "prisma_field": "extremeBrakePer100Km",
+          "column": "extreme_brake_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.extremeBrakePer100Km"
+          ]
+        },
+        {
+          "prisma_field": "fullBrakingPer100Km",
+          "column": "full_braking_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.fullBrakingPer100Km"
+          ]
+        },
+        {
+          "prisma_field": "kickdownPer100Km",
+          "column": "kickdown_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.kickdownPer100Km"
+          ]
+        },
+        {
+          "prisma_field": "launchLikePer100Km",
+          "column": "launch_like_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.launchLikePer100Km"
+          ]
+        },
+        {
+          "prisma_field": "brakesPer100Km",
+          "column": "brakes_per_100km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.brakesPer100Km"
+          ]
+        },
+        {
+          "prisma_field": "stopDensity",
+          "column": "stop_density",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.stopDensity"
+          ]
+        },
+        {
+          "prisma_field": "highSpeedBrakeShare",
+          "column": "high_speed_brake_share",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.highSpeedBrakeShare"
+          ]
+        },
+        {
+          "prisma_field": "meanBrakeEnergyPerKm",
+          "column": "mean_brake_energy_per_km",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.meanBrakeEnergyPerKm"
+          ]
+        },
+        {
+          "prisma_field": "p95NegativeDecel",
+          "column": "p95_negative_decel",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.p95NegativeDecel"
+          ]
+        },
+        {
+          "prisma_field": "longitudinalStressScore",
+          "column": "longitudinal_stress_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.longitudinalStressScore"
+          ]
+        },
+        {
+          "prisma_field": "brakingStressScore",
+          "column": "braking_stress_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.brakingStressScore"
+          ]
+        },
+        {
+          "prisma_field": "stopGoStressScore",
+          "column": "stop_go_stress_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.stopGoStressScore"
+          ]
+        },
+        {
+          "prisma_field": "highSpeedStressScore",
+          "column": "high_speed_stress_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.highSpeedStressScore"
+          ]
+        },
+        {
+          "prisma_field": "thermalBrakeStressScore",
+          "column": "thermal_brake_stress_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.thermalBrakeStressScore"
+          ]
+        },
+        {
+          "prisma_field": "drivingStyleScore",
+          "column": "driving_style_score",
+          "prisma_type": "Float",
+          "postgres_type": "DOUBLE PRECISION",
+          "nullable": true,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.drivingStyleScore"
+          ]
+        },
+        {
+          "prisma_field": "modelVersion",
+          "column": "model_version",
+          "prisma_type": "String",
+          "postgres_type": "TEXT",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.modelVersion"
+          ]
+        },
+        {
+          "prisma_field": "updatedAt",
+          "column": "updated_at",
+          "prisma_type": "DateTime",
+          "postgres_type": "TIMESTAMP(3) WITHOUT TIME ZONE",
+          "nullable": false,
+          "prisma_default": null,
+          "postgres_default": null,
+          "default_semantics": null,
+          "generation": null,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.updatedAt"
+          ]
+        }
+      ],
+      "primary_key": {
+        "name": "vehicle_driving_impact_current_pkey",
+        "columns": [
+          "vehicle_id"
+        ],
+        "evidence": [
+          "schema:VehicleDrivingImpactCurrent:@id"
+        ]
+      },
+      "foreign_keys": [
+        {
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_schema": "public",
+          "referenced_relation": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE",
+          "constraint_name": null,
+          "required_before_first_consumer": true,
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent.vehicleId->@Vehicle"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [
+        {
+          "columns": [
+            "organization_id",
+            "vehicle_id"
+          ],
+          "evidence": [
+            "schema:VehicleDrivingImpactCurrent:@@index"
+          ]
+        }
+      ],
+      "enum_dependencies": [],
+      "not_present_yet": [
+        {
+          "name": "safety_score",
+          "object_type": "column",
+          "introduced_by_migration": "20260422010000_vehicle_current_safety_score",
+          "reason_excluded": "Safety score column added by first consumer"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260421120000_add_pickup_overdue_insight_type",
+        "before": "20260422010000_vehicle_current_safety_score",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:77c26dad:model VehicleDrivingImpactCurrent",
+        "matrix:first_consumer=20260422010000_vehicle_current_safety_score"
+      ]
+    },
+    {
+      "object": "InsightType",
+      "object_type": "enum",
+      "classification": "MISSING_HISTORY",
+      "required_before_migration": "20260417180000_add_battery_critical_insight_type",
+      "historical_authority_commit": "77c26dad",
+      "first_consumer": "20260417180000_add_battery_critical_insight_type",
+      "schema": "public",
+      "type_name": "InsightType",
+      "labels": [
+        "TIGHT_HANDOVER",
+        "RETURN_NEEDS_INSPECTION",
+        "STATION_SHORTAGE",
+        "LOW_UTILIZATION",
+        "SERVICE_WINDOW",
+        "SERVICE_BEFORE_BOOKING"
+      ],
+      "order_material": true,
+      "creator": null,
+      "relation": null,
+      "columns": [],
+      "primary_key": null,
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "check_constraints": [],
+      "required_preexisting_indexes": [],
+      "enum_dependencies": [],
+      "not_present_yet": [
+        {
+          "name": "BATTERY_CRITICAL",
+          "object_type": "enum_label",
+          "introduced_by_migration": "20260417180000_add_battery_critical_insight_type",
+          "reason_excluded": "Label added by first consumer ALTER TYPE"
+        }
+      ],
+      "repair_insertion": {
+        "after": "20260417160000_add_mqtt_only_hm_sync_status",
+        "before": "20260417180000_add_battery_critical_insight_type",
+        "can_share_bootstrap_with": [],
+        "creator_migration": null
+      },
+      "evidence": [
+        "schema:77c26dad:enum InsightType",
+        "matrix:first_consumer=20260417180000_add_battery_critical_insight_type"
+      ]
+    }
+  ]
+}
