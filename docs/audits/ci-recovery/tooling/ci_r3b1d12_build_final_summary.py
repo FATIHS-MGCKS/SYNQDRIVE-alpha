@@ -19,6 +19,7 @@ def load(name: str) -> dict:
 
 def main() -> int:
     topology = load("ci-r3b1d11-topology-validation-summary-2026-08.json")
+    topology_graph = load("ci-r3b1d1-post-vendor-repair-topology-2026-08.json")
     ddl = load("ci-r3b1d11-executable-ddl-proof-2026-08.json")
     catalog = load("ci-r3b1d12-postgresql-catalog-parity-2026-08.json")
     deferred = load("ci-r3b1d11-deferred-endpoint-proof-2026-08.json")
@@ -33,12 +34,13 @@ def main() -> int:
     for slot_row in catalog.get("per_slot", []):
         slot_no = slot_row["slot"]
         topo_slot = next((s for s in topology.get("slot_results", []) if s["slot"] == slot_no), {})
+        graph_slot = next((s for s in topology_graph.get("slots", []) if s["slot"] == slot_no), {})
         ddl_slot = next((s for s in ddl.get("slot_results", []) if s["slot"] == slot_no), {})
         per_slot.append(
             {
                 "slot": slot_no,
                 "action_count": topo_slot.get("action_count", 0),
-                "graph_edge_count": topo_slot.get("graph_validation", {}).get("edge_count", 0),
+                "graph_edge_count": graph_slot.get("graph_validation", {}).get("edge_count", 0),
                 "postgresql_execution": ddl_slot.get("status", "UNKNOWN"),
                 "catalog_mismatch_count": slot_row.get("mismatch_count", 0),
                 "catalog_expected_count": slot_row.get("catalog_expected_count", 0),
@@ -69,7 +71,7 @@ def main() -> int:
         "primary_historical_defects": 18,
         "repair_slots": 10,
         "repair_boundaries_changed": False,
-        "authority_semantics_changed": authority.get("repair_authority_semantics_changed") == "NO",
+        "authority_semantics_changed": authority.get("repair_authority_semantics_changed") != "NO",
         "catalog_proof_added": True,
         "postgresql_version": catalog.get("postgresql_version"),
         "slots_tested": len(per_slot),

@@ -14,7 +14,7 @@
 | Branch | `fix/ci-r3b1d11-executable-ddl-closure-2026-08` |
 | PRE_R3B1D12_SHA | `5ac7e9b48b779dea76bb9761ec9103bc9245fe8d` |
 | R3B1D.1.1 implementation commit | `adff5521` |
-| Working HEAD | `5ac7e9b48b779dea76bb9761ec9103bc9245fe8d` |
+| Working HEAD | `ef54c77bed33318cdc6cc31a3bfbcf7bb735ca37` |
 
 ---
 
@@ -54,16 +54,16 @@ Slots execution PASS: 10/10
 
 | Slot | Actions | Graph edges | PostgreSQL | Catalog mismatches |
 |------|--------:|------------:|:----------:|-------------------:|
-| 7 | 12 | 0 | PASS | 0 |
-| 8 | 5 | 0 | PASS | 0 |
-| 9 | 9 | 0 | PASS | 0 |
-| 10 | 9 | 0 | PASS | 0 |
-| 11 | 15 | 0 | PASS | 0 |
-| 12 | 13 | 0 | PASS | 0 |
+| 7 | 12 | 10 | PASS | 0 |
+| 8 | 5 | 4 | PASS | 0 |
+| 9 | 9 | 8 | PASS | 0 |
+| 10 | 9 | 8 | PASS | 0 |
+| 11 | 15 | 11 | PASS | 0 |
+| 12 | 13 | 11 | PASS | 0 |
 | 13 | 1 | 0 | PASS | 0 |
 | 14 | 1 | 0 | PASS | 0 |
-| 15 | 14 | 0 | PASS | 0 |
-| 16 | 3 | 0 | PASS | 0 |
+| 15 | 14 | 13 | PASS | 0 |
+| 16 | 3 | 2 | PASS | 0 |
 
 ### Slot 8 JSONB catalog proof
 

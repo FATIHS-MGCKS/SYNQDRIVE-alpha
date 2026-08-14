@@ -4,14 +4,14 @@
   "branch": "fix/ci-r3b1d11-executable-ddl-closure-2026-08",
   "PRE_R3B1D12_SHA": "5ac7e9b48b779dea76bb9761ec9103bc9245fe8d",
   "R3B1D11_IMPLEMENTATION_COMMIT": "adff5521",
-  "HEAD": "5ac7e9b48b779dea76bb9761ec9103bc9245fe8d",
+  "HEAD": "ef54c77bed33318cdc6cc31a3bfbcf7bb735ca37",
   "authority_sweep_repeated": false,
   "new_prisma_migrations": false,
   "full_replay": false,
   "primary_historical_defects": 18,
   "repair_slots": 10,
   "repair_boundaries_changed": false,
-  "authority_semantics_changed": true,
+  "authority_semantics_changed": false,
   "catalog_proof_added": true,
   "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
   "slots_tested": 10,
@@ -20,7 +20,7 @@
     {
       "slot": 7,
       "action_count": 12,
-      "graph_edge_count": 0,
+      "graph_edge_count": 10,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 42,
@@ -29,7 +29,7 @@
     {
       "slot": 8,
       "action_count": 5,
-      "graph_edge_count": 0,
+      "graph_edge_count": 4,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 67,
@@ -38,7 +38,7 @@
     {
       "slot": 9,
       "action_count": 9,
-      "graph_edge_count": 0,
+      "graph_edge_count": 8,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 118,
@@ -47,7 +47,7 @@
     {
       "slot": 10,
       "action_count": 9,
-      "graph_edge_count": 0,
+      "graph_edge_count": 8,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 147,
@@ -56,7 +56,7 @@
     {
       "slot": 11,
       "action_count": 15,
-      "graph_edge_count": 0,
+      "graph_edge_count": 11,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 203,
@@ -65,7 +65,7 @@
     {
       "slot": 12,
       "action_count": 13,
-      "graph_edge_count": 0,
+      "graph_edge_count": 11,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 253,
@@ -92,7 +92,7 @@
     {
       "slot": 15,
       "action_count": 14,
-      "graph_edge_count": 0,
+      "graph_edge_count": 13,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 305,
@@ -101,7 +101,7 @@
     {
       "slot": 16,
       "action_count": 3,
-      "graph_edge_count": 0,
+      "graph_edge_count": 2,
       "postgresql_execution": "PASS",
       "catalog_mismatch_count": 0,
       "catalog_expected_count": 314,
