@@ -17,7 +17,7 @@ Historical predecessor terminology from CI-R3B.0.1 is **SUPERSEDED BY CI-R3B.0.2
 |-------|-------|
 | `BOOTSTRAP_INSERTION_POINT` | `20260325161141` |
 | `BOOTSTRAP_SHAPE_AUTHORITY` | `MINIMAL_REPLAY_PREDECESSOR_SHAPE` (this ledger §4) |
-| `FINAL_SHAPE_AUTHORITY` | `ACCEPTED_CI_R3A71_PRODUCTION_JSON` + post-replay reconciliation (§6) |
+| `FINAL_SHAPE_AUTHORITY` | `ACCEPTED_CI_R3A71_PRODUCTION_JSON` + post-replay reconciliation (§5.4) |
 | `BOOTSTRAP_PREDECESSOR_EQUALS_FINAL_FOR_ALL_OBJECTS` | **NO** |
 | `EARLY_BOOTSTRAP_FINAL_SHAPE_EXECUTABLE` | **NO** |
 | `FINAL_PARITY_EXCEPTION_COUNT` | **0** |
@@ -47,7 +47,7 @@ Executable classification (11 + 2 + 6 = 19) is separate from physical kind count
 | Empty index definitions | 53 `btree ()` entries | Full definitions from accepted JSON `definition` field |
 | Index count mismatch | driving_events claimed 7, listed 10 | Counts match enumerations |
 | Incomplete downstream matrix | Missing DROP TYPE / CREATE UNIQUE INDEX rows | Exhaustive matrix §3 |
-| Final default mismatch | `trip_status` DEFAULT COMPLETED vs ONGOING | Post-replay reconciliation §6 |
+| Final default mismatch | `trip_status` DEFAULT COMPLETED vs ONGOING | Post-replay reconciliation §5.4 |
 
 ## 3. Downstream DDL matrix (post-`20260325161141`)
 
@@ -1150,7 +1150,7 @@ ALTER TABLE "vehicle_trips"
 | `POST_REPLAY_RECONCILIATION_IMPLEMENTED` | **NO** |
 | `FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` | **YES** |
 
-`FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` = YES means the documented four-migration plan (bootstrap, pre-shim, target, post-shim, **plus** reconciliation) is sufficient if implemented and replayed successfully. It does **not** mean CI-R3B.1 or an executable reconciliation migration already exists.
+`FULL_REPLAY_FINAL_SHAPE_PROVEN_BY_AUTHORITY` = YES means the documented CI-R3B migration authority model — **four new migrations** (bootstrap, pre-shim, post-shim, post-replay reconciliation) **plus the unchanged target migration** — is sufficient if implemented and replayed successfully. It does **not** mean CI-R3B.1 or an executable reconciliation migration already exists.
 
 ## 6. Validation counters (mechanical)
 
@@ -1183,4 +1183,4 @@ ALTER TABLE "vehicle_trips"
 
 ## 8. Final status
 
-**Status: CI_R3B02_REPLAY_AUTHORITY_LEDGER_COMPLETED**
+**Status: CI_R3B021_FINAL_CONVERGENCE_COMPLETED**
