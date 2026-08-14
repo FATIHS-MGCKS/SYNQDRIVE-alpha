@@ -358,14 +358,14 @@ selection + 1 orphan decision = **43**.
 | U039 | vehicle_trips | Live table identifier casing (lowercase vs camelCase)? | JSON casing: relname lowercase; camelCase ghost absent (§17d) | — | decides casing-repair need + Option J direction | pg_class | no casing repair until known | **RESOLVED (lowercase)** |
 | U040 | trip_driving_impact | Live table identifier casing (lowercase vs camelCase)? | JSON casing: relname lowercase; camelCase ghost absent (§17d) | — | decides casing-repair need + Option J direction | pg_class | no casing repair until known | **RESOLVED (lowercase)** |
 | U041 | 20260425000000 | Is this migration recorded applied in target _prisma_migrations? | JSON migration_metadata: finished, not rolled back, applied_steps_count=0 (§17d) | — | Option J guard branches on applied-state | _prisma_migrations | no Option J guard until known | **RESOLVED (APPLIED)** |
-| U042 | casing repair | Which mechanism (Option B edit vs Option J append) is safe? | JSON casing + U041; CI-R3A.8 statement/ordering/dependency authority; CI-R3A.8.1 transaction/persistence/recovery correction (§17f) | independent approval + pinned-engine replay + fault-injection/recovery proof | end-to-end replay must pass 20260425000000 safely across separate migration boundaries | reviewer sign-off + executable replay + F01–F04 gates | no casing repair until approved and replay/recovery-proven | **INDEPENDENT_REVIEW_CORRECTION_REQUIRED** |
+| U042 | casing repair | Which mechanism (Option B edit vs Option J append) is safe? | JSON casing + U041; CI-R3A.8 statement/ordering/dependency authority; CI-R3A.8.1 transaction/persistence/recovery correction (§17f); CI-R3A.8.2 post-shim self-row and guard-semantics correction (§17g) | independent approval + pinned-engine replay + fault-injection/recovery proof | end-to-end replay must pass 20260425000000 safely across separate migration boundaries | reviewer sign-off + executable replay + F01–F04 gates | no casing repair until approved and replay/recovery-proven | **INDEPENDENT_REVIEW_CORRECTION_REQUIRED** |
 | U043 | brake_trip_metrics | Should it be bootstrapped or removed from the schema? | JSON table present (11 cols/2 constraints/3 indexes); 0 migration refs (§4); CI-R3A.8 search: 0 runtime readers/writers, 0 contracts (§17e); independent evidence review PASS (§17f) | explicit product-owner decision (retain vs destructive removal) | determines inclusion in bootstrap vs schema removal | product/architecture owner | no action until decided | **AWAITING_PRODUCT_OWNER_DECISION** |
 
 <!-- ATOMIC_UNKNOWN_LEDGER_END -->
 
 `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = `ATOMIC_UNKNOWN_LEDGER_ROW_COUNT` =
 `ATOMIC_UNKNOWN_UNIQUE_ID_COUNT` = **43**. `PRODUCTION_AUTHORITY_RESOLVED_UNKNOWN_COUNT` (U001–U041) =
-**41** (CI-R3A.7.1). `INDEPENDENT_REVIEW_CORRECTION_LEDGER_ROW_COUNT` (U042) = **1** (CI-R3A.8.1 — §17f).
+**41** (CI-R3A.7.1). `INDEPENDENT_REVIEW_CORRECTION_LEDGER_ROW_COUNT` (U042) = **1** (CI-R3A.8.1 §17f + CI-R3A.8.2 §17g).
 `PRODUCT_DECISION_LEDGER_ROW_COUNT` (U043) = **1**. `U042_RESOLVED_COUNT` = 0;
 `U043_RESOLVED_COUNT` = 0. `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = **2**
 (U042 independent approval + executable replay/fault-injection/recovery proof; U043 product-owner decision).
@@ -399,8 +399,8 @@ authority.
   schema history is still not permission to mutate production, but Option **D** bootstrap targets are
   now authorized against captured lowercase production shapes.
 - `BASE_GAP_STRATEGY_STATUS` = SAFE_CANDIDATE (**production-authorized** — §17d);
-  `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY (U042 — Option J candidate only; CI-R3A.8.1 §17f;
-  cross-migration recovery unresolved);
+  `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY (U042 — Option J candidate only; CI-R3A.8.1 §17f +
+  CI-R3A.8.2 §17g; cross-migration recovery unresolved);
   `END_TO_END_R3B_STRATEGY_STATUS` = BLOCKED (U042 executable replay + fault-injection/recovery
   proof; U043 product decision). `CI_R3B_IMPLEMENTATION_COUNT` = 0.
 
@@ -412,13 +412,13 @@ in the schema; `brake_trip_metrics` is orphan (no migration ref, no code reader/
 
 ## 12. Scope counters
 
-Scope is reported per commit. **Current phase = CI-R3A.8.1** (U042 transaction/recovery authority
-correction; U043 substance unchanged):
+Scope is reported per commit. **Current phase = CI-R3A.8.2** (U042 post-shim self-row lifecycle and
+guard-semantics correction; U043 substance unchanged):
 
 | Counter | Value |
 |---------|-------|
 | `CHANGED_FILE_COUNT` | 2 |
-| `AUDIT_REPORT_CHANGE_COUNT` | 1 (this file — §17f + U042 status updates) |
+| `AUDIT_REPORT_CHANGE_COUNT` | 1 (this file — §17g + U042 cross-reference updates) |
 | `DECISION_PACKAGE_FILE_CHANGE_COUNT` | 1 (`ci-r3a8-u042-u043-decision-package-2026-08.md`, corrected) |
 | `DOCUMENTATION_FILE_CHANGE_COUNT` | 2 |
 | `JSON_EVIDENCE_CHANGE_COUNT` | 0 (`ci-r3a7-production-catalog-evidence-2026-08.json` byte-identical) |
@@ -428,6 +428,11 @@ correction; U043 substance unchanged):
 | `PRODUCTION_DATABASE_ACCESS_COUNT` | 0 |
 | `PRODUCTION_DEPLOYMENT_COUNT` / `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E6`/`E7`/`E8`/`E9` scope / `OUT_OF_SCOPE_FILE_COUNT` | 0 |
+| `POST_SHIM_PHASE_COUNT` | 3 |
+| `POSTCONDITION_REQUIRES_SELF_FINISHED_AT_COUNT` | 0 |
+| `STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` | 0 |
+| `STALE_RAW_GUARD_MUTUAL_EXCLUSIVITY_CLAIM_COUNT` | 0 |
+| `STALE_UNQUALIFIED_GUARD_OVERLAP_ZERO_CLAIM_COUNT` | 0 |
 
 Prior phase **CI-R3A.8** (historical, for reference):
 
@@ -451,12 +456,15 @@ Prior phase **CI-R3A.8** (historical, for reference):
 `STALE_DDL_AUTHORITY_CLAIM_COUNT` = 0 (creation vs evolution DDL separated — §5/§6);
 `STALE_CHECKSUM_CRITICALITY_CLAIM_COUNT` = 0 (checksum unknowns removed — §9/§10);
 `STALE_MODEL_HISTORY_CLAIM_COUNT` = 0 (`TripRepair` = 17019787; not all nine at 77c26dad);
-`STALE_U042_U043_STATUS_CLAIM_COUNT` = 0 (current statuses in §17f; §17e marked superseded where needed);
+`STALE_U042_U043_STATUS_CLAIM_COUNT` = 0 (current statuses in §17f/§17g; §17e marked superseded where needed);
 `STALE_U042_ATOMIC_WORKFLOW_CLAIM_COUNT` = 0;
 `STALE_U042_ZERO_PARTIAL_PERSISTENCE_CLAIM_COUNT` = 0;
 `STALE_U042_COMPLETE_GUARD_AUTHORITY_CLAIM_COUNT` = 0;
 `STALE_U042_TECHNICALLY_APPROVED_CLAIM_COUNT` = 0;
-`STALE_U042_AUTHORITY_CLAIM_COUNT` = 0.
+`STALE_U042_AUTHORITY_CLAIM_COUNT` = 0;
+`STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` = 0;
+`STALE_RAW_GUARD_MUTUAL_EXCLUSIVITY_CLAIM_COUNT` = 0;
+`STALE_UNQUALIFIED_GUARD_OVERLAP_ZERO_CLAIM_COUNT` = 0.
 Superseded prior values (universe 54; 56 grouped unknowns; grouped ID ranges; "all nine models at
 77c26dad") are marked "SUPERSEDED BY CI-R3A.4".
 
@@ -833,7 +841,7 @@ Corrected decision-package authority (same file, corrected at branch head `1dea0
 | Target file | 11 statements; `TARGET_MIGRATION_EXPLICIT_BEGIN_COUNT` = 0; `TARGET_MIGRATION_EXPLICIT_COMMIT_COUNT` = 0; `TARGET_FILE_ATOMICITY_AUTHORITY` = PINNED_BEHAVIOR_REQUIRES_REPLAY_CONFIRMATION (Prisma CLI 5.22.0 / engine 605197351a3c8bdd595af2d2a9bc3025bca48ea2) |
 | Persistence windows | 2 documented (`U042_CROSS_MIGRATION_PERSISTENCE_WINDOW_COUNT` = 2); `U042_PARTIAL_PERSISTENCE_RISK_PRESENT` = YES; `U042_ZERO_PARTIAL_PERSISTENCE_PROVEN` = NO |
 | Recovery states | R01–R04 documented (`U042_RECOVERY_STATE_ROW_COUNT` = 4; overlap 0); authority only — not executable |
-| Guard model | mutually exclusive first-match evaluation order; `U042_GUARD_ROW_OVERLAP_COUNT` = 0; `U042_GUARD_STATE_SPACE_STATUS` = INCOMPLETE_PENDING_EXECUTABLE_REPLAY; `U042_UNCLASSIFIED_STATE_COUNT` = NOT_PROVEN_ZERO |
+| Guard model | precedence-ordered deterministic first-match evaluation order (**SUPERSEDED BY CI-R3A.8.2 §17g** for self-row and raw/effective semantics); historical CI-R3A.8.1 claim `U042_GUARD_ROW_OVERLAP_COUNT` = 0 — **SUPERSEDED BY CI-R3A.8.2**; `U042_GUARD_STATE_SPACE_STATUS` = INCOMPLETE_PENDING_EXECUTABLE_REPLAY; `U042_UNCLASSIFIED_STATE_COUNT` = NOT_PROVEN_ZERO |
 | Fault injection | F01–F04 required (`U042_REQUIRED_FAULT_INJECTION_GATE_COUNT` = 4); executed 0; recovery procedures implemented 0, accepted 0 |
 | U042 status | `OPTION_J_CANDIDATE_WITH_UNRESOLVED_CROSS_MIGRATION_RECOVERY`; `INDEPENDENT_REVIEW_CORRECTION_REQUIRED`; `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY; `U042_INDEPENDENT_APPROVAL_PRESENT` = NO |
 | U043 status | independent evidence review **PASS**; all CI-R3A.8 counters unchanged; `AWAITING_PRODUCT_OWNER_DECISION` |
@@ -859,9 +867,133 @@ Superseded CI-R3A.8 claims (must not appear as current authority):
 | `PRODUCTION_DATABASE_ACCESS_COUNT` (this phase) | 0 |
 | `JSON_EVIDENCE_CHANGE_COUNT` | 0 |
 
-`CI_R3A81_CORRECTION_STATUS` = **COMPLETED** — U042 requires executable replay plus
-fault-injection/recovery proof; U043 requires explicit product-owner decision; CI-R3B remains blocked;
-E7/E8/E9 remain unstarted.
+`CI_R3A81_CORRECTION_STATUS` = **COMPLETED** — superseded for guard/self-row authority by §17g;
+transaction/persistence/recovery content remains valid.
+
+## 17g. CI-R3A.8.2 — Post-shim self-row and guard-semantics correction
+
+Independent review identified two remaining U042 authority defects in CI-R3A.8.1. This phase is
+documentation-only; no migration, schema, runtime, test, workflow, dependency or production change
+occurred. U043 substance is unchanged.
+
+#### Pinned Prisma execution sequence
+
+Independently verified at engine commit **`605197351a3c8bdd595af2d2a9bc3025bca48ea2`** (CLI **5.22.0**)
+in `schema-engine/commands/src/commands/apply_migrations.rs` and
+`schema-engine/connectors/sql-schema-connector/src/sql_migration_persistence.rs`:
+
+1. `record_migration_started` → INSERT `_prisma_migrations` row (`started_at` populated; `finished_at`
+   NULL)
+2. `apply_script` → execute migration SQL
+3. on success: `record_successful_step` → increment `applied_steps_count`
+4. on success: `record_migration_finished` → SET `finished_at`
+5. on failure: `record_failed_step` → write logs; **`finished_at` is not set**
+
+| Counter | Value |
+|---------|-------|
+| `PINNED_ENGINE_SOURCE_VERIFIED` | **YES** |
+| `MIGRATION_ROW_CREATED_BEFORE_SCRIPT` | **YES** |
+| `FINISHED_AT_NULL_DURING_SCRIPT` | **YES** |
+| `FINISHED_AT_SET_AFTER_SCRIPT_SUCCESS` | **YES** |
+
+#### Why former POST-FC01 was self-blocking
+
+CI-R3A.8.1 rule (**SUPERSEDED BY CI-R3A.8.2**):
+
+> POST-FC01: post-shim row present and (`finished_at` is null or `rolled_back_at` is not null) → FAIL_CLOSED
+
+That predicate matched the post-shim's own normal active migration row during `apply_script` and
+prevented POST-ACT01 and POST-NOOP01 from ever executing.
+
+#### Corrected post-shim authority
+
+During normal post-shim execution, exactly **one** expected current active self-row is present
+(`finished_at` NULL, `rolled_back_at` NULL, `started_at` NOT NULL). This is
+`EXPECTED_CURRENT_ATTEMPT`, not a failure condition. The migration SQL must not require its own row
+to already be finished. Prisma's `detect_failed_migrations()` preflight (between migrations) remains
+relevant for prior **unresolved** failed rows — it must not be misrepresented as an in-script
+`finished_at` check on the current attempt.
+
+| Counter | Value |
+|---------|-------|
+| `EXPECTED_ACTIVE_POST_SHIM_SELF_ROW_COUNT` | **1** |
+| `POST_SHIM_SELF_ROW_FALSE_FAILURE_COUNT` | **0** |
+| `STALE_UNRESOLVED_POST_SHIM_ATTEMPT_ALLOWED_COUNT` | **0** |
+
+#### Three-phase post-shim model
+
+| Phase | Name | Authority |
+|-------|------|-----------|
+| A | Precondition evaluation | POST-PRE-FC01–04 (history) + catalog predicates before action SQL |
+| B | Action | POST-ACT01 (fresh replay rename) or POST-NOOP01 (existing-applied no-op) — candidate only |
+| C | In-script postcondition assertions | verify lowercase final state; self-row still `finished_at` NULL inside `apply_script` |
+
+| Counter | Value |
+|---------|-------|
+| `POST_SHIM_PHASE_COUNT` | **3** |
+| `POST_SHIM_PRECONDITION_PHASE_PRESENT` | **YES** |
+| `POST_SHIM_ACTION_PHASE_PRESENT` | **YES** |
+| `POST_SHIM_POSTCONDITION_PHASE_PRESENT` | **YES** |
+| `POSTCONDITION_REQUIRES_SELF_FINISHED_AT_COUNT` | **0** |
+
+POST-FC01–POST-FC07 are **not** simply rerun after the action. Distinct names: POST-PRE-FC* (history
+preconditions), POST-ACT01/POST-NOOP01 (action), Phase C postcondition assertions.
+
+#### Reachability (logical authority only — not executable replay)
+
+| Path | Outcome |
+|------|---------|
+| Fresh replay | POST-ACT01 reachable (`POST_ACTION_PATH_SELF_BLOCKED` = NO) |
+| Existing-applied database | POST-NOOP01 reachable (`POST_NOOP_PATH_SELF_BLOCKED` = NO) |
+
+#### Raw vs effective guard semantics
+
+First-match precedence makes **effective outcomes** disjoint; raw predicates may overlap.
+
+| Counter | Value |
+|---------|-------|
+| `U042_RAW_GUARD_PREDICATE_OVERLAP_COUNT` | **NOT_PROVEN_ZERO** |
+| `U042_EFFECTIVE_OUTCOME_OVERLAP_COUNT` | **0** |
+| `U042_EFFECTIVE_OUTCOME_DEFINITION_PRESENT` | **YES** |
+| `U042_FIRST_MATCH_PRECEDENCE_PRESENT` | **YES** |
+| `U042_RAW_PREDICATES_CLAIMED_MUTUALLY_EXCLUSIVE` | **NO** |
+
+Do not describe the model as "mutually exclusive raw predicates". Use **precedence-ordered
+deterministic guard model**.
+
+#### R04 correction
+
+The expected current active post-shim self-row during normal `apply_script` is **not** R04. R04 applies
+only to a genuinely failed or abandoned post-shim attempt after `apply_script` failure.
+
+| Counter | Value |
+|---------|-------|
+| `EXPECTED_ACTIVE_SELF_ROW_MISCLASSIFIED_AS_R04_COUNT` | **0** |
+
+#### Superseded CI-R3A.8.1 claims (must not appear as current authority)
+
+- POST-FC01 treating the active self-row as FAIL_CLOSED — **SUPERSEDED BY CI-R3A.8.2**
+- `U042_GUARD_ROW_OVERLAP_COUNT` = 0 as proof of non-overlapping raw predicates — **SUPERSEDED BY CI-R3A.8.2**
+- "mutually exclusive raw predicates" — **NO** (`U042_RAW_PREDICATES_CLAIMED_MUTUALLY_EXCLUSIVE` = NO)
+- POST-FC01–POST-FC07 rerun as post-action guards — **SUPERSEDED BY CI-R3A.8.2** (three-phase model)
+- executable replay completed in this phase — **NO**
+- CI-R3B may begin — **NO**
+
+| Counter | Value |
+|---------|-------|
+| `STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` | **0** |
+| `STALE_RAW_GUARD_MUTUAL_EXCLUSIVITY_CLAIM_COUNT` | **0** |
+| `STALE_UNQUALIFIED_GUARD_OVERLAP_ZERO_CLAIM_COUNT` | **0** |
+| `U043_INDEPENDENT_EVIDENCE_REVIEW` | **PASS** (substance unchanged) |
+| `U043_STATUS` | **AWAITING_PRODUCT_OWNER_DECISION** |
+| `U043_RESOLVED_COUNT` | **0** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+| `PRODUCTION_DATABASE_ACCESS_COUNT` (this phase) | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+`CI_R3A82_CORRECTION_STATUS` = **COMPLETED** — U042 documentation authority corrected for self-row
+lifecycle and guard semantics; executable replay plus fault-injection/recovery proof still required;
+U043 product decision still open; CI-R3B remains blocked; E7/E8/E9 remain unstarted.
 
 ## 18. Final audit status
 
@@ -871,14 +1003,14 @@ CREATE-vs-evolution DDL separation, the 55-file classified universe, a mechanica
 `ci-r3a7-production-catalog-evidence-2026-08.json`)** are complete and internally consistent. Option
 **D** is a SAFE_CANDIDATE for the base-gap and is **production-authorized** against captured lowercase
 shapes; casing repair remains an Option J **candidate only** with unresolved cross-migration recovery
-(`INSUFFICIENT_AUTHORITY` — U042, §17f); orphan `brake_trip_metrics` remains a product decision (U043,
-§17e/§17f).
+(`INSUFFICIENT_AUTHORITY` — U042, §17f/§17g); orphan `brake_trip_metrics` remains a product decision
+(U043, §17e/§17f).
 
-**Status: CI_R3A81_CORRECTION_COMPLETED** — repository audit complete; live propositions U001–U041
-resolved from committed sanitized evidence; U042 Option J candidate documented but independent review
-correction required (executable replay + fault-injection/recovery proof pending); U043 evidence
-review PASS with product decision still open. CI-R3B implementation remains blocked on both blockers;
-E7/E8/E9 remain unstarted.
+**Status: CI_R3A82_CORRECTION_COMPLETED** — repository audit complete; live propositions U001–U041
+resolved from committed sanitized evidence; U042 Option J candidate documented with CI-R3A.8.2
+self-row/guard-semantics correction (§17g) but executable replay + fault-injection/recovery proof still
+pending; U043 evidence review PASS with product decision still open. No executable replay claimed in
+CI-R3A.8.2. CI-R3B implementation remains blocked on both blockers; E7/E8/E9 remain unstarted.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 
