@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "slot": 7,
+      "constraint": "vendor_vehicles_vehicle_id_fkey",
+      "local_relation": "vendor_vehicles",
+      "local_columns": [
+        "vehicle_id"
+      ],
+      "referenced_relation": "vehicles",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 5,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 7,
+      "constraint": "vendor_vehicles_vendor_id_fkey",
+      "local_relation": "vendor_vehicles",
+      "local_columns": [
+        "vendor_id"
+      ],
+      "referenced_relation": "vendors",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 6,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 7,
+      "constraint": "vendors_organization_id_fkey",
+      "local_relation": "vendors",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 7,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 9,
+      "constraint": "tires_tire_set_id_fkey",
+      "local_relation": "tires",
+      "local_columns": [
+        "tire_set_id"
+      ],
+      "referenced_relation": "vehicle_tire_setups",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 5,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 9,
+      "constraint": "tires_vehicle_id_fkey",
+      "local_relation": "tires",
+      "local_columns": [
+        "vehicle_id"
+      ],
+      "referenced_relation": "vehicles",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 6,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 10,
+      "constraint": "vehicle_damage_images_damage_id_fkey",
+      "local_relation": "vehicle_damage_images",
+      "local_columns": [
+        "damage_id"
+      ],
+      "referenced_relation": "vehicle_damages",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 5,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 10,
+      "constraint": "vehicle_damages_vehicle_id_fkey",
+      "local_relation": "vehicle_damages",
+      "local_columns": [
+        "vehicle_id"
+      ],
+      "referenced_relation": "vehicles",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 6,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "constraint": "org_whatsapp_configs_organization_id_fkey",
+      "local_relation": "org_whatsapp_configs",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 5,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "constraint": "whatsapp_conversations_organization_id_fkey",
+      "local_relation": "whatsapp_conversations",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 6,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "constraint": "whatsapp_messages_conversation_id_fkey",
+      "local_relation": "whatsapp_messages",
+      "local_columns": [
+        "conversation_id"
+      ],
+      "referenced_relation": "whatsapp_conversations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 7,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 11,
+      "constraint": "whatsapp_messages_organization_id_fkey",
+      "local_relation": "whatsapp_messages",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 8,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "constraint": "tire_health_snapshots_tire_id_fkey",
+      "local_relation": "tire_health_snapshots",
+      "local_columns": [
+        "tire_id"
+      ],
+      "referenced_relation": "tires",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 3,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "constraint": "tire_health_snapshots_tire_set_id_fkey",
+      "local_relation": "tire_health_snapshots",
+      "local_columns": [
+        "tire_set_id"
+      ],
+      "referenced_relation": "vehicle_tire_setups",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 4,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "constraint": "tire_health_snapshots_vehicle_id_fkey",
+      "local_relation": "tire_health_snapshots",
+      "local_columns": [
+        "vehicle_id"
+      ],
+      "referenced_relation": "vehicles",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 5,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "constraint": "tire_wear_data_points_tire_set_id_fkey",
+      "local_relation": "tire_wear_data_points",
+      "local_columns": [
+        "tire_set_id"
+      ],
+      "referenced_relation": "vehicle_tire_setups",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 6,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 12,
+      "constraint": "tire_wear_data_points_vehicle_id_fkey",
+      "local_relation": "tire_wear_data_points",
+      "local_columns": [
+        "vehicle_id"
+      ],
+      "referenced_relation": "vehicles",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 7,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "constraint": "dashboard_insight_runs_organization_id_fkey",
+      "local_relation": "dashboard_insight_runs",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 6,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "constraint": "dashboard_insights_organization_id_fkey",
+      "local_relation": "dashboard_insights",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 7,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 15,
+      "constraint": "dashboard_insights_run_id_fkey",
+      "local_relation": "dashboard_insights",
+      "local_columns": [
+        "run_id"
+      ],
+      "referenced_relation": "dashboard_insight_runs",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 8,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    },
+    {
+      "slot": 16,
+      "constraint": "chat_messages_organization_id_fkey",
+      "local_relation": "chat_messages",
+      "local_columns": [
+        "organization_id"
+      ],
+      "referenced_relation": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "action_order": 2,
+      "local_relation_available_before": true,
+      "local_columns_available_before": true,
+      "referenced_relation_available_before": true,
+      "referenced_columns_available_before": true,
+      "valid": true
+    }
+  ]
+}
