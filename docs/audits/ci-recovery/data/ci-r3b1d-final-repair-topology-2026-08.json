@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "supersedes": null,
+  "target_first_consumer": "20260613210000_vendor_management_overhaul",
+  "known_valid_objects": {
+    "ActivityEntity": {
+      "classification": "VALID",
+      "object_type": "enum",
+      "reason": "Created in init migration; extended by audit migrations before vendor overhaul",
+      "creator_migration": "20260311224040_init",
+      "evidence": [
+        "backend/prisma/migrations/20260311224040_init/migration.sql:CREATE TYPE ActivityEntity",
+        "backend/prisma/migrations/20260412040000_audit_consent_provenance/migration.sql:ALTER TYPE ActivityEntity"
+      ]
+    },
+    "org_invoices": {
+      "classification": "VALID",
+      "object_type": "table",
+      "reason": "Historical predecessor repaired in CI-R3B1B slot 4",
+      "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "evidence": [
+        "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:CREATE TABLE org_invoices",
+        "ci-r3b1b-historical-predecessor-repair-full-replay-2026-08.md:slot 4"
+      ]
+    }
+  },
+  "primary_historical_defects": [
+    "VendorCategory",
+    "vendors",
+    "vendor_vehicles"
+  ],
+  "required_repair_closure_objects": [
+    "VendorSourceType"
+  ],
+  "slots": [
+    {
+      "slot": 7,
+      "after_migration": "20260613200000_booking_document_lifecycle",
+      "before_migration": "20260613210000_vendor_management_overhaul",
+      "objects_types_sequences_created": [
+        "VendorCategory",
+        "VendorSourceType",
+        "vendor_vehicles",
+        "vendors"
+      ],
+      "actions": [
+        {
+          "order": 1,
+          "action": "CREATE TYPE",
+          "object": "VendorCategory",
+          "object_type": "enum",
+          "labels": [
+            "WORKSHOP",
+            "SERVICE_PARTNER",
+            "PAINT_SHOP",
+            "BODY_REPAIR",
+            "AUTO_GLASS",
+            "TIRE_DEALER",
+            "PARTS_DEALER",
+            "DETAILING",
+            "TUV_STATION",
+            "ONLINE_SUPPLIER",
+            "OTHER"
+          ],
+          "justification": "enum repair object VendorCategory"
+        },
+        {
+          "order": 2,
+          "action": "CREATE TYPE",
+          "object": "VendorSourceType",
+          "object_type": "enum",
+          "labels": [
+            "LOCAL_BUSINESS",
+            "ONLINE_VENDOR"
+          ],
+          "justification": "enum repair object VendorSourceType"
+        },
+        {
+          "order": 3,
+          "action": "CREATE TYPE",
+          "object": "VendorCategory",
+          "object_type": "enum",
+          "justification": "required by vendors column types"
+        },
+        {
+          "order": 4,
+          "action": "CREATE TYPE",
+          "object": "VendorSourceType",
+          "object_type": "enum",
+          "justification": "required by vendors column types"
+        },
+        {
+          "order": 5,
+          "action": "CREATE TABLE",
+          "object": "vendors",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 6,
+          "action": "ADD CONSTRAINT",
+          "object": "vendors_organization_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['organization_id'] -> organizations",
+          "fk": {
+            "local_columns": [
+              "organization_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "organizations",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:Vendor.organizationId->@Organization"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation organizations preexists"
+            ]
+          }
+        },
+        {
+          "order": 7,
+          "action": "CREATE INDEX",
+          "object": "vendors_organization_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['organization_id']"
+        },
+        {
+          "order": 8,
+          "action": "CREATE INDEX",
+          "object": "vendors_category_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['category']"
+        },
+        {
+          "order": 9,
+          "action": "CREATE TABLE",
+          "object": "vendor_vehicles",
+          "object_type": "table",
+          "justification": "primary repair object"
+        },
+        {
+          "order": 10,
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vehicle_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "FK ['vehicle_id'] -> vehicles",
+          "fk": {
+            "local_columns": [
+              "vehicle_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vehicles",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": true,
+            "evidence": [
+              "schema:VendorVehicle.vehicleId->@Vehicle"
+            ],
+            "chronology": "REQUIRED_AT_TABLE_CREATE",
+            "chronology_evidence": [
+              "referenced relation vehicles preexists"
+            ]
+          }
+        },
+        {
+          "order": 11,
+          "action": "CREATE INDEX",
+          "object": "vendor_vehicles_vendor_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vendor_id']"
+        },
+        {
+          "order": 12,
+          "action": "CREATE INDEX",
+          "object": "vendor_vehicles_vehicle_id_idx",
+          "object_type": "index",
+          "justification": "historical @@index ['vehicle_id']"
+        },
+        {
+          "order": 13,
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vendor_id_vehicle_id_key",
+          "object_type": "unique",
+          "justification": "unique ['vendor_id', 'vehicle_id']"
+        },
+        {
+          "order": 14,
+          "action": "ADD CONSTRAINT",
+          "object": "vendor_vehicles_vendor_id_fkey",
+          "object_type": "foreign_key",
+          "justification": "Deferred vendors FK resolved after vendors CREATE in slot 7",
+          "fk": {
+            "local_columns": [
+              "vendor_id"
+            ],
+            "referenced_schema": "public",
+            "referenced_relation": "vendors",
+            "referenced_columns": [
+              "id"
+            ],
+            "on_delete": "CASCADE",
+            "on_update": "CASCADE",
+            "constraint_name": null,
+            "required_before_first_consumer": false,
+            "evidence": [
+              "schema:VendorVehicle.vendorId->@Vendor"
+            ],
+            "chronology": "CAN_BE_DEFERRED_TO_LATER_REPAIR_SLOT",
+            "chronology_evidence": [
+              "vendors repair object in same slot 7 bootstrap; FK enforced after vendors CREATE TABLE"
+            ],
+            "defer_until_repair_slot": 7
+          },
+          "source_repair_object": "vendor_vehicles",
+          "resolves_deferred_from_slot": 7,
+          "resolution_type": "same_repair_slot"
+        }
+      ],
+      "deferred_actions": [],
+      "first_consumers_protected": [
+        "20260613210000_vendor_management_overhaul"
+      ],
+      "must_execute_after": [
+        "20260613200000_booking_document_lifecycle"
+      ],
+      "must_execute_before": [
+        "20260613210000_vendor_management_overhaul"
+      ],
+      "closure_validated": true,
+      "reason": "Vendor predecessor repair slot between booking_document_lifecycle and vendor_management_overhaul"
+    }
+  ]
+}
