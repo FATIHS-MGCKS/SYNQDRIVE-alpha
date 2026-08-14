@@ -6,9 +6,10 @@
 
 Supersedes repair topology implementation authority candidate: `data/ci-r3b1a3-final-repair-topology-2026-08.json` → `data/ci-r3b1a31-final-repair-topology-2026-08.json`.
 
----
+> **Superseded for document-extraction FK / slot-3 topology by CI-R3B1A.3.2:**  
+> See `ci-r3b1a32-document-extraction-fk-authority-resolution-2026-08.md` and `data/ci-r3b1a32-*` artifacts.
 
-## Baseline
+---
 
 | Field | Value |
 |-------|-------|

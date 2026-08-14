@@ -14,7 +14,6 @@ PREEXISTING_TABLES = {
 # Tables created only after scan scope or with no CREATE in scope through target.
 POST_SCOPE_OR_MISSING_TABLES = {
     "fines",
-    "vehicle_document_extractions",
 }
 
 REPAIR_SLOT_SPECS: list[dict[str, Any]] = [
@@ -34,7 +33,7 @@ REPAIR_SLOT_SPECS: list[dict[str, Any]] = [
         "slot": 3,
         "after_migration": "20260413183000_brake_health_canonical_refactor",
         "before_migration": "20260413220000_battery_evidence_unique_dedup",
-        "objects": ["battery_evidence"],
+        "objects": ["vehicle_document_extractions", "battery_evidence"],
     },
     {
         "slot": 4,
@@ -63,6 +62,7 @@ OBJECT_SLOT = {
 FIRST_CONSUMER_BY_OBJECT = {
     "org_tasks": "20260412030000_platform_hardening_phase1",
     "brake_health_current": "20260413183000_brake_health_canonical_refactor",
+    "vehicle_document_extractions": "20260613000000_document_extraction_pipeline",
     "battery_evidence": "20260413220000_battery_evidence_unique_dedup",
     "org_invoices": "20260413230000_add_composite_indexes_batch_c",
     "vehicle_dtc_events": "20260413230000_add_composite_indexes_batch_c",
@@ -71,6 +71,16 @@ FIRST_CONSUMER_BY_OBJECT = {
 }
 
 CREATION_ACTION_TYPES = {"CREATE TYPE", "CREATE SEQUENCE", "CREATE TABLE"}
+
+PRIMARY_HISTORICAL_DEFECTS = {
+    "org_tasks",
+    "brake_health_current",
+    "battery_evidence",
+    "org_invoices",
+    "vehicle_dtc_events",
+    "InsightType",
+    "vehicle_driving_impact_current",
+}
 
 DEFERRED_FK_RESOLUTIONS: dict[tuple[str, tuple[str, ...], str], dict[str, Any]] = {
     ("org_tasks", ("fine_id",), "fines"): {
@@ -95,13 +105,26 @@ DEFERRED_FK_RESOLUTIONS: dict[tuple[str, tuple[str, ...], str], dict[str, Any]] 
         ],
     },
     ("battery_evidence", ("document_extraction_id",), "vehicle_document_extractions"): {
-        "resolution_type": "intentionally_absent",
+        "resolution_type": "later_repair_slot",
         "deferred_from_slot": 3,
-        "reason_deferred": "No historical FK SQL for battery_evidence.document_extraction_id; target table has no CREATE in scan scope",
+        "resolution_slot": 3,
+        "resolution_action": 'ADD CONSTRAINT "battery_evidence_document_extraction_id_fkey"',
+        "reason_deferred": (
+            "vehicle_document_extractions has no historical CREATE TABLE; repair creates table in slot 3 "
+            "before battery_evidence FK enforcement"
+        ),
+        "historical_relation_mode": "foreignKeys",
+        "physical_fk_expected": True,
+        "referenced_table_classification": "MISSING_HISTORY",
+        "referenced_table_first_sql_consumer": "20260613000000_document_extraction_pipeline",
+        "historical_fk_sql_found": False,
+        "physical_fk_classification": "DEFERRED_PHYSICAL_FK",
         "evidence": [
+            "schema:17019787:BatteryEvidence.documentExtractionId->@VehicleDocumentExtraction with default relationMode (foreignKeys)",
             "grep: no battery_evidence_document_extraction_id_fkey in backend/prisma/migrations",
-            "vehicle_document_extractions: no CREATE TABLE in migrations through scan scope",
-            "first consumer 20260413220000_battery_evidence_unique_dedup does not enforce FK",
+            "grep: no CREATE TABLE vehicle_document_extractions in any committed migration",
+            "comparandum: brake_evidence_document_extraction_id_fkey in 20260613234500_brake_evidence_model/migration.sql:79-80",
+            "first SQL table consumer: 20260613000000_document_extraction_pipeline ALTER TABLE vehicle_document_extractions",
         ],
     },
 }
@@ -129,6 +152,8 @@ def get_deferred_fk_resolution(table: str, fk: dict[str, Any]) -> dict[str, Any]
         **resolution,
         "resolved": True,
     }
+    if resolution.get("resolution_type") == "intentionally_absent":
+        out["absence_authority"] = resolution.get("absence_authority") or {}
     return out
 
 
@@ -161,8 +186,11 @@ FK_CHRONOLOGY_OVERRIDES: dict[tuple[str, tuple[str, ...], str], dict[str, Any]] 
     ("battery_evidence", ("document_extraction_id",), "vehicle_document_extractions"): {
         "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
         "required_before_first_consumer": False,
-        "reason": "nullable FK target table has no CREATE in scan scope; first consumer only dedups/indexes",
-        "defer_until_object_available": "vehicle_document_extractions",
+        "reason": (
+            "vehicle_document_extractions MISSING_HISTORY globally; column required at battery_evidence "
+            "CREATE; physical FK deferred to slot 3 after vehicle_document_extractions repair CREATE"
+        ),
+        "defer_until_repair_slot": 3,
     },
     ("battery_evidence", ("service_event_id",), "vehicle_service_events"): {
         "chronology": "REQUIRED_AT_TABLE_CREATE",
@@ -503,18 +531,21 @@ def build_repair_topology(contracts_by_object: dict[str, dict[str, Any]]) -> lis
 
 
 def primary_and_closure_sets(contracts: list[dict[str, Any]]) -> dict[str, Any]:
-    primary = sorted(c["object"] for c in contracts)
+    primary = sorted(c["object"] for c in contracts if c["object"] in PRIMARY_HISTORICAL_DEFECTS)
+    primary_set = set(primary)
     closure_only: set[str] = set()
     for c in contracts:
+        if c["object"] not in primary_set:
+            closure_only.add(c["object"])
         for dep in c.get("enum_dependencies", []):
-            if dep["name"] not in primary:
+            if dep["name"] not in primary_set:
                 closure_only.add(dep["name"])
         for col in c.get("columns", []):
             gen = col.get("generation") or {}
-            if gen.get("sequence_name") and gen["sequence_name"] not in primary:
+            if gen.get("sequence_name") and gen["sequence_name"] not in primary_set:
                 closure_only.add(gen["sequence_name"])
     return {
         "primary_historical_defects": primary,
         "required_repair_closure_objects": sorted(closure_only),
-        "total_implementation_objects": sorted(set(primary) | closure_only),
+        "total_implementation_objects": sorted(primary_set | closure_only),
     }
