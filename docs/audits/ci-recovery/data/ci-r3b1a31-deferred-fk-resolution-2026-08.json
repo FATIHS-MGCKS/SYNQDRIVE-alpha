@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "supersedes": null,
+  "topology_artifact": "ci-r3b1a31-final-repair-topology-2026-08.json",
+  "records": [
+    {
+      "source_relation": "org_tasks",
+      "local_columns": [
+        "fine_id"
+      ],
+      "referenced_relation": "fines",
+      "referenced_columns": [
+        "id"
+      ],
+      "on_delete": "SET NULL",
+      "on_update": "CASCADE",
+      "resolution_type": "historical_migration",
+      "deferred_from_slot": 1,
+      "resolution_migration": "20260715170000_org_task_fine_invoice_links",
+      "resolution_action": "ADD CONSTRAINT \"org_tasks_fine_id_fkey\"",
+      "reason_deferred": "fines table has no CREATE in scan scope before org_tasks first consumer",
+      "evidence": [
+        "backend/prisma/migrations/20260715170000_org_task_fine_invoice_links/migration.sql:59-65"
+      ],
+      "resolved": true
+    },
+    {
+      "source_relation": "org_tasks",
+      "local_columns": [
+        "invoice_id"
+      ],
+      "referenced_relation": "org_invoices",
+      "referenced_columns": [
+        "id"
+      ],
+      "on_delete": "SET NULL",
+      "on_update": "CASCADE",
+      "resolution_type": "later_repair_slot",
+      "deferred_from_slot": 1,
+      "resolution_slot": 4,
+      "resolution_action": "ADD CONSTRAINT \"org_tasks_invoice_id_fkey\"",
+      "reason_deferred": "org_invoices repair slot 4 follows org_tasks slot 1",
+      "evidence": [
+        "ci-r3b1a3-predecessor-ddl-contracts: org_tasks.invoice_id column REQUIRED_AT_TABLE_CREATE",
+        "ci-r3b1a31-final-repair-topology slot 4 action after CREATE TABLE org_invoices"
+      ],
+      "resolved": true
+    },
+    {
+      "source_relation": "battery_evidence",
+      "local_columns": [
+        "document_extraction_id"
+      ],
+      "referenced_relation": "vehicle_document_extractions",
+      "referenced_columns": [
+        "id"
+      ],
+      "on_delete": "SET NULL",
+      "on_update": "CASCADE",
+      "resolution_type": "intentionally_absent",
+      "deferred_from_slot": 3,
+      "reason_deferred": "No historical FK SQL for battery_evidence.document_extraction_id; target table has no CREATE in scan scope",
+      "evidence": [
+        "grep: no battery_evidence_document_extraction_id_fkey in backend/prisma/migrations",
+        "vehicle_document_extractions: no CREATE TABLE in migrations through scan scope",
+        "first consumer 20260413220000_battery_evidence_unique_dedup does not enforce FK"
+      ],
+      "resolved": true
+    }
+  ],
+  "total_deferred_fks": 3,
+  "unresolved_deferred_fks": []
+}

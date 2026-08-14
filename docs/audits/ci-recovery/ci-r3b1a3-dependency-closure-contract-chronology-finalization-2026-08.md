@@ -4,6 +4,11 @@
 **PR:** [#1031](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1031)  
 **Branch:** `fix/ci-r3b-vehicle-trips-migration-replay-2026-08`
 
+> **Superseded for repair topology authority by CI-R3B1A.3.1:**  
+> `data/ci-r3b1a3-final-repair-topology-2026-08.json` → `data/ci-r3b1a31-final-repair-topology-2026-08.json`  
+> See `ci-r3b1a31-final-topology-consistency-cleanup-2026-08.md`.  
+> Contracts, closure, and matrix artifacts from this phase remain authoritative unless superseded separately.
+
 ---
 
 ## Baseline

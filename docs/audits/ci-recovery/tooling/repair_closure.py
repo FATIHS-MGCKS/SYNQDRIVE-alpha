@@ -70,6 +70,76 @@ FIRST_CONSUMER_BY_OBJECT = {
     "vehicle_driving_impact_current": "20260422010000_vehicle_current_safety_score",
 }
 
+CREATION_ACTION_TYPES = {"CREATE TYPE", "CREATE SEQUENCE", "CREATE TABLE"}
+
+DEFERRED_FK_RESOLUTIONS: dict[tuple[str, tuple[str, ...], str], dict[str, Any]] = {
+    ("org_tasks", ("fine_id",), "fines"): {
+        "resolution_type": "historical_migration",
+        "deferred_from_slot": 1,
+        "resolution_migration": "20260715170000_org_task_fine_invoice_links",
+        "resolution_action": 'ADD CONSTRAINT "org_tasks_fine_id_fkey"',
+        "reason_deferred": "fines table has no CREATE in scan scope before org_tasks first consumer",
+        "evidence": [
+            "backend/prisma/migrations/20260715170000_org_task_fine_invoice_links/migration.sql:59-65",
+        ],
+    },
+    ("org_tasks", ("invoice_id",), "org_invoices"): {
+        "resolution_type": "later_repair_slot",
+        "deferred_from_slot": 1,
+        "resolution_slot": 4,
+        "resolution_action": 'ADD CONSTRAINT "org_tasks_invoice_id_fkey"',
+        "reason_deferred": "org_invoices repair slot 4 follows org_tasks slot 1",
+        "evidence": [
+            "ci-r3b1a3-predecessor-ddl-contracts: org_tasks.invoice_id column REQUIRED_AT_TABLE_CREATE",
+            "ci-r3b1a31-final-repair-topology slot 4 action after CREATE TABLE org_invoices",
+        ],
+    },
+    ("battery_evidence", ("document_extraction_id",), "vehicle_document_extractions"): {
+        "resolution_type": "intentionally_absent",
+        "deferred_from_slot": 3,
+        "reason_deferred": "No historical FK SQL for battery_evidence.document_extraction_id; target table has no CREATE in scan scope",
+        "evidence": [
+            "grep: no battery_evidence_document_extraction_id_fkey in backend/prisma/migrations",
+            "vehicle_document_extractions: no CREATE TABLE in migrations through scan scope",
+            "first consumer 20260413220000_battery_evidence_unique_dedup does not enforce FK",
+        ],
+    },
+}
+
+
+def fk_key(table: str, fk: dict[str, Any]) -> tuple[str, tuple[str, ...], str]:
+    return (table, tuple(fk["local_columns"]), fk["referenced_relation"])
+
+
+def get_deferred_fk_resolution(table: str, fk: dict[str, Any]) -> dict[str, Any] | None:
+    chron = fk.get("chronology", "")
+    if not chron.startswith("CAN_BE_DEFERRED"):
+        return None
+    key = fk_key(table, fk)
+    resolution = DEFERRED_FK_RESOLUTIONS.get(key)
+    if resolution is None:
+        return None
+    out = {
+        "source_relation": table,
+        "local_columns": fk["local_columns"],
+        "referenced_relation": fk["referenced_relation"],
+        "referenced_columns": fk["referenced_columns"],
+        "on_delete": fk.get("on_delete"),
+        "on_update": fk.get("on_update"),
+        **resolution,
+        "resolved": True,
+    }
+    return out
+
+
+def derive_created_objects_from_actions(actions: list[dict[str, Any]]) -> list[str]:
+    created: list[str] = []
+    for act in actions:
+        if act.get("action") in CREATION_ACTION_TYPES:
+            created.append(act["object"])
+    return sorted(set(created))
+
+
 FK_CHRONOLOGY_OVERRIDES: dict[tuple[str, tuple[str, ...], str], dict[str, Any]] = {
     ("org_tasks", ("fine_id",), "fines"): {
         "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
@@ -95,9 +165,9 @@ FK_CHRONOLOGY_OVERRIDES: dict[tuple[str, tuple[str, ...], str], dict[str, Any]] 
         "defer_until_object_available": "vehicle_document_extractions",
     },
     ("battery_evidence", ("service_event_id",), "vehicle_service_events"): {
-        "chronology": "CAN_BE_DEFERRED_TO_LATER_HISTORICAL_MIGRATION",
+        "chronology": "REQUIRED_AT_TABLE_CREATE",
         "required_before_first_consumer": False,
-        "reason": "nullable optional link; first consumer does not require FK enforcement",
+        "reason": "vehicle_service_events preexists from init; nullable FK may be enforced at repair CREATE without blocking first consumer",
     },
     ("vehicle_dtc_events", ("vehicle_id",), "vehicles"): {
         "chronology": "REQUIRED_AT_TABLE_CREATE",
@@ -228,10 +298,27 @@ def build_closure_record(
     }
 
 
-def ordered_actions_for_contract(repair_object: str, contract: dict[str, Any]) -> tuple[list[dict], list[dict]]:
+def ordered_actions_for_contract(repair_object: str, contract: dict[str, Any]) -> list[dict]:
+    """Return ordered topology actions for one contract (immediate only)."""
     actions: list[dict[str, Any]] = []
-    deferred: list[dict[str, Any]] = []
     order = 1
+    obj_type = contract.get("object_type", "table")
+
+    if obj_type == "enum":
+        actions.append(
+            {
+                "order": order,
+                "action": "CREATE TYPE",
+                "object": repair_object,
+                "object_type": "enum",
+                "labels": contract.get("labels", []),
+                "justification": f"enum repair object {repair_object}",
+            }
+        )
+        return actions
+
+    if obj_type != "table":
+        raise ValueError(f"unsupported contract object_type {obj_type} for {repair_object}")
 
     for dep in contract.get("enum_dependencies", []):
         actions.append(
@@ -272,19 +359,19 @@ def ordered_actions_for_contract(repair_object: str, contract: dict[str, Any]) -
 
     for fk in contract.get("foreign_keys", []):
         chron = fk.get("chronology", "")
-        entry = {
-            "order": order,
-            "action": "ADD CONSTRAINT",
-            "object": f"{repair_object}_{'_'.join(fk['local_columns'])}_fkey",
-            "object_type": "foreign_key",
-            "justification": f"FK {fk['local_columns']} -> {fk['referenced_relation']}",
-            "fk": fk,
-        }
         if chron.startswith("CAN_BE_DEFERRED"):
-            deferred.append(entry)
-        else:
-            actions.append(entry)
-            order += 1
+            continue
+        actions.append(
+            {
+                "order": order,
+                "action": "ADD CONSTRAINT",
+                "object": f"{repair_object}_{'_'.join(fk['local_columns'])}_fkey",
+                "object_type": "foreign_key",
+                "justification": f"FK {fk['local_columns']} -> {fk['referenced_relation']}",
+                "fk": fk,
+            }
+        )
+        order += 1
 
     for idx in contract.get("required_preexisting_indexes", []):
         cols = idx.get("columns", [])
@@ -311,7 +398,67 @@ def ordered_actions_for_contract(repair_object: str, contract: dict[str, Any]) -
         )
         order += 1
 
-    return actions, deferred
+    return actions
+
+
+def resolution_slot_actions(
+    slot: int,
+    contracts_by_object: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """ADD CONSTRAINT actions for deferred FKs resolved at this repair slot."""
+    out: list[dict[str, Any]] = []
+    for table, contract in contracts_by_object.items():
+        if contract.get("object_type") != "table":
+            continue
+        for fk in contract.get("foreign_keys", []):
+            resolution = get_deferred_fk_resolution(table, fk)
+            if not resolution:
+                continue
+            if resolution.get("resolution_type") != "later_repair_slot":
+                continue
+            if resolution.get("resolution_slot") != slot:
+                continue
+            out.append(
+                {
+                    "action": "ADD CONSTRAINT",
+                    "object": f"{table}_{'_'.join(fk['local_columns'])}_fkey",
+                    "object_type": "foreign_key",
+                    "justification": resolution["reason_deferred"],
+                    "fk": fk,
+                    "source_repair_object": table,
+                    "resolves_deferred_from_slot": resolution["deferred_from_slot"],
+                    "resolution_type": "later_repair_slot",
+                }
+            )
+    return out
+
+
+def build_deferred_fk_resolution_artifact(
+    contracts_by_object: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    records: list[dict[str, Any]] = []
+    for table, contract in contracts_by_object.items():
+        if contract.get("object_type") != "table":
+            continue
+        for fk in contract.get("foreign_keys", []):
+            resolution = get_deferred_fk_resolution(table, fk)
+            if resolution:
+                records.append(resolution)
+    unresolved = [
+        f"{table}.{fk['local_columns']}->{fk['referenced_relation']}"
+        for table, contract in contracts_by_object.items()
+        if contract.get("object_type") == "table"
+        for fk in contract.get("foreign_keys", [])
+        if fk.get("chronology", "").startswith("CAN_BE_DEFERRED")
+        and get_deferred_fk_resolution(table, fk) is None
+    ]
+    return {
+        "schema_version": 1,
+        "supersedes": None,
+        "records": records,
+        "total_deferred_fks": len(records),
+        "unresolved_deferred_fks": unresolved,
+    }
 
 
 def build_repair_topology(contracts_by_object: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -319,57 +466,31 @@ def build_repair_topology(contracts_by_object: dict[str, dict[str, Any]]) -> lis
     for spec in REPAIR_SLOT_SPECS:
         slot = spec["slot"]
         actions: list[dict[str, Any]] = []
-        deferred_actions: list[dict[str, Any]] = []
-        created: list[str] = []
         action_order = 1
         for obj in spec["objects"]:
             contract = contracts_by_object[obj]
-            obj_actions, obj_deferred = ordered_actions_for_contract(obj, contract)
-            for act in obj_actions:
+            for act in ordered_actions_for_contract(obj, contract):
                 act = dict(act)
                 act["order"] = action_order
                 action_order += 1
                 actions.append(act)
-            for dact in obj_deferred:
-                dact = dict(dact)
-                dact["order"] = action_order
-                action_order += 1
-                deferred_actions.append(dact)
-            if contract.get("object_type") == "enum":
-                created.append(obj)
-            else:
-                created.append(obj)
-                for dep in contract.get("enum_dependencies", []):
-                    if dep["name"] not in created:
-                        created.append(dep["name"])
 
-        # Cross-slot deferred FK: org_tasks -> org_invoices after slot 4 table exists
-        if slot == 4:
-            org_tasks = contracts_by_object.get("org_tasks")
-            if org_tasks:
-                for fk in org_tasks.get("foreign_keys", []):
-                    if fk["referenced_relation"] == "org_invoices":
-                        deferred_actions.append(
-                            {
-                                "order": action_order,
-                                "action": "ADD CONSTRAINT",
-                                "object": "org_tasks_invoice_id_fkey",
-                                "object_type": "foreign_key",
-                                "justification": "deferred from org_tasks slot 1; org_invoices now available",
-                                "fk": fk,
-                                "source_repair_object": "org_tasks",
-                            }
-                        )
-                        action_order += 1
+        for act in resolution_slot_actions(slot, contracts_by_object):
+            act = dict(act)
+            act["order"] = action_order
+            action_order += 1
+            actions.append(act)
+
+        created = derive_created_objects_from_actions(actions)
 
         topology.append(
             {
                 "slot": slot,
                 "after_migration": spec["after_migration"],
                 "before_migration": spec["before_migration"],
-                "objects_types_sequences_created": sorted(set(created)),
+                "objects_types_sequences_created": created,
                 "actions": actions,
-                "deferred_actions": deferred_actions,
+                "deferred_actions": [],
                 "first_consumers_protected": [
                     FIRST_CONSUMER_BY_OBJECT.get(o, spec["before_migration"]) for o in spec["objects"]
                 ],
