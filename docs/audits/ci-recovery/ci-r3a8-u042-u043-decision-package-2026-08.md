@@ -1,11 +1,11 @@
 # CI-R3A.8 — U042 / U043 decision authority package
 
-**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** (analysis and decision authority only)
+**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** (analysis and decision authority only)
 **Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08`
 **Base HEAD analysed:** `03de93b9179011525e12fd90f1399a501e2a7e5e`
-**Latest correction:** CI-R3A.8.3 (U042 guard definition, source authority and counter integrity)
-**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e, §17f, §17g, §17h)
-**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8 / CI-R3A.8.1 / CI-R3A.8.2 / CI-R3A.8.3)
+**Latest correction:** CI-R3A.9 (final authority closure and controlled CI-R3B entry authorization)
+**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17i)
+**Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8–CI-R3A.9)
 
 Pinned Prisma authority (read from `backend/package-lock.json` at analysed HEAD):
 
@@ -645,40 +645,53 @@ owned sequences.
 | **J (guarded retroactive pre/post shim)** | Append-only guard-first shims immediately before/after the target; target byte-identical | ordering (§2) + dependency proof (§4) documented; guard model corrected (§3); cross-migration persistence windows documented (§2b); recovery/fault-injection proof **not yet executed** | intended PRE-NOOP01 + POST-NOOP01 path when all fail-closed predicates false — not independently approved | **candidate only** — not safe, not accepted, not recovery-proven |
 | **No repair** | Leave the history broken | fresh replay stays red | production unaffected but no reproducible environment provisioning | rejected — the CI gate remains red |
 
-### 5a. U042 status (CI-R3A.8.1)
+### 5a. U042 status (CI-R3A.8.1 — historical; current authority §12)
 
-| Field | Value |
-|-------|-------|
+| Field | Value (CI-R3A.8.1) |
+|-------|---------------------|
 | `U042_TECHNICAL_RECOMMENDATION` | **OPTION_J_CANDIDATE_WITH_UNRESOLVED_CROSS_MIGRATION_RECOVERY** |
 | `U042_STATUS` | **INDEPENDENT_REVIEW_CORRECTION_REQUIRED** |
 | `CASING_STRATEGY_STATUS` | **INSUFFICIENT_AUTHORITY** |
 | `END_TO_END_R3B_STRATEGY_STATUS` | **BLOCKED** |
 | `U042_INDEPENDENT_APPROVAL_PRESENT` | **NO** |
-| `OPTION_B_STATUS` | **REJECTED_UNSAFE** |
-| `END_OF_HISTORY_REPAIR_STATUS` | **REJECTED_TOO_LATE** |
-| `DUMMY_TABLE_STATUS` | **REJECTED** |
-| `OPTION_J_IMPLEMENTATION_COUNT` | **0** |
-| `U042_RESOLVED_COUNT` | **0** |
 
 CI-R3A.8 values (`OPTION_J_GUARDED_PRE_POST_CANDIDATE`,
 `TECHNICALLY_SPECIFIED_PENDING_INDEPENDENT_APPROVAL_AND_REPLAY`, `CANDIDATE_NOT_IMPLEMENTED`) are
 **SUPERSEDED BY CI-R3A.8.1**.
 
-Option J is **not** safe, **not** accepted, **not** complete, **not** fully internally consistent,
-**not** replay-proven and **not** recovery-proven. It must **not** be approved for CI-R3B
-implementation until all gates below pass.
+Historical CI-R3A.8.1 wording (**SUPERSEDED BY CI-R3A.9**):
 
-Mandatory CI-R3B acceptance gates (none executed):
+> Option J must **not** be approved for CI-R3B implementation until all gates below pass.
 
-1. independent review of §1c transaction scope, §2b persistence windows, §3 guard model, §3.5 recovery
-   states and §3.6 recovery authority;
-2. pinned-engine replay confirmation of target-file atomicity (`TARGET_FILE_ATOMICITY_AUTHORITY`);
-3. full `prisma migrate deploy` replay on a **fresh empty database** reaching the current head;
-4. all four fault-injection gates F01–F04 executed with documented evidence;
-5. proof that the replayed schema equals the accepted CI-R3A.7.1 shape;
-6. proof that on an already-applied production-like database both shims resolve to PRE-NOOP01 +
-   POST-NOOP01 when all fail-closed predicates are false;
-7. no edit to any existing migration file and no checksum mutation.
+Option J is **not** safe, **not** finally accepted, **not** replay-proven and **not** recovery-proven.
+**Current authority (§12):** Option J is authorized only for controlled CI-R3B implementation and proof
+in isolated non-production environments. It is not finally accepted. CI-R3B must not be accepted,
+merged or deployed until all mandatory acceptance gates below pass.
+
+Mandatory CI-R3B acceptance gates:
+
+| # | Gate | Status (CI-R3A.9) |
+|---|------|-------------------|
+| 1 | independent review of §1c transaction scope, §2b persistence windows, §3 guard model, §3.5 recovery states and §3.6 recovery authority | **PASSED** (CI-R3A.8.3 independent review) |
+| 2 | pinned-engine replay confirmation of target-file atomicity (`TARGET_FILE_ATOMICITY_AUTHORITY`) | pending |
+| 3 | full `prisma migrate deploy` replay on a **fresh empty database** reaching the current head | pending |
+| 4 | all four fault-injection gates F01–F04 executed with documented evidence | pending |
+| 5 | proof that the replayed schema equals the accepted CI-R3A.7.1 shape | pending |
+| 6 | proof that on an already-applied production-like database both shims resolve to PRE-NOOP01 + POST-NOOP01 when all fail-closed predicates are false | pending |
+| 7 | no edit to any existing migration file and no checksum mutation | pending |
+
+| Counter | Value |
+|---------|-------|
+| `R3B_ACCEPTANCE_GATE_TOTAL_COUNT` | **7** |
+| `R3B_ACCEPTANCE_GATE_PASSED_COUNT` | **1** |
+| `R3B_ACCEPTANCE_GATE_PENDING_COUNT` | **6** |
+| `R3B_FINAL_ACCEPTANCE` | **NO** |
+| `R3B_MERGE_AUTHORIZED` | **NO** |
+| `R3B_DEPLOYMENT_AUTHORIZED` | **NO** |
+| `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | **0** |
+
+Gates 2–7 are CI-R3B **acceptance** gates — they must pass before final acceptance, merge or
+deployment. They are **not** preconditions that forbid writing the implementation being tested.
 
 ---
 
@@ -790,25 +803,36 @@ runtime usage plus dated zero-row evidence is *technical* support for removal on
 | Option | Required authority | Present? | Verdict |
 |--------|--------------------|----------|---------|
 | **RETAIN_AND_BOOTSTRAP** | (a) an active reader/writer, API contract or explicit product requirement; (b) executable bootstrap DDL matching the accepted live shape | (a) **absent** — 0 readers, 0 writers, 0 contracts, 0 retention requirements; (b) satisfiable — the accepted JSON gives the exact 11-column / 2-constraint / 3-index shape | **NOT_SUPPORTED** on authority (a) |
-| **DEPRECATE_AND_REMOVE** | 0 runtime readers/writers **and** 0 API/UI contract **and** orphan classification **and** canonical replacement path **and** no retention requirement **and** product-owner approval of a destructive change **and** a fresh production row-count/preflight immediately before any drop | all technical conditions met (§6/§7); **product-owner approval absent** (PA1); **fresh preflight not performed and must not be pre-performed here** | **TECHNICAL_CANDIDATE, NOT AUTHORIZED** |
-| **INSUFFICIENT_PRODUCT_AUTHORITY** | technical evidence supports removal while product ownership/roadmap authority is absent | exactly the current situation | **APPLIES** |
+| **DEPRECATE_AND_REMOVE** | 0 runtime readers/writers **and** 0 API/UI contract **and** orphan classification **and** canonical replacement path **and** no retention requirement **and** product-owner approval of a destructive change **and** a fresh production row-count/preflight immediately before any drop | all technical conditions met (§6/§7); product-owner decision recorded (§12); **fresh preflight not performed and must not be pre-performed here**; **removal not implemented in CI-R3A.9** | **PRODUCT_OWNER_APPROVED_FOR_CONTROLLED_REMOVAL** (implementation separate) |
+| **INSUFFICIENT_PRODUCT_AUTHORITY** | technical evidence supports removal while product ownership/roadmap authority is absent | **SUPERSEDED BY CI-R3A.9** — product owner accepted `DEPRECATE_AND_REMOVE` | **NO LONGER APPLIES** |
 
-### 8a. U043 status
+### 8a. U043 status (current authority §12)
 
 | Field | Value |
 |-------|-------|
-| `U043_TECHNICAL_RECOMMENDATION` | **DEPRECATE_AND_REMOVE_CANDIDATE** |
-| `U043_STATUS` | **AWAITING_PRODUCT_OWNER_DECISION** |
-| `U043_INDEPENDENT_EVIDENCE_REVIEW` | **PASS** (substance unchanged by CI-R3A.8.1 / CI-R3A.8.2) |
-| `U043_RESOLVED_COUNT` | **0** |
+| `U043_TECHNICAL_RECOMMENDATION` | **DEPRECATE_AND_REMOVE** |
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** |
+| `U043_PRODUCT_OWNER_APPROVAL_PRESENT` | **YES** |
+| `U043_STATUS` | **PRODUCT_OWNER_DECISION_APPROVED** |
+| `U043_INDEPENDENT_EVIDENCE_REVIEW` | **PASS** |
+| `U043_RESOLVED_COUNT` | **1** |
+| `U043_REMOVAL_IMPLEMENTATION_COUNT` | **0** |
 | `U043_DESTRUCTIVE_CHANGE_IMPLEMENTATION_COUNT` | **0** |
 | `U043_SCHEMA_CHANGE_COUNT` | **0** |
 | `U043_DROP_TABLE_COUNT` | **0** |
 | `U043_PRODUCTION_ROW_DELETE_COUNT` | **0** |
 
-Until a product owner decides, CI-R3B must treat `brake_trip_metrics` as `ORPHAN_REVIEW_REQUIRED`:
-it stays **outside** the Option D bootstrap object set (`PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 of
-19 known missing objects) and no removal is prepared.
+Historical (**SUPERSEDED BY CI-R3A.9**): `U043_STATUS` = AWAITING_PRODUCT_OWNER_DECISION;
+`U043_PRODUCT_OWNER_APPROVAL_PRESENT` = NO; `U043_RESOLVED_COUNT` = 0.
+
+The product owner has approved controlled deprecation and removal of `brake_trip_metrics`. The
+accepted authority audit found 0 runtime readers and 0 runtime writers. **This task does not perform
+the removal.** Removal requires a separate scoped implementation and validation step. No schema,
+migration or runtime change occurs in CI-R3A.9.
+
+For CI-R3B bootstrap scope: U043 product authority is resolved; `brake_trip_metrics` remains outside
+Option D bootstrap (`PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 of 19) until a future removal
+implementation completes.
 
 ---
 
@@ -832,7 +856,7 @@ implemented in this phase.
 
 | Counter | Value |
 |---------|-------|
-| `U043_PRODUCT_OWNER_APPROVAL_PRESENT` | **NO** |
+| `U043_PRODUCT_OWNER_APPROVAL_PRESENT` | **YES** |
 | `U043_FRESH_PREFLIGHT_REQUIRED` | **YES** |
 | `U043_NONZERO_ROW_DROP_ALLOWED` | **NO** |
 | `U043_APPEND_ONLY_IF_APPROVED` | **YES** |
@@ -844,14 +868,15 @@ implemented in this phase.
 
 ## 10. Scope, safety and phase counters
 
-Current phase = **CI-R3A.8.3** (U042 guard definition, source authority and counter integrity;
-U043 substance unchanged):
+Current phase = **CI-R3A.9** (final authority closure and controlled CI-R3B entry authorization;
+U043 product-owner decision recorded):
 
 | Counter | Value |
 |---------|-------|
 | `CHANGED_FILE_COUNT` | 2 |
 | `DOCUMENTATION_FILE_CHANGE_COUNT` | 2 |
 | `JSON_EVIDENCE_CHANGE_COUNT` | 0 |
+| `JSON_EVIDENCE_HASH_MATCH` | YES |
 | `HISTORICAL_MIGRATION_EDIT_COUNT` | 0 |
 | `NEW_MIGRATION_COUNT` | 0 |
 | `PRISMA_SCHEMA_CHANGE_COUNT` | 0 |
@@ -865,50 +890,121 @@ U043 substance unchanged):
 | `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E7_E8_E9_RUNTIME_SCOPE_COUNT` | 0 |
 | `OUT_OF_SCOPE_FILE_COUNT` | 0 |
-| `DECISION_PACKAGE_COMPLETED_COUNT` | 1 (CI-R3A.8 delivery) |
-| `CI_R3A81_CORRECTION_COMPLETED_COUNT` | 1 (historical — CI-R3A.8.1) |
-| `CI_R3A82_CORRECTION_COMPLETED_COUNT` | 1 (historical — CI-R3A.8.2) |
-| `CI_R3A83_CORRECTION_COMPLETED_COUNT` | 1 |
-| `U042_GUARD_COUNTER_ARITHMETIC_MISMATCH_COUNT` | 0 |
-| `DEFINED_POST_PRE_FC01_FC10_ROW_COUNT` | 10 |
-| `UNDEFINED_POST_PRE_GUARD_ROW_REFERENCE_COUNT` | 0 |
-| `STALE_FALSE_PRISMA_SOURCE_PATH_COUNT` | 0 |
-| `FALSE_SOURCE_PATH_ALIAS_CLAIM_COUNT` | 0 |
-| `STALE_PRE_SHIM_OUTCOME_COUNT_20_CLAIM_COUNT` | 0 |
-| `STALE_PRE_SHIM_FAIL_CLOSED_COUNT_13_CLAIM_COUNT` | 0 |
-| `STALE_TOTAL_FAIL_CLOSED_COUNT_23_CLAIM_COUNT` | 0 |
-| `POST_SHIM_PHASE_COUNT` | 3 |
-| `POSTCONDITION_REQUIRES_SELF_FINISHED_AT_COUNT` | 0 |
-| `STALE_POST_SHIM_SELF_ROW_FAILURE_CLAIM_COUNT` | 0 |
-| `STALE_RAW_GUARD_MUTUAL_EXCLUSIVITY_CLAIM_COUNT` | 0 |
-| `STALE_UNQUALIFIED_GUARD_OVERLAP_ZERO_CLAIM_COUNT` | 0 |
-| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 2 (U042 replay/fault-injection/recovery proof; U043 product decision) |
-| `STALE_U042_ATOMIC_WORKFLOW_CLAIM_COUNT` | 0 |
-| `STALE_U042_ZERO_PARTIAL_PERSISTENCE_CLAIM_COUNT` | 0 |
-| `STALE_U042_COMPLETE_GUARD_AUTHORITY_CLAIM_COUNT` | 0 |
-| `STALE_U042_TECHNICALLY_APPROVED_CLAIM_COUNT` | 0 |
-| `STALE_U042_AUTHORITY_CLAIM_COUNT` | 0 |
+| `CI_R3A83_INDEPENDENT_REVIEW` | **PASS** |
+| `CI_R3A83_CRITICAL_FINDING_COUNT` | **0** |
+| `U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` | **YES** |
+| `U042_FINAL_TECHNICAL_ACCEPTANCE` | **NO** |
+| `U042_PRODUCTION_AUTHORIZED` | **NO** |
+| `U043_REMOVAL_IMPLEMENTATION_COUNT` | **0** |
+| `CI_R3B_START_BLOCKER_COUNT` | **0** (after PR #1029 independent review and merge) |
+| `R3B_ACCEPTANCE_GATE_PENDING_COUNT` | **6** |
+| `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | **0** |
+| `STALE_U043_AWAITING_DECISION_CLAIM_COUNT` | **0** |
+| `STALE_U043_NO_APPROVAL_CLAIM_COUNT` | **0** |
+| `STALE_U042_FULL_ENTRY_BLOCK_CLAIM_COUNT` | **0** |
+| `FALSE_OPTION_J_FINAL_ACCEPTANCE_CLAIM_COUNT` | **0** |
+| `FALSE_CI_R3B_IMPLEMENTED_CLAIM_COUNT` | **0** |
+| `FALSE_PRODUCTION_AUTHORIZATION_CLAIM_COUNT` | **0** |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | **1** (U042 CI-R3B acceptance gates 2–7 — executable proof) |
 | `CONNECTION_URI_OUTPUT_COUNT` / `PASSWORD_OUTPUT_COUNT` / `TOKEN_OUTPUT_COUNT` | 0 |
 | `PRIVATE_KEY_OUTPUT_COUNT` / `VPS_ENDPOINT_OUTPUT_COUNT` / `CREDENTIAL_PATH_OUTPUT_COUNT` | 0 |
 | `SECRET_VALUE_OUTPUT_COUNT` / `PROHIBITED_INFRASTRUCTURE_METADATA_COUNT` | 0 |
 
 ## 11. Final status
 
-- **U042** — CI-R3A.8 statement, ordering and dependency authority remain valid. CI-R3A.8.1 corrected
-  transaction scope (§1c), two persistence windows (§2b), recovery states (§3.5) and fault-injection
-  requirements (§3.6). CI-R3A.8.2 corrected self-row lifecycle (§3.3.1), three-phase post-shim model,
-  raw/effective guard semantics (§3.0) and reachability proofs. CI-R3A.8.3 corrects the pinned Prisma
-  orchestration source path (§1d), individually defines POST-PRE-FC01–POST-PRE-FC10 (§3.3.1 guard
-  table), and rebalances all guard counters to the 23-outcome / 19 fail-closed / 4 action-no-op model
-  (§3a). Option J remains a **candidate only**: `INDEPENDENT_REVIEW_CORRECTION_REQUIRED`;
-  `CASING_STRATEGY_STATUS` = `INSUFFICIENT_AUTHORITY`. No executable replay is claimed in this phase.
-  Executable replay plus fault-injection and recovery proof remain mandatory before CI-R3B may begin.
-- **U043** — independent evidence review **PASS**; substance unchanged (45 classified hits, 0 runtime
-  readers/writers, 0 contracts, 0 migration DDL). Technical recommendation
-  **DEPRECATE_AND_REMOVE_CANDIDATE**; product decision remains open
-  (`AWAITING_PRODUCT_OWNER_DECISION`).
-- No migration, schema, runtime or test change; no production access; the accepted JSON evidence is
-  byte-identical; CI-R3B remains blocked; E7/E8/E9 remain unstarted.
+- **U042** — CI-R3A.8 through CI-R3A.8.3 authority corrections remain valid and passed independent
+  review (`CI_R3A83_INDEPENDENT_REVIEW` = PASS). Option J remains a **candidate** until executable
+  proof passes. Controlled CI-R3B entry is authorized for isolated non-production implementation and
+  testing (`U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` = YES). Entry authorization does **not** mean
+  the strategy is safe, finally accepted, replay-proven, recovery-proven or production-authorized.
+  Final acceptance remains gated by CI-R3B acceptance gates 2–7 (§5a).
+- **U043** — product owner decision **DEPRECATE_AND_REMOVE** recorded (`U043_STATUS` =
+  `PRODUCT_OWNER_DECISION_APPROVED`; `U043_RESOLVED_COUNT` = 1). Independent evidence review **PASS**.
+  No removal implemented in this phase (`U043_REMOVAL_IMPLEMENTATION_COUNT` = 0).
+- No migration, schema, runtime or test change; no production access or deployment; JSON evidence
+  byte-identical; CI-R3B implementation has **not** started; CI-R3B may begin only after this commit
+  passes independent review and PR #1029 is merged.
 
-**Status: CI_R3A83_CORRECTION_COMPLETED** — awaiting independent review (U042 executable replay +
-fault-injection/recovery proof) and product-owner decision (U043).
+**Status: CI_R3A9_AUTHORITY_COMPLETED** — awaiting independent review of this closure record and PR
+#1029 merge before controlled CI-R3B work begins on a dedicated branch from updated `main`.
+
+## 12. CI-R3A.9 — Final authority closure and controlled CI-R3B entry
+
+### 12a. CI-R3A.8.3 independent review result
+
+| Counter | Value |
+|---------|-------|
+| `CI_R3A83_INDEPENDENT_REVIEW` | **PASS** |
+| `CI_R3A83_CRITICAL_FINDING_COUNT` | **0** |
+
+CI-R3A.8.3 guard definitions, pinned Prisma source paths and counter accounting are accepted. Values
+in §1d and §3a are unchanged.
+
+### 12b. U042 — entry authorization vs final acceptance
+
+| Field | Value |
+|-------|-------|
+| `U042_INDEPENDENT_REVIEW_STATUS` | **PASS_FOR_CONTROLLED_CI_R3B_PROOF** |
+| `U042_CONTROLLED_CI_R3B_ENTRY_AUTHORIZED` | **YES** |
+| `U042_FINAL_TECHNICAL_ACCEPTANCE` | **NO** |
+| `U042_REPLAY_PROVEN` | **NO** |
+| `U042_RECOVERY_PROVEN` | **NO** |
+| `U042_PRODUCTION_AUTHORIZED` | **NO** |
+| `U042_PRODUCTION_DEPLOYMENT_AUTHORIZED` | **NO** |
+| `OPTION_J_IMPLEMENTATION_COUNT` | **0** |
+| `END_TO_END_R3B_STRATEGY_STATUS` | **AUTHORIZED_FOR_ISOLATED_NON_PRODUCTION_PROOF** |
+| `CASING_STRATEGY_STATUS` | **INSUFFICIENT_AUTHORITY** (Option J remains candidate until proof passes) |
+
+Meaning:
+
+- Option J remains a **candidate** until executable proof passes.
+- Independent review confirms the corrected authority is sufficient to **begin** controlled
+  implementation and testing in isolated non-production environments.
+- Entry authorization does **not** mean the strategy is already safe, accepted, replay-proven or
+  recovery-proven.
+- No production execution is authorized.
+- Final acceptance remains gated by executable CI-R3B evidence (§5a gates 2–7).
+
+Option J is authorized only for controlled CI-R3B implementation and proof in isolated
+non-production environments. It is not finally accepted. CI-R3B must not be accepted, merged or
+deployed until all mandatory acceptance gates in §5a pass.
+
+| Counter | Value |
+|---------|-------|
+| `R3B_ACCEPTANCE_GATE_TOTAL_COUNT` | **7** |
+| `R3B_ACCEPTANCE_GATE_PASSED_COUNT` | **1** |
+| `R3B_ACCEPTANCE_GATE_PENDING_COUNT` | **6** |
+| `R3B_FINAL_ACCEPTANCE` | **NO** |
+| `R3B_MERGE_AUTHORIZED` | **NO** |
+| `R3B_DEPLOYMENT_AUTHORIZED` | **NO** |
+| `CIRCULAR_R3B_START_GATE_STATEMENT_COUNT` | **0** |
+
+### 12c. U043 — binding product-owner decision
+
+| Field | Value |
+|-------|-------|
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** |
+| `U043_PRODUCT_OWNER_APPROVAL_PRESENT` | **YES** |
+| `U043_STATUS` | **PRODUCT_OWNER_DECISION_APPROVED** |
+| `U043_INDEPENDENT_EVIDENCE_REVIEW` | **PASS** |
+| `U043_TECHNICAL_RECOMMENDATION` | **DEPRECATE_AND_REMOVE** |
+| `U043_RESOLVED_COUNT` | **1** |
+| `U043_REMOVAL_IMPLEMENTATION_COUNT` | **0** |
+
+This is a **product-owner decision**. `brake_trip_metrics` is approved for controlled deprecation and
+removal. The accepted authority audit found 0 runtime readers and 0 runtime writers. **This phase
+does not perform the removal.** Removal requires a separate scoped implementation and validation
+step. No schema, migration or runtime change occurs in CI-R3A.9.
+
+### 12d. CI-R3A and CI-R3B entry status
+
+| Field | Value |
+|-------|-------|
+| `CI_R3A_AUTHORITY_STATUS` | **CI_R3A_AUTHORITY_COMPLETED** |
+| `CI_R3B_ENTRY_STATUS` | **AUTHORIZED_AFTER_CI_R3A_REVIEW_AND_MERGE** |
+| `CI_R3B_START_BLOCKER_COUNT` | **0** (after this record passes review and PR #1029 merges) |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+
+CI-R3A authority is complete. PR #1029 must still pass independent review and be merged. CI-R3B
+starts afterward on a dedicated branch from updated `main`. CI-R3B implementation, replay and
+fault-injection evidence remain outstanding.
