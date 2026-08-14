@@ -14,9 +14,10 @@
 | Branch | `fix/ci-r3b-vehicle-trips-migration-replay-2026-08` |
 | `PRE_R3B1_SHA` | `d5fbe42780b7ce61c606ff6d1a4a5dbfa4bf7f94` (docs-only; last commit before R3B migration implementation) |
 | Implementation commit | `bb44880b80b7ce61c606ff6d1a4a5dbfa4bf7f94` (`feat(migrations): add CI-R3B bootstrap, casing shims, and parity reconciliation`) |
-| `POST_R3B1_SHA` | *(updated after evidence + bootstrap FK correction commit)* |
+| `POST_R3B1_SHA` | `d8ddda538d0f2513b07c8ad3349f087c0c8add96` |
 | Remote branch SHA (pre-push) | `bb44880b80b7ce61c606ff6d1a4a5dbfa4bf7f94` |
 | PR #1031 HEAD (pre-push) | `bb44880b80b7ce61c606ff6d1a4a5dbfa4bf7f94` |
+| Commits after `PRE_R3B1_SHA` | `bb44880b` (four migrations), `5994cbbd` (bootstrap FK fix), `d8ddda53` (this evidence) |
 | Working tree at replay start | bootstrap FK syntax fix uncommitted (`ON DELETE SET` → `ON DELETE SET NULL`) |
 
 Authority chain read before implementation:
