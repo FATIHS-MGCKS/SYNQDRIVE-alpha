@@ -921,13 +921,18 @@
   ],
   "cross_slot_duplicates": [],
   "pass": true,
+  "phase": "CI-R3B1D.1.1",
+  "PRE_R3B1D11_SHA": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "BASE_MAIN_SHA": "721ad893d15cfa46786a112860548ce12a2be71d",
   "known_r3b1d_defects_reproduced": {
     "slot8_workflowstatus_create_count": 2,
     "slot10_fk_action_order": 2,
     "slot10_vehicle_damages_create_order": 6,
     "slot10_fk_before_parent_table": true
   },
-  "PRE_R3B1D1_SHA": "6fbdb05be4b53c53a2afb0771547c4a5a6dfbbdb",
   "primary_defect_count": 18,
-  "repair_slot_count": 10
+  "repair_slot_count": 10,
+  "ddl_compilation_failures": 0,
+  "postgresql_execution_failures": 0,
+  "catalog_mismatches": 0
 }

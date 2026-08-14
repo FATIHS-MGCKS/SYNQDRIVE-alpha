@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "phase": "CI-R3B1D.1.1",
   "records": [
     {
       "slot": 7,
@@ -17,7 +18,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 7,
@@ -35,7 +38,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 7,
@@ -53,7 +58,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 9,
@@ -71,7 +78,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 9,
@@ -89,7 +98,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 10,
@@ -107,7 +118,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 10,
@@ -125,7 +138,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 11,
@@ -143,7 +158,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 11,
@@ -161,7 +178,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 11,
@@ -179,7 +198,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 11,
@@ -197,7 +218,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 12,
@@ -215,7 +238,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 12,
@@ -233,7 +258,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 12,
@@ -251,7 +278,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 12,
@@ -269,7 +298,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 12,
@@ -287,7 +318,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 15,
@@ -305,7 +338,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 15,
@@ -323,7 +358,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 15,
@@ -341,7 +378,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     },
     {
       "slot": 16,
@@ -359,7 +398,9 @@
       "local_columns_available_before": true,
       "referenced_relation_available_before": true,
       "referenced_columns_available_before": true,
-      "valid": true
+      "referenced_key_is_pk_or_unique": true,
+      "valid": true,
+      "invalid_target_key": false
     }
   ]
 }
