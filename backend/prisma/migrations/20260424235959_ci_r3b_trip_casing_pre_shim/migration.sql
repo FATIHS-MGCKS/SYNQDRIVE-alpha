@@ -122,12 +122,18 @@ BEGIN
         IF NOT has_vehicle_trips OR NOT has_trip_driving_impact THEN
             RAISE EXCEPTION 'PRE-FC08: prerequisite lowercase relations missing';
         END IF;
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = 'vehicle_trips'
-              AND column_name IN ('assignment_status', 'assignment_subject_type')
-        ) THEN
-            RAISE EXCEPTION 'PRE-FC08: vehicle_trips assignment columns missing';
+        IF (
+            SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'vehicle_trips'
+              AND column_name IN (
+                  'assignment_status',
+                  'assignment_subject_type',
+                  'assignment_subject_id'
+              )
+        ) <> 3 THEN
+            RAISE EXCEPTION 'PRE-FC08: vehicle_trips assignment columns missing (expected assignment_status, assignment_subject_type, assignment_subject_id)';
         END IF;
         IF NOT EXISTS (
             SELECT 1 FROM pg_type WHERE typname = 'TripAssignmentStatus'

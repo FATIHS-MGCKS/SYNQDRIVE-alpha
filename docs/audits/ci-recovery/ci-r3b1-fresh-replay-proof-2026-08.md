@@ -12,13 +12,12 @@
 | Field | Value |
 |-------|-------|
 | Branch | `fix/ci-r3b-vehicle-trips-migration-replay-2026-08` |
-| `PRE_R3B1_SHA` | `d5fbe42780b7ce61c606ff6d1a4a5dbfa4bf7f94` (docs-only; last commit before R3B migration implementation) |
+| `PRE_R3B1_SHA` | `d5fbe427ebf2dcee94a85a86caf7bd6276c5e774` — last commit before R3B.1 migration implementation (`docs(r3b): finalize convergence authority cleanup`); verified via `git rev-parse d5fbe427` |
+| `REPLAY_TESTED_SHA` | `035508dad54531de1d1305fc2d15b030c2283cd8` — repository tree used for the recorded disposable-DB `prisma migrate deploy` replay (includes four R3B migrations + bootstrap FK fix; evidence-doc commits are after this replay) |
 | Implementation commit | `bb44880b80b7ce61c606ff6d1a4a5dbfa4bf7f94` (`feat(migrations): add CI-R3B bootstrap, casing shims, and parity reconciliation`) |
-| `POST_R3B1_SHA` | `2f333f9e62cc11aafa175047fa10460023386035` |
-| Remote branch SHA (post-push) | `2f333f9e62cc11aafa175047fa10460023386035` |
-| PR #1031 HEAD (post-push) | `2f333f9e62cc11aafa175047fa10460023386035` |
-| Commits after `PRE_R3B1_SHA` | `bb44880b`, `5994cbbd`, `d8ddda53`, `fe0b35af`, `f34c795b`, `2f333f9e` |
-| Working tree at replay start | bootstrap FK syntax fix uncommitted (`ON DELETE SET` → `ON DELETE SET NULL`) |
+| Post-push branch / PR HEAD | verified externally after push — intentionally not embedded as a self-referential invariant inside this report |
+| Commits after `PRE_R3B1_SHA` (through replay) | `bb44880b` (four migrations), `5994cbbd` (bootstrap FK fix) |
+| Working tree at replay start | bootstrap FK syntax fix was uncommitted during first attempt; corrected before successful bootstrap apply |
 
 Authority chain read before implementation:
 
