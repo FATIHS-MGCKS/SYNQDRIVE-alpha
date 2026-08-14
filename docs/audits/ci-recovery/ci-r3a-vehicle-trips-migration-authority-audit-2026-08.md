@@ -21,7 +21,9 @@
 > CI-R3B bootstrap **exclusion** of `brake_trip_metrics`: the transitional bootstrap inventory is **19**
 > objects, not 18. The U043 product decision (`DEPRECATE_AND_REMOVE`) is unchanged and remains
 > unimplemented. Full contract:
-> `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`.
+> `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`. **CI-R3B.0.1 (§17l)** separates
+> bootstrap predecessor shape from final accepted shape; predecessor ledger:
+> `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`.
 
 ## 1. Authoritative base and branch
 
@@ -1368,6 +1370,47 @@ axis and no longer subtracts objects from the bootstrap.
 `CI_R3B0_CONTRACT_LOCK_STATUS` = **COMPLETED** — bootstrap/parity contract locked; CI-R3B.1
 implementation awaits independent review.
 
+## 17l. CI-R3B.0.1 — Bootstrap predecessor-shape authority correction
+
+Independent review of CI-R3B.0 identified a **second executable contradiction**: the contract
+required the Option-D bootstrap to create all 19 objects at **final accepted production shape**, but
+committed downstream migrations contain **unguarded** DDL that would duplicate objects if the bootstrap
+pre-created them (minimum proven: 17 column overlaps, 2 index overlaps, 2 late-type dependencies —
+see predecessor ledger §2).
+
+CI-R3B.0.1 is documentation-only: no migration, schema, runtime, test, workflow, dependency,
+production access or deployment change; `CI_R3B_IMPLEMENTATION_COUNT` remains **0**; E7/E8/E9 not
+started.
+
+### Two-shape model (current authority)
+
+| Field | Value |
+|-------|-------|
+| `BOOTSTRAP_SHAPE_AUTHORITY` | **PREDECESSOR_AT_INSERTION_POINT** — `ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md` |
+| `FINAL_SHAPE_AUTHORITY` | **ACCEPTED_CI_R3A71_PRODUCTION_JSON** — post-replay only |
+| `BOOTSTRAP_PREDECESSOR_EQUALS_FINAL_FOR_ALL_OBJECTS` | **NO** |
+| `FULL_REPLAY_MUST_PRODUCE_FINAL_ACCEPTED_SHAPE` | **YES** |
+| `EARLY_BOOTSTRAP_FINAL_SHAPE_EXECUTABLE` | **NO** |
+| `BOOTSTRAP_OBJECT_LEDGER_ROW_COUNT` | **19** |
+| `BOOTSTRAP_PREDECESSOR_SHAPE_UNKNOWN_COUNT` | **0** |
+| `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` | **0** |
+| `FINAL_PARITY_EXCEPTION_COUNT` | **0** |
+
+The bootstrap creates all 19 objects at exact **predecessor shape**; downstream migrations evolve them;
+full replay must equal the accepted production catalog. `brake_trip_metrics` remains
+**TRANSITIONAL_BOOTSTRAP_REQUIRED** with U043 **DEPRECATE_AND_REMOVE** unchanged and unimplemented.
+
+Historical (**SUPERSEDED BY CI-R3B.0.1**): “create all 19 at accepted/final shape at bootstrap”.
+
+| Counter | Value |
+|---------|-------|
+| `STALE_BOOTSTRAP_FINAL_SHAPE_AUTHORITY_CLAIM_COUNT` | **0** |
+| `CURRENT_ALL_19_ACCEPTED_SHAPE_CLAIM_COUNT` | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+`CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_STATUS` = **COMPLETED** — predecessor ledger controls CI-R3B.1
+bootstrap DDL; CI-R3B.1 awaits independent review.
+
 ## 18. Final audit status
 
 Introduction commits, schema positions, full initial/current shapes, per-model evolution,
@@ -1380,15 +1423,12 @@ proof only (`INSUFFICIENT_AUTHORITY` for final acceptance — U042, §17i); `bra
 product-owner decision **DEPRECATE_AND_REMOVE** recorded (U043, §17i); its executable disposition is
 **TRANSITIONAL_BOOTSTRAP_REQUIRED** (§17k); removal not implemented.
 
-**Status: CI_R3B0_CONTRACT_LOCK_COMPLETED** — repository audit authority complete; U042 controlled
-CI-R3B entry authorized (`U042_ENTRY_AUTHORITY_RESOLVED_COUNT` = 1; final acceptance gates 2–7
-pending); U043 product decision approved (`U043_RESOLVED_COUNT` = 1;
-`PRODUCT_APPROVED_REMOVAL_COUNT` = 1; `PRODUCT_REMOVAL_IMPLEMENTED_COUNT` = 0); CI-R3B executable
-bootstrap/parity contract locked at **19** transitional objects with
-`R3B_FINAL_PARITY_EXCEPTION_COUNT` = 0 (§17k).
-`REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0. PR #1029 is merged (`1948f00d`). No CI-R3B migration,
-schema, runtime, production access or deployment change in CI-R3B.0. CI-R3B.1 implementation follows
-only after independent review of the executable contract. E7/E8/E9 remain unstarted.
+**Status: CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_COMPLETED** — repository audit authority complete; U042 controlled
+CI-R3B entry authorized; U043 product decision approved and unimplemented; CI-R3B executable contract
+and 19-row predecessor ledger locked (`§17k`, `§17l`); `R3B_FINAL_PARITY_EXCEPTION_COUNT` = 0.
+`REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = 0. PR #1029 merged (`1948f00d`). No CI-R3B migration,
+schema, runtime, production access or deployment in CI-R3B.0 / CI-R3B.0.1. CI-R3B.1 follows independent
+review. E7/E8/E9 unstarted.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 

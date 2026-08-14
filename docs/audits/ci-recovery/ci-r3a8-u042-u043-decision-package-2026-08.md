@@ -1,11 +1,12 @@
 # CI-R3A.8 — U042 / U043 decision authority package
 
-**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** + **CI-R3A.9.1** + **CI-R3B.0** (analysis and decision authority only)
-**Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08` (CI-R3A.8–CI-R3A.9.1, merged as `1948f00d`); `fix/ci-r3b-vehicle-trips-migration-replay-2026-08` (CI-R3B.0)
+**Phase:** CI-R3A.8 + **CI-R3A.8.1** + **CI-R3A.8.2** + **CI-R3A.8.3** + **CI-R3A.9** + **CI-R3A.9.1** + **CI-R3B.0** + **CI-R3B.0.1** (analysis and decision authority only)
+**Branch:** `fix/ci-r3a-vehicle-trips-migration-authority-audit-2026-08` (CI-R3A.8–CI-R3A.9.1, merged as `1948f00d`); `fix/ci-r3b-vehicle-trips-migration-replay-2026-08` (CI-R3B.0, CI-R3B.0.1)
 **Base HEAD analysed:** `03de93b9179011525e12fd90f1399a501e2a7e5e` (CI-R3B.0 re-verified against `main @ 1948f00d8423816beb5a76c2182f9c9bc6260857`)
-**Latest correction:** CI-R3B.0 (executable contract lock — §14)
-**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17k)
+**Latest correction:** CI-R3B.0.1 (bootstrap predecessor-shape authority — §15)
+**Master audit:** `docs/audits/ci-recovery/ci-r3a-vehicle-trips-migration-authority-audit-2026-08.md` (§17e–§17l)
 **CI-R3B executable contract:** `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md`
+**CI-R3B predecessor ledger:** `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`
 **Accepted live evidence:** `docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json` (unchanged by CI-R3A.8–CI-R3B.0)
 
 Pinned Prisma authority (read from `backend/package-lock.json` at analysed HEAD):
@@ -1174,3 +1175,39 @@ Ordering, guard model (§3–§3a), recovery states (§3.5) and fault-injection 
 
 `CI_R3B0_CONTRACT_LOCK_STATUS` = **COMPLETED** — bootstrap/parity contract locked; CI-R3B.1
 implementation awaits independent review.
+
+## 15. CI-R3B.0.1 — Bootstrap predecessor-shape authority correction
+
+CI-R3B.0.1 corrects a non-executable requirement in CI-R3B.0: the bootstrap must **not** create all 19
+objects at final accepted production shape when downstream migrations add the same elements
+unguardedly. Full authority:
+
+- executable contract: `docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md` (§4 two-shape model)
+- predecessor ledger: `docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md`
+- master audit: §17l
+
+| Field | Value |
+|-------|-------|
+| `BOOTSTRAP_SHAPE_AUTHORITY` | predecessor at insertion point `20260325161141` |
+| `FINAL_SHAPE_AUTHORITY` | accepted CI-R3A.7.1 production JSON (post-replay) |
+| `EARLY_BOOTSTRAP_FINAL_SHAPE_EXECUTABLE` | **NO** |
+| `U043_PRODUCT_OWNER_DECISION` | **DEPRECATE_AND_REMOVE** (unchanged; removal not implemented) |
+| `BRAKE_TRIP_METRICS_EXECUTABLE_DISPOSITION` | **TRANSITIONAL_BOOTSTRAP_REQUIRED** |
+| `FINAL_PARITY_EXCEPTION_COUNT` | **0** |
+| `CI_R3B_IMPLEMENTATION_COUNT` | **0** |
+| `PRODUCTION_DATABASE_ACCESS_COUNT` | **0** |
+| `PRODUCTION_DEPLOYMENT_COUNT` | **0** |
+| `JSON_EVIDENCE_CHANGE_COUNT` | **0** |
+
+Historical (**SUPERSEDED BY CI-R3B.0.1**): bootstrap creates all 19 at accepted/final shape.
+
+| Counter | Value |
+|---------|-------|
+| `STALE_BOOTSTRAP_FINAL_SHAPE_AUTHORITY_CLAIM_COUNT` | **0** |
+| `CURRENT_ALL_19_ACCEPTED_SHAPE_CLAIM_COUNT` | **0** |
+| `BOOTSTRAP_PREDECESSOR_SHAPE_UNKNOWN_COUNT` | **0** |
+| `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` | **0** |
+
+`CI_R3B01_PREDECESSOR_SHAPE_CORRECTION_STATUS` = **COMPLETED** — CI-R3B.1 bootstrap DDL must follow the
+19-row predecessor ledger; downstream replay produces final accepted shape; no production access; no
+deployment; U043 not reversed.
