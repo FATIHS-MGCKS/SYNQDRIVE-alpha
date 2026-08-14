@@ -1,0 +1,4426 @@
+{
+  "schema_version": 1,
+  "capture": {
+    "environment": "production",
+    "authorized_read_only": true,
+    "target_identity_proven": true,
+    "target_identity_redacted": true,
+    "transaction_read_only": "on",
+    "transaction_end": "ROLLBACK",
+    "session_closed": true,
+    "business_rows_read": 0,
+    "database_writes": 0
+  },
+  "tables": [
+    {
+      "name": "vehicle_trips",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "dimo_segment_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "trip_status",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripStatus",
+          "is_nullable": false,
+          "column_default": "'ONGOING'::\"TripStatus\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "driver_name",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "assignment_status",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripAssignmentStatus",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "assignment_subject_type",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripAssignmentSubjectType",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "assignment_subject_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "assigned_booking_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "is_private_trip",
+          "data_type": "boolean",
+          "udt_schema": "pg_catalog",
+          "udt_name": "bool",
+          "is_nullable": false,
+          "column_default": "false",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "start_time",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "end_time",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 13,
+          "column_name": "start_latitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 14,
+          "column_name": "start_longitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 15,
+          "column_name": "end_latitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 16,
+          "column_name": "end_longitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 17,
+          "column_name": "distance_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 18,
+          "column_name": "duration_minutes",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 19,
+          "column_name": "avg_speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 20,
+          "column_name": "max_speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 21,
+          "column_name": "driving_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 22,
+          "column_name": "fuel_used_liters",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 23,
+          "column_name": "avg_consumption_l_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 24,
+          "column_name": "fuel_confidence",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 25,
+          "column_name": "energy_used_kwh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 26,
+          "column_name": "avg_consumption_kwh_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 27,
+          "column_name": "energy_confidence",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 28,
+          "column_name": "city_share_percent",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 29,
+          "column_name": "highway_share_percent",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 30,
+          "column_name": "country_share_percent",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 31,
+          "column_name": "outside_temperature_start_c",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 32,
+          "column_name": "engine_temp_start_c",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 33,
+          "column_name": "engine_temp_end_c",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 34,
+          "column_name": "avg_rpm",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 35,
+          "column_name": "avg_throttle_position",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 36,
+          "column_name": "avg_engine_load",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 37,
+          "column_name": "speeding_percent",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 38,
+          "column_name": "max_over_speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 39,
+          "column_name": "speeding_segments",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 40,
+          "column_name": "speeding_sections_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 41,
+          "column_name": "speeding_section_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 42,
+          "column_name": "speeding_distance_m",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 43,
+          "column_name": "speeding_duration_s",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 44,
+          "column_name": "speeding_exposure_pct",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 45,
+          "column_name": "avg_over_speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 46,
+          "column_name": "harsh_brake_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 47,
+          "column_name": "harsh_accel_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 48,
+          "column_name": "harsh_corner_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 49,
+          "column_name": "acceleration_event_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 50,
+          "column_name": "braking_event_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 51,
+          "column_name": "abuse_event_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 52,
+          "column_name": "hard_acceleration_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 53,
+          "column_name": "hard_braking_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 54,
+          "column_name": "full_braking_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 55,
+          "column_name": "total_acceleration_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 56,
+          "column_name": "hard_acceleration_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 57,
+          "column_name": "total_braking_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 58,
+          "column_name": "hard_braking_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 59,
+          "column_name": "full_braking_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 60,
+          "column_name": "cornering_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 61,
+          "column_name": "abuse_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 62,
+          "column_name": "speeding_events",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 63,
+          "column_name": "possible_impact_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 64,
+          "column_name": "kickdown_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 65,
+          "column_name": "cold_engine_abuse_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 66,
+          "column_name": "long_idle_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 67,
+          "column_name": "abuse_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 68,
+          "column_name": "behavior_summary_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 69,
+          "column_name": "behavior_enriched_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 70,
+          "column_name": "behavior_enrichment_status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 71,
+          "column_name": "behavior_enrichment_attempts",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 72,
+          "column_name": "behavior_enrichment_error",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 73,
+          "column_name": "behavior_enrichment_started_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 74,
+          "column_name": "driving_impact_computed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 75,
+          "column_name": "detection_profile",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "VehicleDetectionProfile",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 76,
+          "column_name": "start_detection_mode",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 77,
+          "column_name": "end_detection_mode",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 78,
+          "column_name": "start_confidence",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DetectionConfidence",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 79,
+          "column_name": "end_confidence",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DetectionConfidence",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 80,
+          "column_name": "possible_start_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 81,
+          "column_name": "possible_end_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 82,
+          "column_name": "first_activity_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 83,
+          "column_name": "last_activity_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 84,
+          "column_name": "route_tracking_started_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 85,
+          "column_name": "driving_tracking_started_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 86,
+          "column_name": "raw_detection_meta",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 87,
+          "column_name": "gap_ended",
+          "data_type": "boolean",
+          "udt_schema": "pg_catalog",
+          "udt_name": "bool",
+          "is_nullable": false,
+          "column_default": "false",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 88,
+          "column_name": "enriched_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 89,
+          "column_name": "trip_source",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripSource",
+          "is_nullable": false,
+          "column_default": "'V2_LIVE'::\"TripSource\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 90,
+          "column_name": "is_repaired",
+          "data_type": "boolean",
+          "udt_schema": "pg_catalog",
+          "udt_name": "bool",
+          "is_nullable": false,
+          "column_default": "false",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 91,
+          "column_name": "merge_parent_trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 92,
+          "column_name": "quality_status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 93,
+          "column_name": "behavior_summary_status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 94,
+          "column_name": "driving_impact_status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 95,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 96,
+          "column_name": "trip_analysis_status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 97,
+          "column_name": "analysis_queued_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 98,
+          "column_name": "analysis_started_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 99,
+          "column_name": "analysis_partial_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 100,
+          "column_name": "analysis_completed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 101,
+          "column_name": "analysis_failed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 102,
+          "column_name": "analysis_failed_reason",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 103,
+          "column_name": "analysis_latency_ms",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 104,
+          "column_name": "analysis_stages_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 105,
+          "column_name": "booking_link_source",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripBookingLinkSource",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 106,
+          "column_name": "tire_usage_attribution_status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 107,
+          "column_name": "tire_usage_processed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 108,
+          "column_name": "booking_customer_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 109,
+          "column_name": "assigned_driver_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 110,
+          "column_name": "actual_driver_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "vehicle_trips_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "vehicle_trips_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "vehicle_trips_assigned_booking_id_idx",
+          "definition": "CREATE INDEX vehicle_trips_assigned_booking_id_idx ON public.vehicle_trips USING btree (assigned_booking_id)"
+        },
+        {
+          "index_name": "vehicle_trips_assignment_status_is_private_trip_idx",
+          "definition": "CREATE INDEX vehicle_trips_assignment_status_is_private_trip_idx ON public.vehicle_trips USING btree (assignment_status, is_private_trip)"
+        },
+        {
+          "index_name": "vehicle_trips_assignment_subject_type_assignment_subject_id_idx",
+          "definition": "CREATE INDEX vehicle_trips_assignment_subject_type_assignment_subject_id_idx ON public.vehicle_trips USING btree (assignment_subject_type, assignment_subject_id)"
+        },
+        {
+          "index_name": "vehicle_trips_behavior_enrichment_status_idx",
+          "definition": "CREATE INDEX vehicle_trips_behavior_enrichment_status_idx ON public.vehicle_trips USING btree (behavior_enrichment_status)"
+        },
+        {
+          "index_name": "vehicle_trips_dimo_segment_id_key",
+          "definition": "CREATE UNIQUE INDEX vehicle_trips_dimo_segment_id_key ON public.vehicle_trips USING btree (dimo_segment_id)"
+        },
+        {
+          "index_name": "vehicle_trips_pkey",
+          "definition": "CREATE UNIQUE INDEX vehicle_trips_pkey ON public.vehicle_trips USING btree (id)"
+        },
+        {
+          "index_name": "vehicle_trips_start_time_idx",
+          "definition": "CREATE INDEX vehicle_trips_start_time_idx ON public.vehicle_trips USING btree (start_time)"
+        },
+        {
+          "index_name": "vehicle_trips_tire_usage_attribution_status_idx",
+          "definition": "CREATE INDEX vehicle_trips_tire_usage_attribution_status_idx ON public.vehicle_trips USING btree (tire_usage_attribution_status)"
+        },
+        {
+          "index_name": "vehicle_trips_trip_analysis_status_idx",
+          "definition": "CREATE INDEX vehicle_trips_trip_analysis_status_idx ON public.vehicle_trips USING btree (trip_analysis_status)"
+        },
+        {
+          "index_name": "vehicle_trips_trip_source_idx",
+          "definition": "CREATE INDEX vehicle_trips_trip_source_idx ON public.vehicle_trips USING btree (trip_source)"
+        },
+        {
+          "index_name": "vehicle_trips_trip_status_idx",
+          "definition": "CREATE INDEX vehicle_trips_trip_status_idx ON public.vehicle_trips USING btree (trip_status)"
+        },
+        {
+          "index_name": "vehicle_trips_vehicle_id_idx",
+          "definition": "CREATE INDEX vehicle_trips_vehicle_id_idx ON public.vehicle_trips USING btree (vehicle_id)"
+        },
+        {
+          "index_name": "vehicle_trips_vehicle_id_start_time_idx",
+          "definition": "CREATE INDEX vehicle_trips_vehicle_id_start_time_idx ON public.vehicle_trips USING btree (vehicle_id, start_time)"
+        }
+      ]
+    },
+    {
+      "name": "driving_events",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "organization_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "event_type",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DrivingEventType",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "source",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DrivingEventSource",
+          "is_nullable": false,
+          "column_default": "'TELEMETRY_EVENTS'::\"DrivingEventSource\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "severity",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "latitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "longitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "delta_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "duration_ms",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "driver_name",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 13,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 14,
+          "column_name": "metadata_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 15,
+          "column_name": "recorded_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 16,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 17,
+          "column_name": "provider",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 18,
+          "column_name": "provider_event_name",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 19,
+          "column_name": "provider_source_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 20,
+          "column_name": "provider_fingerprint",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 21,
+          "column_name": "trip_assignment",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DrivingEventTripAssignment",
+          "is_nullable": false,
+          "column_default": "'UNASSIGNED'::\"DrivingEventTripAssignment\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "driving_events_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "driving_events_trip_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE SET NULL"
+        },
+        {
+          "constraint_name": "driving_events_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "driving_events_event_type_idx",
+          "definition": "CREATE INDEX driving_events_event_type_idx ON public.driving_events USING btree (event_type)"
+        },
+        {
+          "index_name": "driving_events_org_provider_fingerprint",
+          "definition": "CREATE UNIQUE INDEX driving_events_org_provider_fingerprint ON public.driving_events USING btree (organization_id, provider_fingerprint)"
+        },
+        {
+          "index_name": "driving_events_organization_id_vehicle_id_recorded_at_idx",
+          "definition": "CREATE INDEX driving_events_organization_id_vehicle_id_recorded_at_idx ON public.driving_events USING btree (organization_id, vehicle_id, recorded_at)"
+        },
+        {
+          "index_name": "driving_events_pkey",
+          "definition": "CREATE UNIQUE INDEX driving_events_pkey ON public.driving_events USING btree (id)"
+        },
+        {
+          "index_name": "driving_events_recorded_at_idx",
+          "definition": "CREATE INDEX driving_events_recorded_at_idx ON public.driving_events USING btree (recorded_at)"
+        },
+        {
+          "index_name": "driving_events_source_idx",
+          "definition": "CREATE INDEX driving_events_source_idx ON public.driving_events USING btree (source)"
+        },
+        {
+          "index_name": "driving_events_trip_id_event_type_idx",
+          "definition": "CREATE INDEX driving_events_trip_id_event_type_idx ON public.driving_events USING btree (trip_id, event_type)"
+        },
+        {
+          "index_name": "driving_events_trip_id_idx",
+          "definition": "CREATE INDEX driving_events_trip_id_idx ON public.driving_events USING btree (trip_id)"
+        },
+        {
+          "index_name": "driving_events_vehicle_id_idx",
+          "definition": "CREATE INDEX driving_events_vehicle_id_idx ON public.driving_events USING btree (vehicle_id)"
+        },
+        {
+          "index_name": "driving_events_vehicle_id_recorded_at_idx",
+          "definition": "CREATE INDEX driving_events_vehicle_id_recorded_at_idx ON public.driving_events USING btree (vehicle_id, recorded_at)"
+        },
+        {
+          "index_name": "driving_events_vehicle_id_trip_assignment_idx",
+          "definition": "CREATE INDEX driving_events_vehicle_id_trip_assignment_idx ON public.driving_events USING btree (vehicle_id, trip_assignment)"
+        }
+      ]
+    },
+    {
+      "name": "trip_behavior_events",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "organization_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "event_category",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "BehaviorEventCategory",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "event_type",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "classification",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "BehaviorEventClassification",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "started_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "ended_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "duration_ms",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "start_speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "end_speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 13,
+          "column_name": "peak_value",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 14,
+          "column_name": "peak_value_unit",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 15,
+          "column_name": "peak_g",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 16,
+          "column_name": "max_throttle_pos",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 17,
+          "column_name": "max_engine_rpm",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 18,
+          "column_name": "max_coolant_temp",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 19,
+          "column_name": "metadata_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 20,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "trip_behavior_events_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "trip_behavior_events_trip_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        },
+        {
+          "constraint_name": "trip_behavior_events_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "trip_behavior_events_event_category_idx",
+          "definition": "CREATE INDEX trip_behavior_events_event_category_idx ON public.trip_behavior_events USING btree (event_category)"
+        },
+        {
+          "index_name": "trip_behavior_events_pkey",
+          "definition": "CREATE UNIQUE INDEX trip_behavior_events_pkey ON public.trip_behavior_events USING btree (id)"
+        },
+        {
+          "index_name": "trip_behavior_events_started_at_idx",
+          "definition": "CREATE INDEX trip_behavior_events_started_at_idx ON public.trip_behavior_events USING btree (started_at)"
+        },
+        {
+          "index_name": "trip_behavior_events_trip_id_event_category_idx",
+          "definition": "CREATE INDEX trip_behavior_events_trip_id_event_category_idx ON public.trip_behavior_events USING btree (trip_id, event_category)"
+        },
+        {
+          "index_name": "trip_behavior_events_trip_id_idx",
+          "definition": "CREATE INDEX trip_behavior_events_trip_id_idx ON public.trip_behavior_events USING btree (trip_id)"
+        },
+        {
+          "index_name": "trip_behavior_events_vehicle_id_idx",
+          "definition": "CREATE INDEX trip_behavior_events_vehicle_id_idx ON public.trip_behavior_events USING btree (vehicle_id)"
+        }
+      ]
+    },
+    {
+      "name": "vehicle_trip_waypoints",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "latitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "longitude",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "speed_kmh",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "heading",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "recorded_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "vehicle_trip_waypoints_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "vehicle_trip_waypoints_trip_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "vehicle_trip_waypoints_pkey",
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_waypoints_pkey ON public.vehicle_trip_waypoints USING btree (id)"
+        },
+        {
+          "index_name": "vehicle_trip_waypoints_recorded_at_idx",
+          "definition": "CREATE INDEX vehicle_trip_waypoints_recorded_at_idx ON public.vehicle_trip_waypoints USING btree (recorded_at)"
+        },
+        {
+          "index_name": "vehicle_trip_waypoints_trip_id_idx",
+          "definition": "CREATE INDEX vehicle_trip_waypoints_trip_id_idx ON public.vehicle_trip_waypoints USING btree (trip_id)"
+        }
+      ]
+    },
+    {
+      "name": "vehicle_trip_tracking_runs",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "organization_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "state_at_run",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripDetectionState",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "run_type",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripTrackingRunType",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "requested_from",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "requested_to",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "core_points_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "route_points_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "driving_points_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "result_state",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripDetectionState",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 13,
+          "column_name": "result_summary",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 14,
+          "column_name": "error_message",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 15,
+          "column_name": "duration_ms",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 16,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "vehicle_trip_tracking_runs_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "vehicle_trip_tracking_runs_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "vehicle_trip_tracking_runs_created_at_idx",
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_created_at_idx ON public.vehicle_trip_tracking_runs USING btree (created_at)"
+        },
+        {
+          "index_name": "vehicle_trip_tracking_runs_pkey",
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_tracking_runs_pkey ON public.vehicle_trip_tracking_runs USING btree (id)"
+        },
+        {
+          "index_name": "vehicle_trip_tracking_runs_run_type_idx",
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_run_type_idx ON public.vehicle_trip_tracking_runs USING btree (run_type)"
+        },
+        {
+          "index_name": "vehicle_trip_tracking_runs_trip_id_idx",
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_trip_id_idx ON public.vehicle_trip_tracking_runs USING btree (trip_id)"
+        },
+        {
+          "index_name": "vehicle_trip_tracking_runs_vehicle_id_idx",
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_vehicle_id_idx ON public.vehicle_trip_tracking_runs USING btree (vehicle_id)"
+        }
+      ]
+    },
+    {
+      "name": "trip_repairs",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "repair_type",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "status",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": "'PROPOSED'::text",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "reason",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "confidence",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "window_from",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "window_to",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "detector_evidence",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "applied_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "trip_repairs_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "trip_repairs_trip_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE SET NULL"
+        },
+        {
+          "constraint_name": "trip_repairs_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "trip_repairs_created_at_idx",
+          "definition": "CREATE INDEX trip_repairs_created_at_idx ON public.trip_repairs USING btree (created_at)"
+        },
+        {
+          "index_name": "trip_repairs_pkey",
+          "definition": "CREATE UNIQUE INDEX trip_repairs_pkey ON public.trip_repairs USING btree (id)"
+        },
+        {
+          "index_name": "trip_repairs_repair_type_idx",
+          "definition": "CREATE INDEX trip_repairs_repair_type_idx ON public.trip_repairs USING btree (repair_type)"
+        },
+        {
+          "index_name": "trip_repairs_status_idx",
+          "definition": "CREATE INDEX trip_repairs_status_idx ON public.trip_repairs USING btree (status)"
+        },
+        {
+          "index_name": "trip_repairs_trip_id_idx",
+          "definition": "CREATE INDEX trip_repairs_trip_id_idx ON public.trip_repairs USING btree (trip_id)"
+        },
+        {
+          "index_name": "trip_repairs_vehicle_id_idx",
+          "definition": "CREATE INDEX trip_repairs_vehicle_id_idx ON public.trip_repairs USING btree (vehicle_id)"
+        }
+      ]
+    },
+    {
+      "name": "trip_driving_impact",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "organization_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "trip_started_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "trip_ended_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "distance_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "city_share_pct",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "highway_share_pct",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "country_road_share_pct",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "hard_accel_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "extreme_accel_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 13,
+          "column_name": "hard_brake_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 14,
+          "column_name": "extreme_brake_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 15,
+          "column_name": "full_braking_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 16,
+          "column_name": "kickdown_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 17,
+          "column_name": "launch_like_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 18,
+          "column_name": "brakes_per_100km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 19,
+          "column_name": "stop_density",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 20,
+          "column_name": "high_speed_brake_share",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 21,
+          "column_name": "mean_brake_energy_per_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 22,
+          "column_name": "p95_negative_decel",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 23,
+          "column_name": "longitudinal_stress_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 24,
+          "column_name": "braking_stress_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 25,
+          "column_name": "stop_go_stress_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 26,
+          "column_name": "high_speed_stress_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 27,
+          "column_name": "thermal_brake_stress_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 28,
+          "column_name": "driving_style_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 29,
+          "column_name": "safety_score",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 30,
+          "column_name": "speeding_exposure_pct",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 31,
+          "column_name": "speeding_section_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 32,
+          "column_name": "model_version",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 33,
+          "column_name": "source_summary_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 34,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 35,
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 36,
+          "column_name": "primary_source",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 37,
+          "column_name": "measured_share",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 38,
+          "column_name": "provider_classified_share",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 39,
+          "column_name": "reconstructed_share",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 40,
+          "column_name": "estimated_proxy_share",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 41,
+          "column_name": "context_only_share",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 42,
+          "column_name": "native_event_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 43,
+          "column_name": "hf_event_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 44,
+          "column_name": "measurement_coverage",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 45,
+          "column_name": "hardware_profile",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 46,
+          "column_name": "capability_version",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 47,
+          "column_name": "health_eligibility",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 48,
+          "column_name": "provenance_maturity",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 49,
+          "column_name": "provenance_version",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 50,
+          "column_name": "p95_negative_decel_measured",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 51,
+          "column_name": "p95_negative_decel_proxy",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 52,
+          "column_name": "mean_brake_energy_proxy_per_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 53,
+          "column_name": "load_components_json",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 54,
+          "column_name": "authoritative_distance_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 55,
+          "column_name": "source_version",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 56,
+          "column_name": "source_fingerprint",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 57,
+          "column_name": "analysis_status",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripDrivingImpactAnalysisStatus",
+          "is_nullable": false,
+          "column_default": "'PENDING'::\"TripDrivingImpactAnalysisStatus\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 58,
+          "column_name": "calculated_at",
+          "data_type": "timestamp with time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamptz",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 6
+        },
+        {
+          "ordinal_position": 59,
+          "column_name": "source_completeness",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 60,
+          "column_name": "trip_distance_km_at_source",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 61,
+          "column_name": "distance_discrepancy_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "trip_driving_impact_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "trip_driving_impact_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "trip_driving_impact_analysis_status_idx",
+          "definition": "CREATE INDEX trip_driving_impact_analysis_status_idx ON public.trip_driving_impact USING btree (analysis_status)"
+        },
+        {
+          "index_name": "trip_driving_impact_organization_id_vehicle_id_idx",
+          "definition": "CREATE INDEX trip_driving_impact_organization_id_vehicle_id_idx ON public.trip_driving_impact USING btree (organization_id, vehicle_id)"
+        },
+        {
+          "index_name": "trip_driving_impact_pkey",
+          "definition": "CREATE UNIQUE INDEX trip_driving_impact_pkey ON public.trip_driving_impact USING btree (id)"
+        },
+        {
+          "index_name": "trip_driving_impact_source_fingerprint_idx",
+          "definition": "CREATE INDEX trip_driving_impact_source_fingerprint_idx ON public.trip_driving_impact USING btree (source_fingerprint)"
+        },
+        {
+          "index_name": "trip_driving_impact_trip_id_key",
+          "definition": "CREATE UNIQUE INDEX trip_driving_impact_trip_id_key ON public.trip_driving_impact USING btree (trip_id)"
+        },
+        {
+          "index_name": "trip_driving_impact_vehicle_id_trip_started_at_idx",
+          "definition": "CREATE INDEX trip_driving_impact_vehicle_id_trip_started_at_idx ON public.trip_driving_impact USING btree (vehicle_id, trip_started_at)"
+        }
+      ]
+    },
+    {
+      "name": "vehicle_trip_detection_states",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "organization_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "state",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "TripDetectionState",
+          "is_nullable": false,
+          "column_default": "'RESTING'::\"TripDetectionState\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "detection_profile",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "VehicleDetectionProfile",
+          "is_nullable": false,
+          "column_default": "'UNKNOWN'::\"VehicleDetectionProfile\"",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "active_trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "possible_start_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "possible_end_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "last_activity_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "last_snapshot_evidence_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "last_core_processed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 12,
+          "column_name": "last_route_processed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 13,
+          "column_name": "last_driving_processed_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 14,
+          "column_name": "worker_locked_until",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 15,
+          "column_name": "worker_run_token",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 16,
+          "column_name": "start_detection_mode",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 17,
+          "column_name": "start_confidence",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DetectionConfidence",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 18,
+          "column_name": "end_detection_mode",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 19,
+          "column_name": "end_confidence",
+          "data_type": "USER-DEFINED",
+          "udt_schema": "public",
+          "udt_name": "DetectionConfidence",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 20,
+          "column_name": "last_evidence_summary",
+          "data_type": "jsonb",
+          "udt_schema": "pg_catalog",
+          "udt_name": "jsonb",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 21,
+          "column_name": "start_odometer_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 22,
+          "column_name": "start_fuel_level",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 23,
+          "column_name": "start_ev_soc",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 24,
+          "column_name": "last_meaningful_movement_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 25,
+          "column_name": "end_validation_attempts",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 26,
+          "column_name": "cusum_validated_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 27,
+          "column_name": "cusum_segment_start",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 28,
+          "column_name": "cusum_segment_end",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 29,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 30,
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "vehicle_trip_detection_states_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "vehicle_trip_detection_states_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "vehicle_trip_detection_states_organization_id_idx",
+          "definition": "CREATE INDEX vehicle_trip_detection_states_organization_id_idx ON public.vehicle_trip_detection_states USING btree (organization_id)"
+        },
+        {
+          "index_name": "vehicle_trip_detection_states_pkey",
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_detection_states_pkey ON public.vehicle_trip_detection_states USING btree (id)"
+        },
+        {
+          "index_name": "vehicle_trip_detection_states_state_idx",
+          "definition": "CREATE INDEX vehicle_trip_detection_states_state_idx ON public.vehicle_trip_detection_states USING btree (state)"
+        },
+        {
+          "index_name": "vehicle_trip_detection_states_vehicle_id_key",
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_detection_states_vehicle_id_key ON public.vehicle_trip_detection_states USING btree (vehicle_id)"
+        },
+        {
+          "index_name": "vehicle_trip_detection_states_worker_locked_until_idx",
+          "definition": "CREATE INDEX vehicle_trip_detection_states_worker_locked_until_idx ON public.vehicle_trip_detection_states USING btree (worker_locked_until)"
+        }
+      ]
+    },
+    {
+      "name": "brake_trip_metrics",
+      "present": true,
+      "columns": [
+        {
+          "ordinal_position": 1,
+          "column_name": "id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 2,
+          "column_name": "vehicle_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 3,
+          "column_name": "trip_id",
+          "data_type": "text",
+          "udt_schema": "pg_catalog",
+          "udt_name": "text",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 4,
+          "column_name": "brake_energy_kj",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 5,
+          "column_name": "hard_brake_count",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": false,
+          "column_default": "0",
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 6,
+          "column_name": "avg_deceleration_ms2",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 7,
+          "column_name": "max_deceleration_ms2",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 8,
+          "column_name": "brake_duration_sec",
+          "data_type": "integer",
+          "udt_schema": "pg_catalog",
+          "udt_name": "int4",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 9,
+          "column_name": "distance_km",
+          "data_type": "double precision",
+          "udt_schema": "pg_catalog",
+          "udt_name": "float8",
+          "is_nullable": true,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": 53,
+          "numeric_scale": null,
+          "datetime_precision": null
+        },
+        {
+          "ordinal_position": 10,
+          "column_name": "recorded_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": null,
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        },
+        {
+          "ordinal_position": 11,
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone",
+          "udt_schema": "pg_catalog",
+          "udt_name": "timestamp",
+          "is_nullable": false,
+          "column_default": "CURRENT_TIMESTAMP",
+          "character_maximum_length": null,
+          "numeric_precision": null,
+          "numeric_scale": null,
+          "datetime_precision": 3
+        }
+      ],
+      "constraints": [
+        {
+          "constraint_name": "brake_trip_metrics_pkey",
+          "constraint_type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "constraint_name": "brake_trip_metrics_vehicle_id_fkey",
+          "constraint_type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "index_name": "brake_trip_metrics_pkey",
+          "definition": "CREATE UNIQUE INDEX brake_trip_metrics_pkey ON public.brake_trip_metrics USING btree (id)"
+        },
+        {
+          "index_name": "brake_trip_metrics_recorded_at_idx",
+          "definition": "CREATE INDEX brake_trip_metrics_recorded_at_idx ON public.brake_trip_metrics USING btree (recorded_at)"
+        },
+        {
+          "index_name": "brake_trip_metrics_vehicle_id_idx",
+          "definition": "CREATE INDEX brake_trip_metrics_vehicle_id_idx ON public.brake_trip_metrics USING btree (vehicle_id)"
+        }
+      ]
+    }
+  ],
+  "enums": [
+    {
+      "name": "TripSource",
+      "present": true,
+      "labels": [
+        "V2_LIVE",
+        "REPAIRED"
+      ]
+    },
+    {
+      "name": "TripAssignmentStatus",
+      "present": true,
+      "labels": [
+        "ASSIGNED_DRIVER",
+        "ASSIGNED_BOOKING_CUSTOMER",
+        "PRIVATE_UNASSIGNED",
+        "UNKNOWN_ASSIGNMENT"
+      ]
+    },
+    {
+      "name": "TripAssignmentSubjectType",
+      "present": true,
+      "labels": [
+        "DRIVER",
+        "BOOKING_CUSTOMER"
+      ]
+    },
+    {
+      "name": "DrivingEventType",
+      "present": true,
+      "labels": [
+        "HARSH_BRAKING",
+        "EXTREME_BRAKING",
+        "HARSH_ACCELERATION",
+        "HARSH_CORNERING",
+        "SPEEDING",
+        "IDLE_EXCESSIVE",
+        "UNMAPPED_PROVIDER_EVENT",
+        "SAFETY_COLLISION"
+      ]
+    },
+    {
+      "name": "BehaviorEventCategory",
+      "present": true,
+      "labels": [
+        "ACCELERATION",
+        "BRAKING",
+        "ABUSE"
+      ]
+    },
+    {
+      "name": "BehaviorEventClassification",
+      "present": true,
+      "labels": [
+        "LIGHT",
+        "MODERATE",
+        "HARD",
+        "EXTREME",
+        "WARNING",
+        "SEVERE",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "TripDetectionState",
+      "present": true,
+      "labels": [
+        "RESTING",
+        "POSSIBLE_START",
+        "ACTIVE_TRIP",
+        "IDLE_WITHIN_TRIP",
+        "POSSIBLE_END",
+        "ENDED"
+      ]
+    },
+    {
+      "name": "TripTrackingRunType",
+      "present": true,
+      "labels": [
+        "POSSIBLE_START_VALIDATION",
+        "ACTIVE_TRACKING",
+        "POSSIBLE_END_CHECK",
+        "END_VALIDATION",
+        "FINALIZATION_CHECK"
+      ]
+    },
+    {
+      "name": "VehicleDetectionProfile",
+      "present": true,
+      "labels": [
+        "ICE",
+        "EV",
+        "HYBRID",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "name": "DetectionConfidence",
+      "present": true,
+      "labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    }
+  ],
+  "casing": {
+    "vehicle_trips_relname": "vehicle_trips",
+    "trip_driving_impact_relname": "trip_driving_impact",
+    "camelcase_vehicle_trip_relation_exists": false,
+    "camelcase_trip_driving_impact_relation_exists": false,
+    "public_uppercase_relation_count": 0
+  },
+  "migration_metadata": [
+    {
+      "migration_name": "20260425000000_retire_user_assignment_and_speeding_severity",
+      "finished": true,
+      "rolled_back": false,
+      "applied_steps_count": 0,
+      "started_finished_equal": true,
+      "checksum_match": null
+    }
+  ],
+  "repository_comparison": {
+    "LIVE_REPO_COLUMN_DIFF_COUNT": 0,
+    "LIVE_REPO_TYPE_DIFF_COUNT": 0,
+    "LIVE_REPO_NULLABILITY_DIFF_COUNT": 0,
+    "LIVE_REPO_DEFAULT_DIFF_COUNT": 0,
+    "LIVE_REPO_CONSTRAINT_DIFF_COUNT": 0,
+    "LIVE_REPO_INDEX_DIFF_COUNT": 0,
+    "UNCLASSIFIED_LIVE_REPO_DIFF_COUNT": 0,
+    "per_table": {
+      "vehicle_trips": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "driving_events": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "trip_behavior_events": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "vehicle_trip_waypoints": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "vehicle_trip_tracking_runs": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "trip_repairs": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "trip_driving_impact": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "vehicle_trip_detection_states": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      },
+      "brake_trip_metrics": {
+        "column": [],
+        "type": [],
+        "nullability": [],
+        "default": [],
+        "constraint": [],
+        "index": [],
+        "unclassified": []
+      }
+    },
+    "enum_label_diffs": [],
+    "repo_column_counts": {
+      "vehicle_trips": 110,
+      "driving_events": 21,
+      "trip_behavior_events": 20,
+      "vehicle_trip_waypoints": 7,
+      "vehicle_trip_tracking_runs": 16,
+      "trip_repairs": 12,
+      "trip_driving_impact": 61,
+      "vehicle_trip_detection_states": 30,
+      "brake_trip_metrics": 11
+    },
+    "live_column_counts": {
+      "vehicle_trips": 110,
+      "driving_events": 21,
+      "trip_behavior_events": 20,
+      "vehicle_trip_waypoints": 7,
+      "vehicle_trip_tracking_runs": 16,
+      "trip_repairs": 12,
+      "trip_driving_impact": 61,
+      "vehicle_trip_detection_states": 30,
+      "brake_trip_metrics": 11
+    },
+    "classification_note": "Comparator uses Prisma @map scalar fields vs live information_schema rows. DateTime timestamptz variants are accepted for TripDrivingImpact.calculated_at."
+  }
+}

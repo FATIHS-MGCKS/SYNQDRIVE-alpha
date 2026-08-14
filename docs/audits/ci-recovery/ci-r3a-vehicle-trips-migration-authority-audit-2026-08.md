@@ -1,17 +1,21 @@
 # CI Recovery R3A — Vehicle Trip migration history authority audit
 
-> **Documentation-only authority audit.** No migration, schema, runtime, test, workflow,
-> dependency, or production artifact was changed. Disposable local PostgreSQL 16 was used for
-> read/write diagnostics only and then destroyed. This audit determines the safe, evidence-backed
-> repair strategy for CI-R3B; it does **not** implement it.
+> **Documentation-only authority audit.** No migration, schema, runtime, test, workflow, or
+> dependency was changed. Disposable local PostgreSQL 16 was used for read/write diagnostics only
+> and then destroyed. **CI-R3A.7 / CI-R3A.7.1** performed authorized **read-only** production
+> PostgreSQL catalog queries (catalog tables only; proven `BEGIN READ ONLY` … `ROLLBACK`; no business
+> rows; no connection or infrastructure metadata in committed evidence). This audit determines the
+> safe, evidence-backed repair strategy for CI-R3B; it does **not** implement it.
 >
 > Correction history: **CI-R3A.1** added two missing tables + the 27-migration matrix.
 > **CI-R3A.2** completed the schema-object inventory. **CI-R3A.3** corrected model/enum
 > introduction commits. **CI-R3A.4** (this revision, §17) corrects the classified universe to 55,
 > adds full initial/current table shapes (appendix, no ellipses) and per-model evolution commits,
 > separates missing **creation** DDL from existing **evolution** DDL, and replaces the grouped
-> pseudo-ledger with a mechanically-validated **atomic** critical-unknown table. Superseded values
-> are marked "SUPERSEDED BY CI-R3A.4".
+> pseudo-ledger with a mechanically-validated **atomic** critical-unknown table. **CI-R3A.7.1** (§17d)
+> supersedes the initial CI-R3A.7 capture with redacted infrastructure metadata and complete committed
+> catalog evidence in `ci-r3a7-production-catalog-evidence-2026-08.json`. Superseded values are marked
+> "SUPERSEDED BY CI-R3A.4".
 
 ## 1. Authoritative base and branch
 
@@ -313,54 +317,57 @@ selection + 1 orphan decision = **43**.
 
 | ID | Object | Exact unknown proposition | Available evidence | Missing evidence | Why implementation-critical | Possible evidence source | Stop condition | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| U001 | vehicle_trips | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U002 | driving_events | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U003 | trip_behavior_events | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U004 | vehicle_trip_waypoints | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U005 | vehicle_trip_tracking_runs | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U006 | trip_repairs | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U007 | trip_driving_impact | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U008 | vehicle_trip_detection_states | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | schema-parity bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | UNRESOLVED |
-| U009 | brake_trip_metrics | Does the table exist in the target DB? | repo schema declares it (§4) | live catalog read | orphan decision + CREATE-or-skip depend on it | information_schema.tables | no action until verified | UNRESOLVED |
-| U010 | TripSource | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | bootstrap must CREATE-or-skip the type | pg_type | no bootstrap until verified | UNRESOLVED |
-| U011 | TripAssignmentStatus | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | bootstrap must CREATE-or-skip the type | pg_type | no bootstrap until verified | UNRESOLVED |
-| U012 | TripAssignmentSubjectType | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | bootstrap must CREATE-or-skip the type | pg_type | no bootstrap until verified | UNRESOLVED |
-| U013 | DrivingEventType | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | ALTER TYPE ADD VALUE needs the type present | pg_type | no bootstrap until verified | UNRESOLVED |
-| U014 | BehaviorEventCategory | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | needed to build trip_behavior_events at parity | pg_type | no bootstrap until verified | UNRESOLVED |
-| U015 | BehaviorEventClassification | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | needed to build trip_behavior_events at parity | pg_type | no bootstrap until verified | UNRESOLVED |
-| U016 | TripDetectionState | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | UNRESOLVED |
-| U017 | TripTrackingRunType | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | UNRESOLVED |
-| U018 | VehicleDetectionProfile | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | UNRESOLVED |
-| U019 | DetectionConfidence | Does the enum type exist in the target DB? | repo schema declares it (§6) | live pg_type read | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | UNRESOLVED |
-| U020 | vehicle_trips | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U021 | driving_events | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U022 | trip_behavior_events | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U023 | vehicle_trip_waypoints | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U024 | vehicle_trip_tracking_runs | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U025 | trip_repairs | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U026 | trip_driving_impact | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U027 | vehicle_trip_detection_states | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | UNRESOLVED |
-| U028 | brake_trip_metrics | Exact live physical column/type/constraint set? | repo intended shape proven (§18) | live column catalog | orphan decision depends on live shape | information_schema.columns | no action if live shape diverges | UNRESOLVED |
-| U029 | TripSource | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U030 | TripAssignmentStatus | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U031 | TripAssignmentSubjectType | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U032 | DrivingEventType | Exact live enum value set? | repo values proven (§6) | live pg_enum read | ADD VALUE idempotency depends on live set | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U033 | BehaviorEventCategory | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U034 | BehaviorEventClassification | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U035 | TripDetectionState | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U036 | TripTrackingRunType | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U037 | VehicleDetectionProfile | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U038 | DetectionConfidence | Exact live enum value set? | repo values proven (§6) | live pg_enum read | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | UNRESOLVED |
-| U039 | vehicle_trips | Live table identifier casing (lowercase vs camelCase)? | schema @@map lowercase; 20260425000000 uses camel | live pg_class relname | decides casing-repair need + Option J direction | pg_class | no casing repair until known | UNRESOLVED |
-| U040 | trip_driving_impact | Live table identifier casing (lowercase vs camelCase)? | schema @@map lowercase; 20260425000000 uses camel | live pg_class relname | decides casing-repair need + Option J direction | pg_class | no casing repair until known | UNRESOLVED |
-| U041 | 20260425000000 | Is this migration recorded applied in target _prisma_migrations? | repo migration present | live _prisma_migrations row | Option J guard branches on applied-state | _prisma_migrations | no Option J guard until known | UNRESOLVED |
-| U042 | casing repair | Which mechanism (Option B edit vs Option J append) is safe? | option matrix (§9) | the two live-casing rows and the applied-state row must resolve, plus review | end-to-end replay must pass 20260425000000 safely | resolution of the live-casing and applied-state rows + reviewer | no casing repair until selected | UNRESOLVED |
-| U043 | brake_trip_metrics | Should it be bootstrapped or removed from the schema? | 0 migration refs, 0 backend readers/writers (§4) | product/architecture decision | determines inclusion in bootstrap vs schema removal | product/architecture owner | no action until decided | UNRESOLVED |
+| U001 | vehicle_trips | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U002 | driving_events | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U003 | trip_behavior_events | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U004 | vehicle_trip_waypoints | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U005 | vehicle_trip_tracking_runs | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U006 | trip_repairs | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U007 | trip_driving_impact | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | idempotent bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U008 | vehicle_trip_detection_states | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | schema-parity bootstrap must CREATE-or-skip | information_schema.tables | no bootstrap until verified | **RESOLVED (YES)** |
+| U009 | brake_trip_metrics | Does the table exist in the target DB? | production catalog JSON: present=true (§17d) | — | orphan decision + CREATE-or-skip depend on it | information_schema.tables | no action until verified | **RESOLVED (YES)** |
+| U010 | TripSource | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | bootstrap must CREATE-or-skip the type | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U011 | TripAssignmentStatus | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | bootstrap must CREATE-or-skip the type | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U012 | TripAssignmentSubjectType | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | bootstrap must CREATE-or-skip the type | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U013 | DrivingEventType | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | ALTER TYPE ADD VALUE needs the type present | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U014 | BehaviorEventCategory | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | needed to build trip_behavior_events at parity | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U015 | BehaviorEventClassification | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | needed to build trip_behavior_events at parity | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U016 | TripDetectionState | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U017 | TripTrackingRunType | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U018 | VehicleDetectionProfile | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U019 | DetectionConfidence | Does the enum type exist in the target DB? | JSON enums[] present=true (§17d) | — | schema-parity bootstrap must CREATE-or-skip | pg_type | no bootstrap until verified | **RESOLVED (YES)** |
+| U020 | vehicle_trips | Exact live physical column/type/constraint set? | JSON: 110 columns, 2 constraints, 13 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U021 | driving_events | Exact live physical column/type/constraint set? | JSON: 21 columns, 3 constraints, 11 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U022 | trip_behavior_events | Exact live physical column/type/constraint set? | JSON: 20 columns, 3 constraints, 6 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U023 | vehicle_trip_waypoints | Exact live physical column/type/constraint set? | JSON: 7 columns, 2 constraints, 3 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U024 | vehicle_trip_tracking_runs | Exact live physical column/type/constraint set? | JSON: 16 columns, 2 constraints, 5 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U025 | trip_repairs | Exact live physical column/type/constraint set? | JSON: 12 columns, 3 constraints, 6 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U026 | trip_driving_impact | Exact live physical column/type/constraint set? | JSON: 61 columns, 2 constraints, 6 indexes; no `speeding_severity_score`; repo diff 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U027 | vehicle_trip_detection_states | Exact live physical column/type/constraint set? | JSON: 30 columns, 2 constraints, 5 indexes; repo diff totals all 0 (§17d) | — | detect drift vs bootstrap DDL | information_schema.columns | no bootstrap if live shape diverges | **RESOLVED (CAPTURED)** |
+| U028 | brake_trip_metrics | Exact live physical column/type/constraint set? | JSON: 11 columns, 2 constraints, 3 indexes; repo diff totals all 0 (§17d) | — | orphan decision depends on live shape | information_schema.columns | no action if live shape diverges | **RESOLVED (CAPTURED)** |
+| U029 | TripSource | Exact live enum value set? | JSON labels `{V2_LIVE, REPAIRED}` ordered (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U030 | TripAssignmentStatus | Exact live enum value set? | JSON: 4 ordered labels; no `ASSIGNED_USER` (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U031 | TripAssignmentSubjectType | Exact live enum value set? | JSON: `{DRIVER, BOOKING_CUSTOMER}` ordered; no `USER` (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U032 | DrivingEventType | Exact live enum value set? | JSON: 8 ordered labels incl. `UNMAPPED_PROVIDER_EVENT`, `SAFETY_COLLISION` (§17d) | — | ADD VALUE idempotency depends on live set | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U033 | BehaviorEventCategory | Exact live enum value set? | JSON: 3 ordered labels (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U034 | BehaviorEventClassification | Exact live enum value set? | JSON: 7 ordered labels (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U035 | TripDetectionState | Exact live enum value set? | JSON: 6 ordered labels (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U036 | TripTrackingRunType | Exact live enum value set? | JSON: 5 ordered labels (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U037 | VehicleDetectionProfile | Exact live enum value set? | JSON: 4 ordered labels (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U038 | DetectionConfidence | Exact live enum value set? | JSON: `{LOW, MEDIUM, HIGH}` ordered (§17d) | — | bootstrap/inserts must match live values | pg_enum | no bootstrap if values diverge | **RESOLVED (MATCH)** |
+| U039 | vehicle_trips | Live table identifier casing (lowercase vs camelCase)? | JSON casing: relname lowercase; camelCase ghost absent (§17d) | — | decides casing-repair need + Option J direction | pg_class | no casing repair until known | **RESOLVED (lowercase)** |
+| U040 | trip_driving_impact | Live table identifier casing (lowercase vs camelCase)? | JSON casing: relname lowercase; camelCase ghost absent (§17d) | — | decides casing-repair need + Option J direction | pg_class | no casing repair until known | **RESOLVED (lowercase)** |
+| U041 | 20260425000000 | Is this migration recorded applied in target _prisma_migrations? | JSON migration_metadata: finished, not rolled back, applied_steps_count=0 (§17d) | — | Option J guard branches on applied-state | _prisma_migrations | no Option J guard until known | **RESOLVED (APPLIED)** |
+| U042 | casing repair | Which mechanism (Option B edit vs Option J append) is safe? | JSON casing + U041; §17d recommendation only | reviewer sign-off + proven empty-DB replay | end-to-end replay must pass 20260425000000 safely | resolution rows + reviewer | no casing repair until selected | **RECOMMENDATION_ONLY** |
+| U043 | brake_trip_metrics | Should it be bootstrapped or removed from the schema? | JSON table present; 0 migration refs (§4) | product/architecture decision | determines inclusion in bootstrap vs schema removal | product/architecture owner | no action until decided | **PRODUCT_DECISION_REQUIRED** |
 
 <!-- ATOMIC_UNKNOWN_LEDGER_END -->
 
 `IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = `ATOMIC_UNKNOWN_LEDGER_ROW_COUNT` =
-`ATOMIC_UNKNOWN_UNIQUE_ID_COUNT` = **43**. `ATOMIC_UNKNOWN_DUPLICATE_ID_COUNT` = 0;
+`ATOMIC_UNKNOWN_UNIQUE_ID_COUNT` = **43**. `PRODUCTION_AUTHORITY_RESOLVED_UNKNOWN_COUNT` (U001–U041) =
+**41** (CI-R3A.7.1). `RECOMMENDATION_ONLY_LEDGER_ROW_COUNT` (U042) = **1**.
+`PRODUCT_DECISION_LEDGER_ROW_COUNT` (U043) = **1**. `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` = **2**
+(U042 reviewer selection + U043 product decision). `ATOMIC_UNKNOWN_DUPLICATE_ID_COUNT` = 0;
 `ATOMIC_UNKNOWN_MISSING_COLUMN_ROW_COUNT` = 0; `GROUPED_UNKNOWN_RANGE_COUNT` = 0;
 `GROUPED_UNCOUNTED_CRITICAL_UNKNOWN_COUNT` = 0; `UNMATRIXED_IMPLEMENTATION_CRITICAL_UNKNOWN_COUNT` = 0;
 `STALE_CRITICAL_UNKNOWN_COUNT` = 0. Mechanical validation command + output are in §17.
@@ -385,11 +392,14 @@ authority.
   `SCHEMA_PARITY_ONLY_COUNT` = 6; `ORPHAN_REVIEW_REQUIRED_COUNT` = 1 (sums to 19).
 - `PROVISIONAL_BOOTSTRAP_OBJECT_COUNT` = 18 (excludes the orphan pending U043).
 - `PROVISIONAL_BOOTSTRAP_OMITTED_OBJECT_COUNT` = 0.
-- `INSUFFICIENT_AUTHORITY_COUNT` = 19 — executable DDL for every object is unauthorized until its
-  §10 live propositions resolve; repository schema history is **not** permission to write migration
-  SQL, and proven intended enum values are not permission to implement them in production.
-- `BASE_GAP_STRATEGY_STATUS` = SAFE_CANDIDATE; `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY;
-  `END_TO_END_R3B_STRATEGY_STATUS` = BLOCKED.
+- `INSUFFICIENT_AUTHORITY_COUNT` = **1** — executable DDL for `brake_trip_metrics` remains unauthorized
+  pending U043; all other objects now have production-captured live authority (§17d). Repository
+  schema history is still not permission to mutate production, but Option **D** bootstrap targets are
+  now authorized against captured lowercase production shapes.
+- `BASE_GAP_STRATEGY_STATUS` = SAFE_CANDIDATE (**production-authorized** — §17d);
+  `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY (U042 — §17d; not selected);
+  `END_TO_END_R3B_STRATEGY_STATUS` = BLOCKED (U042 reviewer + U043 product decision).
+  `CI_R3B_IMPLEMENTATION_COUNT` = 0.
 
 Per-object rationale: the 7 replay-required tables + 3 replay-required enums are directly referenced
 by a migration (ALTER/INDEX/FK/rebuild) and block replay; `BehaviorEventCategory`/
@@ -401,11 +411,15 @@ in the schema; `brake_trip_metrics` is orphan (no migration ref, no code reader/
 
 | Counter | Value |
 |---------|-------|
-| `CHANGED_FILE_COUNT` / `AUDIT_REPORT_CHANGE_COUNT` | 1 |
+| `CHANGED_FILE_COUNT` | 2 |
+| `AUDIT_REPORT_CHANGE_COUNT` | 1 |
+| `EVIDENCE_FILE_CHANGE_COUNT` | 1 |
+| `DOCUMENTATION_FILE_CHANGE_COUNT` | 2 |
 | `HISTORICAL_MIGRATION_EDIT_COUNT` / `NEW_MIGRATION_COUNT` / `SCHEMA_CHANGE_COUNT` | 0 |
 | `RUNTIME_CHANGE_COUNT` / `TEST_LOGIC_CHANGE_COUNT` / `WORKFLOW_CHANGE_COUNT` | 0 |
 | `DEPENDENCY_CHANGE_COUNT` / `LOCKFILE_CHANGE_COUNT` / `PRODUCTION_CONFIG_CHANGE_COUNT` | 0 |
-| `PRODUCTION_DATABASE_ACCESS_COUNT` / `PRODUCTION_DEPLOYMENT_COUNT` / `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
+| `PRODUCTION_DATABASE_ACCESS_COUNT` | 1 (read-only catalog; §17d) |
+| `PRODUCTION_DEPLOYMENT_COUNT` / `CI_R3B_IMPLEMENTATION_COUNT` | 0 |
 | `E6`/`E7`/`E8`/`E9` scope / `OUT_OF_SCOPE_FILE_COUNT` | 0 |
 
 ## 13. Stale-claim sweep
@@ -524,20 +538,178 @@ they remain attributed exclusively to `17019787`. Attribution now:
 
 No model-history commit or DDL file was added or removed: the 17 material non-merge commit inventory
 (§4a), the nine-file `vehicle_trips` evolution-DDL inventory (§5), the 55-file universe (§3), and the
-43-row atomic ledger (§10) are all unchanged. No executable or production change occurred. CI-R3A
-remains authority-blocked; CI-R3B and E7/E8/E9 remain unstarted.
+43-row atomic ledger (§10) are all unchanged. No executable migration/schema/runtime change occurred.
+CI-R3B remains blocked on U042/U043; E7/E8/E9 not started.
+
+## 17c. CI-R3A.7 — Initial production capture (superseded)
+
+Initial read-only production catalog capture occurred **2026-08-14**. Independent review rejected
+that revision for: (1) prohibited infrastructure metadata in committed prose; (2) U020–U028 marked
+resolved without complete committed column/constraint/index evidence; (3) read-only transaction /
+rollback / session closure asserted but not demonstrated; (4) Option **J** inconsistently labeled
+**SAFE**; (5) `applied_steps_count=0` interpreted too conclusively.
+
+`CI_R3A7_INITIAL_CAPTURE_STATUS` = **SUPERSEDED BY CI-R3A.7.1** (§17d). Do not cite §17c prose as
+authority; cite §17d and the JSON evidence artifact only.
+
+## 17d. CI-R3A.7.1 — Redacted production catalog evidence correction
+
+Authorized read-only production catalog capture re-executed **2026-08-14** using the preconfigured
+access mechanism (values redacted; not recorded in git).
+
+### Sanitized evidence artifact
+
+Machine-readable, sanitized catalog evidence:
+
+`docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json`
+
+The JSON contains complete live column, constraint, index and enum-label catalogs for all nine tables
+and ten enums, casing probes, the single required `_prisma_migrations` metadata row, and repository
+comparison totals. No connection URL, credential path, host, SSH identity or secret values appear in
+the artifact.
+
+### Read-only session proof
+
+| Field | Value |
+|-------|-------|
+| `TARGET_ENVIRONMENT` | PRODUCTION |
+| `TARGET_DATABASE_IDENTITY_PROVEN` | YES |
+| `TARGET_DATABASE_IDENTITY_REDACTED` | YES |
+| `READ_ONLY_TRANSACTION_PROVEN` | YES (`current_setting('transaction_read_only')` = `on`) |
+| `DATABASE_TRANSACTION_END` | ROLLBACK |
+| `DATABASE_SESSION_CLOSED` | YES |
+| `PRODUCTION_DATABASE_READ_SESSION_COUNT` | 1 |
+| `PRODUCTION_DATABASE_WRITE_COUNT` | 0 |
+| `PRODUCTION_DDL_DML_MUTATION_COUNT` | 0 |
+| `BUSINESS_DATA_QUERY_COUNT` | 0 |
+| `BUSINESS_DATA_ROW_READ_COUNT` | 0 |
+| `MIGRATION_METADATA_ROW_QUERY_COUNT` | 1 |
+
+Queries were limited to `pg_catalog`, `information_schema`, and the single `_prisma_migrations` row
+for `20260425000000_retire_user_assignment_and_speeding_severity`.
+
+### Live catalog evidence counts (authoritative)
+
+| Counter | Value |
+|---------|-------|
+| `LIVE_TABLE_EVIDENCE_COUNT` | 9 |
+| `LIVE_COLUMN_EVIDENCE_ROW_COUNT` | 288 |
+| `LIVE_CONSTRAINT_EVIDENCE_ROW_COUNT` | 21 |
+| `LIVE_INDEX_EVIDENCE_ROW_COUNT` | 58 |
+| `LIVE_ENUM_TYPE_EVIDENCE_COUNT` | 10 |
+| `LIVE_ENUM_VALUE_EVIDENCE_ROW_COUNT` | 44 |
+
+Per-table column / constraint / index row counts are recorded in the JSON (`tables[].columns`,
+`tables[].constraints`, `tables[].indexes`) with no placeholders or ellipses.
+
+### Repository comparison (complete)
+
+Comparator: Prisma `@map` scalar fields + unmapped snake_case scalars vs live `information_schema`
+rows (see JSON `repository_comparison`).
+
+| Counter | Value |
+|---------|-------|
+| `LIVE_REPO_COLUMN_DIFF_COUNT` | 0 |
+| `LIVE_REPO_TYPE_DIFF_COUNT` | 0 |
+| `LIVE_REPO_NULLABILITY_DIFF_COUNT` | 0 |
+| `LIVE_REPO_DEFAULT_DIFF_COUNT` | 0 |
+| `LIVE_REPO_CONSTRAINT_DIFF_COUNT` | 0 |
+| `LIVE_REPO_INDEX_DIFF_COUNT` | 0 |
+| `UNCLASSIFIED_LIVE_REPO_DIFF_COUNT` | 0 |
+
+U020–U028 may remain **RESOLVED (CAPTURED)** because the JSON contains complete per-table columns,
+constraints and indexes and the comparison totals above are all zero.
+
+### U039–U040 — casing (lowercase)
+
+JSON `casing`: `vehicle_trips_relname=vehicle_trips`, `trip_driving_impact_relname=trip_driving_impact`,
+camelCase ghost relations **absent**, `public_uppercase_relation_count=0`.
+
+### U041 — `_prisma_migrations` applied-state
+
+JSON `migration_metadata[0]`:
+
+| Field | Value |
+|-------|-------|
+| `migration_name` | `20260425000000_retire_user_assignment_and_speeding_severity` |
+| `finished` | true |
+| `rolled_back` | false |
+| `applied_steps_count` | 0 |
+| `started_finished_equal` | true |
+| `checksum_match` | null (not verified in this capture) |
+
+`applied_steps_count=0`, together with a finished row, is consistent with a migration marked
+applied/baselined without Prisma-recorded successful SQL steps. It does **not** by itself prove the
+exact historical mechanism. Live enum/column state is nonetheless consistent with the migration
+intent (retired enum values absent; `speeding_severity_score` absent).
+
+### U042 — casing-repair recommendation (not selected)
+
+Production live casing is already lowercase — **no production casing mutation is required**.
+
+| Option | Authority |
+|--------|-----------|
+| **B** — edit applied migration | **REJECTED** — editing an applied migration is unsafe |
+| **J** — append-only guarded replay shim | **CANDIDATE / INSUFFICIENT_AUTHORITY** — requires independent review and proven empty-database replay |
+
+Additional constraints recorded:
+
+- Normal later migrations cannot repair a failure that occurs **before** they execute (`20260425000000`
+  runs before many downstream migrations).
+- Any retroactively ordered guarded pre/post shim requires reviewer sign-off and proven end-to-end
+  empty-database replay.
+- **No casing strategy is selected yet.**
+
+`U042_STATUS` = RECOMMENDATION_ONLY; `CASING_STRATEGY_STATUS` = INSUFFICIENT_AUTHORITY;
+`END_TO_END_R3B_STRATEGY_STATUS` = BLOCKED; `CI_R3B_IMPLEMENTATION_COUNT` = 0.
+
+Recorded recommendation (non-binding): pair Option **D** bootstrap with an append-only Option **J**
+family replay shim for fresh databases — **without** editing the applied production migration row.
+
+### U043 — unchanged
+
+`U043_STATUS` = PRODUCT_DECISION_REQUIRED. `brake_trip_metrics` live shape is captured in JSON; orphan
+bootstrap vs schema-removal decision remains with product/architecture.
+
+### Safety / redaction counters (committed evidence scan)
+
+| Counter | Value |
+|---------|-------|
+| `CONNECTION_URI_OUTPUT_COUNT` | 0 |
+| `PASSWORD_OUTPUT_COUNT` | 0 |
+| `TOKEN_OUTPUT_COUNT` | 0 |
+| `PRIVATE_KEY_OUTPUT_COUNT` | 0 |
+| `VPS_ENDPOINT_OUTPUT_COUNT` | 0 |
+| `CREDENTIAL_PATH_OUTPUT_COUNT` | 0 |
+| `SECRET_VALUE_OUTPUT_COUNT` | 0 |
+| `PROHIBITED_INFRASTRUCTURE_METADATA_COUNT` | 0 |
+
+### CI-R3A.7.1 resolution counters
+
+| Counter | Value |
+|---------|-------|
+| `PRODUCTION_AUTHORITY_RESOLVED_UNKNOWN_COUNT` | 41 (U001–U041) |
+| `RECOMMENDATION_ONLY_UNKNOWN_COUNT` | 1 (U042) |
+| `PRODUCT_DECISION_UNKNOWN_COUNT` | 1 (U043) |
+| `REMAINING_IMPLEMENTATION_BLOCKER_COUNT` | 2 |
+| `CI_R3A71_PRODUCTION_AUTHORITY_CAPTURE_STATUS` | **SUCCESS** |
+
+Prior failure token `CI_R3A7_PRODUCTION_AUTHORITY_CAPTURE_FAILED` is superseded when §17d preconditions
+are met.
 
 ## 18. Final audit status
 
 Introduction commits, schema positions, full initial/current shapes, per-model evolution,
-CREATE-vs-evolution DDL separation, the 55-file classified universe, and a mechanically-validated
-43-row atomic unknown ledger are complete and internally consistent. Option **D** is a
-SAFE_CANDIDATE for the base-gap; casing repair is INSUFFICIENT_AUTHORITY; a single safe end-to-end
-CI-R3B strategy cannot be finalized while the 43 live-database/provenance unknowns (§10) remain
-unresolved.
+CREATE-vs-evolution DDL separation, the 55-file classified universe, a mechanically-validated
+43-row atomic unknown ledger, and **redacted production live-database authority capture (§17d +
+`ci-r3a7-production-catalog-evidence-2026-08.json`)** are complete and internally consistent. Option
+**D** is a SAFE_CANDIDATE for the base-gap and is **production-authorized** against captured lowercase
+shapes; casing repair remains **INSUFFICIENT_AUTHORITY** (U042 recommendation only); orphan
+`brake_trip_metrics` remains a product decision (U043).
 
-**Status: CI_R3A_AUTHORITY_BLOCKED** — audit complete and corrected; CI-R3B implementation requires
-the §10 authority before a single safe strategy can be committed.
+**Status: CI_R3A71_PRODUCTION_AUTHORITY_CAPTURED** — repository audit complete; live propositions
+U001–U041 resolved from committed sanitized evidence; CI-R3B implementation remains blocked on U042
+reviewer sign-off and U043 product decision before a single end-to-end strategy can be committed.
 
 ## Appendix A — Full initial vs current table shapes (no ellipses)
 
