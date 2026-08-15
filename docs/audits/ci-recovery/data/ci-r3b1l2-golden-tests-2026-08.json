@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "tests": [
+    {
+      "name": "commented_create_enum",
+      "pass": true,
+      "detail": {
+        "statements": 1
+      }
+    },
+    {
+      "name": "commented_alter_table_r3b",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [
+          "AlterTable"
+        ],
+        "leading_comment_lines": [
+          "-- AlterTable"
+        ],
+        "operation_family": "ALTER TABLE",
+        "operation_subtype": "alter_table",
+        "raw_sql": "ALTER TABLE \"trip_driving_impact\"\nALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)",
+        "schema": "public",
+        "primary_target_identifier": "trip_driving_impact",
+        "owner_table": "trip_driving_impact",
+        "owner_column": "calculated_at",
+        "owner_constraint": null,
+        "owner_index": null,
+        "owner_enum": null,
+        "quoted_identifiers": [
+          "trip_driving_impact",
+          "calculated_at"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "table trip_driving_impact in R3B authority",
+        "authority_id": "P037",
+        "property_identity": "trip_driving_impact:columns"
+      }
+    },
+    {
+      "name": "multiple_comment_headings",
+      "pass": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "comment_only_block",
+      "pass": true,
+      "detail": {
+        "sql_count": 0,
+        "metadata_ok": true
+      }
+    },
+    {
+      "name": "semicolon_in_string",
+      "pass": true,
+      "detail": {
+        "count": 2
+      }
+    },
+    {
+      "name": "block_comment_semicolon",
+      "pass": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "dollar_quoted_body",
+      "pass": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "drop_index_r3b_owner",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "DROP INDEX",
+        "operation_subtype": "drop_index",
+        "raw_sql": "DROP INDEX \"r3b_owned_idx\";",
+        "schema": "public",
+        "primary_target_identifier": "r3b_owned_idx",
+        "owner_table": "trip_driving_impact",
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "r3b_owned_idx",
+        "owner_enum": null,
+        "quoted_identifiers": [
+          "r3b_owned_idx"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "index r3b_owned_idx owned by R3B table trip_driving_impact",
+        "authority_id": "P042",
+        "property_identity": "trip_driving_impact:indexes"
+      }
+    },
+    {
+      "name": "drop_index_out_of_scope",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "DROP INDEX",
+        "operation_subtype": "drop_index",
+        "raw_sql": "DROP INDEX \"totally_unknown_idx\";",
+        "schema": "public",
+        "primary_target_identifier": "totally_unknown_idx",
+        "owner_table": null,
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "totally_unknown_idx",
+        "owner_enum": null,
+        "quoted_identifiers": [
+          "totally_unknown_idx"
+        ],
+        "parse_status": "PARSED",
+        "classification": "OUT_OF_SCOPE",
+        "reason": "index totally_unknown_idx not in R3B authority inventory",
+        "authority_id": null,
+        "property_identity": null
+      }
+    },
+    {
+      "name": "drop_index_unknown_owner",
+      "pass": true,
+      "detail": {
+        "classification": "OUT_OF_SCOPE",
+        "reason": "index maybe_r3b_idx not in R3B authority inventory",
+        "authority_id": null,
+        "property_identity": null
+      }
+    },
+    {
+      "name": "frozen_trip_driving_impact",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [
+          "AlterTable"
+        ],
+        "leading_comment_lines": [],
+        "operation_family": "ALTER TABLE",
+        "operation_subtype": "alter_column",
+        "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3);",
+        "schema": "public",
+        "primary_target_identifier": "trip_driving_impact",
+        "owner_table": "trip_driving_impact",
+        "owner_column": "calculated_at",
+        "owner_constraint": null,
+        "owner_index": null,
+        "owner_enum": null,
+        "quoted_identifiers": [
+          "trip_driving_impact",
+          "calculated_at"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "table trip_driving_impact in R3B authority",
+        "authority_id": "P038",
+        "property_identity": "trip_driving_impact:types"
+      }
+    },
+    {
+      "name": "prisma_drift_decision",
+      "pass": true,
+      "detail": {
+        "operation_ordinal": 1,
+        "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3);",
+        "affected_authority_object": "trip_driving_impact",
+        "affected_property_category": "trip_driving_impact:types",
+        "accepted_canonical_authority": {
+          "table": "trip_driving_impact",
+          "column": "calculated_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "data_type": "timestamp with time zone",
+          "datetime_precision": 6
+        },
+        "replay_actual": {
+          "table": "trip_driving_impact",
+          "column": "calculated_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          },
+          "parity_evidence": "CI-R3B1L_EXACT_PARITY 54/54 types category PASS"
+        },
+        "current_prisma_desired_state": {
+          "model": "TripDrivingImpact",
+          "field": "calculatedAt",
+          "prisma_type": "DateTime?",
+          "mapped_column": "calculated_at",
+          "native_type_annotation": null,
+          "native_type": null,
+          "nullable": true,
+          "default_annotation": null,
+          "raw_line": "DateTime?                       @map(\"calculated_at\")",
+          "desired_pg_type": "timestamp(3) without time zone"
+        },
+        "decision": "CURRENT_PRISMA_SCHEMA_DRIFT",
+        "cross_evidence_contradiction": false,
+        "evidence_sources": [
+          "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+          "docs/audits/ci-recovery/data/ci-r3b1l-canonical-54-property-authority-2026-08.json",
+          "backend/prisma/schema.prisma",
+          "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql"
+        ]
+      }
+    },
+    {
+      "name": "replay_drift_decision",
+      "pass": true,
+      "detail": {
+        "accepted": "timestamp(3) without time zone",
+        "replay": "timestamp(6) without time zone",
+        "prisma": "timestamp(3) without time zone"
+      }
+    },
+    {
+      "name": "ambiguous_decision",
+      "pass": true,
+      "detail": {}
+    }
+  ],
+  "pass": true,
+  "passed": 14,
+  "total": 14
+}

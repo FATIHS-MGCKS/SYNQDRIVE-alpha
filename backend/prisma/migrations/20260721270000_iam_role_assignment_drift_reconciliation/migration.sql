@@ -13,19 +13,19 @@ CREATE TABLE "organization_role_assignment_drift_reconciliation_applications" (
   "result" JSONB,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-  CONSTRAINT "organization_role_assignment_drift_reconciliation_applications_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "org_role_asgn_drift_recon_apps_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key"
+CREATE UNIQUE INDEX "org_role_asgn_drift_recon_apps_idem_key"
   ON "organization_role_assignment_drift_reconciliation_applications"("idempotency_key");
 
-CREATE INDEX "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx"
+CREATE INDEX "org_role_asgn_drift_recon_apps_org_mbr_created_idx"
   ON "organization_role_assignment_drift_reconciliation_applications"("organization_id", "membership_id", "created_at");
 
 ALTER TABLE "organization_role_assignment_drift_reconciliation_applications"
-  ADD CONSTRAINT "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey"
+  ADD CONSTRAINT "org_role_asgn_drift_recon_apps_org_id_fkey"
   FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "organization_role_assignment_drift_reconciliation_applications"
-  ADD CONSTRAINT "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey"
+  ADD CONSTRAINT "org_role_asgn_drift_recon_apps_mbr_id_fkey"
   FOREIGN KEY ("membership_id") REFERENCES "organization_memberships"("id") ON DELETE CASCADE ON UPDATE CASCADE;

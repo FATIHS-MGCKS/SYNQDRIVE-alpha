@@ -1,0 +1,505 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "contract_id": "R3B1F-vehicle_tire_setups-status",
+      "relation": "vehicle_tire_setups",
+      "property": "status",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "157-00006"
+      ],
+      "historical_authority": {
+        "physical_column_name": "status",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260716183000_tire_lifecycle_invariants",
+      "first_consumer_order": 157,
+      "all_consumers": [
+        "20260716183000_tire_lifecycle_invariants"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+        "before_migration": "20260716183000_tire_lifecycle_invariants",
+        "recommended_topology_id": "R3B1F-SLOT13-EXT-STATUS",
+        "rationale": "Earliest valid boundary after TireSetupStatus enum (Slot 13) and vehicle_tire_setups table (init), before migration 157 partial-index predicate consumer."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "vehicle_tire_setups",
+        "column": "status",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-tire_health_snapshots-input_fingerprint",
+      "relation": "tire_health_snapshots",
+      "property": "input_fingerprint",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "175-00259"
+      ],
+      "historical_authority": {
+        "physical_column_name": "input_fingerprint",
+        "postgres_type": "TEXT",
+        "historical_creator_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+        "historical_creator_kind": "ADD COLUMN",
+        "column_never_created_before_consumer": false
+      },
+      "first_consumer_migration": "20260716240000_tire_recalculation_fingerprint_dedupe",
+      "first_consumer_order": 175,
+      "all_consumers": [
+        "20260716240000_tire_recalculation_fingerprint_dedupe"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260716240000_driving_event_native_identity",
+        "before_migration": "20260716240000_tire_recalculation_fingerprint_dedupe",
+        "recommended_topology_id": "R3B1F-EXPR-tire_health_snapshots-input_fingerprint",
+        "rationale": "Append-only repair before first expression consumer 20260716240000_tire_recalculation_fingerprint_dedupe."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "tire_health_snapshots",
+        "column": "input_fingerprint",
+        "type": "TEXT",
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-rental_driving_analyses-superseded_at",
+      "relation": "rental_driving_analyses",
+      "property": "superseded_at",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "190-00478"
+      ],
+      "historical_authority": {
+        "physical_column_name": "superseded_at",
+        "postgres_type": "TIMESTAMP(3)",
+        "historical_creator_migration": "20260716340000_rental_driving_analysis_versioning",
+        "historical_creator_kind": "ADD COLUMN",
+        "column_never_created_before_consumer": false
+      },
+      "first_consumer_migration": "20260716350000_rental_driving_analysis_stability",
+      "first_consumer_order": 190,
+      "all_consumers": [
+        "20260716350000_rental_driving_analysis_stability"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260716340000_rental_driving_analysis_versioning",
+        "before_migration": "20260716350000_rental_driving_analysis_stability",
+        "recommended_topology_id": "R3B1F-EXPR-rental_driving_analyses-superseded_at",
+        "rationale": "Append-only repair before first expression consumer 20260716350000_rental_driving_analysis_stability."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "rental_driving_analyses",
+        "column": "superseded_at",
+        "type": "TIMESTAMP(3)",
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-vehicle_service_events-document_extraction_id",
+      "relation": "vehicle_service_events",
+      "property": "document_extraction_id",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "215-00760"
+      ],
+      "historical_authority": {
+        "physical_column_name": "document_extraction_id",
+        "postgres_type": "IS NOT NULL",
+        "historical_creator_migration": "20260717210000_service_event_document_extraction_idempotency",
+        "historical_creator_kind": "ADD COLUMN",
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717210000_service_event_document_extraction_idempotency",
+      "first_consumer_order": 215,
+      "all_consumers": [
+        "20260717210000_service_event_document_extraction_idempotency"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717210000_brake_coverage_gap_policy",
+        "before_migration": "20260717210000_service_event_document_extraction_idempotency",
+        "recommended_topology_id": "R3B1F-EXPR-vehicle_service_events-document_extraction_id",
+        "rationale": "Append-only repair before first expression consumer 20260717210000_service_event_document_extraction_idempotency."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "vehicle_service_events",
+        "column": "document_extraction_id",
+        "type": "IS NOT NULL",
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-vehicle_damages-document_extraction_id",
+      "relation": "vehicle_damages",
+      "property": "document_extraction_id",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "218-00863"
+      ],
+      "historical_authority": {
+        "physical_column_name": "document_extraction_id",
+        "postgres_type": "IS NOT NULL",
+        "historical_creator_migration": "20260717220000_damage_document_extraction_idempotency",
+        "historical_creator_kind": "ADD COLUMN",
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717220000_damage_document_extraction_idempotency",
+      "first_consumer_order": 218,
+      "all_consumers": [
+        "20260717220000_damage_document_extraction_idempotency"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717220000_brake_recalculation_orchestrator",
+        "before_migration": "20260717220000_damage_document_extraction_idempotency",
+        "recommended_topology_id": "R3B1F-EXPR-vehicle_damages-document_extraction_id",
+        "rationale": "Append-only repair before first expression consumer 20260717220000_damage_document_extraction_idempotency."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "vehicle_damages",
+        "column": "document_extraction_id",
+        "type": "IS NOT NULL",
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_health_snapshots-vehicle_id",
+      "relation": "brake_health_snapshots",
+      "property": "vehicle_id",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "220-00977"
+      ],
+      "historical_authority": {
+        "physical_column_name": "vehicle_id",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717230000_brake_health_snapshots",
+      "first_consumer_order": 220,
+      "all_consumers": [
+        "20260717230000_brake_health_snapshots"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717220000_voice_usage_event_audit_models",
+        "before_migration": "20260717230000_brake_health_snapshots",
+        "recommended_topology_id": "R3B1F-EXPR-brake_health_snapshots-vehicle_id",
+        "rationale": "Append-only repair before first expression consumer 20260717230000_brake_health_snapshots."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_health_snapshots",
+        "column": "vehicle_id",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_health_snapshots-model_version",
+      "relation": "brake_health_snapshots",
+      "property": "model_version",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "220-00978"
+      ],
+      "historical_authority": {
+        "physical_column_name": "model_version",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717230000_brake_health_snapshots",
+      "first_consumer_order": 220,
+      "all_consumers": [
+        "20260717230000_brake_health_snapshots"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717220000_voice_usage_event_audit_models",
+        "before_migration": "20260717230000_brake_health_snapshots",
+        "recommended_topology_id": "R3B1F-EXPR-brake_health_snapshots-model_version",
+        "rationale": "Append-only repair before first expression consumer 20260717230000_brake_health_snapshots."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_health_snapshots",
+        "column": "model_version",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_health_snapshots-input_fingerprint",
+      "relation": "brake_health_snapshots",
+      "property": "input_fingerprint",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "220-00979"
+      ],
+      "historical_authority": {
+        "physical_column_name": "input_fingerprint",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717230000_brake_health_snapshots",
+      "first_consumer_order": 220,
+      "all_consumers": [
+        "20260717230000_brake_health_snapshots"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717220000_voice_usage_event_audit_models",
+        "before_migration": "20260717230000_brake_health_snapshots",
+        "recommended_topology_id": "R3B1F-EXPR-brake_health_snapshots-input_fingerprint",
+        "rationale": "Append-only repair before first expression consumer 20260717230000_brake_health_snapshots."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_health_snapshots",
+        "column": "input_fingerprint",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_evidence-dedupe_key",
+      "relation": "brake_evidence",
+      "property": "dedupe_key",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "224-01027",
+        "224-01031",
+        "227-01063"
+      ],
+      "historical_authority": {
+        "physical_column_name": "dedupe_key",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717240000_brake_dtc_evidence",
+      "first_consumer_order": 224,
+      "all_consumers": [
+        "20260717240000_brake_dtc_evidence",
+        "20260717240000_brake_dtc_evidence",
+        "20260717250000_brake_evidence_lifecycle"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717230000_voice_webhook_ingestion_correlation",
+        "before_migration": "20260717240000_brake_dtc_evidence",
+        "recommended_topology_id": "R3B1F-EXPR-brake_evidence-dedupe_key",
+        "rationale": "Append-only repair before first expression consumer 20260717240000_brake_dtc_evidence."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_evidence",
+        "column": "dedupe_key",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-voice_phone_numbers-elevenlabs_ref_digest",
+      "relation": "voice_phone_numbers",
+      "property": "elevenlabs_ref_digest",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "226-01043"
+      ],
+      "historical_authority": {
+        "physical_column_name": "elevenlabs_ref_digest",
+        "postgres_type": "IS NOT NULL",
+        "historical_creator_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+        "historical_creator_kind": "ADD COLUMN",
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+      "first_consumer_order": 226,
+      "all_consumers": [
+        "20260717240000_voice_phone_elevenlabs_import_assigned"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717240000_document_org_upload_nullable_vehicle",
+        "before_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+        "recommended_topology_id": "R3B1F-EXPR-voice_phone_numbers-elevenlabs_ref_digest",
+        "rationale": "Append-only repair before first expression consumer 20260717240000_voice_phone_elevenlabs_import_assigned."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "voice_phone_numbers",
+        "column": "elevenlabs_ref_digest",
+        "type": "IS NOT NULL",
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_evidence-active",
+      "relation": "brake_evidence",
+      "property": "active",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "227-01064"
+      ],
+      "historical_authority": {
+        "physical_column_name": "active",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717250000_brake_evidence_lifecycle",
+      "first_consumer_order": 227,
+      "all_consumers": [
+        "20260717250000_brake_evidence_lifecycle"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+        "before_migration": "20260717250000_brake_evidence_lifecycle",
+        "recommended_topology_id": "R3B1F-EXPR-brake_evidence-active",
+        "rationale": "Append-only repair before first expression consumer 20260717250000_brake_evidence_lifecycle."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_evidence",
+        "column": "active",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_evidence-superseded_by_evidence_id",
+      "relation": "brake_evidence",
+      "property": "superseded_by_evidence_id",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "227-01065",
+        "227-01072"
+      ],
+      "historical_authority": {
+        "physical_column_name": "superseded_by_evidence_id",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717250000_brake_evidence_lifecycle",
+      "first_consumer_order": 227,
+      "all_consumers": [
+        "20260717250000_brake_evidence_lifecycle",
+        "20260717250000_brake_evidence_lifecycle"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+        "before_migration": "20260717250000_brake_evidence_lifecycle",
+        "recommended_topology_id": "R3B1F-EXPR-brake_evidence-superseded_by_evidence_id",
+        "rationale": "Append-only repair before first expression consumer 20260717250000_brake_evidence_lifecycle."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_evidence",
+        "column": "superseded_by_evidence_id",
+        "type": null,
+        "if_not_exists": true
+      }
+    },
+    {
+      "contract_id": "R3B1F-brake_health_alerts-status",
+      "relation": "brake_health_alerts",
+      "property": "status",
+      "object_type": "column",
+      "classification": "MISSING_HISTORY",
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "source_analyzer_records": [
+        "229-01077"
+      ],
+      "historical_authority": {
+        "physical_column_name": "status",
+        "postgres_type": null,
+        "historical_creator_migration": null,
+        "historical_creator_kind": null,
+        "column_never_created_before_consumer": true
+      },
+      "first_consumer_migration": "20260717260000_brake_health_alerts",
+      "first_consumer_order": 229,
+      "all_consumers": [
+        "20260717260000_brake_health_alerts"
+      ],
+      "repair_boundary": {
+        "after_migration": "20260717250000_voice_agent_deployment_snapshot",
+        "before_migration": "20260717260000_brake_health_alerts",
+        "recommended_topology_id": "R3B1F-EXPR-brake_health_alerts-status",
+        "rationale": "Append-only repair before first expression consumer 20260717260000_brake_health_alerts."
+      },
+      "repair_action": {
+        "action": "ALTER TABLE ADD COLUMN",
+        "table": "brake_health_alerts",
+        "column": "status",
+        "type": null,
+        "if_not_exists": true
+      }
+    }
+  ]
+}
