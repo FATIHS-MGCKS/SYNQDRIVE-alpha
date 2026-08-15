@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "original_sha256": "0ad82ac5aa095f050780a6ffbdf2fdfdbd607646f4feada6ceeb0ecfc68ec12f",
+  "current_sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1",
+  "authorized_changes": [
+    {
+      "contract_id": "TripDrivingImpact.calculatedAt",
+      "model": "TripDrivingImpact",
+      "field": "calculatedAt",
+      "original_declaration": "DateTime?                       @map(\"calculated_at\")",
+      "new_declaration": "calculatedAt            DateTime?                       @map(\"calculated_at\") @db.Timestamptz(6)"
+    }
+  ],
+  "authorized_change_count": 1,
+  "unauthorized_schema_changes": 0,
+  "unauthorized_details": [],
+  "raw_git_diff": "diff --git a/backend/prisma/schema.prisma b/backend/prisma/schema.prisma\nindex b651c34f..b7640218 100644\n--- a/backend/prisma/schema.prisma\n+++ b/backend/prisma/schema.prisma\n@@ -13387,7 +13387,7 @@ model TripDrivingImpact {\n   /// Deterministic hash of trip inputs \u2014 idempotent recompute guard.\n   sourceFingerprint       String?                         @map(\"source_fingerprint\")\n   analysisStatus          TripDrivingImpactAnalysisStatus @default(PENDING) @map(\"analysis_status\")\n-  calculatedAt            DateTime?                       @map(\"calculated_at\")\n+  calculatedAt            DateTime?                       @map(\"calculated_at\") @db.Timestamptz(6)\n   /// 0\u20131 score of input completeness (behavior events, usage split, etc.).\n   sourceCompleteness      Float?                          @map(\"source_completeness\")\n   /// Snapshot of VehicleTrip.distanceKm at compute time for drift detection.\n",
+  "pass": true
+}

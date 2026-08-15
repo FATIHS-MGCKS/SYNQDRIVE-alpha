@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "baseline_sha": "838605eada97189f52b6332f943e36bbed387449",
+  "modified_migration_sql_count": 0,
+  "changed_migrations": [],
+  "new_migration_directories": 0,
+  "migration_directories": 305,
+  "migration_252_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "migration_252_unchanged": true,
+  "runtime_changed": false,
+  "frontend_changed": false,
+  "deployment_changed": false,
+  "pass": true
+}
