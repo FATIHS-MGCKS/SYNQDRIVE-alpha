@@ -555,7 +555,9 @@ def extract_scoped_expression_columns(expr: str, scope: StatementScope | None, d
 
     def add(ref: ResolvedReference) -> None:
         if is_false_positive_identifier(ref.column):
-            return
+            # Qualified alias.column references may use short physical names (e.g. s."x").
+            if not (ref.alias and ref.alias != ref.column and len(ref.column) <= 2):
+                return
         key = (ref.table, ref.column)
         if key in seen:
             return

@@ -505,6 +505,10 @@ def extract_statement_expression_dependencies(stmt: str) -> list[ExpressionDepen
         deps.extend(extract_update_dependencies(stmt))
     if re.search(r"\bDELETE\s+FROM\b", stmt, re.I) and re.search(r"\bUSING\b", stmt, re.I):
         deps.extend(extract_delete_dependencies(stmt))
+    if re.search(r"\bINSERT\s+INTO\b", stmt, re.I) and re.search(r"\bSELECT\b", stmt, re.I):
+        from insert_select_dependency_extractor import extract_insert_select_dependencies
+
+        deps.extend(extract_insert_select_dependencies(stmt))
     return dedupe_dependencies(deps)
 
 

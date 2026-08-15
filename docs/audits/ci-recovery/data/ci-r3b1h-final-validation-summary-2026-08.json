@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "branch": "fix/ci-r3b1h-iam-insert-select-closure-2026-08",
+  "HEAD_SHA": "25e3a18ed9eab1322a85d65fcfdf6a449f2ed222",
+  "BASE_R3B1G_SHA": "25e3a18ed9eab1322a85d65fcfdf6a449f2ed222",
+  "baseline": {
+    "r3b1g_first_failed_migration": "20260721250000_iam_versioned_role_assignments",
+    "r3b1g_failure_ordinal": 249,
+    "r3b1g_sqlstate": "42703",
+    "r3b1g_last_applied": "20260721240000_iam_last_selected_organization",
+    "r3b1g_tire_repair_pass": true,
+    "migration_157_pass": true
+  },
+  "pre249_boundary": {
+    "stop_before": "20260721250000_iam_versioned_role_assignments",
+    "last_applied": "20260721240000_iam_last_selected_organization",
+    "ordinal": 249,
+    "replay_pass": true
+  },
+  "insert_select_analyzer": {
+    "root_cause": "INSERT ... SELECT source dependencies were not wired into check_statement_dependencies before R3B1H",
+    "hardened": true,
+    "golden_tests_pass": true
+  },
+  "sweep_249_to_head": {
+    "first_migration": "20260721250000_iam_versioned_role_assignments",
+    "last_migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+    "migrations_scanned": 56,
+    "dependency_records": 268,
+    "classification_totals": {
+      "TOTAL": 268,
+      "VALID": 178,
+      "MISSING_HISTORY": 90,
+      "ORDERING_DEFECT": 0,
+      "CONDITIONAL_SAFE": 0,
+      "FALSE_POSITIVE": 0,
+      "INTENTIONAL": 0,
+      "UNRESOLVED": 0
+    }
+  },
+  "migration_249_prerequisites": {
+    "classification_totals": {
+      "VALID": 90,
+      "MISSING_HISTORY": 4
+    },
+    "permissions_proof": {
+      "physical_column": "permissions",
+      "first_prisma_appearance_commit": "68150912",
+      "prisma_type": "Json",
+      "expected_physical_type": "jsonb",
+      "nullable": true,
+      "database_default": null,
+      "first_migration_consumer": "20260721250000_iam_versioned_role_assignments",
+      "any_migration_creator": null,
+      "pre249_catalog_exists": false
+    }
+  },
+  "exact_repair_authority": {
+    "unique_actionable_gaps": 1,
+    "exact_contracts": 1,
+    "invalid_contracts": 0,
+    "missing_types": 0,
+    "missing_boundaries": 0
+  },
+  "targeted_postgresql": {
+    "proof_pass": true,
+    "consumer_failures": 0,
+    "migration_249_execution": "PASS",
+    "synthetic_fixture_pass": true
+  },
+  "coverage": {
+    "schema_version": 1,
+    "phase": "CI-R3B1H",
+    "migrations_checked": 56,
+    "coverage_gaps": 0,
+    "gaps": [],
+    "migration_249_permissions_represented": true,
+    "pass": true
+  },
+  "immutability": {
+    "existing_migration_sql_changed": 0,
+    "new_prisma_migrations": 0,
+    "schema_prisma_changed": false,
+    "runtime_changed": false
+  },
+  "gates": {
+    "pre249_replay_pass": true,
+    "unresolved_zero": true,
+    "contracts_valid": true,
+    "targeted_proof_pass": true,
+    "coverage_gaps_zero": true,
+    "golden_tests_pass": true,
+    "immutability_pass": true,
+    "consumer_failures_zero": true
+  },
+  "final_status": "CI_R3B1H_IAM_INSERT_SELECT_PREDECESSOR_CLOSURE_COMPLETED"
+}

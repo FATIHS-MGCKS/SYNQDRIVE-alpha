@@ -275,6 +275,12 @@ def add_record(
     )
 
 
+def _dependency_operation_label(dep: ExpressionDependency) -> str:
+    if dep.context.startswith("INSERT_SELECT"):
+        return dep.context.replace("_", " ")
+    return f"CREATE INDEX {dep.context.lower()}"
+
+
 def add_expression_dependency_records(
     ctx: AnalyzerContext,
     mig: str,
@@ -287,13 +293,14 @@ def add_expression_dependency_records(
     if_not_exists: bool = False,
 ) -> None:
     for dep in deps:
+        op = _dependency_operation_label(dep)
         if dep.false_positive:
             add_record(
                 ctx,
                 mig,
                 stmt_order,
                 stmt,
-                f"CREATE INDEX {dep.context.lower()}",
+                op,
                 dep.table,
                 "column",
                 dep.column,
@@ -314,13 +321,89 @@ def add_expression_dependency_records(
             mig,
             stmt_order,
             stmt,
-            f"CREATE INDEX {dep.context.lower()}",
+            op,
             dep.table,
             "column",
             dep.column,
             resolve_column_dependency(ctx, state, dep.table, dep.column),
             if_not_exists or guarded,
             guard_safe if guarded else None,
+            dependency_context=dep.context,
+            scope_kind=dep.scope_kind,
+            resolved_relation=dep.resolved_relation,
+            resolved_alias=dep.resolved_alias,
+            classification_reason=dep.reason,
+        )
+
+
+def add_insert_select_dependency_records(
+    ctx: AnalyzerContext,
+    mig: str,
+    stmt_order: int,
+    stmt: str,
+    state: SchemaState,
+    deps: list[ExpressionDependency],
+    guarded: bool,
+    guard_safe: bool | None,
+) -> None:
+    """Record INSERT ... SELECT source/target column prerequisites."""
+    for dep in deps:
+        op = _dependency_operation_label(dep)
+        if dep.false_positive:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                op,
+                dep.table,
+                "column",
+                dep.column,
+                None,
+                guarded,
+                guard_safe,
+                notes=dep.reason,
+                dependency_context=dep.context,
+                scope_kind=dep.scope_kind,
+                resolved_relation=dep.resolved_relation,
+                resolved_alias=dep.resolved_alias,
+                classification_reason=dep.reason,
+                force_false_positive=True,
+            )
+            continue
+        if dep.context == "INSERT_SELECT_TARGET":
+            creator = resolve_column_dependency(ctx, state, dep.table, dep.column)
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                op,
+                dep.table,
+                "column",
+                dep.column,
+                creator,
+                guarded,
+                guard_safe,
+                dependency_context=dep.context,
+                scope_kind=dep.scope_kind,
+                resolved_relation=dep.resolved_relation,
+                resolved_alias=dep.resolved_alias,
+                classification_reason=dep.reason or "insert_target_column",
+            )
+            continue
+        add_record(
+            ctx,
+            mig,
+            stmt_order,
+            stmt,
+            op,
+            dep.resolved_relation or dep.table,
+            "column",
+            dep.column,
+            resolve_column_dependency(ctx, state, dep.resolved_relation or dep.table, dep.column),
+            guarded,
+            guard_safe,
             dependency_context=dep.context,
             scope_kind=dep.scope_kind,
             resolved_relation=dep.resolved_relation,
@@ -722,6 +805,27 @@ def check_statement_dependencies(
     update_deps = [d for d in stmt_expr_deps if d.context == "UPDATE_EXPRESSION"]
     if update_deps:
         add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, update_deps, guarded, guard_safe)
+
+    insert_select_deps = [d for d in stmt_expr_deps if d.context.startswith("INSERT_SELECT")]
+    if insert_select_deps:
+        tbl_m = re.search(r'INSERT\s+INTO\s+"([^"]+)"', stmt, re.I)
+        if tbl_m:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                "INSERT SELECT",
+                tbl_m.group(1),
+                "table",
+                None,
+                creator_for_table(ctx, tbl_m.group(1)),
+                guarded,
+                guard_safe,
+            )
+        add_insert_select_dependency_records(
+            ctx, mig, stmt_order, stmt, state, insert_select_deps, guarded, guard_safe
+        )
 
     for m in re.finditer(r'DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?"([^"]+)"', stmt, re.I):
         add_record(
