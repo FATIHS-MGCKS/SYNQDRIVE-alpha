@@ -32,7 +32,7 @@ from ci_r3b1o4_final_twin import run_tail_reconciliation_strategy
 from ci_r3b1o4_implicit_catalog_effects import build_implicit_catalog_effects
 from ci_r3b1o4_no_ranking_proof import build_no_ranking_proof
 from ci_r3b1o4_stale_index_authority import write_stale_index_authority_artifacts
-from ci_r3b1o4_statement_crossvalidation import build_statement_crossvalidation, write_statement_crossvalidation
+from ci_r3b1o4_statement_crossvalidation import build_statement_crossvalidation
 from ci_r3b1o4_tail_contract import build_tail_data_risk, write_tail_contract_artifacts
 from ci_r3b1o4_terminal_gate import evaluate_ambiguity_corrective_terminal_acceptance
 from ci_r3b1o4_test_source_hashes import (
@@ -319,7 +319,7 @@ def main() -> int:
     )
 
     statement_xval = build_statement_crossvalidation(execution_set=execution_set, authority=catalog_delta)
-    write_statement_crossvalidation(statement_xval)
+    write_json(DATA / f"{PREFIX}-statement-crossvalidation-2026-08.json", statement_xval)
 
     catalog_engine = build_catalog_engine_crossvalidation(
         golden_inventory=strategy["golden_catalog_inventory"],

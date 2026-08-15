@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-ambiguity-corrective",
+  "executing_migration_count": 22,
+  "expected_effect_count": 611,
+  "statement_ordinal_null_count": 0,
+  "statement_sha_mismatch_count": 0,
+  "synthetic_m252_creator_count": 0,
+  "authorized_missing_statement_ordinal": 0,
+  "authorized_missing_statement_sha": 0,
+  "pass": true
+}

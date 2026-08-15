@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-ambiguity-corrective",
+  "golden_type_count": 1730,
+  "final_type_count": 1740,
+  "type_delta_count": 10,
+  "checks": {
+    "types_present_in_inventory": true,
+    "types_present_in_flattening": true,
+    "types_present_in_raw_deltas": true,
+    "types_present_in_authority_classification": true,
+    "inventory_reader": true,
+    "flattener": true,
+    "expected_effect_builder": true,
+    "implicit_effect_builder": true,
+    "raw_delta_engine": true,
+    "authority_join": true
+  },
+  "missing_stages": [],
+  "required_missing_test_coverage": [],
+  "pass": true
+}

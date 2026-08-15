@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-ambiguity-corrective",
+  "authority_engine": "ci_r3b1o4_catalog_authority.py",
+  "forbidden_patterns_checked": [
+    "score",
+    "ranking",
+    "rank",
+    "best_candidate",
+    "preferred_candidate",
+    "top_score",
+    "M252 priority",
+    "EXACT priority",
+    "_candidate_rank",
+    "M252 bonus",
+    "EXACT bonus"
+  ],
+  "violations": [],
+  "violation_count": 0,
+  "pass": true
+}

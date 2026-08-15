@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-corrective",
+  "indexes": [
+    {
+      "index_name": "org_invoices_invoice_number_key",
+      "present": true,
+      "expected": {
+        "owner_table": "org_invoices",
+        "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "unique": true,
+        "primary": false,
+        "access_method": "btree",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "invoice_number",
+            "collation": "default",
+            "opclass": "int4_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": [],
+        "predicate": null,
+        "valid": true,
+        "ready": true
+      },
+      "actual": {
+        "schema": "public",
+        "owner_table": "org_invoices",
+        "name": "org_invoices_invoice_number_key",
+        "access_method": "btree",
+        "unique": true,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON org_invoices USING btree (invoice_number)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "invoice_number",
+            "collation": "default",
+            "opclass": "int4_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "constraint_backing": false,
+      "exact_shape_pass": true,
+      "mismatches": [],
+      "pass": true
+    },
+    {
+      "index_name": "whatsapp_conversations_organization_id_contact_phone_key",
+      "present": true,
+      "expected": {
+        "owner_table": "whatsapp_conversations",
+        "creator_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "unique": true,
+        "primary": false,
+        "access_method": "btree",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "contact_phone",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": [],
+        "predicate": null,
+        "valid": true,
+        "ready": true
+      },
+      "actual": {
+        "schema": "public",
+        "owner_table": "whatsapp_conversations",
+        "name": "whatsapp_conversations_organization_id_contact_phone_key",
+        "access_method": "btree",
+        "unique": true,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON whatsapp_conversations USING btree (organization_id, contact_phone)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "contact_phone",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "constraint_backing": false,
+      "exact_shape_pass": true,
+      "mismatches": [],
+      "pass": true
+    }
+  ],
+  "replacement_authority": {
+    "schema_version": 1,
+    "phase": "CI-R3B1O.4",
+    "invoice": {
+      "replacement_present": true,
+      "replacement_valid": true,
+      "replacement_ready": true,
+      "replacement_semantics_match_authority": true,
+      "definition": "CREATE UNIQUE INDEX org_invoices_organization_id_sequence_year_sequence_number_key ON public.org_invoices USING btree (organization_id, sequence_year, sequence_number)"
+    },
+    "whatsapp": {
+      "replacement_present": true,
+      "replacement_valid": true,
+      "replacement_ready": true,
+      "replacement_semantics_match_authority": true,
+      "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_normal_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone_normalized)",
+      "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+    },
+    "pass": true
+  },
+  "pass": true
+}
