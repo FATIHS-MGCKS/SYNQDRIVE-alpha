@@ -86,7 +86,7 @@ def read_actual_catalog(cfg: PgConfig, db: str) -> dict[str, Any]:
         elif t_is_enum(cfg, db, typname):
             ntype = typname
         else:
-            ntype = normalize_pg_type(fmt_type, typname)
+            ntype = fmt_type or normalize_pg_type(fmt_type, typname)
         catalog["columns"][table][col] = {
             "name": col,
             "type": ntype,

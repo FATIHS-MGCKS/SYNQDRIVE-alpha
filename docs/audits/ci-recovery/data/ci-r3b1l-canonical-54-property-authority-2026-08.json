@@ -1,0 +1,4749 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L",
+  "authority_manifest_sha256": "97045c37c426b391ec51abdeea38088d5ace6617828a3b14de7dcaecc0d8eea4",
+  "property_category_count": 54,
+  "entries": [
+    {
+      "authority_id": "P001",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trips",
+      "property_class": "columns",
+      "property_identity": "vehicle_trips:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "vehicle_trips",
+        "column_count": 110,
+        "constraint_count": 2,
+        "index_count": 13
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P002",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trips",
+      "property_class": "types",
+      "property_identity": "vehicle_trips:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "vehicle_trips",
+        "column_count": 110,
+        "constraint_count": 2,
+        "index_count": 13
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P003",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trips",
+      "property_class": "nullability",
+      "property_identity": "vehicle_trips:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "vehicle_trips",
+        "column_count": 110,
+        "constraint_count": 2,
+        "index_count": 13
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P004",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trips",
+      "property_class": "defaults",
+      "property_identity": "vehicle_trips:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "vehicle_trips",
+        "column_count": 110,
+        "constraint_count": 2,
+        "index_count": 13
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P005",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trips",
+      "property_class": "constraints",
+      "property_identity": "vehicle_trips:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "vehicle_trips",
+        "column_count": 110,
+        "constraint_count": 2,
+        "index_count": 13
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P006",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trips",
+      "property_class": "indexes",
+      "property_identity": "vehicle_trips:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "vehicle_trips",
+        "column_count": 110,
+        "constraint_count": 2,
+        "index_count": 13
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P007",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "driving_events",
+      "property_class": "columns",
+      "property_identity": "driving_events:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "driving_events",
+        "column_count": 21,
+        "constraint_count": 3,
+        "index_count": 11
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P008",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "driving_events",
+      "property_class": "types",
+      "property_identity": "driving_events:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "driving_events",
+        "column_count": 21,
+        "constraint_count": 3,
+        "index_count": 11
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P009",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "driving_events",
+      "property_class": "nullability",
+      "property_identity": "driving_events:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "driving_events",
+        "column_count": 21,
+        "constraint_count": 3,
+        "index_count": 11
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P010",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "driving_events",
+      "property_class": "defaults",
+      "property_identity": "driving_events:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "driving_events",
+        "column_count": 21,
+        "constraint_count": 3,
+        "index_count": 11
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P011",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "driving_events",
+      "property_class": "constraints",
+      "property_identity": "driving_events:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "driving_events",
+        "column_count": 21,
+        "constraint_count": 3,
+        "index_count": 11
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P012",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "driving_events",
+      "property_class": "indexes",
+      "property_identity": "driving_events:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "driving_events",
+        "column_count": 21,
+        "constraint_count": 3,
+        "index_count": 11
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P013",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_behavior_events",
+      "property_class": "columns",
+      "property_identity": "trip_behavior_events:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "trip_behavior_events",
+        "column_count": 20,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P014",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_behavior_events",
+      "property_class": "types",
+      "property_identity": "trip_behavior_events:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "trip_behavior_events",
+        "column_count": 20,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P015",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_behavior_events",
+      "property_class": "nullability",
+      "property_identity": "trip_behavior_events:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "trip_behavior_events",
+        "column_count": 20,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P016",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_behavior_events",
+      "property_class": "defaults",
+      "property_identity": "trip_behavior_events:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "trip_behavior_events",
+        "column_count": 20,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P017",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_behavior_events",
+      "property_class": "constraints",
+      "property_identity": "trip_behavior_events:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "trip_behavior_events",
+        "column_count": 20,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P018",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_behavior_events",
+      "property_class": "indexes",
+      "property_identity": "trip_behavior_events:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "trip_behavior_events",
+        "column_count": 20,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P019",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_waypoints",
+      "property_class": "columns",
+      "property_identity": "vehicle_trip_waypoints:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "vehicle_trip_waypoints",
+        "column_count": 7,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P020",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_waypoints",
+      "property_class": "types",
+      "property_identity": "vehicle_trip_waypoints:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "vehicle_trip_waypoints",
+        "column_count": 7,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P021",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_waypoints",
+      "property_class": "nullability",
+      "property_identity": "vehicle_trip_waypoints:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "vehicle_trip_waypoints",
+        "column_count": 7,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P022",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_waypoints",
+      "property_class": "defaults",
+      "property_identity": "vehicle_trip_waypoints:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "vehicle_trip_waypoints",
+        "column_count": 7,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P023",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_waypoints",
+      "property_class": "constraints",
+      "property_identity": "vehicle_trip_waypoints:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "vehicle_trip_waypoints",
+        "column_count": 7,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P024",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_waypoints",
+      "property_class": "indexes",
+      "property_identity": "vehicle_trip_waypoints:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "vehicle_trip_waypoints",
+        "column_count": 7,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P025",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_tracking_runs",
+      "property_class": "columns",
+      "property_identity": "vehicle_trip_tracking_runs:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "vehicle_trip_tracking_runs",
+        "column_count": 16,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P026",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_tracking_runs",
+      "property_class": "types",
+      "property_identity": "vehicle_trip_tracking_runs:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "vehicle_trip_tracking_runs",
+        "column_count": 16,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P027",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_tracking_runs",
+      "property_class": "nullability",
+      "property_identity": "vehicle_trip_tracking_runs:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "vehicle_trip_tracking_runs",
+        "column_count": 16,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P028",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_tracking_runs",
+      "property_class": "defaults",
+      "property_identity": "vehicle_trip_tracking_runs:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "vehicle_trip_tracking_runs",
+        "column_count": 16,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P029",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_tracking_runs",
+      "property_class": "constraints",
+      "property_identity": "vehicle_trip_tracking_runs:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "vehicle_trip_tracking_runs",
+        "column_count": 16,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P030",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_tracking_runs",
+      "property_class": "indexes",
+      "property_identity": "vehicle_trip_tracking_runs:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "vehicle_trip_tracking_runs",
+        "column_count": 16,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P031",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_repairs",
+      "property_class": "columns",
+      "property_identity": "trip_repairs:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "trip_repairs",
+        "column_count": 12,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P032",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_repairs",
+      "property_class": "types",
+      "property_identity": "trip_repairs:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "trip_repairs",
+        "column_count": 12,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P033",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_repairs",
+      "property_class": "nullability",
+      "property_identity": "trip_repairs:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "trip_repairs",
+        "column_count": 12,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P034",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_repairs",
+      "property_class": "defaults",
+      "property_identity": "trip_repairs:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "trip_repairs",
+        "column_count": 12,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P035",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_repairs",
+      "property_class": "constraints",
+      "property_identity": "trip_repairs:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "trip_repairs",
+        "column_count": 12,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P036",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_repairs",
+      "property_class": "indexes",
+      "property_identity": "trip_repairs:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "trip_repairs",
+        "column_count": 12,
+        "constraint_count": 3,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P037",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_driving_impact",
+      "property_class": "columns",
+      "property_identity": "trip_driving_impact:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "trip_driving_impact",
+        "column_count": 61,
+        "constraint_count": 2,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P038",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_driving_impact",
+      "property_class": "types",
+      "property_identity": "trip_driving_impact:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "trip_driving_impact",
+        "column_count": 61,
+        "constraint_count": 2,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P039",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_driving_impact",
+      "property_class": "nullability",
+      "property_identity": "trip_driving_impact:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "trip_driving_impact",
+        "column_count": 61,
+        "constraint_count": 2,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P040",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_driving_impact",
+      "property_class": "defaults",
+      "property_identity": "trip_driving_impact:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "trip_driving_impact",
+        "column_count": 61,
+        "constraint_count": 2,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P041",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_driving_impact",
+      "property_class": "constraints",
+      "property_identity": "trip_driving_impact:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "trip_driving_impact",
+        "column_count": 61,
+        "constraint_count": 2,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P042",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "trip_driving_impact",
+      "property_class": "indexes",
+      "property_identity": "trip_driving_impact:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "trip_driving_impact",
+        "column_count": 61,
+        "constraint_count": 2,
+        "index_count": 6
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P043",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_detection_states",
+      "property_class": "columns",
+      "property_identity": "vehicle_trip_detection_states:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "vehicle_trip_detection_states",
+        "column_count": 30,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P044",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_detection_states",
+      "property_class": "types",
+      "property_identity": "vehicle_trip_detection_states:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "vehicle_trip_detection_states",
+        "column_count": 30,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P045",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_detection_states",
+      "property_class": "nullability",
+      "property_identity": "vehicle_trip_detection_states:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "vehicle_trip_detection_states",
+        "column_count": 30,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P046",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_detection_states",
+      "property_class": "defaults",
+      "property_identity": "vehicle_trip_detection_states:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "vehicle_trip_detection_states",
+        "column_count": 30,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P047",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_detection_states",
+      "property_class": "constraints",
+      "property_identity": "vehicle_trip_detection_states:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "vehicle_trip_detection_states",
+        "column_count": 30,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P048",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "vehicle_trip_detection_states",
+      "property_class": "indexes",
+      "property_identity": "vehicle_trip_detection_states:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "vehicle_trip_detection_states",
+        "column_count": 30,
+        "constraint_count": 2,
+        "index_count": 5
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P049",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "brake_trip_metrics",
+      "property_class": "columns",
+      "property_identity": "brake_trip_metrics:columns",
+      "expected_semantic_value": {
+        "category": "columns",
+        "table": "brake_trip_metrics",
+        "column_count": 11,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P050",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "brake_trip_metrics",
+      "property_class": "types",
+      "property_identity": "brake_trip_metrics:types",
+      "expected_semantic_value": {
+        "category": "types",
+        "table": "brake_trip_metrics",
+        "column_count": 11,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P051",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "brake_trip_metrics",
+      "property_class": "nullability",
+      "property_identity": "brake_trip_metrics:nullability",
+      "expected_semantic_value": {
+        "category": "nullability",
+        "table": "brake_trip_metrics",
+        "column_count": 11,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P052",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "brake_trip_metrics",
+      "property_class": "defaults",
+      "property_identity": "brake_trip_metrics:defaults",
+      "expected_semantic_value": {
+        "category": "defaults",
+        "table": "brake_trip_metrics",
+        "column_count": 11,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P053",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "brake_trip_metrics",
+      "property_class": "constraints",
+      "property_identity": "brake_trip_metrics:constraints",
+      "expected_semantic_value": {
+        "category": "constraints",
+        "table": "brake_trip_metrics",
+        "column_count": 11,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    },
+    {
+      "authority_id": "P054",
+      "object_type": "table",
+      "schema": "public",
+      "relation": "brake_trip_metrics",
+      "property_class": "indexes",
+      "property_identity": "brake_trip_metrics:indexes",
+      "expected_semantic_value": {
+        "category": "indexes",
+        "table": "brake_trip_metrics",
+        "column_count": 11,
+        "constraint_count": 2,
+        "index_count": 3
+      },
+      "authority_source": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "authority_source_sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0"
+    }
+  ],
+  "table_semantic_authority": {
+    "vehicle_trips": {
+      "table": "vehicle_trips",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "dimo_segment_id": {
+          "name": "dimo_segment_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_status": {
+          "name": "trip_status",
+          "ordinal": 4,
+          "type": "TripStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "ONGOING"
+          }
+        },
+        "driver_name": {
+          "name": "driver_name",
+          "ordinal": 5,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "assignment_status": {
+          "name": "assignment_status",
+          "ordinal": 6,
+          "type": "TripAssignmentStatus",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "assignment_subject_type": {
+          "name": "assignment_subject_type",
+          "ordinal": 7,
+          "type": "TripAssignmentSubjectType",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "assignment_subject_id": {
+          "name": "assignment_subject_id",
+          "ordinal": 8,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "assigned_booking_id": {
+          "name": "assigned_booking_id",
+          "ordinal": 9,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "is_private_trip": {
+          "name": "is_private_trip",
+          "ordinal": 10,
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "start_time": {
+          "name": "start_time",
+          "ordinal": 11,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_time": {
+          "name": "end_time",
+          "ordinal": 12,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_latitude": {
+          "name": "start_latitude",
+          "ordinal": 13,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_longitude": {
+          "name": "start_longitude",
+          "ordinal": 14,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_latitude": {
+          "name": "end_latitude",
+          "ordinal": 15,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_longitude": {
+          "name": "end_longitude",
+          "ordinal": 16,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "distance_km": {
+          "name": "distance_km",
+          "ordinal": 17,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "ordinal": 18,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_speed_kmh": {
+          "name": "avg_speed_kmh",
+          "ordinal": 19,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "max_speed_kmh": {
+          "name": "max_speed_kmh",
+          "ordinal": 20,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driving_score": {
+          "name": "driving_score",
+          "ordinal": 21,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "fuel_used_liters": {
+          "name": "fuel_used_liters",
+          "ordinal": 22,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_consumption_l_per_100km": {
+          "name": "avg_consumption_l_per_100km",
+          "ordinal": 23,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "fuel_confidence": {
+          "name": "fuel_confidence",
+          "ordinal": 24,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "energy_used_kwh": {
+          "name": "energy_used_kwh",
+          "ordinal": 25,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_consumption_kwh_per_100km": {
+          "name": "avg_consumption_kwh_per_100km",
+          "ordinal": 26,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "energy_confidence": {
+          "name": "energy_confidence",
+          "ordinal": 27,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "city_share_percent": {
+          "name": "city_share_percent",
+          "ordinal": 28,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "highway_share_percent": {
+          "name": "highway_share_percent",
+          "ordinal": 29,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "country_share_percent": {
+          "name": "country_share_percent",
+          "ordinal": 30,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "outside_temperature_start_c": {
+          "name": "outside_temperature_start_c",
+          "ordinal": 31,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "engine_temp_start_c": {
+          "name": "engine_temp_start_c",
+          "ordinal": 32,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "engine_temp_end_c": {
+          "name": "engine_temp_end_c",
+          "ordinal": 33,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_rpm": {
+          "name": "avg_rpm",
+          "ordinal": 34,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_throttle_position": {
+          "name": "avg_throttle_position",
+          "ordinal": 35,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_engine_load": {
+          "name": "avg_engine_load",
+          "ordinal": 36,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_percent": {
+          "name": "speeding_percent",
+          "ordinal": 37,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "max_over_speed_kmh": {
+          "name": "max_over_speed_kmh",
+          "ordinal": 38,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_segments": {
+          "name": "speeding_segments",
+          "ordinal": 39,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_sections_json": {
+          "name": "speeding_sections_json",
+          "ordinal": 40,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_section_count": {
+          "name": "speeding_section_count",
+          "ordinal": 41,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_distance_m": {
+          "name": "speeding_distance_m",
+          "ordinal": 42,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_duration_s": {
+          "name": "speeding_duration_s",
+          "ordinal": 43,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_exposure_pct": {
+          "name": "speeding_exposure_pct",
+          "ordinal": 44,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avg_over_speed_kmh": {
+          "name": "avg_over_speed_kmh",
+          "ordinal": 45,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "harsh_brake_count": {
+          "name": "harsh_brake_count",
+          "ordinal": 46,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "harsh_accel_count": {
+          "name": "harsh_accel_count",
+          "ordinal": 47,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "harsh_corner_count": {
+          "name": "harsh_corner_count",
+          "ordinal": 48,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "acceleration_event_count": {
+          "name": "acceleration_event_count",
+          "ordinal": 49,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "braking_event_count": {
+          "name": "braking_event_count",
+          "ordinal": 50,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "abuse_event_count": {
+          "name": "abuse_event_count",
+          "ordinal": 51,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "hard_acceleration_count": {
+          "name": "hard_acceleration_count",
+          "ordinal": 52,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "hard_braking_count": {
+          "name": "hard_braking_count",
+          "ordinal": 53,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "full_braking_count": {
+          "name": "full_braking_count",
+          "ordinal": 54,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "total_acceleration_events": {
+          "name": "total_acceleration_events",
+          "ordinal": 55,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "hard_acceleration_events": {
+          "name": "hard_acceleration_events",
+          "ordinal": 56,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "total_braking_events": {
+          "name": "total_braking_events",
+          "ordinal": 57,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "hard_braking_events": {
+          "name": "hard_braking_events",
+          "ordinal": 58,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "full_braking_events": {
+          "name": "full_braking_events",
+          "ordinal": 59,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "cornering_events": {
+          "name": "cornering_events",
+          "ordinal": 60,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "abuse_events": {
+          "name": "abuse_events",
+          "ordinal": 61,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "speeding_events": {
+          "name": "speeding_events",
+          "ordinal": 62,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "possible_impact_count": {
+          "name": "possible_impact_count",
+          "ordinal": 63,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "kickdown_count": {
+          "name": "kickdown_count",
+          "ordinal": 64,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "cold_engine_abuse_count": {
+          "name": "cold_engine_abuse_count",
+          "ordinal": 65,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "long_idle_count": {
+          "name": "long_idle_count",
+          "ordinal": 66,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "abuse_score": {
+          "name": "abuse_score",
+          "ordinal": 67,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "behavior_summary_json": {
+          "name": "behavior_summary_json",
+          "ordinal": 68,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "behavior_enriched_at": {
+          "name": "behavior_enriched_at",
+          "ordinal": 69,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "behavior_enrichment_status": {
+          "name": "behavior_enrichment_status",
+          "ordinal": 70,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "behavior_enrichment_attempts": {
+          "name": "behavior_enrichment_attempts",
+          "ordinal": 71,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "behavior_enrichment_error": {
+          "name": "behavior_enrichment_error",
+          "ordinal": 72,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "behavior_enrichment_started_at": {
+          "name": "behavior_enrichment_started_at",
+          "ordinal": 73,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driving_impact_computed_at": {
+          "name": "driving_impact_computed_at",
+          "ordinal": 74,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "detection_profile": {
+          "name": "detection_profile",
+          "ordinal": 75,
+          "type": "VehicleDetectionProfile",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_detection_mode": {
+          "name": "start_detection_mode",
+          "ordinal": 76,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_detection_mode": {
+          "name": "end_detection_mode",
+          "ordinal": 77,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_confidence": {
+          "name": "start_confidence",
+          "ordinal": 78,
+          "type": "DetectionConfidence",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_confidence": {
+          "name": "end_confidence",
+          "ordinal": 79,
+          "type": "DetectionConfidence",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "possible_start_at": {
+          "name": "possible_start_at",
+          "ordinal": 80,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "possible_end_at": {
+          "name": "possible_end_at",
+          "ordinal": 81,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "first_activity_at": {
+          "name": "first_activity_at",
+          "ordinal": 82,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_activity_at": {
+          "name": "last_activity_at",
+          "ordinal": 83,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "route_tracking_started_at": {
+          "name": "route_tracking_started_at",
+          "ordinal": 84,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driving_tracking_started_at": {
+          "name": "driving_tracking_started_at",
+          "ordinal": 85,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "raw_detection_meta": {
+          "name": "raw_detection_meta",
+          "ordinal": 86,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "gap_ended": {
+          "name": "gap_ended",
+          "ordinal": 87,
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "enriched_at": {
+          "name": "enriched_at",
+          "ordinal": 88,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_source": {
+          "name": "trip_source",
+          "ordinal": 89,
+          "type": "TripSource",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "V2_LIVE"
+          }
+        },
+        "is_repaired": {
+          "name": "is_repaired",
+          "ordinal": 90,
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "merge_parent_trip_id": {
+          "name": "merge_parent_trip_id",
+          "ordinal": 91,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "quality_status": {
+          "name": "quality_status",
+          "ordinal": 92,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "behavior_summary_status": {
+          "name": "behavior_summary_status",
+          "ordinal": 93,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driving_impact_status": {
+          "name": "driving_impact_status",
+          "ordinal": 94,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 95,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "trip_analysis_status": {
+          "name": "trip_analysis_status",
+          "ordinal": 96,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_queued_at": {
+          "name": "analysis_queued_at",
+          "ordinal": 97,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_started_at": {
+          "name": "analysis_started_at",
+          "ordinal": 98,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_partial_at": {
+          "name": "analysis_partial_at",
+          "ordinal": 99,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_completed_at": {
+          "name": "analysis_completed_at",
+          "ordinal": 100,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_failed_at": {
+          "name": "analysis_failed_at",
+          "ordinal": 101,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_failed_reason": {
+          "name": "analysis_failed_reason",
+          "ordinal": 102,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_latency_ms": {
+          "name": "analysis_latency_ms",
+          "ordinal": 103,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_stages_json": {
+          "name": "analysis_stages_json",
+          "ordinal": 104,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "booking_link_source": {
+          "name": "booking_link_source",
+          "ordinal": 105,
+          "type": "TripBookingLinkSource",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "tire_usage_attribution_status": {
+          "name": "tire_usage_attribution_status",
+          "ordinal": 106,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "tire_usage_processed_at": {
+          "name": "tire_usage_processed_at",
+          "ordinal": 107,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "booking_customer_id": {
+          "name": "booking_customer_id",
+          "ordinal": 108,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "assigned_driver_id": {
+          "name": "assigned_driver_id",
+          "ordinal": 109,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "actual_driver_id": {
+          "name": "actual_driver_id",
+          "ordinal": 110,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "vehicle_trips_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "vehicle_trips_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "vehicle_trips_assigned_booking_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "assigned_booking_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_assigned_booking_id_idx ON public.vehicle_trips USING btree (assigned_booking_id)"
+        },
+        {
+          "name": "vehicle_trips_assignment_status_is_private_trip_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "assignment_status",
+            "is_private_trip"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_assignment_status_is_private_trip_idx ON public.vehicle_trips USING btree (assignment_status, is_private_trip)"
+        },
+        {
+          "name": "vehicle_trips_assignment_subject_type_assignment_subject_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "assignment_subject_type",
+            "assignment_subject_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_assignment_subject_type_assignment_subject_id_idx ON public.vehicle_trips USING btree (assignment_subject_type, assignment_subject_id)"
+        },
+        {
+          "name": "vehicle_trips_behavior_enrichment_status_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "behavior_enrichment_status"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_behavior_enrichment_status_idx ON public.vehicle_trips USING btree (behavior_enrichment_status)"
+        },
+        {
+          "name": "vehicle_trips_dimo_segment_id_key",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "dimo_segment_id"
+          ],
+          "definition": "CREATE UNIQUE INDEX vehicle_trips_dimo_segment_id_key ON public.vehicle_trips USING btree (dimo_segment_id)"
+        },
+        {
+          "name": "vehicle_trips_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX vehicle_trips_pkey ON public.vehicle_trips USING btree (id)"
+        },
+        {
+          "name": "vehicle_trips_start_time_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "start_time"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_start_time_idx ON public.vehicle_trips USING btree (start_time)"
+        },
+        {
+          "name": "vehicle_trips_tire_usage_attribution_status_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "tire_usage_attribution_status"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_tire_usage_attribution_status_idx ON public.vehicle_trips USING btree (tire_usage_attribution_status)"
+        },
+        {
+          "name": "vehicle_trips_trip_analysis_status_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_analysis_status"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_trip_analysis_status_idx ON public.vehicle_trips USING btree (trip_analysis_status)"
+        },
+        {
+          "name": "vehicle_trips_trip_source_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_source"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_trip_source_idx ON public.vehicle_trips USING btree (trip_source)"
+        },
+        {
+          "name": "vehicle_trips_trip_status_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_status"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_trip_status_idx ON public.vehicle_trips USING btree (trip_status)"
+        },
+        {
+          "name": "vehicle_trips_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_vehicle_id_idx ON public.vehicle_trips USING btree (vehicle_id)"
+        },
+        {
+          "name": "vehicle_trips_vehicle_id_start_time_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id",
+            "start_time"
+          ],
+          "definition": "CREATE INDEX vehicle_trips_vehicle_id_start_time_idx ON public.vehicle_trips USING btree (vehicle_id, start_time)"
+        }
+      ]
+    },
+    "driving_events": {
+      "table": "driving_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "event_type": {
+          "name": "event_type",
+          "ordinal": 4,
+          "type": "DrivingEventType",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "source": {
+          "name": "source",
+          "ordinal": 5,
+          "type": "DrivingEventSource",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "TELEMETRY_EVENTS"
+          }
+        },
+        "severity": {
+          "name": "severity",
+          "ordinal": 6,
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "latitude": {
+          "name": "latitude",
+          "ordinal": 7,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "longitude": {
+          "name": "longitude",
+          "ordinal": 8,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speed_kmh": {
+          "name": "speed_kmh",
+          "ordinal": 9,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "delta_kmh": {
+          "name": "delta_kmh",
+          "ordinal": 10,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "ordinal": 11,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driver_name": {
+          "name": "driver_name",
+          "ordinal": 12,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 13,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "metadata_json": {
+          "name": "metadata_json",
+          "ordinal": 14,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "ordinal": 15,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 16,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "provider": {
+          "name": "provider",
+          "ordinal": 17,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "provider_event_name": {
+          "name": "provider_event_name",
+          "ordinal": 18,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "provider_source_id": {
+          "name": "provider_source_id",
+          "ordinal": 19,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "provider_fingerprint": {
+          "name": "provider_fingerprint",
+          "ordinal": 20,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_assignment": {
+          "name": "trip_assignment",
+          "ordinal": 21,
+          "type": "DrivingEventTripAssignment",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "UNASSIGNED"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "driving_events_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "driving_events_trip_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE SET NULL",
+          "local_columns": [
+            "trip_id"
+          ],
+          "referenced_table": "vehicle_trips",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "SET NULL"
+        },
+        {
+          "name": "driving_events_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "driving_events_event_type_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "event_type"
+          ],
+          "definition": "CREATE INDEX driving_events_event_type_idx ON public.driving_events USING btree (event_type)"
+        },
+        {
+          "name": "driving_events_org_provider_fingerprint",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "provider_fingerprint"
+          ],
+          "definition": "CREATE UNIQUE INDEX driving_events_org_provider_fingerprint ON public.driving_events USING btree (organization_id, provider_fingerprint)"
+        },
+        {
+          "name": "driving_events_organization_id_vehicle_id_recorded_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "vehicle_id",
+            "recorded_at"
+          ],
+          "definition": "CREATE INDEX driving_events_organization_id_vehicle_id_recorded_at_idx ON public.driving_events USING btree (organization_id, vehicle_id, recorded_at)"
+        },
+        {
+          "name": "driving_events_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX driving_events_pkey ON public.driving_events USING btree (id)"
+        },
+        {
+          "name": "driving_events_recorded_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "recorded_at"
+          ],
+          "definition": "CREATE INDEX driving_events_recorded_at_idx ON public.driving_events USING btree (recorded_at)"
+        },
+        {
+          "name": "driving_events_source_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "source"
+          ],
+          "definition": "CREATE INDEX driving_events_source_idx ON public.driving_events USING btree (source)"
+        },
+        {
+          "name": "driving_events_trip_id_event_type_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id",
+            "event_type"
+          ],
+          "definition": "CREATE INDEX driving_events_trip_id_event_type_idx ON public.driving_events USING btree (trip_id, event_type)"
+        },
+        {
+          "name": "driving_events_trip_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id"
+          ],
+          "definition": "CREATE INDEX driving_events_trip_id_idx ON public.driving_events USING btree (trip_id)"
+        },
+        {
+          "name": "driving_events_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX driving_events_vehicle_id_idx ON public.driving_events USING btree (vehicle_id)"
+        },
+        {
+          "name": "driving_events_vehicle_id_recorded_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id",
+            "recorded_at"
+          ],
+          "definition": "CREATE INDEX driving_events_vehicle_id_recorded_at_idx ON public.driving_events USING btree (vehicle_id, recorded_at)"
+        },
+        {
+          "name": "driving_events_vehicle_id_trip_assignment_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id",
+            "trip_assignment"
+          ],
+          "definition": "CREATE INDEX driving_events_vehicle_id_trip_assignment_idx ON public.driving_events USING btree (vehicle_id, trip_assignment)"
+        }
+      ]
+    },
+    "trip_behavior_events": {
+      "table": "trip_behavior_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 4,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "event_category": {
+          "name": "event_category",
+          "ordinal": 5,
+          "type": "BehaviorEventCategory",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "event_type": {
+          "name": "event_type",
+          "ordinal": 6,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "classification": {
+          "name": "classification",
+          "ordinal": 7,
+          "type": "BehaviorEventClassification",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "started_at": {
+          "name": "started_at",
+          "ordinal": 8,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "ordinal": 9,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "ordinal": 10,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_speed_kmh": {
+          "name": "start_speed_kmh",
+          "ordinal": 11,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_speed_kmh": {
+          "name": "end_speed_kmh",
+          "ordinal": 12,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "peak_value": {
+          "name": "peak_value",
+          "ordinal": 13,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "peak_value_unit": {
+          "name": "peak_value_unit",
+          "ordinal": 14,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "peak_g": {
+          "name": "peak_g",
+          "ordinal": 15,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "max_throttle_pos": {
+          "name": "max_throttle_pos",
+          "ordinal": 16,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "max_engine_rpm": {
+          "name": "max_engine_rpm",
+          "ordinal": 17,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "max_coolant_temp": {
+          "name": "max_coolant_temp",
+          "ordinal": 18,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "metadata_json": {
+          "name": "metadata_json",
+          "ordinal": 19,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 20,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "trip_behavior_events_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "trip_behavior_events_trip_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "trip_id"
+          ],
+          "referenced_table": "vehicle_trips",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "trip_behavior_events_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "trip_behavior_events_event_category_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "event_category"
+          ],
+          "definition": "CREATE INDEX trip_behavior_events_event_category_idx ON public.trip_behavior_events USING btree (event_category)"
+        },
+        {
+          "name": "trip_behavior_events_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX trip_behavior_events_pkey ON public.trip_behavior_events USING btree (id)"
+        },
+        {
+          "name": "trip_behavior_events_started_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "started_at"
+          ],
+          "definition": "CREATE INDEX trip_behavior_events_started_at_idx ON public.trip_behavior_events USING btree (started_at)"
+        },
+        {
+          "name": "trip_behavior_events_trip_id_event_category_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id",
+            "event_category"
+          ],
+          "definition": "CREATE INDEX trip_behavior_events_trip_id_event_category_idx ON public.trip_behavior_events USING btree (trip_id, event_category)"
+        },
+        {
+          "name": "trip_behavior_events_trip_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id"
+          ],
+          "definition": "CREATE INDEX trip_behavior_events_trip_id_idx ON public.trip_behavior_events USING btree (trip_id)"
+        },
+        {
+          "name": "trip_behavior_events_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX trip_behavior_events_vehicle_id_idx ON public.trip_behavior_events USING btree (vehicle_id)"
+        }
+      ]
+    },
+    "vehicle_trip_waypoints": {
+      "table": "vehicle_trip_waypoints",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "latitude": {
+          "name": "latitude",
+          "ordinal": 3,
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "longitude": {
+          "name": "longitude",
+          "ordinal": 4,
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speed_kmh": {
+          "name": "speed_kmh",
+          "ordinal": 5,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "heading": {
+          "name": "heading",
+          "ordinal": 6,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "ordinal": 7,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "vehicle_trip_waypoints_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "vehicle_trip_waypoints_trip_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "trip_id"
+          ],
+          "referenced_table": "vehicle_trips",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "vehicle_trip_waypoints_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_waypoints_pkey ON public.vehicle_trip_waypoints USING btree (id)"
+        },
+        {
+          "name": "vehicle_trip_waypoints_recorded_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "recorded_at"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_waypoints_recorded_at_idx ON public.vehicle_trip_waypoints USING btree (recorded_at)"
+        },
+        {
+          "name": "vehicle_trip_waypoints_trip_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_waypoints_trip_id_idx ON public.vehicle_trip_waypoints USING btree (trip_id)"
+        }
+      ]
+    },
+    "vehicle_trip_tracking_runs": {
+      "table": "vehicle_trip_tracking_runs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 4,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "state_at_run": {
+          "name": "state_at_run",
+          "ordinal": 5,
+          "type": "TripDetectionState",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "run_type": {
+          "name": "run_type",
+          "ordinal": 6,
+          "type": "TripTrackingRunType",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "requested_from": {
+          "name": "requested_from",
+          "ordinal": 7,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "requested_to": {
+          "name": "requested_to",
+          "ordinal": 8,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "core_points_count": {
+          "name": "core_points_count",
+          "ordinal": 9,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "route_points_count": {
+          "name": "route_points_count",
+          "ordinal": 10,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driving_points_count": {
+          "name": "driving_points_count",
+          "ordinal": 11,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "result_state": {
+          "name": "result_state",
+          "ordinal": 12,
+          "type": "TripDetectionState",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "result_summary": {
+          "name": "result_summary",
+          "ordinal": 13,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "error_message": {
+          "name": "error_message",
+          "ordinal": 14,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "ordinal": 15,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 16,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "vehicle_trip_tracking_runs_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "vehicle_trip_tracking_runs_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "vehicle_trip_tracking_runs_created_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "created_at"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_created_at_idx ON public.vehicle_trip_tracking_runs USING btree (created_at)"
+        },
+        {
+          "name": "vehicle_trip_tracking_runs_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_tracking_runs_pkey ON public.vehicle_trip_tracking_runs USING btree (id)"
+        },
+        {
+          "name": "vehicle_trip_tracking_runs_run_type_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "run_type"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_run_type_idx ON public.vehicle_trip_tracking_runs USING btree (run_type)"
+        },
+        {
+          "name": "vehicle_trip_tracking_runs_trip_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_trip_id_idx ON public.vehicle_trip_tracking_runs USING btree (trip_id)"
+        },
+        {
+          "name": "vehicle_trip_tracking_runs_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_tracking_runs_vehicle_id_idx ON public.vehicle_trip_tracking_runs USING btree (vehicle_id)"
+        }
+      ]
+    },
+    "trip_repairs": {
+      "table": "trip_repairs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "repair_type": {
+          "name": "repair_type",
+          "ordinal": 4,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "status": {
+          "name": "status",
+          "ordinal": 5,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "PROPOSED"
+          }
+        },
+        "reason": {
+          "name": "reason",
+          "ordinal": 6,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "confidence": {
+          "name": "confidence",
+          "ordinal": 7,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "window_from": {
+          "name": "window_from",
+          "ordinal": 8,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "window_to": {
+          "name": "window_to",
+          "ordinal": 9,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "detector_evidence": {
+          "name": "detector_evidence",
+          "ordinal": 10,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "applied_at": {
+          "name": "applied_at",
+          "ordinal": 11,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 12,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "trip_repairs_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "trip_repairs_trip_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE ON DELETE SET NULL",
+          "local_columns": [
+            "trip_id"
+          ],
+          "referenced_table": "vehicle_trips",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "SET NULL"
+        },
+        {
+          "name": "trip_repairs_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "trip_repairs_created_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "created_at"
+          ],
+          "definition": "CREATE INDEX trip_repairs_created_at_idx ON public.trip_repairs USING btree (created_at)"
+        },
+        {
+          "name": "trip_repairs_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX trip_repairs_pkey ON public.trip_repairs USING btree (id)"
+        },
+        {
+          "name": "trip_repairs_repair_type_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "repair_type"
+          ],
+          "definition": "CREATE INDEX trip_repairs_repair_type_idx ON public.trip_repairs USING btree (repair_type)"
+        },
+        {
+          "name": "trip_repairs_status_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "status"
+          ],
+          "definition": "CREATE INDEX trip_repairs_status_idx ON public.trip_repairs USING btree (status)"
+        },
+        {
+          "name": "trip_repairs_trip_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "trip_id"
+          ],
+          "definition": "CREATE INDEX trip_repairs_trip_id_idx ON public.trip_repairs USING btree (trip_id)"
+        },
+        {
+          "name": "trip_repairs_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX trip_repairs_vehicle_id_idx ON public.trip_repairs USING btree (vehicle_id)"
+        }
+      ]
+    },
+    "trip_driving_impact": {
+      "table": "trip_driving_impact",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 4,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_started_at": {
+          "name": "trip_started_at",
+          "ordinal": 5,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_ended_at": {
+          "name": "trip_ended_at",
+          "ordinal": 6,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "distance_km": {
+          "name": "distance_km",
+          "ordinal": 7,
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "city_share_pct": {
+          "name": "city_share_pct",
+          "ordinal": 8,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "highway_share_pct": {
+          "name": "highway_share_pct",
+          "ordinal": 9,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "country_road_share_pct": {
+          "name": "country_road_share_pct",
+          "ordinal": 10,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "hard_accel_per_100km": {
+          "name": "hard_accel_per_100km",
+          "ordinal": 11,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "extreme_accel_per_100km": {
+          "name": "extreme_accel_per_100km",
+          "ordinal": 12,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "hard_brake_per_100km": {
+          "name": "hard_brake_per_100km",
+          "ordinal": 13,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "extreme_brake_per_100km": {
+          "name": "extreme_brake_per_100km",
+          "ordinal": 14,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "full_braking_per_100km": {
+          "name": "full_braking_per_100km",
+          "ordinal": 15,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "kickdown_per_100km": {
+          "name": "kickdown_per_100km",
+          "ordinal": 16,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "launch_like_per_100km": {
+          "name": "launch_like_per_100km",
+          "ordinal": 17,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "brakes_per_100km": {
+          "name": "brakes_per_100km",
+          "ordinal": 18,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "stop_density": {
+          "name": "stop_density",
+          "ordinal": 19,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "high_speed_brake_share": {
+          "name": "high_speed_brake_share",
+          "ordinal": 20,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "mean_brake_energy_per_km": {
+          "name": "mean_brake_energy_per_km",
+          "ordinal": 21,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "p95_negative_decel": {
+          "name": "p95_negative_decel",
+          "ordinal": 22,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "longitudinal_stress_score": {
+          "name": "longitudinal_stress_score",
+          "ordinal": 23,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "braking_stress_score": {
+          "name": "braking_stress_score",
+          "ordinal": 24,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "stop_go_stress_score": {
+          "name": "stop_go_stress_score",
+          "ordinal": 25,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "high_speed_stress_score": {
+          "name": "high_speed_stress_score",
+          "ordinal": 26,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "thermal_brake_stress_score": {
+          "name": "thermal_brake_stress_score",
+          "ordinal": 27,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "driving_style_score": {
+          "name": "driving_style_score",
+          "ordinal": 28,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "safety_score": {
+          "name": "safety_score",
+          "ordinal": 29,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_exposure_pct": {
+          "name": "speeding_exposure_pct",
+          "ordinal": 30,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speeding_section_count": {
+          "name": "speeding_section_count",
+          "ordinal": 31,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "model_version": {
+          "name": "model_version",
+          "ordinal": 32,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "source_summary_json": {
+          "name": "source_summary_json",
+          "ordinal": 33,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 34,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "ordinal": 35,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "primary_source": {
+          "name": "primary_source",
+          "ordinal": 36,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "measured_share": {
+          "name": "measured_share",
+          "ordinal": 37,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "provider_classified_share": {
+          "name": "provider_classified_share",
+          "ordinal": 38,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "reconstructed_share": {
+          "name": "reconstructed_share",
+          "ordinal": 39,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "estimated_proxy_share": {
+          "name": "estimated_proxy_share",
+          "ordinal": 40,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "context_only_share": {
+          "name": "context_only_share",
+          "ordinal": 41,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "native_event_count": {
+          "name": "native_event_count",
+          "ordinal": 42,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "hf_event_count": {
+          "name": "hf_event_count",
+          "ordinal": 43,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "measurement_coverage": {
+          "name": "measurement_coverage",
+          "ordinal": 44,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "hardware_profile": {
+          "name": "hardware_profile",
+          "ordinal": 45,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "capability_version": {
+          "name": "capability_version",
+          "ordinal": 46,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "health_eligibility": {
+          "name": "health_eligibility",
+          "ordinal": 47,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "provenance_maturity": {
+          "name": "provenance_maturity",
+          "ordinal": 48,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "provenance_version": {
+          "name": "provenance_version",
+          "ordinal": 49,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "p95_negative_decel_measured": {
+          "name": "p95_negative_decel_measured",
+          "ordinal": 50,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "p95_negative_decel_proxy": {
+          "name": "p95_negative_decel_proxy",
+          "ordinal": 51,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "mean_brake_energy_proxy_per_km": {
+          "name": "mean_brake_energy_proxy_per_km",
+          "ordinal": 52,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "load_components_json": {
+          "name": "load_components_json",
+          "ordinal": 53,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "authoritative_distance_km": {
+          "name": "authoritative_distance_km",
+          "ordinal": 54,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "source_version": {
+          "name": "source_version",
+          "ordinal": 55,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "source_fingerprint": {
+          "name": "source_fingerprint",
+          "ordinal": 56,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "analysis_status": {
+          "name": "analysis_status",
+          "ordinal": 57,
+          "type": "TripDrivingImpactAnalysisStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "PENDING"
+          }
+        },
+        "calculated_at": {
+          "name": "calculated_at",
+          "ordinal": 58,
+          "type": "timestamp(6) with time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "source_completeness": {
+          "name": "source_completeness",
+          "ordinal": 59,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_distance_km_at_source": {
+          "name": "trip_distance_km_at_source",
+          "ordinal": 60,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "distance_discrepancy_km": {
+          "name": "distance_discrepancy_km",
+          "ordinal": 61,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "trip_driving_impact_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "trip_driving_impact_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "trip_driving_impact_analysis_status_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "analysis_status"
+          ],
+          "definition": "CREATE INDEX trip_driving_impact_analysis_status_idx ON public.trip_driving_impact USING btree (analysis_status)"
+        },
+        {
+          "name": "trip_driving_impact_organization_id_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX trip_driving_impact_organization_id_vehicle_id_idx ON public.trip_driving_impact USING btree (organization_id, vehicle_id)"
+        },
+        {
+          "name": "trip_driving_impact_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX trip_driving_impact_pkey ON public.trip_driving_impact USING btree (id)"
+        },
+        {
+          "name": "trip_driving_impact_source_fingerprint_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "source_fingerprint"
+          ],
+          "definition": "CREATE INDEX trip_driving_impact_source_fingerprint_idx ON public.trip_driving_impact USING btree (source_fingerprint)"
+        },
+        {
+          "name": "trip_driving_impact_trip_id_key",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "trip_id"
+          ],
+          "definition": "CREATE UNIQUE INDEX trip_driving_impact_trip_id_key ON public.trip_driving_impact USING btree (trip_id)"
+        },
+        {
+          "name": "trip_driving_impact_vehicle_id_trip_started_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id",
+            "trip_started_at"
+          ],
+          "definition": "CREATE INDEX trip_driving_impact_vehicle_id_trip_started_at_idx ON public.trip_driving_impact USING btree (vehicle_id, trip_started_at)"
+        }
+      ]
+    },
+    "vehicle_trip_detection_states": {
+      "table": "vehicle_trip_detection_states",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "state": {
+          "name": "state",
+          "ordinal": 4,
+          "type": "TripDetectionState",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "RESTING"
+          }
+        },
+        "detection_profile": {
+          "name": "detection_profile",
+          "ordinal": 5,
+          "type": "VehicleDetectionProfile",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "UNKNOWN"
+          }
+        },
+        "active_trip_id": {
+          "name": "active_trip_id",
+          "ordinal": 6,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "possible_start_at": {
+          "name": "possible_start_at",
+          "ordinal": 7,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "possible_end_at": {
+          "name": "possible_end_at",
+          "ordinal": 8,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_activity_at": {
+          "name": "last_activity_at",
+          "ordinal": 9,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_snapshot_evidence_at": {
+          "name": "last_snapshot_evidence_at",
+          "ordinal": 10,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_core_processed_at": {
+          "name": "last_core_processed_at",
+          "ordinal": 11,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_route_processed_at": {
+          "name": "last_route_processed_at",
+          "ordinal": 12,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_driving_processed_at": {
+          "name": "last_driving_processed_at",
+          "ordinal": 13,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "worker_locked_until": {
+          "name": "worker_locked_until",
+          "ordinal": 14,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "worker_run_token": {
+          "name": "worker_run_token",
+          "ordinal": 15,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_detection_mode": {
+          "name": "start_detection_mode",
+          "ordinal": 16,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_confidence": {
+          "name": "start_confidence",
+          "ordinal": 17,
+          "type": "DetectionConfidence",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_detection_mode": {
+          "name": "end_detection_mode",
+          "ordinal": 18,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_confidence": {
+          "name": "end_confidence",
+          "ordinal": 19,
+          "type": "DetectionConfidence",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_evidence_summary": {
+          "name": "last_evidence_summary",
+          "ordinal": 20,
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_odometer_km": {
+          "name": "start_odometer_km",
+          "ordinal": 21,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_fuel_level": {
+          "name": "start_fuel_level",
+          "ordinal": 22,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "start_ev_soc": {
+          "name": "start_ev_soc",
+          "ordinal": 23,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_meaningful_movement_at": {
+          "name": "last_meaningful_movement_at",
+          "ordinal": 24,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "end_validation_attempts": {
+          "name": "end_validation_attempts",
+          "ordinal": 25,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "cusum_validated_at": {
+          "name": "cusum_validated_at",
+          "ordinal": 26,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "cusum_segment_start": {
+          "name": "cusum_segment_start",
+          "ordinal": 27,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "cusum_segment_end": {
+          "name": "cusum_segment_end",
+          "ordinal": 28,
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 29,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "ordinal": 30,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "vehicle_trip_detection_states_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "vehicle_trip_detection_states_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "vehicle_trip_detection_states_organization_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_detection_states_organization_id_idx ON public.vehicle_trip_detection_states USING btree (organization_id)"
+        },
+        {
+          "name": "vehicle_trip_detection_states_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_detection_states_pkey ON public.vehicle_trip_detection_states USING btree (id)"
+        },
+        {
+          "name": "vehicle_trip_detection_states_state_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "state"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_detection_states_state_idx ON public.vehicle_trip_detection_states USING btree (state)"
+        },
+        {
+          "name": "vehicle_trip_detection_states_vehicle_id_key",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE UNIQUE INDEX vehicle_trip_detection_states_vehicle_id_key ON public.vehicle_trip_detection_states USING btree (vehicle_id)"
+        },
+        {
+          "name": "vehicle_trip_detection_states_worker_locked_until_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "worker_locked_until"
+          ],
+          "definition": "CREATE INDEX vehicle_trip_detection_states_worker_locked_until_idx ON public.vehicle_trip_detection_states USING btree (worker_locked_until)"
+        }
+      ]
+    },
+    "brake_trip_metrics": {
+      "table": "brake_trip_metrics",
+      "columns": {
+        "id": {
+          "name": "id",
+          "ordinal": 1,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "ordinal": 2,
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "ordinal": 3,
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "brake_energy_kj": {
+          "name": "brake_energy_kj",
+          "ordinal": 4,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "hard_brake_count": {
+          "name": "hard_brake_count",
+          "ordinal": 5,
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "avg_deceleration_ms2": {
+          "name": "avg_deceleration_ms2",
+          "ordinal": 6,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "max_deceleration_ms2": {
+          "name": "max_deceleration_ms2",
+          "ordinal": 7,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "brake_duration_sec": {
+          "name": "brake_duration_sec",
+          "ordinal": 8,
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "distance_km": {
+          "name": "distance_km",
+          "ordinal": 9,
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "ordinal": 10,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "ordinal": 11,
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        }
+      },
+      "constraints": [
+        {
+          "name": "brake_trip_metrics_pkey",
+          "type": "PRIMARY KEY",
+          "definition": "PRIMARY KEY (id)",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "brake_trip_metrics_vehicle_id_fkey",
+          "type": "FOREIGN KEY",
+          "definition": "FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASCADE ON DELETE CASCADE",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_update": "CASCADE",
+          "on_delete": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "brake_trip_metrics_pkey",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "definition": "CREATE UNIQUE INDEX brake_trip_metrics_pkey ON public.brake_trip_metrics USING btree (id)"
+        },
+        {
+          "name": "brake_trip_metrics_recorded_at_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "recorded_at"
+          ],
+          "definition": "CREATE INDEX brake_trip_metrics_recorded_at_idx ON public.brake_trip_metrics USING btree (recorded_at)"
+        },
+        {
+          "name": "brake_trip_metrics_vehicle_id_idx",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "definition": "CREATE INDEX brake_trip_metrics_vehicle_id_idx ON public.brake_trip_metrics USING btree (vehicle_id)"
+        }
+      ]
+    }
+  },
+  "enum_semantic_authority": {
+    "TripAssignmentStatus": {
+      "labels": [
+        "ASSIGNED_DRIVER",
+        "ASSIGNED_BOOKING_CUSTOMER",
+        "PRIVATE_UNASSIGNED",
+        "UNKNOWN_ASSIGNMENT"
+      ]
+    },
+    "TripAssignmentSubjectType": {
+      "labels": [
+        "DRIVER",
+        "BOOKING_CUSTOMER"
+      ]
+    },
+    "DrivingEventType": {
+      "labels": [
+        "HARSH_BRAKING",
+        "EXTREME_BRAKING",
+        "HARSH_ACCELERATION",
+        "HARSH_CORNERING",
+        "SPEEDING",
+        "IDLE_EXCESSIVE",
+        "UNMAPPED_PROVIDER_EVENT",
+        "SAFETY_COLLISION"
+      ]
+    },
+    "BehaviorEventCategory": {
+      "labels": [
+        "ACCELERATION",
+        "BRAKING",
+        "ABUSE"
+      ]
+    },
+    "BehaviorEventClassification": {
+      "labels": [
+        "LIGHT",
+        "MODERATE",
+        "HARD",
+        "EXTREME",
+        "WARNING",
+        "SEVERE",
+        "CRITICAL"
+      ]
+    },
+    "TripSource": {
+      "labels": [
+        "V2_LIVE",
+        "REPAIRED"
+      ]
+    },
+    "TripDetectionState": {
+      "labels": [
+        "RESTING",
+        "POSSIBLE_START",
+        "ACTIVE_TRIP",
+        "IDLE_WITHIN_TRIP",
+        "POSSIBLE_END",
+        "ENDED"
+      ]
+    },
+    "TripTrackingRunType": {
+      "labels": [
+        "POSSIBLE_START_VALIDATION",
+        "ACTIVE_TRACKING",
+        "POSSIBLE_END_CHECK",
+        "END_VALIDATION",
+        "FINALIZATION_CHECK"
+      ]
+    },
+    "VehicleDetectionProfile": {
+      "labels": [
+        "ICE",
+        "EV",
+        "HYBRID",
+        "UNKNOWN"
+      ]
+    },
+    "DetectionConfidence": {
+      "labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    }
+  }
+}
