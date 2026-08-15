@@ -19,7 +19,9 @@ def _default_opclass(column_name: str, authority_columns: dict[str, dict[str, An
         return "timestamp_ops"
     if "json" in fmt:
         return "jsonb_ops"
-    if column_name == "membership_id":
+    if "int" in fmt:
+        return "int4_ops"
+    if "text" in fmt or "char" in fmt or "uuid" in fmt:
         return "text_ops"
     return "default"
 

@@ -23,7 +23,7 @@ from ci_r3b1o3_m252_exact_parity import compare_m252_exact as compare_m252_exact
 from ci_r3b1o4_full_catalog_delta import build_full_catalog_delta_authority, classify_delta, diff_inventories
 from ci_r3b1o4_m252_exact_parity import compare_m252_exact as compare_m252_exact_o4, make_canonical_catalog_fixture as make_o4_fixture
 from ci_r3b1o4_stale_index_authority import build_invoice_stale_index_authority, build_whatsapp_stale_index_authority
-from ci_r3b1o4_t2_stale_index_safety import EXPECTED_STALE, _compare_index
+from ci_r3b1o4_t2_stale_index_safety import EXPECTED_STALE, _compare_index, build_expected_stale_index_shape
 from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract, build_tail_sql, evaluate_tail_preconditions
 from ci_r3b1o4_terminal_gate import evaluate_corrective_terminal_acceptance, evaluate_terminal_acceptance
 from ci_r3b1o4_test_source_hashes import build_corrective_test_source_hash_manifest, build_test_source_hash_manifest
@@ -277,37 +277,48 @@ def run_catalog_delta_tests(tests: list) -> None:
 
 
 def run_t2_stale_index_tests(tests: list) -> None:
+    def mock_sql(q: str) -> str:
+        if "format_type" in q and "invoice_number" in q:
+            return "integer"
+        if "format_type" in q and "organization_id" in q:
+            return "text"
+        if "format_type" in q and "contact_phone" in q:
+            return "text"
+        return ""
+
+    invoice_expected = build_expected_stale_index_shape(mock_sql, "org_invoices_invoice_number_key")
     invoice_actual = {
         "owner_table": "org_invoices",
         "unique": True,
         "primary": False,
         "access_method": "btree",
-        "keys": EXPECTED_STALE["org_invoices_invoice_number_key"]["keys"],
+        "keys": invoice_expected["keys"],
         "include_columns": [],
         "predicate": None,
         "valid": True,
         "ready": True,
     }
-    ok, _ = _compare_index(invoice_actual, EXPECTED_STALE["org_invoices_invoice_number_key"])
+    ok, _ = _compare_index(invoice_actual, invoice_expected)
     _add(tests, "t2_invoice_stale_exact_shape_pass", "_compare_index", "PASS", ok, str(ok))
 
+    whatsapp_expected = build_expected_stale_index_shape(mock_sql, "whatsapp_conversations_organization_id_contact_phone_key")
     whatsapp_actual = {
         "owner_table": "whatsapp_conversations",
         "unique": True,
         "primary": False,
         "access_method": "btree",
-        "keys": EXPECTED_STALE["whatsapp_conversations_organization_id_contact_phone_key"]["keys"],
+        "keys": whatsapp_expected["keys"],
         "include_columns": [],
         "predicate": None,
         "valid": True,
         "ready": True,
     }
-    ok_wa, _ = _compare_index(whatsapp_actual, EXPECTED_STALE["whatsapp_conversations_organization_id_contact_phone_key"])
+    ok_wa, _ = _compare_index(whatsapp_actual, whatsapp_expected)
     _add(tests, "t2_whatsapp_stale_exact_shape_pass", "_compare_index", "PASS", ok_wa, str(ok_wa))
 
     wrong_owner = dict(invoice_actual)
     wrong_owner["owner_table"] = "wrong_table"
-    bad, _ = _compare_index(wrong_owner, EXPECTED_STALE["org_invoices_invoice_number_key"])
+    bad, _ = _compare_index(wrong_owner, invoice_expected)
     _add(tests, "t2_wrong_owner_fail", "_compare_index", "FAIL", not bad, str(bad))
 
 
