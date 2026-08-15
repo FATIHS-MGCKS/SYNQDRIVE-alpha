@@ -42,8 +42,9 @@ INVOICE_REPLACEMENT = {
 }
 
 WHATSAPP_REPLACEMENT = {
-    "kind": "unique_constraint",
+    "kind": "unique_index",
     "name": "whatsapp_conversations_organization_id_contact_phone_normalized_key",
+    "production_truncated_name": "whatsapp_conversations_organization_id_contact_phone_normal_key",
     "owner_table": "whatsapp_conversations",
     "columns": ["organization_id", "contact_phone_normalized"],
     "normalization_column": "contact_phone_normalized",

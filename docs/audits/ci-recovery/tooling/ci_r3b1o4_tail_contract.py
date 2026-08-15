@@ -10,6 +10,7 @@ from ci_r3b1o1_constants import M252_TABLE
 from ci_r3b1o3_index_provenance import index_present
 from ci_r3b1o_constants import M252, MIG_ROOT
 from ci_r3b1o4_constants import DATA, STALE_INDEXES, TAIL_TASKS
+from ci_r3b1o4_stale_index_authority import _whatsapp_replacement_state
 
 M252_SQL = (MIG_ROOT / M252 / "migration.sql").read_text()
 
@@ -106,18 +107,7 @@ SELECT COUNT(*) FROM (
     )
     stale = {name: index_present(run_sql, name) for name in STALE_INDEXES}
     invoice_replacement = index_present(run_sql, "org_invoices_organization_id_sequence_year_sequence_number_key")
-    whatsapp_replacement = (
-        run_sql(
-            """
-SELECT COUNT(*) FROM pg_constraint con
-JOIN pg_class rel ON rel.oid = con.conrelid
-JOIN pg_namespace n ON n.oid = rel.relnamespace
-WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
-  AND con.contype='u' AND con.conname='whatsapp_conversations_organization_id_contact_phone_normalized_key';
-"""
-        ).strip()
-        == "1"
-    )
+    whatsapp_replacement = _whatsapp_replacement_state(run_sql)["present"]
 
     if phase == "pre_tail":
         expected = {

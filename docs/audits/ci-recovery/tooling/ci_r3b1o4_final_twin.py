@@ -14,7 +14,7 @@ from ci_r3b1o1_final_twin import _catalog_snapshot, _ledger_snapshot
 from ci_r3b1o3_index_provenance import TARGET_INDEXES, snapshot_indexes
 from ci_r3b1o3_m252_exact_parity import run_m252_exact_parity
 from ci_r3b1o4_constants import FINAL_STRATEGY_DB_PREFIX, INVOICE_REPLACEMENT, STALE_INDEXES, WHATSAPP_REPLACEMENT
-from ci_r3b1o4_stale_index_authority import build_replacement_uniqueness_safety, inspect_index_drop_safety
+from ci_r3b1o4_stale_index_authority import _whatsapp_replacement_state, build_replacement_uniqueness_safety, inspect_index_drop_safety
 from ci_r3b1o4_tail_contract import build_temp_tail_migration_dir, evaluate_tail_preconditions
 
 INDEX_NAMES = [s["index_name"] for s in TARGET_INDEXES]
@@ -31,16 +31,8 @@ def _snapshot_tail_state(run_sql, *, label: str) -> dict[str, Any]:
             == "1",
         },
         WHATSAPP_REPLACEMENT["name"]: {
-            "present": run_sql(
-                """
-SELECT COUNT(*) FROM pg_constraint con
-JOIN pg_class rel ON rel.oid = con.conrelid
-JOIN pg_namespace n ON n.oid = rel.relnamespace
-WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
-  AND con.contype='u' AND con.conname='whatsapp_conversations_organization_id_contact_phone_normalized_key';
-"""
-            ).strip()
-            == "1",
+            "present": _whatsapp_replacement_state(run_sql)["present"],
+            "physical_name": _whatsapp_replacement_state(run_sql).get("physical_name"),
         },
     }
     m252_present = (

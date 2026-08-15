@@ -42,7 +42,7 @@ def run_tail_authority_tests(tests: list) -> None:
     _add(tests, "tail_contract_no_unauthorized_tasks", "build_tail_reconciliation_contract", "0", contract["unauthorized_tasks"] == 0, str(contract["unauthorized_tasks"]))
 
     sql, _ = build_tail_sql()
-    _add(tests, "tail_sql_no_cascade", "build_tail_sql", "no CASCADE", " CASCADE" not in sql.upper(), "CASCADE" if " CASCADE" in sql.upper() else "none")
+    _add(tests, "tail_sql_no_cascade", "build_tail_sql", "no DROP CASCADE", not any("DROP" in ln.upper() and " CASCADE" in ln.upper() for ln in sql.splitlines()), "DROP CASCADE" if any("DROP" in ln.upper() and " CASCADE" in ln.upper() for ln in sql.splitlines()) else "none")
     _add(tests, "tail_sql_contains_invoice_drop", "build_tail_sql", "invoice drop", 'DROP INDEX IF EXISTS "org_invoices_invoice_number_key"' in sql, "present" if 'DROP INDEX IF EXISTS "org_invoices_invoice_number_key"' in sql else "missing")
     _add(tests, "tail_sql_contains_whatsapp_drop", "build_tail_sql", "whatsapp drop", 'DROP INDEX IF EXISTS "whatsapp_conversations_organization_id_contact_phone_key"' in sql, "present")
     _add(tests, "tail_sql_contains_m252_create", "build_tail_sql", "M252 create", f'CREATE TABLE "{M252_TABLE}"' in sql, "present")

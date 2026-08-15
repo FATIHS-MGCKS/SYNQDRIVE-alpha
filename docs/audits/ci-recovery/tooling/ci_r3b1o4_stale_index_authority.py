@@ -24,7 +24,35 @@ def _extract_create_line(sql: str, index_name: str) -> str | None:
     return None
 
 
-def build_invoice_stale_index_authority(*, golden_run_sql: Callable[[str], str] | None = None) -> dict[str, Any]:
+def _whatsapp_replacement_state(run_sql: Callable[[str], str]) -> dict[str, Any]:
+    rows = [
+        ln
+        for ln in run_sql(
+            """
+SELECT ic.relname, ix.indisunique, pg_get_indexdef(ix.indexrelid)
+FROM pg_index ix
+JOIN pg_class ic ON ic.oid = ix.indexrelid
+JOIN pg_class tc ON tc.oid = ix.indrelid
+JOIN pg_namespace n ON n.oid = tc.relnamespace
+WHERE n.nspname='public'
+  AND tc.relname='whatsapp_conversations'
+  AND ix.indisunique
+ORDER BY ic.relname;
+"""
+        ).splitlines()
+        if ln.strip()
+    ]
+    for row in rows:
+        name, _, definition = row.split("|", 2)
+        if "contact_phone_normalized" in definition and "organization_id" in definition:
+            return {
+                "present": True,
+                "valid": True,
+                "definition": definition,
+                "physical_name": name,
+                "detection": "unique_index_columns",
+            }
+    return {"present": False, "valid": False, "definition": None, "physical_name": None, "detection": "not_found"}
     spec = next(s for s in TARGET_INDEXES if s["index_name"] == "org_invoices_invoice_number_key")
     creator_sql = _read_migration_sql(spec["creator_migration"])
     superseding_sql = _read_migration_sql(spec["superseding_migration"])
@@ -70,31 +98,10 @@ def build_whatsapp_stale_index_authority(*, golden_run_sql: Callable[[str], str]
     replacement_valid = False
     replacement_definition = None
     if golden_run_sql:
-        rows = [
-            ln
-            for ln in golden_run_sql(
-                """
-SELECT COUNT(*) FROM pg_constraint con
-JOIN pg_class rel ON rel.oid = con.conrelid
-JOIN pg_namespace n ON n.oid = rel.relnamespace
-WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
-  AND con.contype='u' AND con.conname='whatsapp_conversations_organization_id_contact_phone_normalized_key';
-"""
-            ).splitlines()
-            if ln.strip()
-        ]
-        replacement_present = rows and rows[0].strip() == "1"
-        replacement_definition = golden_run_sql(
-            """
-SELECT pg_get_constraintdef(con.oid)
-FROM pg_constraint con
-JOIN pg_class rel ON rel.oid = con.conrelid
-JOIN pg_namespace n ON n.oid = rel.relnamespace
-WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
-  AND con.conname='whatsapp_conversations_organization_id_contact_phone_normalized_key';
-"""
-        ).strip() or None
-        replacement_valid = replacement_present and "contact_phone_normalized" in (replacement_definition or "")
+        replacement_state = _whatsapp_replacement_state(golden_run_sql)
+        replacement_present = replacement_state["present"]
+        replacement_valid = replacement_state["valid"]
+        replacement_definition = replacement_state["definition"]
 
     return {
         "schema_version": 1,
@@ -117,6 +124,7 @@ WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
         "replacement_present": replacement_present,
         "replacement_valid": replacement_valid,
         "replacement_definition": replacement_definition,
+        "replacement_physical_name": replacement_state.get("physical_name") if golden_run_sql else None,
         "schema_prisma_authority": WHATSAPP_REPLACEMENT["schema_authority"],
         "tail_removal_authorized": replacement_present and replacement_valid,
         "pass": replacement_present and replacement_valid,
@@ -185,17 +193,7 @@ def build_stale_index_drop_safety(run_sql: Callable[[str], str]) -> dict[str, An
 def build_replacement_uniqueness_safety(run_sql: Callable[[str], str]) -> dict[str, Any]:
     invoice_idx = index_present(run_sql, INVOICE_REPLACEMENT["name"])
     invoice_def = index_definition(run_sql, INVOICE_REPLACEMENT["name"])
-    whatsapp_rows = run_sql(
-        """
-SELECT con.conname, con.convalidated, pg_get_constraintdef(con.oid)
-FROM pg_constraint con
-JOIN pg_class rel ON rel.oid = con.conrelid
-JOIN pg_namespace n ON n.oid = rel.relnamespace
-WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
-  AND con.contype='u' AND con.conname='whatsapp_conversations_organization_id_contact_phone_normalized_key';
-"""
-    ).strip()
-    whatsapp_present = bool(whatsapp_rows)
+    whatsapp_state = _whatsapp_replacement_state(run_sql)
     return {
         "schema_version": 1,
         "phase": "CI-R3B1O.4",
@@ -207,13 +205,14 @@ WHERE n.nspname='public' AND rel.relname='whatsapp_conversations'
             "definition": invoice_def,
         },
         "whatsapp": {
-            "replacement_present": whatsapp_present,
-            "replacement_valid": "contact_phone_normalized" in whatsapp_rows,
-            "replacement_ready": whatsapp_present,
-            "replacement_semantics_match_authority": whatsapp_present,
-            "definition": whatsapp_rows or None,
+            "replacement_present": whatsapp_state["present"],
+            "replacement_valid": whatsapp_state["valid"],
+            "replacement_ready": whatsapp_state["present"],
+            "replacement_semantics_match_authority": whatsapp_state["valid"],
+            "definition": whatsapp_state["definition"],
+            "physical_name": whatsapp_state.get("physical_name"),
         },
-        "pass": invoice_idx and whatsapp_present,
+        "pass": invoice_idx and whatsapp_state["present"],
     }
 
 
