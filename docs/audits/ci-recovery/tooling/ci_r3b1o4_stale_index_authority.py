@@ -53,9 +53,11 @@ ORDER BY ic.relname;
                 "detection": "unique_index_columns",
             }
     return {"present": False, "valid": False, "definition": None, "physical_name": None, "detection": "not_found"}
+
+
+def build_invoice_stale_index_authority(*, golden_run_sql: Callable[[str], str] | None = None) -> dict[str, Any]:
     spec = next(s for s in TARGET_INDEXES if s["index_name"] == "org_invoices_invoice_number_key")
     creator_sql = _read_migration_sql(spec["creator_migration"])
-    superseding_sql = _read_migration_sql(spec["superseding_migration"])
     create_line = _extract_create_line(creator_sql, spec["index_name"]) or spec["create_sql"]
     replacement_present = False
     replacement_valid = False
