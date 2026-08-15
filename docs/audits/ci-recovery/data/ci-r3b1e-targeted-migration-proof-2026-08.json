@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1E",
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "database": "synqdrive_r3b1e_targeted",
+  "per_slot": [
+    {
+      "slot": 7,
+      "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 8,
+      "migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 9,
+      "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 10,
+      "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 11,
+      "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 12,
+      "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 13,
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 14,
+      "migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 15,
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    },
+    {
+      "slot": 16,
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_mismatch_count": 0
+    }
+  ],
+  "category_counters": {
+    "table": 0,
+    "column": 0,
+    "type": 0,
+    "nullability": 0,
+    "default": 0,
+    "enum": 0,
+    "sequence": 0,
+    "primary_key": 0,
+    "unique": 0,
+    "foreign_key": 0,
+    "index": 0,
+    "total": 0
+  },
+  "expected_objects_total": 314,
+  "actual_matched_objects": 314,
+  "slot8_special_proof": {
+    "table": "org_workflows",
+    "column": "scope",
+    "type": "jsonb",
+    "nullable": "NO",
+    "default_semantic_json": {
+      "type": "organization"
+    },
+    "expected_semantic_json": {
+      "type": "organization"
+    },
+    "workflowstatus_label_count_authority": 3,
+    "workflowstatus_labels_match": true,
+    "pass": true
+  },
+  "slot10_special_proof": {
+    "constraint": "vehicle_damage_images_damage_id_fkey",
+    "exists": true,
+    "local_table": "vehicle_damage_images",
+    "local_columns": [
+      "damage_id"
+    ],
+    "referenced_table": "vehicle_damages",
+    "referenced_columns": [
+      "id"
+    ],
+    "on_delete": "CASCADE",
+    "on_update": "CASCADE",
+    "referenced_pk_exists": true,
+    "pass": true
+  },
+  "pass": true
+}

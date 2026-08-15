@@ -474,7 +474,7 @@
         "slot7:create-index:vendors_category_idx",
         "slot7:create-index:vendors_organization_id_idx"
       ],
-      "valid": true
+      "valid": false
     },
     {
       "slot": 8,
@@ -650,7 +650,7 @@
         "slot8:create-index:org_workflows_organization_id_idx",
         "slot8:create-index:org_workflows_status_idx"
       ],
-      "valid": true
+      "valid": false
     },
     {
       "slot": 9,

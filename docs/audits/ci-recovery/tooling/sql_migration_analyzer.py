@@ -8,6 +8,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from expression_dependency_extractor import (
+    ExpressionDependency,
+    extract_statement_expression_dependencies,
+)
+from migration_creator_state import TABLE_NAME_RE, parse_alter_table_actions, parse_create_table_statement
+
 FIRST_MIG = "20260311224040_init"
 LAST_MIG = "20260425000000_retire_user_assignment_and_speeding_severity"
 R3B_BOOTSTRAP = "20260325161141_ci_r3b_bootstrap_trip_schema_baseline"
@@ -20,6 +26,7 @@ class CreatorRef:
     migration: str | None = None
     migration_order: int | None = None
     statement_order: int | None = None
+    clause_order: int | None = None
 
 
 @dataclass
@@ -159,8 +166,13 @@ def classify_record(
     creator: CreatorRef | None,
     guarded: bool,
     guard_safe: bool | None,
+    force_false_positive: bool = False,
 ) -> str:
+    if force_false_positive:
+        return "FALSE_POSITIVE"
     consumer_ord = mig_order(ctx, mig) or 0
+    if guarded and guard_safe is True:
+        return "CONDITIONAL_SAFE"
     if obj in INTENTIONAL_PASCAL and mig == TARGET_MIG and obj_type == "table":
         return "INTENTIONAL"
     if creator and creator.migration == R3B_BOOTSTRAP and mig != R3B_BOOTSTRAP and obj_type in {
@@ -187,6 +199,10 @@ def classify_record(
             return "VALID"
         if c_stmt > stmt_order:
             return "ORDERING_DEFECT"
+        c_clause = creator.clause_order or 0
+        consumer_clause = 0
+        if c_clause > consumer_clause:
+            return "ORDERING_DEFECT"
         return "VALID"
     return "UNRESOLVED"
 
@@ -204,9 +220,25 @@ def add_record(
     guarded: bool,
     guard_safe: bool | None,
     notes: str = "",
+    dependency_context: str = "COLUMN_REFERENCE",
+    scope_kind: str | None = None,
+    resolved_relation: str | None = None,
+    resolved_alias: str | None = None,
+    classification_reason: str = "",
+    force_false_positive: bool = False,
 ) -> None:
     ctx.seq += 1
-    cls = classify_record(ctx, mig, stmt_order, obj, obj_type, creator, guarded, guard_safe)
+    cls = classify_record(
+        ctx,
+        mig,
+        stmt_order,
+        obj,
+        obj_type,
+        creator,
+        guarded,
+        guard_safe,
+        force_false_positive=force_false_positive,
+    )
     consumer_ord = mig_order(ctx, mig) or 0
     ctx.records.append(
         {
@@ -217,6 +249,11 @@ def add_record(
             "statement_excerpt": stmt_excerpt(stmt_text),
             "statement_hash": stmt_hash(stmt_text),
             "operation": operation,
+            "dependency_context": dependency_context,
+            "resolved_scope_type": scope_kind,
+            "resolved_relation": resolved_relation or (obj if obj_type in {"table", "column"} else None),
+            "resolved_alias": resolved_alias,
+            "required_relation": obj if obj_type in {"table", "column"} else None,
             "required_object": obj,
             "required_object_type": obj_type,
             "required_property": prop,
@@ -224,9 +261,11 @@ def add_record(
             "first_creator_migration": creator.migration if creator else None,
             "creator_order": creator.migration_order if creator else None,
             "creator_statement_order": creator.statement_order if creator else None,
+            "creator_clause_order": creator.clause_order if creator else None,
             "guarded": guarded,
             "guard_semantically_safe": guard_safe,
             "classification": cls,
+            "reason": classification_reason or notes,
             "evidence": [
                 f"{ctx.mig_dir.name}/{mig}/migration.sql:statement:{stmt_order}",
                 stmt_excerpt(stmt_text, 80),
@@ -234,6 +273,60 @@ def add_record(
             "notes": notes,
         }
     )
+
+
+def add_expression_dependency_records(
+    ctx: AnalyzerContext,
+    mig: str,
+    stmt_order: int,
+    stmt: str,
+    state: SchemaState,
+    deps: list[ExpressionDependency],
+    guarded: bool,
+    guard_safe: bool | None,
+    if_not_exists: bool = False,
+) -> None:
+    for dep in deps:
+        if dep.false_positive:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                f"CREATE INDEX {dep.context.lower()}",
+                dep.table,
+                "column",
+                dep.column,
+                None,
+                guarded,
+                guard_safe,
+                notes=dep.reason,
+                dependency_context=dep.context,
+                scope_kind=dep.scope_kind,
+                resolved_relation=dep.resolved_relation,
+                resolved_alias=dep.resolved_alias,
+                classification_reason=dep.reason,
+                force_false_positive=True,
+            )
+            continue
+        add_record(
+            ctx,
+            mig,
+            stmt_order,
+            stmt,
+            f"CREATE INDEX {dep.context.lower()}",
+            dep.table,
+            "column",
+            dep.column,
+            resolve_column_dependency(ctx, state, dep.table, dep.column),
+            if_not_exists or guarded,
+            guard_safe if guarded else None,
+            dependency_context=dep.context,
+            scope_kind=dep.scope_kind,
+            resolved_relation=dep.resolved_relation,
+            resolved_alias=dep.resolved_alias,
+            classification_reason=dep.reason,
+        )
 
 
 def creator_for_table(ctx: AnalyzerContext, table: str) -> CreatorRef | None:
@@ -279,11 +372,18 @@ def register_table(ctx: AnalyzerContext, table: str, mig: str, stmt_order: int) 
 
 
 def register_column(
-    ctx: AnalyzerContext, table: str, column: str, mig: str, stmt_order: int
+    ctx: AnalyzerContext,
+    table: str,
+    column: str,
+    mig: str,
+    stmt_order: int,
+    clause_order: int = 0,
 ) -> None:
     ctx.column_creators.setdefault(table, {})
     if column not in ctx.column_creators[table]:
-        ctx.column_creators[table][column] = CreatorRef(mig, mig_order(ctx, mig), stmt_order)
+        ctx.column_creators[table][column] = CreatorRef(
+            mig, mig_order(ctx, mig), stmt_order, clause_order
+        )
 
 
 def register_type(ctx: AnalyzerContext, typ: str, mig: str, stmt_order: int) -> None:
@@ -315,34 +415,15 @@ def analyze_do_block_guard(stmt: str) -> tuple[bool, bool | None]:
 
 
 def extract_create_table(table: str, stmt: str) -> tuple[list[str], list[str], list[tuple[str, str]]]:
-    cols: list[str] = []
-    constraints: list[str] = []
+    parsed_table, columns, constraints, _parsed = parse_create_table_statement(stmt)
+    if parsed_table != table:
+        return [], [], []
+    cols = [c.name for c in columns]
     enum_refs: list[tuple[str, str]] = []
-    body_m = re.search(
-        rf'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"{re.escape(table)}"\s*\((.*)\)\s*;?\s*$',
-        stmt,
-        re.I | re.S,
-    )
-    if not body_m:
-        body_m = re.search(
-            rf"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?{re.escape(table)}\s*\((.*)\)\s*;?\s*$",
-            stmt,
-            re.I | re.S,
-        )
-    if not body_m:
-        return cols, constraints, enum_refs
-    body = body_m.group(1)
-    for col_m in re.finditer(r'"([^"]+)"\s+([^,\n]+)', body):
-        col = col_m.group(1)
-        typ = col_m.group(2).strip()
-        cols.append(col)
-        enum_m = re.match(r'"([^"]+)"', typ)
+    for col in columns:
+        enum_m = re.match(r'"([^"]+)"', col.type_fragment)
         if enum_m:
-            enum_refs.append((col, enum_m.group(1)))
-    for con_m in re.finditer(r'CONSTRAINT\s+"([^"]+)"', body, re.I):
-        constraints.append(con_m.group(1))
-    for ref_m in re.finditer(r'REFERENCES\s+"([^"]+)"\s*\(\s*"([^"]+)"\s*\)', body, re.I):
-        enum_refs.append((ref_m.group(0), ref_m.group(1)))
+            enum_refs.append((col.name, enum_m.group(1)))
     return cols, constraints, enum_refs
 
 
@@ -358,41 +439,40 @@ def apply_statement(ctx: AnalyzerContext, mig: str, stmt_order: int, stmt: str, 
         register_type(ctx, typ, mig, stmt_order)
         state.types.add(typ)
 
-    for m in re.finditer(
-        r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"',
-        stmt,
-        re.I,
-    ):
-        table = m.group(1)
-        register_table(ctx, table, mig, stmt_order)
-        state.tables.add(table)
-        cols, constraints, _ = extract_create_table(table, stmt)
-        for col in cols:
-            register_column(ctx, table, col, mig, stmt_order)
-            state.columns[table].add(col)
-        for con in constraints:
+    table_name, column_defs, constraint_names, parsed_constraints = parse_create_table_statement(stmt)
+    if table_name:
+        register_table(ctx, table_name, mig, stmt_order)
+        state.tables.add(table_name)
+        for col_def in column_defs:
+            register_column(ctx, table_name, col_def.name, mig, stmt_order, col_def.clause_order)
+            state.columns[table_name].add(col_def.name)
+        for con in constraint_names:
             register_constraint(ctx, con, mig, stmt_order)
-            state.constraints[table].add(con)
+            state.constraints[table_name].add(con)
+        for parsed in parsed_constraints:
+            if parsed.name.startswith("__"):
+                continue
+            register_constraint(ctx, parsed.name, mig, stmt_order)
+            state.constraints[table_name].add(parsed.name)
 
-    for m in re.finditer(
-        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]*)\b",
-        stmt,
-        re.I,
-    ):
-        table = m.group(1)
-        if table not in state.tables:
-            register_table(ctx, table, mig, stmt_order)
-            state.tables.add(table)
-
-    for m in re.finditer(
-        r'ALTER\s+TABLE\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([a-z_][a-z0-9_]*)"?',
-        stmt,
-        re.I,
-    ):
-        table = m.group(1) or m.group(2)
-        col = m.group(3)
-        register_column(ctx, table, col, mig, stmt_order)
-        state.columns[table].add(col)
+    for action in parse_alter_table_actions(stmt):
+        if action.kind == "ADD_COLUMN":
+            register_column(ctx, action.table, action.column, mig, stmt_order, action.clause_order)
+            state.columns[action.table].add(action.column)
+        elif action.kind == "DROP_COLUMN":
+            state.columns[action.table].discard(action.column)
+        elif action.kind == "RENAME_COLUMN" and action.new_name:
+            if action.column in state.columns[action.table]:
+                state.columns[action.table].discard(action.column)
+            state.columns[action.table].add(action.new_name)
+            prev = ctx.column_creators.get(action.table, {}).pop(action.column, None)
+            if prev and action.new_name not in ctx.column_creators.get(action.table, {}):
+                ctx.column_creators.setdefault(action.table, {})[action.new_name] = CreatorRef(
+                    prev.migration,
+                    prev.migration_order,
+                    prev.statement_order,
+                    action.clause_order,
+                )
 
     for m in re.finditer(
         r'CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"',
@@ -405,14 +485,15 @@ def apply_statement(ctx: AnalyzerContext, mig: str, stmt_order: int, stmt: str, 
             state.indexes[on_m.group(1)].add(m.group(1))
 
     for m in re.finditer(
-        r'ADD\s+CONSTRAINT\s+"([^"]+)"',
+        r'ADD\s+CONSTRAINT\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))',
         stmt,
         re.I,
     ):
-        register_constraint(ctx, m.group(1), mig, stmt_order)
-        tbl_m = re.search(r'ALTER\s+TABLE\s+"([^"]+)"', stmt, re.I)
+        register_constraint(ctx, m.group(1) or m.group(2), mig, stmt_order)
+        tbl_m = re.search(rf'ALTER\s+TABLE\s+{TABLE_NAME_RE}', stmt, re.I)
         if tbl_m:
-            state.constraints[tbl_m.group(1)].add(m.group(1))
+            table = (tbl_m.group(1) or tbl_m.group(2)).strip('"')
+            state.constraints[table].add(m.group(1) or m.group(2))
 
     if re.search(r'ALTER\s+TABLE\s+"([^"]+)"\s+DROP\s+COLUMN', stmt, re.I):
         m = re.search(
@@ -442,9 +523,10 @@ def check_statement_dependencies(
     guarded, guard_safe = analyze_do_block_guard(stmt)
     upper = stmt.upper()
 
-    # CREATE TABLE internal enum/type prerequisites
-    for m in re.finditer(r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"', stmt, re.I):
-        table = m.group(1)
+    # CREATE TABLE internal enum/type prerequisites (quoted and unquoted)
+    parsed_table, _, _, _ = parse_create_table_statement(stmt)
+    if parsed_table:
+        table = parsed_table
         _, _, enum_refs = extract_create_table(table, stmt)
         for _, typ in enum_refs:
             if typ.startswith("REFERENCES"):
@@ -464,7 +546,11 @@ def check_statement_dependencies(
                     guard_safe,
                 )
 
-        body_m = re.search(rf'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"{re.escape(table)}"\s*\((.*)\)', stmt, re.I | re.S)
+        body_m = re.search(
+            rf'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"{re.escape(table)}"|{re.escape(table)})\s*\((.*)\)',
+            stmt,
+            re.I | re.S,
+        )
         if body_m:
             for ref_m in re.finditer(r'REFERENCES\s+"([^"]+)"\s*\(\s*"([^"]+)"\s*\)', body_m.group(1), re.I):
                 ref_table, ref_col = ref_m.group(1), ref_m.group(2)
@@ -495,113 +581,147 @@ def check_statement_dependencies(
                     guard_safe,
                 )
 
-    for m in re.finditer(
-        r'ALTER\s+TABLE\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))\s+ALTER\s+COLUMN\s+"?([a-z_][a-z0-9_]*)"?',
-        stmt,
-        re.I,
-    ):
-        table, col = (m.group(1) or m.group(2)), m.group(3)
-        add_record(
-            ctx,
-            mig,
-            stmt_order,
-            stmt,
-            "ALTER TABLE ALTER COLUMN",
-            table,
-            "column",
-            col,
-            resolve_column_dependency(ctx, state, table, col),
-            guarded,
-            guard_safe,
-        )
-        add_record(
-            ctx,
-            mig,
-            stmt_order,
-            stmt,
-            "ALTER TABLE ALTER COLUMN table",
-            table,
-            "table",
-            None,
-            creator_for_table(ctx, table),
-            guarded,
-            guard_safe,
-        )
-
-    for m in re.finditer(
-        r'ALTER\s+TABLE\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))\s+ADD\s+COLUMN',
-        stmt,
-        re.I,
-    ):
-        table = m.group(1) or m.group(2)
-        add_record(
-            ctx,
-            mig,
-            stmt_order,
-            stmt,
-            "ALTER TABLE ADD COLUMN",
-            table,
-            "table",
-            None,
-            creator_for_table(ctx, table),
-            "IF NOT EXISTS" in m.group(0).upper() or guarded,
-            guard_safe if guarded else None,
-        )
-
-    for m in re.finditer(
-        r'ALTER\s+TABLE\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))\s+DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?"?([a-z_][a-z0-9_]*)"?',
-        stmt,
-        re.I,
-    ):
-        table, col = (m.group(1) or m.group(2)), m.group(3)
-        add_record(
-            ctx,
-            mig,
-            stmt_order,
-            stmt,
-            "ALTER TABLE DROP COLUMN",
-            table,
-            "column",
-            col,
-            resolve_column_dependency(ctx, state, table, col),
-            "IF EXISTS" in m.group(0).upper() or guarded,
-            guard_safe if guarded else None,
-        )
-
-    for m in re.finditer(
-        r'CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"[^\n]*?\s+ON\s+"([^"]+)"\s*\(([^)]+)\)',
-        stmt,
-        re.I,
-    ):
-        index_name, table, cols_part = m.group(1), m.group(2), m.group(3)
-        add_record(
-            ctx,
-            mig,
-            stmt_order,
-            stmt,
-            "CREATE INDEX",
-            table,
-            "table",
-            None,
-            creator_for_table(ctx, table),
-            "IF NOT EXISTS" in m.group(0).upper(),
-            None,
-            notes=f"index={index_name}",
-        )
-        for col in re.findall(r'"([^"]+)"', cols_part):
+    for action in parse_alter_table_actions(stmt):
+        if action.kind == "ADD_COLUMN":
             add_record(
                 ctx,
                 mig,
                 stmt_order,
                 stmt,
-                "CREATE INDEX column",
-                table,
-                "column",
-                col,
-                resolve_column_dependency(ctx, state, table, col),
-                "IF NOT EXISTS" in m.group(0).upper(),
+                "ALTER TABLE ADD COLUMN",
+                action.table,
+                "table",
                 None,
+                creator_for_table(ctx, action.table),
+                "IF NOT EXISTS" in upper or guarded,
+                guard_safe if guarded else None,
             )
+        elif action.kind == "DROP_COLUMN":
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                "ALTER TABLE DROP COLUMN",
+                action.table,
+                "column",
+                action.column,
+                resolve_column_dependency(ctx, state, action.table, action.column),
+                "IF EXISTS" in upper or guarded,
+                guard_safe if guarded else None,
+            )
+        elif action.kind == "ALTER_COLUMN":
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                "ALTER TABLE ALTER COLUMN",
+                action.table,
+                "column",
+                action.column,
+                resolve_column_dependency(ctx, state, action.table, action.column),
+                guarded,
+                guard_safe,
+            )
+
+    if re.search(r"\bCREATE\s+(?:UNIQUE\s+)?INDEX\b", stmt, re.I):
+        expr_deps = extract_statement_expression_dependencies(stmt)
+        index_deps = [d for d in expr_deps if d.context in {"INDEX_KEY", "INDEX_EXPRESSION", "PARTIAL_INDEX_PREDICATE"}]
+        if index_deps:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                "CREATE INDEX",
+                index_deps[0].table,
+                "table",
+                None,
+                creator_for_table(ctx, index_deps[0].table),
+                "IF NOT EXISTS" in upper,
+                None,
+                notes="expression-aware index dependency scan",
+            )
+            add_expression_dependency_records(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                state,
+                index_deps,
+                guarded,
+                guard_safe,
+                if_not_exists="IF NOT EXISTS" in upper,
+            )
+        else:
+            for m in re.finditer(
+                r'CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"[^\n]*?\s+ON\s+"([^"]+)"\s*\(([^)]+)\)',
+                stmt,
+                re.I,
+            ):
+                index_name, table, cols_part = m.group(1), m.group(2), m.group(3)
+                add_record(
+                    ctx,
+                    mig,
+                    stmt_order,
+                    stmt,
+                    "CREATE INDEX",
+                    table,
+                    "table",
+                    None,
+                    creator_for_table(ctx, table),
+                    "IF NOT EXISTS" in m.group(0).upper(),
+                    None,
+                    notes=f"index={index_name}",
+                )
+                for col in re.findall(r'"([^"]+)"', cols_part):
+                    add_record(
+                        ctx,
+                        mig,
+                        stmt_order,
+                        stmt,
+                        "CREATE INDEX column",
+                        table,
+                        "column",
+                        col,
+                        resolve_column_dependency(ctx, state, table, col),
+                        "IF NOT EXISTS" in m.group(0).upper(),
+                        None,
+                        dependency_context="INDEX_KEY",
+                    )
+
+    stmt_expr_deps = extract_statement_expression_dependencies(stmt)
+    check_deps = [d for d in stmt_expr_deps if d.context == "CHECK_EXPRESSION"]
+    if check_deps:
+        tbl_m = re.search(r'ALTER\s+TABLE\s+"([^"]+)"', stmt, re.I)
+        if tbl_m:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                "ADD CONSTRAINT CHECK table",
+                tbl_m.group(1),
+                "table",
+                None,
+                creator_for_table(ctx, tbl_m.group(1)),
+                guarded,
+                guard_safe,
+            )
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, check_deps, guarded, guard_safe)
+
+    generated_deps = [d for d in stmt_expr_deps if d.context == "GENERATED_EXPRESSION"]
+    if generated_deps:
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, generated_deps, guarded, guard_safe)
+
+    alter_using_deps = [d for d in stmt_expr_deps if d.context == "ALTER_USING_EXPRESSION"]
+    if alter_using_deps:
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, alter_using_deps, guarded, guard_safe)
+
+    update_deps = [d for d in stmt_expr_deps if d.context == "UPDATE_EXPRESSION"]
+    if update_deps:
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, update_deps, guarded, guard_safe)
 
     for m in re.finditer(r'DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?"([^"]+)"', stmt, re.I):
         add_record(
@@ -716,19 +836,25 @@ def check_statement_dependencies(
                 guard_safe,
             )
 
-    for m in re.finditer(r'DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?"([^"]+)"', stmt, re.I):
+    for m in re.finditer(
+        r'DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?(?:"([^"]+)"|([a-z_][a-z0-9_]*))',
+        stmt,
+        re.I,
+    ):
+        con_name = m.group(1) or m.group(2)
+        if_exists = "IF EXISTS" in m.group(0).upper()
         add_record(
             ctx,
             mig,
             stmt_order,
             stmt,
             "DROP CONSTRAINT",
-            m.group(1),
+            con_name,
             "constraint",
             None,
-            creator_for_constraint(ctx, m.group(1)),
-            "IF EXISTS" in m.group(0).upper() or guarded,
-            True if "IF EXISTS" in m.group(0).upper() else guard_safe,
+            creator_for_constraint(ctx, con_name),
+            if_exists or guarded,
+            True if if_exists else guard_safe,
         )
 
     for m in re.finditer(

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1E",
+  "records": [
+    {
+      "slot": 7,
+      "migration_path": "backend/prisma/migrations/20260613203000_ci_r3b_post_vendor_predecessor_slot07/migration.sql",
+      "after_migration": "20260613200000_booking_document_lifecycle",
+      "before_migration": "20260613210000_vendor_management_overhaul",
+      "sha256": "2f1c5d74082d24dfa158c62bbc2cafaeadfde874d3c49379bbffcfe15e055013",
+      "statement_count": 21,
+      "objects_created": [
+        "VendorCategory",
+        "VendorSourceType",
+        "vendor_vehicles",
+        "vendors"
+      ],
+      "first_consumer_protected": "20260613210000_vendor_management_overhaul",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 8,
+      "migration_path": "backend/prisma/migrations/20260616130000_ci_r3b_post_vendor_predecessor_slot08/migration.sql",
+      "after_migration": "20260616120000_station_operational_module",
+      "before_migration": "20260616140000_workflow_automation_runtime",
+      "sha256": "6607ebf402571f4797824ccb53e559b30b49bc3e3c14ed1f1958cb82a6d3e58e",
+      "statement_count": 6,
+      "objects_created": [
+        "WorkflowStatus",
+        "org_workflows"
+      ],
+      "first_consumer_protected": "20260616140000_workflow_automation_runtime",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 9,
+      "migration_path": "backend/prisma/migrations/20260617120000_r3b_post_vendor_predecessor_slot09/migration.sql",
+      "after_migration": "20260617120000_pricing_tariffs",
+      "before_migration": "20260617120000_tire_identity_mounted_dismounted",
+      "sha256": "7b3990532efd3271f107d37afa96a6e38bda8f97199a3e6cb105721b0bd72bc5",
+      "statement_count": 18,
+      "objects_created": [
+        "TireHealthStatus",
+        "TirePosition",
+        "TireSeason",
+        "tires"
+      ],
+      "first_consumer_protected": "20260617120000_tire_identity_mounted_dismounted",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 10,
+      "migration_path": "backend/prisma/migrations/20260617203000_ci_r3b_post_vendor_predecessor_slot10/migration.sql",
+      "after_migration": "20260617200000_hm_service_no_tracking_insight",
+      "before_migration": "20260618180000_vehicle_damage_lifecycle",
+      "sha256": "c007ab9da59d95dabd592dd27b0c3b360a305efbc3c6cab473ede6d4c4a2a8e4",
+      "statement_count": 16,
+      "objects_created": [
+        "DamageSeverity",
+        "DamageType",
+        "vehicle_damage_images",
+        "vehicle_damages"
+      ],
+      "first_consumer_protected": "20260618180000_vehicle_damage_lifecycle",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 11,
+      "migration_path": "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql",
+      "after_migration": "20260620180000_voice_assistant_tool_permissions",
+      "before_migration": "20260620190000_whatsapp_business_platform",
+      "sha256": "bab1399060fb1da4d57e3d9004aa2e9e6afc934e14857d55dc2be8e939056697",
+      "statement_count": 24,
+      "objects_created": [
+        "WhatsAppAiMode",
+        "org_whatsapp_configs",
+        "whatsapp_conversations",
+        "whatsapp_messages"
+      ],
+      "first_consumer_protected": "20260620190000_whatsapp_business_platform",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 12,
+      "migration_path": "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql",
+      "after_migration": "20260716180000_battery_capability_lifecycle",
+      "before_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "sha256": "73ab301b3121e3f5dc8c4d6c14a490d10a2ab68b4097c946ba5ea7359d432d8f",
+      "statement_count": 22,
+      "objects_created": [
+        "tire_health_snapshots",
+        "tire_wear_data_points"
+      ],
+      "first_consumer_protected": "20260716180000_tire_evidence_ground_truth_provenance",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 13,
+      "migration_path": "backend/prisma/migrations/20260716182500_ci_r3b_post_vendor_predecessor_slot13/migration.sql",
+      "after_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "before_migration": "20260716183000_tire_lifecycle_invariants",
+      "sha256": "692d40502c9f09ad2bc6357f047a289cdda22db4898c4ec1c23a96dfa1d5e02b",
+      "statement_count": 2,
+      "objects_created": [
+        "TireSetupStatus"
+      ],
+      "first_consumer_protected": "20260716183000_tire_lifecycle_invariants",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "PASS"
+    },
+    {
+      "slot": 14,
+      "migration_path": "backend/prisma/migrations/20260716200000_r3b_post_vendor_predecessor_slot14/migration.sql",
+      "after_migration": "20260716200000_driving_evidence",
+      "before_migration": "20260716200000_tire_odometer_anchor_backfill_event",
+      "sha256": "0d3e3401a33daa6615962a1ae9a53d68cb544b244204c0b1150d7cd53e3b35ae",
+      "statement_count": 2,
+      "objects_created": [
+        "TireEventType"
+      ],
+      "first_consumer_protected": "20260716200000_tire_odometer_anchor_backfill_event",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "NOT_REACHED"
+    },
+    {
+      "slot": 15,
+      "migration_path": "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql",
+      "after_migration": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+      "before_migration": "20260724130000_dashboard_insight_calculation_meta",
+      "sha256": "606411503605af9f9f7be186da06a4b60c7c7f7ee80a5d561e8a6b39e1bfdba8",
+      "statement_count": 25,
+      "objects_created": [
+        "InsightEntityScope",
+        "InsightSeverity",
+        "InsightType",
+        "dashboard_insight_runs",
+        "dashboard_insights"
+      ],
+      "first_consumer_protected": "20260724130000_dashboard_insight_calculation_meta",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "NOT_REACHED"
+    },
+    {
+      "slot": 16,
+      "migration_path": "backend/prisma/migrations/20260724210000_ci_r3b_post_vendor_predecessor_slot16/migration.sql",
+      "after_migration": "20260724200000_iam_audit_outbox_processing_status_column",
+      "before_migration": "20260725120000_chat_message_structured_payload",
+      "sha256": "5a0d0defed18fe142989ec88e5ba38946d7471d8e7e0b81e548d2701170845da",
+      "statement_count": 4,
+      "objects_created": [
+        "chat_messages"
+      ],
+      "first_consumer_protected": "20260725120000_chat_message_structured_payload",
+      "targeted_execution_status": "PASS",
+      "full_replay_status": "NOT_REACHED"
+    }
+  ],
+  "count": 10
+}

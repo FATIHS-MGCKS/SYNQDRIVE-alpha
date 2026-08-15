@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "implementation_deferred": true,
+  "slots": [
+    {
+      "topology_id": "R3B1F-SLOT13-EXT-STATUS",
+      "after_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "before_migration": "20260716183000_tire_lifecycle_invariants",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "vehicle_tire_setups",
+          "column": "status",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "vehicle_tire_setups.status"
+      ],
+      "first_consumer_protected": "20260716183000_tire_lifecycle_invariants",
+      "dependency_closure": [
+        "vehicle_tire_setups"
+      ],
+      "extends_slot": 13
+    },
+    {
+      "topology_id": "R3B1F-EXPR-tire_health_snapshots-input_fingerprint",
+      "after_migration": "20260716240000_driving_event_native_identity",
+      "before_migration": "20260716240000_tire_recalculation_fingerprint_dedupe",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "tire_health_snapshots",
+          "column": "input_fingerprint",
+          "type": "TEXT",
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "tire_health_snapshots.input_fingerprint"
+      ],
+      "first_consumer_protected": "20260716240000_tire_recalculation_fingerprint_dedupe",
+      "dependency_closure": [
+        "tire_health_snapshots"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-rental_driving_analyses-superseded_at",
+      "after_migration": "20260716340000_rental_driving_analysis_versioning",
+      "before_migration": "20260716350000_rental_driving_analysis_stability",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "rental_driving_analyses",
+          "column": "superseded_at",
+          "type": "TIMESTAMP(3)",
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "rental_driving_analyses.superseded_at"
+      ],
+      "first_consumer_protected": "20260716350000_rental_driving_analysis_stability",
+      "dependency_closure": [
+        "rental_driving_analyses"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-vehicle_service_events-document_extraction_id",
+      "after_migration": "20260717210000_brake_coverage_gap_policy",
+      "before_migration": "20260717210000_service_event_document_extraction_idempotency",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "vehicle_service_events",
+          "column": "document_extraction_id",
+          "type": "IS NOT NULL",
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "vehicle_service_events.document_extraction_id"
+      ],
+      "first_consumer_protected": "20260717210000_service_event_document_extraction_idempotency",
+      "dependency_closure": [
+        "vehicle_service_events"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-vehicle_damages-document_extraction_id",
+      "after_migration": "20260717220000_brake_recalculation_orchestrator",
+      "before_migration": "20260717220000_damage_document_extraction_idempotency",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "vehicle_damages",
+          "column": "document_extraction_id",
+          "type": "IS NOT NULL",
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "vehicle_damages.document_extraction_id"
+      ],
+      "first_consumer_protected": "20260717220000_damage_document_extraction_idempotency",
+      "dependency_closure": [
+        "vehicle_damages"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_health_snapshots-vehicle_id",
+      "after_migration": "20260717220000_voice_usage_event_audit_models",
+      "before_migration": "20260717230000_brake_health_snapshots",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_health_snapshots",
+          "column": "vehicle_id",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_health_snapshots.vehicle_id"
+      ],
+      "first_consumer_protected": "20260717230000_brake_health_snapshots",
+      "dependency_closure": [
+        "brake_health_snapshots"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_health_snapshots-model_version",
+      "after_migration": "20260717220000_voice_usage_event_audit_models",
+      "before_migration": "20260717230000_brake_health_snapshots",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_health_snapshots",
+          "column": "model_version",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_health_snapshots.model_version"
+      ],
+      "first_consumer_protected": "20260717230000_brake_health_snapshots",
+      "dependency_closure": [
+        "brake_health_snapshots"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_health_snapshots-input_fingerprint",
+      "after_migration": "20260717220000_voice_usage_event_audit_models",
+      "before_migration": "20260717230000_brake_health_snapshots",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_health_snapshots",
+          "column": "input_fingerprint",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_health_snapshots.input_fingerprint"
+      ],
+      "first_consumer_protected": "20260717230000_brake_health_snapshots",
+      "dependency_closure": [
+        "brake_health_snapshots"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_evidence-dedupe_key",
+      "after_migration": "20260717230000_voice_webhook_ingestion_correlation",
+      "before_migration": "20260717240000_brake_dtc_evidence",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_evidence",
+          "column": "dedupe_key",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_evidence.dedupe_key"
+      ],
+      "first_consumer_protected": "20260717240000_brake_dtc_evidence",
+      "dependency_closure": [
+        "brake_evidence"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-voice_phone_numbers-elevenlabs_ref_digest",
+      "after_migration": "20260717240000_document_org_upload_nullable_vehicle",
+      "before_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "voice_phone_numbers",
+          "column": "elevenlabs_ref_digest",
+          "type": "IS NOT NULL",
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "voice_phone_numbers.elevenlabs_ref_digest"
+      ],
+      "first_consumer_protected": "20260717240000_voice_phone_elevenlabs_import_assigned",
+      "dependency_closure": [
+        "voice_phone_numbers"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_evidence-active",
+      "after_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+      "before_migration": "20260717250000_brake_evidence_lifecycle",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_evidence",
+          "column": "active",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_evidence.active"
+      ],
+      "first_consumer_protected": "20260717250000_brake_evidence_lifecycle",
+      "dependency_closure": [
+        "brake_evidence"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_evidence-superseded_by_evidence_id",
+      "after_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+      "before_migration": "20260717250000_brake_evidence_lifecycle",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_evidence",
+          "column": "superseded_by_evidence_id",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_evidence.superseded_by_evidence_id"
+      ],
+      "first_consumer_protected": "20260717250000_brake_evidence_lifecycle",
+      "dependency_closure": [
+        "brake_evidence"
+      ],
+      "extends_slot": null
+    },
+    {
+      "topology_id": "R3B1F-EXPR-brake_health_alerts-status",
+      "after_migration": "20260717250000_voice_agent_deployment_snapshot",
+      "before_migration": "20260717260000_brake_health_alerts",
+      "ordered_actions": [
+        {
+          "action": "ALTER TABLE ADD COLUMN",
+          "table": "brake_health_alerts",
+          "column": "status",
+          "type": null,
+          "if_not_exists": true
+        }
+      ],
+      "objects_properties_repaired": [
+        "brake_health_alerts.status"
+      ],
+      "first_consumer_protected": "20260717260000_brake_health_alerts",
+      "dependency_closure": [
+        "brake_health_alerts"
+      ],
+      "extends_slot": 13
+    }
+  ],
+  "notes": "Committed Slot 13 migration must not be edited; append-only repairs deferred to post-review implementation phase."
+}
