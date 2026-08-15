@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F.1",
+  "genuine_contracts": 1,
+  "invalid_types": 0,
+  "missing_types": 0,
+  "invalid_nullability": 0,
+  "invalid_defaults": 0,
+  "missing_provenance": 0,
+  "missing_repair_boundary": 0,
+  "unresolved_dependencies": 0,
+  "validation_errors": [],
+  "pass": true
+}

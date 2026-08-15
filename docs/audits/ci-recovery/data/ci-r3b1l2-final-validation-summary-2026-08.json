@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.2",
+  "final_status": "CI_R3B1L2_PRISMA_DIFF_SCOPE_AUTHORITY_COMPLETED",
+  "pass": true,
+  "BASE_R3B1L1_SHA": "b994c9cbdce75a85989f777757237bb187e62078",
+  "R3B1L2_BRANCH": "fix/ci-r3b1l2-prisma-diff-authority-2026-08",
+  "evidence_input_sha": "b994c9cbdce75a85989f777757237bb187e62078",
+  "frozen_prisma_diff": {
+    "path": "audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql",
+    "sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+    "bytes": 65490,
+    "lines": 1480,
+    "json_metadata_consistent": true
+  },
+  "parser": {
+    "independent_sql_statement_count": 344,
+    "parsed_sql_statement_count": 344,
+    "comment_metadata_blocks": 0,
+    "unconsumed_sql_tokens": 0,
+    "duplicate_sql_tokens": 0,
+    "parser_completeness": "PASS"
+  },
+  "old_parser": {
+    "reported_operations": 13,
+    "successor_operations": 344,
+    "omitted_operations_recovered": 331,
+    "omitted_r3b_operations_recovered": 1
+  },
+  "scope": {
+    "R3B_SCOPE": 1,
+    "OUT_OF_SCOPE": 343,
+    "UNRESOLVED": 0
+  },
+  "authority_decisions": {
+    "CURRENT_PRISMA_SCHEMA_DRIFT": 1,
+    "REPLAY_DB_DRIFT": 0,
+    "NON_SEMANTIC_DIFFERENCE": 0,
+    "AUTHORITY_AMBIGUITY": 0,
+    "CROSS_EVIDENCE_CONTRADICTION": 0
+  },
+  "trip_driving_impact_calculated_at": {
+    "parsed": true,
+    "scope": "R3B_SCOPE",
+    "accepted_authority": "timestamp with time zone",
+    "replay_value": "timestamp with time zone",
+    "prisma_desired_value": "timestamp(3) without time zone",
+    "decision": "CURRENT_PRISMA_SCHEMA_DRIFT"
+  },
+  "coverage": {
+    "unparsed_statements": 0,
+    "unclassified_operations": 0,
+    "r3b_operations_without_authority_decision": 0
+  },
+  "immutability": {
+    "modified_migrations": 0,
+    "new_migrations": 0,
+    "schema_prisma_changed": false,
+    "runtime_changed": false,
+    "frontend_changed": false,
+    "deployment_changed": false
+  },
+  "authority_manifest": {
+    "objects": 19,
+    "tables": 9,
+    "enums": 10,
+    "property_categories": 54
+  },
+  "next_phase": "CI-R3B1M \u2014 CURRENT PRISMA SCHEMA AUTHORITY ALIGNMENT",
+  "migration_recovery_closed": false,
+  "prisma_alignment_required": true,
+  "safety": {
+    "new_zero_state_replay": false,
+    "production_exposure_investigation": false,
+    "production_mutation": false,
+    "deployment": false,
+    "merge": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.2.1",
+  "baseline_sha": "11a5c8feed95f81f26ac240dd48e1bf786adcc92",
+  "modified_migration_sql_count": 0,
+  "changed_migrations": [],
+  "new_migration_directories": 0,
+  "migration_252_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "migration_252_unchanged_from_r3b1k": true,
+  "schema_prisma_changed": false,
+  "runtime_changed": false,
+  "pass": true
+}

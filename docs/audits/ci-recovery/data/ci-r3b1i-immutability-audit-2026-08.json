@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "baseline_sha": "37d0904500024bf51dd712fb7398d91dd54c0411",
+  "preexisting_migration_sql_modified": 0,
+  "migration_changes": [],
+  "new_prisma_migration_directories": 1,
+  "new_directories": [
+    "20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+  ],
+  "deleted_directories": [],
+  "expected_new_migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+  "r3b1g_repair_changed": 0,
+  "migration_157_changed": 0,
+  "migration_249_changed": 0,
+  "schema_prisma_changed": false,
+  "runtime_code_changed": false,
+  "pass": true
+}

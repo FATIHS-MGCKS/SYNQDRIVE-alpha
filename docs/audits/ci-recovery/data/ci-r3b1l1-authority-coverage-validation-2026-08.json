@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "authority_ids_total": 54,
+  "authority_ids_evaluated": 54,
+  "authority_ids_matched": 54,
+  "duplicate_evaluations": [],
+  "missing_evaluations": [],
+  "unexpected_evaluations": [],
+  "pass": true
+}

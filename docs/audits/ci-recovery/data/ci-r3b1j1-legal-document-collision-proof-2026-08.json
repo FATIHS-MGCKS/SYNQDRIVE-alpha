@@ -1,0 +1,25 @@
+{
+  "migration": "20260722250000_legal_document_retention_legal_hold",
+  "candidates": [
+    "organization_legal_document_retention_policies_organization_id_key",
+    "organization_legal_document_retention_policies_organization_id_fkey"
+  ],
+  "statement_results": {
+    "create_table": "PASS",
+    "unique_index": "PASS",
+    "foreign_key": "PASS"
+  },
+  "unique_index_sqlstate": null,
+  "foreign_key_sqlstate": null,
+  "namespace_analysis": {
+    "unique_index_class": "RELATION_NAMESPACE",
+    "foreign_key_class": "CONSTRAINT_NAMESPACE",
+    "static_collision_groups": [],
+    "real_collision_groups": []
+  },
+  "pg_catalog_after": {
+    "indexes": "organization_legal_document_retention_policies_pkey|t\norganization_legal_document_retention_policies_organization_id_|t",
+    "constraints": "organization_legal_document_retention_policies_pkey|p\norganization_legal_document_retention_policies_organization_id_|f"
+  },
+  "classification": "STATIC_FALSE_POSITIVE"
+}

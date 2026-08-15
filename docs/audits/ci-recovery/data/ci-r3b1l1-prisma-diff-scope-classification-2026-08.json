@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "total_operations": 13,
+  "R3B_SCOPE_DIFF_COUNT": 0,
+  "OUT_OF_SCOPE_DIFF_COUNT": 13,
+  "UNRESOLVED_DIFF_COUNT": 0,
+  "operations": [
+    {
+      "ordinal": 1,
+      "operation_type": "CREATE TYPE",
+      "raw_sql": "CREATE TYPE \"BookingPaymentRequestStatus_new\" AS ENUM ('DRAFT', 'OPEN', 'LINK_PENDING', 'CHECKOUT_READY', 'LINK_SENT', 'PROCESSING', 'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'FAILED', 'CANCELLED', 'EXPIRED', 'DISPUTED');",
+      "target_objects": [
+        "BookingPaymentRequestStatus_new"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 2,
+      "operation_type": "ALTER TABLE",
+      "raw_sql": "ALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" DROP DEFAULT;",
+      "target_objects": [
+        "booking_payment_requests",
+        "status"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 3,
+      "operation_type": "ALTER TABLE",
+      "raw_sql": "ALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" TYPE \"BookingPaymentRequestStatus_new\" USING (\"status\"::text::\"BookingPaymentRequestStatus_new\");",
+      "target_objects": [
+        "BookingPaymentRequestStatus_new",
+        "booking_payment_requests",
+        "status"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 4,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"BookingPaymentRequestStatus\" RENAME TO \"BookingPaymentRequestStatus_old\";",
+      "target_objects": [
+        "BookingPaymentRequestStatus",
+        "BookingPaymentRequestStatus_old"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 5,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"BookingPaymentRequestStatus_new\" RENAME TO \"BookingPaymentRequestStatus\";",
+      "target_objects": [
+        "BookingPaymentRequestStatus",
+        "BookingPaymentRequestStatus_new"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 6,
+      "operation_type": "DROP TYPE",
+      "raw_sql": "DROP TYPE \"BookingPaymentRequestStatus_old\";",
+      "target_objects": [
+        "BookingPaymentRequestStatus_old"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 7,
+      "operation_type": "ALTER TABLE",
+      "raw_sql": "ALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" SET DEFAULT 'DRAFT';",
+      "target_objects": [
+        "booking_payment_requests",
+        "status"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 8,
+      "operation_type": "COMMIT",
+      "raw_sql": "COMMIT;",
+      "target_objects": [],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 9,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"DimoPollJobType\" ADD VALUE 'DRIVING_EVENTS';",
+      "target_objects": [
+        "DimoPollJobType"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 10,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"DimoPollJobType\" ADD VALUE 'TRIP_TRACKING';",
+      "target_objects": [
+        "DimoPollJobType"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 11,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"ServiceEventType\" ADD VALUE 'BOKRAFT_INSPECTION';",
+      "target_objects": [
+        "ServiceEventType"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 12,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"ServiceEventType\" ADD VALUE 'FULL_SERVICE';",
+      "target_objects": [
+        "ServiceEventType"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    },
+    {
+      "ordinal": 13,
+      "operation_type": "ALTER TYPE",
+      "raw_sql": "ALTER TYPE \"TireSeason\" ADD VALUE 'OTHER';",
+      "target_objects": [
+        "TireSeason"
+      ],
+      "target_property": null,
+      "classification": "OUT_OF_SCOPE",
+      "reason": "no authority object intersection",
+      "authority_id": null
+    }
+  ],
+  "r3b_scope_objects": [],
+  "out_of_scope_objects": [
+    "BookingPaymentRequestStatus",
+    "BookingPaymentRequestStatus_new",
+    "BookingPaymentRequestStatus_old",
+    "DimoPollJobType",
+    "ServiceEventType",
+    "TireSeason",
+    "booking_payment_requests",
+    "status"
+  ],
+  "pass": true
+}

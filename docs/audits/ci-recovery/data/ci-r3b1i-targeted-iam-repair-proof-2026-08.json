@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "database_identifier": "synqdrive_r3b1i_targeted",
+  "contract": {
+    "relation": "organization_memberships",
+    "column": "permissions",
+    "postgres_type": "jsonb",
+    "nullable": true,
+    "default_semantics": "NO_DATABASE_DEFAULT",
+    "default_value": null,
+    "first_consumer_migration": "20260721250000_iam_versioned_role_assignments"
+  },
+  "pre_repair_replay": {
+    "pass": true,
+    "applied_count": 248,
+    "last_applied": "20260721240000_iam_last_selected_organization",
+    "stop_before": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+    "special_steps": [
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "accepted_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+        "observed_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+        "statement_count": 14,
+        "semantic_equivalence": {
+          "migration_statement_count": 14,
+          "script_statement_count": 14,
+          "missing_in_script": [],
+          "unexpected_in_script": [],
+          "semantic_equivalent": true
+        },
+        "index_validation": {
+          "missing_indexes": [],
+          "definition_mismatches": [],
+          "pass": true
+        },
+        "migration_state_reconciliation": null
+      }
+    ],
+    "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+    "manual_interventions": 0,
+    "production_connection": false
+  },
+  "pre_repair_catalog": {
+    "organization_memberships_exists": true,
+    "permissions_exists": false
+  },
+  "migration_file_sha256": "4ee80af4fb7acc12466da9273a09cee23755ffa713e1ed185bdbe6de26916c43",
+  "repair_execution": "PASS",
+  "repair_sqlstate": null,
+  "post_repair_catalog_parity": {
+    "pass": true,
+    "type": "jsonb",
+    "nullable": true,
+    "default": {
+      "kind": "NO_DATABASE_DEFAULT",
+      "value": null
+    }
+  },
+  "migration_249_execution": "PASS",
+  "post_249_object_validation": {
+    "organization_role_versions_exists": true,
+    "organization_role_assignments_exists": true,
+    "membership_permissions_exists": true,
+    "pass": true
+  },
+  "synthetic_fixture": {
+    "seed_pass": true
+  },
+  "manual_interventions": 0,
+  "pass": true
+}

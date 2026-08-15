@@ -1,0 +1,1727 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "old_missing_history_records": 90,
+  "accounted": 90,
+  "unaccounted": 0,
+  "root_cause_summary": {
+    "real_missing_history": 1,
+    "physical_alias_leakage": 69,
+    "subquery_alias_leakage": 12,
+    "other": 5,
+    "literal_function_type_token": 3
+  },
+  "records": [
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "organization_memberships",
+      "old_property": "permissions",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "m",
+      "physical_lineage": {
+        "relation": "organization_memberships",
+        "property": "permissions"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "MISSING_HISTORY",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "real_missing_history"
+    },
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "a",
+      "old_property": "membership_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_role_assignments",
+        "property": "membership_id"
+      },
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "a",
+      "old_property": "is_current",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_role_assignments",
+        "property": "is_current"
+      },
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "m",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_role_assignments",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "organization_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "organization_id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "document_type",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "document_type"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "language",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "language"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "kept_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "kept_id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "archived_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "archived_id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "kept_active_",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "kept_active_"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "existing",
+      "old_property": "migration_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_legal_document_repair_log",
+        "property": "migration_id"
+      },
+      "creator": {
+        "migration": "20260722110000_legal_document_single_active_invariant",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "other"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "existing",
+      "old_property": "archived_document_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_legal_document_repair_log",
+        "property": "archived_document_id"
+      },
+      "creator": {
+        "migration": "20260722110000_legal_document_single_active_invariant",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "other"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "archived_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "archived_id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "organization_legal_document_repair_log",
+      "old_property": "organization_legal_document_repair_log",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_legal_document_repair_log",
+        "property": "organization_legal_document_repair_log"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "eliminated unqualified alias/relation token false positive",
+      "root_cause": "literal_function_type_token"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "organization_legal_document_repair_log",
+      "old_property": "existing",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_legal_document_repair_log",
+        "property": "existing"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "eliminated unqualified alias/relation token false positive",
+      "root_cause": "literal_function_type_token"
+    },
+    {
+      "old_migration": "20260722110000_legal_document_single_active_invariant",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "archived_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "l",
+        "property": "archived_id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "unresolved qualified alias reference \u2014 not a physical relation",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "migration_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "migration_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "entity_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "entity_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 4,
+      "old_relation": "l",
+      "old_property": "action",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "action"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 4,
+      "old_relation": "c",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "losers",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "losers",
+        "property": "id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "derived relation output expression, not physical historical column",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "losers",
+      "old_property": "name",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "losers",
+        "property": "name"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "derived relation output expression, not physical historical column",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "losers",
+      "old_property": "rn",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "losers",
+        "property": "rn"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "derived relation output expression, not physical historical column",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "existing",
+      "old_property": "migration_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "migration_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "other"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "existing",
+      "old_property": "entity_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "entity_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "other"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "losers",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "l",
+      "physical_lineage": {
+        "relation": "losers",
+        "property": "id"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "derived relation output expression, not physical historical column",
+      "root_cause": "subquery_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "existing",
+      "old_property": "action",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "action"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "other"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "rental_rules_integrity_repair_log",
+      "old_property": "existing",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "existing"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "FALSE_POSITIVE",
+      "reason": "eliminated unqualified alias/relation token false positive",
+      "root_cause": "literal_function_type_token"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 8,
+      "old_relation": "l",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 12,
+      "old_relation": "l",
+      "old_property": "migration_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "migration_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 12,
+      "old_relation": "l",
+      "old_property": "entity_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "entity_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 12,
+      "old_relation": "l",
+      "old_property": "action",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "action"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 12,
+      "old_relation": "o",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 14,
+      "old_relation": "l",
+      "old_property": "migration_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "migration_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 14,
+      "old_relation": "l",
+      "old_property": "entity_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "entity_id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 14,
+      "old_relation": "l",
+      "old_property": "action",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "action"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723100000_rental_rules_db_integrity",
+      "old_statement": 14,
+      "old_relation": "v",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rules_integrity_repair_log",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260723100000_rental_rules_db_integrity",
+        "statement": 1
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "organization_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "organization_id"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "version",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "version"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "minimum_age_years",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "minimum_age_years"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "minimum_license_holding_months",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "minimum_license_holding_months"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "deposit_amount_cents",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "deposit_amount_cents"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "deposit_currency",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "deposit_currency"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "credit_card_required",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "credit_card_required"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "foreign_travel_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "foreign_travel_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "additional_driver_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "additional_driver_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "young_driver_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "young_driver_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "insurance_requirement",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "insurance_requirement"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "manual_approval_required",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "manual_approval_required"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "notes",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "notes"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "is_active",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "is_active"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "created_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "created_at"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 22,
+      "old_relation": "r",
+      "old_property": "updated_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "r",
+      "physical_lineage": {
+        "relation": "organization_rental_rules",
+        "property": "updated_at"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 5
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "organization_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "organization_id"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "version",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "version"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "minimum_age_years",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "minimum_age_years"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "minimum_license_holding_months",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "minimum_license_holding_months"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "deposit_amount_cents",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "deposit_amount_cents"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "deposit_currency",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "deposit_currency"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "credit_card_required",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "credit_card_required"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "foreign_travel_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "foreign_travel_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "additional_driver_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "additional_driver_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "young_driver_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "young_driver_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "insurance_requirement",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "insurance_requirement"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "manual_approval_required",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "manual_approval_required"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "notes",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "notes"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "is_active",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "is_active"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "name",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "name"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "status",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "status"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "type",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "type"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "status_changed_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "status_changed_at"
+      },
+      "creator": {
+        "migration": "20260723120000_rental_category_lifecycle",
+        "statement": 2
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "created_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "created_at"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 23,
+      "old_relation": "c",
+      "old_property": "updated_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "c",
+      "physical_lineage": {
+        "relation": "rental_vehicle_categories",
+        "property": "updated_at"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 7
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "organization_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "organization_id"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "vehicle_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "vehicle_id"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "version",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "rental_rule_revisions",
+        "property": "version"
+      },
+      "creator": {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement": 9
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "minimum_age_years",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "minimum_age_years"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "minimum_license_holding_months",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "minimum_license_holding_months"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "deposit_amount_cents",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "deposit_amount_cents"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "deposit_currency",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "deposit_currency"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "credit_card_required",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "credit_card_required"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "foreign_travel_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "foreign_travel_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "additional_driver_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "additional_driver_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "young_driver_policy",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "young_driver_policy"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "insurance_requirement",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "insurance_requirement"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "manual_approval_required",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "manual_approval_required"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "notes",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "notes"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "created_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "created_at"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260723130000_rental_rule_revisions",
+      "old_statement": 24,
+      "old_relation": "o",
+      "old_property": "updated_at",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "o",
+      "physical_lineage": {
+        "relation": "vehicle_rental_requirement_overrides",
+        "property": "updated_at"
+      },
+      "creator": {
+        "migration": "20260620100000_rental_rules_eligibility",
+        "statement": 10
+      },
+      "new_classification": "VALID",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "physical_alias_leakage"
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "slot": 7,
+      "new_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "previous_migration": "20260613200000_booking_document_lifecycle",
+      "next_migration": "20260613210000_vendor_management_overhaul",
+      "authorized_after": "20260613200000_booking_document_lifecycle",
+      "authorized_before": "20260613210000_vendor_management_overhaul",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 8,
+      "new_migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "previous_migration": "20260616120000_station_operational_module",
+      "next_migration": "20260616140000_workflow_automation_runtime",
+      "authorized_after": "20260616120000_station_operational_module",
+      "authorized_before": "20260616140000_workflow_automation_runtime",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 9,
+      "new_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "previous_migration": "20260617120000_pricing_tariffs",
+      "next_migration": "20260617120000_tire_identity_mounted_dismounted",
+      "authorized_after": "20260617120000_pricing_tariffs",
+      "authorized_before": "20260617120000_tire_identity_mounted_dismounted",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 10,
+      "new_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "previous_migration": "20260617200000_hm_service_no_tracking_insight",
+      "next_migration": "20260618180000_vehicle_damage_lifecycle",
+      "authorized_after": "20260617200000_hm_service_no_tracking_insight",
+      "authorized_before": "20260618180000_vehicle_damage_lifecycle",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 11,
+      "new_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "previous_migration": "20260620180000_voice_assistant_tool_permissions",
+      "next_migration": "20260620190000_whatsapp_business_platform",
+      "authorized_after": "20260620180000_voice_assistant_tool_permissions",
+      "authorized_before": "20260620190000_whatsapp_business_platform",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 12,
+      "new_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "previous_migration": "20260716180000_battery_capability_lifecycle",
+      "next_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "authorized_after": "20260716180000_battery_capability_lifecycle",
+      "authorized_before": "20260716180000_tire_evidence_ground_truth_provenance",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 13,
+      "new_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "previous_migration": "20260716180000_tire_evidence_ground_truth_provenance",
+      "next_migration": "20260716183000_tire_lifecycle_invariants",
+      "authorized_after": "20260716180000_tire_evidence_ground_truth_provenance",
+      "authorized_before": "20260716183000_tire_lifecycle_invariants",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 14,
+      "new_migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "previous_migration": "20260716200000_driving_evidence",
+      "next_migration": "20260716200000_tire_odometer_anchor_backfill_event",
+      "authorized_after": "20260716200000_driving_evidence",
+      "authorized_before": "20260716200000_tire_odometer_anchor_backfill_event",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 15,
+      "new_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "previous_migration": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+      "next_migration": "20260724130000_dashboard_insight_calculation_meta",
+      "authorized_after": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+      "authorized_before": "20260724130000_dashboard_insight_calculation_meta",
+      "lexical_order_valid": true
+    },
+    {
+      "slot": 16,
+      "new_migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "previous_migration": "20260724200000_iam_audit_outbox_processing_status_column",
+      "next_migration": "20260725120000_chat_message_structured_payload",
+      "authorized_after": "20260724200000_iam_audit_outbox_processing_status_column",
+      "authorized_before": "20260725120000_chat_message_structured_payload",
+      "lexical_order_valid": true
+    }
+  ],
+  "all_valid": true
+}
