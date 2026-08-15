@@ -10,6 +10,7 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 OUT_STANDARD = Path(__file__).resolve().parents[1] / "ci-r3b1o4-append-only-tail-reconciliation-strategy-closure-2026-08.md"
 OUT_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-corrective-final-acceptance-closure-2026-08.md"
 OUT_FINAL_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-final-corrective-catalog-authority-closure-2026-08.md"
+OUT_BINDING_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-final-catalog-semantic-authority-binding-2026-08.md"
 
 
 def load(name: str) -> dict:
@@ -454,12 +455,172 @@ def generate_final_corrective_report() -> None:
     OUT_FINAL_CORRECTIVE.write_text("\n".join(lines) + "\n")
 
 
+def generate_binding_corrective_report() -> None:
+    s = load("ci-r3b1o4-binding-corrective-final-acceptance-summary-2026-08.json")
+    baseline = s.get("baseline", {})
+    second = load("ci-r3b1o4-binding-corrective-second-deploy-idempotency-2026-08.json")
+    t2 = load("ci-r3b1o4-binding-corrective-t2-stale-index-drop-safety-2026-08.json")
+    m252 = load("ci-r3b1o4-binding-corrective-final-m252-exact-parity-2026-08.json")
+    r3b = load("ci-r3b1o4-binding-corrective-final-r3b-parity-2026-08.json")
+    execution_set = load("ci-r3b1o4-binding-corrective-execution-set-2026-08.json")
+    expected = load("ci-r3b1o4-binding-corrective-expected-catalog-deltas-2026-08.json")
+    implicit = load("ci-r3b1o4-binding-corrective-implicit-effects-2026-08.json")
+    raw_catalog = load("ci-r3b1o4-binding-corrective-raw-catalog-deltas-2026-08.json")
+    catalog = load("ci-r3b1o4-binding-corrective-full-catalog-authority-2026-08.json")
+    candidates = load("ci-r3b1o4-binding-corrective-authority-candidate-inventory-2026-08.json")
+    proof = load("ci-r3b1o4-binding-corrective-delta-authority-proof-2026-08.json")
+    stmt_xval = load("ci-r3b1o4-binding-corrective-statement-crossvalidation-2026-08.json")
+    engine = load("ci-r3b1o4-binding-corrective-catalog-engine-crossvalidation-2026-08.json")
+    attr = load("ci-r3b1o4-binding-corrective-final-prisma-diff-attribution-2026-08.json")
+    golden = load("ci-r3b1o4-binding-corrective-golden-tests-2026-08.json")
+    cross = load("ci-r3b1o4-binding-corrective-evidence-code-crossvalidation-2026-08.json")
+    source_hash = load("ci-r3b1o4-binding-corrective-source-hash-manifest-2026-08.json")
+    final_summary = load("ci-r3b1o4-final-corrective-final-acceptance-summary-2026-08.json")
+
+    lines = [
+        "# CI-R3B1O.4 — Final Catalog Semantic Authority Binding",
+        "",
+        f"**Status:** `{s.get('final_status')}`",
+        f"**R3B1P readiness:** `{s.get('r3b1p_readiness')}`",
+        "",
+        "## Baseline",
+        "",
+        f"- WORKTREE_STRICT_EMPTY: **{baseline.get('WORKTREE_STRICT_EMPTY')}**",
+        f"- CORRECTIVE_PRE_SHA: `{baseline.get('CORRECTIVE_PRE_SHA')}`",
+        f"- REMOTE_HEAD: `{baseline.get('REMOTE_HEAD')}`",
+        f"- MAIN_HEAD: `{baseline.get('MAIN_HEAD')}`",
+        "",
+        "## Frozen accepted strategy",
+        "",
+        "Three-task append-only tail reconciliation unchanged: canonical M252 forward, invoice stale DROP INDEX, WhatsApp stale DROP INDEX.",
+        "",
+        "## Why key-only authority was insufficient",
+        "",
+        "Object identity lookup alone could authorize same-name objects with wrong owner, keys, constraint definitions, or column semantics. Expected effects also used migration-wide ordinal placeholders instead of execution-set statement ordinals and SHAs.",
+        "",
+        "## Execution-set statement provenance",
+        "",
+        f"- Executing migration count: **{execution_set.get('executing_migration_count')}**",
+        f"- Execution set pass: **{execution_set.get('pass')}**",
+        "",
+        "## Expected effect statement binding",
+        "",
+        f"- Expected effect count: **{expected.get('expected_effect_count')}**",
+        f"- statement_ordinal_null_count: **{expected.get('statement_ordinal_null_count')}**",
+        f"- statement_sha_mismatch_count: **{expected.get('statement_sha_mismatch_count')}**",
+        "",
+        "## Authority candidate preservation",
+        "",
+        f"- Candidate inventory rows: **{candidates.get('candidate_count')}**",
+        "",
+        "## Duplicate authority handling",
+        "",
+        f"- AMBIGUOUS_DELTA_AUTHORITY: **{catalog.get('counts', {}).get('AMBIGUOUS_DELTA_AUTHORITY')}**",
+        "",
+        "## Object semantic comparators",
+        "",
+        "Column, index, constraint, table, enum/type, sequence, and M252 forward comparators enforce semantic before/after matching beyond lookup keys.",
+        "",
+        "## Exact vs semantic-equivalent match modes",
+        "",
+        "EXACT requires full canonical field agreement; SEMANTIC_EQUIVALENT and IMPLICIT_DETERMINISTIC record normalization; key-only matches are never labeled EXACT.",
+        "",
+        "## Five new Golden tests",
+        "",
+        f"- Executed: **{golden.get('executed')}**",
+        f"- Failed: **{golden.get('failed')}**",
+        "",
+        "## Fresh final twin",
+        "",
+        f"- Strategy pass: **{s.get('strategy_pass')}**",
+        "",
+        "## Strategy replay",
+        "",
+        "R3B1G resolve → R3B1I resolve → normal migrate deploy → three-task tail → second deploy idempotency.",
+        "",
+        "## M252 parity",
+        "",
+        f"- Pass: **{m252.get('pass')}**",
+        "",
+        "## R3B parity",
+        "",
+        f"- Objects: **{r3b.get('objects')}**",
+        f"- Tables: **{r3b.get('tables')}**",
+        f"- Enums: **{r3b.get('enums')}**",
+        f"- Properties: **{r3b.get('properties')}**",
+        "",
+        "## Complete catalog delta",
+        "",
+        f"- Raw delta total: **{raw_catalog.get('counts', {}).get('total')}**",
+        "",
+        "## Semantic authority binding",
+        "",
+        f"- Classified total: **{catalog.get('counts', {}).get('classified_total')}**",
+        f"- UNAUTHORIZED_FINAL_DELTA: **{catalog.get('counts', {}).get('UNAUTHORIZED_FINAL_DELTA')}**",
+        f"- AUTHORITY_STATEMENT_UNBOUND: **{catalog.get('counts', {}).get('AUTHORITY_STATEMENT_UNBOUND')}**",
+        f"- key_only_authorization: **{catalog.get('counts', {}).get('key_only_authorization')}**",
+        "",
+        "## Statement-level authority proof",
+        "",
+        f"- Proof count: **{proof.get('proof_count')}**",
+        f"- authorized_missing_statement_ordinal: **{proof.get('authorized_missing_statement_ordinal')}**",
+        f"- authorized_missing_statement_sha: **{proof.get('authorized_missing_statement_sha')}**",
+        "",
+        "## Statement crossvalidation",
+        "",
+        f"- missing_statement: **{stmt_xval.get('missing_statement')}**",
+        f"- sha_mismatch: **{stmt_xval.get('sha_mismatch')}**",
+        f"- family_mismatch: **{stmt_xval.get('family_mismatch')}**",
+        "",
+        "## Final Prisma diff",
+        "",
+        f"- NEW_STRATEGY_DRIFT: **{attr.get('NEW_STRATEGY_DRIFT')}**",
+        f"- UNATTRIBUTED: **{attr.get('UNATTRIBUTED')}**",
+        "",
+        "## Second deploy",
+        "",
+        f"- Pass: **{second.get('pass')}**",
+        f"- Catalog delta: **{second.get('catalog_delta')}**",
+        "",
+        "## Crossvalidation",
+        "",
+        f"- evidence_code_mismatch_count: **{cross.get('evidence_code_mismatch_count')}**",
+        f"- source pre/post match: **{source_hash.get('pre_post_match')}**",
+        "",
+        "## Production immutability",
+        "",
+        f"- Production unchanged: **{s.get('production_immutable')}**",
+        "",
+        "## Repository immutability",
+        "",
+        "Only `docs/audits/ci-recovery/**` changed; schema, migrations, runtime, and deployment configuration unchanged.",
+        "",
+        "## Prior final corrective acceptance",
+        "",
+        f"- Prior status: `{final_summary.get('final_status')}`",
+        "",
+        "## R3B1P readiness",
+        "",
+        f"`{s.get('r3b1p_readiness')}`",
+        "",
+        "## Final status",
+        "",
+        f"`{s.get('final_status')}`",
+        "",
+        "**Changes / Architektur:** not updated (CI-recovery evidence scope only).",
+    ]
+    OUT_BINDING_CORRECTIVE.write_text("\n".join(lines) + "\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corrective", action="store_true")
     parser.add_argument("--final-corrective", action="store_true")
+    parser.add_argument("--binding-corrective", action="store_true")
     args = parser.parse_args()
-    if args.final_corrective:
+    if args.binding_corrective:
+        generate_binding_corrective_report()
+    elif args.final_corrective:
         generate_final_corrective_report()
     elif args.corrective:
         generate_corrective_report()

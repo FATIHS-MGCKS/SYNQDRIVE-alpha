@@ -1,4 +1,4 @@
-"""Deterministic implicit PostgreSQL catalog effects (CI-R3B1O.4 final corrective)."""
+"""Deterministic implicit PostgreSQL catalog effects (CI-R3B1O.4 binding corrective)."""
 from __future__ import annotations
 
 from typing import Any
@@ -21,11 +21,12 @@ def build_implicit_catalog_effects(*, expected: dict[str, Any] | None = None) ->
                 "parent_effect_id": effect["effect_id"],
                 "parent_migration": effect["migration_name"],
                 "parent_statement_ordinal": effect["statement_ordinal"],
+                "parent_statement_sha256": effect["statement_sha256"],
                 "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
                 "change_type": "ADDED",
                 "object_type": "type",
                 "name": table,
-                "after_state": {"kind": "c", "related_table": table, "category": "composite"},
+                "after_state": {"kind": "c", "related_table": table, "category": "C"},
                 "object_id": f"type:{table}",
             }
         )
@@ -36,11 +37,12 @@ def build_implicit_catalog_effects(*, expected: dict[str, Any] | None = None) ->
                 "parent_effect_id": effect["effect_id"],
                 "parent_migration": effect["migration_name"],
                 "parent_statement_ordinal": effect["statement_ordinal"],
+                "parent_statement_sha256": effect["statement_sha256"],
                 "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
                 "change_type": "ADDED",
                 "object_type": "type",
                 "name": array_name,
-                "after_state": {"kind": "b", "element_type": table, "category": "array"},
+                "after_state": {"kind": "b", "element_type": table, "category": "A"},
                 "object_id": f"type:{array_name}",
             }
         )
@@ -58,6 +60,7 @@ def build_implicit_catalog_effects(*, expected: dict[str, Any] | None = None) ->
                 "parent_effect_id": effect["effect_id"],
                 "parent_migration": effect["migration_name"],
                 "parent_statement_ordinal": effect["statement_ordinal"],
+                "parent_statement_sha256": effect["statement_sha256"],
                 "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
                 "change_type": "ADDED",
                 "object_type": "index",
@@ -78,18 +81,19 @@ def build_implicit_catalog_effects(*, expected: dict[str, Any] | None = None) ->
                 "parent_effect_id": effect["effect_id"],
                 "parent_migration": effect["migration_name"],
                 "parent_statement_ordinal": effect["statement_ordinal"],
+                "parent_statement_sha256": effect["statement_sha256"],
                 "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
                 "change_type": "ADDED",
                 "object_type": "type",
                 "name": array_name,
-                "after_state": {"kind": "b", "element_type": enum_name, "category": "array"},
+                "after_state": {"kind": "b", "element_type": enum_name, "category": "A"},
                 "object_id": f"type:{array_name}",
             }
         )
 
     return {
         "schema_version": 1,
-        "phase": "CI-R3B1O.4-final-corrective",
+        "phase": "CI-R3B1O.4-binding-corrective",
         "implicit_effect_count": len(implicit),
         "effects": implicit,
         "pass": True,

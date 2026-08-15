@@ -31,6 +31,7 @@ def build_catalog_engine_crossvalidation(
     final_inventory: dict[str, Any],
     authority: dict[str, Any],
     golden_results: dict[str, Any] | None = None,
+    extra_required_tests: list[str] | None = None,
 ) -> dict[str, Any]:
     inventory_src = (TOOLING / "ci_r3b1o4_catalog_inventory.py").read_text()
     authority_src = (TOOLING / "ci_r3b1o4_catalog_authority.py").read_text()
@@ -52,6 +53,8 @@ def build_catalog_engine_crossvalidation(
         "catalog_auth_execution_set_unmodeled_object_unauthorized",
         "catalog_auth_implicit_table_row_type_authorized",
     ]
+    if extra_required_tests:
+        required_tests = required_tests + extra_required_tests
     missing_tests = [t for t in required_tests if t not in executed_ids]
 
     checks = {
@@ -81,5 +84,5 @@ def build_catalog_engine_crossvalidation(
     }
 
 
-def write_catalog_engine_crossvalidation(payload: dict[str, Any]) -> None:
-    (DATA / "ci-r3b1o4-final-corrective-catalog-engine-crossvalidation-2026-08.json").write_text(json.dumps(payload, indent=2) + "\n")
+def write_catalog_engine_crossvalidation(payload: dict[str, Any], *, prefix: str = "ci-r3b1o4-final-corrective") -> None:
+    (DATA / f"{prefix}-catalog-engine-crossvalidation-2026-08.json").write_text(json.dumps(payload, indent=2) + "\n")

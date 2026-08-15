@@ -90,3 +90,18 @@ def build_execution_set(*, applied_migration_names: set[str] | None = None) -> d
         "migrations": migrations,
         "pass": len(pending) == 21 and len(migrations) == 22,
     }
+
+
+def build_statement_lookup(execution_set: dict[str, Any]) -> dict[tuple[str, int], dict[str, Any]]:
+    lookup: dict[tuple[str, int], dict[str, Any]] = {}
+    for mig in execution_set.get("migrations", []):
+        name = mig["migration_name"]
+        for stmt in mig.get("statements", []):
+            lookup[(name, int(stmt["ordinal"]))] = {
+                "migration_name": name,
+                "statement_ordinal": int(stmt["ordinal"]),
+                "statement_sha256": stmt["statement_sha256"],
+                "statement_family": stmt.get("statement_type"),
+                "sql_preview": stmt.get("sql_preview"),
+            }
+    return lookup
