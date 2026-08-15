@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ci_r3b1l2_prisma_sql_parser import ParsedStatement
 from ci_r3b1o1_constants import M252_TABLE
+from ci_r3b1n2_constants import REPO
 from ci_r3b1o2_constants import DATA, M252_CANONICAL
 from ci_r3b1o2_diff_classifier import operation_fingerprint, resolve_owner_fields
 from ci_r3b1o2_r3b_authority import build_owner_maps
