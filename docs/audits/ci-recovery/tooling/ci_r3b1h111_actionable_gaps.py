@@ -16,13 +16,6 @@ def derive_unique_actionable_gaps(
     for record in records:
         if record.get("classification") not in {"MISSING_HISTORY", "ORDERING_DEFECT"}:
             continue
-        if record.get("dependency_context") not in {
-            "INSERT_SELECT_EXPRESSION",
-            "INSERT_SELECT_WHERE",
-            "INSERT_SELECT_JOIN",
-            "INSERT_SELECT_SUBQUERY",
-        }:
-            continue
         if record.get("required_object_type") != "column":
             continue
 
@@ -30,7 +23,7 @@ def derive_unique_actionable_gaps(
         prop = record.get("required_property") or ""
         if not relation or relation not in table_creators:
             continue
-        if prop == relation or relation.endswith("_repair_log"):
+        if prop == relation:
             continue
 
         boundary = boundary_by_gap.get((relation, prop), {})
