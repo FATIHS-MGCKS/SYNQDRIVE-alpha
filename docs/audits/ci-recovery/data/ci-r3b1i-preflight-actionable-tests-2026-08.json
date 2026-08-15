@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "tests": [
+    {
+      "test": "negative_context_included",
+      "pass": true,
+      "gaps": 1
+    },
+    {
+      "test": "negative_repair_log_included",
+      "pass": true,
+      "gaps": 1
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "rows_exported": 315,
+  "logs_field": "NULL in twin (historical logs not required for deploy-state decisions)",
+  "fields": [
+    "id",
+    "checksum",
+    "migration_name",
+    "started_at",
+    "finished_at",
+    "rolled_back_at",
+    "applied_steps_count"
+  ]
+}

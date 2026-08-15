@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "contract_count": 1,
+  "contracts": [
+    {
+      "contract_id": "TripDrivingImpact.calculatedAt",
+      "prisma_model": "TripDrivingImpact",
+      "prisma_field": "calculatedAt",
+      "physical_table": "trip_driving_impact",
+      "physical_column": "calculated_at",
+      "current_prisma_declaration": "DateTime?                       @map(\"calculated_at\")",
+      "canonical_postgresql_semantics": {
+        "type": "timestamp with time zone",
+        "datetime_precision": 6,
+        "nullable": true
+      },
+      "authorized_new_prisma_declaration": "DateTime? @map(\"calculated_at\") @db.Timestamptz(6)",
+      "authorized_native_type": "Timestamptz(6)",
+      "authority_sources": [
+        "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+        "docs/audits/ci-recovery/data/ci-r3b1l-canonical-54-property-authority-2026-08.json",
+        "backend/prisma/schema.prisma",
+        "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql"
+      ],
+      "reason": "CURRENT_PRISMA_SCHEMA_DRIFT \u2014 align Prisma native type to accepted physical authority",
+      "operation_ordinal": 81
+    }
+  ],
+  "pass": true
+}

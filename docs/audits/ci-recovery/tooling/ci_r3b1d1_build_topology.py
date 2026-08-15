@@ -95,7 +95,7 @@ def main() -> int:
         meta["preexisting_authority_state"] = preexisting
         slots.append(build_slot_from_metadata(meta, all_contracts, all_contracts))
 
-    summary, fk_proofs, index_proofs = validate_all_slots(slots, all_contracts, closure_doc)
+    summary, fk_proofs, index_proofs, unique_proofs, deferred_doc = validate_all_slots(slots, all_contracts, closure_doc)
     summary["known_r3b1d_defects_reproduced"] = reproduce_r3b1d_defects()
     summary["PRE_R3B1D1_SHA"] = PRE_R3B1D1_SHA
     summary["primary_defect_count"] = len(closure_doc.get("all_genuine_defect_objects", []))

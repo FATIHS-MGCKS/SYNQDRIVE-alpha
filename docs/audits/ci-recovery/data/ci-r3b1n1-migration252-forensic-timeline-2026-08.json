@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "ledger_rows": [
+    {
+      "id_fingerprint_sha256": "f03b46cbf6cda2037d91a2fe2dd6e4e7ce54c0ced7941b046e43416dd1b6038c",
+      "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+      "started_at": "2026-07-22 13:49:36.11408+00",
+      "finished_at": "",
+      "rolled_back_at": "2026-07-22 13:49:51.332331+00",
+      "applied_steps_count": "0",
+      "logs_present": true,
+      "logs_sanitized_excerpt": "\"A migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve"
+    },
+    {
+      "id_fingerprint_sha256": "667c9f3e1475f514a40f2982e57a0ae20e44b375d6af2efdfc5bac569cb1a9de",
+      "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+      "started_at": "2026-07-22 13:49:51.333878+00",
+      "finished_at": "2026-07-22 13:49:51.333878+00",
+      "rolled_back_at": "",
+      "applied_steps_count": "0",
+      "logs_present": true,
+      "logs_sanitized_excerpt": "\"\""
+    }
+  ],
+  "timeline_events": [
+    {
+      "attempt": 1,
+      "label": "M252_ROLLED_BACK"
+    },
+    {
+      "attempt": 1,
+      "label": "M252_EXECUTION_FAILED"
+    },
+    {
+      "attempt": 2,
+      "label": "M252_MARKED_APPLIED_WITH_ZERO_STEPS"
+    }
+  ],
+  "catalog_target_table_present": false,
+  "final_classification": "M252_ORIGINAL_FAILED_ROLLED_BACK_THEN_ZERO_STEP_MARKED_APPLIED",
+  "confidence": "MEDIUM",
+  "proof_level": "ledger_metadata_plus_catalog_absence"
+}

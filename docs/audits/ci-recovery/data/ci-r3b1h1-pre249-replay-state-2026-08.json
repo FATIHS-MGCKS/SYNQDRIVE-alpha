@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "database_identifier": "synqdrive_r3b1h1_pre249",
+  "stop_before": "20260721250000_iam_versioned_role_assignments",
+  "expected_last_applied": "20260721240000_iam_last_selected_organization",
+  "last_applied_migration": "20260721240000_iam_last_selected_organization",
+  "pass": true,
+  "error": null
+}

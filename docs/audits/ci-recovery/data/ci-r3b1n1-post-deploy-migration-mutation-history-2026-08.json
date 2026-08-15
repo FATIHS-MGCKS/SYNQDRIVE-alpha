@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "mutations": [
+    {
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "first_creator_commit": {
+        "sha": "c3166e3efba83871ec4200a4f6ba37db3e2acbab",
+        "date": "2026-07-21 22:32:02 +0000",
+        "subject": "feat(iam): add controlled role assignment drift reconciliation"
+      },
+      "visible_at_deployed_sha": true,
+      "latest_commit": {
+        "sha": "ee634cef5d46004e39f5c61588f9251cc3d4a00b",
+        "date": "2026-08-15 15:06:20 +0000",
+        "subject": "fix(db): correct migration 252 identifier collisions"
+      },
+      "later_change_commits": [
+        {
+          "sha": "ee634cef5d46004e39f5c61588f9251cc3d4a00b",
+          "date": "2026-08-15 15:06:20 +0000",
+          "subject": "fix(db): correct migration 252 identifier collisions"
+        },
+        {
+          "sha": "c3166e3efba83871ec4200a4f6ba37db3e2acbab",
+          "date": "2026-07-21 22:32:02 +0000",
+          "subject": "feat(iam): add controlled role assignment drift reconciliation"
+        }
+      ],
+      "token_change_summary": "semantic SQL"
+    }
+  ],
+  "total": 1
+}

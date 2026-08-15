@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1.1",
+  "records": [
+    {
+      "source_slot": 7,
+      "constraint": "vendor_vehicles_vendor_id_fkey",
+      "local_relation": "vendor_vehicles",
+      "local_columns": [
+        "vendor_id"
+      ],
+      "referenced_relation": "vendors",
+      "referenced_columns": [
+        "id"
+      ],
+      "resolution_type": "same_repair_slot",
+      "resolution_endpoint": "slot:7:vendor_vehicles_vendor_id_fkey",
+      "endpoint_exists": true,
+      "chronology_valid": true,
+      "resolved": true
+    }
+  ],
+  "total": 1,
+  "resolved": 1,
+  "unresolved": [],
+  "unresolved_count": 0
+}

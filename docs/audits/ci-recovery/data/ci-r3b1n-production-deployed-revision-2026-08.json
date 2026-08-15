@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N",
+  "production_service_identity": "pm2:synqdrive on Hostinger VPS srv1374778.hstgr.cloud",
+  "deployed_sha": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+  "deployed_sha_sources": [
+    {
+      "source": "vps_git_head",
+      "observed_sha": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+      "confidence": "HIGH"
+    },
+    {
+      "source": "current_symlink",
+      "observed_path": "/opt/synqdrive/releases/20260726212924_v4994",
+      "confidence": "HIGH"
+    },
+    {
+      "source": "pm2_process_cwd",
+      "observed_path": "/opt/synqdrive/current/backend",
+      "confidence": "HIGH"
+    }
+  ],
+  "process_binding": {
+    "pm_cwd": "/opt/synqdrive/current/backend",
+    "status": "online",
+    "pm_exec_path": "/opt/synqdrive/current/backend/dist/src/main.js"
+  },
+  "release_symlink": "/opt/synqdrive/releases/20260726212924_v4994",
+  "git_log": {
+    "sha": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+    "date": "2026-07-26 21:28:53 +0000",
+    "subject": "docs(master-admin): certify 2G.7 on the live production release"
+  },
+  "revision_confidence": "HIGH",
+  "conflicts": []
+}

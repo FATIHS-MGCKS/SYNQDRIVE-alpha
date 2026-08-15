@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "baseline_sha": "5acf67cc4013aec7ae42b7028f07aae083351a17",
+  "existing_migration_sql_changed": 0,
+  "migration_changes": [],
+  "r3b1b_repair_migrations_changed": 0,
+  "r3b1e_repair_migrations_changed": 0,
+  "tire_lifecycle_invariants_changed": false,
+  "schema_prisma_changed": false,
+  "runtime_code_changed": false,
+  "allowed_docs_only": false,
+  "pass": true
+}

@@ -1,0 +1,1776 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "database_identifier": "synqdrive_r3b1h_pre249",
+  "boundary": "before_20260721250000_iam_versioned_role_assignments",
+  "relations": {
+    "organization_memberships": {
+      "table_exists": true,
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "membership_version": {
+          "name": "membership_version",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_role_id": {
+          "name": "organization_role_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "role": {
+          "name": "role",
+          "type": "MembershipRole",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "station_ids": {
+          "name": "station_ids",
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "station_scope": {
+          "name": "station_scope",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "status": {
+          "name": "status",
+          "type": "MembershipStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "ACTIVE"
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "all_column_names": [
+        "created_at",
+        "id",
+        "membership_version",
+        "organization_id",
+        "organization_role_id",
+        "role",
+        "station_ids",
+        "station_scope",
+        "status",
+        "updated_at",
+        "user_id"
+      ],
+      "primary_keys": [
+        {
+          "name": "organization_memberships_pkey",
+          "table": "organization_memberships",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "foreign_keys": [
+        {
+          "name": "organization_memberships_user_id_fkey",
+          "local_table": "organization_memberships",
+          "local_columns": [
+            "user_id"
+          ],
+          "referenced_table": "users",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        },
+        {
+          "name": "organization_memberships_organization_id_fkey",
+          "local_table": "organization_memberships",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_table": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        },
+        {
+          "name": "organization_memberships_organization_role_id_fkey",
+          "local_table": "organization_memberships",
+          "local_columns": [
+            "organization_role_id"
+          ],
+          "referenced_table": "organization_roles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "organization_memberships_pkey",
+          "table": "organization_memberships",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_memberships_organization_id_idx",
+          "table": "organization_memberships",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_memberships_user_id_idx",
+          "table": "organization_memberships",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "user_id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_memberships_user_id_organization_id_key",
+          "table": "organization_memberships",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "user_id",
+            "organization_id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_memberships_organization_role_id_idx",
+          "table": "organization_memberships",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_role_id"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      ]
+    },
+    "organization_roles": {
+      "table_exists": true,
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "default_station_ids": {
+          "name": "default_station_ids",
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "field_agent_access_default": {
+          "name": "field_agent_access_default",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "true"
+          }
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "is_system_template": {
+          "name": "is_system_template",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "membership_role": {
+          "name": "membership_role",
+          "type": "MembershipRole",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "station_scope_default": {
+          "name": "station_scope_default",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "system_key": {
+          "name": "system_key",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "all_column_names": [
+        "created_at",
+        "created_by_user_id",
+        "default_station_ids",
+        "description",
+        "field_agent_access_default",
+        "id",
+        "is_active",
+        "is_default",
+        "is_system_template",
+        "membership_role",
+        "name",
+        "organization_id",
+        "permissions",
+        "station_scope_default",
+        "system_key",
+        "updated_at"
+      ],
+      "primary_keys": [
+        {
+          "name": "organization_roles_pkey",
+          "table": "organization_roles",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "foreign_keys": [
+        {
+          "name": "organization_roles_organization_id_fkey",
+          "local_table": "organization_roles",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_table": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        },
+        {
+          "name": "organization_roles_created_by_user_id_fkey",
+          "local_table": "organization_roles",
+          "local_columns": [
+            "created_by_user_id"
+          ],
+          "referenced_table": "users",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "organization_roles_pkey",
+          "table": "organization_roles",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_roles_organization_id_system_key_key",
+          "table": "organization_roles",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "system_key"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_roles_organization_id_is_active_idx",
+          "table": "organization_roles",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "is_active"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      ]
+    },
+    "organization_user_invites": {
+      "table_exists": true,
+      "columns": {
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "accepted_by_user_id": {
+          "name": "accepted_by_user_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "department": {
+          "name": "department",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "field_agent_access": {
+          "name": "field_agent_access",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "invited_by_user_id": {
+          "name": "invited_by_user_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "membership_role": {
+          "name": "membership_role",
+          "type": "MembershipRole",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_role_id": {
+          "name": "organization_role_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "permissions": {
+          "name": "permissions",
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "role_label": {
+          "name": "role_label",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "station_ids": {
+          "name": "station_ids",
+          "type": "jsonb",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "station_scope": {
+          "name": "station_scope",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "status": {
+          "name": "status",
+          "type": "OrganizationInviteStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "PENDING"
+          }
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "token_lookup": {
+          "name": "token_lookup",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "all_column_names": [
+        "accepted_at",
+        "accepted_by_user_id",
+        "created_at",
+        "department",
+        "email",
+        "expires_at",
+        "field_agent_access",
+        "id",
+        "invited_by_user_id",
+        "membership_role",
+        "organization_id",
+        "organization_role_id",
+        "permissions",
+        "position",
+        "revoked_at",
+        "role_label",
+        "station_ids",
+        "station_scope",
+        "status",
+        "token_hash",
+        "token_lookup",
+        "updated_at"
+      ],
+      "primary_keys": [
+        {
+          "name": "organization_user_invites_pkey",
+          "table": "organization_user_invites",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "foreign_keys": [
+        {
+          "name": "organization_user_invites_organization_id_fkey",
+          "local_table": "organization_user_invites",
+          "local_columns": [
+            "organization_id"
+          ],
+          "referenced_table": "organizations",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        },
+        {
+          "name": "organization_user_invites_organization_role_id_fkey",
+          "local_table": "organization_user_invites",
+          "local_columns": [
+            "organization_role_id"
+          ],
+          "referenced_table": "organization_roles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE"
+        },
+        {
+          "name": "organization_user_invites_invited_by_user_id_fkey",
+          "local_table": "organization_user_invites",
+          "local_columns": [
+            "invited_by_user_id"
+          ],
+          "referenced_table": "users",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        },
+        {
+          "name": "organization_user_invites_accepted_by_user_id_fkey",
+          "local_table": "organization_user_invites",
+          "local_columns": [
+            "accepted_by_user_id"
+          ],
+          "referenced_table": "users",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "organization_user_invites_pkey",
+          "table": "organization_user_invites",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_user_invites_organization_id_status_idx",
+          "table": "organization_user_invites",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "status"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_user_invites_organization_id_email_idx",
+          "table": "organization_user_invites",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "email"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_user_invites_token_lookup_key",
+          "table": "organization_user_invites",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "token_lookup"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organization_user_invites_token_hash_idx",
+          "table": "organization_user_invites",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "token_hash"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      ]
+    },
+    "organization_role_versions": {
+      "table_exists": false,
+      "columns": {},
+      "all_column_names": [],
+      "primary_keys": [],
+      "unique_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    "organization_role_assignments": {
+      "table_exists": false,
+      "columns": {},
+      "all_column_names": [],
+      "primary_keys": [],
+      "unique_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    "membership_permission_overrides": {
+      "table_exists": false,
+      "columns": {},
+      "all_column_names": [],
+      "primary_keys": [],
+      "unique_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    "users": {
+      "table_exists": true,
+      "columns": {
+        "auth_provider_id": {
+          "name": "auth_provider_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_login_at": {
+          "name": "last_login_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_selected_organization_id": {
+          "name": "last_selected_organization_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "platform_role": {
+          "name": "platform_role",
+          "type": "UserPlatformRole",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "USER"
+          }
+        },
+        "session_version": {
+          "name": "session_version",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "status": {
+          "name": "status",
+          "type": "UserStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "ACTIVE"
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "all_column_names": [
+        "auth_provider_id",
+        "avatar_url",
+        "created_at",
+        "email",
+        "id",
+        "last_login_at",
+        "last_selected_organization_id",
+        "name",
+        "platform_role",
+        "session_version",
+        "status",
+        "updated_at"
+      ],
+      "primary_keys": [
+        {
+          "name": "users_pkey",
+          "table": "users",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "users_pkey",
+          "table": "users",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "users_email_key",
+          "table": "users",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "email"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "users_auth_provider_id_key",
+          "table": "users",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "auth_provider_id"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      ]
+    },
+    "organizations": {
+      "table_exists": true,
+      "columns": {
+        "accent_color": {
+          "name": "accent_color",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "bank_name": {
+          "name": "bank_name",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "bic": {
+          "name": "bic",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "business_type": {
+          "name": "business_type",
+          "type": "BusinessType",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "company_name": {
+          "name": "company_name",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "default_vat_rate": {
+          "name": "default_vat_rate",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "email_signature": {
+          "name": "email_signature",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "iban": {
+          "name": "iban",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "invoice_email": {
+          "name": "invoice_email",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "invoice_prefix": {
+          "name": "invoice_prefix",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "is_small_business": {
+          "name": "is_small_business",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "language": {
+          "name": "language",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "last_active_at": {
+          "name": "last_active_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "legal_company_name": {
+          "name": "legal_company_name",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "legal_form": {
+          "name": "legal_form",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "logo_dark_url": {
+          "name": "logo_dark_url",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "logo_url": {
+          "name": "logo_url",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "manager_email": {
+          "name": "manager_email",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "manager_name": {
+          "name": "manager_name",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "next_invoice_number": {
+          "name": "next_invoice_number",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "1"
+          }
+        },
+        "payment_terms_days": {
+          "name": "payment_terms_days",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "7"
+          }
+        },
+        "payments_enabled": {
+          "name": "payments_enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "pdf_footer_text": {
+          "name": "pdf_footer_text",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "pdf_logo_url": {
+          "name": "pdf_logo_url",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "status": {
+          "name": "status",
+          "type": "OrganizationStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "ACTIVE"
+          }
+        },
+        "tax_id": {
+          "name": "tax_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "tax_number": {
+          "name": "tax_number",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vat_id": {
+          "name": "vat_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "zip": {
+          "name": "zip",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "all_column_names": [
+        "accent_color",
+        "address",
+        "bank_name",
+        "bic",
+        "business_type",
+        "city",
+        "company_name",
+        "country",
+        "created_at",
+        "default_vat_rate",
+        "email",
+        "email_signature",
+        "iban",
+        "id",
+        "invoice_email",
+        "invoice_prefix",
+        "is_small_business",
+        "language",
+        "last_active_at",
+        "legal_company_name",
+        "legal_form",
+        "logo_dark_url",
+        "logo_url",
+        "manager_email",
+        "manager_name",
+        "next_invoice_number",
+        "payment_terms_days",
+        "payments_enabled",
+        "pdf_footer_text",
+        "pdf_logo_url",
+        "phone",
+        "state",
+        "status",
+        "tax_id",
+        "tax_number",
+        "timezone",
+        "updated_at",
+        "vat_id",
+        "website",
+        "zip"
+      ],
+      "primary_keys": [
+        {
+          "name": "organizations_pkey",
+          "table": "organizations",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "unique_constraints": [],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "organizations_pkey",
+          "table": "organizations",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        {
+          "name": "organizations_status_idx",
+          "table": "organizations",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "status"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      ]
+    }
+  },
+  "organization_memberships_matrix": [
+    {
+      "logical_field": "id",
+      "physical_column": "id",
+      "exists": true,
+      "type": "text",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "user_id",
+      "physical_column": "user_id",
+      "exists": true,
+      "type": "text",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "organization_id",
+      "physical_column": "organization_id",
+      "exists": true,
+      "type": "text",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "role",
+      "physical_column": "role",
+      "exists": true,
+      "type": "MembershipRole",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "station_scope",
+      "physical_column": "station_scope",
+      "exists": true,
+      "type": "text",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "status",
+      "physical_column": "status",
+      "exists": true,
+      "type": "MembershipStatus",
+      "nullable": false,
+      "default": {
+        "kind": "DATABASE_ENUM_DEFAULT",
+        "value": "ACTIVE"
+      }
+    },
+    {
+      "logical_field": "created_at",
+      "physical_column": "created_at",
+      "exists": true,
+      "type": "timestamp(3) without time zone",
+      "nullable": false,
+      "default": {
+        "kind": "DATABASE_EXPRESSION_DEFAULT",
+        "value": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "logical_field": "updated_at",
+      "physical_column": "updated_at",
+      "exists": true,
+      "type": "timestamp(3) without time zone",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "organization_role_id",
+      "physical_column": "organization_role_id",
+      "exists": true,
+      "type": "text",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "role_label",
+      "physical_column": "role_label",
+      "exists": false,
+      "type": null,
+      "nullable": null,
+      "default": null
+    },
+    {
+      "logical_field": "department",
+      "physical_column": "department",
+      "exists": false,
+      "type": null,
+      "nullable": null,
+      "default": null
+    },
+    {
+      "logical_field": "position",
+      "physical_column": "position",
+      "exists": false,
+      "type": null,
+      "nullable": null,
+      "default": null
+    },
+    {
+      "logical_field": "permissions",
+      "physical_column": "permissions",
+      "exists": false,
+      "type": null,
+      "nullable": null,
+      "default": null
+    },
+    {
+      "logical_field": "station_ids",
+      "physical_column": "station_ids",
+      "exists": true,
+      "type": "jsonb",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "field_agent_access",
+      "physical_column": "field_agent_access",
+      "exists": false,
+      "type": null,
+      "nullable": null,
+      "default": null
+    },
+    {
+      "logical_field": "membership_version",
+      "physical_column": "membership_version",
+      "exists": true,
+      "type": "integer",
+      "nullable": false,
+      "default": {
+        "kind": "DATABASE_EXPRESSION_DEFAULT",
+        "value": "0"
+      }
+    }
+  ],
+  "organization_roles_matrix": [
+    {
+      "logical_field": "id",
+      "physical_column": "id",
+      "exists": true,
+      "type": "text",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "organization_id",
+      "physical_column": "organization_id",
+      "exists": true,
+      "type": "text",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "name",
+      "physical_column": "name",
+      "exists": true,
+      "type": "text",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "description",
+      "physical_column": "description",
+      "exists": true,
+      "type": "text",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "permissions",
+      "physical_column": "permissions",
+      "exists": true,
+      "type": "jsonb",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "station_scope_default",
+      "physical_column": "station_scope_default",
+      "exists": true,
+      "type": "text",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "default_station_ids",
+      "physical_column": "default_station_ids",
+      "exists": true,
+      "type": "jsonb",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "field_agent_access_default",
+      "physical_column": "field_agent_access_default",
+      "exists": true,
+      "type": "boolean",
+      "nullable": false,
+      "default": {
+        "kind": "DATABASE_LITERAL_DEFAULT",
+        "value": "false"
+      }
+    },
+    {
+      "logical_field": "membership_role",
+      "physical_column": "membership_role",
+      "exists": true,
+      "type": "MembershipRole",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "is_system_template",
+      "physical_column": "is_system_template",
+      "exists": true,
+      "type": "boolean",
+      "nullable": false,
+      "default": {
+        "kind": "DATABASE_LITERAL_DEFAULT",
+        "value": "false"
+      }
+    },
+    {
+      "logical_field": "created_by_user_id",
+      "physical_column": "created_by_user_id",
+      "exists": true,
+      "type": "text",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    },
+    {
+      "logical_field": "created_at",
+      "physical_column": "created_at",
+      "exists": true,
+      "type": "timestamp(3) without time zone",
+      "nullable": false,
+      "default": {
+        "kind": "DATABASE_EXPRESSION_DEFAULT",
+        "value": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "logical_field": "updated_at",
+      "physical_column": "updated_at",
+      "exists": true,
+      "type": "timestamp(3) without time zone",
+      "nullable": false,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      }
+    }
+  ]
+}
