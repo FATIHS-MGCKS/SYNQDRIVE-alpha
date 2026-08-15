@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1.2",
+  "repair_authority_semantics_changed": "NO",
+  "catalog_proof_added": "YES",
+  "primary_historical_defects": 18,
+  "repair_slots": 10,
+  "repair_slot_range": "7-16",
+  "authority_hashes": {
+    "r3b1d_vendor_contracts": "2de242cfa2ad4059515693efd6f37b6df4c89a0759ef41633dade8214a73ee52",
+    "r3b1d_remaining_contracts": "6f29f9f766bb0a1695a4e6880f2832f87ac7a935a72710870e7875fae17becee",
+    "r3b1d_repair_closure": "45ed02bd800832a3a2fe2b9e660d60e50606db606baa1bf85686dc98975e7984",
+    "r3b1d_repair_topology": "a241b3abb63404f9aaa4ab032c13788f62e409bbf003ed1105cb63a84a680c00",
+    "r3b1d1_repair_topology": "23cfe27c0c51b620ac7efec3098f8dcb5de53a1e45509404c4363dacf084d050",
+    "r3b1d1_repair_action_graph": "8bc034b93e5c79c3ac61f4711c8f4e8f6199b34326eede0dafe3ffca754b42b5",
+    "r3b1d11_topology_summary": "c98af1b33d126ea4951106bf5e701a8458938c6a76f675d67e984c8cbd4906d8",
+    "r3b1d11_executable_ddl_proof": "ed03176156f85aaa0771535fea1235ba75e6e59a7521043e4a9568bb0742cf82",
+    "r3b1d11_deferred_endpoint_proof": "8492b0f6e600bd2269f03b26f9c7ecd7032d6dc8470b7bcb86363845409105fa",
+    "r3b1b_sql_literal_compiler": "52652ea6bd411c88f617dd7a9b8ec4464f57d91abcee69e59470ba593a763693",
+    "r3b1d1_validate_topology": "a8990b68446e65ccec4475a0836b0e7e8769b238c7812cda6b7d8de7733d5173"
+  },
+  "missing_authority_files": [],
+  "pass": true
+}

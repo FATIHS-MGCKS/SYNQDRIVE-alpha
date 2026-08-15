@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "branch": "fix/ci-r3b1i-iam-permissions-full-replay-2026-08",
+  "parent_branch": "fix/ci-r3b1h111-evidence-generic-contract-gates-2026-08",
+  "evidence_input_sha": "37d0904500024bf51dd712fb7398d91dd54c0411",
+  "parent_branch_sha": "37d0904500024bf51dd712fb7398d91dd54c0411",
+  "base_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "authority_source_sha": {
+    "ci-r3b1h111-exact-predecessor-contracts-2026-08.json": "c46518999c0130d1bfeb0ef8ef8f1ee029691880fb394bc424c7e81eb0d661b0",
+    "ci-r3b1h111-targeted-consumer-proof-2026-08.json": "19f347b290741249ccfcf35139ffe1fb8912197f07c360e2a8176b5c64c46517",
+    "ci-r3b1h111-final-validation-summary-2026-08.json": "4e236ea97e3eb1eca687f5c58559547ef9342112f601cbbd593a68733f20ab09"
+  },
+  "accepted_contract": {
+    "relation": "organization_memberships",
+    "column": "permissions",
+    "postgres_type": "jsonb",
+    "nullable": true,
+    "default_semantics": "NO_DATABASE_DEFAULT",
+    "default_value": null,
+    "first_consumer_migration": "20260721250000_iam_versioned_role_assignments"
+  },
+  "provenance_model": "input_only_no_self_referential_final_commit_sha"
+}

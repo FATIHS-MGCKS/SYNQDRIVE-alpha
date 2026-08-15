@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "phase": "CI-R3B1D.1",
-  "supersedes": "ci-r3b1d-post-vendor-repair-topology-2026-08.json",
+  "phase": "CI-R3B1D.1.1",
+  "supersedes": "ci-r3b1d1-post-vendor-repair-topology-2026-08.json",
   "target_first_consumer": "20260613210000_vendor_management_overhaul",
   "known_valid_objects": {
     "ActivityEntity": {

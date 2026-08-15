@@ -1,0 +1,581 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.1",
+  "authority_manifest_sha256": "97045c37c426b391ec51abdeea38088d5ace6617828a3b14de7dcaecc0d8eea4",
+  "objects_expected": 19,
+  "objects_checked": 19,
+  "objects_matched": 19,
+  "tables_expected": 9,
+  "tables_checked": 9,
+  "tables_matched": 9,
+  "enums_expected": 10,
+  "enums_checked": 10,
+  "enums_matched": 10,
+  "properties_expected": 54,
+  "properties_checked": 54,
+  "properties_matched": 54,
+  "property_results": [
+    {
+      "authority_id": "P001",
+      "property_identity": "vehicle_trips:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P002",
+      "property_identity": "vehicle_trips:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P003",
+      "property_identity": "vehicle_trips:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P004",
+      "property_identity": "vehicle_trips:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P005",
+      "property_identity": "vehicle_trips:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P006",
+      "property_identity": "vehicle_trips:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P007",
+      "property_identity": "driving_events:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P008",
+      "property_identity": "driving_events:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P009",
+      "property_identity": "driving_events:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P010",
+      "property_identity": "driving_events:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P011",
+      "property_identity": "driving_events:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P012",
+      "property_identity": "driving_events:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P013",
+      "property_identity": "trip_behavior_events:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P014",
+      "property_identity": "trip_behavior_events:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P015",
+      "property_identity": "trip_behavior_events:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P016",
+      "property_identity": "trip_behavior_events:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P017",
+      "property_identity": "trip_behavior_events:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P018",
+      "property_identity": "trip_behavior_events:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P019",
+      "property_identity": "vehicle_trip_waypoints:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P020",
+      "property_identity": "vehicle_trip_waypoints:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P021",
+      "property_identity": "vehicle_trip_waypoints:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P022",
+      "property_identity": "vehicle_trip_waypoints:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P023",
+      "property_identity": "vehicle_trip_waypoints:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P024",
+      "property_identity": "vehicle_trip_waypoints:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P025",
+      "property_identity": "vehicle_trip_tracking_runs:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P026",
+      "property_identity": "vehicle_trip_tracking_runs:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P027",
+      "property_identity": "vehicle_trip_tracking_runs:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P028",
+      "property_identity": "vehicle_trip_tracking_runs:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P029",
+      "property_identity": "vehicle_trip_tracking_runs:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P030",
+      "property_identity": "vehicle_trip_tracking_runs:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P031",
+      "property_identity": "trip_repairs:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P032",
+      "property_identity": "trip_repairs:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P033",
+      "property_identity": "trip_repairs:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P034",
+      "property_identity": "trip_repairs:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P035",
+      "property_identity": "trip_repairs:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P036",
+      "property_identity": "trip_repairs:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P037",
+      "property_identity": "trip_driving_impact:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P038",
+      "property_identity": "trip_driving_impact:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P039",
+      "property_identity": "trip_driving_impact:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P040",
+      "property_identity": "trip_driving_impact:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P041",
+      "property_identity": "trip_driving_impact:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P042",
+      "property_identity": "trip_driving_impact:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P043",
+      "property_identity": "vehicle_trip_detection_states:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P044",
+      "property_identity": "vehicle_trip_detection_states:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P045",
+      "property_identity": "vehicle_trip_detection_states:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P046",
+      "property_identity": "vehicle_trip_detection_states:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P047",
+      "property_identity": "vehicle_trip_detection_states:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P048",
+      "property_identity": "vehicle_trip_detection_states:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P049",
+      "property_identity": "brake_trip_metrics:columns",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P050",
+      "property_identity": "brake_trip_metrics:types",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P051",
+      "property_identity": "brake_trip_metrics:nullability",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P052",
+      "property_identity": "brake_trip_metrics:defaults",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P053",
+      "property_identity": "brake_trip_metrics:constraints",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "authority_id": "P054",
+      "property_identity": "brake_trip_metrics:indexes",
+      "pass": true,
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ],
+  "enum_results": [
+    {
+      "enum": "TripAssignmentStatus",
+      "pass": true,
+      "expected_labels": [
+        "ASSIGNED_DRIVER",
+        "ASSIGNED_BOOKING_CUSTOMER",
+        "PRIVATE_UNASSIGNED",
+        "UNKNOWN_ASSIGNMENT"
+      ],
+      "actual_labels": [
+        "ASSIGNED_DRIVER",
+        "ASSIGNED_BOOKING_CUSTOMER",
+        "PRIVATE_UNASSIGNED",
+        "UNKNOWN_ASSIGNMENT"
+      ]
+    },
+    {
+      "enum": "TripAssignmentSubjectType",
+      "pass": true,
+      "expected_labels": [
+        "DRIVER",
+        "BOOKING_CUSTOMER"
+      ],
+      "actual_labels": [
+        "DRIVER",
+        "BOOKING_CUSTOMER"
+      ]
+    },
+    {
+      "enum": "DrivingEventType",
+      "pass": true,
+      "expected_labels": [
+        "HARSH_BRAKING",
+        "EXTREME_BRAKING",
+        "HARSH_ACCELERATION",
+        "HARSH_CORNERING",
+        "SPEEDING",
+        "IDLE_EXCESSIVE",
+        "UNMAPPED_PROVIDER_EVENT",
+        "SAFETY_COLLISION"
+      ],
+      "actual_labels": [
+        "HARSH_BRAKING",
+        "EXTREME_BRAKING",
+        "HARSH_ACCELERATION",
+        "HARSH_CORNERING",
+        "SPEEDING",
+        "IDLE_EXCESSIVE",
+        "UNMAPPED_PROVIDER_EVENT",
+        "SAFETY_COLLISION"
+      ]
+    },
+    {
+      "enum": "BehaviorEventCategory",
+      "pass": true,
+      "expected_labels": [
+        "ACCELERATION",
+        "BRAKING",
+        "ABUSE"
+      ],
+      "actual_labels": [
+        "ACCELERATION",
+        "BRAKING",
+        "ABUSE"
+      ]
+    },
+    {
+      "enum": "BehaviorEventClassification",
+      "pass": true,
+      "expected_labels": [
+        "LIGHT",
+        "MODERATE",
+        "HARD",
+        "EXTREME",
+        "WARNING",
+        "SEVERE",
+        "CRITICAL"
+      ],
+      "actual_labels": [
+        "LIGHT",
+        "MODERATE",
+        "HARD",
+        "EXTREME",
+        "WARNING",
+        "SEVERE",
+        "CRITICAL"
+      ]
+    },
+    {
+      "enum": "TripSource",
+      "pass": true,
+      "expected_labels": [
+        "V2_LIVE",
+        "REPAIRED"
+      ],
+      "actual_labels": [
+        "V2_LIVE",
+        "REPAIRED"
+      ]
+    },
+    {
+      "enum": "TripDetectionState",
+      "pass": true,
+      "expected_labels": [
+        "RESTING",
+        "POSSIBLE_START",
+        "ACTIVE_TRIP",
+        "IDLE_WITHIN_TRIP",
+        "POSSIBLE_END",
+        "ENDED"
+      ],
+      "actual_labels": [
+        "RESTING",
+        "POSSIBLE_START",
+        "ACTIVE_TRIP",
+        "IDLE_WITHIN_TRIP",
+        "POSSIBLE_END",
+        "ENDED"
+      ]
+    },
+    {
+      "enum": "TripTrackingRunType",
+      "pass": true,
+      "expected_labels": [
+        "POSSIBLE_START_VALIDATION",
+        "ACTIVE_TRACKING",
+        "POSSIBLE_END_CHECK",
+        "END_VALIDATION",
+        "FINALIZATION_CHECK"
+      ],
+      "actual_labels": [
+        "POSSIBLE_START_VALIDATION",
+        "ACTIVE_TRACKING",
+        "POSSIBLE_END_CHECK",
+        "END_VALIDATION",
+        "FINALIZATION_CHECK"
+      ]
+    },
+    {
+      "enum": "VehicleDetectionProfile",
+      "pass": true,
+      "expected_labels": [
+        "ICE",
+        "EV",
+        "HYBRID",
+        "UNKNOWN"
+      ],
+      "actual_labels": [
+        "ICE",
+        "EV",
+        "HYBRID",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "enum": "DetectionConfidence",
+      "pass": true,
+      "expected_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "actual_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    }
+  ],
+  "vehicle_trips_trip_status": {
+    "column": "vehicle_trips.trip_status",
+    "expected_type": "\"TripStatus\"",
+    "actual_type": "\"TripStatus\"",
+    "expected_default": "'ONGOING'::\"TripStatus\"",
+    "actual_default": "'ONGOING'::\"TripStatus\"",
+    "historical_state_a_default": "'COMPLETED'::\"TripStatus\"",
+    "accepted_final_default": "'ONGOING'::\"TripStatus\"",
+    "completed_to_ongoing_reconciled": true,
+    "pass": true
+  },
+  "mismatch_records": [],
+  "mismatch_counters": {},
+  "pass": true
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L",
+  "terminal_status_authority": "CI_R3B021_FINAL_CONVERGENCE_COMPLETED",
+  "AUTHORITY_MANIFEST_SHA256": "97045c37c426b391ec51abdeea38088d5ace6617828a3b14de7dcaecc0d8eea4",
+  "authority_artifacts": [
+    {
+      "path": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0",
+      "role": "ACCEPTED_CI_R3A71_PRODUCTION_JSON"
+    },
+    {
+      "path": "docs/audits/ci-recovery/ci-r3b-bootstrap-predecessor-shape-ledger-2026-08.md",
+      "sha256": "253db43845cfe231ddbaccb2d7030c766f5a65314be05cdd44c59476c3066e07",
+      "role": "R3B021_FINAL_CONVERGENCE_LEDGER"
+    },
+    {
+      "path": "docs/audits/ci-recovery/ci-r3b-executable-contract-2026-08.md",
+      "sha256": "3e5b87ed1314e9e220f74bc3bce8ab25b249060e9032758ed95b018c454b1314",
+      "role": "R3B_EXECUTABLE_CONTRACT"
+    }
+  ],
+  "authority_object_count": 19,
+  "authority_unique_object_count": 19,
+  "authority_table_count": 9,
+  "authority_enum_count": 10,
+  "authority_property_category_count": 54,
+  "authority_unique_property_category_count": 54,
+  "counts_verified": true
+}

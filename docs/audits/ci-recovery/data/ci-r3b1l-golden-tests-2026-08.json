@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "tests": [
+    {
+      "name": "same_count_wrong_type",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "TYPE_MISMATCH",
+            "column": "b",
+            "expected": "integer",
+            "actual": "bigint"
+          }
+        ]
+      }
+    },
+    {
+      "name": "same_count_wrong_nullability",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "NULLABILITY_MISMATCH",
+            "column": "a",
+            "expected": false,
+            "actual": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "same_count_wrong_default",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "DEFAULT_MISMATCH",
+            "column": "a",
+            "expected": {
+              "kind": "NO_DATABASE_DEFAULT",
+              "value": null
+            },
+            "actual": {
+              "kind": "DATABASE_LITERAL_DEFAULT",
+              "value": "x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "column_replacement_same_count",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "MISSING_COLUMN",
+            "column": "b"
+          },
+          {
+            "category": "UNEXPECTED_COLUMN",
+            "column": "c"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_pk_same_count",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "PK_MISMATCH",
+            "constraint": "t_pkey",
+            "expected": [
+              "id"
+            ],
+            "actual": [
+              "other"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_fk_target",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_ENDPOINT_MISMATCH",
+            "constraint": "t_fkey",
+            "field": "referenced_table",
+            "expected": "a",
+            "actual": "b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_fk_action",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_ACTION_MISMATCH",
+            "constraint": "t_fkey",
+            "field": "on_update",
+            "expected": "CASCADE",
+            "actual": "NO ACTION"
+          },
+          {
+            "category": "FK_ACTION_MISMATCH",
+            "constraint": "t_fkey",
+            "field": "on_delete",
+            "expected": "CASCADE",
+            "actual": "NO ACTION"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_index_column_order",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_MISMATCH",
+            "index": "idx",
+            "field": "columns",
+            "expected": [
+              "a",
+              "b"
+            ],
+            "actual": [
+              "b",
+              "a"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "extra_index",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "UNEXPECTED_OBJECT",
+            "index": "extra"
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing_index",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_MISMATCH",
+            "index": "idx",
+            "issue": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "name": "enum_label_replacement",
+      "pass": true,
+      "detail": {
+        "expected": [
+          "A",
+          "B",
+          "C"
+        ],
+        "actual": [
+          "A",
+          "X",
+          "C"
+        ]
+      }
+    },
+    {
+      "name": "enum_order_only",
+      "pass": true,
+      "detail": {
+        "expected": [
+          "A",
+          "B"
+        ],
+        "actual": [
+          "B",
+          "A"
+        ]
+      }
+    },
+    {
+      "name": "property_universe_53",
+      "pass": true,
+      "detail": {
+        "schema_version": 1,
+        "authority_ids_total": 54,
+        "authority_ids_evaluated": 53,
+        "authority_ids_matched": 53,
+        "duplicate_evaluations": [],
+        "missing_evaluations": [
+          "P054"
+        ],
+        "unexpected_evaluations": [],
+        "pass": false
+      }
+    },
+    {
+      "name": "property_universe_55",
+      "pass": true,
+      "detail": {
+        "schema_version": 1,
+        "authority_ids_total": 54,
+        "authority_ids_evaluated": 55,
+        "authority_ids_matched": 55,
+        "duplicate_evaluations": [],
+        "missing_evaluations": [],
+        "unexpected_evaluations": [
+          "P999"
+        ],
+        "pass": false
+      }
+    },
+    {
+      "name": "old_37_37_rejection",
+      "pass": true,
+      "detail": {
+        "properties_expected": 54,
+        "properties_checked": 37,
+        "properties_matched": 37,
+        "pass": true
+      }
+    },
+    {
+      "name": "hardcoded_zero_detector",
+      "pass": true,
+      "detail": {
+        "TYPE_MISMATCH": 1
+      }
+    }
+  ],
+  "pass": true,
+  "passed": 16,
+  "total": 16
+}

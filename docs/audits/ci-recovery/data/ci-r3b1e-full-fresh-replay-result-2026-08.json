@@ -1,0 +1,170 @@
+{
+  "PRE_R3B1E_SHA": "3fcac840f66613928e9ccbebd30786bf83b28b04",
+  "BASE_R3B1D12_SHA": "3fcac840f66613928e9ccbebd30786bf83b28b04",
+  "IMPLEMENTATION_AUTHORITY_MANIFEST_SHA256": "bc28f325d1a97cfe5f075c238f329950f8410aff94b7ee3b1d8d2ab9b2e0fa73",
+  "REPLAY_INPUT_MANIFEST_SHA256": "29161805b756f68957a12427146ba7424361c30a7d3b6de54c38847f37c8cafb",
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "database_identifier": "synqdrive_r3b1e_full_replay",
+  "production_connection": false,
+  "migration_directories": 303,
+  "normal_migrations_applied": 156,
+  "special_migrations_handled": 1,
+  "failed_migrations": 1,
+  "migration_state_reconciliations": [
+    {
+      "migration": "20260413230000_add_composite_indexes_batch_c",
+      "operation": "prisma migrate resolve --applied",
+      "validated_before_resolve": true
+    }
+  ],
+  "manual_operator_interventions": 0,
+  "first_failed_migration": "20260716183000_tire_lifecycle_invariants",
+  "failure_ordinal": 157,
+  "sqlstate": "42703",
+  "error_message": "column \"status\" does not exist",
+  "failure_classification": "UNRELATED_HISTORICAL_DEFECT",
+  "last_applied_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "post_vendor_slot_runtime": [
+    {
+      "slot": 7,
+      "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "VendorCategory": "PASS",
+        "VendorSourceType": "PASS",
+        "vendor_vehicles": "PASS",
+        "vendors": "PASS"
+      },
+      "first_consumer": "20260613210000_vendor_management_overhaul",
+      "consumer_status": "PASS"
+    },
+    {
+      "slot": 8,
+      "migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "WorkflowStatus": "PASS",
+        "org_workflows": "PASS"
+      },
+      "first_consumer": "20260616140000_workflow_automation_runtime",
+      "consumer_status": "PASS"
+    },
+    {
+      "slot": 9,
+      "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "TireHealthStatus": "PASS",
+        "TirePosition": "PASS",
+        "TireSeason": "PASS",
+        "tires": "PASS"
+      },
+      "first_consumer": "20260617120000_tire_identity_mounted_dismounted",
+      "consumer_status": "PASS"
+    },
+    {
+      "slot": 10,
+      "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "DamageSeverity": "PASS",
+        "DamageType": "PASS",
+        "vehicle_damage_images": "PASS",
+        "vehicle_damages": "PASS"
+      },
+      "first_consumer": "20260618180000_vehicle_damage_lifecycle",
+      "consumer_status": "PASS"
+    },
+    {
+      "slot": 11,
+      "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "WhatsAppAiMode": "PASS",
+        "org_whatsapp_configs": "PASS",
+        "whatsapp_conversations": "PASS",
+        "whatsapp_messages": "PASS"
+      },
+      "first_consumer": "20260620190000_whatsapp_business_platform",
+      "consumer_status": "PASS"
+    },
+    {
+      "slot": 12,
+      "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "tire_health_snapshots": "PASS",
+        "tire_wear_data_points": "PASS"
+      },
+      "first_consumer": "20260716180000_tire_evidence_ground_truth_provenance",
+      "consumer_status": "PASS"
+    },
+    {
+      "slot": 13,
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "repair_migration_status": "PASS",
+      "objects": {
+        "TireSetupStatus": "PASS"
+      },
+      "first_consumer": "20260716183000_tire_lifecycle_invariants",
+      "consumer_status": "NOT_REACHED"
+    },
+    {
+      "slot": 14,
+      "migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "repair_migration_status": "NOT_REACHED",
+      "objects": {
+        "TireEventType": "NOT_REACHED"
+      },
+      "first_consumer": "20260716200000_tire_odometer_anchor_backfill_event",
+      "consumer_status": "NOT_REACHED"
+    },
+    {
+      "slot": 15,
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "repair_migration_status": "NOT_REACHED",
+      "objects": {
+        "InsightEntityScope": "NOT_REACHED",
+        "InsightSeverity": "NOT_REACHED",
+        "InsightType": "NOT_REACHED",
+        "dashboard_insight_runs": "NOT_REACHED",
+        "dashboard_insights": "NOT_REACHED"
+      },
+      "first_consumer": "20260724130000_dashboard_insight_calculation_meta",
+      "consumer_status": "NOT_REACHED"
+    },
+    {
+      "slot": 16,
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "repair_migration_status": "NOT_REACHED",
+      "objects": {
+        "chat_messages": "NOT_REACHED"
+      },
+      "first_consumer": "20260725120000_chat_message_structured_payload",
+      "consumer_status": "NOT_REACHED"
+    }
+  ],
+  "high_risk_runtime": {
+    "VendorCategory": "PASS",
+    "vendors": "PASS",
+    "vendor_vehicles": "PASS",
+    "WorkflowStatus": "PASS",
+    "org_workflows": "PASS",
+    "vehicle_damages": "PASS",
+    "vehicle_damage_images": "PASS",
+    "org_tasks": "PASS",
+    "brake_health_current": "PASS",
+    "battery_evidence": "PASS",
+    "vehicle_document_extractions": "PASS",
+    "org_invoices": "PASS",
+    "vehicle_dtc_events": "PASS",
+    "vehicle_driving_impact_current": "PASS",
+    "InsightType": "PASS"
+  },
+  "r3b_parity": {
+    "pass": false,
+    "status": "NOT_RUN"
+  },
+  "full_replay_pass": false,
+  "final_status": "CI_R3B1E_POST_VENDOR_REPAIR_FULL_REPLAY_PARTIAL"
+}

@@ -1,0 +1,359 @@
+{
+  "range_start": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "range_end": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+  "migrations_scanned": 54,
+  "identifiers_scanned": 239,
+  "overlength_identifiers_total": 8,
+  "migration252_collision_groups": 1,
+  "additional_later_collision_groups": 1,
+  "later_collision_groups": [
+    {
+      "normalized_identifier": "organization_legal_document_retention_policies_organization_id_",
+      "members": [
+        {
+          "migration": "20260722250000_legal_document_retention_legal_hold",
+          "statement_ordinal": 6,
+          "raw_identifier": "organization_legal_document_retention_policies_organization_id_key",
+          "raw_byte_length": 66,
+          "normalized_identifier": "organization_legal_document_retention_policies_organization_id_",
+          "truncated": true
+        },
+        {
+          "migration": "20260722250000_legal_document_retention_legal_hold",
+          "statement_ordinal": 7,
+          "raw_identifier": "organization_legal_document_retention_policies_organization_id_fkey",
+          "raw_byte_length": 67,
+          "normalized_identifier": "organization_legal_document_retention_policies_organization_id_",
+          "truncated": true
+        }
+      ]
+    }
+  ],
+  "per_migration": [
+    {
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "identifiers_scanned": 6,
+      "overlength_identifiers": 5,
+      "local_collision_groups": 1
+    },
+    {
+      "migration": "20260722000000_iam_audit_outbox_v2",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722100000_iam_membership_lifecycle",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722100000_legal_document_privacy_pointers",
+      "identifiers_scanned": 6,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722110000_iam_mfa_step_up",
+      "identifiers_scanned": 15,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722110000_legal_document_single_active_invariant",
+      "identifiers_scanned": 1,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722120000_iam_access_review",
+      "identifiers_scanned": 26,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722120000_legal_document_lifecycle",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722130000_iam_data_retention",
+      "identifiers_scanned": 23,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722130000_legal_document_lifecycle_events",
+      "identifiers_scanned": 3,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722140000_legal_document_consumer_information",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722150000_legal_document_application_scope",
+      "identifiers_scanned": 4,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722160000_legal_document_permissions",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722170000_legal_document_pdf_validation",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722180000_legal_document_malware_scanner",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722190000_legal_document_storage_integrity",
+      "identifiers_scanned": 2,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722200000_rental_contract_legal_snapshot",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722210000_legal_document_delivery_evidence",
+      "identifiers_scanned": 7,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722220000_booking_document_generation_jobs",
+      "identifiers_scanned": 4,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722230000_booking_pickup_gate_audit",
+      "identifiers_scanned": 6,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722240000_outbound_email_send_idempotency",
+      "identifiers_scanned": 1,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260722250000_legal_document_retention_legal_hold",
+      "identifiers_scanned": 14,
+      "overlength_identifiers": 2,
+      "local_collision_groups": 1
+    },
+    {
+      "migration": "20260722260000_booking_eligibility_approval",
+      "identifiers_scanned": 9,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723100000_rental_rules_db_integrity",
+      "identifiers_scanned": 14,
+      "overlength_identifiers": 1,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723110000_rental_rules_optimistic_concurrency",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723120000_rental_category_lifecycle",
+      "identifiers_scanned": 1,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723130000_rental_rule_revisions",
+      "identifiers_scanned": 5,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723210000_booking_eligibility_decisions",
+      "identifiers_scanned": 8,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723220000_business_audit_outbox",
+      "identifiers_scanned": 10,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723230000_booking_eligibility_recheck_events",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723240000_rental_rule_revisions_one_draft_per_scope",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "identifiers_scanned": 5,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260724130000_dashboard_insight_calculation_meta",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260724200000_iam_audit_outbox_processing_status_column",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "identifiers_scanned": 2,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725120000_chat_message_structured_payload",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725120000_workflow_maker_checker",
+      "identifiers_scanned": 2,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725130000_ai_request_audit_logging",
+      "identifiers_scanned": 6,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725140000_workflow_audit_ai_transparency",
+      "identifiers_scanned": 8,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725140000_workflow_shadow_mode",
+      "identifiers_scanned": 4,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725160000_workflow_archived_status",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725160000_workflow_runtime_rollout",
+      "identifiers_scanned": 3,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725180000_task_automation_workflow_migration",
+      "identifiers_scanned": 9,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725180000_vehicle_warnings_dedup_indexes",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725200000_vehicle_warnings_phase2_integrity",
+      "identifiers_scanned": 9,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260725230000_booking_handover_drafts",
+      "identifiers_scanned": 6,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260726120000_workflow_notification_idempotency",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260726130000_notification_task_linking",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260726140000_notification_gdpr_retention",
+      "identifiers_scanned": 2,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260726140000_vehicles_dimo_vehicle_id_partial_unique",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260726150000_notification_audit_events",
+      "identifiers_scanned": 9,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260726180000_activity_audit_log_append_only",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260811060000_evaluations_entity_references",
+      "identifiers_scanned": 9,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    },
+    {
+      "migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "identifiers_scanned": 0,
+      "overlength_identifiers": 0,
+      "local_collision_groups": 0
+    }
+  ],
+  "UNRESOLVED": 0
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1.2",
+  "baseline_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "existing_migration_sql_changed": 0,
+  "migration_changes": [],
+  "schema_prisma_changed": false,
+  "runtime_code_changed": false,
+  "pass": true
+}

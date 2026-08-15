@@ -5,12 +5,16 @@
   "duplicate_creates": 0,
   "graph_cycles": 0,
   "invalid_fk_actions": 0,
+  "invalid_fk_target_keys": 0,
   "invalid_index_actions": 0,
+  "invalid_unique_actions": 0,
   "invalid_type_dependencies": 0,
   "invalid_sequence_dependencies": 0,
   "invalid_table_actions": 0,
   "cross_slot_duplicate_creates": 0,
   "unresolved_deferred_endpoints": 0,
+  "deferred_endpoint_total": 1,
+  "deferred_endpoint_resolved": 1,
   "slot_results": [
     {
       "slot": 7,
@@ -36,7 +40,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 7,
@@ -54,7 +60,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 7,
@@ -72,7 +80,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -114,6 +124,21 @@
             "organization_id"
           ],
           "action_order": 12,
+          "valid": true
+        }
+      ],
+      "unique_proofs": [
+        {
+          "slot": 7,
+          "constraint": "vendor_vehicles_vendor_id_vehicle_id_key",
+          "action_order": 8,
+          "table": "vendor_vehicles",
+          "columns": [
+            "vendor_id",
+            "vehicle_id"
+          ],
+          "table_exists": true,
+          "columns_exist": true,
           "valid": true
         }
       ],
@@ -160,6 +185,7 @@
           "valid": true
         }
       ],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -187,7 +213,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 9,
@@ -205,7 +233,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -242,6 +272,7 @@
           "valid": true
         }
       ],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -269,7 +300,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 10,
@@ -287,7 +320,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -322,6 +357,7 @@
           "valid": true
         }
       ],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -349,7 +385,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 11,
@@ -367,7 +405,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 11,
@@ -385,7 +425,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 11,
@@ -403,7 +445,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -459,6 +503,33 @@
           "valid": true
         }
       ],
+      "unique_proofs": [
+        {
+          "slot": 11,
+          "constraint": "org_whatsapp_configs_organization_id_key",
+          "action_order": 9,
+          "table": "org_whatsapp_configs",
+          "columns": [
+            "organization_id"
+          ],
+          "table_exists": true,
+          "columns_exist": true,
+          "valid": true
+        },
+        {
+          "slot": 11,
+          "constraint": "whatsapp_conversations_organization_id_contact_phone_key",
+          "action_order": 10,
+          "table": "whatsapp_conversations",
+          "columns": [
+            "organization_id",
+            "contact_phone"
+          ],
+          "table_exists": true,
+          "columns_exist": true,
+          "valid": true
+        }
+      ],
       "final_state_valid": true,
       "pass": true
     },
@@ -486,7 +557,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 12,
@@ -504,7 +577,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 12,
@@ -522,7 +597,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 12,
@@ -540,7 +617,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 12,
@@ -558,7 +637,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -625,6 +706,7 @@
           "valid": true
         }
       ],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -637,6 +719,7 @@
       "simulation_errors": [],
       "fk_proofs": [],
       "index_proofs": [],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -649,6 +732,7 @@
       "simulation_errors": [],
       "fk_proofs": [],
       "index_proofs": [],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -676,7 +760,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 15,
@@ -694,7 +780,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         },
         {
           "slot": 15,
@@ -712,7 +800,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -778,6 +868,7 @@
           "valid": true
         }
       ],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     },
@@ -805,7 +896,9 @@
           "local_columns_available_before": true,
           "referenced_relation_available_before": true,
           "referenced_columns_available_before": true,
-          "valid": true
+          "referenced_key_is_pk_or_unique": true,
+          "valid": true,
+          "invalid_target_key": false
         }
       ],
       "index_proofs": [
@@ -821,6 +914,7 @@
           "valid": true
         }
       ],
+      "unique_proofs": [],
       "final_state_valid": true,
       "pass": true
     }
