@@ -12,7 +12,7 @@ from expression_dependency_extractor import (
     ExpressionDependency,
     extract_statement_expression_dependencies,
 )
-from migration_creator_state import parse_alter_table_actions, parse_create_table_statement
+from migration_creator_state import TABLE_NAME_RE, parse_alter_table_actions, parse_create_table_statement
 
 FIRST_MIG = "20260311224040_init"
 LAST_MIG = "20260425000000_retire_user_assignment_and_speeding_severity"
@@ -166,8 +166,13 @@ def classify_record(
     creator: CreatorRef | None,
     guarded: bool,
     guard_safe: bool | None,
+    force_false_positive: bool = False,
 ) -> str:
+    if force_false_positive:
+        return "FALSE_POSITIVE"
     consumer_ord = mig_order(ctx, mig) or 0
+    if guarded and guard_safe is True:
+        return "CONDITIONAL_SAFE"
     if obj in INTENTIONAL_PASCAL and mig == TARGET_MIG and obj_type == "table":
         return "INTENTIONAL"
     if creator and creator.migration == R3B_BOOTSTRAP and mig != R3B_BOOTSTRAP and obj_type in {
@@ -216,9 +221,24 @@ def add_record(
     guard_safe: bool | None,
     notes: str = "",
     dependency_context: str = "COLUMN_REFERENCE",
+    scope_kind: str | None = None,
+    resolved_relation: str | None = None,
+    resolved_alias: str | None = None,
+    classification_reason: str = "",
+    force_false_positive: bool = False,
 ) -> None:
     ctx.seq += 1
-    cls = classify_record(ctx, mig, stmt_order, obj, obj_type, creator, guarded, guard_safe)
+    cls = classify_record(
+        ctx,
+        mig,
+        stmt_order,
+        obj,
+        obj_type,
+        creator,
+        guarded,
+        guard_safe,
+        force_false_positive=force_false_positive,
+    )
     consumer_ord = mig_order(ctx, mig) or 0
     ctx.records.append(
         {
@@ -230,6 +250,9 @@ def add_record(
             "statement_hash": stmt_hash(stmt_text),
             "operation": operation,
             "dependency_context": dependency_context,
+            "resolved_scope_type": scope_kind,
+            "resolved_relation": resolved_relation or (obj if obj_type in {"table", "column"} else None),
+            "resolved_alias": resolved_alias,
             "required_relation": obj if obj_type in {"table", "column"} else None,
             "required_object": obj,
             "required_object_type": obj_type,
@@ -242,6 +265,7 @@ def add_record(
             "guarded": guarded,
             "guard_semantically_safe": guard_safe,
             "classification": cls,
+            "reason": classification_reason or notes,
             "evidence": [
                 f"{ctx.mig_dir.name}/{mig}/migration.sql:statement:{stmt_order}",
                 stmt_excerpt(stmt_text, 80),
@@ -263,6 +287,28 @@ def add_expression_dependency_records(
     if_not_exists: bool = False,
 ) -> None:
     for dep in deps:
+        if dep.false_positive:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                f"CREATE INDEX {dep.context.lower()}",
+                dep.table,
+                "column",
+                dep.column,
+                None,
+                guarded,
+                guard_safe,
+                notes=dep.reason,
+                dependency_context=dep.context,
+                scope_kind=dep.scope_kind,
+                resolved_relation=dep.resolved_relation,
+                resolved_alias=dep.resolved_alias,
+                classification_reason=dep.reason,
+                force_false_positive=True,
+            )
+            continue
         add_record(
             ctx,
             mig,
@@ -276,6 +322,10 @@ def add_expression_dependency_records(
             if_not_exists or guarded,
             guard_safe if guarded else None,
             dependency_context=dep.context,
+            scope_kind=dep.scope_kind,
+            resolved_relation=dep.resolved_relation,
+            resolved_alias=dep.resolved_alias,
+            classification_reason=dep.reason,
         )
 
 
@@ -365,7 +415,7 @@ def analyze_do_block_guard(stmt: str) -> tuple[bool, bool | None]:
 
 
 def extract_create_table(table: str, stmt: str) -> tuple[list[str], list[str], list[tuple[str, str]]]:
-    parsed_table, columns, constraints = parse_create_table_statement(stmt)
+    parsed_table, columns, constraints, _parsed = parse_create_table_statement(stmt)
     if parsed_table != table:
         return [], [], []
     cols = [c.name for c in columns]
@@ -389,7 +439,7 @@ def apply_statement(ctx: AnalyzerContext, mig: str, stmt_order: int, stmt: str, 
         register_type(ctx, typ, mig, stmt_order)
         state.types.add(typ)
 
-    table_name, column_defs, constraint_names = parse_create_table_statement(stmt)
+    table_name, column_defs, constraint_names, parsed_constraints = parse_create_table_statement(stmt)
     if table_name:
         register_table(ctx, table_name, mig, stmt_order)
         state.tables.add(table_name)
@@ -399,6 +449,11 @@ def apply_statement(ctx: AnalyzerContext, mig: str, stmt_order: int, stmt: str, 
         for con in constraint_names:
             register_constraint(ctx, con, mig, stmt_order)
             state.constraints[table_name].add(con)
+        for parsed in parsed_constraints:
+            if parsed.name.startswith("__"):
+                continue
+            register_constraint(ctx, parsed.name, mig, stmt_order)
+            state.constraints[table_name].add(parsed.name)
 
     for action in parse_alter_table_actions(stmt):
         if action.kind == "ADD_COLUMN":
@@ -430,14 +485,15 @@ def apply_statement(ctx: AnalyzerContext, mig: str, stmt_order: int, stmt: str, 
             state.indexes[on_m.group(1)].add(m.group(1))
 
     for m in re.finditer(
-        r'ADD\s+CONSTRAINT\s+"([^"]+)"',
+        r'ADD\s+CONSTRAINT\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))',
         stmt,
         re.I,
     ):
-        register_constraint(ctx, m.group(1), mig, stmt_order)
-        tbl_m = re.search(r'ALTER\s+TABLE\s+"([^"]+)"', stmt, re.I)
+        register_constraint(ctx, m.group(1) or m.group(2), mig, stmt_order)
+        tbl_m = re.search(rf'ALTER\s+TABLE\s+{TABLE_NAME_RE}', stmt, re.I)
         if tbl_m:
-            state.constraints[tbl_m.group(1)].add(m.group(1))
+            table = (tbl_m.group(1) or tbl_m.group(2)).strip('"')
+            state.constraints[table].add(m.group(1) or m.group(2))
 
     if re.search(r'ALTER\s+TABLE\s+"([^"]+)"\s+DROP\s+COLUMN', stmt, re.I):
         m = re.search(
@@ -468,7 +524,7 @@ def check_statement_dependencies(
     upper = stmt.upper()
 
     # CREATE TABLE internal enum/type prerequisites (quoted and unquoted)
-    parsed_table, _, _ = parse_create_table_statement(stmt)
+    parsed_table, _, _, _ = parse_create_table_statement(stmt)
     if parsed_table:
         table = parsed_table
         _, _, enum_refs = extract_create_table(table, stmt)
@@ -780,19 +836,25 @@ def check_statement_dependencies(
                 guard_safe,
             )
 
-    for m in re.finditer(r'DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?"([^"]+)"', stmt, re.I):
+    for m in re.finditer(
+        r'DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?(?:"([^"]+)"|([a-z_][a-z0-9_]*))',
+        stmt,
+        re.I,
+    ):
+        con_name = m.group(1) or m.group(2)
+        if_exists = "IF EXISTS" in m.group(0).upper()
         add_record(
             ctx,
             mig,
             stmt_order,
             stmt,
             "DROP CONSTRAINT",
-            m.group(1),
+            con_name,
             "constraint",
             None,
-            creator_for_constraint(ctx, m.group(1)),
-            "IF EXISTS" in m.group(0).upper() or guarded,
-            True if "IF EXISTS" in m.group(0).upper() else guard_safe,
+            creator_for_constraint(ctx, con_name),
+            if_exists or guarded,
+            True if if_exists else guard_safe,
         )
 
     for m in re.finditer(

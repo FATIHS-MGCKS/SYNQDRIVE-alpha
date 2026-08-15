@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
+from migration_creator_state import split_top_level_commas
+
 DependencyContext = Literal[
     "COLUMN_REFERENCE",
     "INDEX_KEY",
@@ -154,6 +156,11 @@ class ExpressionDependency:
     column: str
     context: DependencyContext
     schema: str = "public"
+    scope_kind: str | None = None
+    resolved_relation: str | None = None
+    resolved_alias: str | None = None
+    false_positive: bool = False
+    reason: str = ""
 
 
 def strip_sql_comments(sql: str) -> str:
@@ -199,9 +206,22 @@ def is_false_positive_identifier(name: str) -> bool:
     return False
 
 
+def strip_json_key_operators(expr: str) -> str:
+    expr = re.sub(r"->>\s*''", " ", expr)
+    expr = re.sub(r"->>\s*'[^']*'", " ", expr)
+    expr = re.sub(r"->\s*'[^']*'", " ", expr)
+    expr = re.sub(r"#>>\s*'\{[^}]*\}'", " ", expr)
+    expr = re.sub(r"#>\s*'\{[^}]*\}'", " ", expr)
+    return expr
+
+
+def strip_cast_type_suffixes(expr: str) -> str:
+    return re.sub(r"::\s*[a-z_][a-z0-9_]*(?:\(\d+\))?", " ", expr, flags=re.I)
+
+
 def extract_columns_from_expression(expr: str, default_table: str | None) -> list[tuple[str, str]]:
     """Return deduplicated (table, column) pairs referenced in an expression."""
-    expr = normalize_expr(expr)
+    expr = strip_cast_type_suffixes(strip_json_key_operators(normalize_expr(expr)))
     found: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
 
@@ -294,12 +314,15 @@ def parse_create_index(stmt: str) -> list[dict[str, str | None]]:
 
 
 def extract_index_key_columns(cols_part: str) -> list[str]:
+    stripped = strip_string_literals(cols_part).strip()
+    if "(" in stripped:
+        return []
     cols: list[str] = []
     for m in re.finditer(r'"([^"]+)"', cols_part):
         cols.append(m.group(1))
     if cols:
         return cols
-    for m in re.finditer(r"\b([a-z_][a-z0-9_]*)\b", cols_part, re.I):
+    for m in re.finditer(r"\b([a-z_][a-z0-9_]*)\b", stripped, re.I):
         if not is_false_positive_identifier(m.group(1)):
             cols.append(m.group(1))
     return cols
@@ -307,6 +330,23 @@ def extract_index_key_columns(cols_part: str) -> list[str]:
 
 def extract_index_expression_columns(cols_part: str, table: str) -> list[tuple[str, str]]:
     expr_cols: list[tuple[str, str]] = []
+    stripped = cols_part.strip()
+
+    def unwrap_expression(value: str) -> str:
+        inner = value.strip()
+        while inner.startswith("(") and inner.endswith(")"):
+            candidate = inner[1:-1].strip()
+            if not candidate or candidate == inner:
+                break
+            inner = candidate
+        return inner
+
+    inner = unwrap_expression(stripped)
+    if inner != stripped or any(op in inner for op in ("->", ">>", "#>", "::")):
+        expr_cols.extend(extract_columns_from_expression(inner, table))
+        if expr_cols:
+            return expr_cols
+
     if "(" in cols_part and ")" in cols_part:
         for fn_m in re.finditer(r"\b([a-z_][a-z0-9_]*)\s*\(([^)]+)\)", cols_part, re.I):
             fn = fn_m.group(1).lower()
@@ -370,26 +410,88 @@ def extract_alter_using_dependencies(stmt: str) -> list[ExpressionDependency]:
     return deps
 
 
-def extract_update_dependencies(stmt: str) -> list[ExpressionDependency]:
+def _refs_to_deps(refs, context: DependencyContext) -> list[ExpressionDependency]:
     deps: list[ExpressionDependency] = []
-    tbl_m = re.search(r'UPDATE\s+"([^"]+)"', stmt, re.I)
-    table = tbl_m.group(1) if tbl_m else None
-    if not table:
-        return deps
-    set_m = re.search(r"\bSET\b(.+?)(?:\bWHERE\b|;|$)", stmt, re.I | re.S)
-    if not set_m:
-        return deps
-    for assign_m in re.finditer(r'"([^"]+)"\s*=\s*([^,;]+)', set_m.group(1)):
-        rhs = assign_m.group(2)
-        if re.search(r"^\s*'[^']*'", rhs):
+    seen: set[tuple[str, str, str]] = set()
+    for ref in refs:
+        key = (ref.table, ref.column, context)
+        if key in seen:
             continue
-        if re.search(r"^\s*\d", rhs):
-            continue
-        for table_name, col in extract_columns_from_expression(rhs, table):
-            if col == assign_m.group(1):
-                continue
-            deps.append(ExpressionDependency(table=table_name, column=col, context="UPDATE_EXPRESSION"))
+        seen.add(key)
+        deps.append(
+            ExpressionDependency(
+                table=ref.table,
+                column=ref.column,
+                context=context,
+                scope_kind=ref.scope_kind,
+                resolved_relation=ref.source_relation or ref.table,
+                resolved_alias=ref.alias,
+                false_positive=ref.false_positive,
+                reason=ref.reason,
+            )
+        )
     return deps
+
+
+IDENT_PATTERN = r'(?:"([^"]+)"|([a-z_][a-z0-9_]*))'
+
+
+def extract_update_dependencies(stmt: str) -> list[ExpressionDependency]:
+    from sql_scope_resolver import extract_scoped_expression_columns, parse_update_scope
+
+    scope = parse_update_scope(stmt)
+    if not scope or not scope.target_relation:
+        return []
+    deps: list[ExpressionDependency] = []
+    assign_re = re.compile(rf"^{IDENT_PATTERN}\s*=\s*(.+)$", re.I | re.S)
+    if scope.set_clause:
+        for part in split_top_level_commas(scope.set_clause):
+            assign_m = assign_re.match(part.strip())
+            if not assign_m:
+                continue
+            lhs = assign_m.group(1) or assign_m.group(2)
+            rhs = assign_m.group(3) or ""
+            if re.search(r"^\s*'[^']*'", rhs):
+                continue
+            if re.search(r"^\s*\d", rhs):
+                continue
+            refs = extract_scoped_expression_columns(rhs, scope, scope.target_relation)
+            for ref in refs:
+                dep = ExpressionDependency(
+                    table=ref.table,
+                    column=ref.column,
+                    context="UPDATE_EXPRESSION",
+                    scope_kind=ref.scope_kind,
+                    resolved_relation=ref.source_relation or ref.table,
+                    resolved_alias=ref.alias,
+                    false_positive=ref.false_positive,
+                    reason=ref.reason,
+                )
+                if not ref.false_positive and ref.column == lhs and ref.table == scope.target_relation:
+                    continue
+                deps.append(dep)
+    if scope.where_clause:
+        deps.extend(
+            _refs_to_deps(
+                extract_scoped_expression_columns(scope.where_clause, scope, scope.target_relation),
+                "UPDATE_EXPRESSION",
+            )
+        )
+    return dedupe_dependencies(deps)
+
+
+def extract_delete_dependencies(stmt: str) -> list[ExpressionDependency]:
+    from sql_scope_resolver import extract_scoped_expression_columns, parse_delete_scope
+
+    scope = parse_delete_scope(stmt)
+    if not scope or not scope.target_relation:
+        return []
+    where_m = re.search(r"\bWHERE\b(.+?)(?:;|$)", stmt, re.I | re.S)
+    if not where_m:
+        return []
+    return dedupe_dependencies(
+        _refs_to_deps(extract_scoped_expression_columns(where_m.group(1), scope, scope.target_relation), "UPDATE_EXPRESSION")
+    )
 
 
 def extract_statement_expression_dependencies(stmt: str) -> list[ExpressionDependency]:
@@ -399,8 +501,10 @@ def extract_statement_expression_dependencies(stmt: str) -> list[ExpressionDepen
     deps.extend(extract_check_dependencies(stmt))
     deps.extend(extract_generated_dependencies(stmt))
     deps.extend(extract_alter_using_dependencies(stmt))
-    if re.search(r"\bUPDATE\s+\"", stmt, re.I):
+    if re.search(r"\bUPDATE\b", stmt, re.I):
         deps.extend(extract_update_dependencies(stmt))
+    if re.search(r"\bDELETE\s+FROM\b", stmt, re.I) and re.search(r"\bUSING\b", stmt, re.I):
+        deps.extend(extract_delete_dependencies(stmt))
     return dedupe_dependencies(deps)
 
 

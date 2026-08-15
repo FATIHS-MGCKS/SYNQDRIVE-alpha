@@ -5,15 +5,24 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-AlterActionKind = Literal["ADD_COLUMN", "DROP_COLUMN", "ALTER_COLUMN", "RENAME_COLUMN"]
-
 TABLE_NAME_RE = r'(?:"([^"]+)"|([a-z_][a-z0-9_]*))'
 IDENT_RE = r'(?:"([^"]+)"|([a-z_][a-z0-9_]*))'
+
+@dataclass(frozen=True)
+class ParsedConstraint:
+    name: str
+    kind: Literal["PRIMARY_KEY", "UNIQUE", "FOREIGN_KEY", "CHECK", "EXCLUDE", "OTHER"]
+    columns: list[str]
+    clause_order: int
+
 
 CONSTRAINT_LINE_RE = re.compile(
     r"^\s*(CONSTRAINT|PRIMARY\s+KEY|FOREIGN\s+KEY|UNIQUE|CHECK|EXCLUDE)\b",
     re.I,
 )
+
+
+AlterActionKind = Literal["ADD_COLUMN", "DROP_COLUMN", "ALTER_COLUMN", "RENAME_COLUMN"]
 
 
 @dataclass(frozen=True)
@@ -81,24 +90,77 @@ def split_top_level_commas(text: str) -> list[str]:
     return parts
 
 
-def parse_create_table_statement(stmt: str) -> tuple[str | None, list[ColumnDef], list[str]]:
+def _extract_constraint_columns(part: str) -> list[str]:
+    cols: list[str] = []
+    paren = re.search(r"\(([^)]*)\)", part)
+    if not paren:
+        return cols
+    for m in re.finditer(r'"([^"]+)"', paren.group(1)):
+        cols.append(m.group(1))
+    if cols:
+        return cols
+    for m in re.finditer(r"\b([a-z_][a-z0-9_]*)\b", paren.group(1), re.I):
+        if m.group(1).lower() not in {"asc", "desc", "nulls", "first", "last"}:
+            cols.append(m.group(1))
+    return cols
+
+
+def parse_create_table_constraints(part: str, clause_order: int) -> list[ParsedConstraint]:
+    upper = part.upper()
+    if upper.startswith("CONSTRAINT"):
+        name_m = re.match(rf"CONSTRAINT\s+{IDENT_RE}", part, re.I)
+        if not name_m:
+            return []
+        name = _normalize_table(name_m.group(1) or name_m.group(2))
+        if "PRIMARY KEY" in upper:
+            return [ParsedConstraint(name=name, kind="PRIMARY_KEY", columns=_extract_constraint_columns(part), clause_order=clause_order)]
+        if "UNIQUE" in upper:
+            return [ParsedConstraint(name=name, kind="UNIQUE", columns=_extract_constraint_columns(part), clause_order=clause_order)]
+        if "FOREIGN KEY" in upper:
+            return [ParsedConstraint(name=name, kind="FOREIGN_KEY", columns=_extract_constraint_columns(part), clause_order=clause_order)]
+        return [ParsedConstraint(name=name, kind="OTHER", columns=_extract_constraint_columns(part), clause_order=clause_order)]
+    if upper.startswith("PRIMARY KEY"):
+        return [
+            ParsedConstraint(
+                name="__implicit_primary_key__",
+                kind="PRIMARY_KEY",
+                columns=_extract_constraint_columns(part),
+                clause_order=clause_order,
+            )
+        ]
+    if upper.startswith("UNIQUE") and not upper.startswith("UNIQUE INDEX"):
+        return [
+            ParsedConstraint(
+                name="__implicit_unique__",
+                kind="UNIQUE",
+                columns=_extract_constraint_columns(part),
+                clause_order=clause_order,
+            )
+        ]
+    return []
+
+
+def parse_create_table_statement(stmt: str) -> tuple[str | None, list[ColumnDef], list[str], list[ParsedConstraint]]:
     m = re.search(
         rf"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?{TABLE_NAME_RE}\s*\((.*)\)\s*;?\s*$",
         stmt,
         re.I | re.S,
     )
     if not m:
-        return None, [], []
+        return None, [], [], []
     table = _normalize_table(m.group(1) or m.group(2))
     body = m.group(3)
     columns: list[ColumnDef] = []
     constraints: list[str] = []
+    parsed_constraints: list[ParsedConstraint] = []
     clause_order = 0
     for part in split_top_level_commas(body):
         if CONSTRAINT_LINE_RE.match(part):
-            con_m = re.search(r'CONSTRAINT\s+"([^"]+)"', part, re.I)
-            if con_m:
-                constraints.append(con_m.group(1))
+            for parsed in parse_create_table_constraints(part, clause_order):
+                parsed_constraints.append(parsed)
+                if parsed.name not in {"__implicit_primary_key__", "__implicit_unique__"}:
+                    constraints.append(parsed.name)
+            clause_order += 1
             continue
         col_m = re.match(rf"^{IDENT_RE}\s+(.+)$", part.strip(), re.I | re.S)
         if not col_m:
@@ -123,8 +185,12 @@ def parse_create_table_statement(stmt: str) -> tuple[str | None, list[ColumnDef]
                 clause_order=clause_order,
             )
         )
+        if "PRIMARY KEY" in upper:
+            parsed_constraints.append(
+                ParsedConstraint(name="__inline_primary_key__", kind="PRIMARY_KEY", columns=[name], clause_order=clause_order)
+            )
         clause_order += 1
-    return table, columns, constraints
+    return table, columns, constraints, parsed_constraints
 
 
 def parse_alter_table_actions(stmt: str) -> list[AlterColumnAction]:
