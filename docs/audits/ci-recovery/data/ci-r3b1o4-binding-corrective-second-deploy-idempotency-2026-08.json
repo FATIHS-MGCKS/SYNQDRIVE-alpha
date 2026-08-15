@@ -1,0 +1,19 @@
+{
+  "tail_present_pre_second": true,
+  "tail_present_during_second": true,
+  "tail_checksum_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+  "tail_checksum_post_second": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+  "pre_second_deploy_ledger_fingerprint": "d59f570fa011f575b5b4ddb59f9b2cbbeb2c727671ecb4bf278d81de737105b8",
+  "post_second_deploy_ledger_fingerprint": "d59f570fa011f575b5b4ddb59f9b2cbbeb2c727671ecb4bf278d81de737105b8",
+  "pre_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+  "post_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+  "pre_second_catalog_inventory_fingerprint": "38906102e4d3a82181ab24c876802d2424d5efc187538a8efbeaf7d831d268e8",
+  "post_second_catalog_inventory_fingerprint": "38906102e4d3a82181ab24c876802d2424d5efc187538a8efbeaf7d831d268e8",
+  "second_deploy_exit_code": 0,
+  "new_ledger_rows": 0,
+  "new_finished_rows": 0,
+  "new_failed_rows": 0,
+  "catalog_delta": false,
+  "catalog_inventory_delta": false,
+  "pass": true
+}

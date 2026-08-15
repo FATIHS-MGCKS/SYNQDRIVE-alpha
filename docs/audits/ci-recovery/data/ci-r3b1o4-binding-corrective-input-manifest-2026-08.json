@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-binding-corrective",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "CORRECTIVE_PRE_SHA": "f227cc6efa5ea9481a2da72f36e4d7d79c454ff0",
+    "REMOTE_HEAD": "309108bdc4381aceb519bf0cee579c8c8a768493",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "FINAL_CORRECTIVE_SUMMARY_SHA256": "36379b10dea7bb8876e0c010c142bea9c04b3d074d4e5fce10f61ee91b9b04a6"
+  },
+  "bound_inputs": {
+    "ci-r3b1o4-final-corrective-execution-set-2026-08.json": {
+      "sha256": "b9c427d8b618f27b34d4254e0723f735978a864eb9f300cb698301cd8caf8226",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-expected-catalog-deltas-2026-08.json": {
+      "sha256": "5a01e05914b7145efb08201714bfafb3a7f5703511461d44d59a050fdf3369b2",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-implicit-catalog-effects-2026-08.json": {
+      "sha256": "cbab49ae6258909376a827c8f60942eee536c23547c6e9e2a6eea5b59ae5c929",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-raw-catalog-deltas-2026-08.json": {
+      "sha256": "87d451fc97cef923235e4028b1d4f6f785208b123037087f0b26fe046164dad4",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-full-catalog-delta-authority-2026-08.json": {
+      "sha256": "b04f1cfbaf84bed3663c0b50db84ff15ff6ab3838d002a3cc5af33a6b0333555",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-delta-authority-proof-2026-08.json": {
+      "sha256": "5d50f396bb5a8b2dfdeb9e076f7dfad44f400e6e20bb6942bcf196069186a56f",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-acceptance-summary-2026-08.json": {
+      "sha256": "36379b10dea7bb8876e0c010c142bea9c04b3d074d4e5fce10f61ee91b9b04a6",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-final-acceptance-summary-2026-08.json": {
+      "sha256": "36379b10dea7bb8876e0c010c142bea9c04b3d074d4e5fce10f61ee91b9b04a6",
+      "exists": true
+    },
+    "ci-r3b1o4-final-corrective-golden-tests-2026-08.json": {
+      "sha256": "13770e347289aee1c5d82c4e23755f604f96318e9c8d5113edb74c406311060c",
+      "exists": true
+    },
+    "backend/prisma/schema.prisma": {
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+      "exists": true
+    },
+    "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql": {
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_catalog_authority.py": {
+      "sha256": "2ae662e9b103bda111562f6967659bff6621d68df7bfa21c267fdb209c561840",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_catalog_semantic_compare.py": {
+      "sha256": "7fed32c064d2dbf544c4054116dc5a482f48017a9b233d30b81646adc75baac0",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_expected_catalog_effects.py": {
+      "sha256": "655b1ee479e77b2f66ec91341f65e611d1077de9ea079940b04d693a31f078ee",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_implicit_catalog_effects.py": {
+      "sha256": "b64b625eefcb4ef37d25f875dacab10a9e9e712878c5a5d90b089b3068c1ab40",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_execution_set.py": {
+      "sha256": "83087fbc34abf17b05c32aab69db85b13a5dcbb43c6cc65548209653c2ff3603",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_statement_crossvalidation.py": {
+      "sha256": "19f4c21317894f3bee0e24dbce7103fe0ad063fc0945c27360f6b2688651419a",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_golden_tests.py": {
+      "sha256": "c144b3044d6fa9ba9b7e2c6ffb84c2b9c6c9c2ad2eb0068ba0c04817e1b493e5",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_terminal_gate.py": {
+      "sha256": "3c1100102619adadb2d81897b97d8bba3a08facb4311fc50c07fc8bd0429e120",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_run_binding_corrective_audit.py": {
+      "sha256": "a864b04dac6c8aed2f7f969fb8b69a6bc35e5f0f3eda2aeb32630dcf8efcf072",
+      "exists": true
+    }
+  }
+}
