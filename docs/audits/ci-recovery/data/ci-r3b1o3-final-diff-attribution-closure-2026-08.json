@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3",
+  "prior_r3b1o2_out_of_scope": 2,
+  "unmatched_count": 2,
+  "resolved_operations": [
+    {
+      "ordinal": 137,
+      "raw_sql": "DROP INDEX \"org_invoices_invoice_number_key\"",
+      "old_r3b1o2_classification": "OUT_OF_SCOPE",
+      "new_classification": "OUT_OF_SCOPE_POSITIVELY_PROVEN",
+      "owner_table": "org_invoices",
+      "owner_resolution_source": "positive catalog/schema index map outside R3B universe",
+      "reason": "positive catalog/schema index map outside R3B universe; owner=org_invoices; proven outside R3B/M252 strategy universe"
+    },
+    {
+      "ordinal": 144,
+      "raw_sql": "DROP INDEX \"whatsapp_conversations_organization_id_contact_phone_key\"",
+      "old_r3b1o2_classification": "OUT_OF_SCOPE",
+      "new_classification": "OUT_OF_SCOPE_POSITIVELY_PROVEN",
+      "owner_table": "whatsapp_conversations",
+      "owner_resolution_source": "positive catalog/schema index map outside R3B universe",
+      "reason": "positive catalog/schema index map outside R3B universe; owner=whatsapp_conversations; proven outside R3B/M252 strategy universe"
+    }
+  ],
+  "counts": {
+    "total_operations": 395,
+    "owner_unknown": 0,
+    "PRE_EXISTING_PRODUCTION_DRIFT": 393,
+    "EXPECTED_STRATEGY_DELTA": 0,
+    "OUT_OF_SCOPE_POSITIVELY_PROVEN": 2,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNRESOLVED": 0,
+    "UNATTRIBUTED": 0
+  },
+  "pass": true
+}

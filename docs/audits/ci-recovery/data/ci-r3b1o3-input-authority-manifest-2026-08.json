@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "PRE_R3B1O3_SHA": "819d67307fb7405a0bcf62a6ea75dbb829dbd2f0",
+    "R3B1O2_REMOTE_HEAD": "819d67307fb7405a0bcf62a6ea75dbb829dbd2f0",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "WORKTREE_CLEAN": true,
+    "WORKTREE_STRICT_EMPTY": false,
+    "worktree_lines": [
+      "?? docs/audits/ci-recovery/data/ci-r3b1o3-final-strategy-gate-closure-summary-2026-08.json",
+      "?? docs/audits/ci-recovery/data/ci-r3b1o3-golden-test-coverage-2026-08.json",
+      "?? docs/audits/ci-recovery/data/ci-r3b1o3-golden-test-results-2026-08.json",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_constants.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_diff_attribution.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_final_twin.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_generate_report.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_complete_authority.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_exact_parity.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_run_audit.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_terminal_gate.py"
+    ]
+  },
+  "inputs": [
+    {
+      "path": "backend/prisma/schema.prisma",
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17"
+    },
+    {
+      "path": "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql",
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-final-prisma-diff-2026-08.sql",
+      "sha256": "0663bbdfa507ec4bee25a81e0f6d8c0ad85c1117739edf71abdf7acb00f42b96"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-final-prisma-diff-classification-2026-08.json",
+      "sha256": "c56ff3a4cf63be35035db49cad2adf9117de7e35e2c5a2cadc16bcb9adf7923f"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-index-owner-inventory-2026-08.json",
+      "sha256": "59368042c31c61143948f061d78f20e65f14ed1a400c4521347bf31a095e1690"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-final-m252-exact-parity-2026-08.json",
+      "sha256": "62ef7b435925505711eacfae44c9fc74115f5d0284a1ffadbbd2e6ab6020a1d1"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-final-r3b-parity-2026-08.json",
+      "sha256": "7780813fc1b4a8b0522b55bbf28f80185d99de6e0ad8cd7ce905698d79ee5cab"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-second-deploy-idempotency-2026-08.json",
+      "sha256": "d19960004c9a2ccd8f938c737055b26fb70b753cb218d9df3b35b11b4237301d"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o2-final-alignment-diff-closure-summary-2026-08.json",
+      "sha256": "70e3ba8569d923ddc94aee7ae0239df3c8f0d7be54e3ff7bc76fe6ddab5abb57"
+    }
+  ]
+}
