@@ -1,0 +1,14 @@
+{
+  "unchanged_migration_count": 304,
+  "changed_migration_count": 1,
+  "changed_migrations": [
+    "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql"
+  ],
+  "historical_exception_count": 1,
+  "original_sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+  "corrected_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "approved_changed_tokens": 5,
+  "schema_prisma_changed": false,
+  "runtime_changed": false,
+  "pass": true
+}

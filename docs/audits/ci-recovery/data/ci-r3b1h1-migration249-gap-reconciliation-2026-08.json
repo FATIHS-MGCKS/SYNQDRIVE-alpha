@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "old_migration_249_missing_history_records": 4,
+  "reconciled": 4,
+  "records": [
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "organization_memberships",
+      "old_property": "permissions",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": "m",
+      "physical_lineage": {
+        "relation": "organization_memberships",
+        "property": "permissions"
+      },
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "MISSING_HISTORY",
+      "reason": "resolved physical FROM/JOIN alias column",
+      "root_cause": "real_missing_history"
+    },
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "a",
+      "old_property": "membership_id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_role_assignments",
+        "property": "membership_id"
+      },
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "a",
+      "old_property": "is_current",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_role_assignments",
+        "property": "is_current"
+      },
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    },
+    {
+      "old_migration": "20260721250000_iam_versioned_role_assignments",
+      "old_statement": 31,
+      "old_relation": "m",
+      "old_property": "id",
+      "old_classification": "MISSING_HISTORY",
+      "correct_scope_binding": null,
+      "physical_lineage": {
+        "relation": "organization_role_assignments",
+        "property": "id"
+      },
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "reason": "insert_target_column",
+      "root_cause": "physical_alias_leakage"
+    }
+  ],
+  "pass": true
+}

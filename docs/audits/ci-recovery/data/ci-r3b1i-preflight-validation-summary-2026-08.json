@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "evidence_input_sha": "37d0904500024bf51dd712fb7398d91dd54c0411",
+  "classification_totals": {
+    "TOTAL": 250,
+    "VALID": 231,
+    "MISSING_HISTORY": 1,
+    "ORDERING_DEFECT": 0,
+    "CONDITIONAL_SAFE": 0,
+    "FALSE_POSITIVE": 18,
+    "INTENTIONAL": 0,
+    "UNRESOLVED": 0
+  },
+  "blocking_dependency_records": 1,
+  "unique_actionable_gaps": 1,
+  "actionable_gaps": [
+    {
+      "relation": "organization_memberships",
+      "property": "permissions",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "first_consumer_order": 249,
+      "first_consumer_statement": 31,
+      "repair_boundary_after": "20260721240000_iam_last_selected_organization",
+      "repair_boundary_before": "20260721250000_iam_versioned_role_assignments",
+      "all_consumers": [
+        "20260721250000_iam_versioned_role_assignments"
+      ],
+      "blocking_record_ids": [
+        "249-00123"
+      ]
+    }
+  ],
+  "physical_alias_leakage": 0,
+  "derived_lineage_gaps": 0,
+  "qualified_reference_coverage_gaps": 0,
+  "context_whitelist_removed": true,
+  "repair_log_exclusion_removed": true,
+  "false_positive_lineage_validated": true,
+  "contracts": 1,
+  "uncontracted_gaps": 0,
+  "generic_contracts_valid": true,
+  "implementation_gate_pass": true,
+  "pass": true,
+  "final_status": "CI_R3B1I_PREFLIGHT_PASS"
+}

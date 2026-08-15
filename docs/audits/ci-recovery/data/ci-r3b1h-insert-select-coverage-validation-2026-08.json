@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "migrations_checked": 56,
+  "coverage_gaps": 0,
+  "gaps": [],
+  "migration_249_permissions_represented": true,
+  "pass": true
+}
