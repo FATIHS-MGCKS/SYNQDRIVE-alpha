@@ -23,7 +23,7 @@ from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract, build_ta
 from ci_r3b1o4_terminal_gate import evaluate_terminal_acceptance
 from ci_r3b1o4_test_source_hashes import build_test_source_hash_manifest
 
-SCHEMA_DUMP = DATA.parents[1] / ".work/r3b1o/production_schema_only.sql"
+SCHEMA_DUMP = REPO / "docs/audits/ci-recovery/.work/r3b1o4/production_schema_only.sql"
 
 
 def _add(tests: list, test_id: str, fn: str, expected: str, ok: bool, actual: str):

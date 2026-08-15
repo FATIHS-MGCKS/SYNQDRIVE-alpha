@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import ci_r3b1o_mutation_guard  # noqa: F401
 from ci_r3b1l1_exact_parity import run_exact_parity
-from ci_r3b1n1_production_access import export_prisma_ledger, ledger_summary_fingerprint, ssh_psql_sql
+from ci_r3b1n1_production_access import export_prisma_ledger, export_schema_only_dump, ledger_summary_fingerprint, ssh_psql_sql
 from ci_r3b1n2_catalog_fingerprint import build_catalog_fingerprint
 from ci_r3b1n2_constants import DATA, git_rev, sha256_file
 from ci_r3b1n2_instance_identity import MutationGuard, query_instance_identity_dsn, query_production_instance_identity
@@ -158,7 +158,8 @@ def main() -> int:
     work = ensure_r3b1o4_workdir()
     schema_dump = work / "production_schema_only.sql"
     if not schema_dump.exists():
-        schema_dump.write_text((DATA.parents[1] / ".work/r3b1o/production_schema_only.sql").read_text())
+        schema_dump.parent.mkdir(parents=True, exist_ok=True)
+        export_schema_only_dump(schema_dump)
 
     data_dep = build_corrected_data_dependency_risk(include_forward_m252=False)
     tail_risk = build_tail_data_risk()
