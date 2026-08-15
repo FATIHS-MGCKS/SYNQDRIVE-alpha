@@ -9,6 +9,7 @@ from pathlib import Path
 DATA = Path(__file__).resolve().parents[1] / "data"
 OUT_STANDARD = Path(__file__).resolve().parents[1] / "ci-r3b1o4-append-only-tail-reconciliation-strategy-closure-2026-08.md"
 OUT_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-corrective-final-acceptance-closure-2026-08.md"
+OUT_FINAL_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-final-corrective-catalog-authority-closure-2026-08.md"
 
 
 def load(name: str) -> dict:
@@ -299,11 +300,168 @@ def generate_corrective_report() -> None:
     OUT_CORRECTIVE.write_text("\n".join(lines) + "\n")
 
 
+def generate_final_corrective_report() -> None:
+    s = load("ci-r3b1o4-final-corrective-final-acceptance-summary-2026-08.json")
+    baseline = s.get("baseline", {})
+    second = load("ci-r3b1o4-final-corrective-second-deploy-idempotency-2026-08.json")
+    t2 = load("ci-r3b1o4-final-corrective-t2-stale-index-drop-safety-2026-08.json")
+    m252 = load("ci-r3b1o4-final-corrective-final-m252-exact-parity-2026-08.json")
+    r3b = load("ci-r3b1o4-final-corrective-final-r3b-parity-2026-08.json")
+    execution_set = load("ci-r3b1o4-final-corrective-execution-set-2026-08.json")
+    expected = load("ci-r3b1o4-final-corrective-expected-catalog-deltas-2026-08.json")
+    implicit = load("ci-r3b1o4-final-corrective-implicit-catalog-effects-2026-08.json")
+    raw_catalog = load("ci-r3b1o4-final-corrective-raw-catalog-deltas-2026-08.json")
+    catalog = load("ci-r3b1o4-final-corrective-full-catalog-delta-authority-2026-08.json")
+    engine = load("ci-r3b1o4-final-corrective-catalog-engine-crossvalidation-2026-08.json")
+    attr = load("ci-r3b1o4-final-corrective-final-prisma-diff-attribution-2026-08.json")
+    golden = load("ci-r3b1o4-final-corrective-golden-tests-2026-08.json")
+    cross = load("ci-r3b1o4-final-corrective-evidence-code-crossvalidation-2026-08.json")
+    data_risk = load("ci-r3b1o4-final-corrective-r3b1p-data-risk-input-2026-08.json")
+    golden_inv = load("ci-r3b1o4-final-corrective-golden-catalog-inventory-2026-08.json")
+    final_inv = load("ci-r3b1o4-final-corrective-final-catalog-inventory-2026-08.json")
+    corrective_summary = load("ci-r3b1o4-corrective-final-acceptance-summary-2026-08.json")
+
+    lines = [
+        "# CI-R3B1O.4 — Final Corrective Catalog Authority Closure",
+        "",
+        f"**Status:** `{s.get('final_status')}`",
+        f"**R3B1P readiness:** `{s.get('r3b1p_readiness')}`",
+        "",
+        "## Strict baseline",
+        "",
+        f"- WORKTREE_STRICT_EMPTY: **{baseline.get('WORKTREE_STRICT_EMPTY')}**",
+        f"- FINAL_CORRECTIVE_PRE_SHA: `{baseline.get('FINAL_CORRECTIVE_PRE_SHA')}`",
+        f"- CORRECTIVE_SUMMARY_SHA256: `{baseline.get('CORRECTIVE_SUMMARY_SHA256')}`",
+        f"- REMOTE_HEAD: `{baseline.get('REMOTE_HEAD')}`",
+        f"- MAIN_HEAD: `{baseline.get('MAIN_HEAD')}`",
+        "",
+        "## Prior corrective acceptance",
+        "",
+        f"- Corrective final status: `{corrective_summary.get('final_status')}`",
+        f"- Corrective pass: **{corrective_summary.get('pass')}**",
+        "",
+        "## Migration execution set",
+        "",
+        f"- Executing migration count: **{execution_set.get('executing_migration_count')}**",
+        f"- Execution set pass: **{execution_set.get('pass')}**",
+        "",
+        "## Expected catalog effects",
+        "",
+        f"- Expected effect count: **{expected.get('expected_effect_count')}**",
+        f"- Operation families: `{expected.get('operation_family_counts')}`",
+        "",
+        "## Implicit PostgreSQL catalog effects",
+        "",
+        f"- Implicit effect count: **{implicit.get('implicit_effect_count')}**",
+        "",
+        "## Tail lifecycle",
+        "",
+        f"- Tail present pre-second deploy: **{second.get('tail_present_pre_second')}**",
+        f"- Tail present during second deploy: **{second.get('tail_present_during_second')}**",
+        "",
+        "## T2 stale-index exact safety",
+        "",
+        f"- T2 drop safety pass: **{t2.get('pass')}**",
+        f"- Replacement authority pass: **{t2.get('replacement_authority', {}).get('pass')}**",
+        "",
+        "## Hardened M252 exact parity",
+        "",
+        f"- Pass: **{m252.get('pass')}**",
+        f"- Semantic mismatches: **{m252.get('semantic_mismatch_count')}**",
+        "",
+        "## Final R3B 19/9/10/54",
+        "",
+        f"- Objects: **{r3b.get('objects')}**",
+        f"- Tables: **{r3b.get('tables')}**",
+        f"- Enums: **{r3b.get('enums')}**",
+        f"- Properties: **{r3b.get('properties')}**",
+        "",
+        "## Golden catalog inventory",
+        "",
+        f"- Object counts: `{golden_inv.get('object_counts')}`",
+        "",
+        "## Final catalog inventory",
+        "",
+        f"- Object counts: `{final_inv.get('object_counts')}`",
+        f"- Fingerprint: `{final_inv.get('fingerprint_sha256')}`",
+        "",
+        "## Raw catalog deltas",
+        "",
+        f"- Total raw deltas: **{raw_catalog.get('counts', {}).get('total')}**",
+        "",
+        "## Full catalog delta authority",
+        "",
+        f"- Total deltas: **{catalog.get('counts', {}).get('total_raw_deltas')}**",
+        f"- UNAUTHORIZED_FINAL_DELTA: **{catalog.get('counts', {}).get('UNAUTHORIZED_FINAL_DELTA')}**",
+        f"- UNKNOWN_DELTA_AUTHORITY: **{catalog.get('counts', {}).get('UNKNOWN_DELTA_AUTHORITY')}**",
+        f"- AMBIGUOUS: **{catalog.get('counts', {}).get('AMBIGUOUS')}**",
+        "",
+        "## Catalog engine crossvalidation",
+        "",
+        f"- Pass: **{engine.get('pass')}**",
+        f"- Missing stages: `{engine.get('missing_stages')}`",
+        f"- Missing test coverage: `{engine.get('required_missing_test_coverage')}`",
+        "",
+        "## Final Prisma diff attribution",
+        "",
+        f"- NEW_STRATEGY_DRIFT: **{attr.get('NEW_STRATEGY_DRIFT')}**",
+        f"- UNATTRIBUTED: **{attr.get('UNATTRIBUTED')}**",
+        f"- UNKNOWN_SCOPE: **{attr.get('UNKNOWN_SCOPE')}**",
+        f"- Stale index DROP ops remaining: **{s.get('diff_attribution', {}).get('stale_index_drop_ops_remaining')}**",
+        "",
+        "## Second-deploy idempotency",
+        "",
+        f"- Pass: **{second.get('pass')}**",
+        f"- Catalog delta: **{second.get('catalog_delta')}**",
+        "",
+        "## Golden tests",
+        "",
+        f"- Executed: **{golden.get('executed')}**",
+        f"- Passed: **{golden.get('passed')}**",
+        f"- Failed: **{golden.get('failed')}**",
+        "",
+        "## Evidence/code crossvalidation",
+        "",
+        f"- evidence_code_mismatch_count: **{cross.get('evidence_code_mismatch_count')}**",
+        f"- Pass: **{cross.get('pass')}**",
+        "",
+        "## Production data-risk",
+        "",
+        f"- UNKNOWN_DATA_DEPENDENCY: **{data_risk.get('UNKNOWN_DATA_DEPENDENCY')}**",
+        "",
+        "## Production immutability",
+        "",
+        f"- Production unchanged: **{s.get('production_immutable')}**",
+        "",
+        "## Repository immutability",
+        "",
+        "schema.prisma, tracked migrations, runtime, and deployment configuration unchanged; only audit docs updated.",
+        "",
+        "## R3B1P readiness",
+        "",
+        f"`{s.get('r3b1p_readiness')}`",
+        "",
+        "## Final status",
+        "",
+        f"`{s.get('final_status')}`",
+        "",
+        "## Safety",
+        "",
+        "Production remained read-only. All mutations targeted isolated disposable twins only.",
+        "",
+        "**Changes / Architektur:** not updated (CI-recovery evidence scope only).",
+    ]
+    OUT_FINAL_CORRECTIVE.write_text("\n".join(lines) + "\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corrective", action="store_true")
+    parser.add_argument("--final-corrective", action="store_true")
     args = parser.parse_args()
-    if args.corrective:
+    if args.final_corrective:
+        generate_final_corrective_report()
+    elif args.corrective:
         generate_corrective_report()
     else:
         generate_standard_report()
