@@ -1,0 +1,1041 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-corrective",
+  "golden_fingerprint": "5a81978e73fd370c0791ec5125c23360209742a8bd2b5887e0b66e59e23223fc",
+  "final_fingerprint": "eba4e869ce9ab222800dfb8cbd72dcc4ce2fee7733ef271c188b30fc99e071e5",
+  "counts": {
+    "added": 43,
+    "removed": 0,
+    "changed": 0,
+    "authorized": 43,
+    "unauthorized": 0,
+    "unknown": 0,
+    "total_deltas": 43,
+    "classified_deltas": 43,
+    "UNAUTHORIZED_FINAL_DELTA": 0,
+    "UNKNOWN_DELTA_AUTHORITY": 0
+  },
+  "classification_counts": {
+    "AUTHORIZED_PENDING_MIGRATION_EFFECT": 25,
+    "AUTHORIZED_M252_FORWARD_EFFECT": 18
+  },
+  "deltas": [
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:created_at",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "created_at",
+      "before": null,
+      "after": {
+        "format_type": "timestamp(3) without time zone",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:dedupe_key",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "dedupe_key",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:entity_id",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "entity_id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:entity_type",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "entity_type",
+      "before": null,
+      "after": {
+        "format_type": "\"EvaluationsEntityType\"",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:id",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:organization_id",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "organization_id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:owner_id",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "owner_id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:owner_type",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "owner_type",
+      "before": null,
+      "after": {
+        "format_type": "\"EvaluationsReferenceOwnerType\"",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:relation_type",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "relation_type",
+      "before": null,
+      "after": {
+        "format_type": "\"EvaluationsRelationType\"",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:station_id",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "station_id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": true,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:evaluations_entity_references:updated_at",
+      "object_type": "column",
+      "name": "evaluations_entity_references",
+      "subkey": "updated_at",
+      "before": null,
+      "after": {
+        "format_type": "timestamp(3) without time zone",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:classification",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "classification",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:created_at",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "created_at",
+      "before": null,
+      "after": {
+        "format_type": "timestamp(3) without time zone",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:evidence_hash",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "evidence_hash",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:expected_git_commit",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "expected_git_commit",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:id",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:idempotency_key",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "idempotency_key",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:membership_id",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "membership_id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:operator",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "operator",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:organization_id",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "organization_id",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:reason",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "reason",
+      "before": null,
+      "after": {
+        "format_type": "text",
+        "nullable": false,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "column:organization_role_assignment_drift_reconciliation_applications:result",
+      "object_type": "column",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": "result",
+      "before": null,
+      "after": {
+        "format_type": "jsonb",
+        "nullable": true,
+        "default": null,
+        "identity": null,
+        "generated": null
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "constraint:evaluations_entity_references_organization_id_fkey",
+      "object_type": "constraint",
+      "name": "evaluations_entity_references_organization_id_fkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "name": "evaluations_entity_references_organization_id_fkey",
+        "owner_table": "evaluations_entity_references",
+        "type": "f",
+        "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON UPDATE CASCADE ON DELETE CASCADE",
+        "deferrable": false,
+        "initially_deferred": false,
+        "validated": true
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "constraint:evaluations_entity_references_pkey",
+      "object_type": "constraint",
+      "name": "evaluations_entity_references_pkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "name": "evaluations_entity_references_pkey",
+        "owner_table": "evaluations_entity_references",
+        "type": "p",
+        "definition": "PRIMARY KEY (id)",
+        "deferrable": false,
+        "initially_deferred": false,
+        "validated": true
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "constraint:org_role_asgn_drift_recon_apps_mbr_id_fkey",
+      "object_type": "constraint",
+      "name": "org_role_asgn_drift_recon_apps_mbr_id_fkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "name": "org_role_asgn_drift_recon_apps_mbr_id_fkey",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "type": "f",
+        "definition": "FOREIGN KEY (membership_id) REFERENCES organization_memberships(id) ON UPDATE CASCADE ON DELETE CASCADE",
+        "deferrable": false,
+        "initially_deferred": false,
+        "validated": true
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "constraint:org_role_asgn_drift_recon_apps_org_id_fkey",
+      "object_type": "constraint",
+      "name": "org_role_asgn_drift_recon_apps_org_id_fkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "name": "org_role_asgn_drift_recon_apps_org_id_fkey",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "type": "f",
+        "definition": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON UPDATE CASCADE ON DELETE CASCADE",
+        "deferrable": false,
+        "initially_deferred": false,
+        "validated": true
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "constraint:org_role_asgn_drift_recon_apps_pkey",
+      "object_type": "constraint",
+      "name": "org_role_asgn_drift_recon_apps_pkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "name": "org_role_asgn_drift_recon_apps_pkey",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "type": "p",
+        "definition": "PRIMARY KEY (id)",
+        "deferrable": false,
+        "initially_deferred": false,
+        "validated": true
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "enum:EvaluationsEntityType",
+      "object_type": "enum",
+      "name": "EvaluationsEntityType",
+      "subkey": null,
+      "before": null,
+      "after": [
+        "VEHICLE",
+        "BOOKING",
+        "CUSTOMER",
+        "DRIVER",
+        "USER",
+        "INVOICE",
+        "PAYMENT",
+        "TASK",
+        "SERVICE_CASE",
+        "DAMAGE",
+        "DOCUMENT",
+        "STATION"
+      ],
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "enum:EvaluationsReferenceOwnerType",
+      "object_type": "enum",
+      "name": "EvaluationsReferenceOwnerType",
+      "subkey": null,
+      "before": null,
+      "after": [
+        "INSIGHT",
+        "ANALYTICS_GROUP"
+      ],
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "enum:EvaluationsRelationType",
+      "object_type": "enum",
+      "name": "EvaluationsRelationType",
+      "subkey": null,
+      "before": null,
+      "after": [
+        "PRIMARY_SUBJECT",
+        "CONTRIBUTOR",
+        "RELATED",
+        "SOURCE",
+        "IMPACTED"
+      ],
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_references_organization_id_created_at_idx",
+      "object_type": "index",
+      "name": "evaluations_entity_references_organization_id_created_at_idx",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_organization_id_created_at_idx",
+        "access_method": "btree",
+        "unique": false,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE INDEX evaluations_entity_references_organization_id_created_at_idx ON evaluations_entity_references USING btree (organization_id, created_at)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "created_at",
+            "collation": "default",
+            "opclass": "timestamp_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_references_organization_id_entity_type_e_idx",
+      "object_type": "index",
+      "name": "evaluations_entity_references_organization_id_entity_type_e_idx",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_organization_id_entity_type_e_idx",
+        "access_method": "btree",
+        "unique": false,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE INDEX evaluations_entity_references_organization_id_entity_type_e_idx ON evaluations_entity_references USING btree (organization_id, entity_type, entity_id)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "entity_type",
+            "collation": "default",
+            "opclass": "enum_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 3,
+            "kind": "key",
+            "name": "entity_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_references_organization_id_idx",
+      "object_type": "index",
+      "name": "evaluations_entity_references_organization_id_idx",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_organization_id_idx",
+        "access_method": "btree",
+        "unique": false,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE INDEX evaluations_entity_references_organization_id_idx ON evaluations_entity_references USING btree (organization_id)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_references_organization_id_owner_type_ow_idx",
+      "object_type": "index",
+      "name": "evaluations_entity_references_organization_id_owner_type_ow_idx",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_organization_id_owner_type_ow_idx",
+        "access_method": "btree",
+        "unique": false,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE INDEX evaluations_entity_references_organization_id_owner_type_ow_idx ON evaluations_entity_references USING btree (organization_id, owner_type, owner_id)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "owner_type",
+            "collation": "default",
+            "opclass": "enum_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 3,
+            "kind": "key",
+            "name": "owner_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_references_organization_id_station_id_idx",
+      "object_type": "index",
+      "name": "evaluations_entity_references_organization_id_station_id_idx",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_organization_id_station_id_idx",
+        "access_method": "btree",
+        "unique": false,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE INDEX evaluations_entity_references_organization_id_station_id_idx ON evaluations_entity_references USING btree (organization_id, station_id)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "station_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_references_pkey",
+      "object_type": "index",
+      "name": "evaluations_entity_references_pkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_pkey",
+        "access_method": "btree",
+        "unique": true,
+        "primary": true,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE UNIQUE INDEX evaluations_entity_references_pkey ON evaluations_entity_references USING btree (id)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:evaluations_entity_refs_org_dedupe_key",
+      "object_type": "index",
+      "name": "evaluations_entity_refs_org_dedupe_key",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_refs_org_dedupe_key",
+        "access_method": "btree",
+        "unique": true,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE UNIQUE INDEX evaluations_entity_refs_org_dedupe_key ON evaluations_entity_references USING btree (organization_id, dedupe_key)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "dedupe_key",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:org_role_asgn_drift_recon_apps_idem_key",
+      "object_type": "index",
+      "name": "org_role_asgn_drift_recon_apps_idem_key",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "name": "org_role_asgn_drift_recon_apps_idem_key",
+        "access_method": "btree",
+        "unique": true,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE UNIQUE INDEX org_role_asgn_drift_recon_apps_idem_key ON organization_role_assignment_drift_reconciliation_applications USING btree (idempotency_key)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "idempotency_key",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "object_type": "index",
+      "name": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "name": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+        "access_method": "btree",
+        "unique": false,
+        "primary": false,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE INDEX org_role_asgn_drift_recon_apps_org_mbr_created_idx ON organization_role_assignment_drift_reconciliation_applications USING btree (organization_id, membership_id, created_at)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "organization_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 2,
+            "kind": "key",
+            "name": "membership_id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          },
+          {
+            "ordinal": 3,
+            "kind": "key",
+            "name": "created_at",
+            "collation": "default",
+            "opclass": "timestamp_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "index:org_role_asgn_drift_recon_apps_pkey",
+      "object_type": "index",
+      "name": "org_role_asgn_drift_recon_apps_pkey",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "schema": "public",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "name": "org_role_asgn_drift_recon_apps_pkey",
+        "access_method": "btree",
+        "unique": true,
+        "primary": true,
+        "valid": true,
+        "ready": true,
+        "predicate": null,
+        "definition": "CREATE UNIQUE INDEX org_role_asgn_drift_recon_apps_pkey ON organization_role_assignment_drift_reconciliation_applications USING btree (id)",
+        "keys": [
+          {
+            "ordinal": 1,
+            "kind": "key",
+            "name": "id",
+            "collation": "default",
+            "opclass": "text_ops",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST"
+          }
+        ],
+        "include_columns": []
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "sequence:org_invoices_invoice_number_seq",
+      "object_type": "sequence",
+      "name": "org_invoices_invoice_number_seq",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "name": "org_invoices_invoice_number_seq",
+        "owner_table": null,
+        "column": null,
+        "start": "1",
+        "min": "1",
+        "max": "9223372036854775807",
+        "increment": "1"
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "table:evaluations_entity_references",
+      "object_type": "table",
+      "name": "evaluations_entity_references",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "owner": "public",
+        "columns": [
+          "created_at",
+          "dedupe_key",
+          "entity_id",
+          "entity_type",
+          "id",
+          "organization_id",
+          "owner_id",
+          "owner_type",
+          "relation_type",
+          "station_id",
+          "updated_at"
+        ]
+      },
+      "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+      "authority_source": "repository_pending_migration_chain"
+    },
+    {
+      "change_type": "ADDED",
+      "object_id": "table:organization_role_assignment_drift_reconciliation_applications",
+      "object_type": "table",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "subkey": null,
+      "before": null,
+      "after": {
+        "owner": "public",
+        "columns": [
+          "classification",
+          "created_at",
+          "evidence_hash",
+          "expected_git_commit",
+          "id",
+          "idempotency_key",
+          "membership_id",
+          "operator",
+          "organization_id",
+          "reason",
+          "result"
+        ]
+      },
+      "classification": "AUTHORIZED_M252_FORWARD_EFFECT",
+      "authority_source": "20260721270000_iam_role_assignment_drift_reconciliation"
+    }
+  ],
+  "pass": true
+}

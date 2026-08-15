@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-corrective",
+  "entries": [
+    {
+      "source_file": "ci_r3b1o4_catalog_inventory.py",
+      "sha256": "49e326daba62fec0c5e7104a079e19d005e587e5b9347b6092dc9072b1c5f365"
+    },
+    {
+      "source_file": "ci_r3b1o4_evidence_crossvalidation.py",
+      "sha256": "05ad6c5298a95d04c99fa3dbd12c961508cf1deba9c5ee712cdb945312265007"
+    },
+    {
+      "source_file": "ci_r3b1o4_final_twin.py",
+      "sha256": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b"
+    },
+    {
+      "source_file": "ci_r3b1o4_full_catalog_delta.py",
+      "sha256": "05abcf4417b8f940526d2c887e0563ae6b9bc14f3e67b0d6c1f3818b27ca4fa5"
+    },
+    {
+      "source_file": "ci_r3b1o4_golden_tests.py",
+      "sha256": "c97e2038a15fb95fb3a473c5c6ee86441cad1d3d716602663a20b36d4b4d0f5f"
+    },
+    {
+      "source_file": "ci_r3b1o4_m252_exact_parity.py",
+      "sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768"
+    },
+    {
+      "source_file": "ci_r3b1o4_run_corrective_audit.py",
+      "sha256": "0146b1736d32869516d7368271f8ac4ce44e43914738bc58dfe6ced3fd1afe1e"
+    },
+    {
+      "source_file": "ci_r3b1o4_t2_stale_index_safety.py",
+      "sha256": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d"
+    },
+    {
+      "source_file": "ci_r3b1o4_terminal_gate.py",
+      "sha256": "35b07d154d83b5a85f5838ff36538e0baee4450e155ce547b4795904ad1eaa4b"
+    }
+  ],
+  "pass": true
+}

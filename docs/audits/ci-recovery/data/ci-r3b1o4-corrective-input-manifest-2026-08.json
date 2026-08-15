@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-corrective",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "CORRECTIVE_PRE_SHA": "0c4a10af7b03122ebb8cdac4bdeb0a2d17fbd9f7",
+    "REMOTE_HEAD": "c6d099e37f799cf263c5edab711a685fa5ac175c",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d"
+  },
+  "bound_inputs": {
+    "ci-r3b1o4-tail-reconciliation-contract-2026-08.json": {
+      "sha256": "a98be4348917b8973363328bd2d7a3b1e9ce7e93d48c720728ccb99de2fe65e9",
+      "exists": true
+    },
+    "ci-r3b1o4-final-tail-catalog-state-2026-08.json": {
+      "sha256": "34e57cd8a35e911a25ecb293a6b03ab1f7aab345181eab140dc79e46decbbd24",
+      "exists": true
+    },
+    "ci-r3b1o4-final-m252-exact-parity-2026-08.json": {
+      "sha256": "1db07a99a56650324d93e9003cd0a5559338ff5ff67a0fcc226853e7773afcc6",
+      "exists": true
+    },
+    "ci-r3b1o4-final-stale-index-reconciliation-2026-08.json": {
+      "sha256": "1a06b79fea63d1a6a539087f97db173b0f5762aec3d7c0322193f088a80324d7",
+      "exists": true
+    },
+    "ci-r3b1o4-final-r3b-parity-2026-08.json": {
+      "sha256": "4227009977d4bd42dd009c2a50eab23adce53a36f0107383a61dc49445a8977b",
+      "exists": true
+    },
+    "ci-r3b1o4-final-prisma-diff-attribution-2026-08.json": {
+      "sha256": "8ef40ded948f5cdc62859a218d12d72c08502d9b48180ac5de38c6da10403996",
+      "exists": true
+    },
+    "ci-r3b1o4-second-deploy-idempotency-2026-08.json": {
+      "sha256": "b31f44e224e034aa43c100debdb6e8238059320768f7e2d4abf1882b2b3a915b",
+      "exists": true
+    },
+    "ci-r3b1o4-r3b1p-data-risk-input-2026-08.json": {
+      "sha256": "d300d7dbe75890aa8767da84ab2e3d09df73a5cc6e64810d06c5d321933b63c5",
+      "exists": true
+    },
+    "ci-r3b1o4-golden-tests-2026-08.json": {
+      "sha256": "c511b72341fb17170a3343b6f0c84741cdb7825c1b47c9c78e25197c1f5c7b9e",
+      "exists": true
+    },
+    "ci-r3b1o4-final-strategy-acceptance-summary-2026-08.json": {
+      "sha256": "52dbb3660c81fba3918a347a8466fc4ff589385758402c2848069ebc6978af41",
+      "exists": true
+    },
+    "backend/prisma/schema.prisma": {
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+      "exists": true
+    },
+    "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql": {
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+      "exists": true
+    }
+  }
+}
