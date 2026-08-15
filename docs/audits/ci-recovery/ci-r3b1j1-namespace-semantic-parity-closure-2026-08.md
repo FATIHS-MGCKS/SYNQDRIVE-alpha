@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| evidence_input_sha | `9e8c24da936ee98eb47cbed6c34b6ee7dcbb9a10` |
+| evidence_input_sha | `612e667b73ff7dc58c324abacfd3f2f593dc07fd` |
 | BASE_R3B1J_SHA | `9e8c24da936ee98eb47cbed6c34b6ee7dcbb9a10` |
 
 ---
@@ -63,7 +63,7 @@ FK constraints classified separately in CONSTRAINT_NAMESPACE (same-table constra
 |-------|-------|
 | Migrations scanned | 54 |
 | Candidate groups | 2 |
-| Real later groups | 1 |
+| Real later groups | 0 |
 | False-positive groups | 1 |
 | Unresolved groups | 0 |
 

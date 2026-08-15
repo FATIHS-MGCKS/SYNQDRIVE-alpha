@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "phase": "CI-R3B1J.1",
-  "evidence_input_sha": "9e8c24da936ee98eb47cbed6c34b6ee7dcbb9a10",
+  "evidence_input_sha": "612e667b73ff7dc58c324abacfd3f2f593dc07fd",
   "BASE_R3B1J_SHA": "9e8c24da936ee98eb47cbed6c34b6ee7dcbb9a10",
   "migration252_first_failing_statement": 2,
   "migration252_SQLSTATE": "42P07",
@@ -10,7 +10,7 @@
   "real_migration252_collision_groups": 2,
   "migrations_scanned_252_head": 54,
   "candidate_later_groups": 2,
-  "real_later_groups": 1,
+  "real_later_groups": 0,
   "false_positive_later_groups": 1,
   "unresolved_later_groups": 0,
   "legal_document_candidate_classification": "STATIC_FALSE_POSITIVE",
