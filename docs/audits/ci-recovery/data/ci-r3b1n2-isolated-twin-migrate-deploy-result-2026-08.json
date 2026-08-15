@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "executed_against_production": false,
+  "executed_against_isolated_twin": true,
+  "exit_code": 1,
+  "stdout": "\n> synqdrive-backend@0.1.0 prisma:migrate:deploy\n> prisma migrate deploy\n\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1n2_isolated_twin_5a7a4f7f\", schema \"public\" at \"localhost:5432\"\n\n305 migrations found in prisma/migrations\n\nApplying migration `20260325161141_ci_r3b_bootstrap_trip_schema_baseline`\nApplying migration `20260412025000_ci_r3b_historical_predecessor_slot1`\nApplying migration `20260412610000_ci_r3b_historical_predecessor_slot2`\nApplying migration `20260413201500_ci_r3b_historical_predecessor_slot3`\nApplying migration `20260413225000_ci_r3b_historical_predecessor_slot4`\nApplying migration `20260417170000_ci_r3b_historical_predecessor_slot5`\nApplying migration `20260421180000_ci_r3b_historical_predecessor_slot6`\nApplying migration `20260424235959_ci_r3b_trip_casing_pre_shim`\nApplying migration `20260425000001_ci_r3b_trip_casing_post_shim`\nApplying migration `20260613203000_ci_r3b_post_vendor_predecessor_slot07`\nApplying migration `20260616130000_ci_r3b_post_vendor_predecessor_slot08`\nApplying migration `20260617120000_r3b_post_vendor_predecessor_slot09`\nApplying migration `20260617203000_ci_r3b_post_vendor_predecessor_slot10`\nApplying migration `20260620183000_ci_r3b_post_vendor_predecessor_slot11`\nApplying migration `20260716180000_r3b_post_vendor_predecessor_slot12`\nApplying migration `20260716182500_ci_r3b_post_vendor_predecessor_slot13`\nApplying migration `20260716182730_ci_r3b_tire_setup_status_predecessor`\n",
+  "stderr": "Error: P3018\n\nA migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve\n\nMigration name: 20260716182730_ci_r3b_tire_setup_status_predecessor\n\nDatabase error code: 42701\n\nDatabase error:\nERROR: column \"status\" of relation \"vehicle_tire_setups\" already exists\n\nDbError { severity: \"ERROR\", parsed_severity: Some(Error), code: SqlState(E42701), message: \"column \\\"status\\\" of relation \\\"vehicle_tire_setups\\\" already exists\", detail: None, hint: None, position: None, where_: None, schema: None, table: None, column: None, datatype: None, constraint: None, file: Some(\"tablecmds.c\"), line: Some(7347), routine: Some(\"check_for_column_name_collision\") }\n\n\n",
+  "duration_ms": 748,
+  "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+  "prisma_error_code": "P3018",
+  "database_error_code": "42701",
+  "sqlstate": "E42701",
+  "database_error_message": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+  "blocker_type": "PENDING_EXISTING_COLUMN_COLLISION",
+  "ledger_delta": {
+    "new_rows": [
+      {
+        "migration_name": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "state": "NEW_FINISHED",
+        "id": "99852f0d-497d-42b5-bce3-5c181e7cd02d"
+      },
+      {
+        "migration_name": "20260412025000_ci_r3b_historical_predecessor_slot1",
+        "state": "NEW_FINISHED",
+        "id": "b29c233f-42af-4cb6-8a6a-cbf7f9b3f67e"
+      },
+      {
+        "migration_name": "20260412610000_ci_r3b_historical_predecessor_slot2",
+        "state": "NEW_FINISHED",
+        "id": "f1f4025a-df8a-4c5e-bd33-23053ffc683b"
+      },
+      {
+        "migration_name": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "state": "NEW_FINISHED",
+        "id": "fefa4c65-ef8e-4023-99d0-f8dba9344dc9"
+      },
+      {
+        "migration_name": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "state": "NEW_FINISHED",
+        "id": "77c6e720-54f0-4e99-8c0a-733c93e2f7b4"
+      },
+      {
+        "migration_name": "20260417170000_ci_r3b_historical_predecessor_slot5",
+        "state": "NEW_FINISHED",
+        "id": "5a3c9bcc-f016-4619-956d-bd5bd2fc05a9"
+      },
+      {
+        "migration_name": "20260421180000_ci_r3b_historical_predecessor_slot6",
+        "state": "NEW_FINISHED",
+        "id": "8d9cdda2-341a-4f5a-ad37-46603f2f08c3"
+      },
+      {
+        "migration_name": "20260424235959_ci_r3b_trip_casing_pre_shim",
+        "state": "NEW_FINISHED",
+        "id": "2174f139-2887-4067-881b-18362c397eb8"
+      },
+      {
+        "migration_name": "20260425000001_ci_r3b_trip_casing_post_shim",
+        "state": "NEW_FINISHED",
+        "id": "d6ee93a6-c047-458a-b266-81a74ab93667"
+      },
+      {
+        "migration_name": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+        "state": "NEW_FINISHED",
+        "id": "8f5e5ffe-0a53-4e97-a322-80f735791be4"
+      },
+      {
+        "migration_name": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+        "state": "NEW_FINISHED",
+        "id": "e6a2ba05-4fb0-4c25-8713-c7c2a4b6c3e7"
+      },
+      {
+        "migration_name": "20260617120000_r3b_post_vendor_predecessor_slot09",
+        "state": "NEW_FINISHED",
+        "id": "a99a4ab9-828c-4760-bc0d-7ff4f8e62c0b"
+      },
+      {
+        "migration_name": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+        "state": "NEW_FINISHED",
+        "id": "71fae353-e573-431f-ab97-d3286f9498a9"
+      },
+      {
+        "migration_name": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "state": "NEW_FINISHED",
+        "id": "adf8d096-41ad-4bbc-8f6e-188ee021f6e0"
+      },
+      {
+        "migration_name": "20260716180000_r3b_post_vendor_predecessor_slot12",
+        "state": "NEW_FINISHED",
+        "id": "8d2c2b80-6ee6-4a53-bfc9-194ff5491ebb"
+      },
+      {
+        "migration_name": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+        "state": "NEW_FINISHED",
+        "id": "14ac7fd1-f6e4-41cf-ae78-a1820544f26c"
+      },
+      {
+        "migration_name": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+        "state": "NEW_FAILED",
+        "id": "3b96bc76-734a-40e5-96d4-0bae8a39f4e1"
+      }
+    ],
+    "new_finished": 16,
+    "new_failed": 1,
+    "new_rolled_back": 0
+  }
+}

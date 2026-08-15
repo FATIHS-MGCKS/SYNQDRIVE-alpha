@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "deployed_sha": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+  "ancestry_vs_r3b1m": {
+    "commit_is_ancestor_of_other": true,
+    "other_is_ancestor_of_commit": false
+  },
+  "ancestry_vs_main": {
+    "commit_is_ancestor_of_other": true,
+    "other_is_ancestor_of_commit": false
+  },
+  "deployed_contains_r3b1m_schema_alignment": false,
+  "deployed_contains_recovery_migrations_in_git": {
+    "20260716182730_ci_r3b_tire_setup_status_predecessor": false,
+    "20260721245000_ci_r3b_iam_membership_permissions_predecessor": false,
+    "20260814130000_ci_r3b_post_replay_parity_reconciliation": false
+  },
+  "code_exposure_class": "C0_PRE_RECOVERY"
+}

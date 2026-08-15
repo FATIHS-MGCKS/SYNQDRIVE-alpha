@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "logical_name": "R3B1O_GOLDEN_BASELINE",
+  "database_name": "r3b1o_golden_baseline_4d2d78d3",
+  "dsn_alias": "LOCAL_DISPOSABLE_GOLDEN",
+  "instance_fingerprint_sha256": "d961e6bd9e6697bd91a7dc6801f191e335120a58fffc34a4ce77f2de47518d6b",
+  "database_fingerprint_sha256": "034cd44b40f98fade1857bf2f6acf6eb17195332a92bca58fd1bebdb47e02b87",
+  "catalog_fingerprint_sha256": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+  "ledger_fingerprint_sha256": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+  "catalog_fidelity_pass": true,
+  "ledger_fidelity_pass": true,
+  "no_business_data_pass": true,
+  "business_row_total": 0,
+  "immutable": true,
+  "pass": true
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N",
+  "production_deploy_mechanism": "manual SSH script backend/scripts/ops/vps-deploy-release.sh (clones main, npm ci, prisma migrate deploy, pm2 restart)",
+  "github_workflows_auto_deploy_to_vps": "NO",
+  "merge_to_main_auto_deploys_production": "NO",
+  "merge_to_main_auto_runs_db_migrations": "NO",
+  "deploy_script_runs_db_migrations": "YES",
+  "deploy_script_clones_branch": "main",
+  "evidence_paths": [
+    "backend/scripts/ops/vps-deploy-release.sh",
+    ".github/workflows/legal-documents-production-readiness.yml",
+    ".github/workflows/vehicle-detail-production-readiness.yml"
+  ]
+}

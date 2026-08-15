@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "contract_id": "R3B1H-organization_memberships-permissions",
+      "table_exists_required": true,
+      "column_absent_required": true,
+      "named_type_dependencies": [],
+      "default_dependencies": [],
+      "fk_targets": [],
+      "closure_pass": true
+    }
+  ]
+}

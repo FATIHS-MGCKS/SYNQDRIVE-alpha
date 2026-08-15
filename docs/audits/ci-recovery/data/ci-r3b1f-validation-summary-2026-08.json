@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "HEAD_SHA": "5acf67cc4013aec7ae42b7028f07aae083351a17",
+  "remaining_migrations_scanned": 147,
+  "first_scanned_migration": "20260716183000_tire_lifecycle_invariants",
+  "last_scanned_migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+  "dependency_records": 2330,
+  "expression_predicate_records": 925,
+  "classification_totals": {
+    "TOTAL": 2330,
+    "VALID": 2174,
+    "INTENTIONAL": 28,
+    "MISSING_HISTORY": 114,
+    "ORDERING_DEFECT": 13,
+    "CONDITIONAL_SAFE": 1,
+    "FALSE_POSITIVE": 0,
+    "UNRESOLVED": 0
+  },
+  "previous_primary_defects": 18,
+  "new_expression_derived_primary_defects": 13,
+  "total_revised_defects": 31,
+  "unique_new_defects": [
+    {
+      "relation": "vehicle_tire_setups",
+      "property": "status",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260716183000_tire_lifecycle_invariants",
+      "first_consumer_order": 157,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260716183000_tire_lifecycle_invariants"
+      ]
+    },
+    {
+      "relation": "tire_health_snapshots",
+      "property": "input_fingerprint",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260716240000_tire_recalculation_fingerprint_dedupe",
+      "first_consumer_order": 175,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260716240000_tire_recalculation_fingerprint_dedupe"
+      ]
+    },
+    {
+      "relation": "rental_driving_analyses",
+      "property": "superseded_at",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260716350000_rental_driving_analysis_stability",
+      "first_consumer_order": 190,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260716350000_rental_driving_analysis_stability"
+      ]
+    },
+    {
+      "relation": "vehicle_service_events",
+      "property": "document_extraction_id",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717210000_service_event_document_extraction_idempotency",
+      "first_consumer_order": 215,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717210000_service_event_document_extraction_idempotency"
+      ]
+    },
+    {
+      "relation": "vehicle_damages",
+      "property": "document_extraction_id",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717220000_damage_document_extraction_idempotency",
+      "first_consumer_order": 218,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717220000_damage_document_extraction_idempotency"
+      ]
+    },
+    {
+      "relation": "brake_health_snapshots",
+      "property": "vehicle_id",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717230000_brake_health_snapshots",
+      "first_consumer_order": 220,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717230000_brake_health_snapshots"
+      ]
+    },
+    {
+      "relation": "brake_health_snapshots",
+      "property": "model_version",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717230000_brake_health_snapshots",
+      "first_consumer_order": 220,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717230000_brake_health_snapshots"
+      ]
+    },
+    {
+      "relation": "brake_health_snapshots",
+      "property": "input_fingerprint",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717230000_brake_health_snapshots",
+      "first_consumer_order": 220,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717230000_brake_health_snapshots"
+      ]
+    },
+    {
+      "relation": "brake_evidence",
+      "property": "dedupe_key",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717240000_brake_dtc_evidence",
+      "first_consumer_order": 224,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717240000_brake_dtc_evidence",
+        "20260717240000_brake_dtc_evidence",
+        "20260717250000_brake_evidence_lifecycle"
+      ]
+    },
+    {
+      "relation": "voice_phone_numbers",
+      "property": "elevenlabs_ref_digest",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717240000_voice_phone_elevenlabs_import_assigned",
+      "first_consumer_order": 226,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717240000_voice_phone_elevenlabs_import_assigned"
+      ]
+    },
+    {
+      "relation": "brake_evidence",
+      "property": "active",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717250000_brake_evidence_lifecycle",
+      "first_consumer_order": 227,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717250000_brake_evidence_lifecycle"
+      ]
+    },
+    {
+      "relation": "brake_evidence",
+      "property": "superseded_by_evidence_id",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717250000_brake_evidence_lifecycle",
+      "first_consumer_order": 227,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717250000_brake_evidence_lifecycle",
+        "20260717250000_brake_evidence_lifecycle"
+      ]
+    },
+    {
+      "relation": "brake_health_alerts",
+      "property": "status",
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260717260000_brake_health_alerts",
+      "first_consumer_order": 229,
+      "dependency_contexts": [
+        "PARTIAL_INDEX_PREDICATE"
+      ],
+      "all_consumers": [
+        "20260717260000_brake_health_alerts"
+      ]
+    }
+  ],
+  "expression_coverage_gaps": 0,
+  "pre157_replay_pass": true,
+  "targeted_consumer_simulations": {
+    "vehicle_tire_setups.status": {
+      "schema_version": 1,
+      "phase": "CI-R3B1F",
+      "database_identifier": "synqdrive_r3b1f_pre157",
+      "temporary_predecessor_repair_sql": "ALTER TABLE \"vehicle_tire_setups\"\n  ADD COLUMN IF NOT EXISTS \"status\" \"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\";",
+      "temporary_repair_executed": true,
+      "unchanged_consumer_migration": "20260716183000_tire_lifecycle_invariants",
+      "unchanged_consumer_executed": true,
+      "migration_157_pass": true,
+      "partial_index_vehicle_tire_setups_pass": true,
+      "partial_index_tires_pass": true,
+      "partial_indexes": {
+        "vehicle_tire_setups_one_active_setup_per_vehicle": {
+          "table": "vehicle_tire_setups",
+          "unique": true,
+          "columns": [
+            "vehicle_id"
+          ],
+          "predicate": "((status = 'ACTIVE'::\"TireSetupStatus\") AND (removed_at IS NULL))",
+          "valid": true,
+          "ready": true
+        },
+        "tires_one_active_tire_per_setup_position": {
+          "table": "tires",
+          "unique": true,
+          "columns": [
+            "tire_set_id",
+            "current_position"
+          ],
+          "predicate": "((active = true) AND (tire_set_id IS NOT NULL))",
+          "valid": true,
+          "ready": true
+        }
+      },
+      "migration_error": null,
+      "pass": true
+    }
+  },
+  "contracts_count": 13,
+  "closure_complete": true,
+  "topology_slots": 13,
+  "tire_gap_missing_properties": [
+    "status"
+  ],
+  "immutability_pass": true,
+  "final_status": "CI_R3B1F_EXPRESSION_DEPENDENCY_CLOSURE_COMPLETED"
+}

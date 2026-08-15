@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1G",
+  "BASE_R3B1F111_SHA": "795962d438457e05b5c55c0a7724b2c4b6f45305",
+  "IMPLEMENTATION_AUTHORITY_MANIFEST_SHA256": "bd0abb7828d577d1ed358631ec8052cf12db06da31422517ba191f93695db7c5",
+  "entries": [
+    {
+      "role": "authority_reference",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d12-authority-reference-2026-08.json",
+      "sha256": "4e0e19662fabcfff508d26f54c8c9dfbdbd5aa92105cc788b036653e3d2059d9"
+    },
+    {
+      "role": "exact_predecessor_contracts",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1f111-exact-predecessor-contracts-2026-08.json",
+      "sha256": "88ec3df1962b0bd669250539c487f25b52c97f474e6311d5cf0d31e3bdf5355e"
+    },
+    {
+      "role": "final_validation_summary",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1f111-final-validation-summary-2026-08.json",
+      "sha256": "ce98e4e9ffb3d5c58fad5712b33e84dd8bd57a900888748b017e21b38a314032"
+    },
+    {
+      "role": "targeted_consumer_proof",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1f111-targeted-consumer-proof-2026-08.json",
+      "sha256": "162cc07cc811d08f588337fdace766b6f95f45b1dfdbd07b1b69650b6bb2e53e"
+    },
+    {
+      "role": "strict_add_column_compiler",
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1f111_contract_compiler.py",
+      "sha256": "c6516b898ac6776cd77502cabc000ede4068042883a778f62c29bc70e2434283"
+    }
+  ],
+  "pass": true
+}

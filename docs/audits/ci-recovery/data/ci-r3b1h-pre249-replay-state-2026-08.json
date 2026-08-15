@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "database_identifier": "synqdrive_r3b1h_pre249",
+  "stop_before": "20260721250000_iam_versioned_role_assignments",
+  "expected_last_applied": "20260721240000_iam_last_selected_organization",
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "migrations_applied": 248,
+  "last_applied_migration": "20260721240000_iam_last_selected_organization",
+  "special_migrations_handled": [
+    "20260413230000_add_composite_indexes_batch_c"
+  ],
+  "manual_interventions": 0,
+  "production_connection": false,
+  "pass": true,
+  "error": null
+}
