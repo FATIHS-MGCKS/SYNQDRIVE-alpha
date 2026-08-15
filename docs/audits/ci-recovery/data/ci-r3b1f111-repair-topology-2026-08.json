@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "repair_id": "R3B1F111-SLOT13-EXT-STATUS",
+      "after_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "before_migration": "20260716183000_tire_lifecycle_invariants",
+      "operation": "ADD_COLUMN",
+      "relation": "vehicle_tire_setups",
+      "column": "status",
+      "postgres_type": "TireSetupStatus",
+      "nullable": false,
+      "default_semantics": "DATABASE_ENUM_DEFAULT",
+      "default_value": "ACTIVE",
+      "dependencies": [
+        "vehicle_tire_setups",
+        "TireSetupStatus"
+      ],
+      "first_consumer": "20260716183000_tire_lifecycle_invariants"
+    }
+  ]
+}

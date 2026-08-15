@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "tests": [
+    {
+      "test": "basic_insert_select",
+      "pass": true,
+      "expected": [
+        "src.x",
+        "src.y"
+      ],
+      "got": [
+        "src.x",
+        "src.y"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "where_dependencies",
+      "pass": true,
+      "expected": [
+        "src.active",
+        "src.deleted_at",
+        "src.x"
+      ],
+      "got": [
+        "src.active",
+        "src.deleted_at",
+        "src.x"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "join_dependencies",
+      "pass": true,
+      "expected": [
+        "other.enabled",
+        "other.id",
+        "src.other_id",
+        "src.x"
+      ],
+      "got": [
+        "other.enabled",
+        "other.id",
+        "src.other_id",
+        "src.x"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "case_dependencies",
+      "pass": true,
+      "expected": [
+        "src.active",
+        "src.fallback",
+        "src.value"
+      ],
+      "got": [
+        "src.active",
+        "src.fallback",
+        "src.value"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "json_key_exclusion",
+      "pass": true,
+      "expected": [
+        "src.metadata"
+      ],
+      "got": [
+        "src.metadata"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "cast_exclusion",
+      "pass": true,
+      "expected": [
+        "src.permissions"
+      ],
+      "got": [
+        "src.permissions"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "coalesce_source",
+      "pass": true,
+      "expected": [
+        "memberships.permissions"
+      ],
+      "got": [
+        "memberships.permissions"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "string_literal_exclusion",
+      "pass": true,
+      "expected": [],
+      "got": [],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "function_exclusion",
+      "pass": true,
+      "expected": [
+        "src.email"
+      ],
+      "got": [
+        "src.email"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "cte_lineage",
+      "pass": true,
+      "expected": [
+        "memberships.id",
+        "memberships.permissions"
+      ],
+      "got": [
+        "memberships.id",
+        "memberships.permissions"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "real_migration_249_permissions",
+      "pass": true,
+      "expected": [
+        "organization_memberships.permissions"
+      ],
+      "got": [
+        "a.is_current",
+        "a.membership_id",
+        "m.id",
+        "organization_memberships.created_at",
+        "organization_memberships.id",
+        "organization_memberships.id",
+        "organization_memberships.organization_id",
+        "organization_memberships.organization_role_id",
+        "organization_memberships.permissions",
+        "organization_role_assignments.is_current",
+        "organization_role_assignments.membership_id"
+      ]
+    }
+  ],
+  "pass": true,
+  "passed": 11,
+  "total": 11
+}
