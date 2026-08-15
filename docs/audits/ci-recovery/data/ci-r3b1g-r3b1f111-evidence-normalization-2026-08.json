@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1G",
+  "R3B1F111_REMOTE_HEAD": "795962d438457e05b5c55c0a7724b2c4b6f45305",
+  "R3B1F111_DRAFT_PR": "#1033",
+  "LOCAL_HEAD": "795962d438457e05b5c55c0a7724b2c4b6f45305",
+  "stale_summary_HEAD_SHA": "6263e2455db23df226567ac95e2aff3f1b6a5f98",
+  "stale_head_note": "Historical artifact recorded pre-push SHA; successor phases use resolved remote HEAD.",
+  "scope_audit": {
+    "working_tree_lines": [
+      " M docs/audits/ci-recovery/tooling/ci_r3b1f111_build_final_summary.py",
+      "?? backend/prisma/migrations/20260716182730_ci_r3b_tire_setup_status_predecessor/",
+      "?? docs/audits/ci-recovery/tooling/__pycache__/",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_evidence_normalization.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_generated_sql_equivalence.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_implementation_authority.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_migration_order_proof.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_preexisting_manifest.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_replay_input_manifest.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_build_tire_repair_migration_manifest.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_constants.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_full_replay_harness.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_generate_report.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_immutability_audit.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_replay_lib.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_run_validations.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1g_targeted_tire_repair_proof.py"
+    ],
+    "disallowed_lines": [],
+    "allowed_docs_and_new_migration_only": true
+  },
+  "verified_inputs": {
+    "final_summary_exists": true,
+    "MISSING_HISTORY": 1,
+    "ORDERING_DEFECT": 0,
+    "UNRESOLVED": 0
+  },
+  "pass": true
+}

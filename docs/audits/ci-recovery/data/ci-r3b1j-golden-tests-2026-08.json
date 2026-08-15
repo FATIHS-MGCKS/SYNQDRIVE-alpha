@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "max_identifier_length": 63,
+  "tests": {
+    "identifier_byte_limit_test": {
+      "pass": true,
+      "collision_groups": 1
+    },
+    "distinct_short_names_test": {
+      "pass": true,
+      "post_normalization_collisions": 0
+    },
+    "pk_backing_index_collision_test": {
+      "pass": true,
+      "statement_ordinal": 2,
+      "sqlstate": "42P07"
+    },
+    "migration252_real_reproduction_test": {
+      "pass": true,
+      "statement_ordinal": 2,
+      "sqlstate": "42P07",
+      "collision_in_error": true
+    },
+    "transformed_migration_test": {
+      "pass": true,
+      "statement_count": 5
+    },
+    "append_only_feasibility_test": {
+      "pass": true,
+      "classification": "APPEND_ONLY_NOT_FEASIBLE"
+    },
+    "later_sweep_collision_test": {
+      "pass": true,
+      "normalized": "organization_legal_document_retention_policies_organization_id_"
+    }
+  },
+  "pass": true
+}

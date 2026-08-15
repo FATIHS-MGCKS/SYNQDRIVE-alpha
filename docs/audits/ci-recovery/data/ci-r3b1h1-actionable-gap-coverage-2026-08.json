@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "blocking_dependency_records": 1,
+  "unique_actionable_gaps": 1,
+  "exact_contracts": 1,
+  "targeted_proofs": 1,
+  "uncontracted_gaps": 0,
+  "uncontracted": [],
+  "unproven_gaps": 0,
+  "unproven": [],
+  "pass": true
+}

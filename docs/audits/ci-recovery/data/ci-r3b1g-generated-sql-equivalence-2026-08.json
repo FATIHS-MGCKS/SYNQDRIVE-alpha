@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1G",
+  "contract_id": "R3B1F111-vehicle_tire_setups-status",
+  "compiled_sql": "ALTER TABLE \"vehicle_tire_setups\" ADD COLUMN \"status\" \"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\";",
+  "compiled_sql_sha256": "c563bed59819a1d6120171fb48681129abe84f0722a68927a470fd35abcbe7f6",
+  "migration_path": "backend/prisma/migrations/20260716182730_ci_r3b_tire_setup_status_predecessor/migration.sql",
+  "migration_sql_sha256": "55838c640e292a17a8409a5c49df035173b8668a00b4c08b91f3cde0eda25fca",
+  "parsed": {
+    "relation": "vehicle_tire_setups",
+    "column": "status",
+    "postgres_type": "TireSetupStatus",
+    "nullable": false,
+    "default_value": "ACTIVE",
+    "enum_dependency": "TireSetupStatus"
+  },
+  "semantic_equivalence": "PASS",
+  "if_not_exists_present": false,
+  "static_safety": {
+    "forbidden_operations": [],
+    "add_column_count": 1,
+    "pass": true
+  },
+  "pass": true
+}

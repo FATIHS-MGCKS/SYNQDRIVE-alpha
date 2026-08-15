@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1G",
+  "previous_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "new_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+  "next_migration": "20260716183000_tire_lifecycle_invariants",
+  "authorized_after": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "authorized_before": "20260716183000_tire_lifecycle_invariants",
+  "lexical_after_valid": true,
+  "lexical_before_valid": true,
+  "ordinal_previous": 156,
+  "ordinal_new": 157,
+  "ordinal_next": 158,
+  "pass": true
+}
