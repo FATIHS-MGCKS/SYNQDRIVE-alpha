@@ -1,0 +1,59 @@
+"""Deterministic implicit PostgreSQL catalog effects (CI-R3B1O.4 final corrective)."""
+from __future__ import annotations
+
+from typing import Any
+
+from ci_r3b1l2_prisma_sql_parser import sha256_text
+from ci_r3b1o4_expected_catalog_effects import build_expected_catalog_deltas
+
+
+def build_implicit_catalog_effects(*, expected: dict[str, Any] | None = None) -> dict[str, Any]:
+    expected = expected or build_expected_catalog_deltas()
+    implicit: list[dict[str, Any]] = []
+
+    for effect in expected["effects"]:
+        if effect["operation_family"] != "CREATE_TABLE" or effect["object_type"] != "table":
+            continue
+        table = effect["name"]
+        implicit.append(
+            {
+                "effect_id": sha256_text(f"implicit-row-type|{table}|{effect['migration_name']}"),
+                "parent_effect_id": effect["effect_id"],
+                "parent_migration": effect["migration_name"],
+                "parent_statement_ordinal": effect["statement_ordinal"],
+                "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+                "change_type": "ADDED",
+                "object_type": "type",
+                "name": table,
+                "after_state": {"kind": "c", "related_table": table, "category": "composite"},
+                "object_id": f"type:{table}",
+            }
+        )
+
+    for effect in expected["effects"]:
+        if effect["operation_family"] != "CREATE_TYPE_ENUM" or effect["object_type"] != "enum":
+            continue
+        enum_name = effect["name"]
+        array_name = f"_{enum_name}"
+        implicit.append(
+            {
+                "effect_id": sha256_text(f"implicit-enum-array|{enum_name}|{effect['migration_name']}"),
+                "parent_effect_id": effect["effect_id"],
+                "parent_migration": effect["migration_name"],
+                "parent_statement_ordinal": effect["statement_ordinal"],
+                "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+                "change_type": "ADDED",
+                "object_type": "type",
+                "name": array_name,
+                "after_state": {"kind": "b", "element_type": enum_name, "category": "array"},
+                "object_id": f"type:{array_name}",
+            }
+        )
+
+    return {
+        "schema_version": 1,
+        "phase": "CI-R3B1O.4-final-corrective",
+        "implicit_effect_count": len(implicit),
+        "effects": implicit,
+        "pass": True,
+    }

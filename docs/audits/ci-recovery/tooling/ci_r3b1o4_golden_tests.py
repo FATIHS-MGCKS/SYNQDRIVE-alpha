@@ -25,8 +25,16 @@ from ci_r3b1o4_m252_exact_parity import compare_m252_exact as compare_m252_exact
 from ci_r3b1o4_stale_index_authority import build_invoice_stale_index_authority, build_whatsapp_stale_index_authority
 from ci_r3b1o4_t2_stale_index_safety import EXPECTED_STALE, _compare_index, build_expected_stale_index_shape
 from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract, build_tail_sql, evaluate_tail_preconditions
-from ci_r3b1o4_terminal_gate import evaluate_corrective_terminal_acceptance, evaluate_terminal_acceptance
-from ci_r3b1o4_test_source_hashes import build_corrective_test_source_hash_manifest, build_test_source_hash_manifest
+from ci_r3b1o4_catalog_authority import authorize_catalog_deltas, classify_delta_for_test
+from ci_r3b1o4_execution_set import build_execution_set
+from ci_r3b1o4_expected_catalog_effects import build_expected_catalog_deltas
+from ci_r3b1o4_implicit_catalog_effects import build_implicit_catalog_effects
+from ci_r3b1o4_terminal_gate import evaluate_corrective_terminal_acceptance, evaluate_final_corrective_terminal_acceptance, evaluate_terminal_acceptance
+from ci_r3b1o4_test_source_hashes import (
+    build_corrective_test_source_hash_manifest,
+    build_final_corrective_test_source_hash_manifest,
+    build_test_source_hash_manifest,
+)
 
 SCHEMA_DUMP = REPO / "docs/audits/ci-recovery/.work/r3b1o4/production_schema_only.sql"
 
@@ -177,6 +185,21 @@ CORRECTIVE_TERMINAL_REQUIRED = [
 
 CORRECTIVE_REQUIRED_TEST_IDS = list(O3_REQUIRED) + TAIL_REQUIRED + CORRECTIVE_M252_REQUIRED + CORRECTIVE_CATALOG_DELTA_REQUIRED + CORRECTIVE_T2_REQUIRED + CORRECTIVE_TERMINAL_REQUIRED
 
+FINAL_CORRECTIVE_CATALOG_AUTH_REQUIRED = [
+    "catalog_auth_arbitrary_table_unauthorized",
+    "catalog_auth_arbitrary_index_unauthorized",
+    "catalog_auth_arbitrary_constraint_unauthorized",
+    "catalog_auth_arbitrary_type_unauthorized",
+    "catalog_auth_execution_set_unmodeled_object_unauthorized",
+    "catalog_auth_implicit_table_row_type_authorized",
+    "catalog_auth_full_authority_join_pass_fixture",
+    "o4_final_corrective_terminal_all_gates_pass",
+    "o4_final_corrective_terminal_ambiguous_fail",
+    "o4_final_corrective_terminal_catalog_engine_crossvalidation_fail",
+]
+
+FINAL_CORRECTIVE_REQUIRED_TEST_IDS = CORRECTIVE_REQUIRED_TEST_IDS + FINAL_CORRECTIVE_CATALOG_AUTH_REQUIRED
+
 
 def _inventory(*, tables: dict | None = None, indexes: dict | None = None, constraints: dict | None = None, enums: dict | None = None) -> dict:
     inv = {"schemas": ["public"], "tables": tables or {}, "enums": enums or {}, "types": [], "constraints": constraints or {}, "indexes": indexes or {}, "sequences": {}, "views": {}}
@@ -322,6 +345,162 @@ def run_t2_stale_index_tests(tests: list) -> None:
     _add(tests, "t2_wrong_owner_fail", "_compare_index", "FAIL", not bad, str(bad))
 
 
+def run_catalog_authority_tests(tests: list) -> None:
+    execution_set = build_execution_set()
+    expected = build_expected_catalog_deltas(execution_set=execution_set)
+    implicit = build_implicit_catalog_effects(expected=expected)
+
+    arbitrary_table = "arbitrary_unmodeled_table_xyz_99123"
+    table_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "table",
+            "name": arbitrary_table,
+            "subkey": None,
+            "before": None,
+            "after": {"owner": "public", "columns": ["id"]},
+            "object_id": f"table:{arbitrary_table}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_table_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", table_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", table_delta["classification"])
+
+    arbitrary_index = "arbitrary_unmodeled_index_xyz_99123"
+    index_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "index",
+            "name": arbitrary_index,
+            "subkey": None,
+            "before": None,
+            "after": {"name": arbitrary_index},
+            "object_id": f"index:{arbitrary_index}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_index_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", index_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", index_delta["classification"])
+
+    arbitrary_constraint = "arbitrary_unmodeled_constraint_xyz_99123"
+    constraint_delta = classify_delta_for_test(
+        {
+            "change_type": "REMOVED",
+            "object_type": "constraint",
+            "name": arbitrary_constraint,
+            "subkey": None,
+            "before": {"name": arbitrary_constraint},
+            "after": None,
+            "object_id": f"constraint:{arbitrary_constraint}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_constraint_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", constraint_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", constraint_delta["classification"])
+
+    arbitrary_type = "arbitrary_unmodeled_type_xyz_99123"
+    type_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "type",
+            "name": arbitrary_type,
+            "subkey": None,
+            "before": None,
+            "after": {"kind": "c"},
+            "object_id": f"type:{arbitrary_type}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_type_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", type_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", type_delta["classification"])
+
+    unmodeled_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "sequence",
+            "name": "arbitrary_unmodeled_sequence_xyz_99123",
+            "subkey": None,
+            "before": None,
+            "after": {"name": "arbitrary_unmodeled_sequence_xyz_99123"},
+            "object_id": "sequence:arbitrary_unmodeled_sequence_xyz_99123",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_execution_set_unmodeled_object_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", unmodeled_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", unmodeled_delta["classification"])
+
+    modeled_table = next((e["name"] for e in expected["effects"] if e["operation_family"] == "CREATE_TABLE" and e["object_type"] == "table"), None)
+    implicit_row = next((e for e in implicit["effects"] if e.get("postgres_rule") == "POSTGRES_TABLE_ROW_TYPE" and e["name"] == modeled_table), None)
+    if modeled_table and implicit_row:
+        implicit_delta = classify_delta_for_test(
+            {
+                "change_type": "ADDED",
+                "object_type": "type",
+                "name": modeled_table,
+                "subkey": None,
+                "before": None,
+                "after": implicit_row["after_state"],
+                "object_id": f"type:{modeled_table}",
+            },
+            expected=expected,
+            implicit=implicit,
+        )
+        _add(tests, "catalog_auth_implicit_table_row_type_authorized", "classify_delta_for_test", "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT", implicit_delta["classification"] == "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT", implicit_delta["classification"])
+    else:
+        _add(tests, "catalog_auth_implicit_table_row_type_authorized", "classify_delta_for_test", "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT", False, "missing fixture")
+
+    modeled_effect = next((e for e in expected["effects"] if e["object_type"] == "table" and e["change_type"] == "ADDED"), None)
+    if modeled_effect:
+        authority_join = authorize_catalog_deltas(raw_deltas=[{**modeled_effect, "object_id": modeled_effect.get("object_id", f"table:{modeled_effect['name']}")}], expected=expected, implicit=implicit)
+        _add(tests, "catalog_auth_full_authority_join_pass_fixture", "authorize_catalog_deltas", "PASS", authority_join["pass"], str(authority_join["pass"]))
+    else:
+        _add(tests, "catalog_auth_full_authority_join_pass_fixture", "authorize_catalog_deltas", "PASS", False, "missing fixture")
+
+
+def run_final_corrective_terminal_tests(tests: list) -> None:
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        catalog_engine_crossvalidation_pass=True,
+        execution_set_pass=True,
+        expected_catalog_pass=True,
+        implicit_catalog_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+        ambiguous=0,
+    )
+    perfect = evaluate_final_corrective_terminal_acceptance(**base)
+    _add(tests, "o4_final_corrective_terminal_all_gates_pass", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CORRECTIVE_CATALOG_AUTHORITY_COMPLETED", perfect["pass"], perfect["final_status"])
+    fail_ambiguous = evaluate_final_corrective_terminal_acceptance(**{**base, "ambiguous": 1})
+    _add(tests, "o4_final_corrective_terminal_ambiguous_fail", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_ambiguous["pass"] and fail_ambiguous["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_ambiguous["final_status"])
+    fail_engine = evaluate_final_corrective_terminal_acceptance(**{**base, "catalog_engine_crossvalidation_pass": False})
+    _add(tests, "o4_final_corrective_terminal_catalog_engine_crossvalidation_fail", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_CATALOG_ENGINE_CROSSVALIDATION_FAILED", not fail_engine["pass"] and fail_engine["final_status"] == "CI_R3B1O4_CATALOG_ENGINE_CROSSVALIDATION_FAILED", fail_engine["final_status"])
+
+
 def run_corrective_terminal_tests(tests: list) -> None:
     base = dict(
         worktree_strict_empty=True,
@@ -361,26 +540,41 @@ def run_corrective_terminal_tests(tests: list) -> None:
     _add(tests, "o4_corrective_terminal_catalog_delta_fail", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_catalog["pass"] and fail_catalog["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_catalog["final_status"])
 
 
-def run_golden_tests(*, corrective: bool = False) -> dict:
+def run_golden_tests(*, corrective: bool = False, final_corrective: bool = False) -> dict:
     tests: list[dict] = []
     run_m252_negative_tests(tests)
     run_diff_classifier_tests(tests)
     run_o3_terminal_tests(tests)
     run_tail_authority_tests(tests)
     run_o4_terminal_tests(tests)
-    if corrective:
+    if corrective or final_corrective:
         run_corrective_m252_index_tests(tests)
         run_catalog_delta_tests(tests)
         run_t2_stale_index_tests(tests)
         run_corrective_terminal_tests(tests)
+    if final_corrective:
+        run_catalog_authority_tests(tests)
+        run_final_corrective_terminal_tests(tests)
 
-    hash_manifest = build_corrective_test_source_hash_manifest() if corrective else build_test_source_hash_manifest()
+    if final_corrective:
+        hash_manifest = build_final_corrective_test_source_hash_manifest()
+        hash_fn = "build_final_corrective_test_source_hash_manifest"
+    elif corrective:
+        hash_manifest = build_corrective_test_source_hash_manifest()
+        hash_fn = "build_corrective_test_source_hash_manifest"
+    else:
+        hash_manifest = build_test_source_hash_manifest()
+        hash_fn = "build_test_source_hash_manifest"
     hash_entries = hash_manifest.get("entries") if isinstance(hash_manifest, dict) and "entries" in hash_manifest else [{"source_file": k, "sha256": v} for k, v in sorted((hash_manifest or {}).items())]
-    hash_fn = "build_corrective_test_source_hash_manifest" if corrective else "build_test_source_hash_manifest"
     for entry in hash_entries:
         _add(tests, f"source_hash_present_{entry['source_file'].replace('.', '_')}", hash_fn, "sha256 present", bool(entry["sha256"]), entry["source_file"])
 
-    required_ids = CORRECTIVE_REQUIRED_TEST_IDS if corrective else REQUIRED_TEST_IDS
+    if final_corrective:
+        required_ids = FINAL_CORRECTIVE_REQUIRED_TEST_IDS
+    elif corrective:
+        required_ids = CORRECTIVE_REQUIRED_TEST_IDS
+    else:
+        required_ids = REQUIRED_TEST_IDS
     implemented = {t["test_id"] for t in tests}
     coverage_rows = []
     for test_id in required_ids:
@@ -400,8 +594,15 @@ def run_golden_tests(*, corrective: bool = False) -> dict:
     failed = sum(1 for t in tests if not t["pass"])
     coverage_complete = all(r["implemented"] for r in coverage_rows)
 
-    phase = "CI-R3B1O.4-corrective" if corrective else "CI-R3B1O.4"
-    prefix = "ci-r3b1o4-corrective" if corrective else "ci-r3b1o4"
+    if final_corrective:
+        phase = "CI-R3B1O.4-final-corrective"
+        prefix = "ci-r3b1o4-final-corrective"
+    elif corrective:
+        phase = "CI-R3B1O.4-corrective"
+        prefix = "ci-r3b1o4-corrective"
+    else:
+        phase = "CI-R3B1O.4"
+        prefix = "ci-r3b1o4"
     results = {
         "schema_version": 1,
         "phase": phase,
@@ -425,5 +626,6 @@ def run_golden_tests(*, corrective: bool = False) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--corrective", action="store_true")
+    parser.add_argument("--final-corrective", action="store_true")
     args = parser.parse_args()
-    raise SystemExit(0 if run_golden_tests(corrective=args.corrective)["pass"] else 1)
+    raise SystemExit(0 if run_golden_tests(corrective=args.corrective, final_corrective=args.final_corrective)["pass"] else 1)

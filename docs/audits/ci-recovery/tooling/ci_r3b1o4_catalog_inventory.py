@@ -159,16 +159,34 @@ GROUP BY t.typname ORDER BY t.typname;
     ):
         enums[typname] = labels.split("\x1f") if labels else []
 
-    types = []
-    for row in _rows(
+    types: dict[str, dict[str, Any]] = {}
+    for name, fmt, kind, related_table, element_type, category in _rows(
         run_sql,
         """
-SELECT t.typname, pg_catalog.format_type(t.oid, NULL), t.typtype::text
-FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-WHERE n.nspname='public' AND t.typtype IN ('e','c','d') ORDER BY t.typname;
+SELECT t.typname,
+       pg_catalog.format_type(t.oid, NULL),
+       t.typtype::text,
+       COALESCE(rel.relname, ''),
+       COALESCE(elem.typname, ''),
+       t.typcategory::text
+FROM pg_type t
+JOIN pg_namespace n ON n.oid = t.typnamespace
+LEFT JOIN pg_class rel ON rel.oid = t.typrelid
+LEFT JOIN pg_type elem ON elem.oid = t.typelem
+WHERE n.nspname='public'
+  AND t.typisdefined
+  AND t.typtype IN ('b','c','d','e','p','r','m')
+ORDER BY t.typname;
 """,
     ):
-        types.append({"name": row[0], "format_type": row[1], "kind": row[2]})
+        types[name] = {
+            "name": name,
+            "format_type": fmt,
+            "kind": kind,
+            "category": category,
+            "related_table": related_table or None,
+            "element_type": element_type or None,
+        }
 
     constraints = []
     for name, table, kind, definition, deferrable, deferred, validated in _rows(
