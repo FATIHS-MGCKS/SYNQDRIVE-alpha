@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "tables": {
+    "organizations": {
+      "exists": true,
+      "row_count": 0
+    },
+    "organization_memberships": {
+      "exists": true,
+      "row_count": 0
+    },
+    "vehicles": {
+      "exists": true,
+      "row_count": 0
+    },
+    "bookings": {
+      "exists": true,
+      "row_count": 0
+    },
+    "vehicle_trips": {
+      "exists": true,
+      "row_count": 0
+    }
+  },
+  "null_measurements": 0,
+  "total_rows": 0,
+  "pass": true
+}

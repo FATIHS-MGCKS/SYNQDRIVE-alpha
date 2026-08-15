@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "production": {
+    "tables": 370,
+    "enums": 494,
+    "constraints": 1106,
+    "indexes": 1775
+  },
+  "twin": {
+    "tables": 370,
+    "enums": 494,
+    "constraints": 1106,
+    "indexes": 1775
+  },
+  "production_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+  "twin_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+  "pass": true,
+  "mismatches": []
+}

@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N.2",
+  "final_status": "CI_R3B1N2_ISOLATED_TWIN_PROVENANCE_CLOSURE_COMPLETED",
+  "pass": true,
+  "baseline": {
+    "PRE_R3B1N2_SHA": "3d75ac35dbf567e5ee7e8ae5e1d538add36a0af2",
+    "R3B1N1_REMOTE_HEAD": "3d75ac35dbf567e5ee7e8ae5e1d538add36a0af2",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "RECOVERED_HEAD": "11b2043e328a71b799fde2bb091d2423ea6e8ef8"
+  },
+  "production_instance_fingerprint": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+  "twin_instance_fingerprint": "d961e6bd9e6697bd91a7dc6801f191e335120a58fffc34a4ce77f2de47518d6b",
+  "isolation_pass": true,
+  "catalog_fidelity_pass": true,
+  "ledger_fidelity_pass": true,
+  "no_business_data_pass": true,
+  "checksum_provenance": {
+    "common_migrations": 71,
+    "raw_exact_matches": 1,
+    "lf_representation_matches": 1,
+    "crlf_representation_matches": 69,
+    "line_ending_only_differences": 70,
+    "actual_post_deploy_file_mutations": 0,
+    "semantic_sql_mutations": 0,
+    "identifier_only_mutations": 1,
+    "matches_none": 1,
+    "unresolved": 1
+  },
+  "checksum_representation": {
+    "raw": 0,
+    "lf": 0,
+    "crlf": 69
+  },
+  "pending_effects": {
+    "pending_and_physically_absent": 0,
+    "effect_already_present": 2,
+    "partial_effect_present": 0,
+    "unknown": 21
+  },
+  "r3b1g": {
+    "ledger_pending": true,
+    "effect_already_present": true,
+    "isolated_twin": "CONFIRMED_BY_ISOLATED_TWIN"
+  },
+  "r3b1i": {
+    "ledger_pending": true,
+    "effect_already_present": true,
+    "simulation": "NOT_REACHED"
+  },
+  "isolated_twin_deploy": {
+    "exit_code": 1,
+    "new_finished": 16,
+    "new_failed": 1,
+    "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "prisma_error_code": "P3018",
+    "database_error_code": "42701"
+  },
+  "production_ledger_unchanged": true,
+  "production_catalog_unchanged": true,
+  "production_mutations": 0,
+  "r3b1o_readiness": "READY",
+  "golden_tests": {
+    "pass": true,
+    "passed": 12,
+    "total": 12
+  }
+}
