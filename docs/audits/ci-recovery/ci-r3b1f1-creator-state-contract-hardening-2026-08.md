@@ -2,7 +2,7 @@
 
 ## Baseline
 
-- PRE_R3B1F1_SHA: `75ecaa637f7588a10d3b8d885ffb1830b0bfba9a`
+- PRE_R3B1F1_SHA: `c5ac5e43e8beb064f607033784d8a34a13d78b68`
 - Branch: `fix/ci-r3b1f1-creator-state-contract-hardening-2026-08`
 - Base R3B1F SHA: `75ecaa637f7588a10d3b8d885ffb1830b0bfba9a`
 
