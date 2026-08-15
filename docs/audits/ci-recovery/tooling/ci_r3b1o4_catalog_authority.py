@@ -257,10 +257,15 @@ def authorize_catalog_deltas(
         }
 
         if chosen:
+            stmt_key = (chosen.get("migration_name") or chosen.get("parent_migration"), chosen.get("statement_ordinal") or chosen.get("parent_statement_ordinal"))
+            stmt_family = None
+            if stmt_key[0] is not None and stmt_key[1] is not None:
+                bound_stmt = statement_lookup.get((stmt_key[0], int(stmt_key[1])))
+                stmt_family = bound_stmt.get("statement_family") if bound_stmt else chosen.get("statement_family")
             row["authority_migration"] = chosen.get("migration_name") or chosen.get("parent_migration")
             row["authority_statement_ordinal"] = chosen.get("statement_ordinal") or chosen.get("parent_statement_ordinal")
             row["authority_statement_sha256"] = chosen.get("statement_sha256") or chosen.get("parent_statement_sha256")
-            row["authority_statement_family"] = chosen.get("statement_family")
+            row["authority_statement_family"] = stmt_family
             row["match_mode"] = match_mode
             if chosen.get("authority_match") == "IMPLICIT_POSTGRES_EFFECT":
                 implicit_matches += 1
@@ -278,7 +283,9 @@ def authorize_catalog_deltas(
                     "migration": row["authority_migration"],
                     "statement_ordinal": row["authority_statement_ordinal"],
                     "statement_sha256": row["authority_statement_sha256"],
-                    "statement_family": row.get("authority_statement_family"),
+                    "statement_family": stmt_family,
+                    "operation_family": chosen.get("operation_family"),
+                    "authority_match": chosen.get("authority_match"),
                     "match_mode": match_mode,
                     "semantic_comparator": delta["object_type"],
                     "expected_effect_id": chosen.get("effect_id"),

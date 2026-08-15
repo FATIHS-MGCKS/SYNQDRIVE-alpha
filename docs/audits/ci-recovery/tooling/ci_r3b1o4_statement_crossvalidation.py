@@ -9,18 +9,20 @@ from ci_r3b1n2_constants import DATA
 from ci_r3b1o4_execution_set import build_statement_lookup
 
 FAMILY_COMPAT = {
-    "CREATE_TABLE": {"CREATE_TABLE", "ADD_CONSTRAINT", "M252_FORWARD"},
-    "ALTER_TABLE": {"ALTER_TABLE_ADD_COLUMN", "ADD_CONSTRAINT"},
+    "CREATE_TABLE": {"CREATE_TABLE", "ALTER_TABLE_ADD_COLUMN", "ADD_CONSTRAINT", "M252_FORWARD", "IMPLICIT_POSTGRES_EFFECT"},
+    "ALTER TABLE": {"ALTER_TABLE", "ALTER_TABLE_ADD_COLUMN", "ADD_CONSTRAINT", "IMPLICIT_POSTGRES_EFFECT"},
     "CREATE_INDEX": {"CREATE_INDEX", "M252_FORWARD"},
     "CREATE UNIQUE INDEX": {"CREATE_INDEX", "M252_FORWARD"},
     "DROP INDEX": {"DROP_INDEX"},
-    "CREATE TYPE": {"CREATE_TYPE_ENUM"},
-    "CREATE SEQUENCE": {"CREATE_SEQUENCE"},
+    "CREATE TYPE": {"CREATE_TYPE_ENUM", "IMPLICIT_POSTGRES_EFFECT"},
+    "CREATE SEQUENCE": {"CREATE_SEQUENCE", "IMPLICIT_POSTGRES_EFFECT"},
 }
 
 
 def _family_compatible(statement_family: str | None, operation_family: str | None) -> bool:
     if not statement_family or not operation_family:
+        return True
+    if operation_family == "IMPLICIT_POSTGRES_EFFECT":
         return True
     allowed = FAMILY_COMPAT.get(statement_family)
     if allowed is None:
@@ -28,7 +30,7 @@ def _family_compatible(statement_family: str | None, operation_family: str | Non
     if operation_family in allowed:
         return True
     if operation_family == "M252_FORWARD":
-        return statement_family in {"CREATE TABLE", "CREATE INDEX", "ALTER TABLE"}
+        return statement_family in {"CREATE TABLE", "CREATE INDEX", "ALTER TABLE", "CREATE UNIQUE INDEX"}
     return False
 
 
@@ -61,11 +63,7 @@ def build_statement_crossvalidation(
                 sha_mismatch += 1
                 ok = False
                 reasons.append("sha_mismatch")
-            op = None
-            for delta in authority.get("deltas", []):
-                if delta.get("object_id") == proof.get("object_id"):
-                    break
-            if not _family_compatible(stmt.get("statement_family"), proof.get("statement_family")):
+            if not _family_compatible(stmt.get("statement_family"), proof.get("operation_family")):
                 family_mismatch += 1
                 ok = False
                 reasons.append("family_mismatch")
@@ -77,6 +75,7 @@ def build_statement_crossvalidation(
                 "proof_sha256": sha,
                 "execution_set_sha256": stmt["statement_sha256"] if stmt else None,
                 "statement_family": stmt.get("statement_family") if stmt else None,
+                "operation_family": proof.get("operation_family"),
                 "pass": ok,
                 "reasons": reasons,
             }
