@@ -73,7 +73,7 @@ def main() -> int:
 | derived_lineage_gaps | {preflight.get('derived_lineage_gaps', 0)} |
 | qualified_reference_coverage_gaps | {preflight.get('qualified_reference_coverage_gaps', 0)} |
 | UNRESOLVED | {preflight.get('UNRESOLVED', 0)} |
-| Preflight status | `{preflight.get('status', 'UNKNOWN')}` |
+| Preflight status | `{preflight.get('final_status', preflight.get('status', 'UNKNOWN'))}` |
 
 ---
 

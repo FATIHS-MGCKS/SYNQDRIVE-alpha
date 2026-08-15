@@ -14,6 +14,7 @@ from ci_r3b1c_special_composite_index import SpecialCompositeIndexExecutor
 from ci_r3b1e_constants import ORIGINAL_R3B_HIGH_RISK, POST_VENDOR_HIGH_RISK, SLOT_MIGRATIONS, TOPOLOGY
 from ci_r3b1g_constants import R3B1G_REPAIR_MIGRATION, TIRE_CONSUMER
 from ci_r3b1i_constants import BASE_R3B1H111_SHA, DATA, IAM_CONSUMER, IAM_REPAIR_MIGRATION, evidence_input_sha
+from ci_r3b1j_statement_failure_capture import enrich_replay_failure
 from replay_evidence_lib import (
     SPECIAL_MIGRATION,
     audit_transaction_sensitive_migrations,
@@ -226,6 +227,8 @@ def run_full_replay(db_name: str = "synqdrive_r3b1i_full_replay") -> dict:
         last_applied = next((h["migration_name"] for h in reversed(hist) if h["finished"]), parsed.get("last_applied_migration"))
         pg_version_proc = psql(cfg, db_name, "SHOW server_version;", tuples_only=True)
         failure_class = classify_failure(failed)
+        parsed = enrich_replay_failure(cfg, db_name, parsed)
+        stmt_fail = parsed.get("statement_level_failure", {})
         partial = {
             "evidence_input_sha": evidence_input_sha(),
             "BASE_R3B1H111_SHA": BASE_R3B1H111_SHA,
@@ -243,8 +246,11 @@ def run_full_replay(db_name: str = "synqdrive_r3b1i_full_replay") -> dict:
             "manual_interventions": manual_interventions,
             "first_failed_migration": failed,
             "failure_ordinal": migration_ordinal(failed or ""),
-            "sqlstate": parsed.get("sqlstate"),
-            "error_message": parsed.get("error_message"),
+            "first_failing_statement_ordinal": stmt_fail.get("first_failing_statement_ordinal"),
+            "failing_statement_sql": stmt_fail.get("failing_statement_sql"),
+            "sqlstate": stmt_fail.get("sqlstate") or parsed.get("sqlstate"),
+            "error_message": stmt_fail.get("postgresql_error") or parsed.get("error_message"),
+            "statement_level_failure": stmt_fail,
             "failure_classification": failure_class,
             "last_successful_migration": last_applied,
             "repair_runtime": runtime_status(cfg, db_name, last_applied, False),
