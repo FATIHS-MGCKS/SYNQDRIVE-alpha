@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.2",
+  "source_diff": "docs/audits/ci-recovery/data/ci-r3b1o1-final-winning-twin-prisma-diff-2026-08.sql",
+  "operations": [
+    {
+      "ordinal": 1,
+      "sql": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" RENAME CONSTRAINT \"org_role_asgn_drift_recon_apps_pkey\" TO \"organization_role_assignment_drift_reconciliation_applicat_pkey\";",
+      "object_type": "PRIMARY_KEY",
+      "component": "PK",
+      "current_physical_name": "org_role_asgn_drift_recon_apps_pkey",
+      "prisma_desired_physical_name": "organization_role_assignment_drift_reconciliation_applicat_pkey",
+      "canonical_physical_name": "org_role_asgn_drift_recon_apps_pkey",
+      "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+      "ownership_evidence": "positive M252 table reference in diff SQL"
+    },
+    {
+      "ordinal": 2,
+      "sql": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" RENAME CONSTRAINT \"org_role_asgn_drift_recon_apps_mbr_id_fkey\" TO \"org_role_assignment_drift_recon_app_mem_fkey\";",
+      "object_type": "FOREIGN_KEY",
+      "component": "MEMBERSHIP_FK",
+      "current_physical_name": "org_role_asgn_drift_recon_apps_mbr_id_fkey",
+      "prisma_desired_physical_name": "org_role_assignment_drift_recon_app_mem_fkey",
+      "canonical_physical_name": "org_role_asgn_drift_recon_apps_mbr_id_fkey",
+      "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+      "ownership_evidence": "positive M252 table reference in diff SQL"
+    },
+    {
+      "ordinal": 3,
+      "sql": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" RENAME CONSTRAINT \"org_role_asgn_drift_recon_apps_org_id_fkey\" TO \"org_role_assignment_drift_recon_app_org_fkey\";",
+      "object_type": "FOREIGN_KEY",
+      "component": "ORG_FK",
+      "current_physical_name": "org_role_asgn_drift_recon_apps_org_id_fkey",
+      "prisma_desired_physical_name": "org_role_assignment_drift_recon_app_org_fkey",
+      "canonical_physical_name": "org_role_asgn_drift_recon_apps_org_id_fkey",
+      "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+      "ownership_evidence": "positive M252 table reference in diff SQL"
+    },
+    {
+      "ordinal": 4,
+      "sql": "ALTER INDEX \"org_role_asgn_drift_recon_apps_idem_key\" RENAME TO \"organization_role_assignment_drift_reconciliation_applicati_key\";",
+      "object_type": "UNIQUE_INDEX",
+      "component": "UNIQUE",
+      "current_physical_name": "org_role_asgn_drift_recon_apps_idem_key",
+      "prisma_desired_physical_name": "organization_role_assignment_drift_reconciliation_applicati_key",
+      "canonical_physical_name": "org_role_asgn_drift_recon_apps_idem_key",
+      "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+      "ownership_evidence": "positive M252 table reference in diff SQL"
+    },
+    {
+      "ordinal": 5,
+      "sql": "ALTER INDEX \"org_role_asgn_drift_recon_apps_org_mbr_created_idx\" RENAME TO \"organization_role_assignment_drift_reconciliation_applicati_idx\";",
+      "object_type": "INDEX",
+      "component": "INDEX",
+      "current_physical_name": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "prisma_desired_physical_name": "organization_role_assignment_drift_reconciliation_applicati_idx",
+      "canonical_physical_name": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+      "ownership_evidence": "positive M252 table reference in diff SQL"
+    }
+  ],
+  "operation_count": 5,
+  "expected_count": 5,
+  "pass": true
+}

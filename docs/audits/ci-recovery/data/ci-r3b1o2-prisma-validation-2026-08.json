@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.2",
+  "validate_exit_code": 0,
+  "generate_exit_code": 0,
+  "prisma_version_output": "prisma                  : 5.22.0\n@prisma/client          : 5.22.0\nComputed binaryTarget   : debian-openssl-3.0.x\nOperating System        : linux\nArchitecture            : x64\nNode.js                 : v22.14.0\nQuery Engine (Node-API) : libquery-engine 605197351a3c8bdd595af2d2a9bc3025bca48ea2 (at node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node)\nSchema Engine           : schema-engine-cli 605197351a3c8bdd595af2d2a9bc3025bca48ea2 (at node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x)\nSchema Wasm             : @prisma/prisma-schema-wasm 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2\nDefault Engines Hash    : 605197351a3c8bdd595af2d2a9bc3025bca48ea2\nStudio                  : 0.503.0",
+  "pass": true
+}
