@@ -1,0 +1,10 @@
+{
+  "modified_migration_sql_count": 0,
+  "changed_migrations": [],
+  "new_migration_directories": 0,
+  "migration_252_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "migration_252_unchanged_from_r3b1k": true,
+  "schema_prisma_changed": false,
+  "runtime_changed": false,
+  "pass": true
+}
