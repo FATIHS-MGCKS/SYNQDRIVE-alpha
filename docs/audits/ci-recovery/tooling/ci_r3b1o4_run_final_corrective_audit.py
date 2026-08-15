@@ -181,6 +181,8 @@ def main() -> int:
     crossvalidation["phase"] = "CI-R3B1O.4-final-corrective"
     write_json(DATA / f"{PREFIX}-evidence-code-crossvalidation-2026-08.json", crossvalidation)
     write_final_corrective_test_source_hash_manifest(post_hashes)
+    hash_payload = json.loads((DATA / f"{PREFIX}-test-source-hash-manifest-2026-08.json").read_text())
+    write_json(DATA / f"{PREFIX}-source-hash-manifest-2026-08.json", hash_payload)
 
     m252_parity = strategy["m252_exact_parity"]
     write_json(DATA / f"{PREFIX}-final-m252-exact-parity-2026-08.json", m252_parity)
@@ -324,6 +326,7 @@ def main() -> int:
         "pass": terminal["pass"],
     }
     write_json(DATA / f"{PREFIX}-final-acceptance-summary-2026-08.json", summary)
+    write_json(DATA / f"{PREFIX}-acceptance-summary-2026-08.json", summary)
 
     subprocess.run([sys.executable, str(Path(__file__).with_name("ci_r3b1o4_generate_report.py")), "--final-corrective"], cwd=Path(__file__).parent)
 

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-final-corrective",
+  "entries": [
+    {
+      "source_file": "ci_r3b1o4_catalog_authority.py",
+      "sha256": "ceb6a1efafc22f9bf9b0218b45620b6f81f9e2d5803fd22a7264ea1a5459a516"
+    },
+    {
+      "source_file": "ci_r3b1o4_catalog_engine_crossvalidation.py",
+      "sha256": "a25b37754425c0a06df698a2374c882d74c68914b0e9ee1cc09259185a45a32a"
+    },
+    {
+      "source_file": "ci_r3b1o4_catalog_inventory.py",
+      "sha256": "ad75357a007a4d17421214d6132310e99a251800b7ba455b7089f23482431a51"
+    },
+    {
+      "source_file": "ci_r3b1o4_evidence_crossvalidation.py",
+      "sha256": "05ad6c5298a95d04c99fa3dbd12c961508cf1deba9c5ee712cdb945312265007"
+    },
+    {
+      "source_file": "ci_r3b1o4_execution_set.py",
+      "sha256": "76cf34ee3bdcf3c0b3e8381b364ecdc3411395ffb3c0ae9afc5ae05f14377205"
+    },
+    {
+      "source_file": "ci_r3b1o4_expected_catalog_effects.py",
+      "sha256": "d8d842e0211b6b537805878cda63e617ff3df339575b1307a449d5fd1508f690"
+    },
+    {
+      "source_file": "ci_r3b1o4_final_twin.py",
+      "sha256": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b"
+    },
+    {
+      "source_file": "ci_r3b1o4_golden_tests.py",
+      "sha256": "dff62166a3185b1eca20e2639ba196609ceae3b5f562172beac818b0cba39cd2"
+    },
+    {
+      "source_file": "ci_r3b1o4_implicit_catalog_effects.py",
+      "sha256": "314a026baf6063c40350bda842c493c317c9bb06c5fc9830e153dc0473977ce0"
+    },
+    {
+      "source_file": "ci_r3b1o4_m252_exact_parity.py",
+      "sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768"
+    },
+    {
+      "source_file": "ci_r3b1o4_run_final_corrective_audit.py",
+      "sha256": "1190a6880dba2b48e6b3df14349c4d3cc9b00bd973bb054497c1cc6d5f1336ee"
+    },
+    {
+      "source_file": "ci_r3b1o4_t2_stale_index_safety.py",
+      "sha256": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d"
+    },
+    {
+      "source_file": "ci_r3b1o4_terminal_gate.py",
+      "sha256": "5ceac9a94fe8ea67d1543050aa9b1f562008622740f960260e1d55b289e1ccca"
+    }
+  ],
+  "pass": true
+}

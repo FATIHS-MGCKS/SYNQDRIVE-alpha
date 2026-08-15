@@ -1,0 +1,903 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-final-corrective",
+  "required": 112,
+  "implemented": 112,
+  "executed": 125,
+  "passed": 125,
+  "failed": 0,
+  "coverage_complete": true,
+  "test_source_hashes": {
+    "ci_r3b1o4_m252_exact_parity.py": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+    "ci_r3b1o4_catalog_authority.py": "ceb6a1efafc22f9bf9b0218b45620b6f81f9e2d5803fd22a7264ea1a5459a516",
+    "ci_r3b1o4_catalog_inventory.py": "ad75357a007a4d17421214d6132310e99a251800b7ba455b7089f23482431a51",
+    "ci_r3b1o4_execution_set.py": "76cf34ee3bdcf3c0b3e8381b364ecdc3411395ffb3c0ae9afc5ae05f14377205",
+    "ci_r3b1o4_expected_catalog_effects.py": "d8d842e0211b6b537805878cda63e617ff3df339575b1307a449d5fd1508f690",
+    "ci_r3b1o4_implicit_catalog_effects.py": "314a026baf6063c40350bda842c493c317c9bb06c5fc9830e153dc0473977ce0",
+    "ci_r3b1o4_catalog_engine_crossvalidation.py": "a25b37754425c0a06df698a2374c882d74c68914b0e9ee1cc09259185a45a32a",
+    "ci_r3b1o4_t2_stale_index_safety.py": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d",
+    "ci_r3b1o4_final_twin.py": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b",
+    "ci_r3b1o4_evidence_crossvalidation.py": "05ad6c5298a95d04c99fa3dbd12c961508cf1deba9c5ee712cdb945312265007",
+    "ci_r3b1o4_golden_tests.py": "dff62166a3185b1eca20e2639ba196609ceae3b5f562172beac818b0cba39cd2",
+    "ci_r3b1o4_terminal_gate.py": "5ceac9a94fe8ea67d1543050aa9b1f562008622740f960260e1d55b289e1ccca",
+    "ci_r3b1o4_run_final_corrective_audit.py": "1190a6880dba2b48e6b3df14349c4d3cc9b00bd973bb054497c1cc6d5f1336ee"
+  },
+  "tests": [
+    {
+      "test_id": "m252_positive_control",
+      "function": "compare_m252_exact",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_table_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_missing_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_column_type",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_timestamp_precision",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_nullability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_default",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_identity",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_generated",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_predicate",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_validity",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_flag",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_index_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_index_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_column_order",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_predicate",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_source_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_target_table",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_target_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_match",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_on_update",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_on_delete",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_validation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_source_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_target_table",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_target_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_match",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_on_update",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_on_delete",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_validation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_unexpected_extra_object",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_unexpected_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "diff_m252_alter_index_scope",
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_M252",
+      "actual": "OWNER_M252",
+      "pass": true
+    },
+    {
+      "test_id": "diff_unknown_owner_unresolved",
+      "function": "classify_operation_two_axis",
+      "expected": "UNATTRIBUTED",
+      "actual": "UNATTRIBUTED",
+      "pass": true
+    },
+    {
+      "test_id": "diff_m252_name_outside_scope_not_m252",
+      "function": "resolve_owner_fields",
+      "expected": "not OWNER_M252",
+      "actual": "OWNER_UNKNOWN",
+      "pass": true
+    },
+    {
+      "test_id": "diff_r3b_catalog_owner",
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_R3B",
+      "actual": "OWNER_R3B",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_pre_existing_golden_match",
+      "function": "classify_operation_two_axis",
+      "expected": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "actual": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_authorized_delta_explicit",
+      "function": "classify_operation_two_axis",
+      "expected": "AUTHORIZED_STRATEGY_DELTA",
+      "actual": "AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_out_of_scope_no_golden_new_drift",
+      "function": "classify_operation_two_axis",
+      "expected": "NEW_STRATEGY_DRIFT",
+      "actual": "NEW_STRATEGY_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "diff_no_authority_new_strategy_drift",
+      "function": "classify_operation_two_axis",
+      "expected": "NEW_STRATEGY_DRIFT",
+      "actual": "NEW_STRATEGY_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_unknown_unattributed",
+      "function": "classify_operation_two_axis",
+      "expected": "UNATTRIBUTED",
+      "actual": "UNATTRIBUTED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_all_gates_pass",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "PASS",
+      "actual": "CI_R3B1O3_FINAL_STRATEGY_ACCEPTANCE_CLOSURE_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_baseline_not_clean",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_BASELINE_NOT_CLEAN",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_owner_unknown_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_unattributed_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_new_strategy_drift_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_FINAL_DRIFT_ATTRIBUTION_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_r3b_scope_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_m252_scope_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_m252_parity_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_M252_EXACT_PARITY_GATE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_golden_test_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_GOLDEN_GATE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_second_deploy_new_row_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_REPEAT_DEPLOY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_catalog_delta_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_REPEAT_DEPLOY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_r3b_parity_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_production_changed_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "invoice_stale_creator_and_superseding",
+      "function": "build_invoice_stale_index_authority",
+      "expected": "slot4+invoice_finance_workflow",
+      "actual": "20260413225000_ci_r3b_historical_predecessor_slot4->20260616180000_invoice_finance_workflow",
+      "pass": true
+    },
+    {
+      "test_id": "whatsapp_stale_creator_and_superseding",
+      "function": "build_whatsapp_stale_index_authority",
+      "expected": "slot11+whatsapp_business_platform",
+      "actual": "20260620183000_ci_r3b_post_vendor_predecessor_slot11->20260620190000_whatsapp_business_platform",
+      "pass": true
+    },
+    {
+      "test_id": "tail_contract_exactly_three_tasks",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "3",
+      "actual": "3",
+      "pass": true
+    },
+    {
+      "test_id": "tail_contract_no_unauthorized_tasks",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "0",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_no_cascade",
+      "function": "build_tail_sql",
+      "expected": "no DROP CASCADE",
+      "actual": "none",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_contains_invoice_drop",
+      "function": "build_tail_sql",
+      "expected": "invoice drop",
+      "actual": "present",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_contains_whatsapp_drop",
+      "function": "build_tail_sql",
+      "expected": "whatsapp drop",
+      "actual": "present",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_contains_m252_create",
+      "function": "build_tail_sql",
+      "expected": "M252 create",
+      "actual": "present",
+      "pass": true
+    },
+    {
+      "test_id": "tail_contract_fourth_task_fail",
+      "function": "manual",
+      "expected": "FAIL",
+      "actual": "4",
+      "pass": true
+    },
+    {
+      "test_id": "tail_precondition_m252_absent_pass_fixture",
+      "function": "evaluate_tail_preconditions",
+      "expected": "mixed",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "tail_precondition_m252_present_fail",
+      "function": "evaluate_tail_preconditions",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "o4_terminal_all_gates_pass",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "actual": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "o4_terminal_stale_drop_ops_remaining_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O4_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "m252_o4_positive_control",
+      "function": "compare_m252_exact",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_include",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_collation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_opclass",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_sort_direction",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_null_ordering",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_ready",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_valid",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_access_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_key_order",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_known_added_authorized",
+      "function": "build_full_catalog_delta_authority",
+      "expected": "authorized",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_stale_removed_authorized",
+      "function": "classify_delta",
+      "expected": "STALE_RECOVERY_EFFECT_REMOVED",
+      "actual": "STALE_RECOVERY_EFFECT_REMOVED",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_unknown_table_unauthorized",
+      "function": "classify_delta",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_unknown_index_unauthorized",
+      "function": "classify_delta",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_unexpected_column_change_unauthorized",
+      "function": "classify_delta",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_unknown_constraint_removed_unauthorized",
+      "function": "classify_delta",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_all_classified_pass",
+      "function": "build_full_catalog_delta_authority",
+      "expected": "PASS",
+      "actual": "2",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_delta_omitted_classification_fail",
+      "function": "manual",
+      "expected": "FAIL",
+      "actual": "1/2",
+      "pass": true
+    },
+    {
+      "test_id": "t2_invoice_stale_exact_shape_pass",
+      "function": "_compare_index",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "t2_whatsapp_stale_exact_shape_pass",
+      "function": "_compare_index",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "t2_wrong_owner_fail",
+      "function": "_compare_index",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "o4_corrective_terminal_all_gates_pass",
+      "function": "evaluate_corrective_terminal_acceptance",
+      "expected": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "actual": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "o4_corrective_terminal_second_deploy_fail",
+      "function": "evaluate_corrective_terminal_acceptance",
+      "expected": "CI_R3B1O4_REPEAT_DEPLOY_FAILED",
+      "actual": "CI_R3B1O4_REPEAT_DEPLOY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "o4_corrective_terminal_catalog_delta_fail",
+      "function": "evaluate_corrective_terminal_acceptance",
+      "expected": "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+      "actual": "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_arbitrary_table_unauthorized",
+      "function": "classify_delta_for_test",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_arbitrary_index_unauthorized",
+      "function": "classify_delta_for_test",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_arbitrary_constraint_unauthorized",
+      "function": "classify_delta_for_test",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_arbitrary_type_unauthorized",
+      "function": "classify_delta_for_test",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_execution_set_unmodeled_object_unauthorized",
+      "function": "classify_delta_for_test",
+      "expected": "UNAUTHORIZED_FINAL_DELTA",
+      "actual": "UNAUTHORIZED_FINAL_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_implicit_table_row_type_authorized",
+      "function": "classify_delta_for_test",
+      "expected": "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT",
+      "actual": "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT",
+      "pass": true
+    },
+    {
+      "test_id": "catalog_auth_full_authority_join_pass_fixture",
+      "function": "authorize_catalog_deltas",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "o4_final_corrective_terminal_all_gates_pass",
+      "function": "evaluate_final_corrective_terminal_acceptance",
+      "expected": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "actual": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "o4_final_corrective_terminal_ambiguous_fail",
+      "function": "evaluate_final_corrective_terminal_acceptance",
+      "expected": "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+      "actual": "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "o4_final_corrective_terminal_catalog_engine_crossvalidation_fail",
+      "function": "evaluate_final_corrective_terminal_acceptance",
+      "expected": "CI_R3B1O4_CATALOG_ENGINE_CROSSVALIDATION_FAILED",
+      "actual": "CI_R3B1O4_CATALOG_ENGINE_CROSSVALIDATION_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_catalog_authority_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_catalog_authority.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_catalog_engine_crossvalidation_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_catalog_engine_crossvalidation.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_catalog_inventory_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_catalog_inventory.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_evidence_crossvalidation_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_evidence_crossvalidation.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_execution_set_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_execution_set.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_expected_catalog_effects_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_expected_catalog_effects.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_final_twin_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_final_twin.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_golden_tests_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_golden_tests.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_implicit_catalog_effects_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_implicit_catalog_effects.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_m252_exact_parity_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_m252_exact_parity.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_run_final_corrective_audit_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_run_final_corrective_audit.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_t2_stale_index_safety_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_t2_stale_index_safety.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_terminal_gate_py",
+      "function": "build_final_corrective_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_terminal_gate.py",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

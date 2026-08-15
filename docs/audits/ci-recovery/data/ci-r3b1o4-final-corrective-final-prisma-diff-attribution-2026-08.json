@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3-corrective",
+  "total_operations": 0,
+  "scope_counts": {
+    "R3B": 0,
+    "M252": 0,
+    "OTHER": 0,
+    "UNKNOWN": 0
+  },
+  "provenance_counts": {
+    "PRE_EXISTING": 0,
+    "AUTHORIZED_STRATEGY": 0,
+    "NEW_UNAUTHORIZED": 0,
+    "UNKNOWN": 0
+  },
+  "R3B_SCOPE": 0,
+  "M252_SCOPE": 0,
+  "UNKNOWN_SCOPE": 0,
+  "PRE_EXISTING_PRODUCTION_DRIFT": 0,
+  "AUTHORIZED_STRATEGY_DELTA": 0,
+  "NEW_STRATEGY_DRIFT": 0,
+  "UNATTRIBUTED": 0,
+  "operations": [],
+  "pass": true
+}
