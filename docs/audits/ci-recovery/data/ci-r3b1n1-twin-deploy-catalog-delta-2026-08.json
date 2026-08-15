@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "ledger_before_count": 315,
+  "ledger_after_count": 332,
+  "new_finished_rows": 17,
+  "first_blocker": {
+    "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "prisma_error_code": "P3018",
+    "sqlstate": null,
+    "postgres_error": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+    "blocker_type": "PENDING_EXISTING_COLUMN_COLLISION"
+  }
+}

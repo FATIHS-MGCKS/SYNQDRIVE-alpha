@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "production": {
+    "alias": "PROD_DB_A",
+    "service_alias": "PROD_VPS_A",
+    "postgresql_version_line": "PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "system_identifier": "7654152427769393503",
+    "inet_server_addr": "",
+    "inet_server_port": "",
+    "current_database": "synqdrive",
+    "instance_fingerprint_sha256": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+    "database_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d"
+  },
+  "twin": {
+    "postgresql_version_line": "PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "system_identifier": "7672638720877648370",
+    "inet_server_addr": "::1/128",
+    "inet_server_port": "5432",
+    "current_database": "synqdrive_r3b1a_replay",
+    "instance_fingerprint_sha256": "d961e6bd9e6697bd91a7dc6801f191e335120a58fffc34a4ce77f2de47518d6b",
+    "database_fingerprint_sha256": "900071aa8d7c3e752121985544afca358a98531f1b516653335251f5748ac63f"
+  },
+  "same_physical_instance": false,
+  "same_database_name": false,
+  "isolation_pass": true,
+  "pass": true
+}

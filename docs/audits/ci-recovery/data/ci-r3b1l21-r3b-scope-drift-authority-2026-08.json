@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "r3b_scope_operation_count": 1,
+  "decisions": [
+    {
+      "operation_ordinal": 81,
+      "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)",
+      "affected_authority_object": "trip_driving_impact",
+      "affected_property_category": "trip_driving_impact:types",
+      "accepted_canonical_authority": {
+        "table": "trip_driving_impact",
+        "column": "calculated_at",
+        "type": "timestamp with time zone",
+        "nullable": true,
+        "default": null,
+        "data_type": "timestamp with time zone",
+        "datetime_precision": 6
+      },
+      "replay_actual": {
+        "table": "trip_driving_impact",
+        "column": "calculated_at",
+        "type": "timestamp with time zone",
+        "nullable": true,
+        "default": {
+          "kind": "NO_DATABASE_DEFAULT",
+          "value": null
+        },
+        "parity_evidence": "CI-R3B1L_EXACT_PARITY 54/54 types category PASS"
+      },
+      "current_prisma_desired_state": {
+        "model": "TripDrivingImpact",
+        "field": "calculatedAt",
+        "prisma_type": "DateTime?",
+        "mapped_column": "calculated_at",
+        "native_type_annotation": null,
+        "native_type": null,
+        "nullable": true,
+        "default_annotation": null,
+        "raw_line": "DateTime?                       @map(\"calculated_at\")",
+        "desired_pg_type": "timestamp(3) without time zone"
+      },
+      "decision": "CURRENT_PRISMA_SCHEMA_DRIFT",
+      "cross_evidence_contradiction": false,
+      "evidence_sources": [
+        "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+        "docs/audits/ci-recovery/data/ci-r3b1l-canonical-54-property-authority-2026-08.json",
+        "backend/prisma/schema.prisma",
+        "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql"
+      ]
+    }
+  ],
+  "decision_counts": {
+    "CURRENT_PRISMA_SCHEMA_DRIFT": 1,
+    "REPLAY_DB_DRIFT": 0,
+    "NON_SEMANTIC_DIFFERENCE": 0,
+    "AUTHORITY_AMBIGUITY": 0,
+    "CROSS_EVIDENCE_CONTRADICTION": 0
+  },
+  "trip_driving_impact_calculated_at": {
+    "operation_ordinal": 81,
+    "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)",
+    "affected_authority_object": "trip_driving_impact",
+    "affected_property_category": "trip_driving_impact:types",
+    "accepted_canonical_authority": {
+      "table": "trip_driving_impact",
+      "column": "calculated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "default": null,
+      "data_type": "timestamp with time zone",
+      "datetime_precision": 6
+    },
+    "replay_actual": {
+      "table": "trip_driving_impact",
+      "column": "calculated_at",
+      "type": "timestamp with time zone",
+      "nullable": true,
+      "default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "parity_evidence": "CI-R3B1L_EXACT_PARITY 54/54 types category PASS"
+    },
+    "current_prisma_desired_state": {
+      "model": "TripDrivingImpact",
+      "field": "calculatedAt",
+      "prisma_type": "DateTime?",
+      "mapped_column": "calculated_at",
+      "native_type_annotation": null,
+      "native_type": null,
+      "nullable": true,
+      "default_annotation": null,
+      "raw_line": "DateTime?                       @map(\"calculated_at\")",
+      "desired_pg_type": "timestamp(3) without time zone"
+    },
+    "decision": "CURRENT_PRISMA_SCHEMA_DRIFT",
+    "cross_evidence_contradiction": false,
+    "evidence_sources": [
+      "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "docs/audits/ci-recovery/data/ci-r3b1l-canonical-54-property-authority-2026-08.json",
+      "backend/prisma/schema.prisma",
+      "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql"
+    ]
+  },
+  "pass": true
+}

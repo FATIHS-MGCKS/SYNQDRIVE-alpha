@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.1",
+  "source_migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "table": "organization_role_assignment_drift_reconciliation_applications",
+  "approved_identifier_mappings": {
+    "organization_role_assignment_drift_reconciliation_applications_pkey": "org_role_asgn_drift_recon_apps_pkey",
+    "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key": "org_role_asgn_drift_recon_apps_idem_key",
+    "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+    "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey": "org_role_asgn_drift_recon_apps_org_id_fkey",
+    "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey": "org_role_asgn_drift_recon_apps_mbr_id_fkey"
+  },
+  "columns": [
+    {
+      "name": "id",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "idempotency_key",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "organization_id",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "membership_id",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "evidence_hash",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "expected_git_commit",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "operator",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "reason",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "classification",
+      "definition": "TEXT NOT NULL",
+      "nullable": false,
+      "default": null
+    },
+    {
+      "name": "result",
+      "definition": "JSONB",
+      "nullable": true,
+      "default": null
+    },
+    {
+      "name": "created_at",
+      "definition": "TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP",
+      "nullable": false,
+      "default": "CURRENT_TIMESTAMP"
+    }
+  ],
+  "primary_key": {
+    "name": "org_role_asgn_drift_recon_apps_pkey",
+    "columns": [
+      "id"
+    ]
+  },
+  "unique_constraints": [
+    {
+      "name": "org_role_asgn_drift_recon_apps_idem_key",
+      "columns": [
+        "idempotency_key"
+      ],
+      "unique_index": true
+    }
+  ],
+  "indexes": [
+    {
+      "name": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "columns": [
+        "organization_id",
+        "membership_id",
+        "created_at"
+      ],
+      "unique": false
+    }
+  ],
+  "foreign_keys": [
+    {
+      "name": "org_role_asgn_drift_recon_apps_org_id_fkey",
+      "columns": [
+        "organization_id"
+      ],
+      "referenced_table": "organizations",
+      "referenced_columns": [
+        "id"
+      ],
+      "on_update": "CASCADE",
+      "on_delete": "CASCADE"
+    },
+    {
+      "name": "org_role_asgn_drift_recon_apps_mbr_id_fkey",
+      "columns": [
+        "membership_id"
+      ],
+      "referenced_table": "organization_memberships",
+      "referenced_columns": [
+        "id"
+      ],
+      "on_update": "CASCADE",
+      "on_delete": "CASCADE"
+    }
+  ]
+}

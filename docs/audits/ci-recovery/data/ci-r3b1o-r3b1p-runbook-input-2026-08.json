@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "required_production_preflight_checks": [
+    "production ledger fingerprint unchanged",
+    "production catalog fingerprint unchanged",
+    "R3B1G full-effect proof",
+    "R3B1I full-effect proof",
+    "M252 ledger/history preserved"
+  ],
+  "proposed_migrate_resolve": [
+    "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+  ],
+  "full_effect_proof_ids": [
+    "EC_20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "EC_20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+  ],
+  "m252_forward_migration_contract": {
+    "temporary_migration_name": "20260815184603_ci_r3b1o_strategy_m252_forward_reconciliation",
+    "source_migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+    "purpose": "append_only_forward_reconciliation",
+    "target_table": "organization_role_assignment_drift_reconciliation_applications",
+    "sql_source": "corrected recovered migration 252 semantics",
+    "tracked_repository": false,
+    "apply_pass": true
+  },
+  "data_dependent_risk": {
+    "DDL_SCHEMA_ONLY": 2,
+    "DATA_DEPENDENT_LOW": 0,
+    "DATA_DEPENDENT_HIGH": 13,
+    "UNKNOWN_DATA_DEPENDENCY": 8
+  },
+  "expected_second_deploy_result": {
+    "exit": 0,
+    "new_migrations": 0
+  },
+  "abort_thresholds": [
+    "new_failed > 0",
+    "second_deploy_applies_migrations",
+    "production mutation"
+  ]
+}

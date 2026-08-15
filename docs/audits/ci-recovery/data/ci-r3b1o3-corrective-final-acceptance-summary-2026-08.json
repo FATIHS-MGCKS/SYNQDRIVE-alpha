@@ -1,0 +1,662 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3-corrective",
+  "baseline": {
+    "CORRECTIVE_WORKTREE_STRICT_EMPTY": true,
+    "PRE_CORRECTIVE_SHA": "942ecc04bdb66b4530e158cd5a92b1797a7522cc",
+    "R3B1O2_REMOTE_HEAD": "819d67307fb7405a0bcf62a6ea75dbb829dbd2f0",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d"
+  },
+  "two_index_provenance": {
+    "schema_version": 1,
+    "phase": "CI-R3B1O.3-corrective",
+    "indexes": [
+      {
+        "index_name": "org_invoices_invoice_number_key",
+        "owner_table": "org_invoices",
+        "golden_present": false,
+        "final_present": true,
+        "presence_classification": "INTRODUCED_BY_STRATEGY",
+        "introduced_at_strategy_step": "T2_after_normal_migrate_deploy",
+        "creator_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "creator_commit": "721ad893d15cfa46786a112860548ce12a2be71d",
+        "superseding_migration": "20260616180000_invoice_finance_workflow",
+        "executed_during_strategy": true,
+        "exact_ddl": {
+          "create": "CREATE UNIQUE INDEX IF NOT EXISTS \"org_invoices_invoice_number_key\" ON \"org_invoices\"(\"invoice_number\")",
+          "superseding_drop": "DROP INDEX IF EXISTS \"org_invoices_invoice_number_key\"",
+          "golden_definition": null,
+          "final_definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+        },
+        "prisma_desired_action": "DROP INDEX \"org_invoices_invoice_number_key\"",
+        "prisma_authority_classification": "MIGRATION_HISTORY_CREATED_STALE_INDEX",
+        "prisma_authority_reason": "schema.prisma uses @@unique([organizationId, sequenceYear, sequenceNumber]); global invoice_number unique removed by invoice_finance_workflow",
+        "authority_sources": [
+          "migration:20260413225000_ci_r3b_historical_predecessor_slot4",
+          "superseded_by:20260616180000_invoice_finance_workflow",
+          "schema.prisma: no matching @@unique"
+        ],
+        "positive_repository_authority": false,
+        "scope": "OTHER",
+        "provenance": "NEW_UNAUTHORIZED",
+        "final_classification": "NEW_STRATEGY_DRIFT",
+        "attribution_operation": {
+          "ordinal": 137,
+          "scope": "OTHER",
+          "provenance": "NEW_UNAUTHORIZED",
+          "classification": "NEW_STRATEGY_DRIFT",
+          "reason": "operation absent from golden baseline without explicit strategy authority"
+        }
+      },
+      {
+        "index_name": "whatsapp_conversations_organization_id_contact_phone_key",
+        "owner_table": "whatsapp_conversations",
+        "golden_present": false,
+        "final_present": true,
+        "presence_classification": "INTRODUCED_BY_STRATEGY",
+        "introduced_at_strategy_step": "T2_after_normal_migrate_deploy",
+        "creator_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "creator_commit": "ef799f804b1246169ea8282918c8591f9cea13fa",
+        "superseding_migration": "20260620190000_whatsapp_business_platform",
+        "executed_during_strategy": true,
+        "exact_ddl": {
+          "create": "CREATE UNIQUE INDEX IF NOT EXISTS \"whatsapp_conversations_organization_id_contact_phone_key\" ON \"whatsapp_conversations\"(\"organization_id\", \"contact_phone\")",
+          "superseding_drop": "DROP CONSTRAINT IF EXISTS \"whatsapp_conversations_organization_id_contact_phone_key\"",
+          "golden_definition": null,
+          "final_definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+        },
+        "prisma_desired_action": "DROP INDEX \"whatsapp_conversations_organization_id_contact_phone_key\"",
+        "prisma_authority_classification": "MIGRATION_HISTORY_CREATED_STALE_INDEX",
+        "prisma_authority_reason": "schema.prisma uses @@unique([organizationId, contactPhoneNormalized]); contact_phone unique superseded by whatsapp_business_platform",
+        "authority_sources": [
+          "migration:20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+          "superseded_by:20260620190000_whatsapp_business_platform",
+          "schema.prisma: no matching @@unique"
+        ],
+        "positive_repository_authority": false,
+        "scope": "OTHER",
+        "provenance": "NEW_UNAUTHORIZED",
+        "final_classification": "NEW_STRATEGY_DRIFT",
+        "attribution_operation": {
+          "ordinal": 144,
+          "scope": "OTHER",
+          "provenance": "NEW_UNAUTHORIZED",
+          "classification": "NEW_STRATEGY_DRIFT",
+          "reason": "operation absent from golden baseline without explicit strategy authority"
+        }
+      }
+    ],
+    "pass": false
+  },
+  "index_timeline": {
+    "T0_golden_baseline": {
+      "org_invoices_invoice_number_key": {
+        "present": false,
+        "definition": null
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": false,
+        "definition": null
+      }
+    },
+    "T1_after_resolves_before_deploy": {
+      "org_invoices_invoice_number_key": {
+        "present": false,
+        "definition": null
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": false,
+        "definition": null
+      }
+    },
+    "T2_after_normal_migrate_deploy": {
+      "org_invoices_invoice_number_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+      }
+    },
+    "T3_after_m252_forward": {
+      "org_invoices_invoice_number_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+      }
+    }
+  },
+  "diff_attribution": {
+    "total_operations": 395,
+    "scope_counts": {
+      "R3B": 0,
+      "M252": 0,
+      "OTHER": 395,
+      "UNKNOWN": 0
+    },
+    "provenance_counts": {
+      "PRE_EXISTING": 393,
+      "AUTHORIZED_STRATEGY": 0,
+      "NEW_UNAUTHORIZED": 2,
+      "UNKNOWN": 0
+    },
+    "NEW_STRATEGY_DRIFT": 2,
+    "UNATTRIBUTED": 0,
+    "UNKNOWN_SCOPE": 0
+  },
+  "golden_tests": {
+    "schema_version": 1,
+    "phase": "CI-R3B1O.3",
+    "required": 65,
+    "implemented": 65,
+    "passed": 65,
+    "failed": 0,
+    "coverage_percent": 100.0,
+    "coverage_complete": true,
+    "strategy_contract_resolves": [
+      "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+    ],
+    "tests": [
+      {
+        "test_id": "m252_positive_control",
+        "function": "compare_m252_exact",
+        "expected": "PASS",
+        "actual": "True",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_table_name",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_missing_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_column_type",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_timestamp_precision",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_nullability",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_default",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_identity",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_generated",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_pk_name",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_pk_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_pk_deferrability",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_unique_name",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_unique_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_unique_method",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_unique_predicate",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_unique_validity",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_unique_flag",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_composite_index_name",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_composite_index_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_composite_column_order",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_composite_method",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_composite_predicate",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_name",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_source_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_target_table",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_target_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_match",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_on_update",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_on_delete",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_deferrability",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_org_fk_validation",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_name",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_source_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_target_table",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_target_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_match",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_on_update",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_on_delete",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_deferrability",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_wrong_membership_fk_validation",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_unexpected_extra_object",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "m252_unexpected_column",
+        "function": "compare_m252_exact",
+        "expected": "FAIL",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "diff_m252_alter_index_scope",
+        "function": "resolve_owner_fields",
+        "expected": "OWNER_M252",
+        "actual": "OWNER_M252",
+        "pass": true
+      },
+      {
+        "test_id": "diff_unknown_owner_unresolved",
+        "function": "classify_operation_two_axis",
+        "expected": "UNATTRIBUTED",
+        "actual": "UNATTRIBUTED",
+        "pass": true
+      },
+      {
+        "test_id": "diff_m252_name_outside_scope_not_m252",
+        "function": "resolve_owner_fields",
+        "expected": "not OWNER_M252",
+        "actual": "OWNER_UNKNOWN",
+        "pass": true
+      },
+      {
+        "test_id": "diff_r3b_catalog_owner",
+        "function": "resolve_owner_fields",
+        "expected": "OWNER_R3B",
+        "actual": "OWNER_R3B",
+        "pass": true
+      },
+      {
+        "test_id": "provenance_pre_existing_golden_match",
+        "function": "classify_operation_two_axis",
+        "expected": "PRE_EXISTING_PRODUCTION_DRIFT",
+        "actual": "PRE_EXISTING_PRODUCTION_DRIFT",
+        "pass": true
+      },
+      {
+        "test_id": "provenance_authorized_delta_explicit",
+        "function": "classify_operation_two_axis",
+        "expected": "AUTHORIZED_STRATEGY_DELTA",
+        "actual": "AUTHORIZED_STRATEGY_DELTA",
+        "pass": true
+      },
+      {
+        "test_id": "provenance_out_of_scope_no_golden_new_drift",
+        "function": "classify_operation_two_axis",
+        "expected": "NEW_STRATEGY_DRIFT",
+        "actual": "NEW_STRATEGY_DRIFT",
+        "pass": true
+      },
+      {
+        "test_id": "diff_no_authority_new_strategy_drift",
+        "function": "classify_operation_two_axis",
+        "expected": "NEW_STRATEGY_DRIFT",
+        "actual": "NEW_STRATEGY_DRIFT",
+        "pass": true
+      },
+      {
+        "test_id": "provenance_unknown_unattributed",
+        "function": "classify_operation_two_axis",
+        "expected": "UNATTRIBUTED",
+        "actual": "UNATTRIBUTED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_all_gates_pass",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "PASS",
+        "actual": "CI_R3B1O3_FINAL_STRATEGY_ACCEPTANCE_CLOSURE_COMPLETED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_baseline_not_clean",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_BASELINE_NOT_CLEAN",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_owner_unknown_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_unattributed_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_new_strategy_drift_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_FINAL_DRIFT_ATTRIBUTION_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_r3b_scope_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_m252_scope_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_m252_parity_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_M252_EXACT_PARITY_GATE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_golden_test_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_GOLDEN_GATE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_second_deploy_new_row_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_REPEAT_DEPLOY_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_catalog_delta_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_REPEAT_DEPLOY_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_r3b_parity_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+        "pass": true
+      },
+      {
+        "test_id": "terminal_production_changed_fail",
+        "function": "evaluate_terminal_acceptance",
+        "expected": "FAIL",
+        "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+        "pass": true
+      }
+    ],
+    "pass": true
+  },
+  "m252_exact_pass": true,
+  "r3b_parity_pass": true,
+  "strategy_pass": true,
+  "second_deploy": {
+    "pre_second_deploy_ledger_fingerprint": "7b705c9fc1b43a2c8107123c6b019435df2ac6507684fd67b73ad29f381313fc",
+    "post_second_deploy_ledger_fingerprint": "7b705c9fc1b43a2c8107123c6b019435df2ac6507684fd67b73ad29f381313fc",
+    "pre_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+    "post_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+    "second_deploy_exit_code": 0,
+    "new_ledger_rows": 0,
+    "new_finished_rows": 0,
+    "new_failed_rows": 0,
+    "catalog_delta": false,
+    "pass": true
+  },
+  "data_risk": {
+    "DDL_SCHEMA_ONLY": 16,
+    "DATA_DEPENDENT_LOW": 6,
+    "DATA_DEPENDENT_HIGH": 0,
+    "UNKNOWN_DATA_DEPENDENCY": 0
+  },
+  "production_immutable": true,
+  "repository_immutable": {
+    "schema_unchanged": true,
+    "migrations_unchanged": true,
+    "pass": true
+  },
+  "terminal": {
+    "pass": false,
+    "final_status": "CI_R3B1O3_FINAL_DRIFT_ATTRIBUTION_FAILED",
+    "r3b1p_readiness": "NOT_READY",
+    "failures": [
+      "attribution_pass",
+      "new_strategy_drift=2"
+    ]
+  },
+  "final_status": "CI_R3B1O3_FINAL_DRIFT_ATTRIBUTION_FAILED",
+  "r3b1p_readiness": "NOT_READY",
+  "pass": false
+}

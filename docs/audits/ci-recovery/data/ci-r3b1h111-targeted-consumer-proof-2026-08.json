@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1.1",
+  "contracts_source": "docs/audits/ci-recovery/data/ci-r3b1h111-exact-predecessor-contracts-2026-08.json",
+  "generic_contract_compiled": true,
+  "generic_proof_dispatch": true,
+  "analysis_proofs": [
+    {
+      "pass": true,
+      "contract_id": "R3B1H111-organization-memberships-permissions",
+      "relation": "organization_memberships",
+      "column": "permissions",
+      "compiled_sql_sha256": "edbfdf9b2298bc6f158921bf90d886c46b70112873eae2741b5d8d924faf7952",
+      "repair_execution": true,
+      "catalog_parity": {
+        "pass": true
+      },
+      "first_consumer_execution": "PASS",
+      "synthetic_fixture_pass": true,
+      "proof_handler": "permissions_with_synthetic_fixture",
+      "handler": "permissions_with_fixture"
+    }
+  ],
+  "proof_proofs": [
+    {
+      "pass": true,
+      "contract_id": "R3B1H111-organization-memberships-permissions",
+      "relation": "organization_memberships",
+      "column": "permissions",
+      "compiled_sql_sha256": "edbfdf9b2298bc6f158921bf90d886c46b70112873eae2741b5d8d924faf7952",
+      "repair_execution": true,
+      "catalog_parity": {
+        "pass": true
+      },
+      "first_consumer_execution": "PASS",
+      "synthetic_fixture_pass": true,
+      "proof_handler": "permissions_with_synthetic_fixture",
+      "handler": "permissions_with_fixture"
+    }
+  ],
+  "gap_proofs": [
+    {
+      "pass": true,
+      "contract_id": "R3B1H111-organization-memberships-permissions",
+      "relation": "organization_memberships",
+      "column": "permissions",
+      "compiled_sql_sha256": "edbfdf9b2298bc6f158921bf90d886c46b70112873eae2741b5d8d924faf7952",
+      "repair_execution": true,
+      "catalog_parity": {
+        "pass": true
+      },
+      "first_consumer_execution": "PASS",
+      "synthetic_fixture_pass": true,
+      "proof_handler": "permissions_with_synthetic_fixture",
+      "handler": "permissions_with_fixture"
+    }
+  ],
+  "synthetic_fixture_pass": true,
+  "unproven_gaps": 0,
+  "pass": true
+}

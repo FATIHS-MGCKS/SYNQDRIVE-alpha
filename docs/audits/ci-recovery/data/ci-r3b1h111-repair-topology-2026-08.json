@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "repair_id": "R3B1H111-organization-memberships-permissions",
+      "after_migration": "20260721240000_iam_last_selected_organization",
+      "before_migration": "20260721250000_iam_versioned_role_assignments",
+      "first_consumer": "20260721250000_iam_versioned_role_assignments"
+    }
+  ]
+}

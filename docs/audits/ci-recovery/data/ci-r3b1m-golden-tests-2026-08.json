@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "prefix_inference_acceptance": false,
+  "tests": [
+    {
+      "name": "prefix_false_ownership_out_of_scope",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "raw_sql": "DROP INDEX \"trip_driving_impact_fake_idx\";",
+        "operation_family": "DROP INDEX",
+        "operation_subtype": "drop_index",
+        "primary_target": "trip_driving_impact_fake_idx",
+        "owner_table": "unrelated_table",
+        "owner_enum": null,
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "trip_driving_impact_fake_idx",
+        "owner_resolution": "OWNER_OUT_OF_SCOPE",
+        "owner_resolution_source": "TEST_EXPLICIT",
+        "diagnostic_hint": "diagnostic_prefix_match:trip_driving_impact",
+        "quoted_identifiers": [
+          "trip_driving_impact_fake_idx"
+        ],
+        "parse_status": "PARSED",
+        "classification": "OUT_OF_SCOPE",
+        "reason": "TEST_EXPLICIT",
+        "authority_id": null,
+        "property_identity": null
+      }
+    },
+    {
+      "name": "prefix_unknown_unresolved",
+      "pass": true,
+      "detail": {
+        "scope": {
+          "classification": "UNRESOLVED",
+          "reason": "no positive owner source",
+          "authority_id": null,
+          "property_identity": null
+        },
+        "hint": "diagnostic_prefix_match:trip_driving_impact"
+      }
+    },
+    {
+      "name": "explicit_create_index_owner_r3b",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "raw_sql": "CREATE INDEX \"unrelated_name\" ON \"trip_driving_impact\" (\"calculated_at\");",
+        "operation_family": "CREATE INDEX",
+        "operation_subtype": "create_index",
+        "primary_target": "unrelated_name",
+        "owner_table": "trip_driving_impact",
+        "owner_enum": null,
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "unrelated_name",
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "explicit R3B authority table",
+        "diagnostic_hint": null,
+        "quoted_identifiers": [
+          "unrelated_name",
+          "trip_driving_impact",
+          "calculated_at"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "explicit R3B authority table",
+        "authority_id": "P042",
+        "property_identity": "trip_driving_impact:indexes"
+      }
+    },
+    {
+      "name": "drop_index_catalog_owner_r3b",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "raw_sql": "DROP INDEX \"weird_idx_name\";",
+        "operation_family": "DROP INDEX",
+        "operation_subtype": "drop_index",
+        "primary_target": "weird_idx_name",
+        "owner_table": "trip_driving_impact",
+        "owner_enum": null,
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "weird_idx_name",
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "TEST_CATALOG",
+        "diagnostic_hint": null,
+        "quoted_identifiers": [
+          "weird_idx_name"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "TEST_CATALOG",
+        "authority_id": "P042",
+        "property_identity": "trip_driving_impact:indexes"
+      }
+    },
+    {
+      "name": "authorized_schema_diff_pass",
+      "pass": true,
+      "detail": {
+        "schema_version": 1,
+        "phase": "CI-R3B1M",
+        "original_sha256": "0ad82ac5aa095f050780a6ffbdf2fdfdbd607646f4feada6ceeb0ecfc68ec12f",
+        "current_sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1",
+        "authorized_changes": [
+          {
+            "contract_id": "TripDrivingImpact.calculatedAt",
+            "model": "TripDrivingImpact",
+            "field": "calculatedAt",
+            "original_declaration": "DateTime?                       @map(\"calculated_at\")",
+            "new_declaration": "calculatedAt            DateTime?                       @map(\"calculated_at\") @db.Timestamptz(6)"
+          }
+        ],
+        "authorized_change_count": 1,
+        "unauthorized_schema_changes": 0,
+        "unauthorized_details": [],
+        "raw_git_diff": "diff --git a/backend/prisma/schema.prisma b/backend/prisma/schema.prisma\nindex b651c34f..b7640218 100644\n--- a/backend/prisma/schema.prisma\n+++ b/backend/prisma/schema.prisma\n@@ -13387,7 +13387,7 @@ model TripDrivingImpact {\n   /// Deterministic hash of trip inputs \u2014 idempotent recompute guard.\n   sourceFingerprint       String?                         @map(\"source_fingerprint\")\n   analysisStatus          TripDrivingImpactAnalysisStatus @default(PENDING) @map(\"analysis_status\")\n-  calculatedAt            DateTime?                       @map(\"calculated_at\")\n+  calculatedAt            DateTime?                       @map(\"calculated_at\") @db.Timestamptz(6)\n   /// 0\u20131 score of input completeness (behavior events, usage split, etc.).\n   sourceCompleteness      Float?                          @map(\"source_completeness\")\n   /// Snapshot of VehicleTrip.distanceKm at compute time for drift detection.\n",
+        "pass": true
+      }
+    },
+    {
+      "name": "unauthorized_field_edit_detection",
+      "pass": true,
+      "detail": {
+        "detected": true
+      }
+    },
+    {
+      "name": "resolve_index_no_prefix_acceptance",
+      "pass": true,
+      "detail": {
+        "resolution": "OWNER_UNKNOWN",
+        "hint": null
+      }
+    }
+  ],
+  "pass": true,
+  "passed": 7,
+  "total": 7
+}

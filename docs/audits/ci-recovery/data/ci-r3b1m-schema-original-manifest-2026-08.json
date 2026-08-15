@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "path": "backend/prisma/schema.prisma",
+  "sha256": "0ad82ac5aa095f050780a6ffbdf2fdfdbd607646f4feada6ceeb0ecfc68ec12f",
+  "byte_count": 647649,
+  "line_count": 14397
+}

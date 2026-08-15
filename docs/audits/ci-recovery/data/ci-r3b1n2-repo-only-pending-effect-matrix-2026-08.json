@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "total": 23,
+  "migrations": [
+    {
+      "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "TripAssignmentStatus"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TripAssignmentSubjectType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "DrivingEventType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "BehaviorEventCategory"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "BehaviorEventClassification"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TripSource"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TripDetectionState"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TripTrackingRunType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "VehicleDetectionProfile"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "DetectionConfidence"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 10
+    },
+    {
+      "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "TaskPriority"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TaskStatus"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 2
+    },
+    {
+      "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    },
+    {
+      "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "DocumentExtractionStatus"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "DocumentExtractionType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "BatteryEvidenceScope"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "BatteryEvidenceSourceType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "BatteryEvidenceValueType"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 5
+    },
+    {
+      "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "OrgInvoiceStatus"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "OrgInvoiceType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "DtcSeverity"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 3
+    },
+    {
+      "migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "InsightType"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 1
+    },
+    {
+      "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    },
+    {
+      "migration": "20260424235959_ci_r3b_trip_casing_pre_shim",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    },
+    {
+      "migration": "20260425000001_ci_r3b_trip_casing_post_shim",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    },
+    {
+      "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "VendorCategory"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "VendorSourceType"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 2
+    },
+    {
+      "migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "WorkflowStatus"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 1
+    },
+    {
+      "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "TireHealthStatus"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TirePosition"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "TireSeason"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 3
+    },
+    {
+      "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "DamageSeverity"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "DamageType"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 2
+    },
+    {
+      "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "WhatsAppAiMode"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 1
+    },
+    {
+      "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    },
+    {
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "TireSetupStatus"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 1
+    },
+    {
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "effects": [
+        {
+          "kind": "add_column",
+          "table": "vehicle_tire_setups",
+          "column": "status",
+          "definition": "\"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\""
+        }
+      ],
+      "classification": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "modeled_effects": 1,
+      "present_count": 1,
+      "absent_count": 0
+    },
+    {
+      "migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "TireEventType"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 1
+    },
+    {
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "effects": [
+        {
+          "kind": "add_column",
+          "table": "organization_memberships",
+          "column": "permissions",
+          "definition": "JSONB"
+        }
+      ],
+      "classification": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "modeled_effects": 1,
+      "present_count": 1,
+      "absent_count": 0
+    },
+    {
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "effects": [
+        {
+          "kind": "create_enum",
+          "enum": "InsightEntityScope"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "InsightSeverity"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "InsightType"
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 3
+    },
+    {
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    },
+    {
+      "migration": "20260811060000_evaluations_entity_references",
+      "effects": [
+        {
+          "kind": "create_table",
+          "table": "evaluations_entity_references"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "EvaluationsReferenceOwnerType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "EvaluationsEntityType"
+        },
+        {
+          "kind": "create_enum",
+          "enum": "EvaluationsRelationType"
+        },
+        {
+          "kind": "create_index",
+          "index": "evaluations_entity_references_organization_id_idx",
+          "table": "evaluations_entity_references",
+          "unique": false
+        },
+        {
+          "kind": "create_index",
+          "index": "evaluations_entity_references_organization_id_entity_type_e_idx",
+          "table": "evaluations_entity_references",
+          "unique": false
+        },
+        {
+          "kind": "create_index",
+          "index": "evaluations_entity_references_organization_id_station_id_idx",
+          "table": "evaluations_entity_references",
+          "unique": false
+        },
+        {
+          "kind": "create_index",
+          "index": "evaluations_entity_references_organization_id_owner_type_ow_idx",
+          "table": "evaluations_entity_references",
+          "unique": false
+        },
+        {
+          "kind": "create_index",
+          "index": "evaluations_entity_references_organization_id_created_at_idx",
+          "table": "evaluations_entity_references",
+          "unique": false
+        },
+        {
+          "kind": "create_index",
+          "index": "evaluations_entity_refs_org_dedupe_key",
+          "table": "evaluations_entity_references",
+          "unique": true
+        }
+      ],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 10
+    },
+    {
+      "migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "effects": [],
+      "classification": "PENDING_EFFECT_UNKNOWN",
+      "modeled_effects": 0
+    }
+  ]
+}

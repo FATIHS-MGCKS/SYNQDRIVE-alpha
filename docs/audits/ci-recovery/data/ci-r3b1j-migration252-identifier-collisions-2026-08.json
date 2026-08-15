@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1J",
+  "max_identifier_length": 63,
+  "identifiers_scanned": 7,
+  "identifier_inventory": [
+    {
+      "statement_ordinal": 1,
+      "object_type": "TABLE",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications",
+      "raw_byte_length": 62,
+      "raw_char_length": 62,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications",
+      "normalized_byte_length": 62,
+      "truncated": false,
+      "explicit": true,
+      "source": "migration_sql"
+    },
+    {
+      "statement_ordinal": 1,
+      "object_type": "PRIMARY_KEY_CONSTRAINT",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+      "raw_byte_length": 67,
+      "raw_char_length": 67,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "truncated": true,
+      "explicit": true,
+      "source": "migration_sql"
+    },
+    {
+      "statement_ordinal": 1,
+      "object_type": "PRIMARY_KEY_INDEX",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+      "raw_byte_length": 67,
+      "raw_char_length": 67,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "truncated": true,
+      "explicit": false,
+      "source": "implicit_pg_pk_index"
+    },
+    {
+      "statement_ordinal": 2,
+      "object_type": "UNIQUE_INDEX",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key",
+      "raw_byte_length": 82,
+      "raw_char_length": 82,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "truncated": true,
+      "explicit": true,
+      "source": "migration_sql"
+    },
+    {
+      "statement_ordinal": 3,
+      "object_type": "INDEX",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx",
+      "raw_byte_length": 107,
+      "raw_char_length": 107,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "truncated": true,
+      "explicit": true,
+      "source": "migration_sql"
+    },
+    {
+      "statement_ordinal": 4,
+      "object_type": "FOREIGN_KEY_CONSTRAINT",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey",
+      "raw_byte_length": 83,
+      "raw_char_length": 83,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "truncated": true,
+      "explicit": true,
+      "source": "migration_sql"
+    },
+    {
+      "statement_ordinal": 5,
+      "object_type": "FOREIGN_KEY_CONSTRAINT",
+      "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey",
+      "raw_byte_length": 81,
+      "raw_char_length": 81,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "truncated": true,
+      "explicit": true,
+      "source": "migration_sql"
+    }
+  ],
+  "overlength_identifiers": 6,
+  "collision_groups": [
+    {
+      "schema": "public",
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "normalized_byte_length": 63,
+      "member_count": 6,
+      "object_types": [
+        "FOREIGN_KEY_CONSTRAINT",
+        "INDEX",
+        "PRIMARY_KEY_CONSTRAINT",
+        "PRIMARY_KEY_INDEX",
+        "UNIQUE_INDEX"
+      ],
+      "members": [
+        {
+          "statement_ordinal": 1,
+          "object_type": "PRIMARY_KEY_CONSTRAINT",
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "raw_byte_length": 67,
+          "raw_char_length": 67,
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "normalized_byte_length": 63,
+          "truncated": true,
+          "explicit": true,
+          "source": "migration_sql"
+        },
+        {
+          "statement_ordinal": 1,
+          "object_type": "PRIMARY_KEY_INDEX",
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "raw_byte_length": 67,
+          "raw_char_length": 67,
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "normalized_byte_length": 63,
+          "truncated": true,
+          "explicit": false,
+          "source": "implicit_pg_pk_index"
+        },
+        {
+          "statement_ordinal": 2,
+          "object_type": "UNIQUE_INDEX",
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key",
+          "raw_byte_length": 82,
+          "raw_char_length": 82,
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "normalized_byte_length": 63,
+          "truncated": true,
+          "explicit": true,
+          "source": "migration_sql"
+        },
+        {
+          "statement_ordinal": 3,
+          "object_type": "INDEX",
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx",
+          "raw_byte_length": 107,
+          "raw_char_length": 107,
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "normalized_byte_length": 63,
+          "truncated": true,
+          "explicit": true,
+          "source": "migration_sql"
+        },
+        {
+          "statement_ordinal": 4,
+          "object_type": "FOREIGN_KEY_CONSTRAINT",
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey",
+          "raw_byte_length": 83,
+          "raw_char_length": 83,
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "normalized_byte_length": 63,
+          "truncated": true,
+          "explicit": true,
+          "source": "migration_sql"
+        },
+        {
+          "statement_ordinal": 5,
+          "object_type": "FOREIGN_KEY_CONSTRAINT",
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey",
+          "raw_byte_length": 81,
+          "raw_char_length": 81,
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "normalized_byte_length": 63,
+          "truncated": true,
+          "explicit": true,
+          "source": "migration_sql"
+        }
+      ],
+      "incompatible": true
+    }
+  ],
+  "observed_collision_physical_name": "organization_role_assignment_drift_reconciliation_applications_",
+  "pass": true
+}

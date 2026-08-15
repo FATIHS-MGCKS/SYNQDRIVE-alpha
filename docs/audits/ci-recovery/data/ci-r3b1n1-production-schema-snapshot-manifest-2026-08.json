@@ -1,0 +1,13 @@
+{
+  "path": "audits/ci-recovery/.work/r3b1n1/production_schema_only.sql",
+  "sha256": "0f025e11db9ad737ced6fcadac0832805753dba69450b58be6dfc08a3c08e3c0",
+  "bytes": 1135367,
+  "data_rows_included": 0,
+  "schema_version": 1,
+  "phase": "CI-R3B1N.1",
+  "postgresql_version": "16.x",
+  "schema_objects_count_estimate": 1135367,
+  "production_service": "PROD_VPS_A",
+  "production_database_alias": "PROD_DB_A",
+  "local_work_path": "ci-recovery/.work/r3b1n1/production_schema_only.sql"
+}

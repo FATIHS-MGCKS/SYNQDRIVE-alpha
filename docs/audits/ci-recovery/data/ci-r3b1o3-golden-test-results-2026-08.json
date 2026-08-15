@@ -1,0 +1,437 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3",
+  "required": 60,
+  "implemented": 60,
+  "passed": 60,
+  "failed": 0,
+  "coverage_percent": 100.0,
+  "coverage_complete": true,
+  "strategy_contract_resolves": [
+    "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+  ],
+  "tests": [
+    {
+      "test_id": "m252_positive_control",
+      "function": "compare_m252_exact",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_table_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_missing_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_column_type",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_timestamp_precision",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_nullability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_default",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_predicate",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_validity",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_index_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_index_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_column_order",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_predicate",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_source_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_target_table",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_target_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_match",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_on_update",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_on_delete",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_validation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_source_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_target_table",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_target_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_match",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_on_update",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_on_delete",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_validation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_unexpected_extra_object",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "diff_m252_alter_index_scope",
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_M252",
+      "actual": "OWNER_M252",
+      "pass": true
+    },
+    {
+      "test_id": "diff_unknown_owner_unresolved",
+      "function": "classify_operation_attribution",
+      "expected": "UNRESOLVED",
+      "actual": "UNRESOLVED",
+      "pass": true
+    },
+    {
+      "test_id": "diff_m252_name_outside_scope_not_m252",
+      "function": "resolve_owner_fields",
+      "expected": "not OWNER_M252",
+      "actual": "OWNER_UNKNOWN",
+      "pass": true
+    },
+    {
+      "test_id": "diff_r3b_catalog_owner",
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_R3B",
+      "actual": "OWNER_R3B",
+      "pass": true
+    },
+    {
+      "test_id": "diff_golden_match_pre_existing",
+      "function": "classify_operation_attribution",
+      "expected": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "actual": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "diff_strategy_contract_expected_delta",
+      "function": "classify_operation_attribution",
+      "expected": "EXPECTED_STRATEGY_DELTA",
+      "actual": "EXPECTED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "diff_no_authority_new_strategy_drift",
+      "function": "classify_operation_attribution",
+      "expected": "NEW_STRATEGY_DRIFT",
+      "actual": "R3B_SCOPE",
+      "pass": true
+    },
+    {
+      "test_id": "diff_forbid_catch_all_out_of_scope",
+      "function": "classify_operation_attribution",
+      "expected": "not OUT_OF_SCOPE",
+      "actual": "UNRESOLVED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_all_gates_pass",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "PASS",
+      "actual": "CI_R3B1O3_FINAL_STRATEGY_DRIFT_PARITY_GATE_CLOSURE_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_owner_unknown_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_unresolved_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_unattributed_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_new_strategy_drift_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_r3b_scope_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_m252_scope_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_m252_parity_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_golden_test_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_second_deploy_new_row_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_catalog_delta_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_r3b_parity_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_production_changed_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

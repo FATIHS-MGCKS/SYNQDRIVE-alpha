@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "contract_id": "R3B1H111-organization-memberships-permissions",
+      "relation": "organization_memberships",
+      "column": "permissions",
+      "postgres_type": "jsonb",
+      "nullable": true,
+      "default_semantics": "NO_DATABASE_DEFAULT",
+      "default_value": null,
+      "enum_dependency": null,
+      "foreign_key": null,
+      "generated_semantics": null,
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "first_consumer_statement": 31,
+      "authority_status": "COMPLETE_AUTHORITY",
+      "repair_boundary": {
+        "after_migration": "20260721240000_iam_last_selected_organization",
+        "before_migration": "20260721250000_iam_versioned_role_assignments",
+        "topology_id": "R3B1H111-organization-memberships-permissions",
+        "rationale": "Derived by chronology search before first consumer.",
+        "checks": {
+          "after_lt_before": true,
+          "relation_exists_after": true,
+          "column_absent_after": true,
+          "column_absent_before_consumer": true
+        }
+      },
+      "provenance": {
+        "sources": [
+          "accepted:R3B1H.permissions_contract",
+          "git:68150912:OrganizationMembership.permissions:Json?",
+          "authority_chain:accepted_recovery_authority"
+        ]
+      }
+    }
+  ],
+  "compiled": [
+    {
+      "contract_id": "R3B1H111-organization-memberships-permissions",
+      "compiled_sql": "ALTER TABLE \"organization_memberships\" ADD COLUMN \"permissions\" \"jsonb\";",
+      "compiled_sql_sha256": "edbfdf9b2298bc6f158921bf90d886c46b70112873eae2741b5d8d924faf7952",
+      "semantic_equivalence": "PASS"
+    }
+  ]
+}

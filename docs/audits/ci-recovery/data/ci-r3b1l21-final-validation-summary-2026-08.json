@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.2.1",
+  "final_status": "CI_R3B1L21_SCOPE_OWNERSHIP_COVERAGE_COMPLETED",
+  "pass": true,
+  "BASE_R3B1L2_SHA": "11a5c8feed95f81f26ac240dd48e1bf786adcc92",
+  "R3B1L21_BRANCH": "fix/ci-r3b1l21-scope-ownership-coverage-2026-08",
+  "evidence_input_sha": "11a5c8feed95f81f26ac240dd48e1bf786adcc92",
+  "frozen_prisma_diff": {
+    "path": "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql",
+    "sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+    "bytes": 65490,
+    "lines": 1480,
+    "expected_sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+    "expected_bytes": 65490,
+    "expected_lines": 1480,
+    "pass": true
+  },
+  "independent_coverage": {
+    "independent_statements": 344,
+    "main_parser_statements": 344,
+    "independent_without_main_match": 0,
+    "main_without_independent_match": 0,
+    "duplicate_interval_matches": 0,
+    "implementation_independence_pass": true,
+    "pass": true
+  },
+  "parser_token_coverage": {
+    "unconsumed_sql_tokens": 0,
+    "duplicate_token_count": 0,
+    "parser_completeness": "PASS",
+    "pass": true
+  },
+  "scope": {
+    "R3B_SCOPE": 1,
+    "OUT_OF_SCOPE": 343,
+    "UNRESOLVED": 0,
+    "out_of_scope_by_family": {
+      "CREATE TYPE": 15,
+      "BEGIN": 1,
+      "ALTER TABLE": 99,
+      "ALTER TYPE": 12,
+      "DROP TYPE": 3,
+      "COMMIT": 1,
+      "DROP INDEX": 12,
+      "DROP TABLE": 2,
+      "CREATE TABLE": 18,
+      "CREATE INDEX": 58,
+      "CREATE UNIQUE INDEX": 19,
+      "ALTER INDEX": 103
+    }
+  },
+  "authority_decisions": {
+    "CURRENT_PRISMA_SCHEMA_DRIFT": 1,
+    "REPLAY_DB_DRIFT": 0,
+    "NON_SEMANTIC_DIFFERENCE": 0,
+    "AUTHORITY_AMBIGUITY": 0,
+    "CROSS_EVIDENCE_CONTRADICTION": 0
+  },
+  "trip_driving_impact_calculated_at": {
+    "parsed": true,
+    "scope": "R3B_SCOPE",
+    "accepted_authority": "timestamp with time zone",
+    "replay_value": "timestamp with time zone",
+    "prisma_desired_value": "timestamp(3) without time zone",
+    "decision": "CURRENT_PRISMA_SCHEMA_DRIFT"
+  },
+  "coverage": {
+    "unparsed_statements": 0,
+    "unclassified_operations": 0,
+    "r3b_operations_without_authority_decision": 0
+  },
+  "immutability": {
+    "modified_migrations": 0,
+    "new_migrations": 0,
+    "schema_prisma_changed": false,
+    "runtime_changed": false
+  },
+  "authority_manifest": {
+    "objects": 19,
+    "tables": 9,
+    "enums": 10,
+    "property_categories": 54
+  },
+  "next_phase": "CI-R3B1M \u2014 CURRENT PRISMA SCHEMA AUTHORITY ALIGNMENT",
+  "r3b1m_authorized": true,
+  "safety": {
+    "new_zero_state_replay": false,
+    "schema_prisma_edit": false,
+    "migration_edit": false,
+    "deployment": false,
+    "merge": false
+  }
+}
