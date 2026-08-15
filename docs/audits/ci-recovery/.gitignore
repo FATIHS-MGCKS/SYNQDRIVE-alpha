@@ -1,2 +1,2 @@
-docs/audits/ci-recovery/tooling/__pycache__/
-docs/audits/ci-recovery/.work/
+tooling/__pycache__/
+.work/

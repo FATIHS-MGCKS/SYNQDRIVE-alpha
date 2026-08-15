@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "PRE_R3B1O1_SHA": "1bd996ac421b771516e32a145e706982e37a6875",
+    "R3B1O_REMOTE_HEAD": "1bd996ac421b771516e32a145e706982e37a6875",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "WORKTREE_CLEAN": false
+  },
+  "inputs": [
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o-strategy-results-2026-08.json",
+      "sha256": "0eceef5b8e2cc0aeb7ff1d1560f86c188a032dd136d8eff95b5ce3868cf0c1db"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o-selected-reconciliation-strategy-2026-08.json",
+      "sha256": "d47942f04ea49041888e609df39dec9b95791ac48f35f9a5661185bde85aaabc"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o-migration-effect-equivalence-contracts-2026-08.json",
+      "sha256": "fb8f783452ed3be8406bac82816b9e4eca6e1341702ef02a8bfca49ea60c2b26"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o-checksum-provenance-preflight-2026-08.json",
+      "sha256": "29391fbcb4fe45dfc37c859b7c47bc79978bbfaa54f4794054415c21ab24148b"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o-production-data-dependency-risk-2026-08.json",
+      "sha256": "47f34b7f6ec45b5664f885d8ae92f97a8aedcf2199bf1bcd988d38862527e91b"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o-final-strategy-simulation-summary-2026-08.json",
+      "sha256": "c11b2e7a2f9bb4d4d77a7f4d31e942431251bbb7304d55a111de975288e39be0"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1k-migration252-historical-exception-manifest-2026-08.json",
+      "sha256": "8a4a657fe81551a733b565884678aeb12c02affdab88584c4e195a5d762a74f6"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1m-final-exact-catalog-parity-2026-08.json",
+      "sha256": "c028dc9cf7fa4881174bde26cef6295055c86da05cd03a07babdf5d618ca8205"
+    },
+    {
+      "path": "backend/prisma/schema.prisma",
+      "sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1"
+    },
+    {
+      "path": "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql",
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee"
+    }
+  ]
+}

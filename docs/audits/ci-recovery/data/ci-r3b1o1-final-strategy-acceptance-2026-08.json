@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.1",
+  "baseline": {
+    "PRE_R3B1O1_SHA": "1bd996ac421b771516e32a145e706982e37a6875",
+    "R3B1O_REMOTE_HEAD": "1bd996ac421b771516e32a145e706982e37a6875",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "WORKTREE_CLEAN": false
+  },
+  "data_dependency_parser_pass": true,
+  "m252_has_dml": false,
+  "m252_physical_authority_pass": true,
+  "m252_prisma_drift_count": 4,
+  "source_alignment_required": true,
+  "final_twin_isolation": true,
+  "resolve_set": {
+    "R3B1G": true,
+    "R3B1I": true
+  },
+  "normal_deploy": {
+    "exit_code": 0,
+    "new_finished": 21,
+    "new_failed": 0,
+    "first_failing_migration": null,
+    "migrate_status_exit": 1
+  },
+  "m252_forward": {
+    "exit_code": 0,
+    "stdout": "\n> synqdrive-backend@0.1.0 prisma:migrate:deploy\n> prisma migrate deploy\n\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_r3b1o1_final_winning_1dc367\", schema \"public\" at \"localhost:5432\"\n\n306 migrations found in prisma/migrations\n\nApplying migration `20260815190326_ci_r3b1o1_strategy_m252_forward_reconciliation`\n\nThe following migration(s) have been applied:\n\nmigrations/\n  \u2514\u2500 20260815190326_ci_r3b1o1_strategy_m252_forward_reconciliation/\n    \u2514\u2500 migration.sql\n      \nAll migrations have been successfully applied.\n"
+  },
+  "m252_exact_parity_pass": true,
+  "r3b_parity": {
+    "objects": "19/19",
+    "tables": "9/9",
+    "enums": "10/10",
+    "properties": "54/54",
+    "pass": true
+  },
+  "prisma_diff": {
+    "golden_baseline": {
+      "total_operations": 409,
+      "R3B_SCOPE": 0,
+      "M252_SCOPE": 5,
+      "OUT_OF_SCOPE": 239,
+      "UNRESOLVED": 170
+    },
+    "final_winning_twin": {
+      "total_operations": 400,
+      "R3B_SCOPE": 0,
+      "M252_SCOPE": 3,
+      "OUT_OF_SCOPE": 230,
+      "UNRESOLVED": 170
+    },
+    "frozen_production_baseline": {
+      "total_operations": 344,
+      "R3B_SCOPE": 1,
+      "M252_SCOPE": 3,
+      "OUT_OF_SCOPE": 343,
+      "UNRESOLVED": 0
+    },
+    "PRE_EXISTING_PRODUCTION_DRIFT": 393,
+    "NEW_STRATEGY_DRIFT": 0,
+    "M252_FORWARD_SCOPE": 3,
+    "PLANNED_DEPLOY_TO_HEAD_SCOPE": 4,
+    "NEW_UNRESOLVED": 0
+  },
+  "second_deploy": {
+    "pre_second_deploy_ledger_fingerprint": "15b11f643066b2f21bd483c26eeb052dc091b073839df49f3455a9d9f5da48ca",
+    "post_second_deploy_ledger_fingerprint": "15b11f643066b2f21bd483c26eeb052dc091b073839df49f3455a9d9f5da48ca",
+    "pre_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+    "post_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+    "second_deploy_exit_code": 0,
+    "new_ledger_rows": 0,
+    "new_finished_rows": 0,
+    "new_failed_rows": 0,
+    "catalog_delta": false,
+    "pass": true
+  },
+  "data_risk_counts": {
+    "DDL_SCHEMA_ONLY": 16,
+    "DATA_DEPENDENT_LOW": 6,
+    "DATA_DEPENDENT_HIGH": 0,
+    "UNKNOWN_DATA_DEPENDENCY": 0
+  },
+  "production_unchanged": true,
+  "production_mutations": 0,
+  "r3b1p_readiness": "NOT_READY_SOURCE_ALIGNMENT_REQUIRED",
+  "final_status": "CI_R3B1O1_STRATEGY_VALID_SOURCE_ALIGNMENT_REQUIRED",
+  "pass": false
+}
