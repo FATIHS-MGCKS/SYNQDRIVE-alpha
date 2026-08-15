@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1E",
+  "BASE_R3B1D12_SHA": "3fcac840f66613928e9ccbebd30786bf83b28b04",
+  "IMPLEMENTATION_AUTHORITY_MANIFEST_SHA256": "bc28f325d1a97cfe5f075c238f329950f8410aff94b7ee3b1d8d2ab9b2e0fa73",
+  "entries": [
+    {
+      "role": "closure",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d-post-vendor-repair-closure-2026-08.json",
+      "sha256": "45ed02bd800832a3a2fe2b9e660d60e50606db606baa1bf85686dc98975e7984"
+    },
+    {
+      "role": "remaining_contracts",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d-remaining-predecessor-ddl-contracts-2026-08.json",
+      "sha256": "6f29f9f766bb0a1695a4e6880f2832f87ac7a935a72710870e7875fae17becee"
+    },
+    {
+      "role": "vendor_contracts",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d-vendor-predecessor-ddl-contracts-2026-08.json",
+      "sha256": "2de242cfa2ad4059515693efd6f37b6df4c89a0759ef41633dade8214a73ee52"
+    },
+    {
+      "role": "topology",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d1-post-vendor-repair-topology-2026-08.json",
+      "sha256": "23cfe27c0c51b620ac7efec3098f8dcb5de53a1e45509404c4363dacf084d050"
+    },
+    {
+      "role": "graph",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d1-repair-action-graph-2026-08.json",
+      "sha256": "ba538ae1235640dbd18993fc91947cfbcf87a7af41b981075ae11fb4fb7401b4"
+    },
+    {
+      "role": "ddl_proof",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d11-executable-ddl-proof-2026-08.json",
+      "sha256": "ed03176156f85aaa0771535fea1235ba75e6e59a7521043e4a9568bb0742cf82"
+    },
+    {
+      "role": "authority_reference",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d12-authority-reference-2026-08.json",
+      "sha256": "4e0e19662fabcfff508d26f54c8c9dfbdbd5aa92105cc788b036653e3d2059d9"
+    },
+    {
+      "role": "catalog_parity",
+      "path": "docs/audits/ci-recovery/data/ci-r3b1d12-postgresql-catalog-parity-2026-08.json",
+      "sha256": "90c2fdafc1988464aa3bd843e0d05c7b41513ed7d3742bd031e02ee1cee332b8"
+    },
+    {
+      "role": "compile_repair_sql",
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1b_compile_repair_sql.py",
+      "sha256": "abcb331e4c3359fd15de13d252e97e42cd2e4030a352e0c394aa01edf6be8af4"
+    },
+    {
+      "role": "compiler",
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1b_sql_literal_compiler.py",
+      "sha256": "52652ea6bd411c88f617dd7a9b8ec4464f57d91abcee69e59470ba593a763693"
+    }
+  ],
+  "pass": true
+}
