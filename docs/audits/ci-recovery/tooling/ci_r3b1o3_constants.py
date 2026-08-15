@@ -9,7 +9,7 @@ R3B1O2_BRANCH = "fix/ci-r3b1o2-m252-prisma-mapping-diff-closure-2026-08"
 R3B1O3_BRANCH = "audit/ci-r3b1o3-final-strategy-gate-closure-2026-08"
 WORK_R3B1O3 = REPO / "docs/audits/ci-recovery/.work/r3b1o3"  # noqa: F405
 
-FINAL_STRATEGY_DB_PREFIX = "r3b1o3_final_winning"
+FINAL_STRATEGY_DB_PREFIX = "r3b1o3_corrective_final_winning"
 
 R3B1O3_INPUTS = [
     "backend/prisma/schema.prisma",

@@ -13,8 +13,11 @@ from ci_r3b1o_strategy import resolve_applied
 from ci_r3b1o_twin_manager import clone_strategy_from_golden
 from ci_r3b1o1_final_twin import _catalog_snapshot, _ledger_snapshot
 from ci_r3b1o3_constants import FINAL_STRATEGY_DB_PREFIX
+from ci_r3b1o3_index_provenance import TARGET_INDEXES, snapshot_indexes
 from ci_r3b1o3_m252_complete_authority import build_m252_complete_physical_authority
 from ci_r3b1o3_m252_exact_parity import run_m252_exact_parity
+
+INDEX_NAMES = [s["index_name"] for s in TARGET_INDEXES]
 
 
 def build_temp_forward_m252_migration() -> tuple[Path, dict[str, Any]]:
@@ -41,6 +44,7 @@ def run_final_winning_strategy(*, golden: dict[str, Any], prod_identity: dict[st
     guard = clone["guard"]
     dsn = clone["dsn"]
     run_sql = clone["run_sql"]
+    index_timeline = {"T0_golden_baseline": snapshot_indexes(run_sql, INDEX_NAMES)}
 
     resolves = []
     for migration in [R3B1G, R3B1I]:
@@ -50,12 +54,15 @@ def run_final_winning_strategy(*, golden: dict[str, Any], prod_identity: dict[st
         result["ledger_delta"] = classify_ledger_delta(before, after)
         resolves.append(result)
 
+    index_timeline["T1_after_resolves_before_deploy"] = snapshot_indexes(run_sql, INDEX_NAMES)
+
     status_before = run_prisma(["npx", "prisma", "migrate", "status"], guard, dsn)
     ledger_before_deploy = export_ledger(dsn)
     deploy_head = run_prisma(["npm", "run", "prisma:migrate:deploy"], guard, dsn)
     ledger_after_deploy = export_ledger(dsn)
     deploy_delta = classify_ledger_delta(ledger_before_deploy, ledger_after_deploy)
     parsed = parse_deploy_errors((deploy_head.get("stdout") or "") + "\n" + (deploy_head.get("stderr") or ""))
+    index_timeline["T2_after_normal_migrate_deploy"] = snapshot_indexes(run_sql, INDEX_NAMES)
 
     m252_before = run_sql(
         f"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='{M252_TABLE}';"
@@ -71,6 +78,8 @@ def run_final_winning_strategy(*, golden: dict[str, Any], prod_identity: dict[st
         if target.exists():
             shutil.rmtree(target)
         shutil.rmtree(tmp_root, ignore_errors=True)
+
+    index_timeline["T3_after_m252_forward"] = snapshot_indexes(run_sql, INDEX_NAMES)
 
     authority = build_m252_complete_physical_authority()
     m252_parity = run_m252_exact_parity(run_sql, authority)
@@ -125,6 +134,7 @@ def run_final_winning_strategy(*, golden: dict[str, Any], prod_identity: dict[st
             "stdout": (forward_deploy or {}).get("stdout"),
         },
         "m252_exact_parity": m252_parity,
+        "index_timeline": index_timeline,
         "second_deploy_idempotency": idempotency,
         "final_migrate_status": post_second["migrate_status"],
         "pass": (

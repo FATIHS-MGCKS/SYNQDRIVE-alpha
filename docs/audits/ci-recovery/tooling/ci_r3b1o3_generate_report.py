@@ -1,177 +1,118 @@
 #!/usr/bin/env python3
-"""Generate CI-R3B1O.3 markdown report."""
+"""Generate CI-R3B1O.3 corrective acceptance report."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
-OUT = Path(__file__).resolve().parents[1] / "ci-r3b1o3-final-strategy-drift-parity-gate-closure-2026-08.md"
+OUT = Path(__file__).resolve().parents[1] / "ci-r3b1o3-corrective-final-acceptance-2026-08.md"
 
 
 def load(name: str) -> dict:
-    return json.loads((DATA / name).read_text())
+    path = DATA / name
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
 def main() -> int:
-    s = load("ci-r3b1o3-final-strategy-gate-closure-summary-2026-08.json")
-    attr = load("ci-r3b1o3-final-diff-attribution-closure-2026-08.json")
-    golden = load("ci-r3b1o3-golden-test-results-2026-08.json")
-    m252 = load("ci-r3b1o3-final-m252-exact-parity-2026-08.json")
-    r3b = load("ci-r3b1o3-final-r3b-parity-2026-08.json")
-    diff = s.get("diff_attribution", {})
-    prior = s.get("prior_unmatched_operations", {})
+    s = load("ci-r3b1o3-corrective-final-acceptance-summary-2026-08.json")
+    two = load("ci-r3b1o3-corrective-two-index-provenance-2026-08.json")
+    timeline = load("ci-r3b1o3-corrective-index-timeline-2026-08.json")
+    golden = load("ci-r3b1o3-corrective-golden-tests-2026-08.json")
+    attr = load("ci-r3b1o3-corrective-final-prisma-diff-attribution-2026-08.json")
 
-    sections = [
-        "# CI-R3B1O.3 — Final Strategy Drift Parity Gate Closure",
+    lines = [
+        "# CI-R3B1O.3 — Corrective Final Acceptance",
         "",
         f"**Status:** `{s.get('final_status')}`",
         f"**R3B1P readiness:** `{s.get('r3b1p_readiness')}`",
         "",
-        "## Baseline",
+        "## Strict baseline",
         "",
-        f"- PRE_R3B1O3_SHA: `{s.get('baseline', {}).get('PRE_R3B1O3_SHA')}`",
-        f"- Worktree clean: **{s.get('baseline', {}).get('WORKTREE_CLEAN')}**",
+        f"- CORRECTIVE_WORKTREE_STRICT_EMPTY: **{s.get('baseline', {}).get('CORRECTIVE_WORKTREE_STRICT_EMPTY')}**",
         "",
-        "## Accepted strategy",
+        "## Prior R3B1O.3 defect analysis",
         "",
-        "R3B1G resolve → R3B1I resolve → normal migrate deploy → append-only M252 forward → second deploy idempotency.",
+        "Corrected false OUT_OF_SCOPE provenance closure, strict empty baseline gate, two-axis scope/provenance model, hardened M252 comparator, expanded golden suite.",
         "",
-        "## R3B1O.2 residual acceptance defects",
-        "",
-        "Closed: final diff attribution, hardened M252 exact parity engine, golden tests as hard terminal gates.",
-        "",
-        "## Two unmatched Prisma diff operations",
-        "",
-        f"- Expected from R3B1O.2: **{prior.get('expected_from_r3b1o2', 2)}**",
-        f"- Actual unmatched: **{prior.get('actual')}**",
+        "## Two index origins",
     ]
-    for op in attr.get("resolved_operations", []):
-        sections.extend(
+    for idx in two.get("indexes", []):
+        lines.extend(
             [
                 "",
-                f"### Operation {op.get('ordinal')}",
+                f"### `{idx.get('index_name')}`",
                 "",
-                f"- Old classification: `{op.get('old_r3b1o2_classification')}`",
-                f"- Final classification: `{op.get('new_classification')}`",
-                f"- Reason: {op.get('reason')}",
+                f"- Creator migration: `{idx.get('creator_migration')}`",
+                f"- Superseding migration: `{idx.get('superseding_migration')}`",
+                f"- Creator commit: `{idx.get('creator_commit')}`",
+                f"- Prisma authority: `{idx.get('prisma_authority_classification')}`",
             ]
         )
 
-    sections.extend(
+    lines.extend(
         [
             "",
-            "## Positive drift attribution model",
+            "## Two index strategy timeline",
             "",
-            "Every final operation is classified as PRE_EXISTING_PRODUCTION_DRIFT, EXPECTED_STRATEGY_DELTA, OUT_OF_SCOPE_POSITIVELY_PROVEN, or failure classes. Catch-all OUT_OF_SCOPE is forbidden.",
+            f"Timeline captured at T0–T3: `{json.dumps(timeline.get('timeline', {}), indent=2)}`",
             "",
-            "## Golden baseline diff",
+            "## Two index authority decision",
+        ]
+    )
+    for idx in two.get("indexes", []):
+        lines.append(f"- `{idx.get('index_name')}` → **{idx.get('final_classification')}** ({idx.get('provenance')})")
+
+    lines.extend(
+        [
             "",
-            "Generated fresh against unmutated golden production twin (`ci-r3b1o3-golden-baseline-prisma-diff-2026-08.sql`).",
+            "## Corrected two-axis provenance model",
             "",
-            "## Final winning diff",
+            "Scope (R3B/M252/OTHER/UNKNOWN) is independent from provenance (PRE_EXISTING/AUTHORIZED_STRATEGY/NEW_UNAUTHORIZED/UNKNOWN).",
             "",
-            f"- Total operations: **{diff.get('final_operations')}**",
-            f"- PRE_EXISTING_PRODUCTION_DRIFT: **{diff.get('PRE_EXISTING_PRODUCTION_DRIFT')}**",
-            f"- EXPECTED_STRATEGY_DELTA: **{diff.get('EXPECTED_STRATEGY_DELTA')}**",
-            f"- OUT_OF_SCOPE_POSITIVELY_PROVEN: **{diff.get('OUT_OF_SCOPE_POSITIVELY_PROVEN')}**",
+            "## Full final operation attribution",
             "",
-            "## Final operation-by-operation provenance closure",
+            f"- Total operations: **{attr.get('total_operations')}**",
+            f"- NEW_STRATEGY_DRIFT: **{attr.get('NEW_STRATEGY_DRIFT')}**",
+            f"- UNATTRIBUTED: **{attr.get('UNATTRIBUTED')}**",
+            f"- UNKNOWN_SCOPE: **{attr.get('UNKNOWN_SCOPE')}**",
             "",
-            f"- OWNER_UNKNOWN: **{diff.get('OWNER_UNKNOWN')}**",
-            f"- UNRESOLVED: **{diff.get('UNRESOLVED')}**",
-            f"- UNATTRIBUTED: **{diff.get('UNATTRIBUTED')}**",
-            f"- R3B_SCOPE: **{diff.get('R3B_SCOPE')}**",
-            f"- M252_SCOPE: **{diff.get('M252_SCOPE')}**",
-            f"- NEW_STRATEGY_DRIFT: **{diff.get('NEW_STRATEGY_DRIFT')}**",
+            "## Hardened M252 comparator",
             "",
-            "## M252 complete physical authority",
+            f"- Pass: **{s.get('m252_exact_pass')}**",
             "",
-            "Machine authority from corrected migration 252 + R3B1K identifier authority + R3B1O.2 Prisma physical mappings.",
+            "## Expanded M252 negative suite",
             "",
-            "## New M252 catalog reader",
+            f"- Golden tests: **{golden.get('passed')}/{golden.get('required')}** passed",
             "",
-            "Queries pg_catalog directly (pg_attribute, pg_constraint, pg_index, format_type, pg_get_indexdef).",
+            "## Golden terminal gating",
             "",
-            "## New exact M252 comparator",
+            "Golden tests execute before terminal status calculation.",
             "",
-            f"- Pass: **{m252.get('pass')}**",
-            f"- Semantic mismatches: **{m252.get('semantic_mismatch_count')}**",
+            "## Fresh winning strategy replay",
             "",
-            "## M252 negative-test suite",
-            "",
-            f"- Required: **{golden.get('required')}**",
-            f"- Implemented: **{golden.get('implemented')}**",
-            f"- Passed: **{golden.get('passed')}**",
-            f"- Failed: **{golden.get('failed')}**",
-            "",
-            "## Diff-classifier negative-test suite",
-            "",
-            "Included in golden test coverage manifest.",
-            "",
-            "## Terminal-gate negative tests",
-            "",
-            "Terminal acceptance function fail-closed on every gate.",
-            "",
-            "## Golden-test execution order",
-            "",
-            "Golden tests execute before terminal status selection.",
-            "",
-            "## Golden-test coverage",
-            "",
-            f"- Coverage: **{golden.get('coverage_percent')}%**",
-            "",
-            "## Fresh final strategy twin",
-            "",
-            "New isolated twin with exact winning strategy replay.",
-            "",
-            "## M252 exact parity",
-            "",
-            "All categories PASS; unexpected objects = 0.",
-            "",
-            "## Final R3B 19/9/10/54",
-            "",
-            f"- Objects: **{r3b.get('objects')}**",
-            f"- Tables: **{r3b.get('tables')}**",
-            f"- Enums: **{r3b.get('enums')}**",
-            f"- Properties: **{r3b.get('properties')}**",
+            f"- Strategy pass: **{s.get('strategy_pass')}**",
             "",
             "## Second deploy idempotency",
             "",
             f"- Pass: **{s.get('second_deploy', {}).get('pass')}**",
-            f"- New ledger rows: **{s.get('second_deploy', {}).get('new_ledger_rows')}**",
-            f"- Catalog delta: **{s.get('second_deploy', {}).get('catalog_delta')}**",
-            "",
-            "## Production data-risk carry-forward",
-            "",
-            f"- UNKNOWN_DATA_DEPENDENCY: **{s.get('data_risk', {}).get('UNKNOWN_DATA_DEPENDENCY')}**",
             "",
             "## Production immutability",
             "",
             f"- Unchanged: **{s.get('production_immutable')}**",
-            f"- Mutations: **{s.get('production_mutations')}**",
             "",
             "## Repository immutability",
             "",
-            f"- schema.prisma unchanged: **{s.get('repository_immutable', {}).get('schema_unchanged')}**",
-            f"- migrations unchanged: **{s.get('repository_immutable', {}).get('migrations_unchanged')}**",
+            f"- Pass: **{s.get('repository_immutable', {}).get('pass')}**",
             "",
-            "## Terminal acceptance",
+            "## Final status",
             "",
-            f"- Pass: **{s.get('pass')}**",
+            f"`{s.get('final_status')}`",
             "",
-            "## R3B1P readiness",
-            "",
-            f"`{s.get('r3b1p_readiness')}`",
-            "",
-        "## Safety",
-        "",
-        "Production remained read-only. No schema, migration, or production mutation.",
-        "",
-        "**Changes / Architektur:** not updated (CI-recovery evidence scope only).",
-    ]
+            "**Changes / Architektur:** not updated (CI-recovery evidence scope only).",
+        ]
     )
-    OUT.write_text("\n".join(sections) + "\n")
+    OUT.write_text("\n".join(lines) + "\n")
     return 0
 
 

@@ -1,111 +1,99 @@
-"""Final Prisma diff attribution closure for CI-R3B1O.3."""
+"""Two-axis final Prisma diff attribution for CI-R3B1O.3 corrective rerun."""
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 from ci_r3b1o1_constants import M252_TABLE
 from ci_r3b1o2_diff_classifier import (
     classify_statements,
-    normalize_sql,
     operation_fingerprint,
     parse_sql_script,
-    resolve_owner_fields,
 )
 from ci_r3b1o2_r3b_authority import build_owner_maps
 from ci_r3b1o3_constants import DATA, STRATEGY_CONTRACT
 
+AUTHORIZED_STRATEGY_INDEXES: set[str] = set()
 
-def _is_strategy_related(sql: str, owner_table: str | None) -> bool:
-    if M252_TABLE in sql:
-        return True
+
+def resolve_scope(op: dict[str, Any]) -> str:
+    owner_resolution = op.get("owner_resolution", "OWNER_UNKNOWN")
+    owner_table = op.get("owner_table")
+    if owner_resolution == "OWNER_UNKNOWN":
+        return "UNKNOWN"
+    if owner_resolution == "OWNER_R3B" or op.get("classification") == "R3B_SCOPE":
+        return "R3B"
+    if owner_resolution == "OWNER_M252" or owner_table == M252_TABLE or op.get("classification") == "M252_SCOPE":
+        return "M252"
+    return "OTHER"
+
+
+def has_explicit_strategy_authority(op: dict[str, Any]) -> tuple[bool, str | None]:
+    raw = op.get("raw_sql", "")
+    upper = raw.upper()
+    owner_table = op.get("owner_table")
+    owner_index = op.get("owner_index")
+
+    if "CREATE TABLE" in upper and M252_TABLE in raw:
+        return True, "append-only M252 forward migration creates canonical table"
+    if M252_TABLE in raw and any(k in upper for k in ("CREATE INDEX", "CREATE UNIQUE INDEX", "ADD CONSTRAINT", "PRIMARY KEY")):
+        return True, "append-only M252 forward migration creates canonical M252 objects"
     for token in STRATEGY_CONTRACT["resolves"]:
-        if token in sql:
-            return True
-    return False
-
-
-def _expected_strategy_reason(sql: str, owner_table: str | None) -> str | None:
-    upper = sql.upper()
-    if "CREATE TABLE" in upper and M252_TABLE in sql:
-        return "append-only M252 forward migration creates canonical table"
-    if M252_TABLE in sql and any(k in upper for k in ("CREATE INDEX", "CREATE UNIQUE INDEX", "ADD CONSTRAINT", "PRIMARY KEY")):
-        return "append-only M252 forward migration creates canonical M252 objects"
+        if token in raw:
+            return True, f"explicit resolve contract: {token}"
+    if owner_index and owner_index in AUTHORIZED_STRATEGY_INDEXES:
+        return True, f"explicit authorized index contract: {owner_index}"
     if owner_table and owner_table in {"vehicle_trips", "driving_events", "trip_events"}:
-        if "SET DATA TYPE" in upper or "ADD COLUMN" in upper:
-            return None
-        return "R3B bootstrap/deploy migrations align recovered R3B objects"
-    if "organization_legal_documents" in sql and "RENAME" in upper:
-        return "production legacy index rename converges to schema.prisma explicit map after deploy"
-    if "organization_role_assignments" in sql and "RENAME" in upper:
-        return "production legacy index rename converges to schema.prisma explicit map after deploy"
-    if owner_table and "RENAME" in upper and owner_table not in {M252_TABLE}:
-        if any(x in sql for x in ("organization_legal_documents", "organization_role_assignments")):
-            return "production legacy index rename converges to schema.prisma explicit map after deploy"
-    return None
+        if "SET DATA TYPE" not in upper and "ADD COLUMN" not in upper and "RENAME" in upper:
+            return True, "R3B bootstrap/deploy migrations align recovered R3B objects"
+    if owner_table in {"organization_legal_documents", "organization_role_assignments"} and "RENAME" in upper:
+        return True, "production legacy index rename converges to schema.prisma explicit map after deploy"
+    return False, None
 
 
-def classify_operation_attribution(
+def classify_operation_two_axis(
     op: dict[str, Any],
     *,
     golden_fps: set[str],
     golden_baseline_fps: set[str],
+    strategy_introduced_fps: set[str] | None = None,
 ) -> dict[str, Any]:
     fp = operation_fingerprint(op)
-    raw = op.get("raw_sql", "")
-    owner_table = op.get("owner_table")
-    owner_resolution = op.get("owner_resolution", "OWNER_UNKNOWN")
+    golden_match = fp in golden_fps or fp in golden_baseline_fps
+    scope = resolve_scope(op)
+    authorized, auth_reason = has_explicit_strategy_authority(op)
 
-    record = {
+    if scope == "UNKNOWN":
+        provenance = "UNKNOWN"
+        classification = "UNATTRIBUTED"
+        reason = op.get("owner_resolution_source", "owner unknown")
+    elif golden_match:
+        provenance = "PRE_EXISTING"
+        classification = "PRE_EXISTING_PRODUCTION_DRIFT"
+        reason = "matched golden baseline semantic fingerprint"
+    elif authorized:
+        provenance = "AUTHORIZED_STRATEGY"
+        classification = "AUTHORIZED_STRATEGY_DELTA"
+        reason = auth_reason
+    elif not golden_match:
+        provenance = "NEW_UNAUTHORIZED"
+        classification = "NEW_STRATEGY_DRIFT"
+        reason = "operation absent from golden baseline without explicit strategy authority"
+    else:
+        provenance = "UNKNOWN"
+        classification = "UNATTRIBUTED"
+        reason = "unable to prove scope/provenance"
+
+    return {
         **op,
         "semantic_fingerprint": fp,
         "golden_semantic_match": fp in golden_fps,
         "golden_baseline_match": fp in golden_baseline_fps,
-        "r3b_scope": op.get("classification") == "R3B_SCOPE" or owner_resolution == "OWNER_R3B",
-        "m252_scope": op.get("classification") == "M252_SCOPE" or owner_resolution == "OWNER_M252" or owner_table == M252_TABLE,
-        "strategy_related": _is_strategy_related(raw, owner_table),
+        "scope": scope,
+        "provenance": provenance,
+        "classification": classification,
+        "reason": reason,
     }
-
-    if owner_resolution == "OWNER_UNKNOWN":
-        record["classification"] = "UNRESOLVED"
-        record["reason"] = op.get("owner_resolution_source", "owner unknown")
-        return record
-
-    if op.get("classification") == "UNRESOLVED":
-        record["classification"] = "UNRESOLVED"
-        record["reason"] = op.get("reason", "unresolved")
-        return record
-
-    if record["golden_semantic_match"] or record["golden_baseline_match"]:
-        record["classification"] = "PRE_EXISTING_PRODUCTION_DRIFT"
-        record["reason"] = "matched golden baseline semantic fingerprint"
-        return record
-
-    strategy_reason = _expected_strategy_reason(raw, owner_table)
-    if strategy_reason:
-        record["classification"] = "EXPECTED_STRATEGY_DELTA"
-        record["reason"] = strategy_reason
-        return record
-
-    if record["r3b_scope"]:
-        record["classification"] = "NEW_STRATEGY_DRIFT" if record["strategy_related"] else "R3B_SCOPE"
-        record["reason"] = "R3B-scoped drift without golden match"
-        return record
-
-    if record["m252_scope"]:
-        record["classification"] = "NEW_STRATEGY_DRIFT"
-        record["reason"] = "M252-scoped drift without golden match or strategy contract"
-        return record
-
-    if owner_resolution in {"OWNER_OUT_OF_SCOPE", "OWNER_M252"} and owner_table:
-        record["classification"] = "OUT_OF_SCOPE_POSITIVELY_PROVEN"
-        record["reason"] = f"{op.get('owner_resolution_source')}; owner={owner_table}; proven outside R3B/M252 strategy universe"
-        return record
-
-    record["classification"] = "UNATTRIBUTED"
-    record["reason"] = "no provenance classification"
-    return record
 
 
 def classify_final_diff(
@@ -114,6 +102,7 @@ def classify_final_diff(
     golden_twin_script: str,
     golden_baseline_script: str,
     schema_dump=None,
+    strategy_introduced_fps: set[str] | None = None,
 ) -> dict[str, Any]:
     owners = build_owner_maps(schema_dump=schema_dump)
     final_base = classify_statements(parse_sql_script(final_script), owners)
@@ -121,75 +110,67 @@ def classify_final_diff(
     golden_base_fps = {operation_fingerprint(o) for o in classify_statements(parse_sql_script(golden_baseline_script), owners)["operations"]}
 
     operations = [
-        classify_operation_attribution(op, golden_fps=golden_twin_fps, golden_baseline_fps=golden_base_fps)
+        classify_operation_two_axis(
+            op,
+            golden_fps=golden_twin_fps,
+            golden_baseline_fps=golden_base_fps,
+            strategy_introduced_fps=strategy_introduced_fps,
+        )
         for op in final_base["operations"]
     ]
 
-    counts = {}
-    for key in [
-        "PRE_EXISTING_PRODUCTION_DRIFT",
-        "EXPECTED_STRATEGY_DELTA",
-        "OUT_OF_SCOPE_POSITIVELY_PROVEN",
-        "R3B_SCOPE",
-        "M252_SCOPE",
-        "NEW_STRATEGY_DRIFT",
-        "UNRESOLVED",
-        "UNATTRIBUTED",
-    ]:
-        counts[key] = sum(1 for o in operations if o["classification"] == key)
+    scope_counts = {"R3B": 0, "M252": 0, "OTHER": 0, "UNKNOWN": 0}
+    provenance_counts = {"PRE_EXISTING": 0, "AUTHORIZED_STRATEGY": 0, "NEW_UNAUTHORIZED": 0, "UNKNOWN": 0}
+    for op in operations:
+        scope_counts[op["scope"]] = scope_counts.get(op["scope"], 0) + 1
+        provenance_counts[op["provenance"]] = provenance_counts.get(op["provenance"], 0) + 1
 
-    owner_unknown = sum(1 for o in operations if o.get("owner_resolution") == "OWNER_UNKNOWN")
-    unmatched = [o for o in operations if not o["golden_semantic_match"] and not o["golden_baseline_match"]]
+    derived = {
+        "PRE_EXISTING_PRODUCTION_DRIFT": sum(1 for o in operations if o["classification"] == "PRE_EXISTING_PRODUCTION_DRIFT"),
+        "AUTHORIZED_STRATEGY_DELTA": sum(1 for o in operations if o["classification"] == "AUTHORIZED_STRATEGY_DELTA"),
+        "NEW_STRATEGY_DRIFT": sum(1 for o in operations if o["classification"] == "NEW_STRATEGY_DRIFT"),
+        "UNATTRIBUTED": sum(1 for o in operations if o["classification"] == "UNATTRIBUTED"),
+    }
 
     return {
         "schema_version": 1,
-        "phase": "CI-R3B1O.3",
+        "phase": "CI-R3B1O.3-corrective",
         "total_operations": len(operations),
-        "owner_unknown": owner_unknown,
-        **counts,
+        "scope_counts": scope_counts,
+        "provenance_counts": provenance_counts,
+        "R3B_SCOPE": scope_counts["R3B"],
+        "M252_SCOPE": scope_counts["M252"],
+        "UNKNOWN_SCOPE": scope_counts["UNKNOWN"],
+        **derived,
         "operations": operations,
-        "unmatched_operations": unmatched,
-        "pass": owner_unknown == 0
-        and counts["UNRESOLVED"] == 0
-        and counts["UNATTRIBUTED"] == 0
-        and counts["R3B_SCOPE"] == 0
-        and counts["M252_SCOPE"] == 0
-        and counts["NEW_STRATEGY_DRIFT"] == 0,
+        "pass": (
+            scope_counts["UNKNOWN"] == 0
+            and derived["UNATTRIBUTED"] == 0
+            and derived["NEW_STRATEGY_DRIFT"] == 0
+            and scope_counts["R3B"] == 0
+            and scope_counts["M252"] == 0
+        ),
     }
 
 
-def build_unmatched_inventory(classification: dict[str, Any]) -> dict[str, Any]:
-    unmatched = [o for o in classification["operations"] if not o.get("golden_semantic_match")]
-    out = {"schema_version": 1, "phase": "CI-R3B1O.3", "expected_from_r3b1o2": 2, "actual_count": len(unmatched), "operations": unmatched[:10]}
-    (DATA / "ci-r3b1o3-unmatched-final-diff-operations-2026-08.json").write_text(json.dumps(out, indent=2) + "\n")
-    return out
-
-
-def write_attribution_closure(classification: dict[str, Any], prior_o2: dict[str, Any] | None = None) -> dict[str, Any]:
-    unmatched_final = [o for o in classification["operations"] if not o.get("golden_semantic_match")]
-    prior_two = []
-    if prior_o2:
-        prior_ops = [o for o in classification["operations"] if o.get("classification") == "OUT_OF_SCOPE_POSITIVELY_PROVEN" and not o.get("golden_semantic_match")]
-        prior_two = prior_ops[:2]
-    out = {
-        "schema_version": 1,
-        "phase": "CI-R3B1O.3",
-        "prior_r3b1o2_out_of_scope": prior_o2.get("classification", {}).get("final_winning_twin", {}).get("OUT_OF_SCOPE", 2) if prior_o2 else 2,
-        "unmatched_count": len(unmatched_final),
-        "resolved_operations": [
+def write_corrective_attribution(classification: dict[str, Any]) -> None:
+    (DATA / "ci-r3b1o3-corrective-final-prisma-diff-attribution-2026-08.json").write_text(json.dumps(classification, indent=2) + "\n")
+    unmatched = [o for o in classification["operations"] if not o.get("golden_baseline_match")]
+    (DATA / "ci-r3b1o3-corrective-final-diff-provenance-2026-08.json").write_text(
+        json.dumps(
             {
-                "ordinal": o["ordinal"],
-                "raw_sql": o["raw_sql"],
-                "old_r3b1o2_classification": "OUT_OF_SCOPE",
-                "new_classification": o["classification"],
-                "owner_table": o.get("owner_table"),
-                "owner_resolution_source": o.get("owner_resolution_source"),
-                "reason": o.get("reason"),
-            }
-            for o in unmatched_final
-        ],
-        "counts": {k: classification[k] for k in classification if k.isupper() or k in {"owner_unknown", "total_operations"}},
-        "pass": classification["pass"],
-    }
-    (DATA / "ci-r3b1o3-final-diff-attribution-closure-2026-08.json").write_text(json.dumps(out, indent=2) + "\n")
-    return out
+                "schema_version": 1,
+                "phase": "CI-R3B1O.3-corrective",
+                "unmatched_count": len(unmatched),
+                "operations": unmatched,
+                "counts": {
+                    k: classification[k]
+                    for k in classification
+                    if k.isupper() or k.endswith("_SCOPE") or k.startswith("scope_") or k.startswith("provenance_")
+                },
+                "pass": classification["pass"],
+            },
+            indent=2,
+        )
+        + "\n"
+    )

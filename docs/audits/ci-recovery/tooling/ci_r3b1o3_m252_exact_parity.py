@@ -161,6 +161,17 @@ def compare_m252_exact(authority: dict[str, Any], catalog: dict[str, Any]) -> di
         if _norm_default(exp.get("default")) != _norm_default(act.get("default")):
             categories["COLUMNS"]["pass"] = False
             categories["COLUMNS"]["mismatches"].append(f"default {name}")
+        if str(exp.get("identity") or "") != str(act.get("identity") or ""):
+            categories["COLUMNS"]["pass"] = False
+            categories["COLUMNS"]["mismatches"].append(f"identity {name}")
+        if str(exp.get("generated") or "") != str(act.get("generated") or ""):
+            categories["COLUMNS"]["pass"] = False
+            categories["COLUMNS"]["mismatches"].append(f"generated {name}")
+
+    act_names = {c["name"] for c in catalog["columns"]}
+    if act_names != set(exp_by_name):
+        categories["COLUMNS"]["pass"] = False
+        categories["COLUMNS"]["mismatches"].append("unexpected columns")
 
     pk_exp, pk_act = authority["primary_key"], catalog.get("primary_key")
     if not pk_act or pk_act["name"] != pk_exp["name"] or pk_act["columns"] != pk_exp["columns"]:
@@ -169,6 +180,9 @@ def compare_m252_exact(authority: dict[str, Any], catalog: dict[str, Any]) -> di
     elif pk_act.get("deferrable") != pk_exp.get("deferrable") or pk_act.get("initially_deferred") != pk_exp.get("initially_deferred"):
         categories["PK"]["pass"] = False
         categories["PK"]["mismatches"].append("pk deferrability")
+    elif pk_act.get("validated") != pk_exp.get("validated"):
+        categories["PK"]["pass"] = False
+        categories["PK"]["mismatches"].append("pk validated")
 
     for cat, key in [("UNIQUE", "unique_index"), ("COMPOSITE_INDEX", "composite_index")]:
         exp = authority[key]
@@ -182,6 +196,9 @@ def compare_m252_exact(authority: dict[str, Any], catalog: dict[str, Any]) -> di
         if act and (act.get("predicate") or None) != (exp.get("predicate") or None):
             categories[cat]["pass"] = False
             categories[cat]["mismatches"].append("predicate")
+        if act and act.get("unique") != exp.get("unique"):
+            categories[cat]["pass"] = False
+            categories[cat]["mismatches"].append("unique flag")
 
     act_fks = {fk["name"]: fk for fk in catalog.get("foreign_keys", [])}
     for cat, exp in [("ORG_FK", authority["foreign_keys"][0]), ("MEMBERSHIP_FK", authority["foreign_keys"][1])]:
@@ -258,8 +275,8 @@ def make_canonical_catalog_fixture() -> dict[str, Any]:
         "table_exists": True,
         "columns": cols,
         "primary_key": {"name": authority["primary_key"]["name"], "columns": ["id"], "deferrable": False, "initially_deferred": False, "validated": True},
-        "unique_index": {"name": authority["unique_index"]["name"], "definition": "", "access_method": "btree", "unique": True, "valid": True, "ready": True, "predicate": None, "columns": authority["unique_index"]["columns"]},
-        "composite_index": {"name": authority["composite_index"]["name"], "definition": "", "access_method": "btree", "unique": False, "valid": True, "ready": True, "predicate": None, "columns": authority["composite_index"]["columns"]},
+        "unique_index": {"name": authority["unique_index"]["name"], "definition": "", "access_method": "btree", "unique": True, "valid": True, "ready": True, "predicate": None, "columns": authority["unique_index"]["columns"], "include_columns": [], "collation": [], "opclass": [], "options": []},
+        "composite_index": {"name": authority["composite_index"]["name"], "definition": "", "access_method": "btree", "unique": False, "valid": True, "ready": True, "predicate": None, "columns": authority["composite_index"]["columns"], "include_columns": [], "collation": [], "opclass": [], "options": []},
         "foreign_keys": [{"name": fk["name"], "source_table": M252_TABLE, "source_columns": fk["source_columns"], "target_table": fk["target_table"], "target_columns": fk["target_columns"], "match_type": MATCH_MAP[fk["match_type"]], "on_update": ACTION_MAP[fk["on_update"]], "on_delete": ACTION_MAP[fk["on_delete"]], "deferrable": False, "initially_deferred": False, "validated": True} for fk in authority["foreign_keys"]],
         "unexpected_objects": [],
     }
