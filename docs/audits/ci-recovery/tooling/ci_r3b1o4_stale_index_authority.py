@@ -43,7 +43,10 @@ ORDER BY ic.relname;
         if ln.strip()
     ]
     for row in rows:
-        name, _, definition = row.split("|", 2)
+        parts = row.split("|", 2)
+        if len(parts) < 3:
+            continue
+        name, _, definition = parts
         if "contact_phone_normalized" in definition and "organization_id" in definition:
             return {
                 "present": True,
