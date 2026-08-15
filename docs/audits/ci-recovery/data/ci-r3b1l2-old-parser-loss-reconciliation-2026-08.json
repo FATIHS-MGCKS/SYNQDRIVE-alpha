@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "old_parser_reported_operations": 13,
+  "successor_complete_operations": 344,
+  "old_operations_matched_in_successor": 13,
+  "old_operations_unmatched": 0,
+  "previously_omitted_operations": 331,
+  "previously_omitted_r3b_operations": 1,
+  "omitted_r3b_scope_samples": [
+    {
+      "ordinal": 81,
+      "owner_table": "trip_driving_impact",
+      "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)"
+    }
+  ],
+  "recovered_trip_driving_impact_calculated_at_found": true,
+  "pass": true
+}

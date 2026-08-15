@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.2",
+  "primary_input_path": "audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql",
+  "json_metadata_path": "audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.json",
+  "sql_file_sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+  "json_stdout_sha256": "c9c43d8ec98187edd7fb819310c6ca11e1b636ec2355e62de08e8d2aecccaa81",
+  "content_sha256_normalized": "ecb42af773fe5f49db99bc38c98b9d35b39129376bbfca6e83a4e9b28b67bc79",
+  "content_equivalent_after_rstrip": true,
+  "byte_count_sql_file": 65490,
+  "byte_count_json_stdout": 65491,
+  "line_count_sql_file": 1480,
+  "line_count_json_stdout": 1480,
+  "json_metadata_consistent": true,
+  "pass": true
+}
