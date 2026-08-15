@@ -38,8 +38,8 @@ def build_corrected_data_dependency_risk(*, include_forward_m252: bool = True) -
                 in {"DATA_DEPENDENT_HIGH", "DATA_DEPENDENT_LOW", "UNKNOWN_DATA_DEPENDENCY"},
             }
         )
+    m252_sql = (MIG_ROOT / M252 / "migration.sql").read_text()
     if include_forward_m252:
-        m252_sql = (MIG_ROOT / M252 / "migration.sql").read_text()
         cls, reason, statements = classify_migration_data_risk(m252_sql)
         counts[cls] = counts.get(cls, 0) + 1
         entries.append(
