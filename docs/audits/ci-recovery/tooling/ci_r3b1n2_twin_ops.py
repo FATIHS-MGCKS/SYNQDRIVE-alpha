@@ -15,15 +15,23 @@ from ci_r3b1n2_constants import BACKEND, sha256_text
 from ci_r3b1n2_instance_identity import MutationGuard, query_instance_identity_dsn
 
 
+def _psql_safe_dsn(dsn: str) -> str:
+    """Strip Prisma-only URI query params (e.g. schema=) that libpq rejects."""
+    parsed = urlparse(dsn)
+    return urlunparse(parsed._replace(query="", fragment=""))
+
+
 def parse_local_dsn() -> tuple[str, str]:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         raise RuntimeError("DATABASE_URL required")
-    return dsn, urlunparse(urlparse(dsn)._replace(path="/postgres"))
+    clean = _psql_safe_dsn(dsn)
+    parsed = urlparse(clean)
+    return clean, urlunparse(parsed._replace(path="/postgres"))
 
 
 def twin_dsn(base_dsn: str, db_name: str) -> str:
-    return urlunparse(urlparse(base_dsn)._replace(path=f"/{db_name}"))
+    return urlunparse(urlparse(_psql_safe_dsn(base_dsn))._replace(path=f"/{db_name}"))
 
 
 def psql_exec(dsn: str, sql: str) -> subprocess.CompletedProcess[str]:
