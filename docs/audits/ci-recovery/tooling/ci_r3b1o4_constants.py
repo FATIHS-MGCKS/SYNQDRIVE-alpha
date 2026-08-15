@@ -10,6 +10,7 @@ R3B1O4_BRANCH = "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08"
 WORK_R3B1O4 = REPO / "docs/audits/ci-recovery/.work/r3b1o4"  # noqa: F405
 
 FINAL_STRATEGY_DB_PREFIX = "r3b1o4_tail_reconciliation"
+CORRECTIVE_STRATEGY_DB_PREFIX = "r3b1o4_corrective_final"
 
 R3B1O4_INPUTS = [
     "backend/prisma/schema.prisma",

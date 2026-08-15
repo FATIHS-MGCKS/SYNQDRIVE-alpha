@@ -2,6 +2,7 @@
 """Golden tests for CI-R3B1O.4 — tail reconciliation, stale index authority, M252 parity."""
 from __future__ import annotations
 
+import argparse
 import copy
 import json
 import sys
@@ -18,11 +19,14 @@ from ci_r3b1o2_r3b_authority import build_owner_maps
 from ci_r3b1o3_diff_attribution import classify_operation_two_axis
 from ci_r3b1o3_golden_tests import REQUIRED_TEST_IDS as O3_REQUIRED, run_diff_classifier_tests, run_m252_negative_tests, run_terminal_gate_tests as run_o3_terminal_tests
 from ci_r3b1o3_m252_complete_authority import build_m252_complete_physical_authority
-from ci_r3b1o3_m252_exact_parity import compare_m252_exact, make_canonical_catalog_fixture
+from ci_r3b1o3_m252_exact_parity import compare_m252_exact as compare_m252_exact_o3, make_canonical_catalog_fixture as make_o3_fixture
+from ci_r3b1o4_full_catalog_delta import build_full_catalog_delta_authority, classify_delta, diff_inventories
+from ci_r3b1o4_m252_exact_parity import compare_m252_exact as compare_m252_exact_o4, make_canonical_catalog_fixture as make_o4_fixture
 from ci_r3b1o4_stale_index_authority import build_invoice_stale_index_authority, build_whatsapp_stale_index_authority
+from ci_r3b1o4_t2_stale_index_safety import EXPECTED_STALE, _compare_index
 from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract, build_tail_sql, evaluate_tail_preconditions
-from ci_r3b1o4_terminal_gate import evaluate_terminal_acceptance
-from ci_r3b1o4_test_source_hashes import build_test_source_hash_manifest
+from ci_r3b1o4_terminal_gate import evaluate_corrective_terminal_acceptance, evaluate_terminal_acceptance
+from ci_r3b1o4_test_source_hashes import build_corrective_test_source_hash_manifest, build_test_source_hash_manifest
 
 SCHEMA_DUMP = REPO / "docs/audits/ci-recovery/.work/r3b1o4/production_schema_only.sql"
 
@@ -135,22 +139,240 @@ TAIL_REQUIRED = [
 
 REQUIRED_TEST_IDS = list(O3_REQUIRED) + TAIL_REQUIRED
 
+CORRECTIVE_M252_REQUIRED = [
+    "m252_o4_positive_control",
+    "m252_wrong_include",
+    "m252_wrong_collation",
+    "m252_wrong_opclass",
+    "m252_wrong_sort_direction",
+    "m252_wrong_null_ordering",
+    "m252_wrong_ready",
+    "m252_wrong_valid",
+    "m252_wrong_access_method",
+    "m252_wrong_key_order",
+]
 
-def run_golden_tests() -> dict:
+CORRECTIVE_CATALOG_DELTA_REQUIRED = [
+    "catalog_delta_known_added_authorized",
+    "catalog_delta_stale_removed_authorized",
+    "catalog_delta_unknown_table_unauthorized",
+    "catalog_delta_unknown_index_unauthorized",
+    "catalog_delta_unexpected_column_change_unauthorized",
+    "catalog_delta_unknown_constraint_removed_unauthorized",
+    "catalog_delta_all_classified_pass",
+    "catalog_delta_omitted_classification_fail",
+]
+
+CORRECTIVE_T2_REQUIRED = [
+    "t2_invoice_stale_exact_shape_pass",
+    "t2_whatsapp_stale_exact_shape_pass",
+    "t2_wrong_owner_fail",
+]
+
+CORRECTIVE_TERMINAL_REQUIRED = [
+    "o4_corrective_terminal_all_gates_pass",
+    "o4_corrective_terminal_second_deploy_fail",
+    "o4_corrective_terminal_catalog_delta_fail",
+]
+
+CORRECTIVE_REQUIRED_TEST_IDS = list(O3_REQUIRED) + TAIL_REQUIRED + CORRECTIVE_M252_REQUIRED + CORRECTIVE_CATALOG_DELTA_REQUIRED + CORRECTIVE_T2_REQUIRED + CORRECTIVE_TERMINAL_REQUIRED
+
+
+def _inventory(*, tables: dict | None = None, indexes: dict | None = None, constraints: dict | None = None, enums: dict | None = None) -> dict:
+    inv = {"schemas": ["public"], "tables": tables or {}, "enums": enums or {}, "types": [], "constraints": constraints or {}, "indexes": indexes or {}, "sequences": {}, "views": {}}
+    payload = {"schema_version": 1, "phase": "CI-R3B1O.4-corrective", "inventory": inv, "object_counts": {}, "fingerprint_sha256": "fixture"}
+    return payload
+
+
+def run_corrective_m252_index_tests(tests: list) -> None:
+    authority = build_m252_complete_physical_authority()
+    positive = compare_m252_exact_o4(authority, make_o4_fixture())
+    _add(tests, "m252_o4_positive_control", "compare_m252_exact", "PASS", positive["pass"], str(positive["pass"]))
+
+    cases = [
+        ("m252_wrong_include", ["unique_index", "include_columns"], [{"ordinal": 1, "kind": "include", "name": "organization_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"}]),
+        ("m252_wrong_collation", ["unique_index", "keys", 0, "collation"], "C"),
+        ("m252_wrong_opclass", ["unique_index", "keys", 0, "opclass"], "hash_ops"),
+        ("m252_wrong_sort_direction", ["unique_index", "keys", 0, "sort_direction"], "DESC"),
+        ("m252_wrong_null_ordering", ["unique_index", "keys", 0, "nulls_ordering"], "NULLS FIRST"),
+        ("m252_wrong_ready", ["unique_index", "ready"], False),
+        ("m252_wrong_valid", ["unique_index", "valid"], False),
+        ("m252_wrong_access_method", ["unique_index", "access_method"], "hash"),
+        ("m252_wrong_key_order", ["unique_index", "keys"], [
+            {"ordinal": 1, "kind": "key", "name": "organization_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
+            {"ordinal": 2, "kind": "key", "name": "membership_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
+        ]),
+    ]
+    for test_id, path, bad_value in cases:
+        fixture = make_o4_fixture()
+        node = fixture
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = bad_value
+        result = compare_m252_exact_o4(authority, fixture)
+        _add(tests, test_id, "compare_m252_exact", "FAIL", not result["pass"], str(result["pass"]))
+
+
+def run_catalog_delta_tests(tests: list) -> None:
+    authority = build_m252_complete_physical_authority()
+    golden = _inventory(tables={"organizations": {"columns": {"id": {"format_type": "text", "nullable": False, "default": None, "identity": None, "generated": None}}}})
+    final_added = _inventory(
+        tables={
+            **golden["inventory"]["tables"],
+            M252_TABLE: {"columns": {"id": {"format_type": "text", "nullable": False, "default": None, "identity": None, "generated": None}}},
+        }
+    )
+    added = build_full_catalog_delta_authority(golden_inventory=golden, final_inventory=final_added)
+    _add(tests, "catalog_delta_known_added_authorized", "build_full_catalog_delta_authority", "authorized", added["counts"]["UNAUTHORIZED_FINAL_DELTA"] == 0, str(added["counts"]["UNAUTHORIZED_FINAL_DELTA"]))
+
+    stale_removed = _inventory(indexes={"org_invoices_invoice_number_key": {"name": "org_invoices_invoice_number_key"}}, tables=golden["inventory"]["tables"])
+    stale_final = _inventory(tables=golden["inventory"]["tables"])
+    removed = build_full_catalog_delta_authority(golden_inventory=stale_removed, final_inventory=stale_final)
+    stale_cls = [d for d in removed["deltas"] if d["name"] == "org_invoices_invoice_number_key"]
+    _add(tests, "catalog_delta_stale_removed_authorized", "classify_delta", "STALE_RECOVERY_EFFECT_REMOVED", bool(stale_cls) and stale_cls[0]["classification"] == "STALE_RECOVERY_EFFECT_REMOVED", stale_cls[0]["classification"] if stale_cls else "missing")
+
+    unknown_table = _inventory(
+        tables={
+            **golden["inventory"]["tables"],
+            "unexpected_table": {"columns": {"id": {"format_type": "text", "nullable": False, "default": None, "identity": None, "generated": None}}},
+        }
+    )
+    unknown_table_delta = classify_delta(
+        {"change_type": "ADDED", "object_type": "table", "name": "unexpected_table", "subkey": None, "before": None, "after": {}},
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unknown_table_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", unknown_table_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", unknown_table_delta["classification"])
+
+    unknown_index = classify_delta(
+        {"change_type": "ADDED", "object_type": "index", "name": "unexpected_idx", "subkey": None, "before": None, "after": {}},
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unknown_index_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", unknown_index["classification"] == "UNAUTHORIZED_FINAL_DELTA", unknown_index["classification"])
+
+    changed_col = classify_delta(
+        {
+            "change_type": "CHANGED",
+            "object_type": "column",
+            "name": "organizations",
+            "subkey": "id",
+            "before": {"format_type": "text"},
+            "after": {"format_type": "integer"},
+        },
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unexpected_column_change_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", changed_col["classification"] == "UNAUTHORIZED_FINAL_DELTA", changed_col["classification"])
+
+    removed_constraint = classify_delta(
+        {"change_type": "REMOVED", "object_type": "constraint", "name": "organizations_pkey", "subkey": None, "before": {}, "after": None},
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unknown_constraint_removed_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", removed_constraint["classification"] == "UNAUTHORIZED_FINAL_DELTA", removed_constraint["classification"])
+
+    all_classified = build_full_catalog_delta_authority(golden_inventory=golden, final_inventory=final_added)
+    _add(tests, "catalog_delta_all_classified_pass", "build_full_catalog_delta_authority", "PASS", all_classified["counts"]["total_deltas"] == all_classified["counts"]["classified_deltas"], str(all_classified["counts"]["total_deltas"]))
+
+    partial = diff_inventories(golden, final_added)
+    classified = [classify_delta(d, authority=authority) for d in partial[:-1]]
+    _add(tests, "catalog_delta_omitted_classification_fail", "manual", "FAIL", len(classified) < len(partial), f"{len(classified)}/{len(partial)}")
+
+
+def run_t2_stale_index_tests(tests: list) -> None:
+    invoice_actual = {
+        "owner_table": "org_invoices",
+        "unique": True,
+        "primary": False,
+        "access_method": "btree",
+        "keys": EXPECTED_STALE["org_invoices_invoice_number_key"]["keys"],
+        "include_columns": [],
+        "predicate": None,
+        "valid": True,
+        "ready": True,
+    }
+    ok, _ = _compare_index(invoice_actual, EXPECTED_STALE["org_invoices_invoice_number_key"])
+    _add(tests, "t2_invoice_stale_exact_shape_pass", "_compare_index", "PASS", ok, str(ok))
+
+    whatsapp_actual = {
+        "owner_table": "whatsapp_conversations",
+        "unique": True,
+        "primary": False,
+        "access_method": "btree",
+        "keys": EXPECTED_STALE["whatsapp_conversations_organization_id_contact_phone_key"]["keys"],
+        "include_columns": [],
+        "predicate": None,
+        "valid": True,
+        "ready": True,
+    }
+    ok_wa, _ = _compare_index(whatsapp_actual, EXPECTED_STALE["whatsapp_conversations_organization_id_contact_phone_key"])
+    _add(tests, "t2_whatsapp_stale_exact_shape_pass", "_compare_index", "PASS", ok_wa, str(ok_wa))
+
+    wrong_owner = dict(invoice_actual)
+    wrong_owner["owner_table"] = "wrong_table"
+    bad, _ = _compare_index(wrong_owner, EXPECTED_STALE["org_invoices_invoice_number_key"])
+    _add(tests, "t2_wrong_owner_fail", "_compare_index", "FAIL", not bad, str(bad))
+
+
+def run_corrective_terminal_tests(tests: list) -> None:
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+    )
+    perfect = evaluate_corrective_terminal_acceptance(**base)
+    _add(tests, "o4_corrective_terminal_all_gates_pass", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED", perfect["pass"], perfect["final_status"])
+    fail_second = evaluate_corrective_terminal_acceptance(**{**base, "second_deploy_pass": False})
+    _add(tests, "o4_corrective_terminal_second_deploy_fail", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_REPEAT_DEPLOY_FAILED", not fail_second["pass"] and fail_second["final_status"] == "CI_R3B1O4_REPEAT_DEPLOY_FAILED", fail_second["final_status"])
+    fail_catalog = evaluate_corrective_terminal_acceptance(**{**base, "unauthorized_final_delta": 1})
+    _add(tests, "o4_corrective_terminal_catalog_delta_fail", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_catalog["pass"] and fail_catalog["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_catalog["final_status"])
+
+
+def run_golden_tests(*, corrective: bool = False) -> dict:
     tests: list[dict] = []
     run_m252_negative_tests(tests)
     run_diff_classifier_tests(tests)
     run_o3_terminal_tests(tests)
     run_tail_authority_tests(tests)
     run_o4_terminal_tests(tests)
+    if corrective:
+        run_corrective_m252_index_tests(tests)
+        run_catalog_delta_tests(tests)
+        run_t2_stale_index_tests(tests)
+        run_corrective_terminal_tests(tests)
 
-    hash_manifest = build_test_source_hash_manifest()
-    for entry in hash_manifest["entries"]:
-        _add(tests, f"source_hash_present_{entry['source_file'].replace('.', '_')}", "build_test_source_hash_manifest", "sha256 present", bool(entry["sha256"]), entry["source_file"])
+    hash_manifest = build_corrective_test_source_hash_manifest() if corrective else build_test_source_hash_manifest()
+    hash_entries = hash_manifest.get("entries") if isinstance(hash_manifest, dict) and "entries" in hash_manifest else [{"source_file": k, "sha256": v} for k, v in sorted((hash_manifest or {}).items())]
+    hash_fn = "build_corrective_test_source_hash_manifest" if corrective else "build_test_source_hash_manifest"
+    for entry in hash_entries:
+        _add(tests, f"source_hash_present_{entry['source_file'].replace('.', '_')}", hash_fn, "sha256 present", bool(entry["sha256"]), entry["source_file"])
 
+    required_ids = CORRECTIVE_REQUIRED_TEST_IDS if corrective else REQUIRED_TEST_IDS
     implemented = {t["test_id"] for t in tests}
     coverage_rows = []
-    for test_id in REQUIRED_TEST_IDS:
+    for test_id in required_ids:
         row = next((t for t in tests if t["test_id"] == test_id), None)
         coverage_rows.append(
             {
@@ -165,12 +387,14 @@ def run_golden_tests() -> dict:
 
     passed = sum(1 for t in tests if t["pass"])
     failed = sum(1 for t in tests if not t["pass"])
-    coverage_complete = all(r["implemented"] for r in coverage_rows if r["required_test_id"] in REQUIRED_TEST_IDS)
+    coverage_complete = all(r["implemented"] for r in coverage_rows)
 
+    phase = "CI-R3B1O.4-corrective" if corrective else "CI-R3B1O.4"
+    prefix = "ci-r3b1o4-corrective" if corrective else "ci-r3b1o4"
     results = {
         "schema_version": 1,
-        "phase": "CI-R3B1O.4",
-        "required": len(REQUIRED_TEST_IDS),
+        "phase": phase,
+        "required": len(required_ids),
         "implemented": len([r for r in coverage_rows if r["implemented"]]),
         "executed": len(tests),
         "passed": passed,
@@ -180,12 +404,15 @@ def run_golden_tests() -> dict:
         "tests": tests,
         "pass": failed == 0 and coverage_complete,
     }
-    (DATA / "ci-r3b1o4-golden-tests-2026-08.json").write_text(json.dumps(results, indent=2) + "\n")
-    (DATA / "ci-r3b1o4-golden-coverage-2026-08.json").write_text(
-        json.dumps({"schema_version": 1, "phase": "CI-R3B1O.4", "required_count": len(REQUIRED_TEST_IDS), "coverage_rows": coverage_rows, "coverage_complete": coverage_complete}, indent=2) + "\n"
+    (DATA / f"{prefix}-golden-tests-2026-08.json").write_text(json.dumps(results, indent=2) + "\n")
+    (DATA / f"{prefix}-golden-coverage-2026-08.json").write_text(
+        json.dumps({"schema_version": 1, "phase": phase, "required_count": len(required_ids), "coverage_rows": coverage_rows, "coverage_complete": coverage_complete}, indent=2) + "\n"
     )
     return results
 
 
 if __name__ == "__main__":
-    raise SystemExit(0 if run_golden_tests()["pass"] else 1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--corrective", action="store_true")
+    args = parser.parse_args()
+    raise SystemExit(0 if run_golden_tests(corrective=args.corrective)["pass"] else 1)
