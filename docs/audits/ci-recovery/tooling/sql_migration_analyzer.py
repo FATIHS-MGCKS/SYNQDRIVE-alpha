@@ -8,6 +8,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from expression_dependency_extractor import (
+    ExpressionDependency,
+    extract_statement_expression_dependencies,
+)
+
 FIRST_MIG = "20260311224040_init"
 LAST_MIG = "20260425000000_retire_user_assignment_and_speeding_severity"
 R3B_BOOTSTRAP = "20260325161141_ci_r3b_bootstrap_trip_schema_baseline"
@@ -204,6 +209,7 @@ def add_record(
     guarded: bool,
     guard_safe: bool | None,
     notes: str = "",
+    dependency_context: str = "COLUMN_REFERENCE",
 ) -> None:
     ctx.seq += 1
     cls = classify_record(ctx, mig, stmt_order, obj, obj_type, creator, guarded, guard_safe)
@@ -217,6 +223,8 @@ def add_record(
             "statement_excerpt": stmt_excerpt(stmt_text),
             "statement_hash": stmt_hash(stmt_text),
             "operation": operation,
+            "dependency_context": dependency_context,
+            "required_relation": obj if obj_type in {"table", "column"} else None,
             "required_object": obj,
             "required_object_type": obj_type,
             "required_property": prop,
@@ -234,6 +242,34 @@ def add_record(
             "notes": notes,
         }
     )
+
+
+def add_expression_dependency_records(
+    ctx: AnalyzerContext,
+    mig: str,
+    stmt_order: int,
+    stmt: str,
+    state: SchemaState,
+    deps: list[ExpressionDependency],
+    guarded: bool,
+    guard_safe: bool | None,
+    if_not_exists: bool = False,
+) -> None:
+    for dep in deps:
+        add_record(
+            ctx,
+            mig,
+            stmt_order,
+            stmt,
+            f"CREATE INDEX {dep.context.lower()}",
+            dep.table,
+            "column",
+            dep.column,
+            resolve_column_dependency(ctx, state, dep.table, dep.column),
+            if_not_exists or guarded,
+            guard_safe if guarded else None,
+            dependency_context=dep.context,
+        )
 
 
 def creator_for_table(ctx: AnalyzerContext, table: str) -> CreatorRef | None:
@@ -568,40 +604,103 @@ def check_statement_dependencies(
             guard_safe if guarded else None,
         )
 
-    for m in re.finditer(
-        r'CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"[^\n]*?\s+ON\s+"([^"]+)"\s*\(([^)]+)\)',
-        stmt,
-        re.I,
-    ):
-        index_name, table, cols_part = m.group(1), m.group(2), m.group(3)
-        add_record(
-            ctx,
-            mig,
-            stmt_order,
-            stmt,
-            "CREATE INDEX",
-            table,
-            "table",
-            None,
-            creator_for_table(ctx, table),
-            "IF NOT EXISTS" in m.group(0).upper(),
-            None,
-            notes=f"index={index_name}",
-        )
-        for col in re.findall(r'"([^"]+)"', cols_part):
+    if re.search(r"\bCREATE\s+(?:UNIQUE\s+)?INDEX\b", stmt, re.I):
+        expr_deps = extract_statement_expression_dependencies(stmt)
+        index_deps = [d for d in expr_deps if d.context in {"INDEX_KEY", "INDEX_EXPRESSION", "PARTIAL_INDEX_PREDICATE"}]
+        if index_deps:
             add_record(
                 ctx,
                 mig,
                 stmt_order,
                 stmt,
-                "CREATE INDEX column",
-                table,
-                "column",
-                col,
-                resolve_column_dependency(ctx, state, table, col),
-                "IF NOT EXISTS" in m.group(0).upper(),
+                "CREATE INDEX",
+                index_deps[0].table,
+                "table",
                 None,
+                creator_for_table(ctx, index_deps[0].table),
+                "IF NOT EXISTS" in upper,
+                None,
+                notes="expression-aware index dependency scan",
             )
+            add_expression_dependency_records(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                state,
+                index_deps,
+                guarded,
+                guard_safe,
+                if_not_exists="IF NOT EXISTS" in upper,
+            )
+        else:
+            for m in re.finditer(
+                r'CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"[^\n]*?\s+ON\s+"([^"]+)"\s*\(([^)]+)\)',
+                stmt,
+                re.I,
+            ):
+                index_name, table, cols_part = m.group(1), m.group(2), m.group(3)
+                add_record(
+                    ctx,
+                    mig,
+                    stmt_order,
+                    stmt,
+                    "CREATE INDEX",
+                    table,
+                    "table",
+                    None,
+                    creator_for_table(ctx, table),
+                    "IF NOT EXISTS" in m.group(0).upper(),
+                    None,
+                    notes=f"index={index_name}",
+                )
+                for col in re.findall(r'"([^"]+)"', cols_part):
+                    add_record(
+                        ctx,
+                        mig,
+                        stmt_order,
+                        stmt,
+                        "CREATE INDEX column",
+                        table,
+                        "column",
+                        col,
+                        resolve_column_dependency(ctx, state, table, col),
+                        "IF NOT EXISTS" in m.group(0).upper(),
+                        None,
+                        dependency_context="INDEX_KEY",
+                    )
+
+    stmt_expr_deps = extract_statement_expression_dependencies(stmt)
+    check_deps = [d for d in stmt_expr_deps if d.context == "CHECK_EXPRESSION"]
+    if check_deps:
+        tbl_m = re.search(r'ALTER\s+TABLE\s+"([^"]+)"', stmt, re.I)
+        if tbl_m:
+            add_record(
+                ctx,
+                mig,
+                stmt_order,
+                stmt,
+                "ADD CONSTRAINT CHECK table",
+                tbl_m.group(1),
+                "table",
+                None,
+                creator_for_table(ctx, tbl_m.group(1)),
+                guarded,
+                guard_safe,
+            )
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, check_deps, guarded, guard_safe)
+
+    generated_deps = [d for d in stmt_expr_deps if d.context == "GENERATED_EXPRESSION"]
+    if generated_deps:
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, generated_deps, guarded, guard_safe)
+
+    alter_using_deps = [d for d in stmt_expr_deps if d.context == "ALTER_USING_EXPRESSION"]
+    if alter_using_deps:
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, alter_using_deps, guarded, guard_safe)
+
+    update_deps = [d for d in stmt_expr_deps if d.context == "UPDATE_EXPRESSION"]
+    if update_deps:
+        add_expression_dependency_records(ctx, mig, stmt_order, stmt, state, update_deps, guarded, guard_safe)
 
     for m in re.finditer(r'DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?"([^"]+)"', stmt, re.I):
         add_record(
