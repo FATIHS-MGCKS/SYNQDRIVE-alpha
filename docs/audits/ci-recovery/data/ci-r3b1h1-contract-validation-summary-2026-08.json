@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "unique_actionable_gaps": 1,
+  "exact_contracts": 1,
+  "uncontracted_gaps": 0,
+  "invalid_types": 0,
+  "missing_types": 0,
+  "missing_boundaries": 0,
+  "validation_errors": [],
+  "generic_builder": true,
+  "pass": true
+}

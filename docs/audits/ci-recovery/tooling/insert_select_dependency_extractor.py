@@ -14,10 +14,9 @@ from sql_scope_resolver import (
     TABLE_NAME_RE,
     ResolvedReference,
     _extract_cte_output_aliases,
-    _extract_from_clause,
-    _extract_where_clause,
     _ident,
     _split_select_list,
+    build_select_output_lineage,
     extract_scoped_expression_columns,
     parse_from_item,
     parse_with_ctes,
@@ -128,22 +127,172 @@ def _extract_join_on_clauses(from_clause: str) -> list[str]:
     return ons
 
 
-def _bind_from_join_clause(scope: StatementScope, from_clause: str, ctes: list[tuple[str, str]]) -> None:
-    for part in _split_from_join_items(from_clause):
+def _truncate_from_clause(from_text: str) -> str:
+    """Stop FROM scan at clause boundaries that are not part of the relation list."""
+    depth = 0
+    in_single = False
+    i = 0
+    while i < len(from_text):
+        ch = from_text[i]
+        if in_single:
+            if ch == "'" and i + 1 < len(from_text) and from_text[i + 1] == "'":
+                i += 2
+                continue
+            if ch == "'":
+                in_single = False
+            i += 1
+            continue
+        if ch == "'":
+            in_single = True
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            for kw in ("WHERE", "GROUP", "HAVING", "ORDER", "LIMIT", "RETURNING", "ON CONFLICT"):
+                if re.match(rf"\b{kw}\b", from_text[i:], re.I):
+                    return from_text[:i].strip().rstrip(";")
+        i += 1
+    return from_text.strip().rstrip(";")
+
+
+def _mask_select_subqueries(text: str) -> str:
+    """Replace ( SELECT ... ) subquery bodies with placeholders for outer-scope scans."""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        m = re.match(r"\(\s*SELECT\b", text[i:], re.I | re.S)
+        if not m:
+            out.append(text[i])
+            i += 1
+            continue
+        depth = 0
+        j = i
+        while j < len(text):
+            if text[j] == "(":
+                depth += 1
+            elif text[j] == ")":
+                depth -= 1
+                if depth == 0:
+                    out.append("(/*subquery*/)")
+                    i = j + 1
+                    break
+            j += 1
+        else:
+            out.append(text[i:])
+            break
+    return "".join(out)
+
+
+def _cte_body_map(ctes: list[tuple[str, str]]) -> dict[str, str]:
+    return {name: body for name, body in ctes if name}
+
+
+def _bind_scope_from_clause(
+    scope: StatementScope,
+    from_clause: str,
+    ctes: list[tuple[str, str]],
+    outer: StatementScope | None = None,
+) -> None:
+    if outer is not None:
+        scope.outer = outer
+    cte_map = _cte_body_map(ctes)
+    truncated = _truncate_from_clause(from_clause)
+    for part in _split_from_join_items(truncated):
         bind = parse_from_item(part.strip().rstrip(";"))
         name = bind.relation or bind.alias
-        if name in scope.cte_names:
-            body = next((b for n, b in ctes if n == name), "")
+        if name in scope.cte_names or name in cte_map:
+            body = cte_map.get(name or "", next((b for n, b in ctes if n == name), ""))
+            inner_scope = StatementScope(outer=scope.outer or scope)
+            inner_scope.cte_names = set(scope.cte_names)
+            for cte_name, cte_body in ctes:
+                if cte_name:
+                    inner_scope.cte_names.add(cte_name)
+                    inner_scope.bindings[cte_name] = ScopeBinding(
+                        relation=cte_name,
+                        alias=cte_name,
+                        kind="CTE",
+                        output_columns=_extract_cte_output_aliases(cte_body),
+                        column_lineage=build_select_output_lineage(
+                            _select_list_from_body(cte_body) or "",
+                            inner_scope,
+                            cte_map,
+                        ),
+                    )
+            sel_list = _select_list_from_body(body) or ""
+            _bind_scope_from_clause(inner_scope, _from_clause_from_body(body) or "", ctes, outer=scope.outer or scope)
+            lineage = build_select_output_lineage(sel_list, inner_scope, cte_map)
             bind = ScopeBinding(
                 relation=name,
                 alias=bind.alias or name,
-                kind="CTE",
+                kind="CTE" if name in cte_map else bind.kind,
                 output_columns=_extract_cte_output_aliases(body),
+                column_lineage=lineage,
             )
+        elif bind.kind == "SUBQUERY":
+            inner_scope = StatementScope(outer=scope.outer or scope)
+            inner_scope.cte_names = set(scope.cte_names)
+            sub_body = _subquery_body_from_item(part)
+            if sub_body:
+                sub_ctes, sub_remainder = parse_with_ctes(sub_body)
+                for cte_name, cte_body in sub_ctes:
+                    if cte_name:
+                        inner_scope.cte_names.add(cte_name)
+                        inner_scope.bindings[cte_name] = ScopeBinding(
+                            relation=cte_name,
+                            alias=cte_name,
+                            kind="CTE",
+                            output_columns=_extract_cte_output_aliases(cte_body),
+                            column_lineage=build_select_output_lineage(
+                                _select_list_from_body(cte_body) or "",
+                                inner_scope,
+                                {**cte_map, **_cte_body_map(sub_ctes)},
+                            ),
+                        )
+                sub_from = _from_clause_from_body(sub_remainder) or _from_clause_from_body(sub_body) or ""
+                if sub_from:
+                    _bind_scope_from_clause(inner_scope, sub_from, sub_ctes + ctes, outer=scope.outer or scope)
+                sel_list = _select_list_from_body(sub_remainder) or _select_list_from_body(sub_body) or ""
+                bind.column_lineage = build_select_output_lineage(
+                    sel_list,
+                    inner_scope,
+                    {**cte_map, **_cte_body_map(sub_ctes)},
+                )
+                bind.output_columns = _extract_cte_output_aliases(sub_remainder or sub_body)
         if bind.alias:
             scope.bindings[bind.alias] = bind
-        if bind.relation:
-            scope.bindings.setdefault(bind.relation, bind)
+        if bind.relation and bind.relation not in scope.bindings:
+            scope.bindings[bind.relation] = bind
+
+
+def _select_list_from_body(body: str) -> str | None:
+    sel_m = re.search(r"\bSELECT\b", body, re.I)
+    from_pos, _ = _find_top_level_from(body)
+    if not sel_m or from_pos is None:
+        return None
+    return body[sel_m.end() : from_pos].strip()
+
+
+def _from_clause_from_body(body: str) -> str | None:
+    _, from_clause = _find_top_level_from(body)
+    return from_clause
+
+
+def _subquery_body_from_item(item: str) -> str | None:
+    item = item.strip()
+    if not item.startswith("("):
+        return None
+    depth = 0
+    for idx, ch in enumerate(item):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return item[1:idx]
+    return None
 
 
 def _parse_cte_physical_outputs(body: str) -> dict[str, tuple[str, str]]:
@@ -207,11 +356,8 @@ def _find_top_level_from(body: str) -> tuple[int | None, str | None]:
             depth = max(0, depth - 1)
         elif depth == 0 and re.match(r"\bFROM\b", body[i:], re.I):
             from_text = body[i + 4 :]
-            for kw in ("WHERE", "GROUP", "HAVING", "ORDER", "LIMIT"):
-                kw_m = re.search(rf"\b{kw}\b", from_text, re.I)
-                if kw_m:
-                    from_text = from_text[: kw_m.start()]
-            return i, from_text.strip().rstrip(";")
+            from_text = _truncate_from_clause(from_text)
+            return i, from_text
         i += 1
     return None, None
 
@@ -290,20 +436,30 @@ def _build_insert_select_scope(stmt: str) -> ParsedInsertSelect | None:
     scope.bindings[target] = ScopeBinding(relation=target, alias=target, kind="TABLE")
     cte_physical: dict[str, dict[str, tuple[str, str]]] = {}
 
+    processed_cte_bindings: dict[str, ScopeBinding] = {}
     for cte_name, body in ctes:
         if not cte_name:
             continue
         scope.cte_names.add(cte_name)
-        cte_physical[cte_name] = _parse_cte_physical_outputs(body)
-        scope.bindings[cte_name] = ScopeBinding(
+        inner_scope = StatementScope(outer=scope)
+        inner_scope.cte_names = set(processed_cte_bindings.keys())
+        for prev_name, prev_bind in processed_cte_bindings.items():
+            inner_scope.bindings[prev_name] = prev_bind
+        _bind_scope_from_clause(inner_scope, _from_clause_from_body(body) or "", ctes)
+        lineage = build_select_output_lineage(_select_list_from_body(body) or "", inner_scope, _cte_body_map(ctes))
+        cte_physical[cte_name] = {k: v for k, v in lineage.items() if v is not None}  # type: ignore[misc]
+        bind = ScopeBinding(
             relation=cte_name,
             alias=cte_name,
             kind="CTE",
             output_columns=_extract_cte_output_aliases(body),
+            column_lineage=lineage,
         )
+        processed_cte_bindings[cte_name] = bind
+        scope.bindings[cte_name] = bind
 
     if from_clause:
-        _bind_from_join_clause(scope, from_clause, ctes)
+        _bind_scope_from_clause(scope, from_clause, ctes)
 
     return ParsedInsertSelect(
         target_table=target,
@@ -346,6 +502,8 @@ def _refs_to_deps(
 ) -> list[ExpressionDependency]:
     deps: list[ExpressionDependency] = []
     for ref in refs:
+        if ref.column in {"__subquery__", "subquery"}:
+            continue
         ref = _resolve_physical_ref(scope, ref, cte_physical)
         deps.append(
             ExpressionDependency(
@@ -393,9 +551,10 @@ def extract_insert_select_dependencies(stmt: str) -> list[ExpressionDependency]:
         )
 
     if parsed.where_clause:
+        masked_where = _mask_select_subqueries(parsed.where_clause)
         deps.extend(
             _refs_to_deps(
-                extract_scoped_expression_columns(parsed.where_clause, scope, parsed.target_table),
+                extract_scoped_expression_columns(masked_where, scope, parsed.target_table),
                 "INSERT_SELECT_WHERE",
                 scope,
                 parsed.cte_physical,
@@ -415,13 +574,33 @@ def extract_insert_select_dependencies(stmt: str) -> list[ExpressionDependency]:
     where_text = parsed.where_clause or ""
     for sub_m in re.finditer(r"\(\s*SELECT\b", where_text, re.I):
         sub_body = where_text[sub_m.start() :]
-        sub_scope = StatementScope()
-        sub_from_m = re.search(r"\bFROM\b", sub_body, re.I)
+        sub_scope = StatementScope(outer=scope)
+        sub_ctes, sub_remainder = parse_with_ctes(sub_body[1:])
+        for cte_name, cte_body in sub_ctes:
+            if cte_name:
+                sub_scope.cte_names.add(cte_name)
+                sub_scope.bindings[cte_name] = ScopeBinding(
+                    relation=cte_name,
+                    alias=cte_name,
+                    kind="CTE",
+                    output_columns=_extract_cte_output_aliases(cte_body),
+                    column_lineage=build_select_output_lineage(
+                        _select_list_from_body(cte_body) or "",
+                        sub_scope,
+                        _cte_body_map(sub_ctes),
+                    ),
+                )
+        sub_from_m = re.search(r"\bFROM\b", sub_remainder, re.I)
         if sub_from_m:
-            sub_from = sub_body[sub_from_m.end() :]
+            sub_from = sub_remainder[sub_from_m.end() :]
             sub_where_m = re.search(r"\bWHERE\b", sub_from, re.I)
             if sub_where_m:
-                _bind_from_join_clause(sub_scope, sub_from[: sub_where_m.start()].strip().rstrip(";"), [])
+                _bind_scope_from_clause(
+                    sub_scope,
+                    sub_from[: sub_where_m.start()].strip().rstrip(";"),
+                    sub_ctes,
+                    outer=scope,
+                )
                 sub_where = sub_from[sub_where_m.end() :].strip().rstrip(")")
                 deps.extend(
                     _refs_to_deps(

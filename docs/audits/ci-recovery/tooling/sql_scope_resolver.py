@@ -15,12 +15,17 @@ ScopeKind = Literal[
     "CTE_RELATION",
     "CTE_OUTPUT_ALIAS",
     "CTE_OUTPUT_REFERENCE",
+    "SUBQUERY_OUTPUT",
+    "DERIVED_EXPRESSION",
+    "DERIVED_REFERENCE",
     "JSON_KEY_LITERAL",
     "STRING_LITERAL",
     "CAST_TYPE",
     "FUNCTION",
     "FALSE_POSITIVE",
 ]
+
+BindingKind = Literal["TABLE", "PHYSICAL_RELATION", "CTE", "SUBQUERY", "VALUES", "TARGET_RELATION"]
 
 TABLE_NAME_RE = r'(?:"([^"]+)"|([a-z_][a-z0-9_]*))'
 IDENT_RE = r'(?:"([^"]+)"|([a-z_][a-z0-9_]*))'
@@ -30,8 +35,9 @@ IDENT_RE = r'(?:"([^"]+)"|([a-z_][a-z0-9_]*))'
 class ScopeBinding:
     relation: str | None
     alias: str | None
-    kind: Literal["TABLE", "CTE", "SUBQUERY"] = "TABLE"
+    kind: BindingKind = "TABLE"
     output_columns: dict[str, str | None] = field(default_factory=dict)
+    column_lineage: dict[str, tuple[str, str] | None] = field(default_factory=dict)
 
 
 @dataclass
@@ -53,6 +59,8 @@ class StatementScope:
     where_clause: str | None = None
     bindings: dict[str, ScopeBinding] = field(default_factory=dict)
     cte_names: set[str] = field(default_factory=set)
+    outer: "StatementScope | None" = None
+    scope_id: str = "root"
 
 
 def _ident(raw: str | None) -> str | None:
@@ -68,8 +76,9 @@ def parse_with_ctes(stmt: str) -> tuple[list[tuple[str, str]], str]:
         return [], stmt
     i = m.end()
     ctes: list[tuple[str, str]] = []
+    cte_header = re.compile(rf"\s*{IDENT_RE}\s+AS\s*\(", re.I | re.S)
     while i < len(stmt):
-        name_m = re.match(rf"{IDENT_RE}\s+AS\s*\(", stmt[i:], re.I | re.S)
+        name_m = cte_header.match(stmt[i:])
         if not name_m:
             break
         name = _ident(name_m.group(1) or name_m.group(2))
@@ -207,6 +216,90 @@ def _lineage_column(expr: str) -> str | None:
     if m2:
         return _ident(m2.group(1) or m2.group(2))
     return None
+
+
+def _is_derived_select_expression(expr: str) -> bool:
+    upper = expr.upper()
+    if re.search(r"\b(ROW_NUMBER|RANK|DENSE_RANK|NTILE|LEAD|LAG|GENERATE_SERIES|GEN_RANDOM_UUID)\b", upper):
+        return True
+    if re.match(r"^\s*('|\d+|true|false|null\b)", expr.strip(), re.I):
+        return True
+    if re.search(r"\b(CURRENT_TIMESTAMP|NOW\s*\(|CURRENT_DATE)\b", upper):
+        return True
+    return False
+
+
+def _resolve_lineage_token(
+    scope: StatementScope,
+    token: str | None,
+    cte_bodies: dict[str, str] | None = None,
+) -> tuple[str, str] | None:
+    if not token or "." not in token:
+        return None
+    alias, column = token.split(".", 1)
+    ref = resolve_qualified_reference(scope, alias, column, cte_bodies=cte_bodies)
+    if ref and not ref.false_positive and ref.source_relation:
+        return ref.source_relation, ref.column
+    return None
+
+
+def build_select_output_lineage(
+    select_list: str,
+    scope: StatementScope,
+    cte_bodies: dict[str, str] | None = None,
+) -> dict[str, tuple[str, str] | None]:
+    """Map projected output column -> physical (table,column) or None for derived expressions."""
+    lineage: dict[str, tuple[str, str] | None] = {}
+    from_sources = [
+        b
+        for a, b in scope.bindings.items()
+        if b.kind in {"TABLE", "CTE", "SUBQUERY", "PHYSICAL_RELATION"} and b.relation and a != scope.target_relation
+    ]
+    single_source = from_sources[0] if len(from_sources) == 1 else None
+
+    for part in _split_select_list(select_list):
+        as_m = re.search(rf"\bAS\s+{IDENT_RE}\s*$", part, re.I)
+        if as_m:
+            out_name = _ident(as_m.group(1) or as_m.group(2))
+            expr = part[: as_m.start()]
+        else:
+            col_m = re.search(rf"{IDENT_RE}\s*\.\s*{IDENT_RE}\s*$", part)
+            if col_m:
+                out_name = _ident(col_m.group(3) or col_m.group(4))
+                expr = part
+            else:
+                bare = re.match(rf"^{IDENT_RE}$", part.strip(), re.I)
+                out_name = _ident(bare.group(1) or bare.group(2)) if bare else None
+                expr = part
+        if not out_name:
+            continue
+        if _is_derived_select_expression(expr):
+            lineage[out_name] = None
+            continue
+        physical: tuple[str, str] | None = None
+        for ref in extract_scoped_expression_columns(expr, scope, None):
+            if not ref.false_positive and ref.source_relation:
+                physical = (ref.source_relation, ref.column)
+                break
+        if physical is None:
+            token = _lineage_column(expr)
+            if token:
+                physical = _resolve_lineage_token(scope, token, cte_bodies)
+        if physical is None and single_source and out_name in single_source.column_lineage:
+            mapped = single_source.column_lineage[out_name]
+            if mapped is not None:
+                physical = mapped
+            else:
+                lineage[out_name] = None
+                continue
+        if physical is None and single_source and single_source.kind in {"TABLE", "PHYSICAL_RELATION"} and single_source.relation:
+            bare_ident = re.match(rf"^{IDENT_RE}$", expr.strip(), re.I)
+            if bare_ident:
+                col = _ident(bare_ident.group(1) or bare_ident.group(2))
+                if col:
+                    physical = (single_source.relation, col)
+        lineage[out_name] = physical
+    return lineage
 
 
 def _extract_cte_output_aliases(body: str) -> dict[str, str | None]:
@@ -429,8 +522,17 @@ def strip_json_key_operators(expr: str) -> str:
     return expr
 
 
-def resolve_qualified_reference(scope: StatementScope, alias: str, column: str) -> ResolvedReference | None:
+def resolve_qualified_reference(
+    scope: StatementScope,
+    alias: str,
+    column: str,
+    cte_bodies: dict[str, str] | None = None,
+) -> ResolvedReference | None:
     binding = scope.bindings.get(alias)
+    if binding is None and scope.outer is not None:
+        outer_ref = resolve_qualified_reference(scope.outer, alias, column, cte_bodies=cte_bodies)
+        if outer_ref:
+            return outer_ref
     if binding is None:
         if alias in scope.cte_names:
             return ResolvedReference(
@@ -444,28 +546,64 @@ def resolve_qualified_reference(scope: StatementScope, alias: str, column: str) 
             )
         return None
 
+    if binding.kind in {"TABLE", "PHYSICAL_RELATION", "TARGET_RELATION"} and binding.relation:
+        return ResolvedReference(
+            table=binding.relation,
+            column=column,
+            scope_kind="TARGET_COLUMN",
+            alias=alias,
+            source_relation=binding.relation,
+            false_positive=False,
+            reason="resolved physical FROM/JOIN alias column",
+        )
+
     if binding.kind in {"CTE", "SUBQUERY"}:
-        if column in binding.output_columns:
+        if column in binding.column_lineage:
+            phys = binding.column_lineage[column]
+            if phys is None:
+                return ResolvedReference(
+                    table=binding.relation or alias,
+                    column=column,
+                    scope_kind="DERIVED_EXPRESSION",
+                    alias=alias,
+                    source_relation=binding.relation,
+                    false_positive=True,
+                    reason="derived relation output expression, not physical historical column",
+                )
+            table, col = phys
             return ResolvedReference(
-                table=scope.target_relation or binding.relation or alias,
+                table=table,
+                column=col,
+                scope_kind="SUBQUERY_OUTPUT" if binding.kind == "SUBQUERY" else "CTE_OUTPUT_ALIAS",
+                alias=alias,
+                source_relation=table,
+                false_positive=False,
+                reason="resolved derived-relation output lineage to physical source column",
+            )
+        if column in binding.output_columns:
+            token = binding.output_columns[column]
+            if token and "." in token:
+                sub_alias, sub_col = token.split(".", 1)
+                nested = resolve_qualified_reference(scope, sub_alias, sub_col, cte_bodies=cte_bodies)
+                if nested and not nested.false_positive:
+                    return ResolvedReference(
+                        table=nested.source_relation or nested.table,
+                        column=nested.column,
+                        scope_kind="CTE_OUTPUT_ALIAS",
+                        alias=alias,
+                        source_relation=nested.source_relation or nested.table,
+                        false_positive=False,
+                        reason="resolved CTE/subquery output alias via token lineage",
+                    )
+            return ResolvedReference(
+                table=binding.relation or alias,
                 column=column,
-                scope_kind="CTE_OUTPUT_ALIAS",
+                scope_kind="DERIVED_EXPRESSION",
                 alias=alias,
                 source_relation=binding.relation,
                 false_positive=True,
-                reason="derived relation output alias, not physical column on target",
+                reason="derived relation output alias without physical column authority",
             )
-
-    if binding.kind in {"CTE", "SUBQUERY"}:
-        return ResolvedReference(
-            table=binding.relation or alias,
-            column=column,
-            scope_kind="CTE_OUTPUT_REFERENCE",
-            alias=alias,
-            source_relation=binding.relation,
-            false_positive=True,
-            reason="derived relation reference without physical column authority",
-        )
 
     if binding.relation and column == binding.relation:
         return ResolvedReference(
@@ -576,10 +714,11 @@ def extract_scoped_expression_columns(expr: str, scope: StatementScope | None, d
             ResolvedReference(
                 table=alias,
                 column=column,
-                scope_kind="TARGET_COLUMN",
+                scope_kind="DERIVED_REFERENCE",
                 alias=alias,
-                false_positive=False,
-                reason="qualified reference without scope",
+                source_relation=alias,
+                false_positive=True,
+                reason="unresolved qualified alias reference — not a physical relation",
             )
         )
 
