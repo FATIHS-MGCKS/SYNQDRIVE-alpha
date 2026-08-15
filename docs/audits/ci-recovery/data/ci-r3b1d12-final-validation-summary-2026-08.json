@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1.2",
+  "branch": "fix/ci-r3b1d11-executable-ddl-closure-2026-08",
+  "PRE_R3B1D12_SHA": "5ac7e9b48b779dea76bb9761ec9103bc9245fe8d",
+  "R3B1D11_IMPLEMENTATION_COMMIT": "adff5521",
+  "HEAD": "ef54c77bed33318cdc6cc31a3bfbcf7bb735ca37",
+  "authority_sweep_repeated": false,
+  "new_prisma_migrations": false,
+  "full_replay": false,
+  "primary_historical_defects": 18,
+  "repair_slots": 10,
+  "repair_boundaries_changed": false,
+  "authority_semantics_changed": false,
+  "catalog_proof_added": true,
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "slots_tested": 10,
+  "slots_postgresql_pass": 10,
+  "per_slot": [
+    {
+      "slot": 7,
+      "action_count": 12,
+      "graph_edge_count": 10,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 42,
+      "catalog_matched_count": 42
+    },
+    {
+      "slot": 8,
+      "action_count": 5,
+      "graph_edge_count": 4,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 67,
+      "catalog_matched_count": 67
+    },
+    {
+      "slot": 9,
+      "action_count": 9,
+      "graph_edge_count": 8,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 118,
+      "catalog_matched_count": 118
+    },
+    {
+      "slot": 10,
+      "action_count": 9,
+      "graph_edge_count": 8,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 147,
+      "catalog_matched_count": 147
+    },
+    {
+      "slot": 11,
+      "action_count": 15,
+      "graph_edge_count": 11,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 203,
+      "catalog_matched_count": 203
+    },
+    {
+      "slot": 12,
+      "action_count": 13,
+      "graph_edge_count": 11,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 253,
+      "catalog_matched_count": 253
+    },
+    {
+      "slot": 13,
+      "action_count": 1,
+      "graph_edge_count": 0,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 254,
+      "catalog_matched_count": 254
+    },
+    {
+      "slot": 14,
+      "action_count": 1,
+      "graph_edge_count": 0,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 255,
+      "catalog_matched_count": 255
+    },
+    {
+      "slot": 15,
+      "action_count": 14,
+      "graph_edge_count": 13,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 305,
+      "catalog_matched_count": 305
+    },
+    {
+      "slot": 16,
+      "action_count": 3,
+      "graph_edge_count": 2,
+      "postgresql_execution": "PASS",
+      "catalog_mismatch_count": 0,
+      "catalog_expected_count": 314,
+      "catalog_matched_count": 314
+    }
+  ],
+  "global_topology": {
+    "slots_validated": 10,
+    "total_actions": 82,
+    "total_graph_edges": 67,
+    "duplicate_creates": 0,
+    "graph_cycles": 0,
+    "invalid_fk_actions": 0,
+    "invalid_fk_target_keys": 0,
+    "invalid_unique_actions": 0,
+    "invalid_index_actions": 0,
+    "unresolved_deferred_endpoints": 0
+  },
+  "deferred_endpoints": {
+    "total": 1,
+    "resolved": 1,
+    "unresolved_count": 0
+  },
+  "catalog_parity": {
+    "category_counters": {
+      "table": 0,
+      "column": 0,
+      "type": 0,
+      "nullability": 0,
+      "default": 0,
+      "enum": 0,
+      "sequence": 0,
+      "primary_key": 0,
+      "unique": 0,
+      "foreign_key": 0,
+      "index": 0,
+      "total": 0
+    },
+    "fk_definitions_expected": 20,
+    "fk_definitions_matched": 20,
+    "fk_definition_mismatches": 0,
+    "slot8_special_proof": {
+      "table": "org_workflows",
+      "column": "scope",
+      "type": "jsonb",
+      "nullable": "NO",
+      "default_semantic_json": {
+        "type": "organization"
+      },
+      "expected_semantic_json": {
+        "type": "organization"
+      },
+      "workflowstatus_label_count_authority": 3,
+      "workflowstatus_labels_match": true,
+      "pass": true
+    },
+    "slot10_special_proof": {
+      "constraint": "vehicle_damage_images_damage_id_fkey",
+      "exists": true,
+      "local_table": "vehicle_damage_images",
+      "local_columns": [
+        "damage_id"
+      ],
+      "referenced_table": "vehicle_damages",
+      "referenced_columns": [
+        "id"
+      ],
+      "on_delete": "CASCADE",
+      "on_update": "CASCADE",
+      "referenced_pk_exists": true,
+      "pass": true
+    }
+  },
+  "exposure": {
+    "previous_classification": "E0",
+    "classification": "E_UNKNOWN",
+    "classification_confidence": "LOW",
+    "reason": "Deployed commit SHA is unknown and production migration ledger is unavailable. Absence of deployment metadata alone is insufficient for E0. Classification corrected from predecessor E0 to E_UNKNOWN per strict exposure semantics.",
+    "latest_deployed_sha": null,
+    "migration_ledger_availability": "NOT_AVAILABLE",
+    "evidence_sufficient_for_classification": false,
+    "production_deployment_actions_permitted_now": false
+  },
+  "immutability": {
+    "existing_migration_sql_changed": 0,
+    "schema_prisma_changed": false,
+    "runtime_code_changed": false
+  },
+  "safety": {
+    "production_ddl_dml": false,
+    "deployment": false,
+    "merge": false,
+    "r3b1e_started": false
+  },
+  "completion_gates": {
+    "slots_postgresql_execution_pass": true,
+    "slots_catalog_mismatch_zero": true,
+    "total_catalog_mismatches_zero": true,
+    "unresolved_deferred_endpoints_zero": true,
+    "exposure_not_e3": true,
+    "immutability_pass": true
+  },
+  "pass": true,
+  "final_status": "CI_R3B1D12_CATALOG_EXPOSURE_EVIDENCE_CLOSURE_COMPLETED"
+}
