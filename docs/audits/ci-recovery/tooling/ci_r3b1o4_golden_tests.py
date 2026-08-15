@@ -51,7 +51,24 @@ def run_tail_authority_tests(tests: list) -> None:
     bad_contract["logical_tasks"].append({"task_id": "EXTRA", "purpose": "forbidden"})
     _add(tests, "tail_contract_fourth_task_fail", "manual", "FAIL", len(bad_contract["logical_tasks"]) != 3, str(len(bad_contract["logical_tasks"])))
 
-    pre = evaluate_tail_preconditions(lambda q: "0" if "COUNT(*)" in q and M252_TABLE in q else "1", phase="pre_tail")
+    def mock_sql(q: str) -> str:
+        if M252_TABLE in q and "COUNT(*)" in q and "information_schema.tables" in q:
+            return "0"
+        if "whatsapp_conversations" in q and "indisunique" in q:
+            return "whatsapp_conversations_organization_id_contact_phone_normal_key|t|CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_normal_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone_normalized)"
+        if "org_invoices_invoice_number_key" in q:
+            return "1"
+        if "whatsapp_conversations_organization_id_contact_phone_key" in q and "pg_indexes" in q:
+            return "1"
+        if "org_invoices_organization_id_sequence_year_sequence_number_key" in q:
+            return "1"
+        if "organizations" in q or "organization_memberships" in q:
+            return "1"
+        if "org_role_asgn" in q:
+            return "0"
+        return "0"
+
+    pre = evaluate_tail_preconditions(mock_sql, phase="pre_tail")
     _add(tests, "tail_precondition_m252_absent_pass_fixture", "evaluate_tail_preconditions", "mixed", isinstance(pre, dict), str(pre.get("pass")))
 
     bad_pre = evaluate_tail_preconditions(lambda q: "1" if M252_TABLE in q else "0", phase="pre_tail")
