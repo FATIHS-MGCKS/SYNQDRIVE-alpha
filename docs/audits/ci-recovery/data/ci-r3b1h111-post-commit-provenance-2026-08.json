@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1.1",
+  "branch": "fix/ci-r3b1h111-evidence-generic-contract-gates-2026-08",
+  "final_commit_sha": "7a2c4dc0766c881ceaec65c16b2b7a97192ccbdb",
+  "remote_branch_sha": "7a2c4dc0766c881ceaec65c16b2b7a97192ccbdb",
+  "draft_pr_head_sha": "7a2c4dc0766c881ceaec65c16b2b7a97192ccbdb",
+  "base_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "all_final_heads_equal": true
+}
