@@ -11,6 +11,7 @@ OUT_STANDARD = Path(__file__).resolve().parents[1] / "ci-r3b1o4-append-only-tail
 OUT_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-corrective-final-acceptance-closure-2026-08.md"
 OUT_FINAL_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-final-corrective-catalog-authority-closure-2026-08.md"
 OUT_BINDING_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-final-catalog-semantic-authority-binding-2026-08.md"
+OUT_AMBIGUITY_CORRECTIVE = Path(__file__).resolve().parents[1] / "ci-r3b1o4-final-ambiguity-provenance-semantic-closure-2026-08.md"
 
 
 def load(name: str) -> dict:
@@ -612,13 +613,160 @@ def generate_binding_corrective_report() -> None:
     OUT_BINDING_CORRECTIVE.write_text("\n".join(lines) + "\n")
 
 
+def generate_ambiguity_corrective_report() -> None:
+    s = load("ci-r3b1o4-ambiguity-corrective-final-acceptance-summary-2026-08.json")
+    decision = load("ci-r3b1o4-ambiguity-corrective-authority-decision-contract-2026-08.json")
+    m252_prov = load("ci-r3b1o4-ambiguity-corrective-m252-provenance-contract-2026-08.json")
+    stmt_prov = load("ci-r3b1o4-ambiguity-corrective-statement-provenance-2026-08.json")
+    no_rank = load("ci-r3b1o4-ambiguity-corrective-no-ranking-proof-2026-08.json")
+    catalog = load("ci-r3b1o4-ambiguity-corrective-full-catalog-authority-2026-08.json")
+    candidates = load("ci-r3b1o4-ambiguity-corrective-final-candidate-inventory-2026-08.json")
+    golden = load("ci-r3b1o4-ambiguity-corrective-golden-tests-2026-08.json")
+    attr = load("ci-r3b1o4-ambiguity-corrective-final-prisma-diff-attribution-2026-08.json")
+    second = load("ci-r3b1o4-ambiguity-corrective-second-deploy-idempotency-2026-08.json")
+    m252 = load("ci-r3b1o4-ambiguity-corrective-final-m252-exact-parity-2026-08.json")
+    r3b = load("ci-r3b1o4-ambiguity-corrective-final-r3b-parity-2026-08.json")
+    binding_summary = load("ci-r3b1o4-binding-corrective-final-acceptance-summary-2026-08.json")
+
+    lines = [
+        "# CI-R3B1O.4 — Final Ambiguity, Provenance, and Semantic Closure",
+        "",
+        f"**Status:** `{s.get('final_status')}`",
+        f"**R3B1P readiness:** `{s.get('r3b1p_readiness')}`",
+        "",
+        "## Baseline",
+        "",
+        f"- WORKTREE_STRICT_EMPTY: **{s.get('baseline', {}).get('WORKTREE_STRICT_EMPTY')}**",
+        f"- CORRECTIVE_PRE_SHA: `{s.get('baseline', {}).get('CORRECTIVE_PRE_SHA')}`",
+        f"- Binding corrective summary bound: `{s.get('baseline', {}).get('BINDING_CORRECTIVE_SUMMARY_SHA256')}`",
+        "",
+        "## Frozen reconciliation strategy",
+        "",
+        "Three-task append-only tail unchanged: M252 canonical forward, invoice stale index drop, WhatsApp stale index drop.",
+        "",
+        "## Why prior catalog authority still failed",
+        "",
+        "Multiple semantic matches were ranked to a single winner; synthetic M252 creator effects duplicated authority; index/constraint comparators were still permissive.",
+        "",
+        "## Removal of candidate ranking",
+        "",
+        f"- No-ranking proof pass: **{no_rank.get('pass')}**",
+        f"- Violations: **{no_rank.get('violation_count')}**",
+        "",
+        "## Strict ambiguity rule",
+        "",
+        f"- Decision contract: `{decision.get('decision_model')}`",
+        f"- AMBIGUOUS_DELTA_AUTHORITY: **{catalog.get('counts', {}).get('AMBIGUOUS_DELTA_AUTHORITY')}**",
+        "",
+        "## M252 creator provenance vs parity authority",
+        "",
+        f"- Synthetic M252 creator count: **{m252_prov.get('synthetic_m252_creator_count')}**",
+        f"- Parity contract kind: `{m252_prov.get('canonical_parity_authority', {}).get('contract_kind')}`",
+        "",
+        "## Removal of synthetic M252 creator duplicates",
+        "",
+        "Creator effects derive only from real tail SQL statements; canonical M252 parity remains separate validation.",
+        "",
+        "## Real statement-level provenance",
+        "",
+        f"- statement_ordinal_null_count: **{stmt_prov.get('statement_ordinal_null_count')}**",
+        f"- statement_sha_mismatch_count: **{stmt_prov.get('statement_sha_mismatch_count')}**",
+        f"- synthetic_m252_creator_count: **{stmt_prov.get('synthetic_m252_creator_count')}**",
+        "",
+        "## Index semantic comparator",
+        "",
+        "Full index semantics: method, INCLUDE, collation, opclass, sort direction, NULLS order, valid, ready, owner, unique.",
+        "",
+        "## Constraint semantic comparator",
+        "",
+        "Structured FK semantics; quoted-column fragment matches rejected.",
+        "",
+        "## New ambiguity golden test",
+        "",
+        f"- Executed: **{golden.get('executed')}**",
+        f"- Failed: **{golden.get('failed')}**",
+        "",
+        "## M252 duplicate-prevention tests",
+        "",
+        "Each M252 physical object has exactly one tail migration creator candidate.",
+        "",
+        "## Fresh strategy twin",
+        "",
+        f"- Strategy pass: **{s.get('strategy_pass')}**",
+        "",
+        "## Strategy replay",
+        "",
+        "R3B1G resolve → R3B1I resolve → normal migrate deploy → three-task tail → second deploy idempotency.",
+        "",
+        "## Tail deploy",
+        "",
+        f"- Second deploy pass: **{second.get('pass')}**",
+        "",
+        "## M252 exact parity",
+        "",
+        f"- Pass: **{m252.get('pass')}**",
+        "",
+        "## R3B parity",
+        "",
+        f"- Objects: **{r3b.get('objects')}**",
+        f"- Tables: **{r3b.get('tables')}**",
+        f"- Enums: **{r3b.get('enums')}**",
+        f"- Properties: **{r3b.get('properties')}**",
+        "",
+        "## Final catalog authority",
+        "",
+        f"- UNAUTHORIZED_FINAL_DELTA: **{catalog.get('counts', {}).get('UNAUTHORIZED_FINAL_DELTA')}**",
+        f"- AUTHORITY_STATEMENT_UNBOUND: **{catalog.get('counts', {}).get('AUTHORITY_STATEMENT_UNBOUND')}**",
+        "",
+        "## M252 candidate counts",
+        "",
+        f"- Candidate inventory rows: **{candidates.get('candidate_count')}**",
+        "",
+        "## Final Prisma diff",
+        "",
+        f"- NEW_STRATEGY_DRIFT: **{attr.get('NEW_STRATEGY_DRIFT')}**",
+        f"- UNATTRIBUTED: **{attr.get('UNATTRIBUTED')}**",
+        "",
+        "## Second deploy",
+        "",
+        f"- Pass: **{second.get('pass')}**",
+        f"- Catalog delta: **{second.get('catalog_delta')}**",
+        "",
+        "## Production immutability",
+        "",
+        f"- Production unchanged: **{s.get('production_immutable')}**",
+        "",
+        "## Repository immutability",
+        "",
+        "Only `docs/audits/ci-recovery/**` changed; schema, migrations, runtime, and deployment configuration unchanged.",
+        "",
+        "## Prior binding corrective acceptance",
+        "",
+        f"- Prior status: `{binding_summary.get('final_status')}`",
+        "",
+        "## R3B1P readiness",
+        "",
+        f"`{s.get('r3b1p_readiness')}`",
+        "",
+        "## Final status",
+        "",
+        f"`{s.get('final_status')}`",
+        "",
+        "**Changes / Architektur:** not updated (CI-recovery evidence scope only).",
+    ]
+    OUT_AMBIGUITY_CORRECTIVE.write_text("\n".join(lines) + "\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corrective", action="store_true")
     parser.add_argument("--final-corrective", action="store_true")
     parser.add_argument("--binding-corrective", action="store_true")
+    parser.add_argument("--ambiguity-corrective", action="store_true")
     args = parser.parse_args()
-    if args.binding_corrective:
+    if args.ambiguity_corrective:
+        generate_ambiguity_corrective_report()
+    elif args.binding_corrective:
         generate_binding_corrective_report()
     elif args.final_corrective:
         generate_final_corrective_report()

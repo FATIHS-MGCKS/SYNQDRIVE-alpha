@@ -1,4 +1,4 @@
-"""Semantic catalog delta ↔ expected-effect comparators (CI-R3B1O.4 binding corrective)."""
+"""Semantic catalog delta ↔ expected-effect comparators (CI-R3B1O.4 ambiguity corrective)."""
 from __future__ import annotations
 
 import re
@@ -16,6 +16,10 @@ def _norm_default(value: Any) -> str | None:
         return None
     text = _norm_ws(value)
     return text or None
+
+
+def _norm_action(value: Any) -> str:
+    return _norm_ws(value).upper().replace("_", " ")
 
 
 def _expected_state(effect: dict[str, Any], change_type: str) -> dict[str, Any] | list[Any] | None:
@@ -55,17 +59,41 @@ def _index_key_names(payload: dict[str, Any]) -> list[str]:
     return [k.get("name") for k in keys if k.get("kind") != "include"]
 
 
+def _include_names(payload: dict[str, Any]) -> list[str]:
+    includes = payload.get("include_columns") or []
+    return [c.get("name") if isinstance(c, dict) else str(c) for c in includes]
+
+
 def _match_index(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool, str]:
     if expected.get("owner_table") and actual.get("owner_table") != expected.get("owner_table"):
         return False, "index.owner_table mismatch"
-    if "unique" in expected and bool(actual.get("unique")) != bool(expected.get("unique")):
-        return False, "index.unique mismatch"
-    if "primary" in expected and bool(actual.get("primary")) != bool(expected.get("primary")):
-        return False, "index.primary mismatch"
+    if expected.get("access_method") and _norm_ws(actual.get("access_method")).lower() != _norm_ws(expected.get("access_method")).lower():
+        return False, "index.access_method mismatch"
+    for field in ("unique", "primary", "valid", "ready"):
+        if field in expected and bool(actual.get(field)) != bool(expected.get(field)):
+            return False, f"index.{field} mismatch"
     exp_keys = _index_key_names(expected)
     act_keys = _index_key_names(actual)
     if exp_keys and act_keys != exp_keys:
         return False, "index.keys mismatch"
+    if expected.get("keys") and actual.get("keys"):
+        for idx, (exp_key, act_key) in enumerate(zip(expected["keys"], actual["keys"])):
+            if exp_key.get("kind") == "include":
+                continue
+            for field in ("name", "collation", "opclass", "sort_direction", "nulls_ordering"):
+                if field not in exp_key:
+                    continue
+                exp_val = exp_key.get(field)
+                act_val = act_key.get(field)
+                if field in {"collation", "opclass"}:
+                    exp_val = exp_val or "default"
+                    act_val = act_val or "default"
+                if exp_val != act_val:
+                    return False, f"index.keys[{idx}].{field} mismatch"
+    exp_inc = _include_names(expected)
+    act_inc = _include_names(actual)
+    if exp_inc != act_inc:
+        return False, "index.include_columns mismatch"
     exp_pred = _norm_ws(expected.get("predicate")) or None
     act_pred = _norm_ws(actual.get("predicate")) or None
     if exp_pred is not None and exp_pred != act_pred:
@@ -78,28 +106,86 @@ def _constraint_kind(actual_type: str) -> str:
     return mapping.get(actual_type, actual_type.upper())
 
 
+def _parse_fk_definition(defn: str) -> dict[str, Any] | None:
+    text = _norm_ws(defn)
+    if text.startswith("("):
+        text = f"FOREIGN KEY {text}"
+    base = re.search(
+        r'FOREIGN KEY\s*\(([^)]+)\)\s*REFERENCES\s*(?:"([^"]+)"|(\w+))\s*\(([^)]+)\)',
+        text,
+        re.I,
+    )
+    if not base:
+        return None
+    on_update = re.search(r"ON UPDATE\s+(NO ACTION|RESTRICT|CASCADE|SET NULL|SET DEFAULT)", text, re.I)
+    on_delete = re.search(r"ON DELETE\s+(NO ACTION|RESTRICT|CASCADE|SET NULL|SET DEFAULT)", text, re.I)
+    match_type = re.search(r"MATCH\s+(FULL|PARTIAL|SIMPLE)", text, re.I)
+    return {
+        "source_columns": [c.strip().strip('"') for c in base.group(1).split(",")],
+        "target_table": base.group(2) or base.group(3),
+        "target_columns": [c.strip().strip('"') for c in base.group(4).split(",")],
+        "match_type": (match_type.group(1) if match_type else "SIMPLE").upper(),
+        "on_update": _norm_action(on_update.group(1) if on_update else "NO ACTION"),
+        "on_delete": _norm_action(on_delete.group(1) if on_delete else "NO ACTION"),
+    }
+
+
+def _fk_structured(expected: dict[str, Any]) -> dict[str, Any]:
+    if expected.get("target_table"):
+        return expected
+    parsed = _parse_fk_definition(expected.get("definition", ""))
+    return parsed or {}
+
+
 def _match_constraint(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool, str]:
     if expected.get("owner_table") and actual.get("owner_table") != expected.get("owner_table"):
         return False, "constraint.owner_table mismatch"
-    exp_kind = expected.get("kind") or expected.get("type")
-    if exp_kind and _constraint_kind(str(actual.get("type", ""))) != str(exp_kind).upper():
+    exp_kind = str(expected.get("kind") or expected.get("type") or "").upper()
+    act_kind = _constraint_kind(str(actual.get("type", "")))
+    if exp_kind and exp_kind != act_kind:
         return False, "constraint.kind mismatch"
-    exp_def = _norm_ws(expected.get("definition")).upper()
-    act_def = _norm_ws(actual.get("definition")).upper()
+    for field in ("deferrable", "initially_deferred", "validated"):
+        if field in expected and bool(actual.get(field)) != bool(expected.get(field)):
+            return False, "constraint.{field} mismatch".format(field=field)
+
     if exp_kind == "PRIMARY KEY" or actual.get("type") == "p":
+        exp_def = _norm_ws(expected.get("definition")).upper()
+        act_def = _norm_ws(actual.get("definition")).upper()
         exp_cols = re.findall(r'"([^"]+)"', exp_def) or re.findall(r"\(([^)]+)\)", exp_def)
         act_cols = re.findall(r"\(([^)]+)\)", act_def)
         if exp_cols and act_cols:
             exp_norm = [c.strip().strip('"') for c in exp_cols[-1].split(",")]
             act_norm = [c.strip().strip('"') for c in act_cols[-1].split(",")]
-            if exp_norm == act_norm:
-                return True, "primary key semantic match"
-    if exp_def and (exp_def in act_def or act_def in exp_def):
-        return True, "constraint definition semantic match"
-    exp_cols = re.findall(r'"([^"]+)"', exp_def)
-    if exp_cols and all(col in act_def for col in exp_cols):
-        return True, "constraint definition fragment match"
-    return False, "constraint.definition mismatch"
+            if exp_norm != act_norm:
+                return False, "constraint.primary_key.columns mismatch"
+        return True, "primary key semantic match"
+
+    if exp_kind == "FOREIGN KEY" or actual.get("type") == "f":
+        exp_fk = _fk_structured(expected)
+        act_fk = _parse_fk_definition(actual.get("definition", ""))
+        if not exp_fk or not act_fk:
+            return False, "constraint.fk parse failure"
+        for field in ("source_columns", "target_table", "target_columns", "match_type", "on_update", "on_delete"):
+            if field in exp_fk and exp_fk.get(field) != act_fk.get(field):
+                return False, f"constraint.fk.{field} mismatch"
+        return True, "foreign key semantic match"
+
+    if exp_kind == "UNIQUE" or actual.get("type") == "u":
+        exp_def = _norm_ws(expected.get("definition")).upper()
+        act_def = _norm_ws(actual.get("definition")).upper()
+        exp_cols = [c.strip().strip('"') for c in re.findall(r'"([^"]+)"', exp_def)]
+        act_cols = [c.strip().strip('"') for c in re.findall(r"\(([^)]+)\)", act_def)[-1].split(",")] if re.findall(r"\(([^)]+)\)", act_def) else []
+        if exp_cols and act_cols and exp_cols != act_cols:
+            return False, "constraint.unique.columns mismatch"
+        if exp_def and exp_def != act_def:
+            return False, "constraint.unique.definition mismatch"
+        return True, "unique constraint semantic match"
+
+    exp_def = _norm_ws(expected.get("definition")).upper()
+    act_def = _norm_ws(actual.get("definition")).upper()
+    if exp_def and exp_def != act_def:
+        return False, "constraint.definition mismatch"
+    return True, "constraint semantic match"
 
 
 def _match_table(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[bool, str]:
@@ -139,35 +225,6 @@ def _match_sequence(actual: dict[str, Any], expected: dict[str, Any]) -> tuple[b
     return True, "sequence semantic match"
 
 
-def _match_m252_forward(
-    actual: dict[str, Any],
-    expected: dict[str, Any],
-    *,
-    object_type: str,
-    effect: dict[str, Any] | None = None,
-    delta: dict[str, Any] | None = None,
-) -> tuple[bool, str]:
-    if expected.get("authority") == "m252_complete_physical_authority" and object_type == "table":
-        if effect and delta and effect.get("name") != delta.get("name"):
-            return False, "m252 table name mismatch"
-        return True, "m252 table authority marker"
-    if object_type == "column":
-        for field in ("format_type", "nullable", "default", "identity", "generated", "ordinal", "name"):
-            if field in expected and expected.get(field) not in (None, "") and actual.get(field) != expected.get(field):
-                if field == "nullable" and bool(actual.get(field)) != bool(expected.get(field)):
-                    return False, f"m252.column.{field} mismatch"
-                elif field != "nullable" and actual.get(field) != expected.get(field):
-                    return False, f"m252.column.{field} mismatch"
-        return True, "m252 column semantic match"
-    if object_type == "index":
-        ok, reason = _match_index(actual, expected)
-        return ok, reason
-    if object_type == "constraint":
-        ok, reason = _match_constraint(actual, expected)
-        return ok, reason
-    return True, "m252 forward semantic match"
-
-
 def semantic_match_delta_to_effect(delta: dict[str, Any], effect: dict[str, Any]) -> tuple[bool, str, str]:
     """Return (matches, match_mode, reason)."""
     change_type = delta["change_type"]
@@ -178,20 +235,18 @@ def semantic_match_delta_to_effect(delta: dict[str, Any], effect: dict[str, Any]
     if change_type == "CHANGED":
         exp_before, exp_after = expected["before"], expected["after"]  # type: ignore[index]
         act_before, act_after = actual["before"], actual["after"]  # type: ignore[index]
-        ok_b, reason_b = semantic_match_payload(object_type, act_before, exp_before, effect=effect, delta=delta)
+        ok_b, reason_b = semantic_match_payload(object_type, act_before, exp_before)
         if not ok_b:
             return False, "EXACT", f"changed.before {reason_b}"
-        ok_a, reason_a = semantic_match_payload(object_type, act_after, exp_after, effect=effect, delta=delta)
+        ok_a, reason_a = semantic_match_payload(object_type, act_after, exp_after)
         if not ok_a:
             return False, "EXACT", f"changed.after {reason_a}"
         return True, "EXACT", "changed semantic match"
 
-    ok, reason = semantic_match_payload(object_type, actual, expected, effect=effect, delta=delta)
+    ok, reason = semantic_match_payload(object_type, actual, expected)
     if not ok:
         return False, "EXACT", reason
     mode = "IMPLICIT_DETERMINISTIC" if effect.get("authority_match") == "IMPLICIT_POSTGRES_EFFECT" else "EXACT"
-    if effect.get("operation_family") == "M252_FORWARD":
-        mode = "SEMANTIC_EQUIVALENT"
     return True, mode, reason
 
 
@@ -199,16 +254,11 @@ def semantic_match_payload(
     object_type: str,
     actual: Any,
     expected: Any,
-    *,
-    effect: dict[str, Any] | None = None,
-    delta: dict[str, Any] | None = None,
 ) -> tuple[bool, str]:
     if expected is None and actual is None:
         return True, "both null"
     if expected is None or actual is None:
         return False, "missing expected or actual state"
-    if effect and effect.get("operation_family") == "M252_FORWARD":
-        return _match_m252_forward(actual, expected, object_type=object_type, effect=effect, delta=delta)
     if object_type == "column":
         return _match_column(actual, expected)
     if object_type == "index":

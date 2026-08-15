@@ -355,3 +355,23 @@ def evaluate_binding_corrective_terminal_acceptance(**gates: Any) -> dict[str, A
         "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
         "failures": [],
     }
+
+
+def evaluate_ambiguity_corrective_terminal_acceptance(**gates: Any) -> dict[str, Any]:
+    result = evaluate_binding_corrective_terminal_acceptance(**gates)
+    if not result.get("pass"):
+        return result
+    extra_failures: list[str] = []
+    if gates.get("no_ranking_proof_pass") is False:
+        extra_failures.append("no_ranking_proof_pass")
+    synth = gates.get("synthetic_m252_creator_count")
+    if synth not in (None, 0):
+        extra_failures.append(f"synthetic_m252_creator_count={synth}")
+    if extra_failures:
+        return {
+            "pass": False,
+            "final_status": "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+            "r3b1p_readiness": "NOT_READY",
+            "failures": (result.get("failures") or []) + extra_failures,
+        }
+    return result

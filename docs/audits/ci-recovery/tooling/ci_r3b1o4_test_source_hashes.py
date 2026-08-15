@@ -53,6 +53,11 @@ BINDING_CORRECTIVE_SOURCE_FILES = FINAL_CORRECTIVE_SOURCE_FILES + [
     "ci_r3b1o4_run_binding_corrective_audit.py",
 ]
 
+AMBIGUITY_CORRECTIVE_SOURCE_FILES = BINDING_CORRECTIVE_SOURCE_FILES + [
+    "ci_r3b1o4_no_ranking_proof.py",
+    "ci_r3b1o4_run_ambiguity_corrective_audit.py",
+]
+
 
 def build_test_source_hash_manifest() -> dict:
     entries = []
@@ -105,6 +110,26 @@ def write_final_corrective_test_source_hash_manifest(manifest: dict[str, str]) -
 
 def build_binding_corrective_test_source_hash_manifest() -> dict[str, str]:
     return {name: sha256_file(TOOLING / name) for name in BINDING_CORRECTIVE_SOURCE_FILES if (TOOLING / name).exists()}
+
+
+def build_ambiguity_corrective_test_source_hash_manifest() -> dict[str, str]:
+    return {name: sha256_file(TOOLING / name) for name in AMBIGUITY_CORRECTIVE_SOURCE_FILES if (TOOLING / name).exists()}
+
+
+def write_ambiguity_corrective_test_source_hash_manifest(manifest: dict[str, str], *, pre_hashes: dict[str, str] | None = None) -> dict:
+    pre_post_match = pre_hashes == manifest if pre_hashes is not None else None
+    payload = {
+        "schema_version": 1,
+        "phase": "CI-R3B1O.4-ambiguity-corrective",
+        "entries": [{"source_file": k, "sha256": v} for k, v in sorted(manifest.items())],
+        "pre_hashes": pre_hashes,
+        "post_hashes": manifest,
+        "pre_post_match": pre_post_match,
+        "pass": all(manifest.values()) and (pre_post_match is not False),
+    }
+    (DATA / "ci-r3b1o4-ambiguity-corrective-test-source-hash-manifest-2026-08.json").write_text(json.dumps(payload, indent=2) + "\n")
+    (DATA / "ci-r3b1o4-ambiguity-corrective-source-hash-manifest-2026-08.json").write_text(json.dumps(payload, indent=2) + "\n")
+    return payload
 
 
 def write_binding_corrective_test_source_hash_manifest(manifest: dict[str, str], *, pre_hashes: dict[str, str] | None = None) -> dict:

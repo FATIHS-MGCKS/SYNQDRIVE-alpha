@@ -342,6 +342,136 @@ def _effects_from_sql(
     return effects
 
 
+def _norm_ws(value: Any) -> str:
+    if value is None:
+        return ""
+    return re.sub(r"\s+", " ", str(value).strip())
+
+
+def _norm_action(value: str) -> str:
+    return str(value or "NO ACTION").upper().replace("_", " ")
+
+
+def _parse_fk_definition(defn: str) -> dict[str, Any] | None:
+    text = _norm_ws(defn)
+    if text.startswith("("):
+        text = f"FOREIGN KEY {text}"
+    base = re.search(
+        r'FOREIGN KEY\s*\(([^)]+)\)\s*REFERENCES\s*(?:"([^"]+)"|(\w+))\s*\(([^)]+)\)',
+        text,
+        re.I,
+    )
+    if not base:
+        return None
+    on_update = re.search(r"ON UPDATE\s+(NO ACTION|RESTRICT|CASCADE|SET NULL|SET DEFAULT)", text, re.I)
+    on_delete = re.search(r"ON DELETE\s+(NO ACTION|RESTRICT|CASCADE|SET NULL|SET DEFAULT)", text, re.I)
+    match_type = re.search(r"MATCH\s+(FULL|PARTIAL|SIMPLE)", text, re.I)
+    return {
+        "source_columns": [c.strip().strip('"') for c in base.group(1).split(",")],
+        "target_table": base.group(2) or base.group(3),
+        "target_columns": [c.strip().strip('"') for c in base.group(4).split(",")],
+        "match_type": (match_type.group(1) if match_type else "SIMPLE").upper(),
+        "on_update": _norm_action(on_update.group(1) if on_update else "NO ACTION"),
+        "on_delete": _norm_action(on_delete.group(1) if on_delete else "NO ACTION"),
+    }
+
+
+def _canonical_index_keys(columns: list[str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "ordinal": idx + 1,
+            "kind": "key",
+            "name": col,
+            "collation": "default",
+            "opclass": "default",
+            "sort_direction": "ASC",
+            "nulls_ordering": "NULLS LAST",
+        }
+        for idx, col in enumerate(columns)
+    ]
+
+
+def _merge_index_after(*, parsed: dict[str, Any], canonical: dict[str, Any], owner_table: str) -> dict[str, Any]:
+    columns = list(parsed.get("columns") or canonical.get("columns") or [])
+    return {
+        "owner_table": parsed.get("owner_table") or owner_table,
+        "name": parsed.get("name") or canonical.get("name"),
+        "unique": bool(parsed.get("unique", canonical.get("unique", False))),
+        "primary": bool(parsed.get("primary", False)),
+        "access_method": canonical.get("access_method", "btree"),
+        "predicate": parsed.get("predicate") or canonical.get("predicate"),
+        "valid": canonical.get("valid", True),
+        "ready": canonical.get("ready", True),
+        "columns": columns,
+        "include_columns": canonical.get("include_columns", []),
+    }
+
+
+def _match_canonical_fk(after: dict[str, Any], foreign_keys: list[dict[str, Any]]) -> dict[str, Any] | None:
+    parsed = _parse_fk_definition(after.get("definition", ""))
+    if not parsed:
+        return None
+    for fk in foreign_keys:
+        if tuple(fk.get("source_columns") or []) == tuple(parsed["source_columns"]) and fk.get("target_table") == parsed["target_table"]:
+            return fk
+    return None
+
+
+def _fk_after_state(*, sql_after: dict[str, Any], canonical: dict[str, Any]) -> dict[str, Any]:
+    parsed = _parse_fk_definition(sql_after.get("definition", ""))
+    if not parsed:
+        return sql_after
+    return {
+        **sql_after,
+        "kind": "FOREIGN KEY",
+        "source_columns": parsed["source_columns"],
+        "target_table": parsed["target_table"],
+        "target_columns": parsed["target_columns"],
+        "match_type": parsed.get("match_type", "SIMPLE"),
+        "on_update": parsed.get("on_update", "NO ACTION"),
+        "on_delete": parsed.get("on_delete", "NO ACTION"),
+        "deferrable": canonical.get("deferrable", False),
+        "initially_deferred": canonical.get("initially_deferred", False),
+        "validated": canonical.get("validated", True),
+    }
+
+
+def _enrich_m252_creator_effects(effects: list[dict[str, Any]], authority: dict[str, Any]) -> list[dict[str, Any]]:
+    col_by_name = {c["name"]: c for c in authority["columns"]}
+    enriched: list[dict[str, Any]] = []
+    for effect in effects:
+        row = dict(effect)
+        after = dict(row.get("after_state") or {})
+        if row["object_type"] == "column" and row.get("subkey") in col_by_name:
+            row["after_state"] = {**col_by_name[row["subkey"]], **after}
+        elif row["object_type"] == "index":
+            cols = tuple(after.get("columns") or [])
+            if cols == tuple(authority["unique_index"].get("columns") or []) or after.get("unique"):
+                row["after_state"] = _merge_index_after(parsed=after, canonical=authority["unique_index"], owner_table=M252_TABLE)
+            elif cols == tuple(authority["composite_index"].get("columns") or []):
+                row["after_state"] = _merge_index_after(
+                    parsed={**after, "unique": False},
+                    canonical=authority["composite_index"],
+                    owner_table=M252_TABLE,
+                )
+        elif row["object_type"] == "constraint":
+            if after.get("kind") == "PRIMARY KEY" or row["name"].endswith("_pkey"):
+                pk = authority["primary_key"]
+                row["after_state"] = {
+                    **after,
+                    "kind": "PRIMARY KEY",
+                    "deferrable": pk.get("deferrable", False),
+                    "initially_deferred": pk.get("initially_deferred", False),
+                    "validated": pk.get("validated", True),
+                }
+            elif after.get("kind") == "FOREIGN KEY" or "FOREIGN KEY" in _norm_ws(after.get("definition", "")).upper():
+                canonical = _match_canonical_fk(after, authority["foreign_keys"])
+                if canonical:
+                    row["after_state"] = _fk_after_state(sql_after=after, canonical=canonical)
+        enriched.append(row)
+    return enriched
+
+
 def _m252_tail_effects(
     migration: str,
     *,
@@ -350,98 +480,40 @@ def _m252_tail_effects(
 ) -> list[dict[str, Any]]:
     authority = build_m252_complete_physical_authority()
     effects: list[dict[str, Any]] = []
-    m252_stmt: dict[str, Any] | None = None
-
     for stmt in statements:
         ordinal = int(stmt["ordinal"])
         sha = stmt["statement_sha256"]
         family = stmt.get("statement_type", "UNKNOWN")
         sql = parsed_by_ordinal[ordinal]["sql"]
-        if family == "DROP INDEX":
-            for dropped in _extract_drop_indexes(sql):
-                task = "INVOICE_STALE_INDEX" if "invoice" in dropped else "WHATSAPP_STALE_INDEX"
-                effects.extend(
-                    _effects_from_sql(
-                        migration=migration,
-                        statement_ordinal=ordinal,
-                        statement_sha256=sha,
-                        statement_family=family,
-                        sql=sql,
-                        task=task,
-                    )
-                )
-        elif M252_TABLE in sql or "CREATE TABLE" in sql.upper():
-            m252_stmt = stmt
-            effects.extend(
-                _effects_from_sql(
-                    migration=migration,
-                    statement_ordinal=ordinal,
-                    statement_sha256=sha,
-                    statement_family=family,
-                    sql=sql,
-                    task="M252",
-                )
-            )
-
-    if not m252_stmt:
-        raise RuntimeError("M252 tail statement not found in execution set")
-
-    ordinal = int(m252_stmt["ordinal"])
-    sha = m252_stmt["statement_sha256"]
-    family = m252_stmt.get("statement_type", "CREATE TABLE")
-    effect_ordinal = max((e.get("effect_ordinal", 0) for e in effects if e.get("statement_ordinal") == ordinal), default=0)
-
-    def add_m252(**kwargs: Any) -> None:
-        nonlocal effect_ordinal
-        effect_ordinal += 1
-        effects.append(
-            _effect(
-                migration=migration,
-                ordinal=ordinal,
-                statement_sha256=sha,
-                statement_family=family,
-                effect_ordinal=effect_ordinal,
-                task="M252",
-                **kwargs,
-            )
+        if family == "DROP INDEX" or "DROP INDEX" in sql.upper():
+            task = "INVOICE_STALE_INDEX" if "org_invoices_invoice_number_key" in sql else "WHATSAPP_STALE_INDEX"
+        else:
+            task = "M252"
+        stmt_effects = _effects_from_sql(
+            migration=migration,
+            statement_ordinal=ordinal,
+            statement_sha256=sha,
+            statement_family=family,
+            sql=sql,
+            task=task,
         )
-
-    add_m252(
-        operation_family="M252_FORWARD",
-        change_type="ADDED",
-        object_type="table",
-        name=M252_TABLE,
-        after={"authority": "m252_complete_physical_authority"},
-    )
-    for col in authority["columns"]:
-        add_m252(
-            operation_family="M252_FORWARD",
-            change_type="ADDED",
-            object_type="column",
-            name=M252_TABLE,
-            subkey=col["name"],
-            owner=M252_TABLE,
-            after=col,
-        )
-    for key_name in ["primary_key", "unique_index", "composite_index"]:
-        add_m252(
-            operation_family="M252_FORWARD",
-            change_type="ADDED",
-            object_type="index",
-            name=authority[key_name]["name"],
-            owner=M252_TABLE,
-            after=authority[key_name],
-        )
-    for fk in authority["foreign_keys"]:
-        add_m252(
-            operation_family="M252_FORWARD",
-            change_type="ADDED",
-            object_type="constraint",
-            name=fk["name"],
-            owner=M252_TABLE,
-            after=fk,
-        )
+        if task == "M252":
+            stmt_effects = _enrich_m252_creator_effects(stmt_effects, authority)
+        effects.extend(stmt_effects)
     return effects
+
+
+def build_m252_parity_contract() -> dict[str, Any]:
+    authority = build_m252_complete_physical_authority()
+    return {
+        "schema_version": 1,
+        "phase": "CI-R3B1O.4-ambiguity-corrective",
+        "contract_kind": "CANONICAL_M252_PARITY_AUTHORITY",
+        "source_migration": authority["source_migration"],
+        "table": authority["table"],
+        "authority": authority,
+        "pass": True,
+    }
 
 
 def _migration_sql_by_statement(migration_name: str, execution_set: dict[str, Any]) -> dict[int, dict[str, Any]]:
@@ -505,12 +577,15 @@ def build_expected_catalog_deltas(*, execution_set: dict[str, Any] | None = None
 
     return {
         "schema_version": 1,
-        "phase": "CI-R3B1O.4-binding-corrective",
+        "phase": "CI-R3B1O.4-ambiguity-corrective",
         "executing_migration_count": execution_set["executing_migration_count"],
         "expected_effect_count": len(effects),
         "operation_family_counts": by_family,
         "effects": effects,
+        "creator_effects": effects,
+        "canonical_parity_authority": build_m252_parity_contract(),
+        "synthetic_m252_creator_count": sum(1 for e in effects if e.get("operation_family") == "M252_FORWARD"),
         "statement_ordinal_null_count": len(null_ordinals),
         "statement_sha_mismatch_count": len(sha_mismatches),
-        "pass": len(effects) > 0 and len(null_ordinals) == 0 and len(sha_mismatches) == 0,
+        "pass": len(effects) > 0 and len(null_ordinals) == 0 and len(sha_mismatches) == 0 and sum(1 for e in effects if e.get("operation_family") == "M252_FORWARD") == 0,
     }

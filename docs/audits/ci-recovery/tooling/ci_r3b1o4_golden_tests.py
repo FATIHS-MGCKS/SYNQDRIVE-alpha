@@ -26,16 +26,20 @@ from ci_r3b1o4_stale_index_authority import build_invoice_stale_index_authority,
 from ci_r3b1o4_t2_stale_index_safety import EXPECTED_STALE, _compare_index, build_expected_stale_index_shape
 from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract, build_tail_sql, evaluate_tail_preconditions
 from ci_r3b1o4_catalog_authority import authorize_catalog_deltas, classify_delta_for_test
-from ci_r3b1o4_execution_set import build_execution_set
+from ci_r3b1o4_catalog_semantic_compare import _match_constraint, _match_index
+from ci_r3b1o4_execution_set import TAIL_MIGRATION_NAME, build_execution_set
 from ci_r3b1o4_expected_catalog_effects import build_expected_catalog_deltas
 from ci_r3b1o4_implicit_catalog_effects import build_implicit_catalog_effects
+from ci_r3b1o4_no_ranking_proof import build_no_ranking_proof
 from ci_r3b1o4_terminal_gate import (
+    evaluate_ambiguity_corrective_terminal_acceptance,
     evaluate_binding_corrective_terminal_acceptance,
     evaluate_corrective_terminal_acceptance,
     evaluate_final_corrective_terminal_acceptance,
     evaluate_terminal_acceptance,
 )
 from ci_r3b1o4_test_source_hashes import (
+    build_ambiguity_corrective_test_source_hash_manifest,
     build_binding_corrective_test_source_hash_manifest,
     build_corrective_test_source_hash_manifest,
     build_final_corrective_test_source_hash_manifest,
@@ -221,6 +225,54 @@ BINDING_TERMINAL_REQUIRED = [
 ]
 
 BINDING_CORRECTIVE_REQUIRED_TEST_IDS = FINAL_CORRECTIVE_REQUIRED_TEST_IDS + BINDING_SEMANTIC_REQUIRED + BINDING_TERMINAL_REQUIRED
+
+AMBIGUITY_MULTI_MATCH_REQUIRED = ["ambiguity_multi_match_different_scores_ambiguous"]
+AMBIGUITY_M252_PROVENANCE_REQUIRED = [
+    "m252_synthetic_duplicate_prevention_unique_index",
+    "m252_synthetic_duplicate_prevention_composite_index",
+    "m252_synthetic_duplicate_prevention_org_fk",
+    "m252_synthetic_duplicate_prevention_membership_fk",
+    "m252_synthetic_duplicate_prevention_table",
+    "m252_synthetic_creator_count_zero",
+]
+AMBIGUITY_INDEX_SEMANTIC_REQUIRED = [
+    "index_semantic_base_pass",
+    "index_semantic_wrong_method_fail",
+    "index_semantic_wrong_include_fail",
+    "index_semantic_wrong_collation_fail",
+    "index_semantic_wrong_opclass_fail",
+    "index_semantic_wrong_sort_direction_fail",
+    "index_semantic_wrong_null_ordering_fail",
+    "index_semantic_wrong_valid_fail",
+    "index_semantic_wrong_ready_fail",
+    "index_semantic_wrong_owner_fail",
+    "index_semantic_wrong_unique_fail",
+]
+AMBIGUITY_CONSTRAINT_SEMANTIC_REQUIRED = [
+    "constraint_fk_base_pass",
+    "constraint_fk_wrong_target_table_fail",
+    "constraint_fk_wrong_target_column_fail",
+    "constraint_fk_wrong_source_column_fail",
+    "constraint_fk_wrong_match_fail",
+    "constraint_fk_wrong_on_update_fail",
+    "constraint_fk_wrong_on_delete_fail",
+    "constraint_fk_wrong_deferrable_fail",
+    "constraint_fk_wrong_initially_deferred_fail",
+    "constraint_fk_wrong_validated_fail",
+    "constraint_fk_fragment_rejection_fail",
+]
+AMBIGUITY_TERMINAL_REQUIRED = [
+    "no_ranking_static_scan_pass",
+    "o4_ambiguity_corrective_terminal_all_gates_pass",
+]
+AMBIGUITY_CORRECTIVE_REQUIRED_TEST_IDS = (
+    BINDING_CORRECTIVE_REQUIRED_TEST_IDS
+    + AMBIGUITY_MULTI_MATCH_REQUIRED
+    + AMBIGUITY_M252_PROVENANCE_REQUIRED
+    + AMBIGUITY_INDEX_SEMANTIC_REQUIRED
+    + AMBIGUITY_CONSTRAINT_SEMANTIC_REQUIRED
+    + AMBIGUITY_TERMINAL_REQUIRED
+)
 
 
 def _inventory(*, tables: dict | None = None, indexes: dict | None = None, constraints: dict | None = None, enums: dict | None = None) -> dict:
@@ -762,6 +814,305 @@ def run_binding_corrective_terminal_tests(tests: list) -> None:
     )
 
 
+def _fixture_index_payload() -> dict:
+    return {
+        "owner_table": "customers",
+        "unique": False,
+        "primary": False,
+        "access_method": "btree",
+        "valid": True,
+        "ready": True,
+        "columns": ["customer_id"],
+        "include_columns": [],
+        "keys": [
+            {
+                "ordinal": 1,
+                "kind": "key",
+                "name": "customer_id",
+                "collation": "default",
+                "opclass": "default",
+                "sort_direction": "ASC",
+                "nulls_ordering": "NULLS LAST",
+            }
+        ],
+    }
+
+
+def _fixture_fk_expected() -> dict:
+    return {
+        "owner_table": "orders",
+        "kind": "FOREIGN KEY",
+        "source_columns": ["customer_id"],
+        "target_table": "customers",
+        "target_columns": ["id"],
+        "match_type": "SIMPLE",
+        "on_update": "NO ACTION",
+        "on_delete": "CASCADE",
+        "deferrable": False,
+        "initially_deferred": False,
+        "validated": True,
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE CASCADE',
+    }
+
+
+def _fixture_fk_actual() -> dict:
+    return {
+        "owner_table": "orders",
+        "type": "f",
+        "deferrable": False,
+        "initially_deferred": False,
+        "validated": True,
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE CASCADE',
+    }
+
+
+def _count_creator_effects(expected: dict, *, change_type: str, object_type: str, name: str, subkey: str | None = None) -> int:
+    return sum(
+        1
+        for e in expected.get("effects", [])
+        if e.get("change_type") == change_type
+        and e.get("object_type") == object_type
+        and e.get("name") == name
+        and e.get("subkey") == subkey
+        and e.get("migration_name") == TAIL_MIGRATION_NAME
+    )
+
+
+def run_ambiguity_multi_match_tests(tests: list) -> None:
+    execution_set, _, implicit = _fixture_expected_implicit()
+    index_name = "customer_lookup_idx"
+    base_after = {"owner_table": "customers", "unique": False, "columns": ["customer_id"]}
+    candidate_a = {
+        "effect_id": "score-decorated-a",
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "migration_name": "test_migration",
+        "statement_ordinal": 7,
+        "statement_sha256": "known_sha_fixture_7",
+        "statement_family": "CREATE INDEX",
+        "operation_family": "CREATE_INDEX",
+        "task": "M252",
+        "before_state": None,
+        "after_state": base_after,
+    }
+    candidate_b = {
+        **candidate_a,
+        "effect_id": "score-decorated-b",
+        "effect_ordinal": 2,
+        "statement_family": "ALTER TABLE",
+        "operation_family": "CREATE_INDEX",
+        "task": None,
+    }
+    dup_expected = {"effects": [candidate_a, candidate_b], "pass": True}
+    delta = {
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "object_id": f"index:{index_name}",
+        "before": None,
+        "after": base_after,
+    }
+    result = classify_delta_for_test(delta, expected=dup_expected, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "ambiguity_multi_match_different_scores_ambiguous",
+        "classify_delta_for_test",
+        "AMBIGUOUS_DELTA_AUTHORITY",
+        result["classification"] == "AMBIGUOUS_DELTA_AUTHORITY" and result.get("semantic_match_count") == 2,
+        f"{result['classification']} semantic={result.get('semantic_match_count')}",
+    )
+
+
+def run_ambiguity_m252_provenance_tests(tests: list) -> None:
+    expected = build_expected_catalog_deltas()
+    authority = build_m252_complete_physical_authority()
+    unique = authority["unique_index"]["name"]
+    composite = authority["composite_index"]["name"]
+    fk_org = authority["foreign_keys"][0]["name"]
+    fk_mem = authority["foreign_keys"][1]["name"]
+    table = authority["table"]
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_unique_index",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="index", name=unique) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="index", name=unique)),
+    )
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_composite_index",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="index", name=composite) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="index", name=composite)),
+    )
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_org_fk",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_org) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_org)),
+    )
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_membership_fk",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_mem) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_mem)),
+    )
+    table_creators = _count_creator_effects(expected, change_type="ADDED", object_type="table", name=table)
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_table",
+        "build_expected_catalog_deltas",
+        "1",
+        table_creators == 1,
+        str(table_creators),
+    )
+    _add(
+        tests,
+        "m252_synthetic_creator_count_zero",
+        "build_expected_catalog_deltas",
+        "0",
+        expected.get("synthetic_m252_creator_count", -1) == 0,
+        str(expected.get("synthetic_m252_creator_count")),
+    )
+
+
+def run_ambiguity_index_semantic_tests(tests: list) -> None:
+    base = _fixture_index_payload()
+    actual = dict(base)
+    ok, _ = _match_index(actual, base)
+    _add(tests, "index_semantic_base_pass", "_match_index", "PASS", ok, "pass" if ok else "fail")
+
+    mutations = [
+        ("index_semantic_wrong_method_fail", {"access_method": "hash"}),
+        ("index_semantic_wrong_include_fail", {"include_columns": ["extra"]}),
+        ("index_semantic_wrong_collation_fail", {"keys": [{**base["keys"][0], "collation": "C"}]}),
+        ("index_semantic_wrong_opclass_fail", {"keys": [{**base["keys"][0], "opclass": "int4_ops"}]}),
+        ("index_semantic_wrong_sort_direction_fail", {"keys": [{**base["keys"][0], "sort_direction": "DESC"}]}),
+        ("index_semantic_wrong_null_ordering_fail", {"keys": [{**base["keys"][0], "nulls_ordering": "NULLS FIRST"}]}),
+        ("index_semantic_wrong_valid_fail", {"valid": False}),
+        ("index_semantic_wrong_ready_fail", {"ready": False}),
+        ("index_semantic_wrong_owner_fail", {"owner_table": "vendors"}),
+        ("index_semantic_wrong_unique_fail", {"unique": True}),
+    ]
+    for test_id, patch in mutations:
+        mutated = copy.deepcopy(base)
+        for key, val in patch.items():
+            mutated[key] = val
+        fail, reason = _match_index(mutated, base)
+        _add(tests, test_id, "_match_index", "FAIL", not fail, reason)
+
+
+def run_ambiguity_constraint_semantic_tests(tests: list) -> None:
+    expected = _fixture_fk_expected()
+    actual = _fixture_fk_actual()
+    ok, _ = _match_constraint(actual, expected)
+    _add(tests, "constraint_fk_base_pass", "_match_constraint", "PASS", ok, "pass" if ok else "fail")
+
+    fk_mutations = [
+        ("constraint_fk_wrong_target_table_fail", {"target_table": "vendors"}),
+        ("constraint_fk_wrong_target_column_fail", {"target_columns": ["uuid"]}),
+        ("constraint_fk_wrong_source_column_fail", {"source_columns": ["vendor_id"]}),
+        ("constraint_fk_wrong_match_fail", {"match_type": "FULL"}),
+        ("constraint_fk_wrong_on_update_fail", {"on_update": "CASCADE"}),
+        ("constraint_fk_wrong_on_delete_fail", {"on_delete": "RESTRICT"}),
+        ("constraint_fk_wrong_deferrable_fail", {"deferrable": True}),
+        ("constraint_fk_wrong_initially_deferred_fail", {"initially_deferred": True}),
+        ("constraint_fk_wrong_validated_fail", {"validated": False}),
+    ]
+    for test_id, patch in fk_mutations:
+        mutated = copy.deepcopy(expected)
+        mutated.update(patch)
+        mutated_actual = copy.deepcopy(actual)
+        if test_id == "constraint_fk_wrong_validated_fail":
+            mutated_actual["validated"] = True
+        fail, reason = _match_constraint(mutated_actual, mutated)
+        _add(tests, test_id, "_match_constraint", "FAIL", not fail, reason)
+
+    fragment_expected = {
+        "owner_table": "orders",
+        "kind": "FOREIGN KEY",
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id")',
+    }
+    wrong_target_actual = {
+        "owner_table": "orders",
+        "type": "f",
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "vendors"("id") ON DELETE CASCADE',
+    }
+    fragment_fail, _ = _match_constraint(wrong_target_actual, fragment_expected)
+    _add(
+        tests,
+        "constraint_fk_fragment_rejection_fail",
+        "_match_constraint",
+        "FAIL",
+        not fragment_fail,
+        "fragment-only acceptance blocked",
+    )
+
+
+def run_ambiguity_corrective_terminal_tests(tests: list) -> None:
+    proof = build_no_ranking_proof()
+    _add(tests, "no_ranking_static_scan_pass", "build_no_ranking_proof", "PASS", proof["pass"], str(proof.get("violation_count")))
+
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        catalog_engine_crossvalidation_pass=True,
+        statement_crossvalidation_pass=True,
+        execution_set_pass=True,
+        expected_catalog_pass=True,
+        implicit_catalog_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+        ambiguous=0,
+        authority_statement_unbound=0,
+        key_only_authorization=0,
+        no_ranking_proof_pass=True,
+        synthetic_m252_creator_count=0,
+    )
+    perfect = evaluate_ambiguity_corrective_terminal_acceptance(**base)
+    _add(
+        tests,
+        "o4_ambiguity_corrective_terminal_all_gates_pass",
+        "evaluate_ambiguity_corrective_terminal_acceptance",
+        "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+        perfect["pass"],
+        perfect["final_status"],
+    )
+
+
 def run_corrective_terminal_tests(tests: list) -> None:
     base = dict(
         worktree_strict_empty=True,
@@ -801,26 +1152,35 @@ def run_corrective_terminal_tests(tests: list) -> None:
     _add(tests, "o4_corrective_terminal_catalog_delta_fail", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_catalog["pass"] and fail_catalog["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_catalog["final_status"])
 
 
-def run_golden_tests(*, corrective: bool = False, final_corrective: bool = False, binding_corrective: bool = False) -> dict:
+def run_golden_tests(*, corrective: bool = False, final_corrective: bool = False, binding_corrective: bool = False, ambiguity_corrective: bool = False) -> dict:
     tests: list[dict] = []
     run_m252_negative_tests(tests)
     run_diff_classifier_tests(tests)
     run_o3_terminal_tests(tests)
     run_tail_authority_tests(tests)
     run_o4_terminal_tests(tests)
-    if corrective or final_corrective or binding_corrective:
+    if corrective or final_corrective or binding_corrective or ambiguity_corrective:
         run_corrective_m252_index_tests(tests)
         run_catalog_delta_tests(tests)
         run_t2_stale_index_tests(tests)
         run_corrective_terminal_tests(tests)
-    if final_corrective or binding_corrective:
+    if final_corrective or binding_corrective or ambiguity_corrective:
         run_catalog_authority_tests(tests)
         run_final_corrective_terminal_tests(tests)
-    if binding_corrective:
+    if binding_corrective or ambiguity_corrective:
         run_binding_semantic_authority_tests(tests)
         run_binding_corrective_terminal_tests(tests)
+    if ambiguity_corrective:
+        run_ambiguity_multi_match_tests(tests)
+        run_ambiguity_m252_provenance_tests(tests)
+        run_ambiguity_index_semantic_tests(tests)
+        run_ambiguity_constraint_semantic_tests(tests)
+        run_ambiguity_corrective_terminal_tests(tests)
 
-    if binding_corrective:
+    if ambiguity_corrective:
+        hash_manifest = build_ambiguity_corrective_test_source_hash_manifest()
+        hash_fn = "build_ambiguity_corrective_test_source_hash_manifest"
+    elif binding_corrective:
         hash_manifest = build_binding_corrective_test_source_hash_manifest()
         hash_fn = "build_binding_corrective_test_source_hash_manifest"
     elif final_corrective:
@@ -836,7 +1196,9 @@ def run_golden_tests(*, corrective: bool = False, final_corrective: bool = False
     for entry in hash_entries:
         _add(tests, f"source_hash_present_{entry['source_file'].replace('.', '_')}", hash_fn, "sha256 present", bool(entry["sha256"]), entry["source_file"])
 
-    if binding_corrective:
+    if ambiguity_corrective:
+        required_ids = AMBIGUITY_CORRECTIVE_REQUIRED_TEST_IDS
+    elif binding_corrective:
         required_ids = BINDING_CORRECTIVE_REQUIRED_TEST_IDS
     elif final_corrective:
         required_ids = FINAL_CORRECTIVE_REQUIRED_TEST_IDS
@@ -863,7 +1225,10 @@ def run_golden_tests(*, corrective: bool = False, final_corrective: bool = False
     failed = sum(1 for t in tests if not t["pass"])
     coverage_complete = all(r["implemented"] for r in coverage_rows)
 
-    if binding_corrective:
+    if ambiguity_corrective:
+        phase = "CI-R3B1O.4-ambiguity-corrective"
+        prefix = "ci-r3b1o4-ambiguity-corrective"
+    elif binding_corrective:
         phase = "CI-R3B1O.4-binding-corrective"
         prefix = "ci-r3b1o4-binding-corrective"
     elif final_corrective:
@@ -900,5 +1265,15 @@ if __name__ == "__main__":
     parser.add_argument("--corrective", action="store_true")
     parser.add_argument("--final-corrective", action="store_true")
     parser.add_argument("--binding-corrective", action="store_true")
+    parser.add_argument("--ambiguity-corrective", action="store_true")
     args = parser.parse_args()
-    raise SystemExit(0 if run_golden_tests(corrective=args.corrective, final_corrective=args.final_corrective, binding_corrective=args.binding_corrective)["pass"] else 1)
+    raise SystemExit(
+        0
+        if run_golden_tests(
+            corrective=args.corrective,
+            final_corrective=args.final_corrective,
+            binding_corrective=args.binding_corrective,
+            ambiguity_corrective=args.ambiguity_corrective,
+        )["pass"]
+        else 1
+    )

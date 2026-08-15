@@ -1,4 +1,4 @@
-"""Strict semantic catalog delta authority join (CI-R3B1O.4 binding corrective)."""
+"""Strict semantic catalog delta authority join (CI-R3B1O.4 ambiguity corrective)."""
 from __future__ import annotations
 
 import json
@@ -138,24 +138,11 @@ def _classify_from_effect(effect: dict[str, Any]) -> str:
     op = effect.get("operation_family")
     if task in {"INVOICE_STALE_INDEX", "WHATSAPP_STALE_INDEX"} or (op == "DROP_INDEX" and effect.get("change_type") == "REMOVED"):
         return "AUTHORIZED_STALE_RECOVERY_REMOVAL"
-    if task == "M252" or op == "M252_FORWARD":
+    if task == "M252":
         return "AUTHORIZED_M252_FORWARD_EFFECT"
     if effect.get("authority_match") == "IMPLICIT_POSTGRES_EFFECT":
         return "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT"
     return "AUTHORIZED_PENDING_MIGRATION_EFFECT"
-
-
-def _candidate_rank(candidate: dict[str, Any], mode: str) -> int:
-    score = 0
-    if candidate.get("authority_match") == "EXPLICIT_SQL_EFFECT":
-        score += 100
-    if candidate.get("operation_family") == "M252_FORWARD":
-        score += 10
-    if candidate.get("authority_match") == "IMPLICIT_POSTGRES_EFFECT":
-        score += 1
-    if mode == "EXACT":
-        score += 5
-    return score
 
 
 def authorize_catalog_deltas(
@@ -221,21 +208,9 @@ def authorize_catalog_deltas(
             resolution = "NO_SEMANTIC_MATCH"
             classification = "UNAUTHORIZED_FINAL_DELTA"
         elif len(semantic_matches) > 1:
-            ranked = sorted(
-                ((c, m, r, _candidate_rank(c, m)) for c, m, r in semantic_matches),
-                key=lambda item: item[3],
-                reverse=True,
-            )
-            top_score = ranked[0][3]
-            top = [item for item in ranked if item[3] == top_score]
-            if len(top) == 1:
-                chosen, match_mode, _reason, _score = top[0]
-                resolution = "AUTHORIZED"
-                classification = _classify_from_effect(chosen)
-            else:
-                ambiguous += 1
-                resolution = "AMBIGUOUS"
-                classification = "AMBIGUOUS_DELTA_AUTHORITY"
+            ambiguous += 1
+            resolution = "AMBIGUOUS"
+            classification = "AMBIGUOUS_DELTA_AUTHORITY"
         else:
             chosen, match_mode, _reason = semantic_matches[0]
             resolution = "AUTHORIZED"
@@ -332,7 +307,7 @@ def authorize_catalog_deltas(
 
     return {
         "schema_version": 1,
-        "phase": "CI-R3B1O.4-binding-corrective",
+        "phase": "CI-R3B1O.4-ambiguity-corrective",
         "counts": counts,
         "classification_counts": by_class,
         "deltas": classified,
@@ -379,7 +354,7 @@ def build_raw_catalog_deltas(*, golden_inventory: dict[str, Any], final_inventor
         family_counts[d["object_type"]] = family_counts.get(d["object_type"], 0) + 1
     return {
         "schema_version": 1,
-        "phase": "CI-R3B1O.4-binding-corrective",
+        "phase": "CI-R3B1O.4-ambiguity-corrective",
         "counts": {"total": len(raw), **family_counts},
         "deltas": raw,
     }

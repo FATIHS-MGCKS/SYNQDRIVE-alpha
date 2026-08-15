@@ -13,6 +13,7 @@ FINAL_STRATEGY_DB_PREFIX = "r3b1o4_tail_reconciliation"
 CORRECTIVE_STRATEGY_DB_PREFIX = "r3b1o4_corrective_final"
 FINAL_CORRECTIVE_STRATEGY_DB_PREFIX = "r3b1o4_final_corrective"
 BINDING_CORRECTIVE_STRATEGY_DB_PREFIX = "r3b1o4_binding_corrective"
+AMBIGUITY_CORRECTIVE_STRATEGY_DB_PREFIX = "r3b1o4_ambiguity_corrective"
 
 R3B1O4_INPUTS = [
     "backend/prisma/schema.prisma",
