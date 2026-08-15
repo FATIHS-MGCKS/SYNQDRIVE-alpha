@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+  "byte_count": 1647,
+  "line_count": 32,
+  "statement_count": 5,
+  "token_stream_sha256": "1e5679a9d237469a955471601a257dfc440338bf74a1c616c0e8b6a110a0a134"
+}

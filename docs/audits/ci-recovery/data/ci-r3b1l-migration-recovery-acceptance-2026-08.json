@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L",
+  "evidence_input_sha": "ee634cef5d46004e39f5c61588f9251cc3d4a00b",
+  "BASE_R3B1K_SHA": "ee634cef5d46004e39f5c61588f9251cc3d4a00b",
+  "authority_manifest_sha256": "97045c37c426b391ec51abdeea38088d5ace6617828a3b14de7dcaecc0d8eea4",
+  "replay_input_manifest_sha256": "26a32ecfdd17e7faecc4cb93f0a4aed2429b6f59074392a2edb24629df10ba46",
+  "replay": {
+    "migration_directories": 305,
+    "failed_migrations": 0,
+    "manual_interventions": 0,
+    "reached_absolute_head": true
+  },
+  "parity": {
+    "objects": "19/19",
+    "tables": "9/9",
+    "enums": "10/10",
+    "properties": "54/54"
+  },
+  "mismatch_counters": {},
+  "negative_tests_pass": true,
+  "coverage_pass": true,
+  "prisma_checks": {
+    "prisma_validate": {
+      "exit_code": 0,
+      "pass": true
+    },
+    "prisma_generate": {
+      "exit_code": 0,
+      "pass": true
+    },
+    "schema_db_diff": {
+      "exit_code": 0,
+      "pass": true,
+      "informational_only": true,
+      "note": "Full Prisma schema vs replay DB; R3B0.21 acceptance is scoped to 19 bootstrap objects / 54 categories",
+      "script_excerpt": "-- CreateEnum\nCREATE TYPE \"DriveType\" AS ENUM ('FWD', 'RWD', 'AWD', 'FOUR_WD');\n\n-- CreateEnum\nCREATE TYPE \"TireSetupCondition\" AS ENUM ('NEW_INSTALLED', 'ALREADY_MOUNTED', 'UNKNOWN');\n\n-- CreateEnum\nCREATE TYPE \"TireChangeType\" AS ENUM ('INSTALL', 'ROTATE', 'REPLACE', 'REMOVE', 'CORRECTION');\n\n-- CreateEnum\nCREATE TYPE \"DeviceConnectionWebhookMappingStatus\" AS ENUM ('UNKNOWN', 'MAPPED', 'UNMAPPED_VEHICLE', 'UNMAPPED_BINDING', 'PARSE_FAILED');\n\n-- CreateEnum\nCREATE TYPE \"BrakeDtcCategory\" AS ENUM ('BRAKE_SYSTEM', 'ABS', 'ESC', 'PARKING_BRAKE', 'BRAKE_SENSOR', 'BRAKE_FLUID', 'COMMUNICATION_RELATED', 'NOT_BRAKE_RELATED');\n\n-- CreateEnum\nCREATE TYPE \"BrakeDtcFreshness\" AS ENUM ('FRESH', 'STALE', 'UNKNOWN');\n\n-- CreateEnum\nCREATE TYPE \"InsuranceCommunicationChannel\" AS ENUM ('EMAIL', 'API', 'WEBHOOK', 'MANUAL');\n\n-- CreateEnum\nCREATE TYPE \"InsurerHealthStatus\" AS ENUM ('HEALTHY', 'DEGRADED', 'DOWN', 'UNKNOWN');\n\n-- CreateEnum\nCREATE TYPE \"InsurerEnvironment\" AS ENUM ('SANDBOX', 'PRODUCTION');\n\n-- CreateEnum\nCREATE TYPE \"VehicleInsuranceStatus\" AS ENUM ('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'MISSING', 'PENDING_INQUIRY');\n\n-- CreateEnum\nCREATE TYPE \"InsuranceInquiryStatus\" AS ENUM ('DRAFT', 'SUBMITTED', 'PARTIALLY_SENT', 'FAILED', 'AWAITING_RESPONSE', 'RESPONDED', 'CLOSED');\n\n-- CreateEnum\nCREATE TYPE \"InquiryRecipientDeliveryStatus\" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'FAILED', 'BOUNCED');\n\n-- CreateEnum\nCREATE TYPE \"InquiryRecipientResponseStatus\" AS ENUM ('AWAITING', 'RECEIVED', 'DECLINED', 'NO_RESPONSE');\n\n-- CreateEnum\nCREATE TYPE \"LiveSharingStatus\" AS ENUM ('DRAFT', 'ACTIVE', 'PAUSED', 'REVOKED', 'EXPIRED');\n\n-- AlterEnum\nBEGIN;\nCREATE TYPE \"BookingPaymentRequestStatus_new\" AS ENUM ('DRAFT', 'OPEN', 'LINK_PENDING', 'CHECKOUT_READY', 'LINK_SENT', 'PROCESSING', 'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'FAILED', 'CANCELLED', 'EXPIRED', 'DISPUTED');\nALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" DROP DEFAULT;\nALTER TABLE \"booking_payment_requests\" A",
+      "empty_diff": false
+    }
+  },
+  "immutability_pass": true,
+  "production_exposure": "E_UNKNOWN",
+  "final_status": "CI_R3B1L_EXACT_FINAL_PARITY_RECOVERY_ACCEPTANCE_COMPLETED",
+  "pass": true
+}

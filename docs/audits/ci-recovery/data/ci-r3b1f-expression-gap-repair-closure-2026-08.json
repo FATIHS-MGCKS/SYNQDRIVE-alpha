@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "gaps": [
+    {
+      "contract_id": "R3B1F-vehicle_tire_setups-status",
+      "prerequisites": [
+        {
+          "object": "TireSetupStatus",
+          "type": "enum",
+          "creator": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+          "satisfied_at_boundary": true
+        },
+        {
+          "object": "vehicle_tire_setups",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-tire_health_snapshots-input_fingerprint",
+      "prerequisites": [
+        {
+          "object": "tire_health_snapshots",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-rental_driving_analyses-superseded_at",
+      "prerequisites": [
+        {
+          "object": "rental_driving_analyses",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-vehicle_service_events-document_extraction_id",
+      "prerequisites": [
+        {
+          "object": "vehicle_service_events",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-vehicle_damages-document_extraction_id",
+      "prerequisites": [
+        {
+          "object": "vehicle_damages",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_health_snapshots-vehicle_id",
+      "prerequisites": [
+        {
+          "object": "brake_health_snapshots",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_health_snapshots-model_version",
+      "prerequisites": [
+        {
+          "object": "brake_health_snapshots",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_health_snapshots-input_fingerprint",
+      "prerequisites": [
+        {
+          "object": "brake_health_snapshots",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_evidence-dedupe_key",
+      "prerequisites": [
+        {
+          "object": "brake_evidence",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-voice_phone_numbers-elevenlabs_ref_digest",
+      "prerequisites": [
+        {
+          "object": "voice_phone_numbers",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_evidence-active",
+      "prerequisites": [
+        {
+          "object": "brake_evidence",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_evidence-superseded_by_evidence_id",
+      "prerequisites": [
+        {
+          "object": "brake_evidence",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    },
+    {
+      "contract_id": "R3B1F-brake_health_alerts-status",
+      "prerequisites": [
+        {
+          "object": "TireSetupStatus",
+          "type": "enum",
+          "creator": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+          "satisfied_at_boundary": true
+        },
+        {
+          "object": "brake_health_alerts",
+          "type": "table",
+          "creator": "20260311224040_init",
+          "satisfied_at_boundary": true
+        }
+      ],
+      "closure_complete": true
+    }
+  ]
+}
