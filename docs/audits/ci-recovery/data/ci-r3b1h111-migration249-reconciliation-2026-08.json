@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1.1",
+  "source_old_matrix": "ci-r3b1h-insert-select-dependency-matrix-2026-08.json",
+  "source_successor_matrix": "ci-r3b1h111-insert-select-dependency-matrix-2026-08.json",
+  "old_records_total": 4,
+  "accounted": 4,
+  "reconciliation_mismatches": 0,
+  "mismatch_records": [],
+  "records": [
+    {
+      "old_record_id": "249-00123",
+      "old_record_identity": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement_order": 31,
+        "dependency_context": "INSERT_SELECT_WHERE",
+        "resolved_relation": "organization_memberships",
+        "resolved_alias": "m",
+        "required_property": "permissions"
+      },
+      "raw_reference": "m.permissions",
+      "old_classification": "MISSING_HISTORY",
+      "new_matrix_record_id": "249-00123",
+      "new_matrix_record_identity": {
+        "dependency_context": "INSERT_SELECT_WHERE",
+        "resolved_relation": "organization_memberships",
+        "resolved_alias": "m",
+        "required_property": "permissions",
+        "classification": "MISSING_HISTORY"
+      },
+      "binding_type": "PHYSICAL_RELATION",
+      "physical_relation": "organization_memberships",
+      "physical_property": "permissions",
+      "creator": {
+        "migration": null,
+        "statement": null
+      },
+      "new_classification": "MISSING_HISTORY",
+      "derivation_method": "matrix_lookup_by_migration_statement_property_with_alias_disambiguation"
+    },
+    {
+      "old_record_id": "249-00124",
+      "old_record_identity": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement_order": 31,
+        "dependency_context": "INSERT_SELECT_WHERE",
+        "resolved_relation": "a",
+        "resolved_alias": "a",
+        "required_property": "membership_id"
+      },
+      "raw_reference": "a.membership_id",
+      "old_classification": "MISSING_HISTORY",
+      "new_matrix_record_id": "249-00124",
+      "new_matrix_record_identity": {
+        "dependency_context": "INSERT_SELECT_SUBQUERY",
+        "resolved_relation": "organization_role_assignments",
+        "resolved_alias": "a",
+        "required_property": "membership_id",
+        "classification": "VALID"
+      },
+      "binding_type": "PHYSICAL_RELATION",
+      "physical_relation": "organization_role_assignments",
+      "physical_property": "membership_id",
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "derivation_method": "matrix_lookup_by_migration_statement_property_with_alias_disambiguation"
+    },
+    {
+      "old_record_id": "249-00126",
+      "old_record_identity": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement_order": 31,
+        "dependency_context": "INSERT_SELECT_WHERE",
+        "resolved_relation": "a",
+        "resolved_alias": "a",
+        "required_property": "is_current"
+      },
+      "raw_reference": "a.is_current",
+      "old_classification": "MISSING_HISTORY",
+      "new_matrix_record_id": "249-00126",
+      "new_matrix_record_identity": {
+        "dependency_context": "INSERT_SELECT_SUBQUERY",
+        "resolved_relation": "organization_role_assignments",
+        "resolved_alias": "a",
+        "required_property": "is_current",
+        "classification": "VALID"
+      },
+      "binding_type": "PHYSICAL_RELATION",
+      "physical_relation": "organization_role_assignments",
+      "physical_property": "is_current",
+      "creator": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement": 6
+      },
+      "new_classification": "VALID",
+      "derivation_method": "matrix_lookup_by_migration_statement_property_with_alias_disambiguation"
+    },
+    {
+      "old_record_id": "249-00128",
+      "old_record_identity": {
+        "migration": "20260721250000_iam_versioned_role_assignments",
+        "statement_order": 31,
+        "dependency_context": "INSERT_SELECT_SUBQUERY",
+        "resolved_relation": "m",
+        "resolved_alias": "m",
+        "required_property": "id"
+      },
+      "raw_reference": "m.id",
+      "old_classification": "MISSING_HISTORY",
+      "new_matrix_record_id": "249-00125",
+      "new_matrix_record_identity": {
+        "dependency_context": "INSERT_SELECT_SUBQUERY",
+        "resolved_relation": "organization_memberships",
+        "resolved_alias": "m",
+        "required_property": "id",
+        "classification": "VALID"
+      },
+      "binding_type": "PHYSICAL_RELATION",
+      "physical_relation": "organization_memberships",
+      "physical_property": "id",
+      "creator": {
+        "migration": "20260311224040_init",
+        "statement": 40
+      },
+      "new_classification": "VALID",
+      "derivation_method": "matrix_lookup_by_migration_statement_property_with_alias_disambiguation"
+    }
+  ],
+  "pass": true
+}

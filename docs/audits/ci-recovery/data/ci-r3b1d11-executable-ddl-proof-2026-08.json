@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1.1",
+  "disposable": true,
+  "production_connection": false,
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "pre_slot7_fixture_authority": [
+    "repair_closure.PREEXISTING_TABLES",
+    "vehicle_tire_setups",
+    "org_invoices",
+    "ActivityEntity (minimal enum stub when present in contracts)"
+  ],
+  "cumulative_execution": true,
+  "slots_passed": 10,
+  "slots_total": 10,
+  "slot_results": [
+    {
+      "slot": 7,
+      "status": "PASS",
+      "statement_count": 21,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 2,
+      "sequences_created": 0,
+      "tables_created": 2,
+      "constraints_created": 5,
+      "indexes_created": 7,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 3,
+      "unique_actions_attempted": 1,
+      "index_actions_attempted": 4
+    },
+    {
+      "slot": 8,
+      "status": "PASS",
+      "statement_count": 6,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 1,
+      "sequences_created": 0,
+      "tables_created": 1,
+      "constraints_created": 1,
+      "indexes_created": 4,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 0,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 3
+    },
+    {
+      "slot": 9,
+      "status": "PASS",
+      "statement_count": 18,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 3,
+      "sequences_created": 0,
+      "tables_created": 1,
+      "constraints_created": 3,
+      "indexes_created": 4,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 2,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 3
+    },
+    {
+      "slot": 10,
+      "status": "PASS",
+      "statement_count": 16,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 2,
+      "sequences_created": 0,
+      "tables_created": 2,
+      "constraints_created": 4,
+      "indexes_created": 5,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 2,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 3
+    },
+    {
+      "slot": 11,
+      "status": "PASS",
+      "statement_count": 24,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 1,
+      "sequences_created": 0,
+      "tables_created": 3,
+      "constraints_created": 7,
+      "indexes_created": 10,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 4,
+      "unique_actions_attempted": 2,
+      "index_actions_attempted": 5
+    },
+    {
+      "slot": 12,
+      "status": "PASS",
+      "statement_count": 22,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 0,
+      "sequences_created": 0,
+      "tables_created": 2,
+      "constraints_created": 7,
+      "indexes_created": 8,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 5,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 6
+    },
+    {
+      "slot": 13,
+      "status": "PASS",
+      "statement_count": 2,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 1,
+      "sequences_created": 0,
+      "tables_created": 0,
+      "constraints_created": 0,
+      "indexes_created": 0,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 0,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 0
+    },
+    {
+      "slot": 14,
+      "status": "PASS",
+      "statement_count": 2,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 1,
+      "sequences_created": 0,
+      "tables_created": 0,
+      "constraints_created": 0,
+      "indexes_created": 0,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 0,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 0
+    },
+    {
+      "slot": 15,
+      "status": "PASS",
+      "statement_count": 25,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 3,
+      "sequences_created": 0,
+      "tables_created": 2,
+      "constraints_created": 5,
+      "indexes_created": 8,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 3,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 6
+    },
+    {
+      "slot": 16,
+      "status": "PASS",
+      "statement_count": 4,
+      "execution_status": "PASS",
+      "first_failure": null,
+      "sqlstate": null,
+      "types_created": 0,
+      "sequences_created": 0,
+      "tables_created": 1,
+      "constraints_created": 2,
+      "indexes_created": 2,
+      "catalog_validation": {
+        "missing_expected": 0,
+        "definition_mismatch": 0
+      },
+      "fk_actions_attempted": 1,
+      "unique_actions_attempted": 0,
+      "index_actions_attempted": 1
+    }
+  ],
+  "slot8_hard_gate": {
+    "workflowstatus_create_count": 1,
+    "org_workflows_exists": true,
+    "scope_type": "jsonb",
+    "scope_default_valid_json": true,
+    "scope_semantic_match": true,
+    "pass": true
+  },
+  "slot10_hard_gate": {
+    "vehicle_damage_images_exists": true,
+    "vehicle_damages_exists": true,
+    "vehicle_damage_images.damage_id_exists": true,
+    "vehicle_damages.id_exists": true,
+    "fk_exists": true,
+    "pass": true
+  },
+  "fk_actions_attempted": 20,
+  "fk_actions_passed": 20,
+  "fk_actions_failed": 0,
+  "unique_actions_attempted": 3,
+  "unique_actions_passed": 3,
+  "unique_actions_failed": 0,
+  "index_actions_attempted": 31,
+  "index_actions_passed": 31,
+  "index_actions_failed": 0,
+  "execution_failures": 0,
+  "catalog_mismatches": 0,
+  "pass": true
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "contract_id": "R3B1F1-vehicle_tire_setups-status",
+      "relation": "vehicle_tire_setups",
+      "column": "status",
+      "postgres_type": "TireSetupStatus",
+      "nullable": false,
+      "default_semantics": "DATABASE_ENUM_DEFAULT",
+      "default_value": "ACTIVE",
+      "enum_dependency": "TireSetupStatus",
+      "foreign_key": null,
+      "generated_semantics": null,
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260716183000_tire_lifecycle_invariants",
+      "first_consumer_statement": 4,
+      "repair_boundary": {
+        "after_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+        "before_migration": "20260716183000_tire_lifecycle_invariants",
+        "topology_id": "R3B1F1-SLOT13-EXT-STATUS",
+        "rationale": "Earliest valid append-only boundary after TireSetupStatus enum (Slot 13) and vehicle_tire_setups table (init), before migration 157 partial-index predicate consumer."
+      },
+      "provenance": {
+        "sources": [
+          "schema.prisma:VehicleTireSetup.status@0ad82ac5aa095f05",
+          "migration:20260716183000_tire_lifecycle_invariants:statement:4:partial_index_predicate",
+          "catalog:ci-r3b1f1-pre-157-catalog-snapshot:vehicle_tire_setups.status=missing",
+          "replay:ci-r3b1f1-pre157-replay-state:last_applied=slot13"
+        ]
+      },
+      "enum_prerequisite": {
+        "type": "TireSetupStatus",
+        "creator_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+        "exists_at_boundary": true
+      }
+    }
+  ],
+  "compiled": [
+    {
+      "contract_id": "R3B1F1-vehicle_tire_setups-status",
+      "compiled_sql": "ALTER TABLE \"vehicle_tire_setups\" ADD COLUMN IF NOT EXISTS \"status\" \"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\";",
+      "compiled_sql_sha256": "9a5c80da61ce346bb84f70f8520a121104919b42a11f6a2c234fcfc9bfea50d8",
+      "semantic_equivalence": "PASS"
+    }
+  ]
+}

@@ -7,6 +7,8 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from ci_r3b1b_sql_literal_compiler import column_sql, qident  # noqa: E402
+
 REPO = Path(__file__).resolve().parents[4]
 CONTRACTS = REPO / "docs/audits/ci-recovery/data/ci-r3b1a32-predecessor-ddl-contracts-2026-08.json"
 TOPOLOGY = REPO / "docs/audits/ci-recovery/data/ci-r3b1a32-final-repair-topology-2026-08.json"
@@ -22,10 +24,6 @@ SLOT_MIGRATIONS: dict[int, str] = {
 }
 
 
-def qident(name: str) -> str:
-    return f'"{name}"'
-
-
 def enum_labels(contracts_by: dict[str, dict], enum_name: str, action: dict | None = None) -> list[str]:
     if action and action.get("labels"):
         return list(action["labels"])
@@ -37,21 +35,6 @@ def enum_labels(contracts_by: dict[str, dict], enum_name: str, action: dict | No
             if dep["name"] == enum_name:
                 return list(dep.get("labels", []))
     raise KeyError(f"enum labels not found for {enum_name}")
-
-
-def column_sql(col: dict[str, Any]) -> str:
-    typ = col["postgres_type"]
-    if not typ.startswith('"') and typ not in {"TEXT", "JSONB", "BOOLEAN", "INTEGER", "DOUBLE PRECISION"} and "TIMESTAMP" not in typ:
-        typ = qident(typ.strip('"'))
-    parts = [qident(col["column"]), typ]
-    if not col.get("nullable", True):
-        parts.append("NOT NULL")
-    sem = col.get("default_semantics")
-    if sem == "DATABASE_DEFAULT" and col.get("postgres_default"):
-        parts.append(f"DEFAULT {col['postgres_default']}")
-    elif sem == "IDENTITY_OR_SEQUENCE_GENERATED" and col.get("postgres_default"):
-        parts.append(f"DEFAULT {col['postgres_default']}")
-    return " ".join(parts)
 
 
 def render_create_enum(enum_name: str, labels: list[str]) -> str:

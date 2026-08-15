@@ -310,7 +310,7 @@ def build_slot_graph(
         "duplicate_create_records": duplicate_records,
         "cycles": cycles,
         "topological_order": order,
-        "valid": len(cycles) == 0 and not duplicate_records or True,
+        "valid": len(cycles) == 0 and not duplicate_records,
         "actions": sorted_actions,
         "objects_types_sequences_created": derive_created_objects_from_actions(sorted_actions),
     }

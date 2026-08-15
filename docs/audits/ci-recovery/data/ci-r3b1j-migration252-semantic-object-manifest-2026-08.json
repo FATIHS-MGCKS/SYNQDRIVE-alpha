@@ -1,0 +1,135 @@
+{
+  "table": {
+    "object_type": "TABLE",
+    "historical_intended_name": "organization_role_assignment_drift_reconciliation_applications",
+    "safe_test_name": "organization_role_assignment_drift_reconciliation_applications",
+    "columns": [
+      {
+        "name": "id",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "idempotency_key",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "organization_id",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "membership_id",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "evidence_hash",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "expected_git_commit",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "operator",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "reason",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "classification",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null
+      },
+      {
+        "name": "result",
+        "type": "JSONB",
+        "nullable": true,
+        "default": null
+      },
+      {
+        "name": "created_at",
+        "type": "TIMESTAMP(3)",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP"
+      }
+    ]
+  },
+  "primary_key": {
+    "object_type": "PRIMARY_KEY",
+    "columns": [
+      "id"
+    ],
+    "historical_intended_name": "organization_role_assignment_drift_reconciliation_applications_pkey",
+    "safe_test_name": "org_role_asgn_drift_recon_apps_pkey"
+  },
+  "unique_index": {
+    "object_type": "UNIQUE_INDEX",
+    "columns": [
+      "idempotency_key"
+    ],
+    "historical_intended_name": "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key",
+    "safe_test_name": "org_role_asgn_drift_recon_apps_idem_key"
+  },
+  "composite_index": {
+    "object_type": "INDEX",
+    "columns": [
+      "organization_id",
+      "membership_id",
+      "created_at"
+    ],
+    "historical_intended_name": "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx",
+    "safe_test_name": "org_role_asgn_drift_recon_apps_org_mbr_created_idx"
+  },
+  "foreign_keys": [
+    {
+      "object_type": "FOREIGN_KEY",
+      "columns": [
+        "organization_id"
+      ],
+      "references": {
+        "table": "organizations",
+        "columns": [
+          "id"
+        ]
+      },
+      "on_delete": "CASCADE",
+      "on_update": "CASCADE",
+      "historical_intended_name": "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey",
+      "safe_test_name": "org_role_asgn_drift_recon_apps_org_id_fkey"
+    },
+    {
+      "object_type": "FOREIGN_KEY",
+      "columns": [
+        "membership_id"
+      ],
+      "references": {
+        "table": "organization_memberships",
+        "columns": [
+          "id"
+        ]
+      },
+      "on_delete": "CASCADE",
+      "on_update": "CASCADE",
+      "historical_intended_name": "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey",
+      "safe_test_name": "org_role_asgn_drift_recon_apps_mbr_id_fkey"
+    }
+  ]
+}
