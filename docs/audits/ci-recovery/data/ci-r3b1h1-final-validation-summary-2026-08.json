@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "branch": "fix/ci-r3b1h1-insert-select-lineage-closure-2026-08",
+  "HEAD_SHA": "a2773d6c5f8d0e178df9ada285a794e83d8464e8",
+  "BASE_R3B1H_SHA": "a2773d6c5f8d0e178df9ada285a794e83d8464e8",
+  "migrations_scanned": 56,
+  "dependency_records": 250,
+  "old_missing_history_records": 90,
+  "old_records_accounted": 90,
+  "classification_totals": {
+    "TOTAL": 250,
+    "VALID": 231,
+    "MISSING_HISTORY": 1,
+    "ORDERING_DEFECT": 0,
+    "CONDITIONAL_SAFE": 0,
+    "FALSE_POSITIVE": 18,
+    "INTENTIONAL": 0,
+    "UNRESOLVED": 0
+  },
+  "alias_leakage": 0,
+  "lineage_coverage_gaps": 0,
+  "blocking_dependency_records": 1,
+  "unique_actionable_gaps": 1,
+  "exact_contracts": 1,
+  "uncontracted_gaps": 0,
+  "targeted_proofs": 1,
+  "unproven_gaps": 0,
+  "generic_contract_builder_status": "PASS",
+  "migration_249_proof": "PASS",
+  "synthetic_iam_proof": "PASS",
+  "immutability": {
+    "existing_migration_sql_changed": 0,
+    "new_prisma_migrations": 0,
+    "schema_prisma_changed": false,
+    "runtime_changed": false
+  },
+  "sweep_249_to_head": {
+    "first_migration": "20260721250000_iam_versioned_role_assignments",
+    "classification_totals": {
+      "TOTAL": 250,
+      "VALID": 231,
+      "MISSING_HISTORY": 1,
+      "ORDERING_DEFECT": 0,
+      "CONDITIONAL_SAFE": 0,
+      "FALSE_POSITIVE": 18,
+      "INTENTIONAL": 0,
+      "UNRESOLVED": 0
+    }
+  },
+  "root_cause_summary": {
+    "real_missing_history": 1,
+    "physical_alias_leakage": 69,
+    "subquery_alias_leakage": 12,
+    "other": 5,
+    "literal_function_type_token": 3
+  },
+  "gates": {
+    "old_90_accounted": true,
+    "migration_249_reconciled_4_4": true,
+    "unresolved_zero": true,
+    "alias_leakage_zero": true,
+    "lineage_coverage_gaps_zero": true,
+    "generic_contracts_valid": true,
+    "uncontracted_gaps_zero": true,
+    "unproven_gaps_zero": true,
+    "targeted_proof_pass": true,
+    "coverage_gaps_zero": true,
+    "golden_tests_pass": true,
+    "immutability_pass": true,
+    "pre249_replay_pass": true
+  },
+  "final_status": "CI_R3B1H1_INSERT_SELECT_LINEAGE_ACTIONABLE_GAP_CLOSURE_COMPLETED"
+}

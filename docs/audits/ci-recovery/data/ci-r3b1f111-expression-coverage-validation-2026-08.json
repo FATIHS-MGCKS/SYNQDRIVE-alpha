@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F.1.1",
+  "migrations_checked": 147,
+  "expression_coverage_gaps": 0,
+  "gaps": [],
+  "migration_157_golden_expected": [
+    "tires.active",
+    "tires.current_position",
+    "tires.tire_set_id",
+    "vehicle_tire_setups.removed_at",
+    "vehicle_tire_setups.status",
+    "vehicle_tire_setups.vehicle_id"
+  ],
+  "pass": true
+}

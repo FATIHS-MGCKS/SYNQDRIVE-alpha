@@ -1,0 +1,49 @@
+{
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "database_identifier": "synqdrive_r3b1f111_pre157",
+  "production_connection": false,
+  "manual_interventions": 0,
+  "special_composite_replay_steps": [
+    {
+      "migration": "20260413230000_add_composite_indexes_batch_c",
+      "accepted_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+      "observed_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+      "statement_count": 14,
+      "semantic_equivalence": {
+        "migration_statement_count": 14,
+        "script_statement_count": 14,
+        "missing_in_script": [],
+        "unexpected_in_script": [],
+        "semantic_equivalent": true
+      },
+      "index_validation": {
+        "missing_indexes": [],
+        "definition_mismatches": [],
+        "pass": true
+      },
+      "migration_state_reconciliation": {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "operation": "prisma migrate resolve --applied",
+        "validated_before_resolve": true
+      }
+    }
+  ],
+  "migration_state_reconciliations": [
+    {
+      "migration": "20260413230000_add_composite_indexes_batch_c",
+      "operation": "prisma migrate resolve --applied",
+      "validated_before_resolve": true
+    }
+  ],
+  "migrations_applied": 156,
+  "last_applied": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "stop_boundary": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "first_failed_migration": "20260716183000_tire_lifecycle_invariants",
+  "failure_ordinal": 157,
+  "sqlstate": "42703",
+  "error_message": "column \"status\" does not exist",
+  "reached_stop_boundary": true,
+  "consumer_not_executed": "20260716183000_tire_lifecycle_invariants",
+  "pass": true,
+  "migration_directories": 303
+}

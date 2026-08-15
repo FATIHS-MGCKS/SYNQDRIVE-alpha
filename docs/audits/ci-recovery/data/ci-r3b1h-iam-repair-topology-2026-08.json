@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "slots": [
+    {
+      "repair_id": "R3B1H-IAM-PERMISSIONS-PREDECESSOR",
+      "after_migration": "20260721240000_iam_last_selected_organization",
+      "before_migration": "20260721250000_iam_versioned_role_assignments",
+      "ordered_actions": [
+        {
+          "operation": "ADD_COLUMN",
+          "relation": "organization_memberships",
+          "column": "permissions",
+          "type": "jsonb",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "dependencies": [
+        "organization_memberships"
+      ],
+      "first_consumer": "20260721250000_iam_versioned_role_assignments"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F.1.1",
+  "database_identifier": "synqdrive_r3b1f111_pre157",
+  "proofs": [
+    {
+      "contract_id": "R3B1F111-vehicle_tire_setups-status",
+      "repair_boundary": {
+        "after_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+        "before_migration": "20260716183000_tire_lifecycle_invariants",
+        "topology_id": "R3B1F111-SLOT13-EXT-STATUS",
+        "rationale": "Earliest valid append-only boundary after TireSetupStatus enum (Slot 13) and vehicle_tire_setups table (init), before migration 157 partial-index predicate consumer."
+      },
+      "compiled_sql_sha256": "c563bed59819a1d6120171fb48681129abe84f0722a68927a470fd35abcbe7f6",
+      "compiled_sql": "ALTER TABLE \"vehicle_tire_setups\" ADD COLUMN \"status\" \"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\";",
+      "repair_execution": "PASS",
+      "catalog_parity": {
+        "pass": true,
+        "type": "TireSetupStatus",
+        "nullable": false,
+        "default": {
+          "kind": "DATABASE_ENUM_DEFAULT",
+          "value": "ACTIVE"
+        }
+      },
+      "consumer_migration": "20260716183000_tire_lifecycle_invariants",
+      "consumer_execution": "PASS",
+      "sqlstate": null,
+      "post_consumer_validation": {
+        "vehicle_tire_setups_partial_unique_index": "PASS",
+        "tires_partial_unique_index": "PASS"
+      },
+      "pass": true
+    }
+  ],
+  "pass": true
+}
