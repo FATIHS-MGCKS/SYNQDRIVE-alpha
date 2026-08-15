@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1D.1.2",
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "slots_tested": 10,
+  "expected_objects_total": 314,
+  "actual_matched_objects": 314,
+  "mismatch_records": [],
+  "category_counters": {
+    "table": 0,
+    "column": 0,
+    "type": 0,
+    "nullability": 0,
+    "default": 0,
+    "enum": 0,
+    "sequence": 0,
+    "primary_key": 0,
+    "unique": 0,
+    "foreign_key": 0,
+    "index": 0,
+    "total": 0
+  },
+  "per_slot": [
+    {
+      "slot": 7,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 42,
+      "catalog_matched_count": 42,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 8,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 67,
+      "catalog_matched_count": 67,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 9,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 118,
+      "catalog_matched_count": 118,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 10,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 147,
+      "catalog_matched_count": 147,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 11,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 203,
+      "catalog_matched_count": 203,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 12,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 253,
+      "catalog_matched_count": 253,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 13,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 254,
+      "catalog_matched_count": 254,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 14,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 255,
+      "catalog_matched_count": 255,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 15,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 305,
+      "catalog_matched_count": 305,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    {
+      "slot": 16,
+      "execution": "PASS",
+      "sqlstate": null,
+      "catalog_expected_count": 314,
+      "catalog_matched_count": 314,
+      "mismatch_count": 0,
+      "mismatches": []
+    }
+  ],
+  "slot8_special_proof": {
+    "table": "org_workflows",
+    "column": "scope",
+    "type": "jsonb",
+    "nullable": "NO",
+    "default_semantic_json": {
+      "type": "organization"
+    },
+    "expected_semantic_json": {
+      "type": "organization"
+    },
+    "workflowstatus_label_count_authority": 3,
+    "workflowstatus_labels_match": true,
+    "pass": true
+  },
+  "slot10_special_proof": {
+    "constraint": "vehicle_damage_images_damage_id_fkey",
+    "exists": true,
+    "local_table": "vehicle_damage_images",
+    "local_columns": [
+      "damage_id"
+    ],
+    "referenced_table": "vehicle_damages",
+    "referenced_columns": [
+      "id"
+    ],
+    "on_delete": "CASCADE",
+    "on_update": "CASCADE",
+    "referenced_pk_exists": true,
+    "pass": true
+  },
+  "fk_definitions_expected": 20,
+  "fk_definitions_matched": 20,
+  "fk_definition_mismatches": 0,
+  "pass": true
+}
