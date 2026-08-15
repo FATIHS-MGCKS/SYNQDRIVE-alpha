@@ -184,6 +184,7 @@ def main() -> int:
 
     m252_parity = strategy["m252_exact_parity"]
     write_json(DATA / f"{PREFIX}-final-m252-exact-parity-2026-08.json", m252_parity)
+    write_json(DATA / f"{PREFIX}-m252-exact-parity-2026-08.json", m252_parity)
     write_json(DATA / f"{PREFIX}-golden-catalog-inventory-2026-08.json", strategy["golden_catalog_inventory"])
     write_json(DATA / f"{PREFIX}-final-catalog-inventory-2026-08.json", strategy["final_catalog_inventory"])
 
@@ -197,6 +198,16 @@ def main() -> int:
         implicit=implicit,
     )
     write_json(DATA / f"{PREFIX}-full-catalog-delta-authority-2026-08.json", catalog_delta)
+    write_json(
+        DATA / f"{PREFIX}-delta-authority-proof-2026-08.json",
+        {
+            "schema_version": 1,
+            "phase": "CI-R3B1O.4-final-corrective",
+            "proof_count": len(catalog_delta.get("proofs", [])),
+            "pass": catalog_delta.get("pass", False),
+            "proofs": catalog_delta.get("proofs", []),
+        },
+    )
 
     catalog_engine = build_catalog_engine_crossvalidation(
         golden_inventory=strategy["golden_catalog_inventory"],
@@ -212,6 +223,10 @@ def main() -> int:
     r3b_parity = run_exact_parity(cfg, db_name, authority_sha)
     write_json(
         DATA / f"{PREFIX}-final-r3b-parity-2026-08.json",
+        {"objects": f"{r3b_parity.get('objects_matched', 0)}/19", "tables": f"{r3b_parity.get('tables_matched', 0)}/9", "enums": f"{r3b_parity.get('enums_matched', 0)}/10", "properties": f"{r3b_parity.get('properties_matched', 0)}/54", "pass": r3b_parity.get("pass", False), "detail": r3b_parity},
+    )
+    write_json(
+        DATA / f"{PREFIX}-r3b-parity-2026-08.json",
         {"objects": f"{r3b_parity.get('objects_matched', 0)}/19", "tables": f"{r3b_parity.get('tables_matched', 0)}/9", "enums": f"{r3b_parity.get('enums_matched', 0)}/10", "properties": f"{r3b_parity.get('properties_matched', 0)}/54", "pass": r3b_parity.get("pass", False), "detail": r3b_parity},
     )
 
@@ -243,6 +258,16 @@ def main() -> int:
         "pass": data_dep.get("counts", {}).get("UNKNOWN_DATA_DEPENDENCY", 0) == 0,
     }
     write_json(DATA / f"{PREFIX}-r3b1p-data-risk-input-2026-08.json", r3b1p_data)
+    write_json(
+        DATA / f"{PREFIX}-data-risk-2026-08.json",
+        {
+            "schema_version": 1,
+            "phase": "CI-R3B1O.4-final-corrective",
+            "UNKNOWN_DATA_DEPENDENCY": r3b1p_data["UNKNOWN_DATA_DEPENDENCY"],
+            "counts": r3b1p_data.get("counts", {}),
+            "pass": r3b1p_data["pass"],
+        },
+    )
 
     terminal = evaluate_final_corrective_terminal_acceptance(
         worktree_strict_empty=strict_empty,
