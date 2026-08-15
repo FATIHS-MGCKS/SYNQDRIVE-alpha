@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "selected_strategy_id": "S_M252_FWD",
+  "why_selected": "Minimal supported resolve ladder with deploy-to-HEAD and second-deploy idempotency",
+  "required_future_production_operations_plan_only": {
+    "read_only_preflight": true,
+    "migrate_resolve": [
+      "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+    ],
+    "forward_migration_required": true,
+    "migrate_deploy": true,
+    "post_deploy_validations": [
+      "ledger",
+      "catalog",
+      "second_deploy",
+      "r3b_parity"
+    ],
+    "abort_conditions": [
+      "any failed migration row",
+      "catalog regression",
+      "production fingerprint change"
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "final_status": "CI_R3B1O_COMBINED_RECONCILIATION_STRATEGY_SIMULATION_COMPLETED",
+  "pass": true,
+  "baseline": {
+    "PRE_R3B1O_SHA": "e675d30c34f344a78860af8d5aee5de2c0684b7c",
+    "R3B1N2_REMOTE_HEAD": "e675d30c34f344a78860af8d5aee5de2c0684b7c",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "RECOVERED_HEAD": "11b2043e328a71b799fde2bb091d2423ea6e8ef8"
+  },
+  "preflight": {
+    "checksum_matches_none": 0,
+    "checksum_unresolved": 0,
+    "history_mutations": 1,
+    "m252_mutation_class": "IDENTIFIER_ONLY",
+    "guard_status": true
+  },
+  "golden_twin": {
+    "isolation": true,
+    "catalog_fidelity": true,
+    "ledger_fidelity": true,
+    "no_data": true
+  },
+  "effect_contracts": {
+    "total": 3,
+    "full_equivalent": 2,
+    "partial": 0,
+    "absent": 0,
+    "unknown": 1,
+    "data_dependent": 1
+  },
+  "strategy_count": 4,
+  "control_baseline_result": {
+    "new_finished": 16,
+    "new_failed": 1,
+    "first_failure": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "prisma": "P3018",
+    "db_code": "42701"
+  },
+  "winning_strategy": "S_M252_FWD",
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "production_fingerprints_unchanged": true,
+  "production_mutations": 0
+}

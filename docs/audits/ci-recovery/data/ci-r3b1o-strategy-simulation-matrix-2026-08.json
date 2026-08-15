@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "strategies": [
+    {
+      "strategy_id": "S0_CONTROL",
+      "starting_golden_catalog_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+      "starting_golden_ledger_fingerprint": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+      "resolve_operations": [],
+      "temporary_migration": null,
+      "first_deploy": {
+        "exit_code": 1,
+        "new_finished": 16,
+        "new_failed": 1,
+        "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+        "prisma_error_code": "P3018",
+        "database_error_code": "42701",
+        "database_error_message": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+        "migrate_status_exit": 1
+      },
+      "second_deploy": {
+        "exit_code": 1,
+        "new_finished": 0,
+        "new_failed": 0,
+        "catalog_delta": false
+      },
+      "m252_observation": {
+        "ledger_rows_for_m252": 2,
+        "ledger_rows": [
+          {
+            "id": "fcc84ee2-482d-4894-be52-9625dd242934",
+            "migration_name": "20260721270000_iam_role_assignment_drift_reconciliation",
+            "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+            "started_at": "2026-07-22 13:49:36.11408+00",
+            "finished_at": "",
+            "rolled_back_at": "2026-07-22 13:49:51.332331+00",
+            "applied_steps_count": "0"
+          },
+          {
+            "id": "83b5a32d-da15-4dcc-b4c3-d2c5c4639219",
+            "migration_name": "20260721270000_iam_role_assignment_drift_reconciliation",
+            "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+            "started_at": "2026-07-22 13:49:51.333878+00",
+            "finished_at": "2026-07-22 13:49:51.333878+00",
+            "rolled_back_at": "",
+            "applied_steps_count": "0"
+          }
+        ],
+        "missing_effect": {
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "table": "organization_role_assignment_drift_reconciliation_applications",
+          "ledger_applied_catalog_effect_missing": true,
+          "classification": "M252_LEDGER_APPLIED_CATALOG_EFFECT_MISSING"
+        },
+        "append_only_forward_reconciliation_required": true
+      },
+      "pass": false,
+      "failure_reason": "deploy_or_idempotency_failed"
+    },
+    {
+      "strategy_id": "S1_R3B1G_RESOLVED",
+      "starting_golden_catalog_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+      "starting_golden_ledger_fingerprint": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+      "resolve_operations": [
+        {
+          "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+          "command": "prisma migrate resolve --applied 20260716182730_ci_r3b_tire_setup_status_predecessor",
+          "exit_code": 0,
+          "stdout": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_s1_r3b1g_resolved_4b35a5\", schema \"public\" at \"localhost:5432\"\n\nMigration 20260716182730_ci_r3b_tire_setup_status_predecessor marked as applied.\n\n",
+          "stderr": "",
+          "ledger_before_count": 315,
+          "ledger_after_count": 316,
+          "pass": true
+        }
+      ],
+      "temporary_migration": null,
+      "first_deploy": {
+        "exit_code": 1,
+        "new_finished": 17,
+        "new_failed": 1,
+        "first_failing_migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+        "prisma_error_code": "P3018",
+        "database_error_code": "42701",
+        "database_error_message": "column \"permissions\" of relation \"organization_memberships\" already exists",
+        "migrate_status_exit": 1
+      },
+      "second_deploy": {
+        "exit_code": 1,
+        "new_finished": 0,
+        "new_failed": 0,
+        "catalog_delta": false
+      },
+      "m252_observation": {
+        "ledger_rows_for_m252": 2,
+        "ledger_rows": [
+          {
+            "id": "fcc84ee2-482d-4894-be52-9625dd242934",
+            "migration_name": "20260721270000_iam_role_assignment_drift_reconciliation",
+            "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+            "started_at": "2026-07-22 13:49:36.11408+00",
+            "finished_at": "",
+            "rolled_back_at": "2026-07-22 13:49:51.332331+00",
+            "applied_steps_count": "0"
+          },
+          {
+            "id": "83b5a32d-da15-4dcc-b4c3-d2c5c4639219",
+            "migration_name": "20260721270000_iam_role_assignment_drift_reconciliation",
+            "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+            "started_at": "2026-07-22 13:49:51.333878+00",
+            "finished_at": "2026-07-22 13:49:51.333878+00",
+            "rolled_back_at": "",
+            "applied_steps_count": "0"
+          }
+        ],
+        "missing_effect": {
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "table": "organization_role_assignment_drift_reconciliation_applications",
+          "ledger_applied_catalog_effect_missing": true,
+          "classification": "M252_LEDGER_APPLIED_CATALOG_EFFECT_MISSING"
+        },
+        "append_only_forward_reconciliation_required": true
+      },
+      "pass": false,
+      "failure_reason": "deploy_or_idempotency_failed"
+    },
+    {
+      "strategy_id": "S2_R3B1G_R3B1I_RESOLVED",
+      "starting_golden_catalog_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+      "starting_golden_ledger_fingerprint": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+      "resolve_operations": [
+        {
+          "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+          "command": "prisma migrate resolve --applied 20260716182730_ci_r3b_tire_setup_status_predecessor",
+          "exit_code": 0,
+          "stdout": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_s2_r3b1g_r3b1i_resolved_dc9e5f\", schema \"public\" at \"localhost:5432\"\n\nMigration 20260716182730_ci_r3b_tire_setup_status_predecessor marked as applied.\n\n",
+          "stderr": "",
+          "ledger_before_count": 315,
+          "ledger_after_count": 316,
+          "pass": true
+        },
+        {
+          "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+          "command": "prisma migrate resolve --applied 20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+          "exit_code": 0,
+          "stdout": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_s2_r3b1g_r3b1i_resolved_dc9e5f\", schema \"public\" at \"localhost:5432\"\n\nMigration 20260721245000_ci_r3b_iam_membership_permissions_predecessor marked as applied.\n\n",
+          "stderr": "",
+          "ledger_before_count": 316,
+          "ledger_after_count": 317,
+          "pass": true
+        }
+      ],
+      "temporary_migration": null,
+      "first_deploy": {
+        "exit_code": 0,
+        "new_finished": 21,
+        "new_failed": 0,
+        "first_failing_migration": null,
+        "prisma_error_code": null,
+        "database_error_code": null,
+        "database_error_message": null,
+        "migrate_status_exit": 0
+      },
+      "second_deploy": {
+        "exit_code": 0,
+        "new_finished": 0,
+        "new_failed": 0,
+        "catalog_delta": false
+      },
+      "m252_observation": {
+        "ledger_rows_for_m252": 2,
+        "ledger_rows": [
+          {
+            "id": "fcc84ee2-482d-4894-be52-9625dd242934",
+            "migration_name": "20260721270000_iam_role_assignment_drift_reconciliation",
+            "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+            "started_at": "2026-07-22 13:49:36.11408+00",
+            "finished_at": "",
+            "rolled_back_at": "2026-07-22 13:49:51.332331+00",
+            "applied_steps_count": "0"
+          },
+          {
+            "id": "83b5a32d-da15-4dcc-b4c3-d2c5c4639219",
+            "migration_name": "20260721270000_iam_role_assignment_drift_reconciliation",
+            "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+            "started_at": "2026-07-22 13:49:51.333878+00",
+            "finished_at": "2026-07-22 13:49:51.333878+00",
+            "rolled_back_at": "",
+            "applied_steps_count": "0"
+          }
+        ],
+        "missing_effect": {
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "table": "organization_role_assignment_drift_reconciliation_applications",
+          "ledger_applied_catalog_effect_missing": true,
+          "classification": "M252_LEDGER_APPLIED_CATALOG_EFFECT_MISSING"
+        },
+        "append_only_forward_reconciliation_required": true
+      },
+      "pass": true,
+      "failure_reason": null
+    },
+    {
+      "strategy_id": "S_M252_FWD",
+      "starting_golden_catalog_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+      "starting_golden_ledger_fingerprint": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+      "resolve_operations": [
+        {
+          "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+          "command": "prisma migrate resolve --applied 20260716182730_ci_r3b_tire_setup_status_predecessor",
+          "exit_code": 0,
+          "stdout": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_s_m252_fwd_fcaf59\", schema \"public\" at \"localhost:5432\"\n\nMigration 20260716182730_ci_r3b_tire_setup_status_predecessor marked as applied.\n\n",
+          "stderr": "",
+          "ledger_before_count": 315,
+          "ledger_after_count": 316,
+          "pass": true
+        },
+        {
+          "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+          "command": "prisma migrate resolve --applied 20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+          "exit_code": 0,
+          "stdout": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_s_m252_fwd_fcaf59\", schema \"public\" at \"localhost:5432\"\n\nMigration 20260721245000_ci_r3b_iam_membership_permissions_predecessor marked as applied.\n\n",
+          "stderr": "",
+          "ledger_before_count": 316,
+          "ledger_after_count": 317,
+          "pass": true
+        }
+      ],
+      "temporary_migration": {
+        "temporary_migration_name": "20260815184603_ci_r3b1o_strategy_m252_forward_reconciliation",
+        "source_migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+        "purpose": "append_only_forward_reconciliation",
+        "target_table": "organization_role_assignment_drift_reconciliation_applications",
+        "sql_source": "corrected recovered migration 252 semantics",
+        "tracked_repository": false,
+        "apply_pass": true
+      },
+      "deploy_to_head": {
+        "first_deploy": {
+          "exit_code": 0,
+          "new_finished": 21,
+          "new_failed": 0,
+          "first_failing_migration": null,
+          "prisma_error_code": null,
+          "database_error_code": null,
+          "database_error_message": null,
+          "migrate_status_exit": 0
+        },
+        "second_deploy": {
+          "exit_code": 0,
+          "new_finished": 0,
+          "new_failed": 0,
+          "catalog_delta": false
+        },
+        "catalog_after_first": "6ee9642154a488101a220c1d8594cbc3782e8b8d910c9100b63a77d7d333e687",
+        "catalog_after_second": "6ee9642154a488101a220c1d8594cbc3782e8b8d910c9100b63a77d7d333e687",
+        "final_ledger_count": 338
+      },
+      "forward_deploy": {
+        "exit_code": 0,
+        "stdout": "\n> synqdrive-backend@0.1.0 prisma:migrate:deploy\n> prisma migrate deploy\n\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1o_strategy_s_m252_fwd_fcaf59\", schema \"public\" at \"localhost:5432\"\n\n306 migrations found in prisma/migrations\n\nApplying migration `20260815184603_ci_r3b1o_strategy_m252_forward_reconciliation`\n\nThe following migration(s) have been applied:\n\nmigrations/\n  \u2514\u2500 20260815184603_ci_r3b1o_strategy_m252_forward_reconciliation/\n    \u2514\u2500 migration.sql\n      \nAll migrations have been successfully applied.\n"
+      },
+      "second_deploy": {
+        "exit_code": 0,
+        "catalog_delta": false
+      },
+      "m252_table_present": true,
+      "pass": true,
+      "failure_reason": null
+    }
+  ]
+}
