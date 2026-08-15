@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "target_is_twin": true,
+  "target_is_production": false,
+  "executed_against_production": false,
+  "executed_against_twin": true,
+  "command": "npm run prisma:migrate:deploy",
+  "exit_code": 1,
+  "stdout": "\n> synqdrive-backend@0.1.0 prisma:migrate:deploy\n> prisma migrate deploy\n\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1n1_prod_twin_bc4320a1\", schema \"public\" at \"localhost:5432\"\n\n305 migrations found in prisma/migrations\n\nApplying migration `20260325161141_ci_r3b_bootstrap_trip_schema_baseline`\nApplying migration `20260412025000_ci_r3b_historical_predecessor_slot1`\nApplying migration `20260412610000_ci_r3b_historical_predecessor_slot2`\nApplying migration `20260413201500_ci_r3b_historical_predecessor_slot3`\nApplying migration `20260413225000_ci_r3b_historical_predecessor_slot4`\nApplying migration `20260417170000_ci_r3b_historical_predecessor_slot5`\nApplying migration `20260421180000_ci_r3b_historical_predecessor_slot6`\nApplying migration `20260424235959_ci_r3b_trip_casing_pre_shim`\nApplying migration `20260425000001_ci_r3b_trip_casing_post_shim`\nApplying migration `20260613203000_ci_r3b_post_vendor_predecessor_slot07`\nApplying migration `20260616130000_ci_r3b_post_vendor_predecessor_slot08`\nApplying migration `20260617120000_r3b_post_vendor_predecessor_slot09`\nApplying migration `20260617203000_ci_r3b_post_vendor_predecessor_slot10`\nApplying migration `20260620183000_ci_r3b_post_vendor_predecessor_slot11`\nApplying migration `20260716180000_r3b_post_vendor_predecessor_slot12`\nApplying migration `20260716182500_ci_r3b_post_vendor_predecessor_slot13`\nApplying migration `20260716182730_ci_r3b_tire_setup_status_predecessor`\n",
+  "stderr": "Error: P3018\n\nA migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve\n\nMigration name: 20260716182730_ci_r3b_tire_setup_status_predecessor\n\nDatabase error code: 42701\n\nDatabase error:\nERROR: column \"status\" of relation \"vehicle_tire_setups\" already exists\n\nDbError { severity: \"ERROR\", parsed_severity: Some(Error), code: SqlState(E42701), message: \"column \\\"status\\\" of relation \\\"vehicle_tire_setups\\\" already exists\", detail: None, hint: None, position: None, where_: None, schema: None, table: None, column: None, datatype: None, constraint: None, file: Some(\"tablecmds.c\"), line: Some(7347), routine: Some(\"check_for_column_name_collision\") }\n\n\n",
+  "duration_ms": 772,
+  "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+  "prisma_error_code": "P3018",
+  "sqlstate": null,
+  "postgres_error": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+  "blocker_type": "PENDING_EXISTING_COLUMN_COLLISION"
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "twin_database_name": "r3b1n1_prod_twin_bc4320a1",
+  "safety_assertion": {
+    "target_is_twin": true,
+    "target_is_production": false,
+    "production_connection_used_for_writes": false,
+    "pass": true,
+    "twin_database_name": "r3b1n1_prod_twin_bc4320a1",
+    "twin_fingerprint": {
+      "database_name_fingerprint_sha256": "5f3479de5050563dfd0c8fcf682963c13b34180458c0ea420fb7fed52bb093ad",
+      "host_fingerprint_sha256": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763"
+    },
+    "production_fingerprint": {
+      "host_fingerprint_sha256": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763",
+      "database_name_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d"
+    }
+  },
+  "schema_object_count": 370,
+  "ledger_row_count": 315,
+  "production_ledger_row_count": 315,
+  "ledger_fingerprint_match": true,
+  "business_data": {
+    "table_counts": {
+      "bookings": null,
+      "vehicles": null,
+      "organizations": null,
+      "organization_memberships": null,
+      "vehicle_trips": null
+    },
+    "total_business_rows_sampled": 0,
+    "pass": true
+  },
+  "catalog_ledger_fidelity_pass": true
+}
