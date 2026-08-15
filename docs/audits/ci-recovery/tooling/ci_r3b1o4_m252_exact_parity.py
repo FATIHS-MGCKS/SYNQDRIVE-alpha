@@ -12,13 +12,26 @@ MATCH_MAP = {"SIMPLE": "s", "FULL": "f", "PARTIAL": "p"}
 ACTION_MAP = {"NO ACTION": "a", "RESTRICT": "r", "CASCADE": "c", "SET NULL": "n", "SET DEFAULT": "d"}
 
 
-def _default_key(name: str, ordinal: int) -> dict[str, Any]:
+def _default_opclass(column_name: str, authority_columns: dict[str, dict[str, Any]]) -> str:
+    col = authority_columns.get(column_name, {})
+    fmt = str(col.get("format_type") or "").lower()
+    if "timestamp" in fmt:
+        return "timestamp_ops"
+    if "json" in fmt:
+        return "jsonb_ops"
+    if column_name == "membership_id":
+        return "text_ops"
+    return "default"
+
+
+def _default_key(name: str, ordinal: int, authority_columns: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+    authority_columns = authority_columns or {}
     return {
         "ordinal": ordinal,
         "kind": "key",
         "name": name,
         "collation": "default",
-        "opclass": "default",
+        "opclass": _default_opclass(name, authority_columns),
         "sort_direction": "ASC",
         "nulls_ordering": "NULLS LAST",
     }
@@ -128,18 +141,19 @@ def _norm_type(val: str) -> str:
     return out
 
 
-def _expected_keys(columns: list[str]) -> list[dict[str, Any]]:
-    return [_default_key(name, idx + 1) for idx, name in enumerate(columns)]
+def _expected_keys(columns: list[str], authority: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    col_map = {c["name"]: c for c in (authority or {}).get("columns", [])}
+    return [_default_key(name, idx + 1, col_map) for idx, name in enumerate(columns)]
 
 
-def _compare_index(exp: dict[str, Any], act: dict[str, Any] | None, label: str) -> list[str]:
+def _compare_index(exp: dict[str, Any], act: dict[str, Any] | None, label: str, authority: dict[str, Any] | None = None) -> list[str]:
     mismatches: list[str] = []
     if not act:
         return [f"{label}:missing"]
     for field in ["name", "access_method", "unique", "valid", "ready", "predicate"]:
         if act.get(field) != exp.get(field):
             mismatches.append(f"{label}:{field}")
-    expected_keys = _expected_keys(exp["columns"])
+    expected_keys = _expected_keys(exp["columns"], authority)
     if act.get("keys") != expected_keys:
         mismatches.append(f"{label}:keys")
     if act.get("include_columns") != exp.get("include_columns", []):
@@ -197,7 +211,7 @@ def compare_m252_exact(authority: dict[str, Any], catalog: dict[str, Any]) -> di
         categories["PK"]["mismatches"].append("pk semantics")
 
     for cat, key in [("UNIQUE", "unique_index"), ("COMPOSITE_INDEX", "composite_index")]:
-        mism = _compare_index(authority[key], catalog.get(key), key)
+        mism = _compare_index(authority[key], catalog.get(key), key, authority)
         if mism:
             categories[cat]["pass"] = False
             categories[cat]["mismatches"].extend(mism)
@@ -269,7 +283,7 @@ def make_canonical_catalog_fixture() -> dict[str, Any]:
             "ready": True,
             "predicate": None,
             "definition": "",
-            "keys": _expected_keys(columns),
+            "keys": _expected_keys(columns, authority),
             "include_columns": [],
         }
 

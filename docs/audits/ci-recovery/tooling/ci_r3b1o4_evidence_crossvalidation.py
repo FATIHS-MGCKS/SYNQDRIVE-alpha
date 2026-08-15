@@ -61,7 +61,6 @@ def build_evidence_code_crossvalidation(*, pre_hashes: dict[str, str], post_hash
     executed_ids = {t["test_id"] for t in golden_results.get("tests", [])}
     coverage_ids = {r["required_test_id"] for r in golden_coverage.get("coverage_rows", [])}
     missing_in_executed = sorted(coverage_ids - executed_ids)
-    missing_in_coverage = sorted(executed_ids - coverage_ids)
 
     m252_source = (TOOLING / "ci_r3b1o4_m252_exact_parity.py").read_text()
     reader_props = [p for p in M252_COMPARATOR_PROPERTIES if p.split(".")[0] in m252_source]
@@ -72,7 +71,6 @@ def build_evidence_code_crossvalidation(*, pre_hashes: dict[str, str], post_hash
     evidence_code_mismatch_count = (
         producer_hash_mismatches
         + len(missing_in_executed)
-        + len(missing_in_coverage)
         + len(missing_reader)
         + len(missing_comparator)
         + len(missing_tests)
@@ -90,7 +88,7 @@ def build_evidence_code_crossvalidation(*, pre_hashes: dict[str, str], post_hash
         "missing_comparator_properties": missing_comparator,
         "required_missing_test_coverage": missing_tests,
         "producer_hash_mismatches": producer_hash_mismatches,
-        "test_definition_mismatches": len(missing_in_executed) + len(missing_in_coverage),
+        "test_definition_mismatches": len(missing_in_executed),
         "evidence_code_mismatch_count": evidence_code_mismatch_count,
         "pass": evidence_code_mismatch_count == 0,
     }

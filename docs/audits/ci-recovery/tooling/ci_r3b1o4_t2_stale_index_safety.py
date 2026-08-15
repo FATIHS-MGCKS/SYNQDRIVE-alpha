@@ -26,7 +26,7 @@ EXPECTED_STALE = {
         "access_method": "btree",
         "keys": [
             {"ordinal": 1, "kind": "key", "name": "organization_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
-            {"ordinal": 2, "kind": "key", "name": "contact_phone", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
+            {"ordinal": 2, "kind": "key", "name": "contact_phone", "collation": "default", "opclass": "text_ops", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
         ],
         "include_columns": [],
         "predicate": None,

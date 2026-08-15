@@ -33,21 +33,23 @@ WHERE n.nspname='{schema}' AND tc.relname='{table}' AND ic.relname='{index_name}
     key_rows = _rows(
         run_sql,
         f"""
-SELECT k.ord, CASE WHEN a.attnum IS NULL OR a.attnum = 0 THEN 'include' ELSE 'key' END,
-       COALESCE(a.attname, pg_get_indexdef(i.indexrelid, k.ord, true)),
-       COALESCE(coll.collname, 'default'), COALESCE(opc.opcname, 'default'),
-       CASE WHEN (i.indoption[k.ord - 1] & 1) = 1 THEN 'DESC' ELSE 'ASC' END,
-       CASE WHEN (i.indoption[k.ord - 1] & 2) = 2 THEN 'NULLS FIRST' ELSE 'NULLS LAST' END
+SELECT s.idx + 1 AS ordinal,
+       'key' AS kind,
+       COALESCE(a.attname, pg_get_indexdef(i.indexrelid, s.idx + 1, true)) AS colname,
+       COALESCE(coll.collname, 'default') AS collation,
+       COALESCE(opc.opcname, 'default') AS opclass,
+       CASE WHEN (i.indoption[s.idx] & 1) = 1 THEN 'DESC' ELSE 'ASC' END AS sort_direction,
+       CASE WHEN (i.indoption[s.idx] & 2) = 2 THEN 'NULLS FIRST' ELSE 'NULLS LAST' END AS nulls_ordering
 FROM pg_index i
 JOIN pg_class ic ON ic.oid = i.indexrelid
 JOIN pg_class tc ON tc.oid = i.indrelid
 JOIN pg_namespace n ON n.oid = tc.relnamespace
-JOIN generate_subscripts(i.indkey, 1) AS k(ord) ON true
-LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[k.ord]
-LEFT JOIN pg_opclass opc ON opc.oid = i.indclass[k.ord - 1]
-LEFT JOIN pg_collation coll ON coll.oid = i.indcollation[k.ord - 1]
+JOIN generate_series(0, GREATEST(i.indnkeyatts - 1, 0)) AS s(idx) ON true
+LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[s.idx]
+LEFT JOIN pg_opclass opc ON opc.oid = i.indclass[s.idx]
+LEFT JOIN pg_collation coll ON coll.oid = i.indcollation[s.idx]
 WHERE n.nspname='{schema}' AND tc.relname='{table}' AND ic.relname='{index_name}'
-ORDER BY k.ord;
+ORDER BY s.idx;
 """,
     )
     keys = []
@@ -66,6 +68,40 @@ ORDER BY k.ord;
             includes.append(entry)
         else:
             keys.append(entry)
+    include_rows = _rows(
+        run_sql,
+        f"""
+SELECT s.idx + 1 + i.indnkeyatts AS ordinal,
+       'include' AS kind,
+       COALESCE(a.attname, pg_get_indexdef(i.indexrelid, s.idx + 1 + i.indnkeyatts, true)) AS colname,
+       COALESCE(coll.collname, 'default') AS collation,
+       COALESCE(opc.opcname, 'default') AS opclass,
+       'ASC' AS sort_direction,
+       'NULLS LAST' AS nulls_ordering
+FROM pg_index i
+JOIN pg_class ic ON ic.oid = i.indexrelid
+JOIN pg_class tc ON tc.oid = i.indrelid
+JOIN pg_namespace n ON n.oid = tc.relnamespace
+JOIN generate_series(0, GREATEST(i.indnkeyatts + i.indnincludedattrs - i.indnkeyatts - 1, 0)) AS s(idx) ON i.indnincludedattrs > 0
+LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[i.indnkeyatts + s.idx]
+LEFT JOIN pg_opclass opc ON opc.oid = i.indclass[i.indnkeyatts + s.idx]
+LEFT JOIN pg_collation coll ON coll.oid = i.indcollation[i.indnkeyatts + s.idx]
+WHERE n.nspname='{schema}' AND tc.relname='{table}' AND ic.relname='{index_name}'
+ORDER BY s.idx;
+""",
+    )
+    for row in include_rows:
+        includes.append(
+            {
+                "ordinal": int(row[0]),
+                "kind": row[1],
+                "name": row[2],
+                "collation": row[3],
+                "opclass": row[4],
+                "sort_direction": row[5],
+                "nulls_ordering": row[6],
+            }
+        )
     return {
         "schema": schema,
         "owner_table": p[1],
