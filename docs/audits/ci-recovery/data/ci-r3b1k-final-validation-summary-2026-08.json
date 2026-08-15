@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1K",
+  "evidence_input_sha": "b9ca9b0fb2431ec42004e2b14c1ae52fc78a0c74",
+  "BASE_R3B1J1_SHA": "b9ca9b0fb2431ec42004e2b14c1ae52fc78a0c74",
+  "IMPLEMENTATION_AUTHORITY_SHA256": "a2e8e728268bbd7d896a629787d8b207973f2e21182416d618145d08e8a64416",
+  "REPLAY_INPUT_MANIFEST_SHA256": "325f0f84b2fcf99b9d36e007f08f82311bde2de100548d8db1acfe97a94e7304",
+  "original_migration_sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+  "corrected_migration_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "approved_token_changes": 5,
+  "actual_token_changes": 5,
+  "unapproved_token_changes": 0,
+  "targeted_migration252_pass": true,
+  "strict_semantic_mismatch_count": 0,
+  "full_replay_final_status": "CI_R3B1K_MIGRATION252_IDENTIFIER_CORRECTION_FULL_REPLAY_COMPLETED",
+  "reached_absolute_head": true,
+  "failed_migrations": 0,
+  "manual_interventions": 0,
+  "r3b_parity_pass": true,
+  "final_status": "CI_R3B1K_MIGRATION252_IDENTIFIER_CORRECTION_FULL_REPLAY_COMPLETED",
+  "pass": true
+}

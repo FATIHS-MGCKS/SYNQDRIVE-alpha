@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "original_schema_sha256": "0ad82ac5aa095f050780a6ffbdf2fdfdbd607646f4feada6ceeb0ecfc68ec12f",
+  "current_schema_sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1",
+  "authorized_contract_count": 1,
+  "applied_change_count": 1,
+  "unauthorized_schema_changes": 0,
+  "prisma_validate": {
+    "exit_code": 0,
+    "pass": true,
+    "stderr": "\nPrisma schema warning:\n- The `onDelete` referential action of a relation should not be set to `SetNull` when a referenced field is required. We recommend either to choose another referential action, or to make the referenced fields optional. Read more at https://pris.ly/d/postgres-set-null \n",
+    "stdout": "Prisma schema loaded from prisma/schema.prisma\nThe schema at prisma/schema.prisma is valid \ud83d\ude80\n"
+  },
+  "prisma_generate": {
+    "exit_code": 0,
+    "pass": true,
+    "stderr": "",
+    "stdout": "Prisma schema loaded from prisma/schema.prisma\n\n\u2714 Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 10.74s\n\nStart by importing your Prisma Client (See: https://pris.ly/d/importing-client)\n\nTip: Want to react to database changes in your app as they happen? Discover how with Pulse: https://pris.ly/tip-1-pulse\n\n"
+  },
+  "pass": true
+}

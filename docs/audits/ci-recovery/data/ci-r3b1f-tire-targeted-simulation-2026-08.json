@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "database_identifier": "synqdrive_r3b1f_pre157",
+  "temporary_predecessor_repair_sql": "ALTER TABLE \"vehicle_tire_setups\"\n  ADD COLUMN IF NOT EXISTS \"status\" \"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\";",
+  "temporary_repair_executed": true,
+  "unchanged_consumer_migration": "20260716183000_tire_lifecycle_invariants",
+  "unchanged_consumer_executed": true,
+  "migration_157_pass": true,
+  "partial_index_vehicle_tire_setups_pass": true,
+  "partial_index_tires_pass": true,
+  "partial_indexes": {
+    "vehicle_tire_setups_one_active_setup_per_vehicle": {
+      "table": "vehicle_tire_setups",
+      "unique": true,
+      "columns": [
+        "vehicle_id"
+      ],
+      "predicate": "((status = 'ACTIVE'::\"TireSetupStatus\") AND (removed_at IS NULL))",
+      "valid": true,
+      "ready": true
+    },
+    "tires_one_active_tire_per_setup_position": {
+      "table": "tires",
+      "unique": true,
+      "columns": [
+        "tire_set_id",
+        "current_position"
+      ],
+      "predicate": "((active = true) AND (tire_set_id IS NOT NULL))",
+      "valid": true,
+      "ready": true
+    }
+  },
+  "migration_error": null,
+  "pass": true
+}

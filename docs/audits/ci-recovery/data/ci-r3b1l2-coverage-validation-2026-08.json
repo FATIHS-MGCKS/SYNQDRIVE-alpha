@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "unparsed_sql_statements": 0,
+  "duplicate_parsed_statements": 0,
+  "unclassified_operations": 0,
+  "multiply_classified_operations": 0,
+  "r3b_operations_without_authority_decision": 0,
+  "unresolved_operations": 0,
+  "parser_completeness_pass": true,
+  "pass": true
+}

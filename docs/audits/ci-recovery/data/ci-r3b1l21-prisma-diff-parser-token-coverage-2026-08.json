@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "input_bytes": 65491,
+  "input_lines": 1481,
+  "comment_metadata_blocks": 0,
+  "independent_sql_statement_count": 344,
+  "main_parser_sql_statement_count": 344,
+  "consumed_sql_tokens": 4364,
+  "unconsumed_sql_tokens": 0,
+  "duplicate_token_count": 0,
+  "parser_completeness": "PASS",
+  "pass": true,
+  "phase": "CI-R3B1L.2.1"
+}
