@@ -7,7 +7,7 @@
 | Branch | `fix/ci-r3b1h111-evidence-generic-contract-gates-2026-08` |
 | Parent R3B1H.1 SHA | `dd4f317b7e799122477a48822821bac9ca0aa3d3` |
 | Evidence input SHA | `dd4f317b7e799122477a48822821bac9ca0aa3d3` |
-| Final commit SHA | `7a2c4dc0766c881ceaec65c16b2b7a97192ccbdb` |
+| Final commit SHA | `7476a49d9f50f34b267204eddce1a8794d9fd721` |
 
 ## R3B1H.1 residual issues
 
