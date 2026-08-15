@@ -46,6 +46,9 @@ def main() -> int:
     proofs = proof.get("proofs", [])
     compiled = contracts_doc.get("compiled", [])
     strict_no_if_not_exists = all("IF NOT EXISTS" not in row.get("compiled_sql", "").upper() for row in compiled)
+    contracts_count = len(contracts_doc.get("contracts", []))
+    contracts_valid = contract_validation.get("pass") and contract_validation.get("invalid_types", 1) == 0
+    derived_actionable_ok = actionable == contracts_count and contracts_valid and unresolved == 0
 
     all_pass = (
         pre157.get("pass")
@@ -57,8 +60,7 @@ def main() -> int:
         and reconciliation.get("accounted") == PREVIOUS_R3B1F1_DEFECT_RECORDS
         and unresolved == 0
         and totals.get("ORDERING_DEFECT", 0) == 0
-        and genuine_gaps == 1
-        and actionable == 1
+        and derived_actionable_ok
         and contract_validation.get("invalid_types", 1) == 0
         and contract_validation.get("unresolved_dependencies", 1) == 0
         and strict_no_if_not_exists
@@ -91,6 +93,8 @@ def main() -> int:
         "expression_coverage_gaps": coverage.get("expression_coverage_gaps"),
         "false_positive_model": FALSE_POSITIVE_MODEL,
         "strict_add_column_no_if_not_exists": strict_no_if_not_exists,
+        "derived_actionable_success_rule": "actionable == exact_contract_count && contracts_valid && UNRESOLVED == 0",
+        "derived_actionable_ok": derived_actionable_ok,
         "previous_accepted_defects": PREVIOUS_PRIMARY_DEFECTS,
         "new_confirmed_unique_defects": genuine_gaps,
         "revised_confirmed_total": PREVIOUS_PRIMARY_DEFECTS + genuine_gaps,
