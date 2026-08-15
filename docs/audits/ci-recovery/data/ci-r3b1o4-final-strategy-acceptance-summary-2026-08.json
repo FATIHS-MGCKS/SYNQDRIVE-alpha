@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "PRE_R3B1O4_SHA": "e0e7b266770105854d0b1d9f7de533d780579076",
+    "R3B1O3_REMOTE_HEAD": "6ad6f839456a5da151842616037d63a9dd20a46f",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d"
+  },
+  "stale_index_authority": {
+    "invoice": true,
+    "whatsapp": true
+  },
+  "tail_contract": {
+    "schema_version": 1,
+    "phase": "CI-R3B1O.4",
+    "logical_tasks": [
+      {
+        "task_id": "M252",
+        "purpose": "Bring absent historical M252 catalog effect to canonical corrected physical authority",
+        "source_migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+        "target_table": "organization_role_assignment_drift_reconciliation_applications"
+      },
+      {
+        "task_id": "INVOICE_STALE_INDEX",
+        "purpose": "Remove obsolete stale recovery index org_invoices_invoice_number_key",
+        "sql": "DROP INDEX IF EXISTS \"org_invoices_invoice_number_key\";"
+      },
+      {
+        "task_id": "WHATSAPP_STALE_INDEX",
+        "purpose": "Remove obsolete stale recovery index whatsapp_conversations_organization_id_contact_phone_key",
+        "sql": "DROP INDEX IF EXISTS \"whatsapp_conversations_organization_id_contact_phone_key\";"
+      }
+    ],
+    "logical_task_count": 3,
+    "authorized_tasks": [
+      "M252",
+      "INVOICE_STALE_INDEX",
+      "WHATSAPP_STALE_INDEX"
+    ],
+    "execution_order": [
+      "INVOICE_STALE_INDEX",
+      "WHATSAPP_STALE_INDEX",
+      "M252"
+    ],
+    "execution_order_rationale": "Stale index drops precede M252 CREATE because no statement depends on M252 objects and stale indexes are not constraint-backed.",
+    "unauthorized_tasks": 0,
+    "uses_cascade": false,
+    "pass": true
+  },
+  "index_timeline": {
+    "T0_golden_baseline": {
+      "label": "T0",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": false,
+          "definition": null
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": false,
+          "definition": null
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": false
+    },
+    "T1_after_resolves_before_deploy": {
+      "label": "T1",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": false,
+          "definition": null
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": false,
+          "definition": null
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": false
+    },
+    "T2_after_normal_migrate_deploy": {
+      "label": "T2",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": true,
+          "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": true,
+          "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": false
+    },
+    "T3_after_tail_reconciliation": {
+      "label": "T3",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": false,
+          "definition": null
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": false,
+          "definition": null
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": true
+    }
+  },
+  "diff_attribution": {
+    "total_operations": 393,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNATTRIBUTED": 0,
+    "UNKNOWN_SCOPE": 0,
+    "stale_index_drop_ops_remaining": 0
+  },
+  "golden_tests": {
+    "executed": 86,
+    "passed": 86,
+    "failed": 0
+  },
+  "m252_exact_pass": true,
+  "r3b_parity_pass": true,
+  "strategy_pass": true,
+  "second_deploy": {
+    "pre_second_deploy_ledger_fingerprint": "494a2529a9bb46b2ac0b45c8dcf38c30b5f939793fd6cf494f246bceaf6d98f0",
+    "post_second_deploy_ledger_fingerprint": "494a2529a9bb46b2ac0b45c8dcf38c30b5f939793fd6cf494f246bceaf6d98f0",
+    "pre_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "post_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "second_deploy_exit_code": 0,
+    "new_ledger_rows": 0,
+    "new_finished_rows": 0,
+    "new_failed_rows": 0,
+    "catalog_delta": false,
+    "pass": true
+  },
+  "catalog_delta": {
+    "schema_version": 1,
+    "phase": "CI-R3B1O.4",
+    "golden_catalog_fingerprint": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+    "final_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_identical_to_golden": false,
+    "deltas": [
+      {
+        "object": "org_invoices_invoice_number_key",
+        "classification": "STALE_RECOVERY_EFFECT_REMOVED"
+      },
+      {
+        "object": "whatsapp_conversations_organization_id_contact_phone_key",
+        "classification": "STALE_RECOVERY_EFFECT_REMOVED"
+      },
+      {
+        "object": "organization_role_assignment_drift_reconciliation_applications",
+        "classification": "AUTHORIZED_M252_FORWARD_EFFECT"
+      },
+      {
+        "object": "pending_migration_chain",
+        "classification": "AUTHORIZED_PENDING_MIGRATION_EFFECT",
+        "count": 21
+      }
+    ],
+    "UNAUTHORIZED_FINAL_DELTA": 0,
+    "pass": true
+  },
+  "production_immutable": true,
+  "repository_immutable": {
+    "schema_unchanged": true,
+    "migrations_unchanged": true,
+    "runtime_unchanged": true,
+    "pass": true
+  },
+  "terminal": {
+    "pass": true,
+    "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+    "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+    "failures": []
+  },
+  "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "pass": true
+}

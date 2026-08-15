@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4",
+  "tasks": {
+    "INVOICE_STALE_INDEX": {
+      "classification": "DDL_SCHEMA_ONLY",
+      "dml": {
+        "insert": 0,
+        "update": 0,
+        "delete": 0
+      }
+    },
+    "WHATSAPP_STALE_INDEX": {
+      "classification": "DDL_SCHEMA_ONLY",
+      "dml": {
+        "insert": 0,
+        "update": 0,
+        "delete": 0
+      }
+    },
+    "M252": {
+      "classification": "DDL_SCHEMA_ONLY",
+      "dml": {
+        "insert": 0,
+        "update": 0,
+        "delete": 0
+      },
+      "note": "Empty new table; FK DDL uses ON DELETE CASCADE but no row deletes"
+    }
+  },
+  "totals": {
+    "insert": 0,
+    "update": 0,
+    "delete": 0
+  },
+  "UNKNOWN_DATA_DEPENDENCY": 0,
+  "pass": true
+}

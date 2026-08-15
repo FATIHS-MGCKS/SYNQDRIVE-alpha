@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "phase": "pre_tail",
+  "expected": {
+    "m252_table_absent": true,
+    "m252_objects_absent": true,
+    "parents_present": true,
+    "invoice_stale_present": true,
+    "whatsapp_stale_present": true,
+    "invoice_replacement_present": true,
+    "whatsapp_replacement_present": true
+  },
+  "actual": {
+    "m252_table_absent": true,
+    "m252_objects_absent": true,
+    "parents_present": true,
+    "invoice_stale_present": true,
+    "whatsapp_stale_present": true,
+    "invoice_replacement_present": true,
+    "whatsapp_replacement_present": true
+  },
+  "checks": {
+    "m252_table_absent": true,
+    "m252_objects_absent": true,
+    "parents_present": true,
+    "invoice_stale_present": true,
+    "whatsapp_stale_present": true,
+    "invoice_replacement_present": true,
+    "whatsapp_replacement_present": true
+  },
+  "stale_indexes": {
+    "org_invoices_invoice_number_key": true,
+    "whatsapp_conversations_organization_id_contact_phone_key": true
+  },
+  "pass": true
+}

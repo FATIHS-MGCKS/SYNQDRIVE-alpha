@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "PRE_R3B1O4_SHA": "e0e7b266770105854d0b1d9f7de533d780579076",
+    "R3B1O3_REMOTE_HEAD": "6ad6f839456a5da151842616037d63a9dd20a46f",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d"
+  },
+  "bound_inputs": {
+    "backend/prisma/schema.prisma": {
+      "path": "backend/prisma/schema.prisma",
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+      "exists": true
+    },
+    "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql": {
+      "path": "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql",
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+      "exists": true
+    },
+    "20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql": {
+      "path": "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql",
+      "sha256": "4d04659f1fad9032dcf96b7e8f7c181481956baa79bb4462c17f701663e63539",
+      "exists": true
+    },
+    "20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql": {
+      "path": "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql",
+      "sha256": "bab1399060fb1da4d57e3d9004aa2e9e6afc934e14857d55dc2be8e939056697",
+      "exists": true
+    },
+    "20260616180000_invoice_finance_workflow/migration.sql": {
+      "path": "backend/prisma/migrations/20260616180000_invoice_finance_workflow/migration.sql",
+      "sha256": "f494d49b4ec19be8682f3ebc54f3834f2b8b67633227abafc8ce358e434317e0",
+      "exists": true
+    },
+    "20260620190000_whatsapp_business_platform/migration.sql": {
+      "path": "backend/prisma/migrations/20260620190000_whatsapp_business_platform/migration.sql",
+      "sha256": "d9efe9484f04a3dbebe4ac411f1cd2cdde15402d0af7e9a878b3f33990d38e1e",
+      "exists": true
+    },
+    "ci-r3b1o3-corrective-two-index-provenance-2026-08.json": {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o3-corrective-two-index-provenance-2026-08.json",
+      "sha256": "655fa8dfc67094f3bcd2431f6fc4a21b7a4e3963987f571458b5493c19fd0e88",
+      "exists": true
+    },
+    "ci-r3b1o3-corrective-index-timeline-2026-08.json": {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o3-corrective-index-timeline-2026-08.json",
+      "sha256": "27edbb08e0d24c79985a1fb8d6516babb76c43917d2c96902076edd1f877b6aa",
+      "exists": true
+    },
+    "ci-r3b1o3-corrective-final-diff-provenance-2026-08.json": {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o3-corrective-final-diff-provenance-2026-08.json",
+      "sha256": "21ab4036f4e9ebd8c095660d797121ff4bc2577795c0776d1ecaf374c5c2e6b1",
+      "exists": true
+    },
+    "ci-r3b1o3-corrective-final-acceptance-summary-2026-08.json": {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o3-corrective-final-acceptance-summary-2026-08.json",
+      "sha256": "977eb2a098ea52a663dc7ce0298039dc4878f5e61d4787e4db7d090c42257868",
+      "exists": true
+    },
+    "ci-r3b1o3-corrective-final-m252-exact-parity-2026-08.json": {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o3-corrective-final-m252-exact-parity-2026-08.json",
+      "sha256": "1db07a99a56650324d93e9003cd0a5559338ff5ff67a0fcc226853e7773afcc6",
+      "exists": true
+    },
+    "ci-r3b1o3-corrective-final-r3b-parity-2026-08.json": {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o3-corrective-final-r3b-parity-2026-08.json",
+      "sha256": "4227009977d4bd42dd009c2a50eab23adce53a36f0107383a61dc49445a8977b",
+      "exists": true
+    }
+  }
+}

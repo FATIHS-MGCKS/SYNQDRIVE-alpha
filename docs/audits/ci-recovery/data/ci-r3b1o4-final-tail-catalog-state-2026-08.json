@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "stale_indexes": {
+    "org_invoices_invoice_number_key": {
+      "present": false,
+      "definition": null
+    },
+    "whatsapp_conversations_organization_id_contact_phone_key": {
+      "present": false,
+      "definition": null
+    }
+  },
+  "replacements": {
+    "org_invoices_organization_id_sequence_year_sequence_number_key": {
+      "present": true
+    },
+    "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+      "present": true,
+      "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+    }
+  },
+  "m252_table_present": true,
+  "pass": true
+}

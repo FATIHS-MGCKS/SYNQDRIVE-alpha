@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4",
+  "indexes": [
+    {
+      "index_name": "org_invoices_invoice_number_key",
+      "present": false,
+      "constraint_backing": false,
+      "valid": null,
+      "ready": null,
+      "owner_table": null,
+      "unique": null,
+      "definition": null,
+      "pass": true
+    },
+    {
+      "index_name": "whatsapp_conversations_organization_id_contact_phone_key",
+      "present": false,
+      "constraint_backing": false,
+      "valid": null,
+      "ready": null,
+      "owner_table": null,
+      "unique": null,
+      "definition": null,
+      "pass": true
+    }
+  ],
+  "constraint_backing": false,
+  "pass": true
+}
