@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.1",
+  "purpose": "append_only_forward_reconciliation_for_missing_m252_ddl",
+  "canonical_sql_source": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "preconditions": [
+    "target table absent",
+    "historical M252 ledger rows preserved",
+    "parent organizations and organization_memberships exist"
+  ],
+  "expected_catalog_delta": "create M252 table, PK, unique, index, two FKs with corrected identifiers",
+  "expected_ledger_delta": "one new finished row for forward migration identity",
+  "historical_row_preserved": true,
+  "tracked_repository": false
+}

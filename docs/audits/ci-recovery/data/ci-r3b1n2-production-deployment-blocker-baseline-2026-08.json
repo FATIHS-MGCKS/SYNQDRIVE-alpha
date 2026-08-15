@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "blockers": [
+    {
+      "id": "B_R3B1G",
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "type": "PENDING_EXISTING_COLUMN_COLLISION",
+      "severity": "BLOCKER_CRITICAL",
+      "evidence_class": "CONFIRMED_BY_ISOLATED_TWIN"
+    },
+    {
+      "id": "B_R3B1I",
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "type": "PENDING_EXISTING_COLUMN_COLLISION",
+      "severity": "BLOCKER_CRITICAL",
+      "evidence_class": "STATICALLY_CONFIRMED_NOT_REACHED"
+    },
+    {
+      "id": "B_CHECKSUM_HISTORY",
+      "type": "APPLIED_CHECKSUM_HISTORY_DIVERGENCE",
+      "severity": "BLOCKER_HIGH",
+      "evidence_class": "PROVENANCE_ONLY",
+      "count": 0
+    }
+  ]
+}

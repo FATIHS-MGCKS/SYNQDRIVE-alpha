@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "summary": {
+    "total": 3,
+    "full_equivalent": 2,
+    "partial": 0,
+    "absent": 0,
+    "unknown": 1,
+    "data_dependent": 1
+  },
+  "contracts": [
+    {
+      "contract_id": "EC_20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "classification": "FULL_EFFECT_ALREADY_PRESENT_EQUIVALENT",
+      "resolve_as_applied_allowed": true,
+      "statements": [
+        {
+          "kind": "add_column",
+          "table": "vehicle_tire_setups",
+          "column": "status",
+          "present": true,
+          "actual_type": "\"TireSetupStatus\"",
+          "actual_nullable": "NO",
+          "actual_default": "'ACTIVE'::\"TireSetupStatus\"",
+          "type_ok": true,
+          "null_ok": true,
+          "default_ok": true,
+          "classification": "FULL_EFFECT_ALREADY_PRESENT_EQUIVALENT",
+          "ordinal": 1,
+          "sql": "ALTER TABLE \"vehicle_tire_setups\" ADD COLUMN \"status\" \"TireSetupStatus\" NOT NULL DEFAULT 'ACTIVE'::\"TireSetupStatus\";"
+        }
+      ]
+    },
+    {
+      "contract_id": "EC_20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "classification": "FULL_EFFECT_ALREADY_PRESENT_EQUIVALENT",
+      "resolve_as_applied_allowed": true,
+      "statements": [
+        {
+          "kind": "add_column",
+          "table": "organization_memberships",
+          "column": "permissions",
+          "present": true,
+          "actual_type": "jsonb",
+          "actual_nullable": "YES",
+          "actual_default": "",
+          "type_ok": true,
+          "null_ok": true,
+          "default_ok": true,
+          "classification": "FULL_EFFECT_ALREADY_PRESENT_EQUIVALENT",
+          "ordinal": 1,
+          "sql": "ALTER TABLE \"organization_memberships\" ADD COLUMN \"permissions\" JSONB;"
+        }
+      ]
+    },
+    {
+      "contract_id": "EC_20260721270000_iam_role_assignment_drift_reconciliation",
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "classification": "DATA_DEPENDENT",
+      "resolve_as_applied_allowed": false,
+      "statements": [],
+      "reason": "migration contains DML"
+    }
+  ]
+}

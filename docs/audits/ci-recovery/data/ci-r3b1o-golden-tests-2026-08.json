@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "tests": [
+    {
+      "name": "m252_post_deploy_historical_mutation",
+      "pass": true,
+      "expected": "YES",
+      "actual": "True",
+      "detail": "IDENTIFIER_ONLY"
+    },
+    {
+      "name": "m252_mutation_class_identifier_only",
+      "pass": true,
+      "expected": "IDENTIFIER_ONLY",
+      "actual": "IDENTIFIER_ONLY",
+      "detail": null
+    },
+    {
+      "name": "mixed_eol_hm_dual_app_match",
+      "pass": true,
+      "expected": "MATCH mixed_lf_body_final_crlf",
+      "actual": "True",
+      "detail": null
+    },
+    {
+      "name": "checksum_matches_none_zero",
+      "pass": true,
+      "expected": "0",
+      "actual": "0",
+      "detail": null
+    },
+    {
+      "name": "checksum_unresolved_zero",
+      "pass": true,
+      "expected": "0",
+      "actual": "0",
+      "detail": null
+    },
+    {
+      "name": "wrong_database_guard_hard_fail",
+      "pass": true,
+      "expected": "HARD FAIL",
+      "actual": "True",
+      "detail": null
+    },
+    {
+      "name": "partial_effect_present_forbidden",
+      "pass": true,
+      "expected": "PARTIAL_EFFECT_PRESENT",
+      "actual": "PARTIAL_EFFECT_PRESENT",
+      "detail": null
+    },
+    {
+      "name": "partial_resolve_forbidden",
+      "pass": true,
+      "expected": "False",
+      "actual": "False",
+      "detail": null
+    },
+    {
+      "name": "dml_data_dependent",
+      "pass": true,
+      "expected": "DATA_DEPENDENT",
+      "actual": "DATA_DEPENDENT",
+      "detail": null
+    },
+    {
+      "name": "r3b1g_full_equivalent_on_golden",
+      "pass": true,
+      "expected": "FULL_EFFECT_ALREADY_PRESENT_EQUIVALENT",
+      "actual": "FULL_EFFECT_ALREADY_PRESENT_EQUIVALENT",
+      "detail": null
+    }
+  ],
+  "total": 10,
+  "passed": 10,
+  "pass": true
+}

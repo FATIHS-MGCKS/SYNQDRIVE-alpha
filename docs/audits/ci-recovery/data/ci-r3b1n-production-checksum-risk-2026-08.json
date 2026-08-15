@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "finished_migrations_compared": 282,
+  "checksum_matches": 211,
+  "checksum_mismatches": 71,
+  "history_sensitive_mismatches": [
+    {
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "production_checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+      "repo_checksum": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee"
+    }
+  ],
+  "applied_migration_checksum_divergence": true,
+  "migration252_original_finished_corrected_repo": true,
+  "prisma_deploy_risk": "HIGH"
+}

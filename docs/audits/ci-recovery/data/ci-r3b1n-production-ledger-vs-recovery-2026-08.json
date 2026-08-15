@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N",
+  "repo_migrations_total": 305,
+  "production_ledger_unique_names": 299,
+  "repo_present_in_production_finished": 282,
+  "repo_absent_from_production_finished": 23,
+  "production_only_names": [
+    "20260723230000_privacy_domain_foundation",
+    "20260723233000_legal_basis_assessment_professional",
+    "20260723234500_consent_provider_sharing_domains",
+    "20260724000000_enforcement_policy_relational_scopes",
+    "20260724010000_data_authorization_legacy_migration_tracking",
+    "20260724020000_privacy_policy_lifecycle",
+    "20260724030000_data_processing_review_workflow",
+    "20260724040000_data_authorization_audit_logging",
+    "20260724050000_data_authorization_revocation_workflow",
+    "20260724060000_data_authorization_deny_switch",
+    "20260724070000_provider_grant_webhook_idempotency",
+    "20260724080000_revocation_queue_control",
+    "20260724090000_processing_activity_register",
+    "20260724100000_dpia_workflow",
+    "20260724110000_processor_dpa_management",
+    "20260724120000_retention_deletion_legal_hold",
+    "20260724130000_compliance_evidence"
+  ],
+  "checksum_matches": 211,
+  "checksum_mismatches": 71,
+  "checksum_mismatch_records": [
+    {
+      "migration": "20260315000000_add_rental_driving_analysis",
+      "production_checksum": "9e9181525c6ed4d81981cd15b4157b694a3c9a3fd1bdcc629dca0d23558ec596",
+      "repo_checksum": "c93c9cdd6eeda4b6de8572959c8a465926695ea49df834feff063dc34dd70813"
+    },
+    {
+      "migration": "20260325161142_trip_architecture_refactor",
+      "production_checksum": "2230e671fd676f469760e5c819839e8026d96a43cd224a909dc2709fd1eeb8f9",
+      "repo_checksum": "55ae685ed433ab43f7725563b811cb59523993cf22d74ade0f43998224db9ad9"
+    },
+    {
+      "migration": "20260325170000_parts_accessories_module",
+      "production_checksum": "491f349387aca8ab888aaf57a771d2da0e38e0e62766de87926433edae109233",
+      "repo_checksum": "2383fdf40882796080c745668ff4ed019e303aff4067875121ed61ceb78140af"
+    },
+    {
+      "migration": "20260331000000_v3_hardware_type",
+      "production_checksum": "430c8ff7d323019d7dcf0720c9473762151d02e761e4ff31a156264a40b99b33",
+      "repo_checksum": "a5a0c42dafccc7920bca9c4d1c02a0747868852be99b440e8edda8633a571c58"
+    },
+    {
+      "migration": "20260331130000_vehicle_complaints",
+      "production_checksum": "8901002e056d976405998df1fb60510fe1632e0c7abf6b2af6896fbf2841b724",
+      "repo_checksum": "f6427d49edf96b00b200ee5ecd3265a576566398a4f245991fd2f9c9e0955ba3"
+    },
+    {
+      "migration": "20260408120000_high_mobility_phase1",
+      "production_checksum": "746769b9d877c5824f7489d0b4567fc9baf5980d93f845c8e0153c8242d1c1d4",
+      "repo_checksum": "bc606ac6d19e511695b9823cd61bc00b2ac929b8197f076a20f0a777c693fcfc"
+    },
+    {
+      "migration": "20260408140000_high_mobility_phase2",
+      "production_checksum": "2d759cfa599084aa638e55f5e40ee37c1b6fa6a8b8893f5d991cae754e8608b1",
+      "repo_checksum": "0d13f818272a82a556f84c00e3e0be7d437b069932167c282bafefdb09ba09fa"
+    },
+    {
+      "migration": "20260409120000_hm_signal_group_state",
+      "production_checksum": "584ddbc2423c1572b60872763ae489cd764b7ad53867c42ad3da09de186d04e6",
+      "repo_checksum": "10a075b76e38f6971955fd44fdfa721a272a3ddb4f975105fca56bab46e81702"
+    },
+    {
+      "migration": "20260410000000_add_enrichment_status_fields",
+      "production_checksum": "9b7cd12940988e84ee221d2b21c91c0c66dc3358c0e1bfdfc80f696a2a31d44f",
+      "repo_checksum": "203878b0c82e70d4099dd09da9a2998e1caca8446b89e19eba329d172fb7aefe"
+    },
+    {
+      "migration": "20260412013110_hm_dual_app_container_type",
+      "production_checksum": "a7fba32a255da2c13f92726445da67d8a4f3ac26f43cce39914fd94636017bf5",
+      "repo_checksum": "e9051743509c18bbd7c2577e6f102d9419a4cd6c22e8f65c5164de98005f479d"
+    },
+    {
+      "migration": "20260412020000_hm_latest_state_tables",
+      "production_checksum": "71b7db8198e7ef59c8813791560a8b1faef0f14a35554d865e1aee3df6b0402d",
+      "repo_checksum": "2172a26b85a63fae52f1ad3464247a1615754533852f37a1c681c143e426cf4e"
+    },
+    {
+      "migration": "20260412030000_platform_hardening_phase1",
+      "production_checksum": "ca850d4d77dac7a0057a960733e45ec88ba9c1e1ceb292cff937f856fc41c3ac",
+      "repo_checksum": "8246e165f3b5d463b14ce3787778c573dbc51ccd799590104505a1d51298dd10"
+    },
+    {
+      "migration": "20260412040000_audit_consent_provenance",
+      "production_checksum": "a8155871ed5b5f4c5de6f5d405f088f65a500c67cd3f3260a3682995e4d7b56a",
+      "repo_checksum": "5368ed3642249bc1decef3dfe36697096172a9ff3817015a62e8a715ccd4a321"
+    },
+    {
+      "migration": "20260413183000_brake_health_canonical_refactor",
+      "production_checksum": "268bfd5b9f11751c2628f709505bd9ee4ce4df05510a75e9c2a28a9cc9dc7985",
+      "repo_checksum": "f19a7f9f6a0cd79988cf4bd06d1f0ad1d630d1707771a02226c5b3af580bc501"
+    },
+    {
+      "migration": "20260413220000_battery_evidence_unique_dedup",
+      "production_checksum": "aa7115ee85dbec2f21495a64848b3e6800e43bcd727830ef5f1ec9aac24d909c",
+      "repo_checksum": "4488bfa1aa8b85f635d40df352ede09d2cd7bc2589fd7825ad88eff3389048bb"
+    },
+    {
+      "migration": "20260417160000_add_mqtt_only_hm_sync_status",
+      "production_checksum": "4f202e334b3d952150e20c5a8c44a4340daf19e1a38c9111c0742fcd58665190",
+      "repo_checksum": "9ea510ce23a38c573a4a10902512b542bb817c5ba89c5fc861b01e55352536cc"
+    },
+    {
+      "migration": "20260417180000_add_battery_critical_insight_type",
+      "production_checksum": "196d03fcf15d927e54d81a53b05634ef011e2abeb5ad47b0705c9186b8c4a2da",
+      "repo_checksum": "960e646e9fc0bc694814b85db57e77e0ff976a38592304374b5cf110439d18ce"
+    },
+    {
+      "migration": "20260417200000_add_service_overdue_insight_type",
+      "production_checksum": "669a1f60ecd309d8646867f1667bfdeb5138faac84d1b7934cca00e25e7648cc",
+      "repo_checksum": "7160ce7c8bce6509e23865f6da98fbc5f48479c433e4de0515a52d32cd0b4325"
+    },
+    {
+      "migration": "20260420010000_add_organization_profile_fields",
+      "production_checksum": "05693aac0b4acb7793d963d74c00af7b2a2f371063e52c3c9dc6780c13d16d71",
+      "repo_checksum": "d1615fe18c5cedbd01fb55c68b31dc3c0a9c99683dd3a2cc5b181d0470ceb65e"
+    },
+    {
+      "migration": "20260420020000_customer_operational_fields",
+      "production_checksum": "d87713585bd24a1dc2a78f0fa2bed5d9b6e3b7761a2851dc936f2a91f7f5d4e4",
+      "repo_checksum": "d21f33515a07e8157f62ce23dc5fd574662d2f38132a6751a6ab878c9e26731a"
+    },
+    {
+      "migration": "20260420030000_customer_document_urls",
+      "production_checksum": "52e7d57f051207073073d6d142b4593b2e0f04c071123cd7331b25a346965f40",
+      "repo_checksum": "cfbf256b661febecbf3ac8071b765ec210ed263597c9e6a9a48fbbe9aa962d2e"
+    },
+    {
+      "migration": "20260420040000_booking_handover_protocols",
+      "production_checksum": "34c5f32373a07a844a5f0a791491e45efe5b33bda0864b07f58bee1d0d60cdd9",
+      "repo_checksum": "81fce19913e1fbcf80bdca710b3f81f6f19b3d4b32d568f37b264f9fda0ced2b"
+    },
+    {
+      "migration": "20260420050000_rental_health_complaints_impact",
+      "production_checksum": "05b4379d04bbbf2149849ea864e0bad56cb401c3319a3c25c8768ffe6b5cf152",
+      "repo_checksum": "61953984d9891ad784a339aa775fa6defcbbe6e13228357ae54fdc1e6d5bda95"
+    },
+    {
+      "migration": "20260420060000_hm_compatibility_matrix",
+      "production_checksum": "9783cbd7bc76d1eb92ad718a7b7d8fdec6906d467cdd39f68ea1927e71c56453",
+      "repo_checksum": "04863ee7c813d4b3149a6520636885ae0fc1e995c3f3a248bc75870d28d16afa"
+    },
+    {
+      "migration": "20260420070000_vehicle_energy_events",
+      "production_checksum": "17317fcc2786e30c6c7892b633683429c90a2c45d134edeb7828e228b6b01b69",
+      "repo_checksum": "ab5cc3e3522216bb7af34158e8f47e7362978582728e1017ca2bf80586e36416"
+    },
+    {
+      "migration": "20260420080000_station_operational_fields",
+      "production_checksum": "b530a1cd30e6bbbbb7038973119927f29d32289be7ca153b34c4ee4df08ee046",
+      "repo_checksum": "569c86ca4febab58769717939420fdfa706f33a1d411ad823be823cfdc1da1bd"
+    },
+    {
+      "migration": "20260421120000_add_pickup_overdue_insight_type",
+      "production_checksum": "d100f244b40b143f2b20557264fa8ce22db197ec677571fc32ff4795779828ee",
+      "repo_checksum": "b1686de5faed9899489d65748b2a6aefabf0f3a9106c08fd349116304f7db49e"
+    },
+    {
+      "migration": "20260422010000_vehicle_current_safety_score",
+      "production_checksum": "7f1576769d3ede195797db514c8071f62003899dca167becaee68c3c6c3d9765",
+      "repo_checksum": "36410f5bf950b231cd70c4132c967fcd64d6b06c5c09739ac2cc8e47b259dcf2"
+    },
+    {
+      "migration": "20260425000000_retire_user_assignment_and_speeding_severity",
+      "production_checksum": "2d002152a0f579f4d4788e7bc6a1d6f2a9c2a6a8447047aa192d37ad494ba748",
+      "repo_checksum": "1c18164be77dead4db2ff500123754e8c924c9094bc09c41f2408dbcd56a4974"
+    },
+    {
+      "migration": "20260613000000_document_extraction_pipeline",
+      "production_checksum": "9aef543cc8f268f4b014b0605a5e8d4be121eb5b83a348a50273bc480eaeedf9",
+      "repo_checksum": "41c3fecc78166c6fbfacb710d158d679f28a15d6723a373b8e956a8179a2c6a8"
+    },
+    {
+      "migration": "20260613100000_dtc_knowledge_base",
+      "production_checksum": "7d8e7fe0d2ce1da3d4af0a9a3df2f5272f1a274fd6d04475e9693a46db464b2a",
+      "repo_checksum": "17e1998801a0b14001630a1ac978f92d92b56c99fac1b0ddeeef6b6fa5fe7653"
+    },
+    {
+      "migration": "20260613200000_booking_document_lifecycle",
+      "production_checksum": "71043054bc24befa8bc049d3cff8ed3060e1f0d94fe9ddd1d29d362f890092eb",
+      "repo_checksum": "f0dddf05b774ae00c5eedf605cbf71700a40f3a47f1ac4a88b2208c009787878"
+    },
+    {
+      "migration": "20260613210000_vendor_management_overhaul",
+      "production_checksum": "40e2b5bc9a79da0ec548ab0c93dba541c57bc4f9e8045d3cfb9799436a5d1274",
+      "repo_checksum": "35aa7b1535186819d3d63e472702aeb42560d86ac8b50b111267317287de135f"
+    },
+    {
+      "migration": "20260613230000_add_tire_critical_insight_type",
+      "production_checksum": "f3ab3e2103bb21845e08bc31c6a422072fa458600cdb5d79308f336de1dc3da2",
+      "repo_checksum": "bc5cdb714495a68e6c21ef9d77efed149e34c204e7fd82fc8d2a7de16e5f5491"
+    },
+    {
+      "migration": "20260613234000_add_brake_critical_insight_type",
+      "production_checksum": "b6891c0f7772e9bf36f47dd3a9966d651cc1bc9322bdef80e674b4bf91b88551",
+      "repo_checksum": "6c65cda6c04b15a6052468a40f0773b9df68b9cfc35b67c8ead9930ce3c94da1"
+    },
+    {
+      "migration": "20260613234500_brake_evidence_model",
+      "production_checksum": "b697883b37a9d0c86b024fc49f8fe37bbbf2a64af01f26bab5a95b8094bfcf35",
+      "repo_checksum": "feef39c6c5c48200376158ccc2e4ab56c4f6fe5e0caf9be113bc515407d3ed39"
+    },
+    {
+      "migration": "20260614000000_task_status_waiting",
+      "production_checksum": "c81d81fd1b18a7c036ab5aed332c5d4909323517102867c8d61d8198d75b681a",
+      "repo_checksum": "7cf848cdde28479750cd6eb08cabc4639d54192ebbd658b5364566d97565add5"
+    },
+    {
+      "migration": "20260614000100_task_action_layer",
+      "production_checksum": "717a246a9e0f349bd76ec09befa8f69613396b996c8416cae1435bb3099563bc",
+      "repo_checksum": "49c0e6d782be430037c7cecc6b71bf4cdf12b28fa08ee99c3fc67c82fa096cc6"
+    },
+    {
+      "migration": "20260614120000_task_dedup_org_scoped",
+      "production_checksum": "089feb95a47a644fcf0caf22cfe5c6ddb0aeece419b58d1f2c3afecd9d1ef09c",
+      "repo_checksum": "87c8bf2538e4e1b9326e32964e68e34cfaa31d6d5393549dc53a83dab6307f23"
+    },
+    {
+      "migration": "20260614120100_document_number_unique",
+      "production_checksum": "4e202c74b623793bd1e243581f5f46debb2a697e0f4055971c3dc5b2ac3bfaf8",
+      "repo_checksum": "0b1b7f4d80adf469f6e0808f3f933958f9b3832d34f10a22ad1f311eb609b44f"
+    },
+    {
+      "migration": "20260614120200_org_invoice_vendor_backfill",
+      "production_checksum": "e28c9d91655bf5d6c5584550e2b6e0e50c8081526240fc5874f38ec53101bd4f",
+      "repo_checksum": "02f9b62ef2c7972ef62bef9d920ecb58ba3d072ad8b55ecfdfcf079e1fcaa868"
+    },
+    {
+      "migration": "20260614120300_battery_health_tables_guard",
+      "production_checksum": "0c6dec8d38eae89501a773940550aad0c7373c044ceca067f5230f3e530131bf",
+      "repo_checksum": "93e5cd6dd5e2d5cd418dcffeae1eb3acbf35fbb664286dc3914b1bdd2b0feab4"
+    },
+    {
+      "migration": "20260615115900_customer_risk_not_assessed_enum",
+      "production_checksum": "9b24375a3ac069a8802fbc53f690bd54d5171ee260731ee863a0edbc41357120",
+      "repo_checksum": "f2b6b370c487a8305ae52bbb8ffdc02d7567041307595ee5ff73d7ed96ba74b3"
+    },
+    {
+      "migration": "20260615120000_customer_module_overhaul",
+      "production_checksum": "983359e8fc8ad63468913ba0203304d257a33c519d2675356cd159b7d82de61b",
+      "repo_checksum": "26c7fc754b08495ab789ec093b6ded46e4751d3136b21812c4bdfcc09af71302"
+    },
+    {
+      "migration": "20260615140000_misuse_cases",
+      "production_checksum": "21e1538000de185b736f01a10f68e689816f24e91a7ca779ae1d468e64ebfe02",
+      "repo_checksum": "fa56ed1452ce6a022937d898b0bb1e3a23c32dd5bb3172b5cf54605968afddad"
+    },
+    {
+      "migration": "20260616120000_customer_indexes_clearance_fix",
+      "production_checksum": "fd2d3d513e0cca3d129dd67dfc55b45792e48683fba158a569a1ff41fe13b887",
+      "repo_checksum": "5778e85b94a51851669736a441426735966184932e2ec2f488699c93cfcbe8d5"
+    },
+    {
+      "migration": "20260616120000_station_operational_module",
+      "production_checksum": "d16d0c86961c26bccf81a120a43137d575aa68602d0e1c8d02e71afc6b7026fb",
+      "repo_checksum": "5e186b28df0b593397b9d35a048d21cd5699cc69f5c815004cab3aaf0a998269"
+    },
+    {
+      "migration": "20260616140000_workflow_automation_runtime",
+      "production_checksum": "117563d99fccdeba5bb8e90397bc93d3fa0d997c6fd1b56f55d7b8d831c02f13",
+      "repo_checksum": "e74a112dcdacf2b3f1f12b11ca32ba0649f9b4042528c9d3f8f75fe0fd48121b"
+    },
+    {
+      "migration": "20260616160000_task_priority_normal_critical",
+      "production_checksum": "98b2f4f9dc4da925bc519c09669763006224cd4f8612bb3be7cf10961f81d555",
+      "repo_checksum": "e9816852ebad2a446977360a6ba894c6bf50e2a8112c8a855a9a189422c89e13"
+    },
+    {
+      "migration": "20260616180000_invoice_finance_workflow",
+      "production_checksum": "37aa3cddea0d3a9380a3692b46cf39cc3e1a2563cb9368a065825c32c1efe71e",
+      "repo_checksum": "f494d49b4ec19be8682f3ebc54f3834f2b8b67633227abafc8ce358e434317e0"
+    }
+  ],
+  "checksum_semantics": "production _prisma_migrations.checksum equals SHA-256 of migration.sql bytes (empirically verified on unchanged migrations)",
+  "production_last_finished_migration": "2026-07-26 18:56:19.646591+00"
+}

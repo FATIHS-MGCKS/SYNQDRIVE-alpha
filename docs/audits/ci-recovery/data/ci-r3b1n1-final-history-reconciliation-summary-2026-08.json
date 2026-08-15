@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N.1",
+  "final_status": "CI_R3B1N1_PRODUCTION_HISTORY_RECONCILIATION_TWIN_SIMULATION_COMPLETED",
+  "pass": true,
+  "baseline": {
+    "PRE_R3B1N1_SHA": "28f39b4329fbe7615bfafd7bcd28c04e7042438b",
+    "R3B1N_REMOTE_HEAD": "28f39b4329fbe7615bfafd7bcd28c04e7042438b",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "RECOVERED_HEAD": "11b2043e328a71b799fde2bb091d2423ea6e8ef8",
+    "DEPLOYED_SHA": "d8461e28c9b4cee121e34a1d79145d0ff6b97991"
+  },
+  "production_deployed_sha": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+  "migration_universe": {
+    "union_names": 322,
+    "common_finished": 282,
+    "checksum_matches": 211,
+    "checksum_mismatches": 71
+  },
+  "checksum_provenance": {
+    "total_mismatches": 71,
+    "matches_deployed_sha": 1,
+    "changed_after_deployed_sha": 1,
+    "matches_none": 70,
+    "high_risk_mismatches": 4,
+    "unresolved": 70
+  },
+  "production_only": {
+    "total": 17,
+    "resolved": 17
+  },
+  "repo_only": {
+    "total": 23,
+    "pending_and_physically_absent": 21,
+    "effect_already_present": 2,
+    "partial_effect_present": 0,
+    "unknown": 0
+  },
+  "migration252": {
+    "schema_version": 1,
+    "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+    "ledger_rows": [
+      {
+        "id_fingerprint_sha256": "f03b46cbf6cda2037d91a2fe2dd6e4e7ce54c0ced7941b046e43416dd1b6038c",
+        "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+        "started_at": "2026-07-22 13:49:36.11408+00",
+        "finished_at": "",
+        "rolled_back_at": "2026-07-22 13:49:51.332331+00",
+        "applied_steps_count": "0",
+        "logs_present": true,
+        "logs_sanitized_excerpt": "\"A migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve"
+      },
+      {
+        "id_fingerprint_sha256": "667c9f3e1475f514a40f2982e57a0ae20e44b375d6af2efdfc5bac569cb1a9de",
+        "checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+        "started_at": "2026-07-22 13:49:51.333878+00",
+        "finished_at": "2026-07-22 13:49:51.333878+00",
+        "rolled_back_at": "",
+        "applied_steps_count": "0",
+        "logs_present": true,
+        "logs_sanitized_excerpt": "\"\""
+      }
+    ],
+    "timeline_events": [
+      {
+        "attempt": 1,
+        "label": "M252_ROLLED_BACK"
+      },
+      {
+        "attempt": 1,
+        "label": "M252_EXECUTION_FAILED"
+      },
+      {
+        "attempt": 2,
+        "label": "M252_MARKED_APPLIED_WITH_ZERO_STEPS"
+      }
+    ],
+    "catalog_target_table_present": false,
+    "final_classification": "M252_ORIGINAL_FAILED_ROLLED_BACK_THEN_ZERO_STEP_MARKED_APPLIED",
+    "confidence": "MEDIUM",
+    "proof_level": "ledger_metadata_plus_catalog_absence"
+  },
+  "r3b1g": {
+    "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "ledger_pending": true,
+    "physical_effect_present": true,
+    "exact_likely_conflict": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+    "simulation_required": true,
+    "migration_sql_sha256": "55838c640e292a17a8409a5c49df035173b8668a00b4c08b91f3cde0eda25fca"
+  },
+  "r3b1i": {
+    "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+    "ledger_pending": true,
+    "physical_effect_present": true,
+    "exact_likely_conflict": "column \"permissions\" of relation \"organization_memberships\" already exists",
+    "simulation_required": true
+  },
+  "production_twin": {
+    "database_name": "r3b1n1_prod_twin_bc4320a1",
+    "schema_fidelity": true,
+    "ledger_fidelity": true,
+    "business_rows_copied": 0,
+    "non_production_confirmed": true
+  },
+  "prisma_migrate_status_before": {
+    "exit_code": 1,
+    "stdout_excerpt": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"r3b1n1_prod_twin_bc4320a1\", schema \"public\" at \"localhost:5432\"\n\n305 migrations found in prisma/migrations\n"
+  },
+  "twin_migrate_deploy": {
+    "exit_code": 1,
+    "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "first_blocker_type": "PENDING_EXISTING_COLUMN_COLLISION",
+    "prisma_error_code": "P3018",
+    "sqlstate": null
+  },
+  "production_ledger_fingerprint_before": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+  "production_ledger_fingerprint_after": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+  "production_ledger_unchanged": true,
+  "closest_revision_to_production_ledger": {
+    "scores": {
+      "deployed_sha": {
+        "ref": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+        "checksum_matches": 212,
+        "finished_rows_compared": 299
+      },
+      "main": {
+        "ref": "721ad893d15cfa46786a112860548ce12a2be71d",
+        "checksum_matches": 212,
+        "finished_rows_compared": 299
+      },
+      "recovered": {
+        "ref": "11b2043e328a71b799fde2bb091d2423ea6e8ef8",
+        "checksum_matches": 211,
+        "finished_rows_compared": 299
+      }
+    },
+    "closest_revision": "deployed_sha",
+    "closest_details": {
+      "ref": "d8461e28c9b4cee121e34a1d79145d0ff6b97991",
+      "checksum_matches": 212,
+      "finished_rows_compared": 299
+    }
+  },
+  "static_prediction_vs_simulation": {
+    "r3b1g": "PREDICTION_CONFIRMED",
+    "r3b1i": "PREDICTION_AMBIGUOUS",
+    "m252": "PREDICTION_CONFIRMED"
+  },
+  "history_consistency_class": "H4_MULTIPLE_HISTORY_DIVERGENCES",
+  "composite_exposure_class": "E5_MIXED_OR_INCONSISTENT",
+  "merge_safety_class": "MERGE_BLOCKED_EXPOSURE_INCONSISTENCY",
+  "deployment_safety_class": "DEPLOY_BLOCKED_LEDGER_HISTORY_AND_PENDING_COLLISION_RECONCILIATION",
+  "golden_tests": {
+    "pass": true,
+    "passed": 8,
+    "total": 8
+  },
+  "immutability": {
+    "schema_prisma_changed": false,
+    "modified_migrations": 0
+  },
+  "production_mutations": 0,
+  "next_phase": "CI-R3B1O \u2014 COMBINED LEDGER/HISTORY RECONCILIATION + DISPOSABLE STRATEGY SIMULATION",
+  "twin_limitations": [
+    "schema-only twin reproduces DDL/ledger fidelity but not application data",
+    "data-dependent failures may not appear in twin simulation"
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1J",
+  "evidence_input_sha": "27d49551c8093ae475bf9cdc9815713968ceb08c",
+  "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "statement_count": 5,
+  "first_failing_statement_ordinal": 2,
+  "failing_statement_sql": "CREATE UNIQUE INDEX \"organization_role_assignment_drift_reconciliation_applications_idempotency_key_key\"\n  ON \"organization_role_assignment_drift_reconciliation_applications\"(\"idempotency_key\")",
+  "SQLSTATE": "42P07",
+  "postgresql_error": "NOTICE:  identifier \"organization_role_assignment_drift_reconciliation_applications_idempotency_key_key\" will be truncated to \"organization_role_assignment_drift_reconciliation_applications_\"\nERROR:  relation \"organization_role_assignment_drift_reconciliation_applications_\" already exists",
+  "prior_statements": [
+    {
+      "statement_ordinal": 1,
+      "status": "PASS",
+      "sql": "CREATE TABLE \"organization_role_assignment_drift_reconciliation_applications\" (\n  \"id\" TEXT NOT NULL,\n  \"idempotency_key\" TEXT NOT NULL,\n  \"organization_id\" TEXT NOT NULL,\n  \"membership_id\" TEXT NOT NULL,\n  \"evidence_hash\" TEXT NOT NULL,\n  \"expected_git_commit\" TEXT NOT NULL,\n  \"operator\" TEXT NOT NULL,\n  \"reason\" TEXT NOT NULL,\n  \"classification\" TEXT NOT NULL,\n  \"result\" JSONB,\n  \"created_at\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n\n  CONSTRAINT \"organization_role_assignment_drift_reconciliation_applications_pkey\" PRIMARY KEY (\"id\")\n)"
+    },
+    {
+      "statement_ordinal": 2,
+      "status": "FAIL",
+      "sql": "CREATE UNIQUE INDEX \"organization_role_assignment_drift_reconciliation_applications_idempotency_key_key\"\n  ON \"organization_role_assignment_drift_reconciliation_applications\"(\"idempotency_key\")",
+      "stderr": "NOTICE:  identifier \"organization_role_assignment_drift_reconciliation_applications_idempotency_key_key\" will be truncated to \"organization_role_assignment_drift_reconciliation_applications_\"\nERROR:  relation \"organization_role_assignment_drift_reconciliation_applications_\" already exists",
+      "sqlstate": "42P07"
+    }
+  ],
+  "catalog_before_failure": {
+    "relations": [
+      {
+        "oid": "698631",
+        "relname": "organization_role_assignment_drift_reconciliation_applications",
+        "relkind": "r",
+        "schema": "public"
+      },
+      {
+        "oid": "698637",
+        "relname": "organization_role_assignment_drift_reconciliation_applications_",
+        "relkind": "i",
+        "schema": "public"
+      }
+    ],
+    "constraints": [
+      {
+        "oid": "698638",
+        "conname": "organization_role_assignment_drift_reconciliation_applications_",
+        "contype": "p",
+        "table_name": "organization_role_assignment_drift_reconciliation_applications"
+      }
+    ],
+    "indexes": [
+      {
+        "index_name": "organization_role_assignment_drift_reconciliation_applications_",
+        "table_name": "organization_role_assignment_drift_reconciliation_applications",
+        "indisunique": "t",
+        "indisprimary": "t"
+      }
+    ]
+  },
+  "existing_collision_object": {
+    "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+    "exact_relations": [
+      {
+        "oid": "698637",
+        "relname": "organization_role_assignment_drift_reconciliation_applications_",
+        "relkind": "i",
+        "schema": "public"
+      }
+    ],
+    "exact_constraints": [
+      {
+        "oid": "698638",
+        "conname": "organization_role_assignment_drift_reconciliation_applications_",
+        "contype": "p",
+        "table_name": "organization_role_assignment_drift_reconciliation_applications"
+      }
+    ],
+    "matching_indexes": [
+      {
+        "index_name": "organization_role_assignment_drift_reconciliation_applications_",
+        "table_name": "organization_role_assignment_drift_reconciliation_applications",
+        "indisunique": "t",
+        "indisprimary": "t"
+      }
+    ]
+  },
+  "pre_252_replay": {
+    "pass": true,
+    "applied_count": 251,
+    "last_applied": "20260721260000_iam_role_change_applications",
+    "stop_before": "20260721270000_iam_role_assignment_drift_reconciliation",
+    "special_steps": [
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "accepted_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+        "observed_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+        "statement_count": 14,
+        "semantic_equivalence": {
+          "migration_statement_count": 14,
+          "script_statement_count": 14,
+          "missing_in_script": [],
+          "unexpected_in_script": [],
+          "semantic_equivalent": true
+        },
+        "index_validation": {
+          "missing_indexes": [],
+          "definition_mismatches": [],
+          "pass": true
+        },
+        "migration_state_reconciliation": null
+      }
+    ],
+    "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+    "manual_interventions": 0,
+    "production_connection": false
+  },
+  "max_identifier_length": 63,
+  "deterministic_reproduction": {
+    "same_first_failing_statement": true,
+    "same_sqlstate": true,
+    "same_collision_name": true,
+    "pass": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1.1",
+  "tracked_cache_files": 0,
+  "tracked_cache_paths": [],
+  "untracked_cache_dirs": 1,
+  "untracked_cache_files": 20,
+  "pass": true
+}

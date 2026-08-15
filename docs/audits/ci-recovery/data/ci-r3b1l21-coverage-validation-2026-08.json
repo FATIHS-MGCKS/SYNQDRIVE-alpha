@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.2.1",
+  "unparsed_sql_statements": 0,
+  "duplicate_parsed_statements": 0,
+  "unclassified_operations": 0,
+  "multiply_classified_operations": 0,
+  "r3b_operations_without_authority_decision": 0,
+  "unresolved_operations": 0,
+  "independent_coverage_pass": true,
+  "pass": true
+}

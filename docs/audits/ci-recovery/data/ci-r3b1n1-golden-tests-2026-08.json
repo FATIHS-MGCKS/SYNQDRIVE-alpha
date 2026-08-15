@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N.1",
+  "tests": [
+    {
+      "name": "checksum_matches_deployed_sha_only",
+      "pass": true,
+      "expected": "MATCHES_DEPLOYED_SHA_ONLY + POST_DEPLOY mutation",
+      "actual": "MATCHES_DEPLOYED_SHA_ONLY",
+      "detail": {
+        "classification": "MATCHES_DEPLOYED_SHA_ONLY",
+        "post_deploy_historical_migration_mutation": true,
+        "matches": {
+          "deployed": true,
+          "main": false,
+          "recovered": false
+        }
+      }
+    },
+    {
+      "name": "production_only_present_at_deployed_sha",
+      "pass": true,
+      "expected": "production-only classifier returns valid enum",
+      "actual": "PROD_ONLY_REMOVED_LATER",
+      "detail": null
+    },
+    {
+      "name": "repo_only_effect_already_present",
+      "pass": true,
+      "expected": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "actual": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "detail": null
+    },
+    {
+      "name": "migration252_zero_step_finished_row",
+      "pass": true,
+      "expected": "M252_ORIGINAL_FAILED_ROLLED_BACK_THEN_ZERO_STEP_MARKED_APPLIED",
+      "actual": "M252_ORIGINAL_FAILED_ROLLED_BACK_THEN_ZERO_STEP_MARKED_APPLIED",
+      "detail": null
+    },
+    {
+      "name": "unknown_provenance_matches_none",
+      "pass": true,
+      "expected": "MATCHES_NONE",
+      "actual": "MATCHES_NONE",
+      "detail": null
+    },
+    {
+      "name": "twin_target_not_production_fingerprint",
+      "pass": true,
+      "expected": "non-production twin pass",
+      "actual": "True",
+      "detail": null
+    },
+    {
+      "name": "production_fingerprint_collision_hard_fail",
+      "pass": true,
+      "expected": "collision path does not authorize writes",
+      "actual": "{'target_is_twin': True, 'target_is_production': False, 'production_connection_used_for_writes': False, 'pass': True, 'twin_database_name': 'synqdrive', 'twin_fingerprint': {'database_name_fingerprint_sha256': 'd263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d', 'host_fingerprint_sha256': '12ca17b49af2289436f303e0166030a21e525d266e209267433801a8fd4071a0'}, 'production_fingerprint': {'host_fingerprint_sha256': '49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763', 'database_name_fingerprint_sha256': 'd263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d'}}",
+      "detail": null
+    },
+    {
+      "name": "migration_deploy_failure_parser_fixture",
+      "pass": true,
+      "expected": "PENDING_EXISTING_COLUMN_COLLISION",
+      "actual": "PENDING_EXISTING_COLUMN_COLLISION",
+      "detail": {
+        "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+        "prisma_error_code": "P3018",
+        "sqlstate": null,
+        "postgres_error": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+        "blocker_type": "PENDING_EXISTING_COLUMN_COLLISION"
+      }
+    }
+  ],
+  "total": 8,
+  "passed": 8,
+  "pass": true
+}

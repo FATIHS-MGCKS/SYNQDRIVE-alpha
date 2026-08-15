@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.2",
+  "path": "backend/prisma/schema.prisma",
+  "source": "origin/audit/ci-r3b1o1-final-strategy-acceptance-2026-08",
+  "sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1",
+  "byte_size": 647668,
+  "line_count": 14397
+}

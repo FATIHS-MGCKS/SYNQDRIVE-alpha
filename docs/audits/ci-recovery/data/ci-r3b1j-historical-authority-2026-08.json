@@ -1,0 +1,21 @@
+{
+  "introduction_commit_sha": "c3166e3efba83871ec4200a4f6ba37db3e2acbab",
+  "introduction_date": "2026-07-21T22:32:02+00:00",
+  "model_at_introduction_present": true,
+  "current_model_present": true,
+  "explicit_map_names_in_prisma": false,
+  "identifier_classifications": {
+    "organization_role_assignment_drift_reconciliation_applications_pkey": "PRISMA_GENERATED_NAME",
+    "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key": "PRISMA_GENERATED_NAME",
+    "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx": "PRISMA_GENERATED_NAME",
+    "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey": "PRISMA_GENERATED_NAME",
+    "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey": "PRISMA_GENERATED_NAME",
+    "organization_role_assignment_drift_reconciliation_applications": "PRISMA_GENERATED_NAME"
+  },
+  "runtime_references_to_physical_names": {
+    "organization_role_assignment_drift_reconciliation_applications_pkey": [],
+    "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key": [],
+    "organization_role_assignment_drift_reconciliation_applications_": []
+  },
+  "runtime_depends_on_physical_constraint_names": false
+}

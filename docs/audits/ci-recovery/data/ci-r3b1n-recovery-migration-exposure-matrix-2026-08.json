@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "migrations": [
+    {
+      "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "repo_checksum": "f3579409eb14282ca656f03b36c5f300bcec9dfd2e64dbf197e9c9fb54c7531c",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "repo_checksum": "c1c75f5503258e9af51a4e5073b6a3352e736eb19d1a5e742a0c428ef0d00d28",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "repo_checksum": "7180508877117aa0238e94dfbcabfed224b340a3d3edb162d1139b59fc537930",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "repo_checksum": "4d04659f1fad9032dcf96b7e8f7c181481956baa79bb4462c17f701663e63539",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "repo_checksum": "3ac22b6b3c4ac9370e598b0fdde2dbd0c254034c8a2d1584d877020658bdffc8",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "repo_checksum": "4e9c37a35b679f2eadff76c146c8312f224c82097398ed93c2126ddddb70ef10",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "repo_checksum": "2f1c5d74082d24dfa158c62bbc2cafaeadfde874d3c49379bbffcfe15e055013",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "repo_checksum": "6607ebf402571f4797824ccb53e559b30b49bc3e3c14ed1f1958cb82a6d3e58e",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "repo_checksum": "7b3990532efd3271f107d37afa96a6e38bda8f97199a3e6cb105721b0bd72bc5",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "repo_checksum": "c007ab9da59d95dabd592dd27b0c3b360a305efbc3c6cab473ede6d4c4a2a8e4",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "repo_checksum": "bab1399060fb1da4d57e3d9004aa2e9e6afc934e14857d55dc2be8e939056697",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "repo_checksum": "73ab301b3121e3f5dc8c4d6c14a490d10a2ab68b4097c946ba5ea7359d432d8f",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "repo_checksum": "692d40502c9f09ad2bc6357f047a289cdda22db4898c4ec1c23a96dfa1d5e02b",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "repo_checksum": "0d3e3401a33daa6615962a1ae9a53d68cb544b244204c0b1150d7cd53e3b35ae",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "repo_checksum": "606411503605af9f9f7be186da06a4b60c7c7f7ee80a5d561e8a6b39e1bfdba8",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "repo_checksum": "5a0d0defed18fe142989ec88e5ba38946d7471d8e7e0b81e548d2701170845da",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "repo_checksum": "55838c640e292a17a8409a5c49df035173b8668a00b4c08b91f3cde0eda25fca",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "repo_checksum": "4ee80af4fb7acc12466da9273a09cee23755ffa713e1ed185bdbe6de26916c43",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    },
+    {
+      "migration": "20260716160000_battery_v2_remaining_models",
+      "repo_checksum": "1a278604b7e106945ec8b4d3d866962100ac1631f5130deedcd42729d6e2cc8d",
+      "exposure_state": "PRESENT_FINISHED_MATCHING",
+      "production_checksum": "1a278604b7e106945ec8b4d3d866962100ac1631f5130deedcd42729d6e2cc8d",
+      "finished_at": "2026-07-17 00:06:32.364753+00",
+      "rolled_back_at": ""
+    },
+    {
+      "migration": "20260721250000_iam_versioned_role_assignments",
+      "repo_checksum": "34b436779865cb1baeefa31f14a61334459528fb74f43c196848cfe8c1981fad",
+      "exposure_state": "PRESENT_FINISHED_MATCHING",
+      "production_checksum": "34b436779865cb1baeefa31f14a61334459528fb74f43c196848cfe8c1981fad",
+      "finished_at": "2026-07-22 13:49:36.091733+00",
+      "rolled_back_at": ""
+    },
+    {
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "repo_checksum": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+      "exposure_state": "PRESENT_FINISHED_CHECKSUM_MISMATCH",
+      "production_checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+      "finished_at": "2026-07-22 13:49:51.333878+00",
+      "rolled_back_at": ""
+    },
+    {
+      "migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "repo_checksum": "90c3288ff4b47dc31516fd0c3423b681b68d1dd6c177b99e89d494a0d3894393",
+      "exposure_state": "ABSENT",
+      "production_checksum": null,
+      "finished_at": null,
+      "rolled_back_at": null
+    }
+  ]
+}

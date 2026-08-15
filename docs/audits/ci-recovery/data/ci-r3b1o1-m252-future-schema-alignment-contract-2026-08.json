@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.1",
+  "required_before_production": true,
+  "changes": [
+    {
+      "model": "OrganizationRoleAssignmentDriftReconciliationApplication",
+      "component": "idempotency_unique",
+      "current_mapping": "idempotencyKey",
+      "canonical_mapping": "org_role_asgn_drift_recon_apps_idem_key",
+      "required_source_change": "Align Prisma map/name for idempotency_unique to org_role_asgn_drift_recon_apps_idem_key"
+    },
+    {
+      "model": "OrganizationRoleAssignmentDriftReconciliationApplication",
+      "component": "organization_membership_created_index",
+      "current_mapping": "['organizationId', 'membershipId', 'createdAt']",
+      "canonical_mapping": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "required_source_change": "Align Prisma map/name for organization_membership_created_index to org_role_asgn_drift_recon_apps_org_mbr_created_idx"
+    },
+    {
+      "model": "OrganizationRoleAssignmentDriftReconciliationApplication",
+      "component": "organization_fk_map",
+      "current_mapping": "org_role_assignment_drift_recon_app_org_fkey",
+      "canonical_mapping": "org_role_asgn_drift_recon_apps_org_id_fkey",
+      "required_source_change": "Align Prisma map/name for organization_fk_map to org_role_asgn_drift_recon_apps_org_id_fkey"
+    },
+    {
+      "model": "OrganizationRoleAssignmentDriftReconciliationApplication",
+      "component": "membership_fk_map",
+      "current_mapping": "org_role_assignment_drift_recon_app_mem_fkey",
+      "canonical_mapping": "org_role_asgn_drift_recon_apps_mbr_id_fkey",
+      "required_source_change": "Align Prisma map/name for membership_fk_map to org_role_asgn_drift_recon_apps_mbr_id_fkey"
+    }
+  ]
+}

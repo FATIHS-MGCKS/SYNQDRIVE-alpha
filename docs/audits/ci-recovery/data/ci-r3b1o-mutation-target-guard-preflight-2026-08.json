@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "exact_instance_required": true,
+  "exact_database_required": true,
+  "approved_instance_fingerprint": "d961e6bd9e6697bd91a7dc6801f191e335120a58fffc34a4ce77f2de47518d6b",
+  "approved_database_fingerprint": "900071aa8d7c3e752121985544afca358a98531f1b516653335251f5748ac63f",
+  "production_instance_fingerprint": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+  "production_database_fingerprint": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d",
+  "tests": [
+    {
+      "name": "production_target_rejected",
+      "pass": true,
+      "expected": "HARD FAIL",
+      "actual": "SAFETY_ABORT: synthetic_production_reject target matches production instance fingerprint"
+    },
+    {
+      "name": "approved_target_pass",
+      "pass": true,
+      "expected": "PASS",
+      "actual": "PASS"
+    },
+    {
+      "name": "wrong_database_same_instance_rejected",
+      "pass": true,
+      "expected": "HARD FAIL",
+      "actual": "SAFETY_ABORT: wrong_database_same_instance target is not the approved twin database"
+    }
+  ],
+  "total": 3,
+  "passed": 3,
+  "pass": true
+}

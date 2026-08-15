@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "PRE_R3B1O2_SHA": "e9b2b7b530549a26999b8dcdfb9a4cc2bebf7348",
+    "R3B1O1_REMOTE_HEAD": "e9b2b7b530549a26999b8dcdfb9a4cc2bebf7348",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "WORKTREE_CLEAN": true
+  },
+  "inputs": [
+    {
+      "path": "backend/prisma/schema.prisma",
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17"
+    },
+    {
+      "path": "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql",
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1k-migration252-historical-exception-manifest-2026-08.json",
+      "sha256": "8a4a657fe81551a733b565884678aeb12c02affdab88584c4e195a5d762a74f6"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-m252-physical-authority-2026-08.json",
+      "sha256": "06272175407b555e5db77d8ae78152649d7d1d3dc0b400bbca26e2724ffa5b41"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-m252-prisma-authority-comparison-2026-08.json",
+      "sha256": "772cb136a6d506ecc98e49fcba05ec2b654ab59bef0e8f324ce6ef92a8f57155"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-final-winning-twin-prisma-diff-2026-08.sql",
+      "sha256": "e69371f58500e5c6852eaef1f08e2a20b18bdb84f803ca3a7cf82eb153d2094d"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-final-winning-twin-prisma-diff-2026-08.json",
+      "sha256": "14e19bcc840a42e2ce844d7cbf865629f3364ea81a45d136c2a2d7f349593814"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-m252-forward-exact-parity-2026-08.json",
+      "sha256": "62ef7b435925505711eacfae44c9fc74115f5d0284a1ffadbbd2e6ab6020a1d1"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-final-winning-twin-r3b-parity-2026-08.json",
+      "sha256": "bddada2359ba879c2f5a9fdd3b539ca16e6e4a3e7abd9022b2213c149819758c"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1o1-second-deploy-idempotency-2026-08.json",
+      "sha256": "330c0998f88c2d8831affdea2ff9de83cca6aa673b475d43a2ead5ecb9fb93b5"
+    }
+  ]
+}
