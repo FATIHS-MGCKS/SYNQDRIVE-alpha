@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "slot": 7,
+      "migration_path": "backend/prisma/migrations/20260613203000_ci_r3b_post_vendor_predecessor_slot07/migration.sql",
+      "authority_action_count": 12,
+      "generated_statement_count": 21,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 8,
+      "migration_path": "backend/prisma/migrations/20260616130000_ci_r3b_post_vendor_predecessor_slot08/migration.sql",
+      "authority_action_count": 5,
+      "generated_statement_count": 6,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 9,
+      "migration_path": "backend/prisma/migrations/20260617120000_r3b_post_vendor_predecessor_slot09/migration.sql",
+      "authority_action_count": 9,
+      "generated_statement_count": 18,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 10,
+      "migration_path": "backend/prisma/migrations/20260617203000_ci_r3b_post_vendor_predecessor_slot10/migration.sql",
+      "authority_action_count": 9,
+      "generated_statement_count": 16,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 11,
+      "migration_path": "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql",
+      "authority_action_count": 15,
+      "generated_statement_count": 24,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 12,
+      "migration_path": "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql",
+      "authority_action_count": 13,
+      "generated_statement_count": 22,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 13,
+      "migration_path": "backend/prisma/migrations/20260716182500_ci_r3b_post_vendor_predecessor_slot13/migration.sql",
+      "authority_action_count": 1,
+      "generated_statement_count": 2,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 14,
+      "migration_path": "backend/prisma/migrations/20260716200000_r3b_post_vendor_predecessor_slot14/migration.sql",
+      "authority_action_count": 1,
+      "generated_statement_count": 2,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 15,
+      "migration_path": "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql",
+      "authority_action_count": 14,
+      "generated_statement_count": 25,
+      "semantic_equivalence": true,
+      "differences": []
+    },
+    {
+      "slot": 16,
+      "migration_path": "backend/prisma/migrations/20260724210000_ci_r3b_post_vendor_predecessor_slot16/migration.sql",
+      "authority_action_count": 3,
+      "generated_statement_count": 4,
+      "semantic_equivalence": true,
+      "differences": []
+    }
+  ],
+  "all_semantic_equivalent": true
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1E",
+  "supersedes": "ci-r3b1d12-post-merge-exposure-2026-08.json",
+  "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+  "merged_pr": 1031,
+  "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "merge_commit": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "MERGE_721ad89_PRESENT_AS_ANCESTOR": "YES",
+  "previous_classification": "E0",
+  "exposure_classification": "E_UNKNOWN",
+  "classification_confidence": "LOW",
+  "classification_reason": "Deployed commit SHA is unknown and production migration ledger is unavailable. Absence of deployment metadata alone is insufficient for E0. Classification corrected from predecessor E0 to E_UNKNOWN per strict exposure semantics.",
+  "evidence_sufficient_for_classification": false,
+  "E3_detected": false,
+  "production_deployment_actions_permitted_now": false,
+  "latest_deployed_sha": null,
+  "contains_721ad89": "UNKNOWN",
+  "merge_sha_deployed": "UNKNOWN",
+  "PRODUCTION_MIGRATION_LEDGER": "NOT_AVAILABLE",
+  "recovery_migration_ledger_status": {
+    "20260325161141_ci_r3b_bootstrap_trip_schema_baseline": "UNKNOWN",
+    "20260412025000_ci_r3b_historical_predecessor_slot1": "UNKNOWN",
+    "20260412610000_ci_r3b_historical_predecessor_slot2": "UNKNOWN",
+    "20260413201500_ci_r3b_historical_predecessor_slot3": "UNKNOWN",
+    "20260413225000_ci_r3b_historical_predecessor_slot4": "UNKNOWN",
+    "20260417170000_ci_r3b_historical_predecessor_slot5": "UNKNOWN",
+    "20260421180000_ci_r3b_historical_predecessor_slot6": "UNKNOWN",
+    "20260424235959_ci_r3b_trip_casing_pre_shim": "UNKNOWN",
+    "20260425000001_ci_r3b_trip_casing_post_shim": "UNKNOWN",
+    "20260814130000_ci_r3b_post_replay_parity_reconciliation": "UNKNOWN"
+  },
+  "recovery_migrations_on_main": [
+    {
+      "path": "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql",
+      "category": "earlier_r3b",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "0b41ce77f6cfbdd83cf6bba5b3262ebe8c6c2a32893cee61d08cb14aad18e71f"
+    },
+    {
+      "path": "backend/prisma/migrations/20260424235959_ci_r3b_trip_casing_pre_shim/migration.sql",
+      "category": "earlier_r3b",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "45aa03706d46636fac215e3d379657f3afc8a49c20acdbceb2849e579969dcaf"
+    },
+    {
+      "path": "backend/prisma/migrations/20260425000001_ci_r3b_trip_casing_post_shim/migration.sql",
+      "category": "earlier_r3b",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "aef68c2231bf30f036d54ab06cd341bb6f22cb273a047c7ab71ae0f70ec28710"
+    },
+    {
+      "path": "backend/prisma/migrations/20260814130000_ci_r3b_post_replay_parity_reconciliation/migration.sql",
+      "category": "earlier_r3b",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "90c3288ff4b47dc31516fd0c3423b681b68d1dd6c177b99e89d494a0d3894393"
+    },
+    {
+      "path": "backend/prisma/migrations/20260412025000_ci_r3b_historical_predecessor_slot1/migration.sql",
+      "category": "r3b1b_predecessor_repair",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "f3579409eb14282ca656f03b36c5f300bcec9dfd2e64dbf197e9c9fb54c7531c"
+    },
+    {
+      "path": "backend/prisma/migrations/20260412610000_ci_r3b_historical_predecessor_slot2/migration.sql",
+      "category": "r3b1b_predecessor_repair",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "c1c75f5503258e9af51a4e5073b6a3352e736eb19d1a5e742a0c428ef0d00d28"
+    },
+    {
+      "path": "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql",
+      "category": "r3b1b_predecessor_repair",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "7180508877117aa0238e94dfbcabfed224b340a3d3edb162d1139b59fc537930"
+    },
+    {
+      "path": "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql",
+      "category": "r3b1b_predecessor_repair",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "4d04659f1fad9032dcf96b7e8f7c181481956baa79bb4462c17f701663e63539"
+    },
+    {
+      "path": "backend/prisma/migrations/20260417170000_ci_r3b_historical_predecessor_slot5/migration.sql",
+      "category": "r3b1b_predecessor_repair",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "3ac22b6b3c4ac9370e598b0fdde2dbd0c254034c8a2d1584d877020658bdffc8"
+    },
+    {
+      "path": "backend/prisma/migrations/20260421180000_ci_r3b_historical_predecessor_slot6/migration.sql",
+      "category": "r3b1b_predecessor_repair",
+      "introduced_by": "721ad893d15cfa46786a112860548ce12a2be71d",
+      "sha256": "4e9c37a35b679f2eadff76c146c8312f224c82097398ed93c2126ddddb70ef10"
+    }
+  ],
+  "evidence_sources_checked": [
+    "git merge-base --is-ancestor 721ad89 HEAD => YES",
+    "git show 721ad893 --stat",
+    "https://app.synqdrive.eu/api/v1/health (no build SHA)",
+    "https://app.synqdrive.eu/api/v1/version => 404",
+    "gh run list after merge push => CI failure only, no deploy workflow evidence",
+    "production _prisma_migrations => NOT_AVAILABLE (no safe read-only DB credentials in agent runtime)"
+  ],
+  "predecessor_evidence_preserved": true,
+  "production_mutation_performed": false,
+  "normalization_note": "merge_sha_deployed corrected from NO to UNKNOWN because deployed SHA is unknown; cannot prove merge absent from production."
+}

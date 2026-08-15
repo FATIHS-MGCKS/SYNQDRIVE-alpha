@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "repair_mode_decision": "HISTORICAL_MIGRATION_IDENTIFIER_ONLY_CORRECTION",
+  "requirements_met": {
+    "migration_252_intrinsically_non_executable": true,
+    "failure_from_identifier_normalization": true,
+    "append_only_not_feasible": true,
+    "only_identifier_names_need_change": true,
+    "transformed_copy_executes": true,
+    "catalog_semantic_parity_exact": true
+  },
+  "exception_boundary": {
+    "allowed_changes": [
+      "identifier_name_tokens_only"
+    ],
+    "forbidden_changes": [
+      "table_names",
+      "column_names",
+      "types",
+      "defaults",
+      "constraint_semantics",
+      "index_definitions",
+      "data_logic"
+    ]
+  },
+  "UNRESOLVED": 0,
+  "pass": true
+}

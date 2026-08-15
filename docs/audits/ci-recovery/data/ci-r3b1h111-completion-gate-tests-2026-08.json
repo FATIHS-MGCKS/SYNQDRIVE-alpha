@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1.1",
+  "tests": [
+    {
+      "test": "reconciliation_derivation_m_id",
+      "pass": true,
+      "expected": "organization_memberships.id",
+      "got": "organization_memberships.id"
+    },
+    {
+      "test": "wrong_manual_mapping_negative",
+      "pass": true,
+      "note": "organization_role_assignments.id must not replace organization_memberships.id"
+    },
+    {
+      "test": "negative_second_gap_without_authority",
+      "pass": true,
+      "contracts": 1,
+      "uncontracted": 1
+    },
+    {
+      "test": "negative_second_gap_without_proof",
+      "pass": true,
+      "detail": {
+        "contracts": 2,
+        "proofs": 1,
+        "unproven": 1,
+        "completion_passes": false
+      }
+    },
+    {
+      "test": "positive_generic_completion_current_matrix",
+      "pass": true
+    },
+    {
+      "test": "alias_inventory_negative",
+      "pass": true
+    },
+    {
+      "test": "unknown_authority",
+      "pass": true
+    },
+    {
+      "test": "generic_boundary_relative_to_consumer",
+      "pass": true,
+      "after_249": "20260721240000_iam_last_selected_organization",
+      "after_later_consumer": "20260811060000_evaluations_entity_references"
+    },
+    {
+      "test": "migration249_reconciliation",
+      "pass": true,
+      "mismatches": 0
+    }
+  ],
+  "pass": true,
+  "negative_uncontracted_gap_test": true,
+  "negative_unproven_gap_test": true,
+  "positive_multi_gap_test": true
+}

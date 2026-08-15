@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "strategies_tested": [
+    {
+      "strategy": "precreate_shorter_unique_index_before_252",
+      "precreate_pass": false,
+      "unchanged_migration_252_pass": false,
+      "first_failure_ordinal": 2,
+      "outcome": "FAIL",
+      "reason": "unchanged migration still creates colliding PK/unique names at statement 1/2"
+    },
+    {
+      "strategy": "precreate_renamed_table_before_252",
+      "precreate_pass": true,
+      "unchanged_migration_252_pass": false,
+      "first_failure_ordinal": 1,
+      "outcome": "FAIL",
+      "reason": "unguarded CREATE TABLE in migration 252 fails because table already exists (42P07/23505 class)"
+    },
+    {
+      "strategy": "rename_pk_index_before_252",
+      "outcome": "NOT_APPLICABLE",
+      "reason": "PK backing index does not exist before migration 252 statement 1 executes; predecessor cannot rename objects not yet created"
+    }
+  ],
+  "classification": "APPEND_ONLY_NOT_FEASIBLE",
+  "UNRESOLVED": 0,
+  "pass": true
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "baseline_sha": "25e3a18ed9eab1322a85d65fcfdf6a449f2ed222",
+  "preexisting_migration_sql_modified": 0,
+  "migration_changes": [],
+  "new_prisma_migration_directories": 0,
+  "new_directories": [],
+  "deleted_directories": [],
+  "r3b1g_tire_repair_changed": false,
+  "migration_157_changed": false,
+  "migration_249_changed": false,
+  "composite_index_migration_changed": false,
+  "schema_prisma_changed": false,
+  "runtime_code_changed": false,
+  "forbidden_non_audit_changes": [],
+  "pass": true
+}
