@@ -255,7 +255,7 @@ def evaluate_final_corrective_terminal_acceptance(**gates: Any) -> dict[str, Any
         return {"pass": False, "final_status": status, "r3b1p_readiness": "NOT_READY", "failures": failures}
     return {
         "pass": True,
-        "final_status": "CI_R3B1O4_FINAL_CORRECTIVE_CATALOG_AUTHORITY_COMPLETED",
+        "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
         "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
         "failures": [],
     }

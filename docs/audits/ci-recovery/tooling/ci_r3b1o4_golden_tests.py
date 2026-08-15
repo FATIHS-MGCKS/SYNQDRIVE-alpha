@@ -494,7 +494,7 @@ def run_final_corrective_terminal_tests(tests: list) -> None:
         ambiguous=0,
     )
     perfect = evaluate_final_corrective_terminal_acceptance(**base)
-    _add(tests, "o4_final_corrective_terminal_all_gates_pass", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CORRECTIVE_CATALOG_AUTHORITY_COMPLETED", perfect["pass"], perfect["final_status"])
+    _add(tests, "o4_final_corrective_terminal_all_gates_pass", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED", perfect["pass"], perfect["final_status"])
     fail_ambiguous = evaluate_final_corrective_terminal_acceptance(**{**base, "ambiguous": 1})
     _add(tests, "o4_final_corrective_terminal_ambiguous_fail", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_ambiguous["pass"] and fail_ambiguous["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_ambiguous["final_status"])
     fail_engine = evaluate_final_corrective_terminal_acceptance(**{**base, "catalog_engine_crossvalidation_pass": False})
