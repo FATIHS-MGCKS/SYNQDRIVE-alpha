@@ -82,7 +82,7 @@ FROM pg_index i
 JOIN pg_class ic ON ic.oid = i.indexrelid
 JOIN pg_class tc ON tc.oid = i.indrelid
 JOIN pg_namespace n ON n.oid = tc.relnamespace
-JOIN generate_series(0, GREATEST(i.indnkeyatts + i.indnincludedattrs - i.indnkeyatts - 1, 0)) AS s(idx) ON i.indnincludedattrs > 0
+JOIN generate_series(0, GREATEST(i.indnatts - i.indnkeyatts - 1, 0)) AS s(idx) ON i.indnatts > i.indnkeyatts
 LEFT JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[i.indnkeyatts + s.idx]
 LEFT JOIN pg_opclass opc ON opc.oid = i.indclass[i.indnkeyatts + s.idx]
 LEFT JOIN pg_collation coll ON coll.oid = i.indcollation[i.indnkeyatts + s.idx]
