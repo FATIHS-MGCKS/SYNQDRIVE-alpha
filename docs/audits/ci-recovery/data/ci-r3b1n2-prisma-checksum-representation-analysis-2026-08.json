@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N.2",
+  "algorithm": "SHA-256 over migration.sql bytes with historical line-ending representation variants",
+  "confirmation_counts": {
+    "raw": 0,
+    "lf": 0,
+    "crlf": 69
+  },
+  "dominant_representation": "crlf",
+  "samples": [
+    {
+      "migration": "20260311224040_init",
+      "classification": "MATCH_MULTIPLE_EQUIVALENT",
+      "production_checksum_prefix": "3350b2baa25e576f"
+    },
+    {
+      "migration": "20260312120232_add_dimo_vehicle_snapshot_fields",
+      "classification": "MATCH_MULTIPLE_EQUIVALENT",
+      "production_checksum_prefix": "34191c177a76da33"
+    },
+    {
+      "migration": "20260315000000_add_rental_driving_analysis",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "9e9181525c6ed4d8"
+    },
+    {
+      "migration": "20260325161142_trip_architecture_refactor",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "2230e671fd676f46"
+    },
+    {
+      "migration": "20260325170000_parts_accessories_module",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "491f349387aca8ab"
+    },
+    {
+      "migration": "20260331000000_v3_hardware_type",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "430c8ff7d323019d"
+    },
+    {
+      "migration": "20260331130000_vehicle_complaints",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "8901002e056d9764"
+    },
+    {
+      "migration": "20260408120000_high_mobility_phase1",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "746769b9d877c582"
+    },
+    {
+      "migration": "20260408140000_high_mobility_phase2",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "2d759cfa599084aa"
+    },
+    {
+      "migration": "20260409120000_hm_signal_group_state",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "584ddbc2423c1572"
+    },
+    {
+      "migration": "20260410000000_add_enrichment_status_fields",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "9b7cd12940988e84"
+    },
+    {
+      "migration": "20260412013110_hm_dual_app_container_type",
+      "classification": "MATCH_NONE",
+      "production_checksum_prefix": "a7fba32a255da2c1"
+    },
+    {
+      "migration": "20260412020000_hm_latest_state_tables",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "71b7db8198e7ef59"
+    },
+    {
+      "migration": "20260412030000_platform_hardening_phase1",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "ca850d4d77dac7a0"
+    },
+    {
+      "migration": "20260412040000_audit_consent_provenance",
+      "classification": "MATCH_CRLF",
+      "production_checksum_prefix": "a8155871ed5b5f4c"
+    }
+  ],
+  "pass": true
+}

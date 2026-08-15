@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1G",
+  "database_identifier": "synqdrive_r3b1g_targeted",
+  "pre_repair_replay": {
+    "pass": true,
+    "applied_count": 156,
+    "last_applied": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+    "stop_before": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "special_steps": [
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "accepted_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+        "observed_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+        "statement_count": 14,
+        "semantic_equivalence": {
+          "migration_statement_count": 14,
+          "script_statement_count": 14,
+          "missing_in_script": [],
+          "unexpected_in_script": [],
+          "semantic_equivalent": true
+        },
+        "index_validation": {
+          "missing_indexes": [],
+          "definition_mismatches": [],
+          "pass": true
+        },
+        "migration_state_reconciliation": null
+      }
+    ],
+    "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+    "manual_interventions": 0,
+    "production_connection": false
+  },
+  "pre_repair_catalog": {
+    "vehicle_tire_setups_exists": true,
+    "vehicle_id_exists": true,
+    "removed_at_exists": true,
+    "status_exists": false,
+    "TireSetupStatus_exists": true,
+    "TireSetupStatus_labels": [
+      "ACTIVE",
+      "STORED",
+      "DISCARDED",
+      "SOLD"
+    ]
+  },
+  "actual_migration_file_sha256": "55838c640e292a17a8409a5c49df035173b8668a00b4c08b91f3cde0eda25fca",
+  "repair_execution": "PASS",
+  "repair_sqlstate": null,
+  "post_repair_catalog_parity": {
+    "pass": true,
+    "type": "TireSetupStatus",
+    "nullable": false,
+    "default": {
+      "kind": "DATABASE_ENUM_DEFAULT",
+      "value": "ACTIVE"
+    }
+  },
+  "consumer_migration": "20260716183000_tire_lifecycle_invariants",
+  "consumer_execution": "PASS",
+  "partial_indexes": {
+    "vehicle_tire_setups_one_active_setup_per_vehicle": "PASS",
+    "tires_one_active_tire_per_setup_position": "PASS",
+    "definitions": {
+      "vehicle_tire_setups_one_active_setup_per_vehicle": {
+        "table": "vehicle_tire_setups",
+        "unique": true,
+        "predicate": "((status = 'ACTIVE'::\"TireSetupStatus\") AND (removed_at IS NULL))",
+        "valid": true,
+        "ready": true,
+        "columns": [
+          "vehicle_id"
+        ]
+      },
+      "tires_one_active_tire_per_setup_position": {
+        "table": "tires",
+        "unique": true,
+        "predicate": "((active = true) AND (tire_set_id IS NOT NULL))",
+        "valid": true,
+        "ready": true,
+        "columns": [
+          "tire_set_id",
+          "current_position"
+        ]
+      }
+    }
+  },
+  "manual_interventions": 0,
+  "pass": true
+}

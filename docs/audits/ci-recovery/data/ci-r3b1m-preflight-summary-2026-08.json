@@ -1,0 +1,2122 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "baseline": {
+    "PRE_R3B1M_SHA": "838605eada97189f52b6332f943e36bbed387449",
+    "R3B1L21_REMOTE_HEAD": "838605eada97189f52b6332f943e36bbed387449",
+    "BASE_R3B1L21_SHA": "838605eada97189f52b6332f943e36bbed387449",
+    "R3B1M_BRANCH": "fix/ci-r3b1m-prisma-schema-authority-alignment-2026-08"
+  },
+  "prefix_inference_acceptance": false,
+  "frozen_diff_sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+  "independent_coverage": {
+    "schema_version": 1,
+    "phase": "CI-R3B1L.2.1",
+    "input_sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+    "implementation_independence_assertion": {
+      "module": "ci_r3b1l21_independent_statement_counter.py",
+      "imports": [
+        "__future__",
+        "ast",
+        "hashlib",
+        "re",
+        "dataclasses",
+        "enum",
+        "pathlib",
+        "typing"
+      ],
+      "forbidden_import_hits": [],
+      "forbidden_call_hits": [],
+      "calls_main_parser": false,
+      "pass": true
+    },
+    "independent_count": 344,
+    "main_parser_count": 344,
+    "independent_without_main_match": 0,
+    "main_without_independent_match": 0,
+    "duplicate_interval_matches": 0,
+    "statement_intervals": [
+      {
+        "start_byte": 14,
+        "end_byte": 78,
+        "terminator_byte": 78,
+        "normalized_preview": "CREATE TYPE \"DriveType\" AS ENUM ('FWD', 'RWD', 'AWD', 'FOUR_WD')"
+      },
+      {
+        "start_byte": 95,
+        "end_byte": 183,
+        "terminator_byte": 183,
+        "normalized_preview": "CREATE TYPE \"TireSetupCondition\" AS ENUM ('NEW_INSTALLED', 'ALREADY_MOUNTED', 'UNKNOWN')"
+      },
+      {
+        "start_byte": 200,
+        "end_byte": 293,
+        "terminator_byte": 293,
+        "normalized_preview": "CREATE TYPE \"TireChangeType\" AS ENUM ('INSTALL', 'ROTATE', 'REPLACE', 'REMOVE', 'CORRECTION')"
+      },
+      {
+        "start_byte": 310,
+        "end_byte": 446,
+        "terminator_byte": 446,
+        "normalized_preview": "CREATE TYPE \"DeviceConnectionWebhookMappingStatus\" AS ENUM ('UNKNOWN', 'MAPPED', 'UNMAPPED_VEHICLE', 'UNMAPPED_BINDING',"
+      },
+      {
+        "start_byte": 463,
+        "end_byte": 626,
+        "terminator_byte": 626,
+        "normalized_preview": "CREATE TYPE \"BrakeDtcCategory\" AS ENUM ('BRAKE_SYSTEM', 'ABS', 'ESC', 'PARKING_BRAKE', 'BRAKE_SENSOR', 'BRAKE_FLUID', 'C"
+      },
+      {
+        "start_byte": 643,
+        "end_byte": 712,
+        "terminator_byte": 712,
+        "normalized_preview": "CREATE TYPE \"BrakeDtcFreshness\" AS ENUM ('FRESH', 'STALE', 'UNKNOWN')"
+      },
+      {
+        "start_byte": 729,
+        "end_byte": 818,
+        "terminator_byte": 818,
+        "normalized_preview": "CREATE TYPE \"InsuranceCommunicationChannel\" AS ENUM ('EMAIL', 'API', 'WEBHOOK', 'MANUAL')"
+      },
+      {
+        "start_byte": 835,
+        "end_byte": 919,
+        "terminator_byte": 919,
+        "normalized_preview": "CREATE TYPE \"InsurerHealthStatus\" AS ENUM ('HEALTHY', 'DEGRADED', 'DOWN', 'UNKNOWN')"
+      },
+      {
+        "start_byte": 936,
+        "end_byte": 1002,
+        "terminator_byte": 1002,
+        "normalized_preview": "CREATE TYPE \"InsurerEnvironment\" AS ENUM ('SANDBOX', 'PRODUCTION')"
+      },
+      {
+        "start_byte": 1019,
+        "end_byte": 1132,
+        "terminator_byte": 1132,
+        "normalized_preview": "CREATE TYPE \"VehicleInsuranceStatus\" AS ENUM ('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'MISSING', 'PENDING_INQUIRY')"
+      },
+      {
+        "start_byte": 1149,
+        "end_byte": 1288,
+        "terminator_byte": 1288,
+        "normalized_preview": "CREATE TYPE \"InsuranceInquiryStatus\" AS ENUM ('DRAFT', 'SUBMITTED', 'PARTIALLY_SENT', 'FAILED', 'AWAITING_RESPONSE', 'RE"
+      },
+      {
+        "start_byte": 1305,
+        "end_byte": 1411,
+        "terminator_byte": 1411,
+        "normalized_preview": "CREATE TYPE \"InquiryRecipientDeliveryStatus\" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'FAILED', 'BOUNCED')"
+      },
+      {
+        "start_byte": 1428,
+        "end_byte": 1532,
+        "terminator_byte": 1532,
+        "normalized_preview": "CREATE TYPE \"InquiryRecipientResponseStatus\" AS ENUM ('AWAITING', 'RECEIVED', 'DECLINED', 'NO_RESPONSE')"
+      },
+      {
+        "start_byte": 1549,
+        "end_byte": 1640,
+        "terminator_byte": 1640,
+        "normalized_preview": "CREATE TYPE \"LiveSharingStatus\" AS ENUM ('DRAFT', 'ACTIVE', 'PAUSED', 'REVOKED', 'EXPIRED')"
+      },
+      {
+        "start_byte": 1656,
+        "end_byte": 1661,
+        "terminator_byte": 1661,
+        "normalized_preview": "BEGIN"
+      },
+      {
+        "start_byte": 1663,
+        "end_byte": 1883,
+        "terminator_byte": 1883,
+        "normalized_preview": "CREATE TYPE \"BookingPaymentRequestStatus_new\" AS ENUM ('DRAFT', 'OPEN', 'LINK_PENDING', 'CHECKOUT_READY', 'LINK_SENT', '"
+      },
+      {
+        "start_byte": 1885,
+        "end_byte": 1958,
+        "terminator_byte": 1958,
+        "normalized_preview": "ALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 1960,
+        "end_byte": 2117,
+        "terminator_byte": 2117,
+        "normalized_preview": "ALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" TYPE \"BookingPaymentRequestStatus_new\" USING (\"status\"::tex"
+      },
+      {
+        "start_byte": 2119,
+        "end_byte": 2203,
+        "terminator_byte": 2203,
+        "normalized_preview": "ALTER TYPE \"BookingPaymentRequestStatus\" RENAME TO \"BookingPaymentRequestStatus_old\""
+      },
+      {
+        "start_byte": 2205,
+        "end_byte": 2289,
+        "terminator_byte": 2289,
+        "normalized_preview": "ALTER TYPE \"BookingPaymentRequestStatus_new\" RENAME TO \"BookingPaymentRequestStatus\""
+      },
+      {
+        "start_byte": 2291,
+        "end_byte": 2334,
+        "terminator_byte": 2334,
+        "normalized_preview": "DROP TYPE \"BookingPaymentRequestStatus_old\""
+      },
+      {
+        "start_byte": 2336,
+        "end_byte": 2416,
+        "terminator_byte": 2416,
+        "normalized_preview": "ALTER TABLE \"booking_payment_requests\" ALTER COLUMN \"status\" SET DEFAULT 'DRAFT'"
+      },
+      {
+        "start_byte": 2418,
+        "end_byte": 2424,
+        "terminator_byte": 2424,
+        "normalized_preview": "COMMIT"
+      },
+      {
+        "start_byte": 2703,
+        "end_byte": 2752,
+        "terminator_byte": 2752,
+        "normalized_preview": "ALTER TYPE \"DimoPollJobType\" ADD VALUE 'DTC_POLL'"
+      },
+      {
+        "start_byte": 2754,
+        "end_byte": 2809,
+        "terminator_byte": 2809,
+        "normalized_preview": "ALTER TYPE \"DimoPollJobType\" ADD VALUE 'DRIVING_EVENTS'"
+      },
+      {
+        "start_byte": 2811,
+        "end_byte": 2865,
+        "terminator_byte": 2865,
+        "normalized_preview": "ALTER TYPE \"DimoPollJobType\" ADD VALUE 'TRIP_TRACKING'"
+      },
+      {
+        "start_byte": 2881,
+        "end_byte": 2931,
+        "terminator_byte": 2931,
+        "normalized_preview": "ALTER TYPE \"EnrichmentJobType\" ADD VALUE 'AI_SPEC'"
+      },
+      {
+        "start_byte": 3210,
+        "end_byte": 3266,
+        "terminator_byte": 3266,
+        "normalized_preview": "ALTER TYPE \"ServiceEventType\" ADD VALUE 'TUV_INSPECTION'"
+      },
+      {
+        "start_byte": 3268,
+        "end_byte": 3328,
+        "terminator_byte": 3328,
+        "normalized_preview": "ALTER TYPE \"ServiceEventType\" ADD VALUE 'BOKRAFT_INSPECTION'"
+      },
+      {
+        "start_byte": 3330,
+        "end_byte": 3384,
+        "terminator_byte": 3384,
+        "normalized_preview": "ALTER TYPE \"ServiceEventType\" ADD VALUE 'FULL_SERVICE'"
+      },
+      {
+        "start_byte": 3663,
+        "end_byte": 3704,
+        "terminator_byte": 3704,
+        "normalized_preview": "ALTER TYPE \"TireSeason\" ADD VALUE 'TRACK'"
+      },
+      {
+        "start_byte": 3706,
+        "end_byte": 3747,
+        "terminator_byte": 3747,
+        "normalized_preview": "ALTER TYPE \"TireSeason\" ADD VALUE 'OTHER'"
+      },
+      {
+        "start_byte": 3763,
+        "end_byte": 3808,
+        "terminator_byte": 3808,
+        "normalized_preview": "ALTER TYPE \"TripStatus\" ADD VALUE 'CANCELLED'"
+      },
+      {
+        "start_byte": 3829,
+        "end_byte": 3918,
+        "terminator_byte": 3918,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" DROP CONSTRAINT \"brake_evidence_prediction_snapshot_id_fkey\""
+      },
+      {
+        "start_byte": 3939,
+        "end_byte": 4019,
+        "terminator_byte": 4019,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" DROP CONSTRAINT \"brake_evidence_superseded_by_fkey\""
+      },
+      {
+        "start_byte": 4040,
+        "end_byte": 4127,
+        "terminator_byte": 4127,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" DROP CONSTRAINT \"brake_evidence_vehicle_dtc_event_id_fkey\""
+      },
+      {
+        "start_byte": 4148,
+        "end_byte": 4232,
+        "terminator_byte": 4232,
+        "normalized_preview": "ALTER TABLE \"brake_health_alerts\" DROP CONSTRAINT \"brake_health_alerts_vehicle_fkey\""
+      },
+      {
+        "start_byte": 4253,
+        "end_byte": 4346,
+        "terminator_byte": 4346,
+        "normalized_preview": "ALTER TABLE \"brake_health_snapshots\" DROP CONSTRAINT \"brake_health_snapshots_vehicle_id_fkey\""
+      },
+      {
+        "start_byte": 4367,
+        "end_byte": 4471,
+        "terminator_byte": 4471,
+        "normalized_preview": "ALTER TABLE \"high_mobility_health_sync_logs\" DROP CONSTRAINT \"high_mobility_health_sync_logs_vehicle_fk\""
+      },
+      {
+        "start_byte": 4492,
+        "end_byte": 4592,
+        "terminator_byte": 4592,
+        "normalized_preview": "ALTER TABLE \"high_mobility_status_history\" DROP CONSTRAINT \"high_mobility_status_history_vehicle_fk\""
+      },
+      {
+        "start_byte": 4613,
+        "end_byte": 4706,
+        "terminator_byte": 4706,
+        "normalized_preview": "ALTER TABLE \"high_mobility_stream_sync_logs\" DROP CONSTRAINT \"hm_stream_sync_logs_vehicle_fk\""
+      },
+      {
+        "start_byte": 4727,
+        "end_byte": 4823,
+        "terminator_byte": 4823,
+        "normalized_preview": "ALTER TABLE \"hm_signal_group_states\" DROP CONSTRAINT \"hm_signal_group_states_hm_vehicle_id_fkey\""
+      },
+      {
+        "start_byte": 4844,
+        "end_byte": 4937,
+        "terminator_byte": 4937,
+        "normalized_preview": "ALTER TABLE \"hm_signal_group_states\" DROP CONSTRAINT \"hm_signal_group_states_vehicle_id_fkey\""
+      },
+      {
+        "start_byte": 4958,
+        "end_byte": 5052,
+        "terminator_byte": 5052,
+        "normalized_preview": "ALTER TABLE \"rental_driving_analyses\" DROP CONSTRAINT \"rental_driving_analyses_driver_id_fkey\""
+      },
+      {
+        "start_byte": 5068,
+        "end_byte": 5108,
+        "terminator_byte": 5108,
+        "normalized_preview": "DROP INDEX \"bookings_payment_intent_idx\""
+      },
+      {
+        "start_byte": 5124,
+        "end_byte": 5191,
+        "terminator_byte": 5191,
+        "normalized_preview": "DROP INDEX \"document_extraction_archive_index_search_text_trgm_idx\""
+      },
+      {
+        "start_byte": 5207,
+        "end_byte": 5253,
+        "terminator_byte": 5253,
+        "normalized_preview": "DROP INDEX \"misuse_cases_actual_driver_id_idx\""
+      },
+      {
+        "start_byte": 5269,
+        "end_byte": 5317,
+        "terminator_byte": 5317,
+        "normalized_preview": "DROP INDEX \"misuse_cases_assigned_driver_id_idx\""
+      },
+      {
+        "start_byte": 5333,
+        "end_byte": 5384,
+        "terminator_byte": 5384,
+        "normalized_preview": "DROP INDEX \"org_invoices_generated_document_id_idx\""
+      },
+      {
+        "start_byte": 5400,
+        "end_byte": 5461,
+        "terminator_byte": 5461,
+        "normalized_preview": "DROP INDEX \"org_tasks_organization_id_assigned_to_status_idx\""
+      },
+      {
+        "start_byte": 5477,
+        "end_byte": 5535,
+        "terminator_byte": 5535,
+        "normalized_preview": "DROP INDEX \"rental_contracts_legal_snapshot_frozen_at_idx\""
+      },
+      {
+        "start_byte": 5551,
+        "end_byte": 5620,
+        "terminator_byte": 5620,
+        "normalized_preview": "DROP INDEX \"rental_driving_analyses_booking_id_assessment_status_idx\""
+      },
+      {
+        "start_byte": 5636,
+        "end_byte": 5687,
+        "terminator_byte": 5687,
+        "normalized_preview": "DROP INDEX \"rental_driving_analyses_booking_id_key\""
+      },
+      {
+        "start_byte": 5703,
+        "end_byte": 5775,
+        "terminator_byte": 5775,
+        "normalized_preview": "DROP INDEX \"vehicle_document_extractions_organization_id_created_at_idx\""
+      },
+      {
+        "start_byte": 5791,
+        "end_byte": 5858,
+        "terminator_byte": 5858,
+        "normalized_preview": "DROP INDEX \"vehicle_document_extractions_vehicle_id_created_at_idx\""
+      },
+      {
+        "start_byte": 5874,
+        "end_byte": 5943,
+        "terminator_byte": 5943,
+        "normalized_preview": "DROP INDEX \"whatsapp_conversations_organization_id_contact_phone_key\""
+      },
+      {
+        "start_byte": 5960,
+        "end_byte": 6029,
+        "terminator_byte": 6029,
+        "normalized_preview": "ALTER TABLE \"booking_deposits\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 6046,
+        "end_byte": 6123,
+        "terminator_byte": 6123,
+        "normalized_preview": "ALTER TABLE \"booking_document_bundles\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 6140,
+        "end_byte": 6225,
+        "terminator_byte": 6225,
+        "normalized_preview": "ALTER TABLE \"booking_document_generation_jobs\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 6242,
+        "end_byte": 7081,
+        "terminator_byte": 7081,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" ALTER COLUMN \"prediction_snapshot_id\" SET DATA TYPE TEXT,\nDROP COLUMN \"dtc_category\",\nADD C"
+      },
+      {
+        "start_byte": 7098,
+        "end_byte": 7523,
+        "terminator_byte": 7523,
+        "normalized_preview": "ALTER TABLE \"brake_health_alerts\" DROP CONSTRAINT \"brake_health_alerts_pkey\",\nALTER COLUMN \"id\" DROP DEFAULT,\nALTER COLU"
+      },
+      {
+        "start_byte": 7540,
+        "end_byte": 7867,
+        "terminator_byte": 7867,
+        "normalized_preview": "ALTER TABLE \"brake_health_snapshots\" DROP CONSTRAINT \"brake_health_snapshots_pkey\",\nALTER COLUMN \"id\" DROP DEFAULT,\nALTE"
+      },
+      {
+        "start_byte": 7884,
+        "end_byte": 8094,
+        "terminator_byte": 8094,
+        "normalized_preview": "ALTER TABLE \"device_connection_episode_resolution_outbox\" DROP COLUMN \"event_type\",\nADD COLUMN     \"eventType\" \"DeviceCo"
+      },
+      {
+        "start_byte": 8111,
+        "end_byte": 8413,
+        "terminator_byte": 8413,
+        "normalized_preview": "ALTER TABLE \"dimo_vehicles\" DROP COLUMN \"last_snapshot_at\",\nDROP COLUMN \"snapshot_ev_soc\",\nDROP COLUMN \"snapshot_fuel_le"
+      },
+      {
+        "start_byte": 8430,
+        "end_byte": 8502,
+        "terminator_byte": 8502,
+        "normalized_preview": "ALTER TABLE \"generated_documents\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 8519,
+        "end_byte": 8608,
+        "terminator_byte": 8608,
+        "normalized_preview": "ALTER TABLE \"high_mobility_stream_consumer_states\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 8625,
+        "end_byte": 8700,
+        "terminator_byte": 8700,
+        "normalized_preview": "ALTER TABLE \"high_mobility_vehicles\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 8717,
+        "end_byte": 8997,
+        "terminator_byte": 8997,
+        "normalized_preview": "ALTER TABLE \"hm_signal_group_states\" DROP CONSTRAINT \"hm_signal_group_states_pkey\",\nALTER COLUMN \"id\" SET DATA TYPE TEXT"
+      },
+      {
+        "start_byte": 9014,
+        "end_byte": 9115,
+        "terminator_byte": 9115,
+        "normalized_preview": "ALTER TABLE \"misuse_case_evidence\" DROP COLUMN \"event_type\",\nADD COLUMN     \"eventType\" TEXT NOT NULL"
+      },
+      {
+        "start_byte": 9132,
+        "end_byte": 9223,
+        "terminator_byte": 9223,
+        "normalized_preview": "ALTER TABLE \"misuse_cases\" ALTER COLUMN \"model_version\" SET DEFAULT 'misuse-fingerprint-v1'"
+      },
+      {
+        "start_byte": 9240,
+        "end_byte": 9330,
+        "terminator_byte": 9330,
+        "normalized_preview": "ALTER TABLE \"organization_legal_document_events\" ALTER COLUMN \"document_type\" SET NOT NULL"
+      },
+      {
+        "start_byte": 9347,
+        "end_byte": 9428,
+        "terminator_byte": 9428,
+        "normalized_preview": "ALTER TABLE \"organization_legal_documents\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 9445,
+        "end_byte": 9699,
+        "terminator_byte": 9699,
+        "normalized_preview": "ALTER TABLE \"organization_memberships\" ADD COLUMN     \"department\" TEXT,\nADD COLUMN     \"field_agent_access\" BOOLEAN NOT"
+      },
+      {
+        "start_byte": 9716,
+        "end_byte": 10147,
+        "terminator_byte": 10147,
+        "normalized_preview": "ALTER TABLE \"organization_rental_rules\" DROP COLUMN \"additional_driver_policy\",\nDROP COLUMN \"credit_card_required\",\nDROP"
+      },
+      {
+        "start_byte": 10164,
+        "end_byte": 10365,
+        "terminator_byte": 10365,
+        "normalized_preview": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" RENAME CONSTRAINT \"org_role_asgn_drift_reco"
+      },
+      {
+        "start_byte": 10382,
+        "end_byte": 10442,
+        "terminator_byte": 10442,
+        "normalized_preview": "ALTER TABLE \"organizations\" ADD COLUMN     \"short_code\" TEXT"
+      },
+      {
+        "start_byte": 10459,
+        "end_byte": 10518,
+        "terminator_byte": 10518,
+        "normalized_preview": "ALTER TABLE \"refresh_tokens\" ALTER COLUMN \"id\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 10535,
+        "end_byte": 10672,
+        "terminator_byte": 10672,
+        "normalized_preview": "ALTER TABLE \"rental_contracts\" ALTER COLUMN \"updated_at\" DROP DEFAULT,\nALTER COLUMN \"legal_snapshot_frozen_at\" SET DATA "
+      },
+      {
+        "start_byte": 10689,
+        "end_byte": 11039,
+        "terminator_byte": 11039,
+        "normalized_preview": "ALTER TABLE \"rental_vehicle_categories\" DROP COLUMN \"additional_driver_policy\",\nDROP COLUMN \"foreign_travel_policy\",\nDRO"
+      },
+      {
+        "start_byte": 11056,
+        "end_byte": 11157,
+        "terminator_byte": 11157,
+        "normalized_preview": "ALTER TABLE \"tire_health_snapshots\" ALTER COLUMN \"prediction_generated_at\" SET DATA TYPE TIMESTAMP(3)"
+      },
+      {
+        "start_byte": 11174,
+        "end_byte": 11263,
+        "terminator_byte": 11263,
+        "normalized_preview": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)"
+      },
+      {
+        "start_byte": 11280,
+        "end_byte": 11797,
+        "terminator_byte": 11797,
+        "normalized_preview": "ALTER TABLE \"users\" ADD COLUMN     \"address\" TEXT,\nADD COLUMN     \"date_format\" TEXT DEFAULT 'DD.MM.YYYY',\nADD COLUMN   "
+      },
+      {
+        "start_byte": 11814,
+        "end_byte": 11888,
+        "terminator_byte": 11888,
+        "normalized_preview": "ALTER TABLE \"vehicle_energy_events\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 11905,
+        "end_byte": 11982,
+        "terminator_byte": 11982,
+        "normalized_preview": "ALTER TABLE \"vehicle_enrichment_jobs\" ALTER COLUMN \"vehicle_id\" DROP NOT NULL"
+      },
+      {
+        "start_byte": 11999,
+        "end_byte": 12918,
+        "terminator_byte": 12918,
+        "normalized_preview": "ALTER TABLE \"vehicle_latest_states\" ADD COLUMN     \"dtc_poll_error\" TEXT,\nADD COLUMN     \"dtc_poll_status\" TEXT,\nADD COL"
+      },
+      {
+        "start_byte": 12935,
+        "end_byte": 13081,
+        "terminator_byte": 13081,
+        "normalized_preview": "ALTER TABLE \"vehicle_provider_consents\" ALTER COLUMN \"id\" DROP DEFAULT,\nALTER COLUMN \"scopes\" DROP DEFAULT,\nALTER COLUMN"
+      },
+      {
+        "start_byte": 13098,
+        "end_byte": 13459,
+        "terminator_byte": 13459,
+        "normalized_preview": "ALTER TABLE \"vehicle_rental_requirement_overrides\" DROP COLUMN \"additional_driver_policy\",\nDROP COLUMN \"foreign_travel_p"
+      },
+      {
+        "start_byte": 13476,
+        "end_byte": 13653,
+        "terminator_byte": 13653,
+        "normalized_preview": "ALTER TABLE \"vehicle_service_events\" ADD COLUMN     \"cost_cents\" INTEGER,\nADD COLUMN     \"document_url\" TEXT,\nADD COLUMN"
+      },
+      {
+        "start_byte": 13670,
+        "end_byte": 16663,
+        "terminator_byte": 16663,
+        "normalized_preview": "ALTER TABLE \"vehicle_tire_setups\" ADD COLUMN     \"ai_tire_spec\" JSONB,\nADD COLUMN     \"burnout_events\" INTEGER NOT NULL "
+      },
+      {
+        "start_byte": 16680,
+        "end_byte": 16946,
+        "terminator_byte": 16946,
+        "normalized_preview": "ALTER TABLE \"vehicle_tire_tread_measurements\" ADD COLUMN     \"is_calibration_point\" BOOLEAN NOT NULL DEFAULT false,\nADD "
+      },
+      {
+        "start_byte": 16963,
+        "end_byte": 17937,
+        "terminator_byte": 17937,
+        "normalized_preview": "ALTER TABLE \"vehicles\" ADD COLUMN     \"brake_force_front_percent\" DOUBLE PRECISION,\nADD COLUMN     \"drive_type\" \"DriveTy"
+      },
+      {
+        "start_byte": 17954,
+        "end_byte": 18022,
+        "terminator_byte": 18022,
+        "normalized_preview": "ALTER TABLE \"vendor_vehicles\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 18039,
+        "end_byte": 18122,
+        "terminator_byte": 18122,
+        "normalized_preview": "ALTER TABLE \"vendors\" ADD COLUMN     \"service_areas\" TEXT[] DEFAULT ARRAY[]::TEXT[]"
+      },
+      {
+        "start_byte": 18139,
+        "end_byte": 18209,
+        "terminator_byte": 18209,
+        "normalized_preview": "ALTER TABLE \"whatsapp_messages\" ALTER COLUMN \"updated_at\" DROP DEFAULT"
+      },
+      {
+        "start_byte": 18225,
+        "end_byte": 18276,
+        "terminator_byte": 18276,
+        "normalized_preview": "DROP TABLE \"organization_legal_document_repair_log\""
+      },
+      {
+        "start_byte": 18292,
+        "end_byte": 18338,
+        "terminator_byte": 18338,
+        "normalized_preview": "DROP TABLE \"rental_rules_integrity_repair_log\""
+      },
+      {
+        "start_byte": 18353,
+        "end_byte": 18383,
+        "terminator_byte": 18383,
+        "normalized_preview": "DROP TYPE \"brake_dtc_category\""
+      },
+      {
+        "start_byte": 18398,
+        "end_byte": 18429,
+        "terminator_byte": 18429,
+        "normalized_preview": "DROP TYPE \"brake_dtc_freshness\""
+      },
+      {
+        "start_byte": 18447,
+        "end_byte": 19025,
+        "terminator_byte": 19025,
+        "normalized_preview": "CREATE TABLE \"tire_position_history\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"vehicle_id\" TEX"
+      },
+      {
+        "start_byte": 19043,
+        "end_byte": 19542,
+        "terminator_byte": 19542,
+        "normalized_preview": "CREATE TABLE \"tire_measurements\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"vehicle_id\" TEXT NO"
+      },
+      {
+        "start_byte": 19560,
+        "end_byte": 19928,
+        "terminator_byte": 19928,
+        "normalized_preview": "CREATE TABLE \"tire_events\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"vehicle_id\" TEXT NOT NULL"
+      },
+      {
+        "start_byte": 19946,
+        "end_byte": 20290,
+        "terminator_byte": 20290,
+        "normalized_preview": "CREATE TABLE \"organization_chat_agents\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"agent_name\" "
+      },
+      {
+        "start_byte": 20308,
+        "end_byte": 21743,
+        "terminator_byte": 21743,
+        "normalized_preview": "CREATE TABLE \"insurance_partners\" (\n    \"id\" TEXT NOT NULL,\n    \"key\" TEXT NOT NULL,\n    \"display_name\" TEXT NOT NULL,\n "
+      },
+      {
+        "start_byte": 21761,
+        "end_byte": 22227,
+        "terminator_byte": 22227,
+        "normalized_preview": "CREATE TABLE \"insurance_partner_contacts\" (\n    \"id\" TEXT NOT NULL,\n    \"insurance_partner_id\" TEXT NOT NULL,\n    \"full_"
+      },
+      {
+        "start_byte": 22245,
+        "end_byte": 22620,
+        "terminator_byte": 22620,
+        "normalized_preview": "CREATE TABLE \"insurance_partner_org_access\" (\n    \"id\" TEXT NOT NULL,\n    \"insurance_partner_id\" TEXT NOT NULL,\n    \"org"
+      },
+      {
+        "start_byte": 22638,
+        "end_byte": 23177,
+        "terminator_byte": 23177,
+        "normalized_preview": "CREATE TABLE \"insurance_disclosure_templates\" (\n    \"id\" TEXT NOT NULL,\n    \"insurer_key\" TEXT,\n    \"inquiry_type\" TEXT,"
+      },
+      {
+        "start_byte": 23195,
+        "end_byte": 23748,
+        "terminator_byte": 23748,
+        "normalized_preview": "CREATE TABLE \"insurance_inquiry_templates\" (\n    \"id\" TEXT NOT NULL,\n    \"insurer_key\" TEXT,\n    \"inquiry_type\" TEXT,\n  "
+      },
+      {
+        "start_byte": 23766,
+        "end_byte": 24360,
+        "terminator_byte": 24360,
+        "normalized_preview": "CREATE TABLE \"vehicle_insurance_records\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"vehicle_id\""
+      },
+      {
+        "start_byte": 24378,
+        "end_byte": 25068,
+        "terminator_byte": 25068,
+        "normalized_preview": "CREATE TABLE \"insurance_inquiries\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"user_id\" TEXT NOT"
+      },
+      {
+        "start_byte": 25086,
+        "end_byte": 25788,
+        "terminator_byte": 25788,
+        "normalized_preview": "CREATE TABLE \"insurance_inquiry_recipients\" (\n    \"id\" TEXT NOT NULL,\n    \"inquiry_id\" TEXT NOT NULL,\n    \"insurer_id\" T"
+      },
+      {
+        "start_byte": 25806,
+        "end_byte": 26736,
+        "terminator_byte": 26736,
+        "normalized_preview": "CREATE TABLE \"insurance_data_authorization_logs\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"use"
+      },
+      {
+        "start_byte": 26754,
+        "end_byte": 27519,
+        "terminator_byte": 27519,
+        "normalized_preview": "CREATE TABLE \"insurance_live_sharing_permissions\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"ve"
+      },
+      {
+        "start_byte": 27537,
+        "end_byte": 27952,
+        "terminator_byte": 27952,
+        "normalized_preview": "CREATE TABLE \"platform_changelogs\" (\n    \"id\" TEXT NOT NULL,\n    \"version\" TEXT NOT NULL,\n    \"title\" TEXT NOT NULL,\n   "
+      },
+      {
+        "start_byte": 27970,
+        "end_byte": 28389,
+        "terminator_byte": 28389,
+        "normalized_preview": "CREATE TABLE \"vehicle_logbook_configs\" (\n    \"id\" TEXT NOT NULL,\n    \"vehicle_id\" TEXT NOT NULL,\n    \"enabled\" BOOLEAN N"
+      },
+      {
+        "start_byte": 28407,
+        "end_byte": 28952,
+        "terminator_byte": 28952,
+        "normalized_preview": "CREATE TABLE \"tenant_insight_policies\" (\n    \"id\" TEXT NOT NULL,\n    \"organization_id\" TEXT NOT NULL,\n    \"enabled\" BOOL"
+      },
+      {
+        "start_byte": 28970,
+        "end_byte": 29679,
+        "terminator_byte": 29679,
+        "normalized_preview": "CREATE TABLE \"ai_tire_spec_jobs\" (\n    \"id\" TEXT NOT NULL,\n    \"vehicle_id\" TEXT,\n    \"tire_setup_id\" TEXT,\n    \"brand\" "
+      },
+      {
+        "start_byte": 29697,
+        "end_byte": 29789,
+        "terminator_byte": 29789,
+        "normalized_preview": "CREATE INDEX \"tire_position_history_vehicle_id_idx\" ON \"tire_position_history\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 29807,
+        "end_byte": 29901,
+        "terminator_byte": 29901,
+        "normalized_preview": "CREATE INDEX \"tire_position_history_tire_set_id_idx\" ON \"tire_position_history\"(\"tire_set_id\")"
+      },
+      {
+        "start_byte": 29919,
+        "end_byte": 30030,
+        "terminator_byte": 30030,
+        "normalized_preview": "CREATE INDEX \"tire_position_history_tire_id_changed_at_idx\" ON \"tire_position_history\"(\"tire_id\", \"changed_at\")"
+      },
+      {
+        "start_byte": 30048,
+        "end_byte": 30132,
+        "terminator_byte": 30132,
+        "normalized_preview": "CREATE INDEX \"tire_measurements_vehicle_id_idx\" ON \"tire_measurements\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 30150,
+        "end_byte": 30255,
+        "terminator_byte": 30255,
+        "normalized_preview": "CREATE INDEX \"tire_measurements_tire_id_measured_at_idx\" ON \"tire_measurements\"(\"tire_id\", \"measured_at\")"
+      },
+      {
+        "start_byte": 30273,
+        "end_byte": 30345,
+        "terminator_byte": 30345,
+        "normalized_preview": "CREATE INDEX \"tire_events_vehicle_id_idx\" ON \"tire_events\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 30363,
+        "end_byte": 30437,
+        "terminator_byte": 30437,
+        "normalized_preview": "CREATE INDEX \"tire_events_tire_set_id_idx\" ON \"tire_events\"(\"tire_set_id\")"
+      },
+      {
+        "start_byte": 30455,
+        "end_byte": 30521,
+        "terminator_byte": 30521,
+        "normalized_preview": "CREATE INDEX \"tire_events_tire_id_idx\" ON \"tire_events\"(\"tire_id\")"
+      },
+      {
+        "start_byte": 30539,
+        "end_byte": 30654,
+        "terminator_byte": 30654,
+        "normalized_preview": "CREATE UNIQUE INDEX \"organization_chat_agents_organization_id_key\" ON \"organization_chat_agents\"(\"organization_id\")"
+      },
+      {
+        "start_byte": 30672,
+        "end_byte": 30780,
+        "terminator_byte": 30780,
+        "normalized_preview": "CREATE INDEX \"organization_chat_agents_organization_id_idx\" ON \"organization_chat_agents\"(\"organization_id\")"
+      },
+      {
+        "start_byte": 30798,
+        "end_byte": 30877,
+        "terminator_byte": 30877,
+        "normalized_preview": "CREATE UNIQUE INDEX \"insurance_partners_key_key\" ON \"insurance_partners\"(\"key\")"
+      },
+      {
+        "start_byte": 30895,
+        "end_byte": 30981,
+        "terminator_byte": 30981,
+        "normalized_preview": "CREATE INDEX \"insurance_partners_is_enabled_idx\" ON \"insurance_partners\"(\"is_enabled\")"
+      },
+      {
+        "start_byte": 30999,
+        "end_byte": 31121,
+        "terminator_byte": 31121,
+        "normalized_preview": "CREATE INDEX \"insurance_partner_contacts_insurance_partner_id_idx\" ON \"insurance_partner_contacts\"(\"insurance_partner_id"
+      },
+      {
+        "start_byte": 31139,
+        "end_byte": 31255,
+        "terminator_byte": 31255,
+        "normalized_preview": "CREATE INDEX \"insurance_partner_org_access_organization_id_idx\" ON \"insurance_partner_org_access\"(\"organization_id\")"
+      },
+      {
+        "start_byte": 31273,
+        "end_byte": 31435,
+        "terminator_byte": 31435,
+        "normalized_preview": "CREATE UNIQUE INDEX \"insurance_partner_org_access_insurance_partner_id_organizat_key\" ON \"insurance_partner_org_access\"("
+      },
+      {
+        "start_byte": 31453,
+        "end_byte": 31565,
+        "terminator_byte": 31565,
+        "normalized_preview": "CREATE INDEX \"insurance_disclosure_templates_insurer_key_idx\" ON \"insurance_disclosure_templates\"(\"insurer_key\")"
+      },
+      {
+        "start_byte": 31583,
+        "end_byte": 31691,
+        "terminator_byte": 31691,
+        "normalized_preview": "CREATE INDEX \"insurance_disclosure_templates_is_active_idx\" ON \"insurance_disclosure_templates\"(\"is_active\")"
+      },
+      {
+        "start_byte": 31709,
+        "end_byte": 31815,
+        "terminator_byte": 31815,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiry_templates_insurer_key_idx\" ON \"insurance_inquiry_templates\"(\"insurer_key\")"
+      },
+      {
+        "start_byte": 31833,
+        "end_byte": 31935,
+        "terminator_byte": 31935,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiry_templates_is_active_idx\" ON \"insurance_inquiry_templates\"(\"is_active\")"
+      },
+      {
+        "start_byte": 31953,
+        "end_byte": 32063,
+        "terminator_byte": 32063,
+        "normalized_preview": "CREATE INDEX \"vehicle_insurance_records_organization_id_idx\" ON \"vehicle_insurance_records\"(\"organization_id\")"
+      },
+      {
+        "start_byte": 32081,
+        "end_byte": 32181,
+        "terminator_byte": 32181,
+        "normalized_preview": "CREATE INDEX \"vehicle_insurance_records_vehicle_id_idx\" ON \"vehicle_insurance_records\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 32199,
+        "end_byte": 32291,
+        "terminator_byte": 32291,
+        "normalized_preview": "CREATE INDEX \"vehicle_insurance_records_status_idx\" ON \"vehicle_insurance_records\"(\"status\")"
+      },
+      {
+        "start_byte": 32309,
+        "end_byte": 32407,
+        "terminator_byte": 32407,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiries_organization_id_idx\" ON \"insurance_inquiries\"(\"organization_id\")"
+      },
+      {
+        "start_byte": 32425,
+        "end_byte": 32507,
+        "terminator_byte": 32507,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiries_user_id_idx\" ON \"insurance_inquiries\"(\"user_id\")"
+      },
+      {
+        "start_byte": 32525,
+        "end_byte": 32613,
+        "terminator_byte": 32613,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiries_vehicle_id_idx\" ON \"insurance_inquiries\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 32631,
+        "end_byte": 32711,
+        "terminator_byte": 32711,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiries_status_idx\" ON \"insurance_inquiries\"(\"status\")"
+      },
+      {
+        "start_byte": 32729,
+        "end_byte": 32825,
+        "terminator_byte": 32825,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiries_correlation_id_idx\" ON \"insurance_inquiries\"(\"correlation_id\")"
+      },
+      {
+        "start_byte": 32843,
+        "end_byte": 32949,
+        "terminator_byte": 32949,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiry_recipients_inquiry_id_idx\" ON \"insurance_inquiry_recipients\"(\"inquiry_id\")"
+      },
+      {
+        "start_byte": 32967,
+        "end_byte": 33073,
+        "terminator_byte": 33073,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiry_recipients_insurer_id_idx\" ON \"insurance_inquiry_recipients\"(\"insurer_id\")"
+      },
+      {
+        "start_byte": 33091,
+        "end_byte": 33207,
+        "terminator_byte": 33207,
+        "normalized_preview": "CREATE INDEX \"insurance_inquiry_recipients_delivery_status_idx\" ON \"insurance_inquiry_recipients\"(\"delivery_status\")"
+      },
+      {
+        "start_byte": 33225,
+        "end_byte": 33351,
+        "terminator_byte": 33351,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_organization_id_idx\" ON \"insurance_data_authorization_logs\"(\"organizatio"
+      },
+      {
+        "start_byte": 33369,
+        "end_byte": 33479,
+        "terminator_byte": 33479,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_user_id_idx\" ON \"insurance_data_authorization_logs\"(\"user_id\")"
+      },
+      {
+        "start_byte": 33497,
+        "end_byte": 33613,
+        "terminator_byte": 33613,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_vehicle_id_idx\" ON \"insurance_data_authorization_logs\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 33631,
+        "end_byte": 33747,
+        "terminator_byte": 33747,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_insurer_id_idx\" ON \"insurance_data_authorization_logs\"(\"insurer_id\")"
+      },
+      {
+        "start_byte": 33765,
+        "end_byte": 33881,
+        "terminator_byte": 33881,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_inquiry_id_idx\" ON \"insurance_data_authorization_logs\"(\"inquiry_id\")"
+      },
+      {
+        "start_byte": 33899,
+        "end_byte": 34023,
+        "terminator_byte": 34023,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_correlation_id_idx\" ON \"insurance_data_authorization_logs\"(\"correlation_"
+      },
+      {
+        "start_byte": 34041,
+        "end_byte": 34161,
+        "terminator_byte": 34161,
+        "normalized_preview": "CREATE INDEX \"insurance_data_authorization_logs_confirmed_at_idx\" ON \"insurance_data_authorization_logs\"(\"confirmed_at\")"
+      },
+      {
+        "start_byte": 34179,
+        "end_byte": 34307,
+        "terminator_byte": 34307,
+        "normalized_preview": "CREATE INDEX \"insurance_live_sharing_permissions_organization_id_idx\" ON \"insurance_live_sharing_permissions\"(\"organizat"
+      },
+      {
+        "start_byte": 34325,
+        "end_byte": 34443,
+        "terminator_byte": 34443,
+        "normalized_preview": "CREATE INDEX \"insurance_live_sharing_permissions_vehicle_id_idx\" ON \"insurance_live_sharing_permissions\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 34461,
+        "end_byte": 34579,
+        "terminator_byte": 34579,
+        "normalized_preview": "CREATE INDEX \"insurance_live_sharing_permissions_insurer_id_idx\" ON \"insurance_live_sharing_permissions\"(\"insurer_id\")"
+      },
+      {
+        "start_byte": 34597,
+        "end_byte": 34707,
+        "terminator_byte": 34707,
+        "normalized_preview": "CREATE INDEX \"insurance_live_sharing_permissions_status_idx\" ON \"insurance_live_sharing_permissions\"(\"status\")"
+      },
+      {
+        "start_byte": 34725,
+        "end_byte": 34813,
+        "terminator_byte": 34813,
+        "normalized_preview": "CREATE INDEX \"platform_changelogs_created_at_idx\" ON \"platform_changelogs\"(\"created_at\")"
+      },
+      {
+        "start_byte": 34831,
+        "end_byte": 34911,
+        "terminator_byte": 34911,
+        "normalized_preview": "CREATE INDEX \"platform_changelogs_module_idx\" ON \"platform_changelogs\"(\"module\")"
+      },
+      {
+        "start_byte": 34929,
+        "end_byte": 35032,
+        "terminator_byte": 35032,
+        "normalized_preview": "CREATE UNIQUE INDEX \"vehicle_logbook_configs_vehicle_id_key\" ON \"vehicle_logbook_configs\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 35050,
+        "end_byte": 35163,
+        "terminator_byte": 35163,
+        "normalized_preview": "CREATE UNIQUE INDEX \"tenant_insight_policies_organization_id_key\" ON \"tenant_insight_policies\"(\"organization_id\")"
+      },
+      {
+        "start_byte": 35181,
+        "end_byte": 35265,
+        "terminator_byte": 35265,
+        "normalized_preview": "CREATE INDEX \"ai_tire_spec_jobs_vehicle_id_idx\" ON \"ai_tire_spec_jobs\"(\"vehicle_id\")"
+      },
+      {
+        "start_byte": 35283,
+        "end_byte": 35359,
+        "terminator_byte": 35359,
+        "normalized_preview": "CREATE INDEX \"ai_tire_spec_jobs_status_idx\" ON \"ai_tire_spec_jobs\"(\"status\")"
+      },
+      {
+        "start_byte": 35377,
+        "end_byte": 35490,
+        "terminator_byte": 35490,
+        "normalized_preview": "CREATE UNIQUE INDEX \"billing_usage_snapshots_idempotency_key_key\" ON \"billing_usage_snapshots\"(\"idempotency_key\")"
+      },
+      {
+        "start_byte": 35508,
+        "end_byte": 35590,
+        "terminator_byte": 35590,
+        "normalized_preview": "CREATE INDEX \"booking_deposits_booking_id_idx\" ON \"booking_deposits\"(\"booking_id\")"
+      },
+      {
+        "start_byte": 35608,
+        "end_byte": 35706,
+        "terminator_byte": 35706,
+        "normalized_preview": "CREATE INDEX \"booking_document_bundles_booking_id_idx\" ON \"booking_document_bundles\"(\"booking_id\")"
+      },
+      {
+        "start_byte": 35724,
+        "end_byte": 35826,
+        "terminator_byte": 35826,
+        "normalized_preview": "CREATE INDEX \"brake_evidence_prediction_snapshot_id_idx\" ON \"brake_evidence\"(\"prediction_snapshot_id\")"
+      },
+      {
+        "start_byte": 35844,
+        "end_byte": 35968,
+        "terminator_byte": 35968,
+        "normalized_preview": "CREATE INDEX \"brake_evidence_vehicle_id_dtc_code_dtc_active_idx\" ON \"brake_evidence\"(\"vehicle_id\", \"dtc_code\", \"dtc_acti"
+      },
+      {
+        "start_byte": 35986,
+        "end_byte": 36089,
+        "terminator_byte": 36089,
+        "normalized_preview": "CREATE INDEX \"brake_evidence_vehicle_id_dedupe_key_idx\" ON \"brake_evidence\"(\"vehicle_id\", \"dedupe_key\")"
+      },
+      {
+        "start_byte": 36107,
+        "end_byte": 36245,
+        "terminator_byte": 36245,
+        "normalized_preview": "CREATE INDEX \"brake_evidence_organization_id_vehicle_id_dedupe_key_idx\" ON \"brake_evidence\"(\"organization_id\", \"vehicle_"
+      },
+      {
+        "start_byte": 36263,
+        "end_byte": 36385,
+        "terminator_byte": 36385,
+        "normalized_preview": "CREATE UNIQUE INDEX \"brake_evidence_document_extraction_id_axle_key\" ON \"brake_evidence\"(\"document_extraction_id\", \"axle"
+      },
+      {
+        "start_byte": 36403,
+        "end_byte": 36508,
+        "terminator_byte": 36508,
+        "normalized_preview": "CREATE INDEX \"brake_health_alerts_dedupe_key_status_idx\" ON \"brake_health_alerts\"(\"dedupe_key\", \"status\")"
+      },
+      {
+        "start_byte": 36526,
+        "end_byte": 36652,
+        "terminator_byte": 36652,
+        "normalized_preview": "CREATE UNIQUE INDEX \"fines_organization_id_document_extraction_id_key\" ON \"fines\"(\"organization_id\", \"document_extractio"
+      },
+      {
+        "start_byte": 36670,
+        "end_byte": 36814,
+        "terminator_byte": 36814,
+        "normalized_preview": "CREATE UNIQUE INDEX \"legal_document_delivery_evidence_org_request_id_key\" ON \"legal_document_delivery_evidence\"(\"organiz"
+      },
+      {
+        "start_byte": 36832,
+        "end_byte": 36935,
+        "terminator_byte": 36935,
+        "normalized_preview": "CREATE UNIQUE INDEX \"org_invoices_generated_document_id_key\" ON \"org_invoices\"(\"generated_document_id\")"
+      },
+      {
+        "start_byte": 36953,
+        "end_byte": 37110,
+        "terminator_byte": 37110,
+        "normalized_preview": "CREATE UNIQUE INDEX \"org_invoices_organization_id_sequence_year_sequence_number_key\" ON \"org_invoices\"(\"organization_id\""
+      },
+      {
+        "start_byte": 37128,
+        "end_byte": 37268,
+        "terminator_byte": 37268,
+        "normalized_preview": "CREATE UNIQUE INDEX \"org_invoices_organization_id_document_extraction_id_key\" ON \"org_invoices\"(\"organization_id\", \"docu"
+      },
+      {
+        "start_byte": 37286,
+        "end_byte": 37369,
+        "terminator_byte": 37369,
+        "normalized_preview": "CREATE UNIQUE INDEX \"organizations_short_code_key\" ON \"organizations\"(\"short_code\")"
+      },
+      {
+        "start_byte": 37387,
+        "end_byte": 37513,
+        "terminator_byte": 37513,
+        "normalized_preview": "CREATE UNIQUE INDEX \"outbound_emails_org_send_idempotency_key\" ON \"outbound_emails\"(\"organization_id\", \"send_idempotency"
+      },
+      {
+        "start_byte": 37531,
+        "end_byte": 37613,
+        "terminator_byte": 37613,
+        "normalized_preview": "CREATE INDEX \"rental_contracts_booking_id_idx\" ON \"rental_contracts\"(\"booking_id\")"
+      },
+      {
+        "start_byte": 37631,
+        "end_byte": 37743,
+        "terminator_byte": 37743,
+        "normalized_preview": "CREATE INDEX \"rental_driving_analyses_assigned_driver_id_idx\" ON \"rental_driving_analyses\"(\"assigned_driver_id\")"
+      },
+      {
+        "start_byte": 37761,
+        "end_byte": 37869,
+        "terminator_byte": 37869,
+        "normalized_preview": "CREATE INDEX \"rental_driving_analyses_actual_driver_id_idx\" ON \"rental_driving_analyses\"(\"actual_driver_id\")"
+      },
+      {
+        "start_byte": 37887,
+        "end_byte": 37983,
+        "terminator_byte": 37983,
+        "normalized_preview": "CREATE UNIQUE INDEX \"stations_organization_id_code_key\" ON \"stations\"(\"organization_id\", \"code\")"
+      },
+      {
+        "start_byte": 38001,
+        "end_byte": 38087,
+        "terminator_byte": 38087,
+        "normalized_preview": "CREATE INDEX \"support_tickets_ticket_number_idx\" ON \"support_tickets\"(\"ticket_number\")"
+      },
+      {
+        "start_byte": 38105,
+        "end_byte": 38249,
+        "terminator_byte": 38249,
+        "normalized_preview": "CREATE INDEX \"tire_health_snapshots_setup_model_fingerprint_idx\" ON \"tire_health_snapshots\"(\"tire_set_id\", \"model_versio"
+      },
+      {
+        "start_byte": 38267,
+        "end_byte": 38413,
+        "terminator_byte": 38413,
+        "normalized_preview": "CREATE UNIQUE INDEX \"vehicle_damages_organization_id_document_extraction_id_key\" ON \"vehicle_damages\"(\"organization_id\","
+      },
+      {
+        "start_byte": 38431,
+        "end_byte": 38572,
+        "terminator_byte": 38572,
+        "normalized_preview": "CREATE INDEX \"vehicle_document_extractions_organization_id_created_at_idx\" ON \"vehicle_document_extractions\"(\"organizati"
+      },
+      {
+        "start_byte": 38590,
+        "end_byte": 38721,
+        "terminator_byte": 38721,
+        "normalized_preview": "CREATE INDEX \"vehicle_document_extractions_vehicle_id_created_at_idx\" ON \"vehicle_document_extractions\"(\"vehicle_id\", \"c"
+      },
+      {
+        "start_byte": 38739,
+        "end_byte": 38897,
+        "terminator_byte": 38897,
+        "normalized_preview": "CREATE UNIQUE INDEX \"vehicle_service_events_organization_id_document_extraction__key\" ON \"vehicle_service_events\"(\"organ"
+      },
+      {
+        "start_byte": 38915,
+        "end_byte": 39038,
+        "terminator_byte": 39038,
+        "normalized_preview": "CREATE INDEX \"vehicle_tire_setups_organization_id_vehicle_id_idx\" ON \"vehicle_tire_setups\"(\"organization_id\", \"vehicle_i"
+      },
+      {
+        "start_byte": 39056,
+        "end_byte": 39136,
+        "terminator_byte": 39136,
+        "normalized_preview": "CREATE INDEX \"vehicle_tire_setups_status_idx\" ON \"vehicle_tire_setups\"(\"status\")"
+      },
+      {
+        "start_byte": 39154,
+        "end_byte": 39316,
+        "terminator_byte": 39316,
+        "normalized_preview": "CREATE UNIQUE INDEX \"vehicle_tire_tread_measurements_vehicle_id_document_extract_key\" ON \"vehicle_tire_tread_measurement"
+      },
+      {
+        "start_byte": 39334,
+        "end_byte": 39451,
+        "terminator_byte": 39451,
+        "normalized_preview": "CREATE UNIQUE INDEX \"voice_phone_numbers_elevenlabs_ref_digest_key\" ON \"voice_phone_numbers\"(\"elevenlabs_ref_digest\")"
+      },
+      {
+        "start_byte": 39474,
+        "end_byte": 39690,
+        "terminator_byte": 39690,
+        "normalized_preview": "ALTER TABLE \"device_connection_telemetry_recovery_observations\" RENAME CONSTRAINT \"device_connection_telemetry_recovery_"
+      },
+      {
+        "start_byte": 39713,
+        "end_byte": 39915,
+        "terminator_byte": 39915,
+        "normalized_preview": "ALTER TABLE \"document_extraction_content_anchors\" RENAME CONSTRAINT \"document_extraction_content_anchors_canonical_extra"
+      },
+      {
+        "start_byte": 39938,
+        "end_byte": 40148,
+        "terminator_byte": 40148,
+        "normalized_preview": "ALTER TABLE \"org_task_automation_rule_override_revisions\" RENAME CONSTRAINT \"org_task_automation_rule_override_revisions"
+      },
+      {
+        "start_byte": 40171,
+        "end_byte": 40384,
+        "terminator_byte": 40384,
+        "normalized_preview": "ALTER TABLE \"organization_legal_document_retention_policies\" RENAME CONSTRAINT \"organization_legal_document_retention_po"
+      },
+      {
+        "start_byte": 40407,
+        "end_byte": 40596,
+        "terminator_byte": 40596,
+        "normalized_preview": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" RENAME CONSTRAINT \"org_role_asgn_drift_reco"
+      },
+      {
+        "start_byte": 40619,
+        "end_byte": 40808,
+        "terminator_byte": 40808,
+        "normalized_preview": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" RENAME CONSTRAINT \"org_role_asgn_drift_reco"
+      },
+      {
+        "start_byte": 40831,
+        "end_byte": 41035,
+        "terminator_byte": 41035,
+        "normalized_preview": "ALTER TABLE \"organization_role_change_applications\" RENAME CONSTRAINT \"organization_role_change_applications_created_rol"
+      },
+      {
+        "start_byte": 41058,
+        "end_byte": 41255,
+        "terminator_byte": 41255,
+        "normalized_preview": "ALTER TABLE \"task_automation_workflow_migration_records\" RENAME CONSTRAINT \"task_automation_workflow_migration_records_r"
+      },
+      {
+        "start_byte": 41278,
+        "end_byte": 41487,
+        "terminator_byte": 41487,
+        "normalized_preview": "ALTER TABLE \"vehicle_battery_reference_capacity_changes\" RENAME CONSTRAINT \"vehicle_battery_reference_capacity_changes_r"
+      },
+      {
+        "start_byte": 41507,
+        "end_byte": 41697,
+        "terminator_byte": 41697,
+        "normalized_preview": "ALTER TABLE \"iam_session_revocation_intents\" ADD CONSTRAINT \"iam_session_revocation_intents_user_id_fkey\" FOREIGN KEY (\""
+      },
+      {
+        "start_byte": 41717,
+        "end_byte": 41898,
+        "terminator_byte": 41898,
+        "normalized_preview": "ALTER TABLE \"tire_position_history\" ADD CONSTRAINT \"tire_position_history_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") RE"
+      },
+      {
+        "start_byte": 41918,
+        "end_byte": 42113,
+        "terminator_byte": 42113,
+        "normalized_preview": "ALTER TABLE \"tire_position_history\" ADD CONSTRAINT \"tire_position_history_tire_set_id_fkey\" FOREIGN KEY (\"tire_set_id\") "
+      },
+      {
+        "start_byte": 42133,
+        "end_byte": 42306,
+        "terminator_byte": 42306,
+        "normalized_preview": "ALTER TABLE \"tire_position_history\" ADD CONSTRAINT \"tire_position_history_tire_id_fkey\" FOREIGN KEY (\"tire_id\") REFERENC"
+      },
+      {
+        "start_byte": 42326,
+        "end_byte": 42490,
+        "terminator_byte": 42490,
+        "normalized_preview": "ALTER TABLE \"tire_measurements\" ADD CONSTRAINT \"tire_measurements_tire_id_fkey\" FOREIGN KEY (\"tire_id\") REFERENCES \"tire"
+      },
+      {
+        "start_byte": 42510,
+        "end_byte": 42671,
+        "terminator_byte": 42671,
+        "normalized_preview": "ALTER TABLE \"tire_events\" ADD CONSTRAINT \"tire_events_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERENCES \"vehicles\"("
+      },
+      {
+        "start_byte": 42691,
+        "end_byte": 42844,
+        "terminator_byte": 42844,
+        "normalized_preview": "ALTER TABLE \"tire_events\" ADD CONSTRAINT \"tire_events_tire_id_fkey\" FOREIGN KEY (\"tire_id\") REFERENCES \"tires\"(\"id\") ON "
+      },
+      {
+        "start_byte": 42864,
+        "end_byte": 43039,
+        "terminator_byte": 43039,
+        "normalized_preview": "ALTER TABLE \"tire_events\" ADD CONSTRAINT \"tire_events_tire_set_id_fkey\" FOREIGN KEY (\"tire_set_id\") REFERENCES \"vehicle_"
+      },
+      {
+        "start_byte": 43059,
+        "end_byte": 43244,
+        "terminator_byte": 43244,
+        "normalized_preview": "ALTER TABLE \"rental_driving_analyses\" ADD CONSTRAINT \"rental_driving_analyses_driver_id_fkey\" FOREIGN KEY (\"driver_id\") "
+      },
+      {
+        "start_byte": 43264,
+        "end_byte": 43442,
+        "terminator_byte": 43442,
+        "normalized_preview": "ALTER TABLE \"org_invoices\" ADD CONSTRAINT \"org_invoices_organization_id_fkey\" FOREIGN KEY (\"organization_id\") REFERENCES"
+      },
+      {
+        "start_byte": 43462,
+        "end_byte": 43705,
+        "terminator_byte": 43705,
+        "normalized_preview": "ALTER TABLE \"device_connection_episode_resolution_audits\" ADD CONSTRAINT \"device_connection_episode_resolution_audits_ep"
+      },
+      {
+        "start_byte": 43725,
+        "end_byte": 43968,
+        "terminator_byte": 43968,
+        "normalized_preview": "ALTER TABLE \"device_connection_episode_resolution_outbox\" ADD CONSTRAINT \"device_connection_episode_resolution_outbox_ep"
+      },
+      {
+        "start_byte": 43988,
+        "end_byte": 44194,
+        "terminator_byte": 44194,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" ADD CONSTRAINT \"brake_evidence_prediction_snapshot_id_fkey\" FOREIGN KEY (\"prediction_snapsh"
+      },
+      {
+        "start_byte": 44214,
+        "end_byte": 44412,
+        "terminator_byte": 44412,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" ADD CONSTRAINT \"brake_evidence_vehicle_dtc_event_id_fkey\" FOREIGN KEY (\"vehicle_dtc_event_i"
+      },
+      {
+        "start_byte": 44432,
+        "end_byte": 44636,
+        "terminator_byte": 44636,
+        "normalized_preview": "ALTER TABLE \"brake_evidence\" ADD CONSTRAINT \"brake_evidence_superseded_by_evidence_id_fkey\" FOREIGN KEY (\"superseded_by_"
+      },
+      {
+        "start_byte": 44656,
+        "end_byte": 44833,
+        "terminator_byte": 44833,
+        "normalized_preview": "ALTER TABLE \"brake_health_alerts\" ADD CONSTRAINT \"brake_health_alerts_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERE"
+      },
+      {
+        "start_byte": 44853,
+        "end_byte": 45045,
+        "terminator_byte": 45045,
+        "normalized_preview": "ALTER TABLE \"brake_health_alerts\" ADD CONSTRAINT \"brake_health_alerts_organization_id_fkey\" FOREIGN KEY (\"organization_i"
+      },
+      {
+        "start_byte": 45065,
+        "end_byte": 45271,
+        "terminator_byte": 45271,
+        "normalized_preview": "ALTER TABLE \"brake_health_alerts\" ADD CONSTRAINT \"brake_health_alerts_model_snapshot_id_fkey\" FOREIGN KEY (\"model_snapsh"
+      },
+      {
+        "start_byte": 45291,
+        "end_byte": 45474,
+        "terminator_byte": 45474,
+        "normalized_preview": "ALTER TABLE \"brake_health_snapshots\" ADD CONSTRAINT \"brake_health_snapshots_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") "
+      },
+      {
+        "start_byte": 45494,
+        "end_byte": 45683,
+        "terminator_byte": 45683,
+        "normalized_preview": "ALTER TABLE \"brake_recalculation_audit\" ADD CONSTRAINT \"brake_recalculation_audit_vehicle_id_fkey\" FOREIGN KEY (\"vehicle"
+      },
+      {
+        "start_byte": 45703,
+        "end_byte": 45905,
+        "terminator_byte": 45905,
+        "normalized_preview": "ALTER TABLE \"organization_chat_agents\" ADD CONSTRAINT \"organization_chat_agents_organization_id_fkey\" FOREIGN KEY (\"orga"
+      },
+      {
+        "start_byte": 45925,
+        "end_byte": 46146,
+        "terminator_byte": 46146,
+        "normalized_preview": "ALTER TABLE \"insurance_partner_contacts\" ADD CONSTRAINT \"insurance_partner_contacts_insurance_partner_id_fkey\" FOREIGN K"
+      },
+      {
+        "start_byte": 46166,
+        "end_byte": 46391,
+        "terminator_byte": 46391,
+        "normalized_preview": "ALTER TABLE \"insurance_partner_org_access\" ADD CONSTRAINT \"insurance_partner_org_access_insurance_partner_id_fkey\" FOREI"
+      },
+      {
+        "start_byte": 46411,
+        "end_byte": 46624,
+        "terminator_byte": 46624,
+        "normalized_preview": "ALTER TABLE \"insurance_disclosure_templates\" ADD CONSTRAINT \"insurance_disclosure_templates_insurer_key_fkey\" FOREIGN KE"
+      },
+      {
+        "start_byte": 46644,
+        "end_byte": 46851,
+        "terminator_byte": 46851,
+        "normalized_preview": "ALTER TABLE \"insurance_inquiry_templates\" ADD CONSTRAINT \"insurance_inquiry_templates_insurer_key_fkey\" FOREIGN KEY (\"in"
+      },
+      {
+        "start_byte": 46871,
+        "end_byte": 47077,
+        "terminator_byte": 47077,
+        "normalized_preview": "ALTER TABLE \"insurance_inquiry_recipients\" ADD CONSTRAINT \"insurance_inquiry_recipients_inquiry_id_fkey\" FOREIGN KEY (\"i"
+      },
+      {
+        "start_byte": 47097,
+        "end_byte": 47302,
+        "terminator_byte": 47302,
+        "normalized_preview": "ALTER TABLE \"insurance_inquiry_recipients\" ADD CONSTRAINT \"insurance_inquiry_recipients_insurer_id_fkey\" FOREIGN KEY (\"i"
+      },
+      {
+        "start_byte": 47322,
+        "end_byte": 47537,
+        "terminator_byte": 47537,
+        "normalized_preview": "ALTER TABLE \"insurance_data_authorization_logs\" ADD CONSTRAINT \"insurance_data_authorization_logs_insurer_id_fkey\" FOREI"
+      },
+      {
+        "start_byte": 47557,
+        "end_byte": 47774,
+        "terminator_byte": 47774,
+        "normalized_preview": "ALTER TABLE \"insurance_data_authorization_logs\" ADD CONSTRAINT \"insurance_data_authorization_logs_inquiry_id_fkey\" FOREI"
+      },
+      {
+        "start_byte": 47794,
+        "end_byte": 48011,
+        "terminator_byte": 48011,
+        "normalized_preview": "ALTER TABLE \"insurance_live_sharing_permissions\" ADD CONSTRAINT \"insurance_live_sharing_permissions_insurer_id_fkey\" FOR"
+      },
+      {
+        "start_byte": 48031,
+        "end_byte": 48250,
+        "terminator_byte": 48250,
+        "normalized_preview": "ALTER TABLE \"insurance_live_sharing_permissions\" ADD CONSTRAINT \"insurance_live_sharing_permissions_inquiry_id_fkey\" FOR"
+      },
+      {
+        "start_byte": 48270,
+        "end_byte": 48455,
+        "terminator_byte": 48455,
+        "normalized_preview": "ALTER TABLE \"vehicle_logbook_configs\" ADD CONSTRAINT \"vehicle_logbook_configs_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\""
+      },
+      {
+        "start_byte": 48475,
+        "end_byte": 48675,
+        "terminator_byte": 48675,
+        "normalized_preview": "ALTER TABLE \"tenant_insight_policies\" ADD CONSTRAINT \"tenant_insight_policies_organization_id_fkey\" FOREIGN KEY (\"organi"
+      },
+      {
+        "start_byte": 48695,
+        "end_byte": 48932,
+        "terminator_byte": 48932,
+        "normalized_preview": "ALTER TABLE \"high_mobility_status_history\" ADD CONSTRAINT \"high_mobility_status_history_high_mobility_vehicle_id_fkey\" F"
+      },
+      {
+        "start_byte": 48952,
+        "end_byte": 49193,
+        "terminator_byte": 49193,
+        "normalized_preview": "ALTER TABLE \"high_mobility_health_sync_logs\" ADD CONSTRAINT \"high_mobility_health_sync_logs_high_mobility_vehicle_id_fke"
+      },
+      {
+        "start_byte": 49213,
+        "end_byte": 49435,
+        "terminator_byte": 49435,
+        "normalized_preview": "ALTER TABLE \"vehicle_data_source_links\" ADD CONSTRAINT \"vehicle_data_source_links_source_reference_id_fkey\" FOREIGN KEY "
+      },
+      {
+        "start_byte": 49455,
+        "end_byte": 49697,
+        "terminator_byte": 49697,
+        "normalized_preview": "ALTER TABLE \"high_mobility_stream_sync_logs\" ADD CONSTRAINT \"high_mobility_stream_sync_logs_high_mobility_vehicle_id_fke"
+      },
+      {
+        "start_byte": 49717,
+        "end_byte": 49920,
+        "terminator_byte": 49920,
+        "normalized_preview": "ALTER TABLE \"hm_signal_group_states\" ADD CONSTRAINT \"hm_signal_group_states_hm_vehicle_id_fkey\" FOREIGN KEY (\"hm_vehicle"
+      },
+      {
+        "start_byte": 49940,
+        "end_byte": 50123,
+        "terminator_byte": 50123,
+        "normalized_preview": "ALTER TABLE \"hm_signal_group_states\" ADD CONSTRAINT \"hm_signal_group_states_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") "
+      },
+      {
+        "start_byte": 50141,
+        "end_byte": 50294,
+        "terminator_byte": 50294,
+        "normalized_preview": "ALTER INDEX \"battery_retention_aggregates_organization_id_bucket_start_at_id\" RENAME TO \"battery_retention_aggregates_or"
+      },
+      {
+        "start_byte": 50312,
+        "end_byte": 50465,
+        "terminator_byte": 50465,
+        "normalized_preview": "ALTER INDEX \"battery_retention_aggregates_vehicle_id_bucket_type_bucket_star\" RENAME TO \"battery_retention_aggregates_ve"
+      },
+      {
+        "start_byte": 50483,
+        "end_byte": 50636,
+        "terminator_byte": 50636,
+        "normalized_preview": "ALTER INDEX \"billing_billable_vehicle_assignments_organization_id_vehicle_id\" RENAME TO \"billing_billable_vehicle_assign"
+      },
+      {
+        "start_byte": 50654,
+        "end_byte": 50807,
+        "terminator_byte": 50807,
+        "normalized_preview": "ALTER INDEX \"billing_billable_vehicle_assignments_subscription_item_id_billa\" RENAME TO \"billing_billable_vehicle_assign"
+      },
+      {
+        "start_byte": 50825,
+        "end_byte": 50978,
+        "terminator_byte": 50978,
+        "normalized_preview": "ALTER INDEX \"billing_billable_vehicle_assignments_vehicle_id_billable_from_i\" RENAME TO \"billing_billable_vehicle_assign"
+      },
+      {
+        "start_byte": 50996,
+        "end_byte": 51149,
+        "terminator_byte": 51149,
+        "normalized_preview": "ALTER INDEX \"billing_domain_event_outbox_deliveries_outbox_event_id_consumer\" RENAME TO \"billing_domain_event_outbox_del"
+      },
+      {
+        "start_byte": 51167,
+        "end_byte": 51320,
+        "terminator_byte": 51320,
+        "normalized_preview": "ALTER INDEX \"billing_reconciliation_drifts_organization_id_resolved_at_detec\" RENAME TO \"billing_reconciliation_drifts_o"
+      },
+      {
+        "start_byte": 51338,
+        "end_byte": 51491,
+        "terminator_byte": 51491,
+        "normalized_preview": "ALTER INDEX \"billing_stripe_catalog_mappings_billing_product_id_stripe_mode_\" RENAME TO \"billing_stripe_catalog_mappings"
+      },
+      {
+        "start_byte": 51509,
+        "end_byte": 51662,
+        "terminator_byte": 51662,
+        "normalized_preview": "ALTER INDEX \"billing_stripe_catalog_mappings_price_version_id_stripe_mode_ke\" RENAME TO \"billing_stripe_catalog_mappings"
+      },
+      {
+        "start_byte": 51680,
+        "end_byte": 51827,
+        "terminator_byte": 51827,
+        "normalized_preview": "ALTER INDEX \"billing_subscription_items_stripe_item_id_stripe_mode_key\" RENAME TO \"billing_subscription_items_stripe_sub"
+      },
+      {
+        "start_byte": 51845,
+        "end_byte": 51998,
+        "terminator_byte": 51998,
+        "normalized_preview": "ALTER INDEX \"brake_component_installations_vehicle_id_component_type_instal_\" RENAME TO \"brake_component_installations_v"
+      },
+      {
+        "start_byte": 52016,
+        "end_byte": 52129,
+        "terminator_byte": 52129,
+        "normalized_preview": "ALTER INDEX \"brake_evidence_vehicle_active_idx\" RENAME TO \"brake_evidence_vehicle_id_active_last_observed_at_idx\""
+      },
+      {
+        "start_byte": 52147,
+        "end_byte": 52254,
+        "terminator_byte": 52254,
+        "normalized_preview": "ALTER INDEX \"brake_health_alerts_org_status_idx\" RENAME TO \"brake_health_alerts_organization_id_status_idx\""
+      },
+      {
+        "start_byte": 52272,
+        "end_byte": 52389,
+        "terminator_byte": 52389,
+        "normalized_preview": "ALTER INDEX \"brake_health_alerts_vehicle_category_idx\" RENAME TO \"brake_health_alerts_vehicle_id_category_status_idx\""
+      },
+      {
+        "start_byte": 52407,
+        "end_byte": 52513,
+        "terminator_byte": 52513,
+        "normalized_preview": "ALTER INDEX \"brake_health_alerts_vehicle_status_idx\" RENAME TO \"brake_health_alerts_vehicle_id_status_idx\""
+      },
+      {
+        "start_byte": 52531,
+        "end_byte": 52652,
+        "terminator_byte": 52652,
+        "normalized_preview": "ALTER INDEX \"brake_health_snapshots_vehicle_generated_idx\" RENAME TO \"brake_health_snapshots_vehicle_id_generated_at_idx"
+      },
+      {
+        "start_byte": 52670,
+        "end_byte": 52818,
+        "terminator_byte": 52818,
+        "normalized_preview": "ALTER INDEX \"brake_service_applications_org_vehicle_idempotency_key_key\" RENAME TO \"brake_service_applications_organizat"
+      },
+      {
+        "start_byte": 52836,
+        "end_byte": 52989,
+        "terminator_byte": 52989,
+        "normalized_preview": "ALTER INDEX \"customer_verification_checks_organization_id_customer_id_kind_s\" RENAME TO \"customer_verification_checks_or"
+      },
+      {
+        "start_byte": 53007,
+        "end_byte": 53160,
+        "terminator_byte": 53160,
+        "normalized_preview": "ALTER INDEX \"device_connection_episode_resolution_outbox_status_next_retry_a\" RENAME TO \"device_connection_episode_resol"
+      },
+      {
+        "start_byte": 53178,
+        "end_byte": 53331,
+        "terminator_byte": 53331,
+        "normalized_preview": "ALTER INDEX \"device_connection_telemetry_recovery_observations_episode_id_pr\" RENAME TO \"device_connection_telemetry_rec"
+      },
+      {
+        "start_byte": 53349,
+        "end_byte": 53502,
+        "terminator_byte": 53502,
+        "normalized_preview": "ALTER INDEX \"device_connection_telemetry_recovery_observations_organization_\" RENAME TO \"device_connection_telemetry_rec"
+      },
+      {
+        "start_byte": 53520,
+        "end_byte": 53673,
+        "terminator_byte": 53673,
+        "normalized_preview": "ALTER INDEX \"device_connection_telemetry_recovery_observations_vehicle_id_id\" RENAME TO \"device_connection_telemetry_rec"
+      },
+      {
+        "start_byte": 53691,
+        "end_byte": 53844,
+        "terminator_byte": 53844,
+        "normalized_preview": "ALTER INDEX \"device_connection_webhook_inbox_processing_status_next_retry__i\" RENAME TO \"device_connection_webhook_inbox"
+      },
+      {
+        "start_byte": 53862,
+        "end_byte": 54015,
+        "terminator_byte": 54015,
+        "normalized_preview": "ALTER INDEX \"dimo_device_connection_events_provider_vehicle_id_event_type_de\" RENAME TO \"dimo_device_connection_events_p"
+      },
+      {
+        "start_byte": 54033,
+        "end_byte": 54186,
+        "terminator_byte": 54186,
+        "normalized_preview": "ALTER INDEX \"document_extraction_content_anchors_organization_id_content_sha\" RENAME TO \"document_extraction_content_anc"
+      },
+      {
+        "start_byte": 54204,
+        "end_byte": 54343,
+        "terminator_byte": 54343,
+        "normalized_preview": "ALTER INDEX \"driver_attributions_org_trip_run_model_source_key\" RENAME TO \"driver_attributions_organization_id_trip_id_a"
+      },
+      {
+        "start_byte": 54361,
+        "end_byte": 54488,
+        "terminator_byte": 54488,
+        "normalized_preview": "ALTER INDEX \"driver_attributions_org_trip_type_idx\" RENAME TO \"driver_attributions_organization_id_trip_id_attribution_t"
+      },
+      {
+        "start_byte": 54506,
+        "end_byte": 54659,
+        "terminator_byte": 54659,
+        "normalized_preview": "ALTER INDEX \"driving_analysis_stages_stage_key_model_version_input_finger_id\" RENAME TO \"driving_analysis_stages_stage_k"
+      },
+      {
+        "start_byte": 54677,
+        "end_byte": 54830,
+        "terminator_byte": 54830,
+        "normalized_preview": "ALTER INDEX \"driving_decision_audits_organization_id_subject_type_subject_id\" RENAME TO \"driving_decision_audits_organiz"
+      },
+      {
+        "start_byte": 54848,
+        "end_byte": 54948,
+        "terminator_byte": 54948,
+        "normalized_preview": "ALTER INDEX \"idx_hm_sync_logs_requested\" RENAME TO \"high_mobility_health_sync_logs_requested_at_idx\""
+      },
+      {
+        "start_byte": 54966,
+        "end_byte": 55076,
+        "terminator_byte": 55076,
+        "normalized_preview": "ALTER INDEX \"idx_hm_sync_logs_vehicle\" RENAME TO \"high_mobility_health_sync_logs_high_mobility_vehicle_id_idx\""
+      },
+      {
+        "start_byte": 55094,
+        "end_byte": 55193,
+        "terminator_byte": 55193,
+        "normalized_preview": "ALTER INDEX \"idx_hm_status_history_created\" RENAME TO \"high_mobility_status_history_created_at_idx\""
+      },
+      {
+        "start_byte": 55211,
+        "end_byte": 55324,
+        "terminator_byte": 55324,
+        "normalized_preview": "ALTER INDEX \"idx_hm_status_history_vehicle\" RENAME TO \"high_mobility_status_history_high_mobility_vehicle_id_idx\""
+      },
+      {
+        "start_byte": 55342,
+        "end_byte": 55446,
+        "terminator_byte": 55446,
+        "normalized_preview": "ALTER INDEX \"idx_hm_consumer_state_env\" RENAME TO \"high_mobility_stream_consumer_states_environment_idx\""
+      },
+      {
+        "start_byte": 55464,
+        "end_byte": 55574,
+        "terminator_byte": 55574,
+        "normalized_preview": "ALTER INDEX \"uq_hm_consumer_state\" RENAME TO \"high_mobility_stream_consumer_states_environment_applicatio_key\""
+      },
+      {
+        "start_byte": 55592,
+        "end_byte": 55690,
+        "terminator_byte": 55690,
+        "normalized_preview": "ALTER INDEX \"idx_hm_stream_logs_created\" RENAME TO \"high_mobility_stream_sync_logs_created_at_idx\""
+      },
+      {
+        "start_byte": 55708,
+        "end_byte": 55808,
+        "terminator_byte": 55808,
+        "normalized_preview": "ALTER INDEX \"idx_hm_stream_logs_status\" RENAME TO \"high_mobility_stream_sync_logs_ingest_status_idx\""
+      },
+      {
+        "start_byte": 55826,
+        "end_byte": 55917,
+        "terminator_byte": 55917,
+        "normalized_preview": "ALTER INDEX \"idx_hm_stream_logs_topic\" RENAME TO \"high_mobility_stream_sync_logs_topic_idx\""
+      },
+      {
+        "start_byte": 55935,
+        "end_byte": 56047,
+        "terminator_byte": 56047,
+        "normalized_preview": "ALTER INDEX \"idx_hm_stream_logs_vehicle\" RENAME TO \"high_mobility_stream_sync_logs_high_mobility_vehicle_id_idx\""
+      },
+      {
+        "start_byte": 56065,
+        "end_byte": 56152,
+        "terminator_byte": 56152,
+        "normalized_preview": "ALTER INDEX \"idx_hm_stream_logs_vin\" RENAME TO \"high_mobility_stream_sync_logs_vin_idx\""
+      },
+      {
+        "start_byte": 56170,
+        "end_byte": 56265,
+        "terminator_byte": 56265,
+        "normalized_preview": "ALTER INDEX \"uq_hm_stream_message_id\" RENAME TO \"high_mobility_stream_sync_logs_message_id_key\""
+      },
+      {
+        "start_byte": 56283,
+        "end_byte": 56378,
+        "terminator_byte": 56378,
+        "normalized_preview": "ALTER INDEX \"idx_hm_vehicles_clearance\" RENAME TO \"high_mobility_vehicles_clearance_status_idx\""
+      },
+      {
+        "start_byte": 56396,
+        "end_byte": 56484,
+        "terminator_byte": 56484,
+        "normalized_preview": "ALTER INDEX \"idx_hm_vehicles_org\" RENAME TO \"high_mobility_vehicles_organization_id_idx\""
+      },
+      {
+        "start_byte": 56502,
+        "end_byte": 56591,
+        "terminator_byte": 56591,
+        "normalized_preview": "ALTER INDEX \"idx_hm_vehicles_package\" RENAME TO \"high_mobility_vehicles_package_type_idx\""
+      },
+      {
+        "start_byte": 56609,
+        "end_byte": 56696,
+        "terminator_byte": 56696,
+        "normalized_preview": "ALTER INDEX \"idx_hm_vehicles_source\" RENAME TO \"high_mobility_vehicles_source_mode_idx\""
+      },
+      {
+        "start_byte": 56714,
+        "end_byte": 56814,
+        "terminator_byte": 56814,
+        "normalized_preview": "ALTER INDEX \"idx_hm_vehicles_sq_vehicle\" RENAME TO \"high_mobility_vehicles_synqdrive_vehicle_id_idx\""
+      },
+      {
+        "start_byte": 56832,
+        "end_byte": 56908,
+        "terminator_byte": 56908,
+        "normalized_preview": "ALTER INDEX \"idx_hm_vehicles_vin\" RENAME TO \"high_mobility_vehicles_vin_idx\""
+      },
+      {
+        "start_byte": 56926,
+        "end_byte": 57036,
+        "terminator_byte": 57036,
+        "normalized_preview": "ALTER INDEX \"uq_hm_vehicle_active\" RENAME TO \"high_mobility_vehicles_vin_package_type_source_mode_is_acti_key\""
+      },
+      {
+        "start_byte": 57054,
+        "end_byte": 57207,
+        "terminator_byte": 57207,
+        "normalized_preview": "ALTER INDEX \"hm_compatibility_records_brand_model_model_year_from_model_year\" RENAME TO \"hm_compatibility_records_brand_"
+      },
+      {
+        "start_byte": 57225,
+        "end_byte": 57325,
+        "terminator_byte": 57325,
+        "normalized_preview": "ALTER INDEX \"uq_signal_group_vehicle\" RENAME TO \"hm_signal_group_states_vehicle_id_signal_group_key\""
+      },
+      {
+        "start_byte": 57343,
+        "end_byte": 57496,
+        "terminator_byte": 57496,
+        "normalized_preview": "ALTER INDEX \"membership_permission_overrides_membership_id_module_key_revoke\" RENAME TO \"membership_permission_overrides"
+      },
+      {
+        "start_byte": 57514,
+        "end_byte": 57667,
+        "terminator_byte": 57667,
+        "normalized_preview": "ALTER INDEX \"membership_permission_overrides_organization_id_membership_id_i\" RENAME TO \"membership_permission_overrides"
+      },
+      {
+        "start_byte": 57685,
+        "end_byte": 57824,
+        "terminator_byte": 57824,
+        "normalized_preview": "ALTER INDEX \"notification_retention_purge_runs_org_started_idx\" RENAME TO \"notification_retention_purge_runs_organizatio"
+      },
+      {
+        "start_byte": 57842,
+        "end_byte": 57945,
+        "terminator_byte": 57945,
+        "normalized_preview": "ALTER INDEX \"notifications_org_legal_hold_idx\" RENAME TO \"notifications_organization_id_legal_hold_idx\""
+      },
+      {
+        "start_byte": 57963,
+        "end_byte": 58093,
+        "terminator_byte": 58093,
+        "normalized_preview": "ALTER INDEX \"notifications_org_retention_eligible_idx\" RENAME TO \"notifications_organization_id_retention_class_deletion"
+      },
+      {
+        "start_byte": 58111,
+        "end_byte": 58263,
+        "terminator_byte": 58263,
+        "normalized_preview": "ALTER INDEX \"notifications_organization_id_fingerprint_lifecycle_genera_idx\" RENAME TO \"notifications_organization_id_fi"
+      },
+      {
+        "start_byte": 58281,
+        "end_byte": 58434,
+        "terminator_byte": 58434,
+        "normalized_preview": "ALTER INDEX \"org_invoices_organization_id_vendor_id_invoice_number_display_i\" RENAME TO \"org_invoices_organization_id_ve"
+      },
+      {
+        "start_byte": 58452,
+        "end_byte": 58605,
+        "terminator_byte": 58605,
+        "normalized_preview": "ALTER INDEX \"org_task_automation_rule_override_revisions_organization_id_rul\" RENAME TO \"org_task_automation_rule_overri"
+      },
+      {
+        "start_byte": 58623,
+        "end_byte": 58776,
+        "terminator_byte": 58776,
+        "normalized_preview": "ALTER INDEX \"org_task_automation_rule_override_revisions_override_id_created\" RENAME TO \"org_task_automation_rule_overri"
+      },
+      {
+        "start_byte": 58794,
+        "end_byte": 58883,
+        "terminator_byte": 58883,
+        "normalized_preview": "ALTER INDEX \"org_tasks_org_dedup_key\" RENAME TO \"org_tasks_organization_id_dedup_key_key\""
+      },
+      {
+        "start_byte": 58901,
+        "end_byte": 59054,
+        "terminator_byte": 59054,
+        "normalized_preview": "ALTER INDEX \"org_workflow_change_requests_organization_id_workflow_id_status\" RENAME TO \"org_workflow_change_requests_or"
+      },
+      {
+        "start_byte": 59072,
+        "end_byte": 59225,
+        "terminator_byte": 59225,
+        "normalized_preview": "ALTER INDEX \"org_workflow_shadow_comparisons_organization_id_has_deviation_i\" RENAME TO \"org_workflow_shadow_comparisons"
+      },
+      {
+        "start_byte": 59243,
+        "end_byte": 59396,
+        "terminator_byte": 59396,
+        "normalized_preview": "ALTER INDEX \"org_workflow_shadow_runs_organization_id_event_idempotency_key_\" RENAME TO \"org_workflow_shadow_runs_organi"
+      },
+      {
+        "start_byte": 59414,
+        "end_byte": 59567,
+        "terminator_byte": 59567,
+        "normalized_preview": "ALTER INDEX \"organization_legal_document_retention_policies_organization_id_\" RENAME TO \"organization_legal_document_ret"
+      },
+      {
+        "start_byte": 59585,
+        "end_byte": 59714,
+        "terminator_byte": 59714,
+        "normalized_preview": "ALTER INDEX \"org_role_asgn_drift_recon_apps_idem_key\" RENAME TO \"organization_role_assignment_drift_reconciliation_appli"
+      },
+      {
+        "start_byte": 59732,
+        "end_byte": 59872,
+        "terminator_byte": 59872,
+        "normalized_preview": "ALTER INDEX \"org_role_asgn_drift_recon_apps_org_mbr_created_idx\" RENAME TO \"organization_role_assignment_drift_reconcili"
+      },
+      {
+        "start_byte": 59890,
+        "end_byte": 60043,
+        "terminator_byte": 60043,
+        "normalized_preview": "ALTER INDEX \"organization_role_assignments_organization_id_membership_id_is_\" RENAME TO \"organization_role_assignments_o"
+      },
+      {
+        "start_byte": 60061,
+        "end_byte": 60214,
+        "terminator_byte": 60214,
+        "normalized_preview": "ALTER INDEX \"organization_role_change_applications_organization_id_organizat\" RENAME TO \"organization_role_change_applic"
+      },
+      {
+        "start_byte": 60232,
+        "end_byte": 60385,
+        "terminator_byte": 60385,
+        "normalized_preview": "ALTER INDEX \"organization_role_versions_organization_role_id_status_version_\" RENAME TO \"organization_role_versions_orga"
+      },
+      {
+        "start_byte": 60403,
+        "end_byte": 60532,
+        "terminator_byte": 60532,
+        "normalized_preview": "ALTER INDEX \"password_reset_attempts_scope_key_created_at_idx\" RENAME TO \"password_reset_attempts_scope_scope_key_create"
+      },
+      {
+        "start_byte": 60550,
+        "end_byte": 60703,
+        "terminator_byte": 60703,
+        "normalized_preview": "ALTER INDEX \"payment_transactions_provider_object_type_provider_object_id_id\" RENAME TO \"payment_transactions_provider_o"
+      },
+      {
+        "start_byte": 60721,
+        "end_byte": 60874,
+        "terminator_byte": 60874,
+        "normalized_preview": "ALTER INDEX \"rental_driving_analyses_booking_id_calculation_version_input_fi\" RENAME TO \"rental_driving_analyses_booking"
+      },
+      {
+        "start_byte": 60892,
+        "end_byte": 61045,
+        "terminator_byte": 61045,
+        "normalized_preview": "ALTER INDEX \"rpm_webhook_candidates_provider_vehicle_id_trigger_type_dedup_b\" RENAME TO \"rpm_webhook_candidates_provider"
+      },
+      {
+        "start_byte": 61063,
+        "end_byte": 61202,
+        "terminator_byte": 61202,
+        "normalized_preview": "ALTER INDEX \"task_automation_workflow_migration_records_org_idx\" RENAME TO \"task_automation_workflow_migration_records_o"
+      },
+      {
+        "start_byte": 61220,
+        "end_byte": 61367,
+        "terminator_byte": 61367,
+        "normalized_preview": "ALTER INDEX \"task_automation_workflow_migration_records_org_legacy_key\" RENAME TO \"task_automation_workflow_migration_re"
+      },
+      {
+        "start_byte": 61385,
+        "end_byte": 61525,
+        "terminator_byte": 61525,
+        "normalized_preview": "ALTER INDEX \"task_automation_workflow_migration_records_run_idx\" RENAME TO \"task_automation_workflow_migration_records_m"
+      },
+      {
+        "start_byte": 61543,
+        "end_byte": 61676,
+        "terminator_byte": 61676,
+        "normalized_preview": "ALTER INDEX \"task_automation_workflow_migration_runs_org_idx\" RENAME TO \"task_automation_workflow_migration_runs_organiz"
+      },
+      {
+        "start_byte": 61694,
+        "end_byte": 61847,
+        "terminator_byte": 61847,
+        "normalized_preview": "ALTER INDEX \"user_notification_preferences_user_id_organization_id_category_\" RENAME TO \"user_notification_preferences_u"
+      },
+      {
+        "start_byte": 61865,
+        "end_byte": 62018,
+        "terminator_byte": 62018,
+        "normalized_preview": "ALTER INDEX \"vehicle_battery_capability_changes_vehicle_id_signal_key_change\" RENAME TO \"vehicle_battery_capability_chan"
+      },
+      {
+        "start_byte": 62036,
+        "end_byte": 62189,
+        "terminator_byte": 62189,
+        "normalized_preview": "ALTER INDEX \"vehicle_battery_reference_capacities_vehicle_id_effective_from_\" RENAME TO \"vehicle_battery_reference_capac"
+      },
+      {
+        "start_byte": 62207,
+        "end_byte": 62360,
+        "terminator_byte": 62360,
+        "normalized_preview": "ALTER INDEX \"vehicle_battery_reference_capacity_changes_reference_capacity_i\" RENAME TO \"vehicle_battery_reference_capac"
+      },
+      {
+        "start_byte": 62378,
+        "end_byte": 62531,
+        "terminator_byte": 62531,
+        "normalized_preview": "ALTER INDEX \"vehicle_battery_reference_capacity_changes_vehicle_id_changed_a\" RENAME TO \"vehicle_battery_reference_capac"
+      },
+      {
+        "start_byte": 62549,
+        "end_byte": 62650,
+        "terminator_byte": 62650,
+        "normalized_preview": "ALTER INDEX \"idx_data_source_links_ref\" RENAME TO \"vehicle_data_source_links_source_reference_id_idx\""
+      },
+      {
+        "start_byte": 62668,
+        "end_byte": 62762,
+        "terminator_byte": 62762,
+        "normalized_preview": "ALTER INDEX \"idx_data_source_links_type\" RENAME TO \"vehicle_data_source_links_source_type_idx\""
+      },
+      {
+        "start_byte": 62780,
+        "end_byte": 62876,
+        "terminator_byte": 62876,
+        "normalized_preview": "ALTER INDEX \"idx_data_source_links_vehicle\" RENAME TO \"vehicle_data_source_links_vehicle_id_idx\""
+      },
+      {
+        "start_byte": 62894,
+        "end_byte": 63010,
+        "terminator_byte": 63010,
+        "normalized_preview": "ALTER INDEX \"uq_data_source_link_active\" RENAME TO \"vehicle_data_source_links_vehicle_id_source_type_source_sub_key\""
+      },
+      {
+        "start_byte": 63028,
+        "end_byte": 63114,
+        "terminator_byte": 63114,
+        "normalized_preview": "ALTER INDEX \"vdsl_consent_id_idx\" RENAME TO \"vehicle_data_source_links_consent_id_idx\""
+      },
+      {
+        "start_byte": 63132,
+        "end_byte": 63214,
+        "terminator_byte": 63214,
+        "normalized_preview": "ALTER INDEX \"vdsl_provider_idx\" RENAME TO \"vehicle_data_source_links_provider_idx\""
+      },
+      {
+        "start_byte": 63232,
+        "end_byte": 63385,
+        "terminator_byte": 63385,
+        "normalized_preview": "ALTER INDEX \"vehicle_document_extractions_organization_id_upload_duplicate_s\" RENAME TO \"vehicle_document_extractions_or"
+      },
+      {
+        "start_byte": 63403,
+        "end_byte": 63540,
+        "terminator_byte": 63540,
+        "normalized_preview": "ALTER INDEX \"vehicle_document_extractions_upload_context_idx\" RENAME TO \"vehicle_document_extractions_organization_id_up"
+      },
+      {
+        "start_byte": 63558,
+        "end_byte": 63705,
+        "terminator_byte": 63705,
+        "normalized_preview": "ALTER INDEX \"vehicle_driving_capabilities_org_vehicle_provider_key_key\" RENAME TO \"vehicle_driving_capabilities_organiza"
+      },
+      {
+        "start_byte": 63723,
+        "end_byte": 63808,
+        "terminator_byte": 63808,
+        "normalized_preview": "ALTER INDEX \"vpc_granted_at_idx\" RENAME TO \"vehicle_provider_consents_granted_at_idx\""
+      },
+      {
+        "start_byte": 63826,
+        "end_byte": 63921,
+        "terminator_byte": 63921,
+        "normalized_preview": "ALTER INDEX \"vpc_organization_id_idx\" RENAME TO \"vehicle_provider_consents_organization_id_idx\""
+      },
+      {
+        "start_byte": 63939,
+        "end_byte": 64034,
+        "terminator_byte": 64034,
+        "normalized_preview": "ALTER INDEX \"vpc_provider_status_idx\" RENAME TO \"vehicle_provider_consents_provider_status_idx\""
+      },
+      {
+        "start_byte": 64052,
+        "end_byte": 64137,
+        "terminator_byte": 64137,
+        "normalized_preview": "ALTER INDEX \"vpc_vehicle_id_idx\" RENAME TO \"vehicle_provider_consents_vehicle_id_idx\""
+      },
+      {
+        "start_byte": 64155,
+        "end_byte": 64291,
+        "terminator_byte": 64291,
+        "normalized_preview": "ALTER INDEX \"vehicle_tire_setup_mount_periods_org_setup_idx\" RENAME TO \"vehicle_tire_setup_mount_periods_organization_id"
+      },
+      {
+        "start_byte": 64309,
+        "end_byte": 64462,
+        "terminator_byte": 64462,
+        "normalized_preview": "ALTER INDEX \"voice_agent_deployments_organization_id_voice_assistant_id_stat\" RENAME TO \"voice_agent_deployments_organiz"
+      },
+      {
+        "start_byte": 64480,
+        "end_byte": 64633,
+        "terminator_byte": 64633,
+        "normalized_preview": "ALTER INDEX \"voice_billing_periods_organization_id_period_start_period_end_k\" RENAME TO \"voice_billing_periods_organizat"
+      },
+      {
+        "start_byte": 64651,
+        "end_byte": 64804,
+        "terminator_byte": 64804,
+        "normalized_preview": "ALTER INDEX \"voice_budget_warning_states_organization_id_period_start_warned\" RENAME TO \"voice_budget_warning_states_org"
+      },
+      {
+        "start_byte": 64822,
+        "end_byte": 64975,
+        "terminator_byte": 64975,
+        "normalized_preview": "ALTER INDEX \"voice_provider_accounts_organization_id_provider_account_type_k\" RENAME TO \"voice_provider_accounts_organiz"
+      },
+      {
+        "start_byte": 64993,
+        "end_byte": 65146,
+        "terminator_byte": 65146,
+        "normalized_preview": "ALTER INDEX \"whatsapp_ai_suggestions_organization_id_conversation_id_created\" RENAME TO \"whatsapp_ai_suggestions_organiz"
+      },
+      {
+        "start_byte": 65164,
+        "end_byte": 65317,
+        "terminator_byte": 65317,
+        "normalized_preview": "ALTER INDEX \"whatsapp_conversations_organization_id_contact_phone_normalized\" RENAME TO \"whatsapp_conversations_organiza"
+      },
+      {
+        "start_byte": 65335,
+        "end_byte": 65488,
+        "terminator_byte": 65488,
+        "normalized_preview": "ALTER INDEX \"workflow_runtime_rollout_change_requests_organization_id_status\" RENAME TO \"workflow_runtime_rollout_change"
+      }
+    ],
+    "pass": true
+  },
+  "preflight_classification": {
+    "R3B_SCOPE": 1,
+    "OUT_OF_SCOPE": 343,
+    "UNRESOLVED": 0,
+    "OWNER_UNKNOWN": 0,
+    "pass": true
+  },
+  "authority_decisions": {
+    "CURRENT_PRISMA_SCHEMA_DRIFT": 1,
+    "REPLAY_DB_DRIFT": 0,
+    "NON_SEMANTIC_DIFFERENCE": 0,
+    "AUTHORITY_AMBIGUITY": 0,
+    "CROSS_EVIDENCE_CONTRADICTION": 0
+  },
+  "pass": true,
+  "final_status": "CI_R3B1M_PREFLIGHT_PASSED"
+}

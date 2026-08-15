@@ -1,0 +1,340 @@
+{
+  "schema_version": 1,
+  "collision_groups": [
+    {
+      "schema": "public",
+      "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+      "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "member_count": 3,
+      "members": [
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 67,
+          "schema": "public",
+          "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+          "logical_object_type": "PRIMARY_KEY_CONSTRAINT",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 1,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "CONSTRAINT_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 83,
+          "schema": "public",
+          "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+          "logical_object_type": "FOREIGN_KEY_CONSTRAINT",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 4,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "CONSTRAINT_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 81,
+          "schema": "public",
+          "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+          "logical_object_type": "FOREIGN_KEY_CONSTRAINT",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 5,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "CONSTRAINT_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        }
+      ],
+      "real_collision": true,
+      "proof_source": "namespace_key_collision"
+    },
+    {
+      "schema": "public",
+      "postgres_namespace_class": "RELATION_NAMESPACE",
+      "parent_relation": null,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "member_count": 3,
+      "members": [
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 67,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "PRIMARY_KEY_INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "statement_ordinal": 1,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "implicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 82,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "UNIQUE_INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 2,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 107,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 3,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        }
+      ],
+      "real_collision": true,
+      "proof_source": "namespace_key_collision"
+    }
+  ],
+  "real_collision_groups": [
+    {
+      "schema": "public",
+      "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+      "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "member_count": 3,
+      "members": [
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 67,
+          "schema": "public",
+          "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+          "logical_object_type": "PRIMARY_KEY_CONSTRAINT",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 1,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "CONSTRAINT_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 83,
+          "schema": "public",
+          "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+          "logical_object_type": "FOREIGN_KEY_CONSTRAINT",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 4,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "CONSTRAINT_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 81,
+          "schema": "public",
+          "postgres_namespace_class": "CONSTRAINT_NAMESPACE",
+          "logical_object_type": "FOREIGN_KEY_CONSTRAINT",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 5,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "CONSTRAINT_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        }
+      ],
+      "real_collision": true,
+      "proof_source": "namespace_key_collision"
+    },
+    {
+      "schema": "public",
+      "postgres_namespace_class": "RELATION_NAMESPACE",
+      "parent_relation": null,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "member_count": 3,
+      "members": [
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 67,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "PRIMARY_KEY_INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "statement_ordinal": 1,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "implicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 82,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "UNIQUE_INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 2,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 107,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 3,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        }
+      ],
+      "real_collision": true,
+      "proof_source": "namespace_key_collision"
+    }
+  ],
+  "relation_namespace_root_cause": [
+    {
+      "schema": "public",
+      "postgres_namespace_class": "RELATION_NAMESPACE",
+      "parent_relation": null,
+      "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+      "member_count": 3,
+      "members": [
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_pkey",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 67,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "PRIMARY_KEY_INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "statement_ordinal": 1,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "implicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 82,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "UNIQUE_INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 2,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        },
+        {
+          "raw_identifier": "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx",
+          "normalized_identifier": "organization_role_assignment_drift_reconciliation_applications_",
+          "raw_byte_length": 107,
+          "schema": "public",
+          "postgres_namespace_class": "RELATION_NAMESPACE",
+          "logical_object_type": "INDEX",
+          "parent_relation": "organization_role_assignment_drift_reconciliation_applications",
+          "backing_relation_identifier": null,
+          "statement_ordinal": 3,
+          "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+          "explicit_or_implicit": "explicit",
+          "collision_key": [
+            "public",
+            "RELATION_NAMESPACE",
+            "organization_role_assignment_drift_reconciliation_applications_"
+          ]
+        }
+      ],
+      "real_collision": true,
+      "proof_source": "namespace_key_collision"
+    }
+  ]
+}

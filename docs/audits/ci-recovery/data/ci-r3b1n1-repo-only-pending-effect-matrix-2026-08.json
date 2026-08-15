@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "total": 23,
+  "migrations": [
+    {
+      "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260424235959_ci_r3b_trip_casing_pre_shim",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260425000001_ci_r3b_trip_casing_post_shim",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "recovery_specific": false,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "recovery_specific": false,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "recovery_specific": true,
+      "effects": [
+        {
+          "kind": "add_column",
+          "object": "status"
+        },
+        {
+          "kind": "add_column",
+          "table": "vehicle_tire_setups",
+          "object": "status"
+        }
+      ],
+      "catalog_checks": {
+        "columns_checked": 1,
+        "columns_present": 1,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_BUT_EFFECT_ALREADY_PRESENT"
+    },
+    {
+      "migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "recovery_specific": false,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "recovery_specific": true,
+      "effects": [
+        {
+          "kind": "add_column",
+          "object": "permissions"
+        },
+        {
+          "kind": "add_column",
+          "table": "organization_memberships",
+          "object": "permissions"
+        }
+      ],
+      "catalog_checks": {
+        "columns_checked": 1,
+        "columns_present": 1,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_BUT_EFFECT_ALREADY_PRESENT"
+    },
+    {
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260811060000_evaluations_entity_references",
+      "recovery_specific": false,
+      "effects": [
+        {
+          "kind": "create_table",
+          "object": "evaluations_entity_references"
+        }
+      ],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 1,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    },
+    {
+      "migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "recovery_specific": true,
+      "effects": [],
+      "catalog_checks": {
+        "columns_checked": 0,
+        "columns_present": 0,
+        "tables_checked": 0,
+        "tables_present": 0
+      },
+      "classification": "PENDING_AND_PHYSICALLY_ABSENT"
+    }
+  ]
+}

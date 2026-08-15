@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.2.1",
+  "tests": [
+    {
+      "name": "independence_static_check",
+      "pass": true,
+      "detail": {
+        "module": "ci_r3b1l21_independent_statement_counter.py",
+        "imports": [
+          "__future__",
+          "ast",
+          "hashlib",
+          "re",
+          "dataclasses",
+          "enum",
+          "pathlib",
+          "typing"
+        ],
+        "forbidden_import_hits": [],
+        "forbidden_call_hits": [],
+        "calls_main_parser": false,
+        "pass": true
+      }
+    },
+    {
+      "name": "independence_positive_cross_check",
+      "pass": true,
+      "detail": {
+        "independent": 344,
+        "main": 344,
+        "cross_pass": true
+      }
+    },
+    {
+      "name": "independence_negative_monkeypatch",
+      "pass": true,
+      "detail": {
+        "independent_unchanged": 344,
+        "cross_pass": false
+      }
+    },
+    {
+      "name": "create_index_r3b_by_on_relation",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [
+          "CreateIndex"
+        ],
+        "leading_comment_lines": [],
+        "operation_family": "CREATE INDEX",
+        "operation_subtype": "create_index",
+        "raw_sql": "CREATE INDEX \"brand_new_idx\" ON \"trip_driving_impact\"(\"calculated_at\");",
+        "schema": "public",
+        "primary_target_identifier": "brand_new_idx",
+        "owner_table": "trip_driving_impact",
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "brand_new_idx",
+        "owner_enum": null,
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "explicit R3B authority table",
+        "quoted_identifiers": [
+          "brand_new_idx",
+          "trip_driving_impact",
+          "calculated_at"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "explicit R3B authority table",
+        "authority_id": "P042",
+        "property_identity": "trip_driving_impact:indexes"
+      }
+    },
+    {
+      "name": "create_unique_index_r3b_by_on_relation",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "CREATE UNIQUE INDEX",
+        "operation_subtype": "create_unique_index",
+        "raw_sql": "CREATE UNIQUE INDEX \"brand_new_uq\" ON \"vehicle_trips\"(\"id\");",
+        "schema": "public",
+        "primary_target_identifier": "brand_new_uq",
+        "owner_table": "vehicle_trips",
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "brand_new_uq",
+        "owner_enum": null,
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "explicit R3B authority table",
+        "quoted_identifiers": [
+          "brand_new_uq",
+          "vehicle_trips",
+          "id"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "explicit R3B authority table",
+        "authority_id": "P006",
+        "property_identity": "vehicle_trips:indexes"
+      }
+    },
+    {
+      "name": "drop_index_r3b_owner",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "DROP INDEX",
+        "operation_subtype": "drop_index",
+        "raw_sql": "DROP INDEX \"r3b_owned_idx\";",
+        "schema": "public",
+        "primary_target_identifier": "r3b_owned_idx",
+        "owner_table": "trip_driving_impact",
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "r3b_owned_idx",
+        "owner_enum": null,
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "replay catalog index map",
+        "quoted_identifiers": [
+          "r3b_owned_idx"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "replay catalog index map",
+        "authority_id": "P042",
+        "property_identity": "trip_driving_impact:indexes"
+      }
+    },
+    {
+      "name": "drop_index_out_of_scope_positive",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "DROP INDEX",
+        "operation_subtype": "drop_index",
+        "raw_sql": "DROP INDEX \"bookings_idx\";",
+        "schema": "public",
+        "primary_target_identifier": "bookings_idx",
+        "owner_table": "bookings",
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "bookings_idx",
+        "owner_enum": null,
+        "owner_resolution": "OWNER_OUT_OF_SCOPE",
+        "owner_resolution_source": "migration index creator inventory outside R3B universe",
+        "quoted_identifiers": [
+          "bookings_idx"
+        ],
+        "parse_status": "PARSED",
+        "classification": "OUT_OF_SCOPE",
+        "reason": "migration index creator inventory outside R3B universe",
+        "authority_id": null,
+        "property_identity": null
+      }
+    },
+    {
+      "name": "drop_index_unknown_owner_unresolved",
+      "pass": true,
+      "detail": {
+        "classification": "UNRESOLVED",
+        "reason": "no positive owner source",
+        "authority_id": null,
+        "property_identity": null
+      }
+    },
+    {
+      "name": "alter_index_unknown_unresolved",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "ALTER INDEX",
+        "operation_subtype": "rename_index",
+        "raw_sql": "ALTER INDEX \"unknown_idx\" RENAME TO \"other\";",
+        "schema": "public",
+        "primary_target_identifier": "unknown_idx",
+        "owner_table": null,
+        "owner_column": null,
+        "owner_constraint": null,
+        "owner_index": "unknown_idx",
+        "owner_enum": null,
+        "owner_resolution": "OWNER_UNKNOWN",
+        "owner_resolution_source": "no positive owner source",
+        "quoted_identifiers": [
+          "unknown_idx",
+          "other"
+        ],
+        "parse_status": "PARSED",
+        "classification": "UNRESOLVED",
+        "reason": "no positive owner source",
+        "authority_id": null,
+        "property_identity": null
+      }
+    },
+    {
+      "name": "alter_table_r3b_new_constraint",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [],
+        "leading_comment_lines": [],
+        "operation_family": "ALTER TABLE",
+        "operation_subtype": "add_constraint",
+        "raw_sql": "ALTER TABLE \"trip_driving_impact\" ADD CONSTRAINT \"new_check\" CHECK (true);",
+        "schema": "public",
+        "primary_target_identifier": "trip_driving_impact",
+        "owner_table": "trip_driving_impact",
+        "owner_column": null,
+        "owner_constraint": "new_check",
+        "owner_index": null,
+        "owner_enum": null,
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "explicit R3B authority table",
+        "quoted_identifiers": [
+          "trip_driving_impact",
+          "new_check"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "explicit R3B authority table",
+        "authority_id": "P041",
+        "property_identity": "trip_driving_impact:constraints"
+      }
+    },
+    {
+      "name": "frozen_trip_driving_impact",
+      "pass": true,
+      "detail": {
+        "ordinal": 1,
+        "comment_tags": [
+          "AlterTable"
+        ],
+        "leading_comment_lines": [],
+        "operation_family": "ALTER TABLE",
+        "operation_subtype": "alter_column",
+        "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)",
+        "schema": "public",
+        "primary_target_identifier": "trip_driving_impact",
+        "owner_table": "trip_driving_impact",
+        "owner_column": "calculated_at",
+        "owner_constraint": null,
+        "owner_index": null,
+        "owner_enum": null,
+        "owner_resolution": "OWNER_R3B",
+        "owner_resolution_source": "explicit R3B authority table",
+        "quoted_identifiers": [
+          "trip_driving_impact",
+          "calculated_at"
+        ],
+        "parse_status": "PARSED",
+        "classification": "R3B_SCOPE",
+        "reason": "explicit R3B authority table",
+        "authority_id": "P038",
+        "property_identity": "trip_driving_impact:types"
+      }
+    },
+    {
+      "name": "prisma_drift_decision",
+      "pass": true,
+      "detail": {
+        "operation_ordinal": 1,
+        "raw_sql": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3);",
+        "affected_authority_object": "trip_driving_impact",
+        "affected_property_category": "trip_driving_impact:types",
+        "accepted_canonical_authority": {
+          "table": "trip_driving_impact",
+          "column": "calculated_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "data_type": "timestamp with time zone",
+          "datetime_precision": 6
+        },
+        "replay_actual": {
+          "table": "trip_driving_impact",
+          "column": "calculated_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          },
+          "parity_evidence": "CI-R3B1L_EXACT_PARITY 54/54 types category PASS"
+        },
+        "current_prisma_desired_state": {
+          "model": "TripDrivingImpact",
+          "field": "calculatedAt",
+          "prisma_type": "DateTime?",
+          "mapped_column": "calculated_at",
+          "native_type_annotation": null,
+          "native_type": null,
+          "nullable": true,
+          "default_annotation": null,
+          "raw_line": "DateTime?                       @map(\"calculated_at\")",
+          "desired_pg_type": "timestamp(3) without time zone"
+        },
+        "decision": "CURRENT_PRISMA_SCHEMA_DRIFT",
+        "cross_evidence_contradiction": false,
+        "evidence_sources": [
+          "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+          "docs/audits/ci-recovery/data/ci-r3b1l-canonical-54-property-authority-2026-08.json",
+          "backend/prisma/schema.prisma",
+          "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql"
+        ]
+      }
+    },
+    {
+      "name": "semicolon_in_string_independent",
+      "pass": true,
+      "detail": {
+        "count": 2
+      }
+    },
+    {
+      "name": "dollar_quote_independent",
+      "pass": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "resolve_index_owner_api",
+      "pass": true,
+      "detail": {
+        "resolution": "OWNER_UNKNOWN",
+        "table": null
+      }
+    }
+  ],
+  "pass": true,
+  "passed": 15,
+  "total": 15
+}

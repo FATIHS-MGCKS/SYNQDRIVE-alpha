@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1L.1",
+  "evidence_input_sha": "949fd5295e6bc17fe134e1f364d9405bcaaa4190",
+  "BASE_R3B1L_SHA": "949fd5295e6bc17fe134e1f364d9405bcaaa4190",
+  "authority_manifest_sha256": "97045c37c426b391ec51abdeea38088d5ace6617828a3b14de7dcaecc0d8eea4",
+  "replay_input_manifest_sha256": "26a32ecfdd17e7faecc4cb93f0a4aed2429b6f59074392a2edb24629df10ba46",
+  "replay": {
+    "migration_directories": 305,
+    "failed_migrations": 0,
+    "manual_interventions": 0,
+    "reached_absolute_head": true
+  },
+  "authority": {
+    "objects": 19,
+    "tables": 9,
+    "enums": 10,
+    "properties": 54
+  },
+  "parity": {
+    "objects": "19/19",
+    "tables": "9/9",
+    "enums": "10/10",
+    "properties": "54/54"
+  },
+  "mismatch_counters": {},
+  "negative_tests_pass": true,
+  "coverage_pass": true,
+  "prisma_checks": {
+    "prisma_validate": {
+      "exit_code": 0,
+      "pass": true
+    },
+    "prisma_generate": {
+      "exit_code": 0,
+      "pass": true
+    }
+  },
+  "prisma_diff": {
+    "command_success": true,
+    "diff_empty": false,
+    "stdout_sha256": "c9c43d8ec98187edd7fb819310c6ca11e1b636ec2355e62de08e8d2aecccaa81",
+    "byte_length": 65491,
+    "line_count": 1480,
+    "total_operations": 13,
+    "R3B_SCOPE_DIFF_COUNT": 0,
+    "OUT_OF_SCOPE_DIFF_COUNT": 13,
+    "UNRESOLVED_DIFF_COUNT": 0,
+    "pass": true
+  },
+  "immutability_pass": true,
+  "production_exposure": "E_UNKNOWN",
+  "final_status": "CI_R3B1L1_EXACT_PARITY_DIFF_CLOSURE_COMPLETED",
+  "pass": true,
+  "objects_expected": 19,
+  "objects_checked": 19,
+  "objects_matched": 19,
+  "tables_expected": 9,
+  "tables_checked": 9,
+  "tables_matched": 9,
+  "enums_expected": 10,
+  "enums_checked": 10,
+  "enums_matched": 10,
+  "properties_expected": 54,
+  "properties_checked": 54,
+  "properties_matched": 54,
+  "vehicle_trips_trip_status_pass": true,
+  "golden_tests_total": 32,
+  "golden_tests_passed": 32
+}

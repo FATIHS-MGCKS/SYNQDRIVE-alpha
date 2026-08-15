@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "physical_alias_leakage": 0,
+  "physical_alias_leakage_records": [],
+  "derived_lineage_gaps": 0,
+  "derived_lineage_gap_records": [],
+  "qualified_reference_coverage_gaps": 0,
+  "qualified_reference_gaps": [],
+  "pass": true
+}

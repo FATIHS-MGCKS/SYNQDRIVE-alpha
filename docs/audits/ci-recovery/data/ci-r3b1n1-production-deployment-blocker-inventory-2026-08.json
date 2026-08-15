@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "blockers": [
+    {
+      "id": "B001",
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "type": "PENDING_EXISTING_COLUMN_COLLISION",
+      "severity": "BLOCKER_CRITICAL",
+      "twin_simulation_evidence": {
+        "first_failing_migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+        "prisma_error_code": "P3018",
+        "sqlstate": null,
+        "postgres_error": "column \"status\" of relation \"vehicle_tire_setups\" already exists",
+        "blocker_type": "PENDING_EXISTING_COLUMN_COLLISION"
+      }
+    },
+    {
+      "id": "B_20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "type": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "severity": "BLOCKER_CRITICAL",
+      "catalog_condition": {
+        "columns_checked": 1,
+        "columns_present": 1,
+        "tables_checked": 0,
+        "tables_present": 0
+      }
+    },
+    {
+      "id": "B_20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "type": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "severity": "BLOCKER_CRITICAL",
+      "catalog_condition": {
+        "columns_checked": 1,
+        "columns_present": 1,
+        "tables_checked": 0,
+        "tables_present": 0
+      }
+    },
+    {
+      "id": "B_CHECKSUM_HISTORY",
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "type": "M252_HISTORY_DIVERGENCE",
+      "severity": "BLOCKER_HIGH",
+      "ledger_condition": "M252_ORIGINAL_FAILED_ROLLED_BACK_THEN_ZERO_STEP_MARKED_APPLIED"
+    }
+  ],
+  "total": 4
+}

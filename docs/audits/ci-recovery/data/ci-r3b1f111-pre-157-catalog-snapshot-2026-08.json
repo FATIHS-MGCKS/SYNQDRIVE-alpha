@@ -1,0 +1,857 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F.1.1",
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "database_identifier": "synqdrive_r3b1f111_pre157",
+  "last_applied_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "manual_interventions": 0,
+  "tables": {
+    "vehicle_tire_setups": {
+      "exists": true,
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "front_dimension": {
+          "name": "front_dimension",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "rear_dimension": {
+          "name": "rear_dimension",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "brand_model_front": {
+          "name": "brand_model_front",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "brand_model_rear": {
+          "name": "brand_model_rear",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "tire_season": {
+          "name": "tire_season",
+          "type": "TireSeason",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "ALL_SEASON"
+          }
+        },
+        "installed_at": {
+          "name": "installed_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "removed_at": {
+          "name": "removed_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_evidence_source": {
+          "name": "initial_tread_evidence_source",
+          "type": "TireEvidenceSource",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_measured_at": {
+          "name": "initial_tread_measured_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_confirmed_at": {
+          "name": "initial_tread_confirmed_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_evidence_id": {
+          "name": "initial_tread_evidence_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "baseline_confidence": {
+          "name": "baseline_confidence",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "baseline_status": {
+          "name": "baseline_status",
+          "type": "TireBaselineStatus",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "primary_keys": {
+        "vehicle_tire_setups_pkey": {
+          "name": "vehicle_tire_setups_pkey",
+          "table": "vehicle_tire_setups",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "foreign_keys": {
+        "vehicle_tire_setups_vehicle_id_fkey": {
+          "name": "vehicle_tire_setups_vehicle_id_fkey",
+          "local_table": "vehicle_tire_setups",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        },
+        "vehicle_tire_setups_initial_tread_evidence_id_fkey": {
+          "name": "vehicle_tire_setups_initial_tread_evidence_id_fkey",
+          "local_table": "vehicle_tire_setups",
+          "local_columns": [
+            "initial_tread_evidence_id"
+          ],
+          "referenced_table": "vehicle_tire_tread_measurements",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE"
+        }
+      },
+      "indexes": {
+        "vehicle_tire_setups_pkey": {
+          "name": "vehicle_tire_setups_pkey",
+          "table": "vehicle_tire_setups",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        "vehicle_tire_setups_vehicle_id_idx": {
+          "name": "vehicle_tire_setups_vehicle_id_idx",
+          "table": "vehicle_tire_setups",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        "vehicle_tire_setups_initial_tread_evidence_id_idx": {
+          "name": "vehicle_tire_setups_initial_tread_evidence_id_idx",
+          "table": "vehicle_tire_setups",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "initial_tread_evidence_id"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      }
+    },
+    "tires": {
+      "exists": true,
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "type": "text",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "tire_set_id": {
+          "name": "tire_set_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "brand": {
+          "name": "brand",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "tire_model": {
+          "name": "tire_model",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "rim_diameter": {
+          "name": "rim_diameter",
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "load_index": {
+          "name": "load_index",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "speed_index": {
+          "name": "speed_index",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "season_type": {
+          "name": "season_type",
+          "type": "TireSeason",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "ALL_SEASON"
+          }
+        },
+        "runflat": {
+          "name": "runflat",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "reinforced": {
+          "name": "reinforced",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "false"
+          }
+        },
+        "dot_code": {
+          "name": "dot_code",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "production_week": {
+          "name": "production_week",
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "production_year": {
+          "name": "production_year",
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "installed_position": {
+          "name": "installed_position",
+          "type": "TirePosition",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "current_position": {
+          "name": "current_position",
+          "type": "TirePosition",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_depth_mm": {
+          "name": "initial_tread_depth_mm",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "legal_min_tread_mm": {
+          "name": "legal_min_tread_mm",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "1.6"
+          }
+        },
+        "target_replace_tread_mm": {
+          "name": "target_replace_tread_mm",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "3.0"
+          }
+        },
+        "estimated_tread_mm": {
+          "name": "estimated_tread_mm",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "estimated_wear_percent": {
+          "name": "estimated_wear_percent",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "estimated_remaining_km": {
+          "name": "estimated_remaining_km",
+          "type": "integer",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "wear_rate_mm_per_1000km": {
+          "name": "wear_rate_mm_per_1000km",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "health_status": {
+          "name": "health_status",
+          "type": "TireHealthStatus",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_ENUM_DEFAULT",
+            "value": "EXCELLENT"
+          }
+        },
+        "confidence_score": {
+          "name": "confidence_score",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "confidence_label": {
+          "name": "confidence_label",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "total_km_on_tire": {
+          "name": "total_km_on_tire",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0.0"
+          }
+        },
+        "city_km": {
+          "name": "city_km",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0.0"
+          }
+        },
+        "highway_km": {
+          "name": "highway_km",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0.0"
+          }
+        },
+        "rural_km": {
+          "name": "rural_km",
+          "type": "double precision",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0.0"
+          }
+        },
+        "harsh_accel_events": {
+          "name": "harsh_accel_events",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "harsh_brake_events": {
+          "name": "harsh_brake_events",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "high_lateral_events": {
+          "name": "high_lateral_events",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "burnout_events": {
+          "name": "burnout_events",
+          "type": "integer",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "0"
+          }
+        },
+        "last_recalculated_at": {
+          "name": "last_recalculated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_LITERAL_DEFAULT",
+            "value": "true"
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "DATABASE_EXPRESSION_DEFAULT",
+            "value": "CURRENT_TIMESTAMP"
+          }
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": false,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "mounted_at": {
+          "name": "mounted_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "dismounted_at": {
+          "name": "dismounted_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_evidence_source": {
+          "name": "initial_tread_evidence_source",
+          "type": "TireEvidenceSource",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_measured_at": {
+          "name": "initial_tread_measured_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_confirmed_at": {
+          "name": "initial_tread_confirmed_at",
+          "type": "timestamp(3) without time zone",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "initial_tread_evidence_id": {
+          "name": "initial_tread_evidence_id",
+          "type": "text",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "baseline_confidence": {
+          "name": "baseline_confidence",
+          "type": "double precision",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        },
+        "baseline_status": {
+          "name": "baseline_status",
+          "type": "TireBaselineStatus",
+          "nullable": true,
+          "default": {
+            "kind": "NO_DATABASE_DEFAULT",
+            "value": null
+          }
+        }
+      },
+      "primary_keys": {
+        "tires_pkey": {
+          "name": "tires_pkey",
+          "table": "tires",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "foreign_keys": {
+        "tires_tire_set_id_fkey": {
+          "name": "tires_tire_set_id_fkey",
+          "local_table": "tires",
+          "local_columns": [
+            "tire_set_id"
+          ],
+          "referenced_table": "vehicle_tire_setups",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": "CASCADE"
+        },
+        "tires_vehicle_id_fkey": {
+          "name": "tires_vehicle_id_fkey",
+          "local_table": "tires",
+          "local_columns": [
+            "vehicle_id"
+          ],
+          "referenced_table": "vehicles",
+          "referenced_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": "CASCADE"
+        }
+      },
+      "indexes": {
+        "tires_pkey": {
+          "name": "tires_pkey",
+          "table": "tires",
+          "unique": true,
+          "method": "btree",
+          "columns": [
+            "id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        "tires_organization_id_vehicle_id_idx": {
+          "name": "tires_organization_id_vehicle_id_idx",
+          "table": "tires",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "organization_id",
+            "vehicle_id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        "tires_tire_set_id_idx": {
+          "name": "tires_tire_set_id_idx",
+          "table": "tires",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "tire_set_id"
+          ],
+          "valid": true,
+          "ready": true
+        },
+        "tires_vehicle_id_active_idx": {
+          "name": "tires_vehicle_id_active_idx",
+          "table": "tires",
+          "unique": false,
+          "method": "btree",
+          "columns": [
+            "vehicle_id",
+            "active"
+          ],
+          "valid": true,
+          "ready": true
+        }
+      }
+    }
+  },
+  "tracked_properties": {
+    "vehicle_tire_setups.vehicle_id": {
+      "relation": "vehicle_tire_setups",
+      "property": "vehicle_id",
+      "exists": true,
+      "definition": {
+        "name": "vehicle_id",
+        "type": "text",
+        "nullable": false,
+        "default": {
+          "kind": "NO_DATABASE_DEFAULT",
+          "value": null
+        }
+      }
+    },
+    "vehicle_tire_setups.status": {
+      "relation": "vehicle_tire_setups",
+      "property": "status",
+      "exists": false,
+      "definition": null
+    },
+    "vehicle_tire_setups.removed_at": {
+      "relation": "vehicle_tire_setups",
+      "property": "removed_at",
+      "exists": true,
+      "definition": {
+        "name": "removed_at",
+        "type": "timestamp(3) without time zone",
+        "nullable": true,
+        "default": {
+          "kind": "NO_DATABASE_DEFAULT",
+          "value": null
+        }
+      }
+    },
+    "tires.tire_set_id": {
+      "relation": "tires",
+      "property": "tire_set_id",
+      "exists": true,
+      "definition": {
+        "name": "tire_set_id",
+        "type": "text",
+        "nullable": true,
+        "default": {
+          "kind": "NO_DATABASE_DEFAULT",
+          "value": null
+        }
+      }
+    },
+    "tires.current_position": {
+      "relation": "tires",
+      "property": "current_position",
+      "exists": true,
+      "definition": {
+        "name": "current_position",
+        "type": "TirePosition",
+        "nullable": false,
+        "default": {
+          "kind": "NO_DATABASE_DEFAULT",
+          "value": null
+        }
+      }
+    },
+    "tires.active": {
+      "relation": "tires",
+      "property": "active",
+      "exists": true,
+      "definition": {
+        "name": "active",
+        "type": "boolean",
+        "nullable": false,
+        "default": {
+          "kind": "DATABASE_LITERAL_DEFAULT",
+          "value": "true"
+        }
+      }
+    }
+  },
+  "enum_types": {
+    "TireSetupStatus": [
+      "ACTIVE",
+      "STORED",
+      "DISCARDED",
+      "SOLD"
+    ]
+  }
+}

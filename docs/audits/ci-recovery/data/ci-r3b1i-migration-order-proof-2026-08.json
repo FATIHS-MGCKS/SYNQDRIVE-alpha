@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "evidence_input_sha": "37d0904500024bf51dd712fb7398d91dd54c0411",
+  "authorized_predecessor": "20260721240000_iam_last_selected_organization",
+  "new_migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+  "first_consumer": "20260721250000_iam_versioned_role_assignments",
+  "lexical_ordering_pass": true,
+  "indices": {
+    "predecessor": 247,
+    "repair": 248,
+    "consumer": 249
+  },
+  "pass": true
+}

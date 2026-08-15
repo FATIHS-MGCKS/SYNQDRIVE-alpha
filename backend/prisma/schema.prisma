@@ -13387,7 +13387,7 @@ model TripDrivingImpact {
   /// Deterministic hash of trip inputs — idempotent recompute guard.
   sourceFingerprint       String?                         @map("source_fingerprint")
   analysisStatus          TripDrivingImpactAnalysisStatus @default(PENDING) @map("analysis_status")
-  calculatedAt            DateTime?                       @map("calculated_at")
+  calculatedAt            DateTime?                       @map("calculated_at") @db.Timestamptz(6)
   /// 0–1 score of input completeness (behavior events, usage split, etc.).
   sourceCompleteness      Float?                          @map("source_completeness")
   /// Snapshot of VehicleTrip.distanceKm at compute time for drift detection.

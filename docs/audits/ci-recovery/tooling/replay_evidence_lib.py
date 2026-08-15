@@ -389,20 +389,66 @@ def classify_failure(first_failed: str | None, output: str) -> str:
     return "UNRELATED_HISTORICAL_DEFECT"
 
 
+def extract_failing_statement(output: str, migration_name: str | None = None) -> dict[str, Any]:
+    """Best-effort extraction of failing SQL statement metadata from replay/deploy output."""
+    lines = output.splitlines()
+    failing_line: int | None = None
+    failing_sql: str | None = None
+    statement_ordinal: int | None = None
+
+    err_idx = next((i for i, line in enumerate(lines) if "ERROR:" in line), None)
+    if err_idx is not None:
+        for i in range(err_idx - 1, max(-1, err_idx - 12), -1):
+            line = lines[i].strip()
+            if not line or line.startswith("Migration name:"):
+                continue
+            if re.search(r"\b(SELECT|INSERT|UPDATE|DELETE|ALTER|CREATE)\b", line, re.I):
+                failing_sql = line
+                failing_line = i + 1
+                break
+
+    if migration_name and failing_sql is None:
+        mig_path = MIG_ROOT / migration_name / "migration.sql"
+        if mig_path.is_file():
+            err_m = re.search(r"ERROR:\s*(.+)", output)
+            err_text = err_m.group(1).strip().lower() if err_m else ""
+            col_m = re.search(r'column\s+([a-z0-9_."]+)\s+does not exist', err_text, re.I)
+            if col_m:
+                needle = col_m.group(1).replace('"', "").split(".")[-1]
+                for ord_i, stmt in enumerate(
+                    [s.strip() for s in re.split(r";\s*(?:\n|$)", mig_path.read_text()) if s.strip()],
+                    1,
+                ):
+                    if needle in stmt and re.search(rf'"{re.escape(needle)}"|\b{re.escape(needle)}\b', stmt, re.I):
+                        failing_sql = " ".join(stmt.split())[:500]
+                        statement_ordinal = ord_i
+                        break
+
+    return {
+        "failing_statement_line": failing_line,
+        "failing_sql_statement": failing_sql,
+        "failing_statement_ordinal": statement_ordinal,
+    }
+
+
 def parse_deploy_output(output: str) -> dict[str, Any]:
     applied = re.findall(r"Applying migration `([^`]+)`", output)
     fail_m = re.search(r"Migration name:\s*(\S+)", output)
     sqlstate_m = re.search(r"Database error code:\s*(\w+)", output)
     err_m = re.search(r"ERROR:\s*(.+)", output)
     count_m = re.search(r"(\d+) migrations found", output)
+    first_failed = fail_m.group(1) if fail_m else None
+    stmt_meta = extract_failing_statement(output, first_failed)
     return {
         "migrations_found": int(count_m.group(1)) if count_m else None,
         "applied_in_output": applied,
-        "first_failed_migration": fail_m.group(1) if fail_m else None,
+        "first_failed_migration": first_failed,
+        "failure_ordinal": migration_ordinal(first_failed) if first_failed else None,
         "sqlstate": sqlstate_m.group(1) if sqlstate_m else None,
         "error_message": err_m.group(1).strip() if err_m else None,
         "last_applied_migration": applied[-1] if applied else None,
-        "failure_classification": classify_failure(fail_m.group(1) if fail_m else None, output),
+        "failure_classification": classify_failure(first_failed, output),
+        **stmt_meta,
     }
 
 

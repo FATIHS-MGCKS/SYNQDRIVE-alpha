@@ -1,0 +1,427 @@
+{
+  "schema_version": 1,
+  "total": 17,
+  "migrations": [
+    {
+      "migration": "20260723230000_privacy_domain_foundation",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "71f115755d51ea8e61339b648de41254771fbb51",
+          "date": "2026-07-24 03:35:26 +0000",
+          "subject": "fix(data-auth): privacy migrations TEXT ids + DIMO DPA gate"
+        },
+        {
+          "sha": "7a1d23a8a815c8242699b25a860c132e4adef221",
+          "date": "2026-07-23 22:22:05 +0000",
+          "subject": "feat(data-auth): Privacy-Domain Foundation \u2014 fachliche Modelltrennung (Prompt 5)"
+        }
+      ]
+    },
+    {
+      "migration": "20260723233000_legal_basis_assessment_professional",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "71f115755d51ea8e61339b648de41254771fbb51",
+          "date": "2026-07-24 03:35:26 +0000",
+          "subject": "fix(data-auth): privacy migrations TEXT ids + DIMO DPA gate"
+        },
+        {
+          "sha": "e68a41441ff82874619516358c3c013f4f082f99",
+          "date": "2026-07-23 22:29:16 +0000",
+          "subject": "feat(data-auth): LegalBasisAssessment professionelles Modell (Prompt 7)"
+        }
+      ]
+    },
+    {
+      "migration": "20260723234500_consent_provider_sharing_domains",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "71f115755d51ea8e61339b648de41254771fbb51",
+          "date": "2026-07-24 03:35:26 +0000",
+          "subject": "fix(data-auth): privacy migrations TEXT ids + DIMO DPA gate"
+        },
+        {
+          "sha": "0de01c6fc70c1b2c3f3f999ca7b1740e935d2526",
+          "date": "2026-07-23 22:34:39 +0000",
+          "subject": "feat(data-auth): separate consent, provider grant, and data sharing domains (Prompt 8)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724000000_enforcement_policy_relational_scopes",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "71f115755d51ea8e61339b648de41254771fbb51",
+          "date": "2026-07-24 03:35:26 +0000",
+          "subject": "fix(data-auth): privacy migrations TEXT ids + DIMO DPA gate"
+        },
+        {
+          "sha": "73ed54eaa0a557871813273af9dd8801caa69b10",
+          "date": "2026-07-23 22:40:23 +0000",
+          "subject": "feat(data-auth): relational enforcement policy scopes with tenant hardening (Prompt 9)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724010000_data_authorization_legacy_migration_tracking",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "71f115755d51ea8e61339b648de41254771fbb51",
+          "date": "2026-07-24 03:35:26 +0000",
+          "subject": "fix(data-auth): privacy migrations TEXT ids + DIMO DPA gate"
+        },
+        {
+          "sha": "4ddca93023e8081c4994b049a942102e10d704b3",
+          "date": "2026-07-23 22:45:20 +0000",
+          "subject": "feat(data-auth): controlled legacy migration for ODA and VPC (Prompt 10)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724020000_privacy_policy_lifecycle",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "71f115755d51ea8e61339b648de41254771fbb51",
+          "date": "2026-07-24 03:35:26 +0000",
+          "subject": "fix(data-auth): privacy migrations TEXT ids + DIMO DPA gate"
+        },
+        {
+          "sha": "32fe208bf4a486f3cb39b27bcb81734bfea60e1e",
+          "date": "2026-07-23 22:56:20 +0000",
+          "subject": "feat(data-auth): versioned policy lifecycle for PA, LBA, enforcement (Prompt 11)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724030000_data_processing_review_workflow",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "516860e9ea1dadb08a028e45ba9a451bbe8541c6",
+          "date": "2026-07-23 23:15:20 +0000",
+          "subject": "feat(data-auth): review and four-eyes approval workflow (Prompt 14)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724040000_data_authorization_audit_logging",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "aabfc18c6f84baaa8c1d3f6fa634b94eb28e6954",
+          "date": "2026-07-23 23:21:41 +0000",
+          "subject": "feat(data-auth): append-only audit logging with transactional outbox (Prompt 15)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724050000_data_authorization_revocation_workflow",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "566065f066ca1aba3d3fa9f97bca23cebe9d3a4d",
+          "date": "2026-07-24 00:30:43 +0000",
+          "subject": "feat(data-auth): persistent revocation orchestrator (Prompt 24)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724060000_data_authorization_deny_switch",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "9d958453bc8afbc7b80ce7aff5f82598f1f2e970",
+          "date": "2026-07-24 00:35:46 +0000",
+          "subject": "feat(data-auth): fail-closed deny switch with Redis propagation (Prompt 25)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724070000_provider_grant_webhook_idempotency",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "082464aae4a8eea85350291a0a93f946d712a3cb",
+          "date": "2026-07-24 00:42:15 +0000",
+          "subject": "feat(data-auth): consolidate ProviderAccessGrant with internal policies (Prompt 26)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724080000_revocation_queue_control",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "9c1d6c231bc257de310d4e8357ae451eb3076689",
+          "date": "2026-07-24 00:47:45 +0000",
+          "subject": "feat(data-auth): revocation queue and worker control (Prompt 27)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724090000_processing_activity_register",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "a3a4957a8c76d0853a1078c936c0e8741507f792",
+          "date": "2026-07-24 00:59:24 +0000",
+          "subject": "feat(data-auth): Art. 30 processing activity register (Prompt 29)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724100000_dpia_workflow",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "c24c8aba36211ef62cdb6a4236821179d50c8bd7",
+          "date": "2026-07-24 01:05:05 +0000",
+          "subject": "feat(data-auth): DPIA workflow and privacy risk assessment (Prompt 30)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724110000_processor_dpa_management",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "723a7d135026e2a32c42a9d010f1bdeba88ea411",
+          "date": "2026-07-24 01:11:09 +0000",
+          "subject": "feat(data-auth): processor DPA, subprocessor and transfer management (Prompt 31)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724120000_retention_deletion_legal_hold",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "cc76e872061ed5867188d6812b7d03b509e22931",
+          "date": "2026-07-24 01:16:55 +0000",
+          "subject": "feat(data-auth): retention, deletion & legal hold per processing activity (Prompt 32)"
+        }
+      ]
+    },
+    {
+      "migration": "20260724130000_compliance_evidence",
+      "classification": "PROD_ONLY_REMOVED_LATER",
+      "deployed_sha": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "main": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "recovered": {
+        "file_present": false,
+        "file_sha256": null
+      },
+      "git_history": [
+        {
+          "sha": "ae301b2832574daf8a775d8328785715dfd9b90d",
+          "date": "2026-07-24 01:22:47 +0000",
+          "subject": "feat(data-auth): compliance evidence and auditable reports (Prompt 33)"
+        }
+      ]
+    }
+  ]
+}
