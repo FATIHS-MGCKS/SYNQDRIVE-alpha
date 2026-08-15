@@ -1,0 +1,2830 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H",
+  "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+  "insert_select_inventory": [
+    {
+      "statement_order": 29,
+      "operation": "INSERT SELECT",
+      "dependencies": [
+        {
+          "relation": "organization_role_versions",
+          "column": "id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "organization_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "version",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "name_snapshot",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "description_snapshot",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "permissions",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "default_station_scope",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "default_station_ids",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "field_agent_access",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "risk_classification",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "created_by_user_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "change_reason",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "status",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_roles",
+          "column": "id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "organization_id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "name",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "description",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "permissions",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "station_scope_default",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "default_station_ids",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "field_agent_access_default",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "membership_role",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "is_system_template",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        },
+        {
+          "relation": "organization_roles",
+          "column": "created_by_user_id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "r"
+        }
+      ]
+    },
+    {
+      "statement_order": 30,
+      "operation": "INSERT SELECT",
+      "dependencies": [
+        {
+          "relation": "organization_role_assignments",
+          "column": "id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "organization_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "membership_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "assigned_role_version_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "assignment_mode",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "assigned_at",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "effective_from",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "is_current",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "organization_id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "v"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "created_at",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_WHERE",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_JOIN",
+          "alias": "v"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_JOIN",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_role_versions",
+          "column": "version",
+          "context": "INSERT_SELECT_JOIN",
+          "alias": "v"
+        }
+      ]
+    },
+    {
+      "statement_order": 31,
+      "operation": "INSERT SELECT",
+      "dependencies": [
+        {
+          "relation": "organization_role_assignments",
+          "column": "id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "organization_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "membership_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "assigned_role_version_id",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "assignment_mode",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "assigned_at",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "effective_from",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "is_current",
+          "context": "INSERT_SELECT_TARGET",
+          "alias": null
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "organization_id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "id",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "created_at",
+          "context": "INSERT_SELECT_EXPRESSION",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "organization_role_id",
+          "context": "INSERT_SELECT_WHERE",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "permissions",
+          "context": "INSERT_SELECT_WHERE",
+          "alias": "m"
+        },
+        {
+          "relation": "a",
+          "column": "membership_id",
+          "context": "INSERT_SELECT_WHERE",
+          "alias": "a"
+        },
+        {
+          "relation": "organization_memberships",
+          "column": "id",
+          "context": "INSERT_SELECT_WHERE",
+          "alias": "m"
+        },
+        {
+          "relation": "a",
+          "column": "is_current",
+          "context": "INSERT_SELECT_WHERE",
+          "alias": "a"
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "membership_id",
+          "context": "INSERT_SELECT_SUBQUERY",
+          "alias": "a"
+        },
+        {
+          "relation": "m",
+          "column": "id",
+          "context": "INSERT_SELECT_SUBQUERY",
+          "alias": "m"
+        },
+        {
+          "relation": "organization_role_assignments",
+          "column": "is_current",
+          "context": "INSERT_SELECT_SUBQUERY",
+          "alias": "a"
+        }
+      ]
+    }
+  ],
+  "organization_memberships_permissions_proof": {
+    "physical_column": "permissions",
+    "first_prisma_appearance_commit": "68150912",
+    "prisma_type": "Json",
+    "expected_physical_type": "jsonb",
+    "nullable": true,
+    "database_default": null,
+    "first_migration_consumer": "20260721250000_iam_versioned_role_assignments",
+    "any_migration_creator": null,
+    "pre249_catalog_exists": false
+  },
+  "records": [
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 8,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:8",
+        "CREATE UNIQUE INDEX \"organization_role_versions_organization_role_id_version_key\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 8,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "version",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:8",
+        "CREATE UNIQUE INDEX \"organization_role_versions_organization_role_id_version_key\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 9,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "organization_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:9",
+        "CREATE INDEX \"organization_role_versions_organization_id_status_idx\" ON \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 9,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "status",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:9",
+        "CREATE INDEX \"organization_role_versions_organization_id_status_idx\" ON \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "status",
+        "prisma_type": "MembershipStatus",
+        "physical_column": "status",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 10,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:10",
+        "CREATE INDEX \"organization_role_versions_organization_role_id_status_version_idx\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 10,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "status",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:10",
+        "CREATE INDEX \"organization_role_versions_organization_role_id_status_version_idx\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "status",
+        "prisma_type": "MembershipStatus",
+        "physical_column": "status",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 10,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "version",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:10",
+        "CREATE INDEX \"organization_role_versions_organization_role_id_status_version_idx\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 11,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "organization_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:11",
+        "CREATE INDEX \"organization_role_assignments_organization_id_membership_id_is_cur\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 11,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:11",
+        "CREATE INDEX \"organization_role_assignments_organization_id_membership_id_is_cur\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 11,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "is_current",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:11",
+        "CREATE INDEX \"organization_role_assignments_organization_id_membership_id_is_cur\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 12,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:12",
+        "CREATE INDEX \"organization_role_assignments_membership_id_is_current_idx\" ON \"or\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 12,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "is_current",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:12",
+        "CREATE INDEX \"organization_role_assignments_membership_id_is_current_idx\" ON \"or\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 13,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:13",
+        "CREATE INDEX \"organization_role_assignments_organization_role_id_idx\" ON \"organi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 14,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assigned_role_version_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:14",
+        "CREATE INDEX \"organization_role_assignments_assigned_role_version_id_idx\" ON \"or\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 15,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "membership_permission_overrides",
+      "source_alias": null,
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 7,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:15",
+        "CREATE INDEX \"membership_permission_overrides_membership_id_module_key_revoked_a\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 15,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "membership_permission_overrides",
+      "source_alias": null,
+      "source_property": "module_key",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 7,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:15",
+        "CREATE INDEX \"membership_permission_overrides_membership_id_module_key_revoked_a\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 15,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "membership_permission_overrides",
+      "source_alias": null,
+      "source_property": "revoked_at",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 7,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:15",
+        "CREATE INDEX \"membership_permission_overrides_membership_id_module_key_revoked_a\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 16,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "membership_permission_overrides",
+      "source_alias": null,
+      "source_property": "organization_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 7,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:16",
+        "CREATE INDEX \"membership_permission_overrides_organization_id_membership_id_idx\"\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 16,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "membership_permission_overrides",
+      "source_alias": null,
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 7,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:16",
+        "CREATE INDEX \"membership_permission_overrides_organization_id_membership_id_idx\"\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 17,
+      "dependency_context": "INDEX_KEY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "membership_permission_overrides",
+      "source_alias": null,
+      "source_property": "expires_at",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 7,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:17",
+        "CREATE INDEX \"membership_permission_overrides_expires_at_idx\" ON \"membership_per\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 18,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:18",
+        "ALTER TABLE \"organization_role_versions\" ADD CONSTRAINT \"organization_role_versi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 19,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organizations",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 38,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:19",
+        "ALTER TABLE \"organization_role_versions\" ADD CONSTRAINT \"organization_role_versi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 20,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "users",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 39,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:20",
+        "ALTER TABLE \"organization_role_versions\" ADD CONSTRAINT \"organization_role_versi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 21,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organizations",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 38,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:21",
+        "ALTER TABLE \"organization_role_assignments\" ADD CONSTRAINT \"organization_role_as\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 22,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:22",
+        "ALTER TABLE \"organization_role_assignments\" ADD CONSTRAINT \"organization_role_as\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 23,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:23",
+        "ALTER TABLE \"organization_role_assignments\" ADD CONSTRAINT \"organization_role_as\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 24,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:24",
+        "ALTER TABLE \"organization_role_assignments\" ADD CONSTRAINT \"organization_role_as\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 25,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "users",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 39,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:25",
+        "ALTER TABLE \"organization_role_assignments\" ADD CONSTRAINT \"organization_role_as\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 26,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organizations",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 38,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:26",
+        "ALTER TABLE \"membership_permission_overrides\" ADD CONSTRAINT \"membership_permiss\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 27,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:27",
+        "ALTER TABLE \"membership_permission_overrides\" ADD CONSTRAINT \"membership_permiss\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 28,
+      "dependency_context": "COLUMN_REFERENCE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "users",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 39,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:28",
+        "ALTER TABLE \"membership_permission_overrides\" ADD CONSTRAINT \"membership_permiss\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "id",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "organization_role_id",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "organization_id",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "organization_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "version",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "version",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "name_snapshot",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "name_snapshot",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "description_snapshot",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "description_snapshot",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "permissions",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "permissions",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "permissions",
+        "prisma_type": "Json",
+        "physical_column": "permissions",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "default_station_scope",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "default_station_scope",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "default_station_ids",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "default_station_ids",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "field_agent_access",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "field_agent_access",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "fieldAgentAccess",
+        "prisma_type": "Boolean",
+        "physical_column": "field_agent_access",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "risk_classification",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "risk_classification",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "created_by_user_id",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "created_by_user_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "change_reason",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "change_reason",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_versions",
+      "target_property": "status",
+      "source_relation": "organization_role_versions",
+      "source_alias": null,
+      "source_property": "status",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "status",
+        "prisma_type": "MembershipStatus",
+        "physical_column": "status",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "organization_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "name",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "description",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "permissions",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "jsonb",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "permissions",
+        "prisma_type": "Json",
+        "physical_column": "permissions",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "station_scope_default",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "default_station_ids",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "jsonb",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "field_agent_access_default",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "boolean",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "DATABASE_LITERAL_DEFAULT",
+        "value": "false"
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "membership_role",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "MembershipRole",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "is_system_template",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "boolean",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "DATABASE_LITERAL_DEFAULT",
+        "value": "false"
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 29,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_roles",
+      "source_alias": "r",
+      "source_property": "created_by_user_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 4,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:29",
+        "-- Backfill: version 1 for every existing organization role INSERT INTO \"organiz\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "organization_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "organization_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "membership_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "organization_role_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "assigned_role_version_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assigned_role_version_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "assignment_mode",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assignment_mode",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "assigned_at",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assigned_at",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "effective_from",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "effective_from",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "is_current",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "is_current",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "organization_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 12,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": "v",
+      "source_property": "id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "created_at",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "timestamp(3) without time zone",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "DATABASE_EXPRESSION_DEFAULT",
+        "value": "CURRENT_TIMESTAMP"
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "createdAt",
+        "prisma_type": "DateTime",
+        "physical_column": "created_at",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_WHERE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 12,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_JOIN",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": "v",
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_JOIN",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 12,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 30,
+      "dependency_context": "INSERT_SELECT_JOIN",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_versions",
+      "source_alias": "v",
+      "source_property": "version",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 5,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:30",
+        "-- Backfill: legacy assignments for memberships with role link INSERT INTO \"orga\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "organization_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "organization_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "membership_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "organization_role_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "assigned_role_version_id",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assigned_role_version_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "assignment_mode",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assignment_mode",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "assigned_at",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "assigned_at",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "effective_from",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "effective_from",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_TARGET",
+      "target_relation": "organization_role_assignments",
+      "target_property": "is_current",
+      "source_relation": "organization_role_assignments",
+      "source_alias": null,
+      "source_property": "is_current",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "organization_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationId",
+        "prisma_type": "String",
+        "physical_column": "organization_id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_EXPRESSION",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "created_at",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "timestamp(3) without time zone",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "DATABASE_EXPRESSION_DEFAULT",
+        "value": "CURRENT_TIMESTAMP"
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "createdAt",
+        "prisma_type": "DateTime",
+        "physical_column": "created_at",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_WHERE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "organization_role_id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": true,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260617140000_organization_access_control",
+      "historical_creator_statement": 12,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "organizationRoleId",
+        "prisma_type": "String",
+        "physical_column": "organization_role_id",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_WHERE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "permissions",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": null,
+      "historical_creator_statement": null,
+      "classification": "MISSING_HISTORY",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "permissions",
+        "prisma_type": "Json",
+        "physical_column": "permissions",
+        "optional": true
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_WHERE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "a",
+      "source_alias": "a",
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": null,
+      "historical_creator_statement": null,
+      "classification": "MISSING_HISTORY",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_WHERE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_memberships",
+      "source_alias": "m",
+      "source_property": "id",
+      "actual_pre249_existence": true,
+      "actual_physical_type": "text",
+      "actual_nullable": false,
+      "actual_default": {
+        "kind": "NO_DATABASE_DEFAULT",
+        "value": null
+      },
+      "historical_creator_migration": "20260311224040_init",
+      "historical_creator_statement": 40,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_WHERE",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "a",
+      "source_alias": "a",
+      "source_property": "is_current",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": null,
+      "historical_creator_statement": null,
+      "classification": "MISSING_HISTORY",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_SUBQUERY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": "a",
+      "source_property": "membership_id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_SUBQUERY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "m",
+      "source_alias": "m",
+      "source_property": "id",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": null,
+      "historical_creator_statement": null,
+      "classification": "MISSING_HISTORY",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": {
+        "prisma_field": "id",
+        "prisma_type": "String",
+        "physical_column": "id",
+        "optional": false
+      }
+    },
+    {
+      "consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "consumer_statement": 31,
+      "dependency_context": "INSERT_SELECT_SUBQUERY",
+      "target_relation": null,
+      "target_property": null,
+      "source_relation": "organization_role_assignments",
+      "source_alias": "a",
+      "source_property": "is_current",
+      "actual_pre249_existence": false,
+      "actual_physical_type": null,
+      "actual_nullable": null,
+      "actual_default": null,
+      "historical_creator_migration": "20260721250000_iam_versioned_role_assignments",
+      "historical_creator_statement": 6,
+      "classification": "VALID",
+      "evidence": [
+        "migrations/20260721250000_iam_versioned_role_assignments/migration.sql:statement:31",
+        "-- Backfill: legacy assignments for memberships without role link but with permi\u2026"
+      ],
+      "historical_prisma": null
+    }
+  ],
+  "classification_totals": {
+    "VALID": 90,
+    "MISSING_HISTORY": 4
+  },
+  "UNRESOLVED": 0
+}

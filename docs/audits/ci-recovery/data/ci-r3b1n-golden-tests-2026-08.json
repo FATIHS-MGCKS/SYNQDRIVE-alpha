@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N",
+  "tests": [
+    {
+      "name": "deployed_sha_conflict_unresolved",
+      "pass": true,
+      "detail": {
+        "note": "synthetic \u2014 production sources agree in this audit"
+      }
+    },
+    {
+      "name": "unknown_db_identity_unresolved",
+      "pass": true,
+      "detail": {
+        "note": "production DB bound via postgres synqdrive + env fingerprint"
+      }
+    },
+    {
+      "name": "ledger_checksum_mismatch_detected",
+      "pass": true,
+      "detail": {
+        "note": "validated via ledger compare artifact"
+      }
+    },
+    {
+      "name": "migration252_original_checksum_test",
+      "pass": true,
+      "detail": {
+        "expected": "M252_ORIGINAL_FINISHED"
+      }
+    },
+    {
+      "name": "migration252_absent_test",
+      "pass": true,
+      "detail": {
+        "note": "synthetic classifier path validated"
+      }
+    },
+    {
+      "name": "failed_migration_row_test",
+      "pass": true,
+      "detail": {
+        "note": "rolled-back rows captured"
+      }
+    },
+    {
+      "name": "code_db_split_test",
+      "pass": true,
+      "detail": {
+        "note": "C0 + partial ledger observed"
+      }
+    },
+    {
+      "name": "prefix_name_not_exposure_proof",
+      "pass": true,
+      "detail": {
+        "note": "ledger used as primary evidence"
+      }
+    }
+  ],
+  "pass": true,
+  "total": 8,
+  "passed": 8
+}

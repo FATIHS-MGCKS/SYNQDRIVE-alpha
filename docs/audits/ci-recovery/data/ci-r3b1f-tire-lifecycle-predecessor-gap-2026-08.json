@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "consumer_migration": "20260716183000_tire_lifecycle_invariants",
+  "statement_inventory": [
+    {
+      "statement_order": 1,
+      "statement_type": "ALTER TYPE ADD VALUE",
+      "target_object": "TireSetupStatus",
+      "statement_excerpt": "-- Tire lifecycle invariants (Prompt 5) -- NOT applied to production automatically \u2014 deploy via `prisma migrate deploy` on staging first. -- -- Prisma schema no"
+    },
+    {
+      "statement_order": 2,
+      "statement_type": "ALTER TYPE ADD VALUE",
+      "target_object": "TireSetupStatus",
+      "statement_excerpt": "ALTER TYPE \"TireSetupStatus\" ADD VALUE IF NOT EXISTS 'REMOVED'"
+    },
+    {
+      "statement_order": 3,
+      "statement_type": "ALTER TYPE ADD VALUE",
+      "target_object": "TireSetupStatus",
+      "statement_excerpt": "ALTER TYPE \"TireSetupStatus\" ADD VALUE IF NOT EXISTS 'RETIRED'"
+    },
+    {
+      "statement_order": 4,
+      "statement_type": "CREATE UNIQUE INDEX",
+      "target_object": "vehicle_tire_setups_one_active_setup_per_vehicle",
+      "statement_excerpt": "-- At most one ACTIVE, non-removed setup per vehicle (P0-TH-02). CREATE UNIQUE INDEX IF NOT EXISTS \"vehicle_tire_setups_one_active_setup_per_vehicle\" ON \"vehicl"
+    },
+    {
+      "statement_order": 5,
+      "statement_type": "CREATE UNIQUE INDEX",
+      "target_object": "tires_one_active_tire_per_setup_position",
+      "statement_excerpt": "-- At most one active tire identity per setup + wheel position. CREATE UNIQUE INDEX IF NOT EXISTS \"tires_one_active_tire_per_setup_position\" ON \"tires\"(\"tire_se"
+    }
+  ],
+  "gaps": [
+    {
+      "relation": "vehicle_tire_setups",
+      "property": "vehicle_id",
+      "required_by_migration": "20260716183000_tire_lifecycle_invariants",
+      "required_by_statement": 4,
+      "required_context": "index_key",
+      "actual_pre_157_exists": true,
+      "historical_creator": "20260311224040_init",
+      "classification": "VALID",
+      "evidence": [
+        "pre157_snapshot:vehicle_tire_setups.vehicle_id:exists=True",
+        "vehicle_tire_setups.vehicle_id in init"
+      ]
+    },
+    {
+      "relation": "vehicle_tire_setups",
+      "property": "status",
+      "required_by_migration": "20260716183000_tire_lifecycle_invariants",
+      "required_by_statement": 4,
+      "required_context": "partial_index_predicate",
+      "actual_pre_157_exists": false,
+      "historical_creator": null,
+      "classification": "MISSING_HISTORY",
+      "evidence": [
+        "pre157_snapshot:vehicle_tire_setups.status:exists=False"
+      ]
+    },
+    {
+      "relation": "vehicle_tire_setups",
+      "property": "removed_at",
+      "required_by_migration": "20260716183000_tire_lifecycle_invariants",
+      "required_by_statement": 4,
+      "required_context": "partial_index_predicate",
+      "actual_pre_157_exists": true,
+      "historical_creator": "20260311224040_init",
+      "classification": "VALID",
+      "evidence": [
+        "pre157_snapshot:vehicle_tire_setups.removed_at:exists=True",
+        "vehicle_tire_setups.removed_at in init"
+      ]
+    },
+    {
+      "relation": "tires",
+      "property": "tire_set_id",
+      "required_by_migration": "20260716183000_tire_lifecycle_invariants",
+      "required_by_statement": 5,
+      "required_context": "partial_index_predicate",
+      "actual_pre_157_exists": true,
+      "historical_creator": null,
+      "classification": "VALID",
+      "evidence": [
+        "pre157_snapshot:tires.tire_set_id:exists=True"
+      ]
+    },
+    {
+      "relation": "tires",
+      "property": "current_position",
+      "required_by_migration": "20260716183000_tire_lifecycle_invariants",
+      "required_by_statement": 5,
+      "required_context": "index_key",
+      "actual_pre_157_exists": true,
+      "historical_creator": null,
+      "classification": "VALID",
+      "evidence": [
+        "pre157_snapshot:tires.current_position:exists=True"
+      ]
+    },
+    {
+      "relation": "tires",
+      "property": "active",
+      "required_by_migration": "20260716183000_tire_lifecycle_invariants",
+      "required_by_statement": 5,
+      "required_context": "partial_index_predicate",
+      "actual_pre_157_exists": true,
+      "historical_creator": null,
+      "classification": "VALID",
+      "evidence": [
+        "pre157_snapshot:tires.active:exists=True"
+      ]
+    }
+  ],
+  "slot_13_authority_incomplete_for_status": true,
+  "slot_13_should_have_included_status": true,
+  "slot_13_should_have_included_status_rationale": "Slot 13 created TireSetupStatus enum consumed by migration 157 partial index predicate on vehicle_tire_setups.status, but did not ADD COLUMN status. Expression-aware analysis shows status is a predicate dependency, not just enum type dependency."
+}

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.1",
+  "tests": [
+    {
+      "name": "on_delete_cascade_is_ddl",
+      "pass": true,
+      "expected": "ALTER TABLE",
+      "actual": "ALTER TABLE"
+    },
+    {
+      "name": "on_delete_cascade_not_dml",
+      "pass": true,
+      "expected": "no DML",
+      "actual": "False"
+    },
+    {
+      "name": "delete_from_is_dml",
+      "pass": true,
+      "expected": "DELETE",
+      "actual": "DELETE"
+    },
+    {
+      "name": "comment_delete_not_dml",
+      "pass": true,
+      "expected": "no DML",
+      "actual": "False"
+    },
+    {
+      "name": "string_delete_word_not_dml_statement",
+      "pass": true,
+      "expected": "no DML",
+      "actual": "False"
+    },
+    {
+      "name": "cte_update_is_dml",
+      "pass": true,
+      "expected": "UPDATE",
+      "actual": "UPDATE"
+    },
+    {
+      "name": "m252_no_dml",
+      "pass": true,
+      "expected": "no DML",
+      "actual": "False"
+    },
+    {
+      "name": "m252_on_delete_fk_count",
+      "pass": true,
+      "expected": ">=2",
+      "actual": "2"
+    },
+    {
+      "name": "m252_data_risk_not_high",
+      "pass": true,
+      "expected": "not HIGH",
+      "actual": "DATA_DEPENDENT_LOW"
+    },
+    {
+      "name": "prisma_m252_mapping_drift_detected",
+      "pass": true,
+      "expected": ">0",
+      "actual": "4"
+    },
+    {
+      "name": "m252_missing_fk_fails_parity",
+      "pass": true,
+      "expected": "FAIL",
+      "actual": "False"
+    }
+  ],
+  "total": 11,
+  "passed": 11,
+  "pass": true
+}

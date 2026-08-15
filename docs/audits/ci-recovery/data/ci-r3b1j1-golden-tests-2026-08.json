@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "tests": {
+    "index_vs_fk_same_normalized_text": {
+      "pass": true,
+      "classification": "STATIC_FALSE_POSITIVE"
+    },
+    "index_vs_index_same_normalized_text": {
+      "pass": true
+    },
+    "pk_backing_index_collision": {
+      "pass": true
+    },
+    "identifier_only_positive": {
+      "pass": true
+    },
+    "type_parity_negative": {
+      "pass": true
+    },
+    "nullability_parity_negative": {
+      "pass": true
+    },
+    "default_parity_negative": {
+      "pass": true
+    },
+    "pk_tuple_negative": {
+      "pass": true
+    },
+    "index_tuple_negative": {
+      "pass": true
+    },
+    "fk_target_negative": {
+      "pass": true
+    },
+    "fk_action_negative": {
+      "pass": true
+    },
+    "extra_index_negative": {
+      "pass": true
+    },
+    "missing_index_negative": {
+      "pass": true
+    }
+  },
+  "pass": true
+}

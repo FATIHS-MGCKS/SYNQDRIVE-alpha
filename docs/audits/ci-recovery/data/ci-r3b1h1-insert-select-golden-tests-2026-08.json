@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1H.1",
+  "tests": [
+    {
+      "test": "physical_alias",
+      "pass": true,
+      "expected": [
+        "memberships.id"
+      ],
+      "got": [
+        "memberships.id"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "subquery_alias",
+      "pass": true,
+      "expected": [
+        "memberships.id"
+      ],
+      "got": [
+        "memberships.id"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "cte_alias",
+      "pass": true,
+      "expected": [
+        "memberships.id"
+      ],
+      "got": [
+        "memberships.id"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "derived_cte_output",
+      "pass": true,
+      "expected": "rn classified DERIVED_EXPRESSION / false_positive",
+      "got": [
+        "ranked.rn:True"
+      ]
+    },
+    {
+      "test": "same_migration_creator",
+      "pass": true,
+      "expected": [
+        "assignments.is_current",
+        "assignments.membership_id"
+      ],
+      "got": [
+        "assignments.is_current",
+        "assignments.membership_id"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "correlated_subquery",
+      "pass": true,
+      "expected": [
+        "assignments.membership_id",
+        "memberships.id"
+      ],
+      "got": [
+        "assignments.membership_id",
+        "memberships.id"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "nested_alias_shadowing",
+      "pass": true,
+      "expected": [
+        "src.x"
+      ],
+      "got": [
+        "src.x"
+      ],
+      "missing": [],
+      "forbidden_found": []
+    },
+    {
+      "test": "rental_rule_real_regression",
+      "pass": true,
+      "got_sample": [
+        "organization_rental_rules.additional_driver_policy",
+        "organization_rental_rules.created_at",
+        "organization_rental_rules.minimum_license_holding_months",
+        "organization_rental_rules.notes",
+        "organization_rental_rules.version"
+      ]
+    },
+    {
+      "test": "migration_249_real_regression",
+      "pass": true,
+      "permissions_present": true,
+      "alias_tables": []
+    },
+    {
+      "test": "actionable_coverage_negative",
+      "pass": true,
+      "note": "validated separately by ci_r3b1h1_actionable_gap_coverage fixture gate"
+    },
+    {
+      "test": "generic_contract_builder",
+      "pass": true,
+      "note": "validated by ci_r3b1h1_build_contracts.py for non-hardcoded gap derivation"
+    }
+  ],
+  "passed": 11,
+  "total": 11,
+  "pass": true
+}

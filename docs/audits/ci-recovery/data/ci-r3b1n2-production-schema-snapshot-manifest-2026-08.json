@@ -1,0 +1,9 @@
+{
+  "path": "audits/ci-recovery/.work/r3b1n2/production_schema_only.sql",
+  "sha256": "f5cb5ec8f54a815be55945a77825c383ae74e9ff2244bc711144910cd41340da",
+  "bytes": 1135367,
+  "data_rows_included": 0,
+  "schema_version": 1,
+  "phase": "CI-R3B1N.2",
+  "application_row_data_included": 0
+}

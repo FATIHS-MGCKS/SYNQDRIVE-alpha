@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1I",
+  "evidence_input_sha": "37d0904500024bf51dd712fb7398d91dd54c0411",
+  "contract": {
+    "contract_id": "R3B1I-organization-memberships-permissions",
+    "relation": "organization_memberships",
+    "column": "permissions",
+    "postgres_type": "jsonb",
+    "nullable": true,
+    "default_semantics": "NO_DATABASE_DEFAULT",
+    "default_value": null,
+    "first_consumer_migration": "20260721250000_iam_versioned_role_assignments",
+    "authority_status": "COMPLETE_AUTHORITY"
+  },
+  "compiled_sql": "ALTER TABLE \"organization_memberships\" ADD COLUMN \"permissions\" \"jsonb\";",
+  "migration_path": "backend/prisma/migrations/20260721245000_ci_r3b_iam_membership_permissions_predecessor/migration.sql",
+  "migration_sql_sha256": "0cafcc7a04f10ad4418c47118f3c81dde751edf1e2557373a06b35cd719a4efd",
+  "relation": "organization_memberships",
+  "column": "permissions",
+  "type": "JSONB",
+  "nullable": true,
+  "default": null,
+  "alter_sql": "ALTER TABLE \"organization_memberships\" ADD COLUMN \"permissions\" JSONB;",
+  "if_not_exists_present": false,
+  "semantic_equivalence": "PASS",
+  "pass": true
+}
