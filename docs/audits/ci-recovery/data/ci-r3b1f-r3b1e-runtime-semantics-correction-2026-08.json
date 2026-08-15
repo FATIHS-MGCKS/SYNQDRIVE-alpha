@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1F",
+  "supersedes_semantics_in": "ci-r3b1e-full-fresh-replay-result-2026-08.json",
+  "does_not_overwrite_original_evidence": true,
+  "PRE_R3B1F_SHA": "5acf67cc4013aec7ae42b7028f07aae083351a17",
+  "BASE_R3B1E_SHA": "5acf67cc4013aec7ae42b7028f07aae083351a17",
+  "R3B1F_BRANCH": "fix/ci-r3b1f-tire-predicate-dependency-closure-2026-08",
+  "original_r3b1e_final_status": "CI_R3B1E_POST_VENDOR_REPAIR_FULL_REPLAY_PARTIAL",
+  "original_failure_classification": "UNRELATED_HISTORICAL_DEFECT",
+  "corrected_failure_classification": "AUTHORITY_GAP_AT_PROTECTED_CONSUMER",
+  "classification_rationale": "Slot 13 repair migration applied successfully and created TireSetupStatus, but the first protected consumer tire_lifecycle_invariants failed because vehicle_tire_setups.status column was missing from predecessor authority. This is accepted repair authority incomplete, not incorrect Slot 13 repair SQL.",
+  "first_failed_migration": "20260716183000_tire_lifecycle_invariants",
+  "failure_ordinal": 157,
+  "sqlstate": "42703",
+  "error_message": "column \"status\" does not exist",
+  "last_applied_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "slot_13_repair_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+  "slot_13_repair_status": "PASS",
+  "slot_13_first_protected_consumer": "20260716183000_tire_lifecycle_invariants",
+  "slot_13_consumer_status": "FAIL",
+  "slots_14_16_status": "NOT_REACHED",
+  "post_vendor_slot_runtime_correction": [
+    {
+      "slot": 13,
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "repair_migration_status": "PASS",
+      "first_consumer": "20260716183000_tire_lifecycle_invariants",
+      "consumer_status": "FAIL",
+      "failure_classification": "AUTHORITY_GAP_AT_PROTECTED_CONSUMER",
+      "notes": "Consumer reached and failed; do not classify as NOT_REACHED."
+    },
+    {
+      "slot": 14,
+      "repair_migration_status": "NOT_REACHED",
+      "consumer_status": "NOT_REACHED"
+    },
+    {
+      "slot": 15,
+      "repair_migration_status": "NOT_REACHED",
+      "consumer_status": "NOT_REACHED"
+    },
+    {
+      "slot": 16,
+      "repair_migration_status": "NOT_REACHED",
+      "consumer_status": "NOT_REACHED"
+    }
+  ]
+}
