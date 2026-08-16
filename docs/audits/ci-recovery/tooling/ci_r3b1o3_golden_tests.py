@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ci_r3b1l2_prisma_sql_parser import ParsedStatement
+from ci_r3b1n2_constants import DATA as N2_DATA
 from ci_r3b1o1_constants import M252_TABLE
 from ci_r3b1o2_constants import DATA, M252_CANONICAL
 from ci_r3b1o2_diff_classifier import classify_statements, operation_fingerprint, parse_sql_script, resolve_owner_fields
@@ -145,9 +146,20 @@ def run_diff_classifier_tests(tests: list) -> None:
     )
     _add(tests, "provenance_pre_existing_golden_match", "classify_operation_two_axis", "PRE_EXISTING_PRODUCTION_DRIFT", drift["classification"] == "PRE_EXISTING_PRODUCTION_DRIFT", drift["classification"])
 
-    strategy_sql = f'CREATE TABLE "{M252_TABLE}" ("id" TEXT NOT NULL);'
+    canonical_diff = N2_DATA / "ci-r3b1p-production-prisma-diff-2026-08.sql"
+    canonical_table_sql = None
+    if canonical_diff.exists():
+        canonical_table_sql = next(
+            (
+                o["raw_sql"]
+                for o in classify_statements(parse_sql_script(canonical_diff.read_text()), owners)["operations"]
+                if o.get("operation_family") == "CREATE TABLE" and M252_TABLE in o.get("raw_sql", "")
+            ),
+            None,
+        )
+    strategy_sql = canonical_table_sql or f'CREATE TABLE "{M252_TABLE}" ("id" TEXT NOT NULL);'
     strategy_op = classify_operation_two_axis(
-        {**resolve_owner_fields(ParsedStatement(7, [], [], strategy_sql, []), owners), "ordinal": 7, "raw_sql": strategy_sql, "classification": "OUT_OF_SCOPE", "owner_resolution": "OWNER_OUT_OF_SCOPE"},
+        {**resolve_owner_fields(ParsedStatement(7, [], [], strategy_sql, []), owners), "ordinal": 7, "raw_sql": strategy_sql, "classification": "OUT_OF_SCOPE", "owner_resolution": "OWNER_M252", "owner_table": M252_TABLE},
         golden_fps=set(),
         golden_baseline_fps=set(),
     )

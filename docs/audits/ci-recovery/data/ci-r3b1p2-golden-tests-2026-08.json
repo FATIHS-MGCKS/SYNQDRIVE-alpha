@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P.2",
+  "executed": 47,
+  "passed": 47,
+  "failed": 0,
+  "skipped": 0,
+  "previous_golden_test_count": 169,
+  "current_o4_golden_test_count": 169,
+  "new_tests_added": 47,
+  "pass": true,
+  "tests": [
+    {
+      "test_id": "authorized_strategy_default_allow_false",
+      "function": "contract",
+      "expected": "false",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "unmatched_candidate_blocks_true",
+      "function": "contract",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "closed_world_authority_count",
+      "function": "build_pre_execution_strategy_authority",
+      "expected": "5",
+      "actual": "5",
+      "pass": true
+    },
+    {
+      "test_id": "canonical_fingerprint_count",
+      "function": "build_canonical_pre_execution_fingerprints",
+      "expected": "5",
+      "actual": "5",
+      "pass": true
+    },
+    {
+      "test_id": "r3b1p1_regression_wrong_fk_target",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "bogus=0",
+      "pass": true
+    },
+    {
+      "test_id": "r3b1p1_regression_wrong_index_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "bogus=0",
+      "pass": true
+    },
+    {
+      "test_id": "r3b1p1_regression_wrong_unique_index_name",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "bogus=0",
+      "pass": true
+    },
+    {
+      "test_id": "r3b1p1_regression_present",
+      "function": "manual",
+      "expected": "true",
+      "actual": "true",
+      "pass": true
+    },
+    {
+      "test_id": "legitimate_auth-m252-table",
+      "function": "match_pre_execution_m252_authority",
+      "expected": "AUTHORIZED_STRATEGY",
+      "actual": "matches=1 class=AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "legitimate_auth-m252-unique-idempotency",
+      "function": "match_pre_execution_m252_authority",
+      "expected": "AUTHORIZED_STRATEGY",
+      "actual": "matches=1 class=AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "legitimate_auth-m252-composite-org-mbr-created",
+      "function": "match_pre_execution_m252_authority",
+      "expected": "AUTHORIZED_STRATEGY",
+      "actual": "matches=1 class=AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "legitimate_auth-m252-fk-org",
+      "function": "match_pre_execution_m252_authority",
+      "expected": "AUTHORIZED_STRATEGY",
+      "actual": "matches=1 class=AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "legitimate_auth-m252-fk-membership",
+      "function": "match_pre_execution_m252_authority",
+      "expected": "AUTHORIZED_STRATEGY",
+      "actual": "matches=1 class=AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "authorized_strategy_legitimate_total",
+      "function": "manual",
+      "expected": "5",
+      "actual": "5",
+      "pass": true
+    },
+    {
+      "test_id": "authorized_strategy_legitimate_passed",
+      "function": "manual",
+      "expected": "5",
+      "actual": "5",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-table_wrong_table",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-table_wrong_column_type",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-table_extra_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-table_wrong_pk_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-unique-idempotency_wrong_index_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-unique-idempotency_wrong_unique_name",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-unique-idempotency_wrong_uniqueness",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-composite-org-mbr-created_wrong_index_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-composite-org-mbr-created_wrong_index_key_order",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-fk-org_wrong_fk_target",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-fk-org_wrong_fk_source_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-fk-org_wrong_fk_action",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-fk-membership_wrong_fk_target",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-fk-membership_wrong_fk_source_column",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "mutation_auth-m252-fk-membership_wrong_fk_action",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "authorized=4",
+      "pass": true
+    },
+    {
+      "test_id": "authorized_strategy_false_positive_tests",
+      "function": "mutation_matrix",
+      "expected": "0",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "pre_existing_r3b_trip_driving_impact",
+      "function": "manual",
+      "expected": "PRE_EXISTING",
+      "actual": "1",
+      "pass": true
+    },
+    {
+      "test_id": "new_drift_misclassified_as_pre_existing",
+      "function": "manual",
+      "expected": "0",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "diff_count_based_logic_absent_ci_r3b1p2_authorized_strategy_authority",
+      "function": "static_audit",
+      "expected": "0",
+      "actual": "[]",
+      "pass": true
+    },
+    {
+      "test_id": "diff_count_based_logic_absent_ci_r3b1p_diff_attribution",
+      "function": "static_audit",
+      "expected": "0",
+      "actual": "[]",
+      "pass": true
+    },
+    {
+      "test_id": "diff_count_based_logic_absent_ci_r3b1o3_diff_attribution",
+      "function": "static_audit",
+      "expected": "0",
+      "actual": "[]",
+      "pass": true
+    },
+    {
+      "test_id": "additional_drift_not_suppressed",
+      "function": "classify_preflight_production_diff",
+      "expected": "blocking",
+      "actual": "['UNATTRIBUTED']",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_gate_fails_on_new_strategy_drift",
+      "function": "evaluate_r3b1p_terminal_acceptance",
+      "expected": "blocked",
+      "actual": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1o3_diff_attribution_table_name_substring",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1o3_diff_attribution_fragment_in_check",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1o3_diff_attribution_ranked_match",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1o3_diff_attribution_fuzzy_match",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1p2_authorized_strategy_authority_table_name_substring",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1p2_authorized_strategy_authority_fragment_in_check",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1p2_authorized_strategy_authority_ranked_match",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "static_ci_r3b1p2_authorized_strategy_authority_fuzzy_match",
+      "function": "static_audit",
+      "expected": "absent_or_safe",
+      "actual": "absent",
+      "pass": true
+    },
+    {
+      "test_id": "o4_regression_suite",
+      "function": "ci_r3b1o4_golden_tests",
+      "expected": "0 failed",
+      "actual": "169/0",
+      "pass": true
+    }
+  ]
+}

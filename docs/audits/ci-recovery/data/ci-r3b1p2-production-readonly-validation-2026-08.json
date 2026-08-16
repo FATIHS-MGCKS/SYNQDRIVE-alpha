@@ -1,0 +1,14 @@
+{
+  "PRODUCTION_MUTATIONS": 0,
+  "validation_mode": "cached_production_diff_read_only_reclassification",
+  "production_diff_sha256": "3b0b3a7a2dd2d3ecf045c8f6725291f01e5b12b1310a65f27a5b1e1bd4b382ec",
+  "pass": true,
+  "total_operations": 399,
+  "PRE_EXISTING": 394,
+  "AUTHORIZED_STRATEGY": 5,
+  "NEW_STRATEGY_DRIFT": 0,
+  "UNATTRIBUTED": 0,
+  "R3B_SCOPE": 0,
+  "M252_SCOPE": 0,
+  "UNKNOWN_SCOPE": 0
+}

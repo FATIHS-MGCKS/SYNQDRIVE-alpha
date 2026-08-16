@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P.2",
+  "remediation_pass": true,
+  "p1_failure": {
+    "R3B1P1_FAILED_TEST": "AUTHORIZED_STRATEGY_FALSE_POSITIVE_TESTS",
+    "R3B1P1_FALSE_POSITIVE_OPERATION": [
+      "wrong_fk_target",
+      "wrong_index_column",
+      "wrong_unique_index_name"
+    ],
+    "R3B1P1_EXPECTED_CLASSIFICATION": "blocking (NEW_STRATEGY_DRIFT or gate fail)",
+    "R3B1P1_ACTUAL_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+    "test_name": "authorized_strategy_negative_tests",
+    "manipulated_semantic_properties": {
+      "wrong_fk_target": "REFERENCES organizations -> vehicles",
+      "wrong_index_column": "idempotency_key -> bogus_key",
+      "wrong_unique_index_name": "canonical unique index name -> bogus_unique_key"
+    },
+    "evaluator_function": "has_explicit_strategy_authority()",
+    "unsafe_branch": "if M252_TABLE in raw and any(k in upper for k in (\"CREATE INDEX\", \"CREATE UNIQUE INDEX\", \"ADD CONSTRAINT\", \"PRIMARY KEY\")): return True",
+    "why_unsafe": "Table-name substring gate authorized any M252 sub-operation without exact semantic identity match",
+    "false_positive_count": 3
+  },
+  "authority_count": 5,
+  "canonical_fingerprint_count": 5,
+  "legitimate": {
+    "rows": [
+      {
+        "OPERATION_ID": "CREATE TABLE|create_tabl",
+        "AUTHORITY_ID": "AUTH-M252-TABLE",
+        "RAW_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "EXACT_MATCH_COUNT": 1,
+        "FINAL_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "pass": true
+      },
+      {
+        "OPERATION_ID": "CREATE UNIQUE INDEX|crea",
+        "AUTHORITY_ID": "AUTH-M252-UNIQUE-IDEMPOTENCY",
+        "RAW_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "EXACT_MATCH_COUNT": 1,
+        "FINAL_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "pass": true
+      },
+      {
+        "OPERATION_ID": "CREATE INDEX|create_inde",
+        "AUTHORITY_ID": "AUTH-M252-COMPOSITE-ORG-MBR-CREATED",
+        "RAW_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "EXACT_MATCH_COUNT": 1,
+        "FINAL_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "pass": true
+      },
+      {
+        "OPERATION_ID": "ALTER TABLE|foreign_key|",
+        "AUTHORITY_ID": "AUTH-M252-FK-ORG",
+        "RAW_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "EXACT_MATCH_COUNT": 1,
+        "FINAL_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "pass": true
+      },
+      {
+        "OPERATION_ID": "ALTER TABLE|foreign_key|",
+        "AUTHORITY_ID": "AUTH-M252-FK-MEMBERSHIP",
+        "RAW_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "EXACT_MATCH_COUNT": 1,
+        "FINAL_CLASSIFICATION": "AUTHORIZED_STRATEGY_DELTA",
+        "pass": true
+      }
+    ],
+    "AUTHORIZED_STRATEGY_LEGITIMATE_TOTAL": 5,
+    "AUTHORIZED_STRATEGY_LEGITIMATE_PASSED": 5,
+    "AUTHORIZED_STRATEGY_AMBIGUOUS_MATCHES": 0
+  },
+  "production": {
+    "PRODUCTION_MUTATIONS": 0,
+    "validation_mode": "cached_production_diff_read_only_reclassification",
+    "production_diff_sha256": "3b0b3a7a2dd2d3ecf045c8f6725291f01e5b12b1310a65f27a5b1e1bd4b382ec",
+    "pass": true,
+    "total_operations": 399,
+    "PRE_EXISTING": 394,
+    "AUTHORIZED_STRATEGY": 5,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNATTRIBUTED": 0,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "UNKNOWN_SCOPE": 0
+  },
+  "terminal_gate": {
+    "scenarios": {
+      "missing_authorized_operation": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "semantic_drift": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "extra_unauthorized": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "ambiguous_match": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "unknown_scope": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "unattributed": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "new_strategy_drift": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      },
+      "m252_scope_nonzero": {
+        "blocked": true,
+        "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+      }
+    },
+    "all_fail_closed": true
+  },
+  "p2_golden": {
+    "executed": 47,
+    "failed": 0,
+    "pass": true
+  },
+  "o4_golden": {
+    "executed": 169,
+    "failed": 0,
+    "pass": true
+  },
+  "NEW_DRIFT_MISCLASSIFIED_AS_PRE_EXISTING": 0,
+  "DIFF_COUNT_BASED_AUTHORITY_LOGIC": 0,
+  "ADDITIONAL_DRIFT_SUPPRESSION": 0,
+  "AUTHORIZED_STRATEGY_DEFAULT_ALLOW": false,
+  "UNMATCHED_AUTHORIZED_CANDIDATE_BLOCKS": true,
+  "R3B1P1_REGRESSION_TEST_PRESENT": true,
+  "worktree": {
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "head_sha": "813ceaf9ac9ddb9c458128c151267c736f198443",
+    "pre_remediation_sha": "813ceaf9",
+    "status_short": "M docs/audits/ci-recovery/tooling/ci_r3b1o3_diff_attribution.py\n M docs/audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py\n?? docs/audits/ci-recovery/ci-r3b1p2-authorized-strategy-exact-identity-hardening-2026-08.md\n?? docs/audits/ci-recovery/data/ci-r3b1p2-golden-tests-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-legitimate-operation-proof-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-production-readonly-validation-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-remediation-summary-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-static-matcher-audit-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-terminal-gate-fail-closed-2026-08.json\n?? docs/audits/ci-recovery/tooling/ci_r3b1p2_authorized_strategy_authority.py\n?? docs/audits/ci-recovery/tooling/ci_r3b1p2_golden_tests.py\n?? docs/audits/ci-recovery/tooling/ci_r3b1p2_run_remediation.py\n?? docs/audits/pr-recovery/R3B1P2-AUTHORIZED-STRATEGY-EXACT-IDENTITY-HARDENING.md",
+    "diff_stat": ".../ci-recovery/tooling/ci_r3b1o3_diff_attribution.py    | 11 +++++++----\n .../audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py | 16 ++++++++++++++--\n 2 files changed, 21 insertions(+), 6 deletions(-)"
+  },
+  "final_status": "CI_R3B1P2_AUTHORIZED_STRATEGY_EXACT_IDENTITY_HARDENING_COMPLETED",
+  "r3b1p_remediation": "R3B1P_REMEDIATION_COMPLETED_REQUIRES_INDEPENDENT_REPLAY",
+  "r3b1q_readiness": "R3B1Q_NOT_READY_PENDING_R3B1P3"
+}

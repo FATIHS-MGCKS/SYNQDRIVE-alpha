@@ -12,6 +12,7 @@ from ci_r3b1o2_diff_classifier import (
 )
 from ci_r3b1o2_r3b_authority import build_owner_maps
 from ci_r3b1o3_constants import DATA, STRATEGY_CONTRACT
+from ci_r3b1p2_authorized_strategy_authority import match_pre_execution_m252_authority
 
 AUTHORIZED_STRATEGY_INDEXES: set[str] = set()
 
@@ -34,10 +35,12 @@ def has_explicit_strategy_authority(op: dict[str, Any]) -> tuple[bool, str | Non
     owner_table = op.get("owner_table")
     owner_index = op.get("owner_index")
 
-    if "CREATE TABLE" in upper and M252_TABLE in raw:
-        return True, "append-only M252 forward migration creates canonical table"
-    if M252_TABLE in raw and any(k in upper for k in ("CREATE INDEX", "CREATE UNIQUE INDEX", "ADD CONSTRAINT", "PRIMARY KEY")):
-        return True, "append-only M252 forward migration creates canonical M252 objects"
+    if op.get("owner_table") == M252_TABLE or (M252_TABLE in raw and op.get("owner_resolution") == "OWNER_M252"):
+        matches = match_pre_execution_m252_authority(op)
+        if len(matches) == 1:
+            return True, matches[0]["reason"]
+        return False, None
+
     for token in STRATEGY_CONTRACT["resolves"]:
         if token in raw:
             return True, f"explicit resolve contract: {token}"
