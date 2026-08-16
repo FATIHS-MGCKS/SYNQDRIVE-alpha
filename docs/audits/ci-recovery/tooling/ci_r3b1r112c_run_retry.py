@@ -490,8 +490,16 @@ def main() -> int:
     }
 
     if not worktree["worktree_clean_at_entry"]:
-        result["machine_status"] = {"CI_R3B1R112C_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_RETRY_BLOCKED": True}
+        result["stop_reason"] = "worktree_not_clean_at_entry"
+        result["machine_status"] = {
+            "CI_R3B1R112C_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_RETRY_BLOCKED": True,
+            "DEPLOY_ATTEMPT_COUNT": 0,
+            "R3B1R112_EXECUTION": "RETRY_NOT_STARTED",
+            "R3B1R12_READINESS": "NOT_READY",
+            "PR1054_MERGE_READINESS": "BLOCKED",
+        }
         _write(result)
+        print(json.dumps({"result": result["result"], "stop_reason": result["stop_reason"]}, indent=2))
         return 1
     if backend_tree != FROZEN_BACKEND_TREE_SHA:
         result["stop_reason"] = "backend_tree_mismatch"
