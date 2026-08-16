@@ -14,7 +14,7 @@ TAIL_MIGRATION="20260816110731_ci_r3b_production_history_tail_reconciliation"
 M252_TABLE="organization_role_assignment_drift_reconciliation_applications"
 
 # Ephemeral/bootstrap recovery is opt-in and must never run on Production deploy paths.
-export PRISMA_MIGRATE_EPHEMERAL_RECOVERY="${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-1}"
+export PRISMA_MIGRATE_EPHEMERAL_RECOVERY="${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-0}"
 
 LOG="$(mktemp /tmp/prisma-migrate-deploy-resilient.XXXXXX.log)"
 trap 'rm -f "$LOG"' EXIT
