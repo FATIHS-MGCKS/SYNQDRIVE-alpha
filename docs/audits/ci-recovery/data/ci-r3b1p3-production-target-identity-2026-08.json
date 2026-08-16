@@ -1,0 +1,21 @@
+{
+  "db": {
+    "production_db_name_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d",
+    "host_fingerprint_sha256": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763",
+    "port": 5432,
+    "database_name_length": 9,
+    "production_service": "PROD_VPS_A",
+    "production_database_alias": "PROD_DB_A"
+  },
+  "instance": {
+    "alias": "PROD_DB_A",
+    "service_alias": "PROD_VPS_A",
+    "postgresql_version_line": "PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "system_identifier": "7654152427769393503",
+    "inet_server_addr": "",
+    "inet_server_port": "",
+    "current_database": "synqdrive",
+    "instance_fingerprint_sha256": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+    "database_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d"
+  }
+}

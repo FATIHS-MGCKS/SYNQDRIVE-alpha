@@ -1,0 +1,117 @@
+{
+  "AUTHORIZED_STRATEGY_TOTAL": 5,
+  "operations": [
+    {
+      "stable_identity": "CREATE TABLE|create_table|organization_role_assignment_drift_reconciliation_applications||||create table \"organization_role_assignment_drift_reconciliation_applications\" ( \"id\" text not null, \"idempotency_key\" text not null, \"organization_id\" text not null, \"membership_id\" text not null, \"evidence_hash\" text not null, \"expected_git_commit\" text not null, \"operator\" text not null, \"reason\" text not null, \"classification\" text not null, \"result\" jsonb, \"created_at\" timestamp(3) not null default current_timestamp, constraint \"organization_role_assignment_drift_reconciliation_applicat_pkey\" primary key (\"id\") )",
+      "object_identity": {
+        "family": "CREATE TABLE",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "owner_index": null,
+        "owner_constraint": null
+      },
+      "authority_migration": "20260215120000_add_organization_role_assignment_drift_reconciliation",
+      "tail_task": "M252 forward",
+      "pre_execution_state": "organization_role_assignment_drift_reconciliation_applications absent from production catalog",
+      "post_tail_state": "canonical M252 objects present per tail SQL",
+      "authority_source": "exact pre-execution strategy authority AUTH-M252-TABLE from 20260721270000_iam_role_assignment_drift_reconciliation",
+      "exact_identity_hardened": true
+    },
+    {
+      "stable_identity": "CREATE UNIQUE INDEX|create_unique_index|organization_role_assignment_drift_reconciliation_applications|organization_role_assignment_drift_reconciliation_applicati_key|||create unique index \"organization_role_assignment_drift_reconciliation_applicati_key\" on \"organization_role_assignment_drift_reconciliation_applications\"(\"idempotency_key\")",
+      "object_identity": {
+        "family": "CREATE UNIQUE INDEX",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "owner_index": "organization_role_assignment_drift_reconciliation_applicati_key",
+        "owner_constraint": null
+      },
+      "authority_migration": "20260215120000_add_organization_role_assignment_drift_reconciliation",
+      "tail_task": "M252 forward",
+      "pre_execution_state": "organization_role_assignment_drift_reconciliation_applications absent from production catalog",
+      "post_tail_state": "canonical M252 objects present per tail SQL",
+      "authority_source": "exact pre-execution strategy authority AUTH-M252-UNIQUE-IDEMPOTENCY from 20260721270000_iam_role_assignment_drift_reconciliation",
+      "exact_identity_hardened": true
+    },
+    {
+      "stable_identity": "CREATE INDEX|create_index|organization_role_assignment_drift_reconciliation_applications|organization_role_assignment_drift_reconciliation_applicati_idx|||create index \"organization_role_assignment_drift_reconciliation_applicati_idx\" on \"organization_role_assignment_drift_reconciliation_applications\"(\"organization_id\", \"membership_id\", \"created_at\")",
+      "object_identity": {
+        "family": "CREATE INDEX",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "owner_index": "organization_role_assignment_drift_reconciliation_applicati_idx",
+        "owner_constraint": null
+      },
+      "authority_migration": "20260215120000_add_organization_role_assignment_drift_reconciliation",
+      "tail_task": "M252 forward",
+      "pre_execution_state": "organization_role_assignment_drift_reconciliation_applications absent from production catalog",
+      "post_tail_state": "canonical M252 objects present per tail SQL",
+      "authority_source": "exact pre-execution strategy authority AUTH-M252-COMPOSITE-ORG-MBR-CREATED from 20260721270000_iam_role_assignment_drift_reconciliation",
+      "exact_identity_hardened": true
+    },
+    {
+      "stable_identity": "ALTER TABLE|foreign_key|organization_role_assignment_drift_reconciliation_applications||org_role_assignment_drift_recon_app_org_fkey||alter table \"organization_role_assignment_drift_reconciliation_applications\" add constraint \"org_role_assignment_drift_recon_app_org_fkey\" foreign key (\"organization_id\") references \"organizations\"(\"id\") on delete cascade on update cascade",
+      "object_identity": {
+        "family": "ALTER TABLE",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "owner_index": null,
+        "owner_constraint": "org_role_assignment_drift_recon_app_org_fkey"
+      },
+      "authority_migration": "20260215120000_add_organization_role_assignment_drift_reconciliation",
+      "tail_task": "M252 forward",
+      "pre_execution_state": "organization_role_assignment_drift_reconciliation_applications absent from production catalog",
+      "post_tail_state": "canonical M252 objects present per tail SQL",
+      "authority_source": "exact pre-execution strategy authority AUTH-M252-FK-ORG from 20260721270000_iam_role_assignment_drift_reconciliation",
+      "exact_identity_hardened": true
+    },
+    {
+      "stable_identity": "ALTER TABLE|foreign_key|organization_role_assignment_drift_reconciliation_applications||org_role_assignment_drift_recon_app_mem_fkey||alter table \"organization_role_assignment_drift_reconciliation_applications\" add constraint \"org_role_assignment_drift_recon_app_mem_fkey\" foreign key (\"membership_id\") references \"organization_memberships\"(\"id\") on delete cascade on update cascade",
+      "object_identity": {
+        "family": "ALTER TABLE",
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "owner_index": null,
+        "owner_constraint": "org_role_assignment_drift_recon_app_mem_fkey"
+      },
+      "authority_migration": "20260215120000_add_organization_role_assignment_drift_reconciliation",
+      "tail_task": "M252 forward",
+      "pre_execution_state": "organization_role_assignment_drift_reconciliation_applications absent from production catalog",
+      "post_tail_state": "canonical M252 objects present per tail SQL",
+      "authority_source": "exact pre-execution strategy authority AUTH-M252-FK-MEMBERSHIP from 20260721270000_iam_role_assignment_drift_reconciliation",
+      "exact_identity_hardened": true
+    }
+  ],
+  "legitimate_operation_proof": {
+    "rows": [
+      {
+        "stable_identity": "CREATE TABLE|create_tabl",
+        "authority_id": "AUTH-M252-TABLE",
+        "exact_match_count": 1,
+        "pass": true
+      },
+      {
+        "stable_identity": "CREATE UNIQUE INDEX|crea",
+        "authority_id": "AUTH-M252-UNIQUE-IDEMPOTENCY",
+        "exact_match_count": 1,
+        "pass": true
+      },
+      {
+        "stable_identity": "CREATE INDEX|create_inde",
+        "authority_id": "AUTH-M252-COMPOSITE-ORG-MBR-CREATED",
+        "exact_match_count": 1,
+        "pass": true
+      },
+      {
+        "stable_identity": "ALTER TABLE|foreign_key|",
+        "authority_id": "AUTH-M252-FK-ORG",
+        "exact_match_count": 1,
+        "pass": true
+      },
+      {
+        "stable_identity": "ALTER TABLE|foreign_key|",
+        "authority_id": "AUTH-M252-FK-MEMBERSHIP",
+        "exact_match_count": 1,
+        "pass": true
+      }
+    ],
+    "AUTHORIZED_STRATEGY_LEGITIMATE_TOTAL": 5,
+    "AUTHORIZED_STRATEGY_LEGITIMATE_PASSED": 5
+  },
+  "AUTHORIZED_STRATEGY_NARROW": true
+}

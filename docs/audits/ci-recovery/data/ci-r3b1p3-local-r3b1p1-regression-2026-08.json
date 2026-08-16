@@ -1,0 +1,28 @@
+{
+  "label": "local_cached_diff",
+  "tests": [
+    {
+      "test_id": "r3b1p1_regression_wrong_fk_target",
+      "label": "local_cached_diff",
+      "blocked": true,
+      "bogus_authorized_count": 0,
+      "pass": true
+    },
+    {
+      "test_id": "r3b1p1_regression_wrong_index_column",
+      "label": "local_cached_diff",
+      "blocked": true,
+      "bogus_authorized_count": 0,
+      "pass": true
+    },
+    {
+      "test_id": "r3b1p1_regression_wrong_unique_index_name",
+      "label": "local_cached_diff",
+      "blocked": true,
+      "bogus_authorized_count": 0,
+      "pass": true
+    }
+  ],
+  "R3B1P1_REGRESSION_FALSE_POSITIVE_COUNT": 0,
+  "R3B1P1_REGRESSION_TESTS_BLOCK": true
+}

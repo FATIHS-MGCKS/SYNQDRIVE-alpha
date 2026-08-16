@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "migration_name": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "resolve_mode": "applied",
+      "current_ledger_state": {
+        "present": false,
+        "finished": false,
+        "failed": false
+      },
+      "why_applied_correct": "catalog effects already present from recovery path; only ledger row missing",
+      "why_rolled_back_incorrect": "would deny applied schema reality and block deploy ordering",
+      "expected_ledger_after": "finished row without SQL replay",
+      "catalog_mutation_from_resolve": false,
+      "unambiguous": true
+    },
+    {
+      "migration_name": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "resolve_mode": "applied",
+      "current_ledger_state": {
+        "present": false,
+        "finished": false,
+        "failed": false
+      },
+      "why_applied_correct": "catalog effects already present from recovery path; only ledger row missing",
+      "why_rolled_back_incorrect": "would deny applied schema reality and block deploy ordering",
+      "expected_ledger_after": "finished row without SQL replay",
+      "catalog_mutation_from_resolve": false,
+      "unambiguous": true
+    }
+  ],
+  "R3B1G_RESOLVE_UNAMBIGUOUS": true,
+  "R3B1I_RESOLVE_UNAMBIGUOUS": true
+}

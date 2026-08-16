@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P.3",
+  "interpretation": "Pre-execution preflight: M252 catalog absent; stale recovery indexes may still be absent until normal deploy step 3.",
+  "m252_table_present": false,
+  "m252_table_absent": true,
+  "pre_tail_checks": {
+    "schema_version": 1,
+    "phase": "pre_tail",
+    "expected": {
+      "m252_table_absent": true,
+      "m252_objects_absent": true,
+      "parents_present": true,
+      "invoice_stale_present": true,
+      "whatsapp_stale_present": true,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "actual": {
+      "m252_table_absent": true,
+      "m252_objects_absent": true,
+      "parents_present": true,
+      "invoice_stale_present": false,
+      "whatsapp_stale_present": false,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "checks": {
+      "m252_table_absent": true,
+      "m252_objects_absent": true,
+      "parents_present": true,
+      "invoice_stale_present": false,
+      "whatsapp_stale_present": false,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "stale_indexes": {
+      "org_invoices_invoice_number_key": false,
+      "whatsapp_conversations_organization_id_contact_phone_key": false
+    },
+    "pass": false
+  },
+  "preflight_aligned_pass": true,
+  "M252_PRE_EXECUTION_PASS": true,
+  "pass": true
+}

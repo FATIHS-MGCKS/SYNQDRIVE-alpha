@@ -1,0 +1,81 @@
+{
+  "git_status_short": [
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-393-to-399-reconciliation-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-acceptance-matrix-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-authorized-strategy-audit-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-entry-capture-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-evaluator-hashes-after-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-evaluator-hashes-before-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-final-replay-summary-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-live-production-prisma-diff-2026-08.sql",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-live-production-prisma-diff-attribution-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-live-r3b-catalog-parity-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-live-r3b1p1-regression-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-local-o4-golden-tests-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-local-p2-golden-tests-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-local-r3b1p1-regression-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-m252-pre-execution-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-pending-migration-set-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-pre-existing-r3b-proof-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-production-catalog-before-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-production-immutability-proof-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-production-ledger-before-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-production-target-identity-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-resolve-recheck-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-stale-index-lifecycle-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-tail-contract-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-terminal-gate-fail-closed-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p3-worktree-proof-2026-08.json",
+    "?? docs/audits/pr-recovery/R3B1P3-INDEPENDENT-FROZEN-HARDENED-PREFLIGHT-REPLAY.md"
+  ],
+  "unrelated_status_lines": [],
+  "git_diff_stat": [],
+  "git_diff_name_only": [],
+  "git_diff_cached_name_only": [],
+  "open_pr_file_checks": [
+    {
+      "path": "open-pr-file-overlap-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-2026-08.csv",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-2026-08.json",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-methodology-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-stack-graph-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    }
+  ],
+  "WORKTREE_CLEAN": true,
+  "reason": "clean"
+}
