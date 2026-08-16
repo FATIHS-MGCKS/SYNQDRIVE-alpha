@@ -879,7 +879,7 @@ export async function openVehicleDetailRental(
       if (theme) localStorage.setItem('synqdrive-theme-preference', theme);
       sessionStorage.setItem('synqdrive_rental_fleet_tab', 'status');
     },
-    { token: 'vehicle-detail-e2e-token', user, locale: options?.locale ?? 'de', theme: options?.theme },
+    { token: 'vehicle-detail-e2e-token', user, locale: options?.locale ?? 'en', theme: options?.theme },
   );
   await installVehicleDetailMocks(page);
   await page.goto('/rental', { waitUntil: 'load' });

@@ -191,16 +191,26 @@ Unchanged evaluators + updated Q2 orchestrator SHA-checkout path. Key inputs for
 
 ## 13. Machine status
 
+Post-push CI (HEAD `0557bb95` first run):
+
+| Check | Result |
+|-------|--------|
+| Migration tests (PostgreSQL) | **PASS** |
+| Security / dependency scan (Legal Documents) | **PASS** |
+| Backend integration tests | **FAIL** — `organizations.short_code` missing (schema/DB drift; no migration in tree) |
+| Security / dependency scan (Vehicle Detail) | **FAIL** — backend `npm audit --audit-level=high` (10 high; pre-existing) |
+| Playwright E2E (Vehicle Detail) | **FAIL** — locale de/en tab label mismatch (follow-up fix: default locale `en`) |
+
 ```
-CI_R3B1R1_MERGE_READINESS_BLOCKER_REMEDIATION_COMPLETED
-R3B1R_REMEDIATION=ALL_IDENTIFIED_BLOCKERS_REMEDIATED
-R3B1R2_READINESS=READY_FOR_INDEPENDENT_FROZEN_POST_REMEDIATION_ACCEPTANCE
-PR1054_MERGE_READINESS=BLOCKED_PENDING_R3B1R2
+CI_R3B1R1_MERGE_READINESS_BLOCKER_REMEDIATION_BLOCKED
+R3B1R_REMEDIATION=BLOCKERS_REMAIN
+R3B1R2_READINESS=NOT_READY
+PR1054_MERGE_READINESS=BLOCKED
 ```
+
+Source-history and diff blockers remediated in-tree; CI gate and integration schema drift require follow-up before R3B1R.2.
 
 **R3B1R.1 DID NOT MUTATE PRODUCTION. PR #1054 WAS NOT MERGED.**
-
-**NEXT REQUIRED PHASE:** R3B1R.2 INDEPENDENT FROZEN POST-REMEDIATION ACCEPTANCE.
 
 ---
 

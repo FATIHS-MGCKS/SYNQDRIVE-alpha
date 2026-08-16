@@ -101,9 +101,18 @@
     "PRODUCTION_IMMUTABLE_R3B1R1": true
   },
   "machine_status": {
-    "status": "CI_R3B1R1_MERGE_READINESS_BLOCKER_REMEDIATION_COMPLETED",
-    "R3B1R_REMEDIATION": "ALL_IDENTIFIED_BLOCKERS_REMEDIATED",
-    "R3B1R2_READINESS": "READY_FOR_INDEPENDENT_FROZEN_POST_REMEDIATION_ACCEPTANCE",
-    "PR1054_MERGE_READINESS": "BLOCKED_PENDING_R3B1R2"
+    "status": "CI_R3B1R1_MERGE_READINESS_BLOCKER_REMEDIATION_BLOCKED",
+    "R3B1R_REMEDIATION": "BLOCKERS_REMAIN",
+    "R3B1R2_READINESS": "NOT_READY",
+    "PR1054_MERGE_READINESS": "BLOCKED",
+    "remaining_ci_blockers": [
+      "Backend integration tests — organizations.short_code schema/DB drift (no migration)",
+      "Security / dependency scan (Vehicle Detail workflow) — backend npm audit high severity",
+      "Playwright E2E (Vehicle Detail) — locale fix pushed post-first CI run"
+    ],
+    "remediated_ci_checks": [
+      "Migration tests (PostgreSQL)",
+      "Security / dependency scan (Legal Documents workflow)"
+    ]
   }
 }
