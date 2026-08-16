@@ -389,9 +389,15 @@ sudo rm -rf "$tmpdir" 2>/dev/null || true
             block = block.split(end, 1)[0]
         return block
 
-    status_pre = extract_block("===STATUS_PRE===", "===DEPLOY_START===")
-    if not status_pre:
-        status_pre = extract_block("===STATUS_PRE===", "===MIGRATION_LIST_START===")
+    if "===STATUS_PRE===" in text:
+        status_block = text.split("===STATUS_PRE===", 1)[1]
+        for end_marker in ("===DEPLOY_START===", "===MIGRATION_LIST_START===", "DEPLOY_SKIPPED=true"):
+            if end_marker in status_block:
+                status_block = status_block.split(end_marker, 1)[0]
+                break
+        status_pre = status_block
+    else:
+        status_pre = ""
     status_post = extract_block("===STATUS_POST===", "===MIGRATION_LIST_START===")
     deploy_out = extract_block("===DEPLOY_START===", "===DEPLOY_END===")
 
@@ -820,7 +826,7 @@ def main() -> int:
         }
 
     _write(result)
-    print(json.dumps({"result": result["result"], "machine_status": result["machine_status"]}, indent=2))
+    print(json.dumps({"result": result["result"], "machine_status": result.get("machine_status")}, indent=2))
     return 0 if result["result"] == "SUCCESS" else 1
 
 
