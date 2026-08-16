@@ -118,6 +118,7 @@
     "catalog_fingerprint_before": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
     "catalog_fingerprint_after": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58"
   },
+  "final_substantive_head_sha": "e3c2d2789684c3e62e0c2e8459ec46ce4c6cf565",
   "source_evidence_sha_mismatches": 0,
   "machine_status": {
     "CI_R3B1R111B_FINAL_EXACT_BRIDGE_SEMANTIC_FREEZE_COMPLETED": true,

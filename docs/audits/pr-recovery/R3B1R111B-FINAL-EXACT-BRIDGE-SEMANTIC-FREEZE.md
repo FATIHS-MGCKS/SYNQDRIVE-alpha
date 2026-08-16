@@ -31,6 +31,7 @@ R3B1R.1.1a split bundled bridge scope, resolved SHA discrepancy, default-disable
 | REPOSITORY | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | BRANCH | `audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08` |
 | ENTRY_HEAD_SHA | `351d8869d6ccf42e932608e4e7c9d621b13326d7` |
+| FINAL_SUBSTANTIVE_HEAD_SHA | `e3c2d2789684c3e62e0c2e8459ec46ce4c6cf565` |
 | CURRENT_MAIN_SHA | `721ad893d15cfa46786a112860548ce12a2be71d` |
 | PR #1054 | OPEN, DRAFT, unmerged |
 | WORKTREE | clean at entry |
