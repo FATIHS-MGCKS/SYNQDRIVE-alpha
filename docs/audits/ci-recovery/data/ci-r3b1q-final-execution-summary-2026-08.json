@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1Q",
+  "result": "PARTIAL_EXECUTION",
+  "final_status": "CI_R3B1Q_CONTROLLED_PRODUCTION_RECONCILIATION_EXECUTION_INTERRUPTED",
+  "r3b1q_execution": "R3B1Q_PARTIAL_EXECUTION_REQUIRES_INCIDENT_RECONCILIATION",
+  "pr1054_merge_readiness": "BLOCKED",
+  "execution_source_sha": "b823ec23686a52898dd8941d08948f06b0d2d2e3",
+  "exec_id": "r3b1q_20260816110731",
+  "blocker": "Step 6 second-deploy idempotency gate aborted due to execution-wrapper SQL error before `npm run prisma:migrate:deploy` (catalog fingerprint probe used invalid column alias `i.indexrelid`)",
+  "mutations_executed": {
+    "r3b1g_resolve": true,
+    "r3b1i_resolve": true,
+    "normal_migrations_applied_count": 21,
+    "tail_migration_applied": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+    "production_mutations_total": 24
+  },
+  "backup": {
+    "BACKUP_METHOD": "postgres_pg_dump_gzip",
+    "BACKUP_STARTED_AT": "2026-08-16T11:07:33Z",
+    "BACKUP_COMPLETED_AT": "2026-08-16T11:07:46Z",
+    "BACKUP_IDENTIFIER": "/opt/synqdrive/shared/backups/db-pre-r3b1q-20260816110731.sql.gz",
+    "BACKUP_SIZE": 57923103,
+    "BACKUP_CHECKSUM": "e58a1cfc3bf0d1adacef998663bd6bc83bc130fcddc66211dcec64c86c814cbe",
+    "RESTORE_OWNER": "platform_ops",
+    "RESTORE_PATH_VERIFIED": true,
+    "FRESH_BACKUP_CONFIRMED": true
+  },
+  "quiescence": {
+    "DEPLOY_PIPELINE_LOCKED": true,
+    "MIGRATION_CONCURRENCY_BLOCKED": true,
+    "WRITE_QUIESCENCE_REQUIRED": true,
+    "WRITE_QUIESCENCE_ACTIVE": true,
+    "EXECUTION_WINDOW_READY": true,
+    "NORMAL_OPERATIONS_RESTORED": true
+  },
+  "fingerprints": {
+    "LEDGER_FINGERPRINT_T0": "315993cddc27d7136ad0b6b7f4cb858d25ceedd53adde61e471513782c841b67",
+    "LEDGER_FINGERPRINT_AFTER_RESOLVES": "6e9432c3396d834af43bb15ac1ae0cba3c8bc46fd828099cec569ca3875cb9b2",
+    "LEDGER_FINGERPRINT_FINAL": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2"
+  },
+  "steps": {
+    "R3B1G_EXIT_CODE": 0,
+    "R3B1G_RESOLVE_VERIFIED": true,
+    "R3B1I_EXIT_CODE": 0,
+    "R3B1I_RESOLVE_VERIFIED": true,
+    "NORMAL_DEPLOY_EXIT_CODE": 0,
+    "TAIL_SHA256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "TAIL_SHA_MATCH": true,
+    "TAIL_DEPLOY_EXIT_CODE": 0,
+    "TAIL_FINISHED": true,
+    "STALE_INDEXES_FINAL_ABSENT": true,
+    "SECOND_DEPLOY_EXIT_CODE": null,
+    "SECOND_DEPLOY_IDEMPOTENCY_PROVEN": false
+  },
+  "post_execution_readonly": {
+    "M252_PARITY": true,
+    "R3B_AUTHORITY_PARITY": true,
+    "APPLICATION_HEALTH_PASS": true
+  }
+}

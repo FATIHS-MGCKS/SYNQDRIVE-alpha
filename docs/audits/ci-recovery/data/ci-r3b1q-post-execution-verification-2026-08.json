@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1Q",
+  "captured_at": "2026-08-16T11:17:42+00:00",
+  "read_only": true,
+  "note": "Post-hoc verification after execution script interrupted before Step 6",
+  "ledger_fingerprint_final": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+  "ledger_finished_count": 323,
+  "r3b1g_finished": true,
+  "r3b1i_finished": true,
+  "tail_migration_applied": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+  "m252_table_present": true,
+  "stale_indexes_absent": true,
+  "m252_exact_parity_pass": true,
+  "r3b_catalog_parity_pass": true,
+  "r3b_objects": "19/19",
+  "live_diff_total_operations": 404,
+  "live_diff_gates": {
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "UNKNOWN_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 5,
+    "UNATTRIBUTED": 0
+  },
+  "pending_execution_set_logical_tail_only": [
+    "TEMPORARY_TAIL_RECONCILIATION_20260815"
+  ],
+  "UNEXPECTED_PENDING_MIGRATIONS": 0,
+  "application_health_pass_at_verification": true,
+  "second_deploy_idempotency_proven": false
+}
