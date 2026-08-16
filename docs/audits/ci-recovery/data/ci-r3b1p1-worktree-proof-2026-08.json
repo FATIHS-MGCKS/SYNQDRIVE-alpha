@@ -1,0 +1,66 @@
+{
+  "git_status_short": [
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-393-to-399-reconciliation-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-authorized-strategy-audit-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-evaluator-hashes-after-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-evaluator-hashes-before-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-final-replay-summary-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-pending-migration-set-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-pre-existing-r3b-proof-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-resolve-recheck-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-stale-index-lifecycle-2026-08.json",
+    "?? docs/audits/ci-recovery/data/ci-r3b1p1-worktree-proof-2026-08.json",
+    "?? docs/audits/ci-recovery/tooling/ci_r3b1p1_run_independent_replay.py",
+    "?? docs/audits/pr-recovery/R3B1P1-INDEPENDENT-FROZEN-PREFLIGHT-REPLAY.md"
+  ],
+  "unrelated_status_lines": [],
+  "git_diff_stat": [],
+  "git_diff_name_only": [],
+  "git_diff_cached_name_only": [],
+  "open_pr_file_checks": [
+    {
+      "path": "open-pr-file-overlap-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-2026-08.csv",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-2026-08.json",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-inventory-methodology-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    },
+    {
+      "path": "open-pr-stack-graph-2026-08.md",
+      "exists_in_worktree": false,
+      "tracked_in_git": false,
+      "dirty_in_status": false,
+      "verdict": "not_present"
+    }
+  ],
+  "WORKTREE_CLEAN": true,
+  "reason": "clean"
+}

@@ -1,0 +1,18 @@
+{
+  "r3b_pre_existing_operations": [
+    {
+      "stable_identity": "ALTER TABLE|alter_column|trip_driving_impact||||alter table \"trip_driving_impact\" alter column \"calculated_at\" set data type timestamp(3)",
+      "exact_operation": "ALTER TABLE \"trip_driving_impact\" ALTER COLUMN \"calculated_at\" SET DATA TYPE TIMESTAMP(3)",
+      "owner_table": "trip_driving_impact",
+      "owner_column": "calculated_at",
+      "in_frozen_baseline": true,
+      "golden_baseline_match": true,
+      "is_m252_target": false,
+      "is_unknown": false,
+      "baseline_evidence_predates_r3b1p": true,
+      "source_changed_since_r3b1o": false,
+      "production_changed_since_r3b1o": false
+    }
+  ],
+  "NEW_DRIFT_MISCLASSIFIED_AS_PRE_EXISTING": 0
+}

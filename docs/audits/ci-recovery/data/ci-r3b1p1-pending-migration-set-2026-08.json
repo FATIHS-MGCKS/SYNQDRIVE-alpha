@@ -1,0 +1,200 @@
+{
+  "pending_migrations": [
+    {
+      "POSITION": 1,
+      "MIGRATION_NAME": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "SHA": "0b41ce77f6cfbdd83cf6bba5b3262ebe8c6c2a32893cee61d08cb14aad18e71f",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "validated constraint/index DDL",
+      "classification": "NORMAL_PENDING"
+    },
+    {
+      "POSITION": 2,
+      "MIGRATION_NAME": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "SHA": "f3579409eb14282ca656f03b36c5f300bcec9dfd2e64dbf197e9c9fb54c7531c",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 3,
+      "MIGRATION_NAME": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "SHA": "c1c75f5503258e9af51a4e5073b6a3352e736eb19d1a5e742a0c428ef0d00d28",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 4,
+      "MIGRATION_NAME": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "SHA": "7180508877117aa0238e94dfbcabfed224b340a3d3edb162d1139b59fc537930",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 5,
+      "MIGRATION_NAME": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "SHA": "4d04659f1fad9032dcf96b7e8f7c181481956baa79bb4462c17f701663e63539",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "validated constraint/index DDL",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 6,
+      "MIGRATION_NAME": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "SHA": "3ac22b6b3c4ac9370e598b0fdde2dbd0c254034c8a2d1584d877020658bdffc8",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 7,
+      "MIGRATION_NAME": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "SHA": "4e9c37a35b679f2eadff76c146c8312f224c82097398ed93c2126ddddb70ef10",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 8,
+      "MIGRATION_NAME": "20260424235959_ci_r3b_trip_casing_pre_shim",
+      "SHA": "45aa03706d46636fac215e3d379657f3afc8a49c20acdbceb2849e579969dcaf",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "NORMAL_PENDING"
+    },
+    {
+      "POSITION": 9,
+      "MIGRATION_NAME": "20260425000001_ci_r3b_trip_casing_post_shim",
+      "SHA": "aef68c2231bf30f036d54ab06cd341bb6f22cb273a047c7ab71ae0f70ec28710",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "NORMAL_PENDING"
+    },
+    {
+      "POSITION": 10,
+      "MIGRATION_NAME": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "SHA": "2f1c5d74082d24dfa158c62bbc2cafaeadfde874d3c49379bbffcfe15e055013",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "validated constraint/index DDL",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 11,
+      "MIGRATION_NAME": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "SHA": "6607ebf402571f4797824ccb53e559b30b49bc3e3c14ed1f1958cb82a6d3e58e",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 12,
+      "MIGRATION_NAME": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "SHA": "7b3990532efd3271f107d37afa96a6e38bda8f97199a3e6cb105721b0bd72bc5",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 13,
+      "MIGRATION_NAME": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "SHA": "c007ab9da59d95dabd592dd27b0c3b360a305efbc3c6cab473ede6d4c4a2a8e4",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 14,
+      "MIGRATION_NAME": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "SHA": "bab1399060fb1da4d57e3d9004aa2e9e6afc934e14857d55dc2be8e939056697",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "validated constraint/index DDL",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 15,
+      "MIGRATION_NAME": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "SHA": "73ab301b3121e3f5dc8c4d6c14a490d10a2ab68b4097c946ba5ea7359d432d8f",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 16,
+      "MIGRATION_NAME": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "SHA": "692d40502c9f09ad2bc6357f047a289cdda22db4898c4ec1c23a96dfa1d5e02b",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 17,
+      "MIGRATION_NAME": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "SHA": "0d3e3401a33daa6615962a1ae9a53d68cb544b244204c0b1150d7cd53e3b35ae",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 18,
+      "MIGRATION_NAME": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "SHA": "606411503605af9f9f7be186da06a4b60c7c7f7ee80a5d561e8a6b39e1bfdba8",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 19,
+      "MIGRATION_NAME": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "SHA": "5a0d0defed18fe142989ec88e5ba38946d7471d8e7e0b81e548d2701170845da",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    },
+    {
+      "POSITION": 20,
+      "MIGRATION_NAME": "20260811060000_evaluations_entity_references",
+      "SHA": "ec71e133e7cbc2b7cdc40440d99ce568133f8ef65de17d79d372e02fb43d42e5",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "validated constraint/index DDL",
+      "classification": "NORMAL_PENDING"
+    },
+    {
+      "POSITION": 21,
+      "MIGRATION_NAME": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "SHA": "90c3288ff4b47dc31516fd0c3423b681b68d1dd6c177b99e89d494a0d3894393",
+      "CURRENT_LEDGER_STATE": "pending",
+      "EXPECTED_EFFECT": "schema-only DDL without DML",
+      "classification": "HISTORICAL_RECOVERY"
+    }
+  ],
+  "count": 21,
+  "UNEXPECTED_PENDING_MIGRATIONS": 0,
+  "unexpected_production_pending": [],
+  "ledger_pending_names": [
+    "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+    "20260412025000_ci_r3b_historical_predecessor_slot1",
+    "20260412610000_ci_r3b_historical_predecessor_slot2",
+    "20260413201500_ci_r3b_historical_predecessor_slot3",
+    "20260413225000_ci_r3b_historical_predecessor_slot4",
+    "20260417170000_ci_r3b_historical_predecessor_slot5",
+    "20260421180000_ci_r3b_historical_predecessor_slot6",
+    "20260424235959_ci_r3b_trip_casing_pre_shim",
+    "20260425000001_ci_r3b_trip_casing_post_shim",
+    "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+    "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+    "20260617120000_r3b_post_vendor_predecessor_slot09",
+    "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+    "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+    "20260716180000_r3b_post_vendor_predecessor_slot12",
+    "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+    "20260716200000_r3b_post_vendor_predecessor_slot14",
+    "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+    "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+    "20260811060000_evaluations_entity_references",
+    "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+    "TEMPORARY_TAIL_RECONCILIATION_20260815"
+  ],
+  "frozen_execution_set_matches_production_pending": true
+}

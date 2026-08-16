@@ -1,7 +1,7 @@
 # R3B1P — Controlled Production Reconciliation Runbook
 
 **Phase:** `CI-R3B1P` (read-only preflight — no production mutations executed)
-**Generated:** `2026-08-16T08:26:02.437208+00:00`
+**Generated:** `2026-08-16T08:48:41.934975+00:00`
 **Final status:** `CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_COMPLETED`
 **R3B1Q readiness:** `R3B1Q_READY_SEPARATELY_AUTHORIZED_PRODUCTION_EXECUTION`
 
@@ -19,7 +19,7 @@ PR #1054 remains unmerged. No resolve, deploy, DDL, or DML was executed against 
 ## Source authority snapshot
 
 - Branch: `audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08`
-- HEAD: `e51d3e90046e2022dec7cfe7b4f5ba5740263ff5`
+- HEAD: `f3f780998e1002f7f06fe9b2f1022c95be9ae87b`
 - SOURCE_IMMUTABLE: **True**
 - Execution set: **22** migrations + append-only tail
 
