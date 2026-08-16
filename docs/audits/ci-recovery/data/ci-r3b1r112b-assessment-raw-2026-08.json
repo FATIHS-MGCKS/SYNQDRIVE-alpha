@@ -1,0 +1,219 @@
+{
+  "phase": "CI-R3B1R.1.2b",
+  "generated_at": "2026-08-16T18:27:44+00:00",
+  "result": "SUCCESS",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "15425997490a2eb56a1ced9bdceaaa326857ef19",
+    "pr_1054_head_sha": "15425997490a2eb56a1ced9bdceaaa326857ef19",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean": true,
+    "entry_head_equals_remote_pr_head": true
+  },
+  "accepted_r3b1r112a": {
+    "artifact_md": "docs/audits/pr-recovery/R3B1R112A-PRODUCTION-ENV-ACCESS-INCIDENT-ASSESSMENT.md",
+    "artifact_json": "docs/audits/ci-recovery/data/ci-r3b1r112a-assessment-raw-2026-08.json",
+    "incident_root_cause_class": "B",
+    "incident_root_cause_label": "WRONG_PRODUCTION_EXECUTION_USER",
+    "database_state_affected": false,
+    "deploy_attempt_count": 1,
+    "migrations_attempted": 0,
+    "migrations_applied": 0
+  },
+  "secret_permissions": {
+    "env_file_path": "/opt/synqdrive/shared/backend.env",
+    "owner": "root",
+    "group": "root",
+    "mode": "600",
+    "secret_permission_configuration_canonical": true,
+    "secret_permission_change_required": false,
+    "root_env_probe": {
+      "root_readable": true,
+      "database_url_present": true,
+      "database_url_length_gt_zero": true
+    }
+  },
+  "canonical_production_deploy": {
+    "canonical_production_deploy_user": "root",
+    "canonical_production_migration_command": "npm run prisma:migrate:deploy",
+    "canonical_env_loading_mechanism": "root/sudo reads backend.env via explicit source; vps-deploy-release.sh symlinks under root identity",
+    "reference_script": "backend/scripts/ops/vps-deploy-release.sh"
+  },
+  "frozen_retry_source": {
+    "retry_source_head_sha": "15425997490a2eb56a1ced9bdceaaa326857ef19",
+    "retry_source_tree_sha": "2ce20dfe0095873496d8a6b77cece648f5c9dfb5",
+    "retry_temp_path_example": "/tmp/r3b1r112b-retry-t3s8Ve",
+    "retry_source_head_matches_pr": true,
+    "git_status_clean_before_env_link": false
+  },
+  "bridge_sha_freeze": {
+    "source_evidence_sha_mismatches": 0,
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+      "expected_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "actual_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "sha_match": true
+    },
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+      "expected_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "actual_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "sha_match": true
+    }
+  },
+  "retry_execution_context": {
+    "retry_execution_user": "root",
+    "retry_execution_wrapper": "sudo bash -lc",
+    "env_source": "/opt/synqdrive/shared/backend.env",
+    "env_loading_steps": [
+      "set -a",
+      "source /opt/synqdrive/shared/backend.env",
+      "set +a"
+    ],
+    "no_temp_env_symlink_required": true,
+    "retry_env_file_mechanism": "EXPLICIT_SOURCE_ONLY",
+    "database_url_probe": {
+      "database_url_present": true,
+      "database_url_length_gt_zero": true
+    },
+    "retry_context_prisma_validate_exit_code": 0,
+    "retry_context_prisma_validate_pass": true,
+    "pending_count": 2,
+    "pending_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "unexpected_pending_migrations": 0,
+    "database_only_migration_count": 17,
+    "database_only_migration_names": [
+      "20260723230000_privacy_domain_foundation",
+      "20260723233000_legal_basis_assessment_professional",
+      "20260723234500_consent_provider_sharing_domains",
+      "20260724000000_enforcement_policy_relational_scopes",
+      "20260724010000_data_authorization_legacy_migration_tracking",
+      "20260724020000_privacy_policy_lifecycle",
+      "20260724030000_data_processing_review_workflow",
+      "20260724040000_data_authorization_audit_logging",
+      "20260724050000_data_authorization_revocation_workflow",
+      "20260724060000_data_authorization_deny_switch",
+      "20260724070000_provider_grant_webhook_idempotency",
+      "20260724080000_revocation_queue_control",
+      "20260724090000_processing_activity_register",
+      "20260724100000_dpia_workflow",
+      "20260724110000_processor_dpa_management",
+      "20260724120000_retention_deletion_legal_hold",
+      "20260724130000_compliance_evidence"
+    ],
+    "unexplained_database_only_migrations": 0,
+    "unexplained_database_only_names": [],
+    "execution_context_runtime_ready": true,
+    "NODE_VERSION": "v22.23.1",
+    "NPM_VERSION": "10.9.8",
+    "PRISMA_VERSION": "prisma : 5.22.0"
+  },
+  "would_deploy_set": {
+    "would_deploy_count": 2,
+    "would_deploy_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "unexpected_would_deploy": 0,
+    "expected_catalog_mutations_total": 0,
+    "expected_ledger_mutations_total": 2,
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    },
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    }
+  },
+  "four_object_parity": {
+    "live_short_code_exact": true,
+    "live_short_code_index_exact": true,
+    "live_drivetype_exact": true,
+    "live_vehicles_drive_type_exact": true,
+    "pass": true
+  },
+  "ledger_baseline": {
+    "ledger_row_count": 339,
+    "ledger_finished_count": 323,
+    "ledger_failed_count": 16,
+    "ledger_incomplete_count": 0,
+    "ledger_fingerprint": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "bridge_1_ledger_row_exists": false,
+    "bridge_2_ledger_row_exists": false,
+    "new_failed_rows_since_r3b1r112a": 0,
+    "ledger_unchanged_since_r3b1r112a": true
+  },
+  "catalog_baseline": {
+    "catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_unchanged_since_r3b1r112a": true
+  },
+  "r3b_m252_parity": {
+    "r3b_objects": "19/19",
+    "r3b_tables": "9/9",
+    "r3b_enums": "10/10",
+    "r3b_properties": "54/54",
+    "m252_semantic_mismatches": 0,
+    "r3b_pass": true,
+    "m252_pass": true
+  },
+  "frozen_retry_command": {
+    "retry_execution_user": "root",
+    "retry_execution_wrapper": "sudo bash -lc",
+    "env_source": "/opt/synqdrive/shared/backend.env",
+    "env_loading_steps": [
+      "set -a",
+      "source /opt/synqdrive/shared/backend.env",
+      "set +a"
+    ],
+    "workdir_source_head_sha": "15425997490a2eb56a1ced9bdceaaa326857ef19",
+    "workdir_path_placeholder": "<EXACT_FROZEN_PR_BACKEND_PATH>",
+    "workdir_path_pattern": "/tmp/synqdrive-r3b1r112-retry-<UTC_TIMESTAMP>/repo/backend",
+    "command": "npm run prisma:migrate:deploy",
+    "retry_env_file_mechanism": "EXPLICIT_SOURCE_ONLY",
+    "no_temp_env_symlink_required": true,
+    "sanitized_command_template": "sudo bash -lc '\nset -eo pipefail\nset -a\nsource /opt/synqdrive/shared/backend.env\nset +a\nset -u\ncd \"<EXACT_FROZEN_PR_BACKEND_PATH>\"\nnpm run prisma:migrate:deploy\n'",
+    "retry_command_sha256": "732f5aa9d206897bc70f9d49b62fa9fbc54febf594eb9147a27f0c351807b98b",
+    "path_substitution_allowed": "Fresh exact-HEAD shallow clone backend path only; logical command unchanged"
+  },
+  "retry_mutation_barrier": [
+    "PR_1054_HEAD_SHA matches frozen retry source HEAD",
+    "Bridge SHA1/SHA2 match canonical frozen values",
+    "Recovery backup ready immediately before deploy",
+    "root/sudo bash -lc execution context with explicit source of backend.env",
+    "DATABASE_URL present in root shell (value never printed)",
+    "npx prisma validate exit 0 in exact retry context",
+    "Exactly 2 pending migrations (both frozen bridges)",
+    "Exactly 2 would-deploy migrations; 0 catalog mutations expected",
+    "Zero unexplained database-only ledger/source divergence",
+    "Four-object live exact parity pass",
+    "R3B 19/19 + M252 semantic mismatches 0",
+    "Ledger incomplete count 0; both bridge ledger rows absent",
+    "Catalog baseline fingerprint captured pre-deploy",
+    "Single deploy attempt; no prisma migrate resolve"
+  ],
+  "production_immutability": {
+    "production_database_mutations_r3b1r112b": 0,
+    "production_ledger_mutations_r3b1r112b": 0,
+    "production_catalog_mutations_r3b1r112b": 0,
+    "production_immutable_r3b1r112b": true
+  },
+  "no_deploy_boundary": {
+    "prisma_migrate_deploy_executed": false,
+    "pr1054_merged": false,
+    "r3b1r2_started": false
+  },
+  "machine_status": {
+    "CI_R3B1R112B_CANONICAL_RETRY_PATH_FROZEN_PREFLIGHT_COMPLETED": true,
+    "EXECUTION_ENV_REMEDIATION": "CANONICAL_ROOT_SUDO_PATH_VERIFIED",
+    "RETRY_COMMAND_AUTHORITY": "FROZEN",
+    "DATABASE_STATE": "UNCHANGED",
+    "R3B1R112_RETRY_READINESS": "READY_FOR_SEPARATE_EXPLICIT_PRODUCTION_RETRY_AUTHORIZATION",
+    "R3B1R12_READINESS": "NOT_READY",
+    "PR1054_MERGE_READINESS": "BLOCKED"
+  }
+}
