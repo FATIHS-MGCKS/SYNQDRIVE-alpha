@@ -53,7 +53,7 @@
     "pr_clean_bootstrap_has_short_code": true,
     "short_code_bridge_migration_required": true,
     "short_code_bridge_migration_name": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
-    "short_code_bridge_sha256": "00511c4d29b7b16ccc660c68bf27b8021c19c857eba85aaa39af1c42631fc713",
+    "short_code_bridge_sha256": "7612396773727d3153baae5a3f547f592d865dbcd1609df7b2b987f49aeb599d",
     "expected_production_catalog_change_count": 0,
     "expected_production_ledger_change_count": 1
   },
