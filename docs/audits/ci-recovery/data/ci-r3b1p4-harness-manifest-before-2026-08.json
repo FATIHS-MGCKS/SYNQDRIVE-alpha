@@ -1,0 +1,373 @@
+{
+  "phase": "CI-R3B1P.4",
+  "entry_head_sha": "9bdaa72f5e22f43248bef4797c807d6d4eb48f4d",
+  "file_count": 61,
+  "files": [
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1b_sql_literal_compiler.py",
+      "git_blob_sha": "d933e26759e66b37d78e60d57c6afd43ed82bc1e",
+      "sha256": "52652ea6bd411c88f617dd7a9b8ec4464f57d91abcee69e59470ba593a763693",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1d12_catalog_model.py",
+      "git_blob_sha": "d218b12788e47eff2fbf67ed224794d803522620",
+      "sha256": "366c4d93158546005915e56e1a58b40f1e9bc32a8bfe3b67ad72c2ca5ee07f26",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l1_authority.py",
+      "git_blob_sha": "cb9c5660c05af939a20ec86a9aae8bcff62f59ac",
+      "sha256": "d5c2fbe679ee59feef84d5c8791749d2d63aca507e7113370e2cf609fa974b45",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l1_constants.py",
+      "git_blob_sha": "4c2b7fbfed0e4d6a125b714c4353dddf94263075",
+      "sha256": "5f5e6f77df7ca1fd09066baaaf20633d37f4347d24d8ffe9b96382f430cf2473",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l1_exact_parity.py",
+      "git_blob_sha": "c31aa9af336d67266093ec36ef39518446e836de",
+      "sha256": "84651bf4e518d48403aff3b0565e259806a4a8e2d55bfe91f4edee507a025350",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l1_pg_catalog_reader.py",
+      "git_blob_sha": "e0a586447883c7d9104b6934f5f5e9c0684b9282",
+      "sha256": "57366f8eab6b8c4d42916ea22fcb9881f8acdb1c200ed3c3eaee7c9151d2f037",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l21_constants.py",
+      "git_blob_sha": "6184c033e4ea83ae49e7ac4241cb7a1f843189fb",
+      "sha256": "cfced6b259f4af4eeeb24663fa5ee34f34373a853947ee6e7892a186a3b9c0f1",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l21_r3b_authority.py",
+      "git_blob_sha": "0285083aae26e3005ba4e03c00092a30ba68b564",
+      "sha256": "3441091ad4a8f193d8e5518a98e01e7fe06a0db7225b49b6ada2c16a3b89714c",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l2_constants.py",
+      "git_blob_sha": "7270f99135918db5384d841dab6ebf193c80a89d",
+      "sha256": "7845dac034561f67c37883cf3ecbc0f4cc8e5e2c09e3e6dd4092066f07850ca7",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l2_prisma_sql_parser.py",
+      "git_blob_sha": "21b6c0f6b02c7eadb7197091e5e356ce0599051c",
+      "sha256": "23d4e103f63f4c3dc3adec22967c7068c87e500b76bc7260790dbd7104a6f039",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l2_r3b_authority.py",
+      "git_blob_sha": "fe6d568063279a213e39a5e1216e84e94f02375d",
+      "sha256": "41f7974df5344f238e66630f1df8b3bd717d4a4eeef79105dcfcc725dc121865",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1l2_scope_classifier.py",
+      "git_blob_sha": "a32883a9e57f633853ffd0f0cfea8f0d5b6926e9",
+      "sha256": "b790403f34711cb8c1db9bbec578f59ae59259d93976f9de67b8ae52ec386498",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1m_constants.py",
+      "git_blob_sha": "873b7cc1b87829c626d57c5932897d33d3af9732",
+      "sha256": "7dd4d380fb1322617a9760f3cf12094a888c959fa23b6fd1d775a4b57b7aebde",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1m_index_owner_inventory.py",
+      "git_blob_sha": "769639eaf08e15ebd9b9c44f9a125dc71abc133a",
+      "sha256": "e33a39be6ec5a1ad843b27a98a338f2b72af52455266a5a59b16cd5a41f1045c",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_constants.py",
+      "git_blob_sha": "e5d3598119a783c3672b40c7128a95f8a5e2a11b",
+      "sha256": "dd7af45f9ce753650b20976cc8bdb7d9bef5d755d8220e862d89add4ec6f45bc",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_production_access.py",
+      "git_blob_sha": "ba19e969ddf6718b01068ad0af21755bbb6050bb",
+      "sha256": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_provenance.py",
+      "git_blob_sha": "ead03a39318a280deca528ef195a4251f2ef35ac",
+      "sha256": "2d8e1de32f7627d54c2301f431163dec7434f5fa87984a41f2cebdd53d07d657",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_catalog_fingerprint.py",
+      "git_blob_sha": "f092bd48556ee69917b1659ab78b7aacb056be97",
+      "sha256": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_constants.py",
+      "git_blob_sha": "db35f4c39b9c5f716a5978c47d26e1b05e47ce85",
+      "sha256": "6a06c89d2056ef5f38a74e0a62460512712188da74c12ceeaa43c3a9a469966c",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_instance_identity.py",
+      "git_blob_sha": "9302de3b22fb4ea1d117a22affa88ad674f285e8",
+      "sha256": "d7841104b3d4fbe9e1093ee28d13dce62f0b1a9aaa6ed0fc54ce4d309e1df141",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_twin_ops.py",
+      "git_blob_sha": "832555b1877cadd6164bfe32167b8b6de80e1d1b",
+      "sha256": "a2a0d9ad497080109ae1a113ca3acb96eeebc78f32285f89796bed01d2aaf18d",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n_constants.py",
+      "git_blob_sha": "4b0571e49440df85db10392e0a876c0c9a8a4aa7",
+      "sha256": "37ede6cdffc9d8719bcb44170c104dc014468256373f3b1be0590edd06008cc5",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o1_constants.py",
+      "git_blob_sha": "570ca3c41fa0837921b0d9dacfe7c90237e1961d",
+      "sha256": "e3b6ca6c58e55362a400bf20e3c31852d7c7faca11c059c23b6ce3ef1cacbb0b",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o1_sql_classifier.py",
+      "git_blob_sha": "e22fa25947f842248ba31597c4d4f6c99474aa0f",
+      "sha256": "ceae0be58d834d88fe9cafb3daa2fb5534bfe9e5fb1ffeaade2f8fdaff70465c",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o2_constants.py",
+      "git_blob_sha": "5f2084375fa6071d769b7d395be3c731f9248fe9",
+      "sha256": "4b86d2628db1fc8d4c1f1a74cdf7cff2da5e28939e254c9647d82d6e91db6609",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o2_diff_classifier.py",
+      "git_blob_sha": "d5de82cfb3ef74d8eb182eaa82abac4b30e2e7b3",
+      "sha256": "2e4cefd33f47b4bfb721ba8326bbc468bde52cac7b7b55c3919fdd9e3b1b9b25",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o2_r3b_authority.py",
+      "git_blob_sha": "8d67c55125374c68f9971d54e7c1d1e78f2fac24",
+      "sha256": "5b5bb711a4a8135e91a3ed9adf0ba088512e85453afb604016100124ce4b0397",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_constants.py",
+      "git_blob_sha": "2a2f276f1a8d9602d70d9e706b7012de5b03059c",
+      "sha256": "2f7f7a7d2bc7c704d88f9bcc5af0bd70ab978fb1206b24fc4f5d887495bab29f",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_diff_attribution.py",
+      "git_blob_sha": "39af2e90eff89854fdadfb9f5f8d44b1e17037b4",
+      "sha256": "b6ea3ac13057f648b0665cf90cb087ce00cd4e546dbdb3eca88297b3b8ea0a00",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py",
+      "git_blob_sha": "7edaf8355c2fd8d60ba50cdc47310bfab91edb09",
+      "sha256": "6ad988af4448122cd682d838d0cc82b65513ac2203d6c351bda507eef7098fdc",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_index_provenance.py",
+      "git_blob_sha": "d4b52599de9a5396abf0476c6992aff692996582",
+      "sha256": "09941cc80946caeb1fcb41823693062bf6c57f22c0506cf1c1974ad9ef68e291",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_complete_authority.py",
+      "git_blob_sha": "758fca026b3522a5b6db0a17a8d54e59bd7da519",
+      "sha256": "bc486ce7b01542b2bee614241873a930156eccdf04960aec31dd07afa0ca4f5e",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_exact_parity.py",
+      "git_blob_sha": "509f7ffe4b5c0033651b8c16c23d84615597c022",
+      "sha256": "4c76e76573e7696483528f15649b57b78c66fdb83c8f3c22082522eff46ec8a3",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o3_terminal_gate.py",
+      "git_blob_sha": "530ee75d24fcea0bc88fa485496d7e3e387589e9",
+      "sha256": "6e826657c2bc6690feaadcfee4180ab54d350860406211d2a0142c9234b6bb38",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_catalog_authority.py",
+      "git_blob_sha": "a939872eaf6555bb4ac2f47ded45fe4b640dbe48",
+      "sha256": "2242813621993bc19b609ecb05db79b7753ad340fcfb8bf1ea8dcbc2cf93a545",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_catalog_inventory.py",
+      "git_blob_sha": "6fcb2e6b7355c96313afc96300317cefa05e263d",
+      "sha256": "ad75357a007a4d17421214d6132310e99a251800b7ba455b7089f23482431a51",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_catalog_semantic_compare.py",
+      "git_blob_sha": "a191b3f60d08bfa9f4d7fc79f2f2e87cbad7e93c",
+      "sha256": "bd41be6692ce9ae6b4430d16f52ff825fb27fa64b207370249b69d36d2dfe912",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_constants.py",
+      "git_blob_sha": "59d07840ef63dcbbb1437c7b156f87fd86edbc82",
+      "sha256": "28ae56329f3f1d7dda3f6b8da518a948e64a5adf3804e1c02c32a5517a2dc152",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_execution_set.py",
+      "git_blob_sha": "cdf6ff228596e52236fb22f64e2091edca24749f",
+      "sha256": "83087fbc34abf17b05c32aab69db85b13a5dcbb43c6cc65548209653c2ff3603",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_expected_catalog_effects.py",
+      "git_blob_sha": "d9808a1ab81046a538e3e56049c554fe8e806415",
+      "sha256": "cd400445620cf68b933920e5cd7cf2556a13be98e060058ceddc3a8f0c99f472",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_full_catalog_delta.py",
+      "git_blob_sha": "d5c078a1637531cb61fc6f34e9c08980c4af600a",
+      "sha256": "05abcf4417b8f940526d2c887e0563ae6b9bc14f3e67b0d6c1f3818b27ca4fa5",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_golden_tests.py",
+      "git_blob_sha": "ace749a411bb224a3ae195cf3b92ad3cd6367a5c",
+      "sha256": "fae3d2d33de6aaac5ea113ae1ce706a6d98e43158ec5777134154af76bba752d",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_implicit_catalog_effects.py",
+      "git_blob_sha": "de3d506bb8a07bd67253518285c5ff95be527549",
+      "sha256": "b64b625eefcb4ef37d25f875dacab10a9e9e712878c5a5d90b089b3068c1ab40",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_m252_exact_parity.py",
+      "git_blob_sha": "a6b01ade33ad03d1a31facf4075d1882a6ddac3a",
+      "sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_no_ranking_proof.py",
+      "git_blob_sha": "d7ad056bbe158f541d8c91689aae760b5a02f079",
+      "sha256": "bcb1a89c7de9694a1a5bfe44e395294e16527edbbda86a5f51575fa183265560",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_stale_index_authority.py",
+      "git_blob_sha": "5ba6be99b1f29f6326cae34d647f9fa1d57771ed",
+      "sha256": "c9b1a7f6ca49bff9f21c8b33636ee9711e1d8c4982cb7da81f696243374b6cfb",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_t2_stale_index_safety.py",
+      "git_blob_sha": "17ee92eeed9bdcae61a6759f49c4ce672d717dad",
+      "sha256": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_tail_contract.py",
+      "git_blob_sha": "7a7b640f15b8903e7ab41e7bfb1ace18dbd114c2",
+      "sha256": "a63aa3c3e47d84a41e3154767975dd7151717668100a2babfd86f1302f834fdf",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_terminal_gate.py",
+      "git_blob_sha": "4c746915648bfa3fe0271e172fa6c1404a23f2fa",
+      "sha256": "7587eb9e8d9da0f53e52419ca164663ac1463ae0b5073426dd0a12d85670e2c0",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_test_source_hashes.py",
+      "git_blob_sha": "f66be83fd4007adf2894aa6214449d2598af9f66",
+      "sha256": "e207d0d7a633e11080e81dfac2a391fc6039fce954bcb923d796256a33af8a12",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o_constants.py",
+      "git_blob_sha": "1097ddc23441605b72feebb1a3ffa6ef4ec9b3ba",
+      "sha256": "8e3fe56551b6d9ef5b85b90df8e98b367beccb2835eab68b467ea4d3f2fe0aa9",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o_mutation_guard.py",
+      "git_blob_sha": "d202d41bc69ce44e8a2426184e65bc67bdca0d74",
+      "sha256": "e79bb40def6dd487caa5794dfc56220613b8b0096f10e17909079296dcd42fbf",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p1_run_independent_replay.py",
+      "git_blob_sha": "eb01404847c986a83d727cfe170480e56a3cb286",
+      "sha256": "053ddc7e6a10cf6ca4af57bfe29b2c4fe414182a92dc6c2453e428f8ec31e5b4",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p2_authorized_strategy_authority.py",
+      "git_blob_sha": "f72dea502c1a62591cc858a0a15f02fd8b001111",
+      "sha256": "70b02167faaeeae43b242e208ecc2c2614e4ca1ae73e64f836b394124094debd",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p2_golden_tests.py",
+      "git_blob_sha": "8a574913dae2bdd294ddb35bdd0bbd630039d267",
+      "sha256": "e3ced9512273b2e7fa26276ea25567edc8b176027f001bef2131c7b263d19f6f",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p2_run_remediation.py",
+      "git_blob_sha": "ed7535be6d64d76b6a2e889151e8e23d0d5b0d47",
+      "sha256": "428e69588f08d50c99d70be67e5f41e31905cb1595eb38173bef442722d52eaa",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+      "git_blob_sha": "af0ee0829e40479f55026420d03295fa2176f9a5",
+      "sha256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p_diff_attribution.py",
+      "git_blob_sha": "563a4082ef8584499cad807fe0bbba976bf5b034",
+      "sha256": "76be9c48e0d7e88d9dee8fe12c564f70e8a57e9ca50ad7c5959873d9533c253b",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p_run_preflight.py",
+      "git_blob_sha": "f62051ec458ec2de51ef665a79999c6813eb98ce",
+      "sha256": "4731d8e7aaabdc3725f65c0e0be10aa02a02a7325b984f179aff45e93653fc8f",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p_terminal_gate.py",
+      "git_blob_sha": "8935da59b5c094a6c722262d9e375ca4c3ece37f",
+      "sha256": "16cd342cb669e73237a640fc0e5bfa196dc284e6f500f8313db5e94b637dcbb0",
+      "role": "safety_harness"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/replay_evidence_lib.py",
+      "git_blob_sha": "e3886449a6c4122eeef7f45b10d0346b62b28f54",
+      "sha256": "4b9cdf8d5593cb658dd14faef46628f9c3624da02c87e7be61f61e766697ec67",
+      "role": "safety_harness"
+    }
+  ]
+}
