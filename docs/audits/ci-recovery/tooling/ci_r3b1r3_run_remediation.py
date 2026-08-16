@@ -255,8 +255,8 @@ def gh_checks(head_sha: str) -> dict[str, Any]:
     runs = payload.get("check_runs") or []
     required_names = {
         "Migration tests (PostgreSQL)",
-        "Backend integration",
-        "Vehicle Detail E2E",
+        "Backend integration tests",
+        "Playwright E2E (Vehicle Detail)",
         "Prisma validate",
         "Security / dependency scan",
         "CI gate (all critical jobs)",
@@ -459,6 +459,7 @@ def main() -> int:
         ),
         "local_remediation_success": local_success,
         "github_checks_required_for_success": checks_required_for_success,
+        "github_checks": checks,
         "status_matrix": {
             "SECURITY_DEPENDENCY_GATE": "REMEDIATED" if success else "REMEDIATION_INCOMPLETE",
             "PR1054_MERGE_READINESS": (
