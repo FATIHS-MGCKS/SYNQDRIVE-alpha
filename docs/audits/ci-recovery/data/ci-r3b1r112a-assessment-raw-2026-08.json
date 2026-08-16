@@ -1,0 +1,764 @@
+{
+  "phase": "CI-R3B1R.1.2a",
+  "generated_at": "2026-08-16T17:29:56+00:00",
+  "result": "SUCCESS",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "42ea0365d643759e3b0162df28e9150307a467a2",
+    "pr_1054_head_sha": "42ea0365d643759e3b0162df28e9150307a467a2",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean": true
+  },
+  "incident_reconciliation": {
+    "deploy_attempt_count": 1,
+    "deploy_exit_code": 1,
+    "migrations_attempted": 0,
+    "migrations_applied": 0,
+    "production_ledger_rows_added": 0,
+    "production_catalog_mutations": 0,
+    "failure_class": "ENV_ACCESS_INCIDENT",
+    "prisma_error_code": "P1012",
+    "failing_file_path": "/tmp/synqdrive-r3b1r112-20260816163505/backend/.env",
+    "symlink_target_path": "/opt/synqdrive/shared/backend.env",
+    "command_working_directory": "/tmp/synqdrive-r3b1r112-20260816163505/backend"
+  },
+  "fresh_production_state": {
+    "ledger_row_count": 339,
+    "ledger_finished_count": 323,
+    "ledger_failed_count": 16,
+    "ledger_incomplete_count": 0,
+    "ledger_fingerprint_current": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_current": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "bridge_1_ledger_row_exists": false,
+    "bridge_2_ledger_row_exists": false,
+    "new_ledger_rows_since_incident": 0,
+    "catalog_changed_since_incident": false,
+    "ledger_unchanged_since_incident": true
+  },
+  "bridge_sha_freeze": {
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+      "expected_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "actual_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "sha_match": true
+    },
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+      "expected_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "actual_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "sha_match": true
+    },
+    "source_evidence_sha_mismatches": 0
+  },
+  "failed_execution_context": {
+    "sanitized_transcript": "===IDENTITY===\nuid=1000([PROD_SSH_USER]) gid=1000([PROD_SSH_USER]) groups=1000([PROD_SSH_USER]),27(sudo)\n===NAMEI===\nf: /opt/synqdrive/shared/backend.env\ndrwxr-xr-x root root /\ndrwxr-xr-x root root opt\ndrwxr-xr-x root root synqdrive\ndrwxr-xr-x root root shared\n-rw------- root root backend.env\n===STAT_ENV===\nowner=root group=root mode=600 type=regular file\n===ACL_ENV===\nbash: line 9: getfacl: command not found\n===TEMP_CLONE===\nlrwxrwxrwx 1 [PROD_SSH_USER] [PROD_SSH_USER] 33 Aug 16 16:35 /tmp/synqdrive-r3b1r112-20260816163505/backend/.env -> /opt/synqdrive/shared/backend.env\n/opt/synqdrive/shared/backend.env\n===READ_TEST_SYNQDRIVE_ADMIN===\nREADABLE=false\n===READ_TEST_SUDO===\n{\"readable\": true, \"database_url_present\": true, \"database_url_length_gt_zero\": true}\n",
+    "deploy_process_user": "synqdrive-admin",
+    "deploy_process_uid": 1000,
+    "deploy_process_groups": "1000([PROD_SSH_USER]),27(sudo)",
+    "temp_clone_path": "/tmp/synqdrive-r3b1r112-20260816163505",
+    "temp_backend_path": "/tmp/synqdrive-r3b1r112-20260816163505/backend",
+    "temp_env_link_path": "/tmp/synqdrive-r3b1r112-20260816163505/backend/.env",
+    "temp_env_link_target": "/opt/synqdrive/shared/backend.env",
+    "env_access_failure_component": "/opt/synqdrive/shared/backend.env",
+    "env_access_failure_reason": "File owned root:root mode 600; synqdrive-admin cannot read symlink target (EACCES)",
+    "synqdrive_admin_env_readable": false,
+    "canonical_sudo_env_probe": {
+      "readable": true,
+      "database_url_present": true,
+      "database_url_length_gt_zero": true
+    }
+  },
+  "canonical_production_deploy": {
+    "canonical_production_deploy_user": "root",
+    "canonical_production_migration_command": "npm run prisma:migrate:deploy",
+    "canonical_production_workdir": "/opt/synqdrive/releases/<release_id>/backend (via vps-deploy-release.sh)",
+    "canonical_env_loading_mechanism": "root reads /opt/synqdrive/shared/backend.env directly (mode 600 root:root) OR sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a'",
+    "canonical_env_owner": "root",
+    "canonical_env_group": "root",
+    "canonical_env_mode": "600",
+    "vps_deploy_script": "backend/scripts/ops/vps-deploy-release.sh"
+  },
+  "r3b1q_vs_r3b1r112_execution_path": {
+    "r3b1q_execution_user": "root (via sudo in ephemeral wrapper; PM2/app as root)",
+    "r3b1q_working_directory": "/tmp/r3b1q_20260816110731/repo/backend",
+    "r3b1q_env_source": "/opt/synqdrive/shared/backend.env",
+    "r3b1q_env_loading_command": "sudo bash -lc with source backend.env (committed audit tooling pattern); symlink present but prisma generate logged EACCES for non-root",
+    "r3b1q_prisma_command": "npx prisma migrate resolve / npm run prisma:migrate:deploy",
+    "r3b1r112_execution_user": "synqdrive-admin",
+    "r3b1r112_working_directory": "/tmp/synqdrive-r3b1r112-20260816163505/backend",
+    "r3b1r112_env_source": "/opt/synqdrive/shared/backend.env via symlink only",
+    "r3b1r112_env_loading_command": "Prisma dotenv read of backend/.env symlink (no sudo/source)",
+    "r3b1r112_prisma_command": "npm run prisma:migrate:deploy",
+    "execution_path_differences": [
+      "R3B1R.1.2 ran as synqdrive-admin SSH user without sudo/root elevation",
+      "R3B1R.1.2 relied on Prisma reading symlinked .env directly; R3B1Q effective path used root-readable backend.env via sudo source pattern",
+      "Canonical vps-deploy-release.sh runs entire migrate step as root, not synqdrive-admin"
+    ],
+    "first_material_difference": "Execution user lacks read permission on /opt/synqdrive/shared/backend.env (root:root 600)"
+  },
+  "temp_clone_env_symlink_canonical": false,
+  "no_permission_broadening_for_temp_clone": true,
+  "safe_access_probe": {
+    "synqdrive_admin_database_url_present": false,
+    "canonical_sudo_database_url_present": true,
+    "canonical_sudo_database_url_length_gt_zero": true,
+    "canonical_context_database_url_access": true,
+    "canonical_context_prisma_validate": true
+  },
+  "fresh_migration_status": {
+    "pending_count": 2,
+    "pending_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "unexpected_pending_migrations": 0
+  },
+  "would_deploy_set": {
+    "would_deploy_count": 2,
+    "would_deploy_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "expected_catalog_mutations_total": 0,
+    "expected_ledger_mutations_total": 2,
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    },
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    }
+  },
+  "four_object_parity": {
+    "exit_code": 0,
+    "live_short_code_exact": true,
+    "live_short_code_index_exact": true,
+    "live_drivetype_exact": true,
+    "live_vehicles_drive_type_exact": true,
+    "sanitized_output_excerpt": "short_code exact semantic parity OK\ndrive_type exact semantic parity OK\n",
+    "pass": true
+  },
+  "r3b_m252_parity": {
+    "r3b": {
+      "schema_version": 1,
+      "phase": "CI-R3B1P.3",
+      "authority_manifest_sha256": "dbac40c668857e9a3447a990ad4d176bda762c8e73a4dbacdd2fb23c4c9608e5",
+      "objects_expected": 19,
+      "objects_checked": 19,
+      "objects_matched": 19,
+      "tables_expected": 9,
+      "tables_checked": 9,
+      "tables_matched": 9,
+      "enums_expected": 10,
+      "enums_checked": 10,
+      "enums_matched": 10,
+      "properties_expected": 54,
+      "properties_checked": 54,
+      "properties_matched": 54,
+      "property_results": [
+        {
+          "authority_id": "P001",
+          "property_identity": "vehicle_trips:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P002",
+          "property_identity": "vehicle_trips:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P003",
+          "property_identity": "vehicle_trips:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P004",
+          "property_identity": "vehicle_trips:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P005",
+          "property_identity": "vehicle_trips:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P006",
+          "property_identity": "vehicle_trips:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P007",
+          "property_identity": "driving_events:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P008",
+          "property_identity": "driving_events:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P009",
+          "property_identity": "driving_events:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P010",
+          "property_identity": "driving_events:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P011",
+          "property_identity": "driving_events:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P012",
+          "property_identity": "driving_events:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P013",
+          "property_identity": "trip_behavior_events:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P014",
+          "property_identity": "trip_behavior_events:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P015",
+          "property_identity": "trip_behavior_events:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P016",
+          "property_identity": "trip_behavior_events:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P017",
+          "property_identity": "trip_behavior_events:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P018",
+          "property_identity": "trip_behavior_events:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P019",
+          "property_identity": "vehicle_trip_waypoints:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P020",
+          "property_identity": "vehicle_trip_waypoints:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P021",
+          "property_identity": "vehicle_trip_waypoints:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P022",
+          "property_identity": "vehicle_trip_waypoints:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P023",
+          "property_identity": "vehicle_trip_waypoints:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P024",
+          "property_identity": "vehicle_trip_waypoints:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P025",
+          "property_identity": "vehicle_trip_tracking_runs:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P026",
+          "property_identity": "vehicle_trip_tracking_runs:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P027",
+          "property_identity": "vehicle_trip_tracking_runs:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P028",
+          "property_identity": "vehicle_trip_tracking_runs:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P029",
+          "property_identity": "vehicle_trip_tracking_runs:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P030",
+          "property_identity": "vehicle_trip_tracking_runs:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P031",
+          "property_identity": "trip_repairs:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P032",
+          "property_identity": "trip_repairs:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P033",
+          "property_identity": "trip_repairs:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P034",
+          "property_identity": "trip_repairs:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P035",
+          "property_identity": "trip_repairs:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P036",
+          "property_identity": "trip_repairs:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P037",
+          "property_identity": "trip_driving_impact:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P038",
+          "property_identity": "trip_driving_impact:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P039",
+          "property_identity": "trip_driving_impact:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P040",
+          "property_identity": "trip_driving_impact:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P041",
+          "property_identity": "trip_driving_impact:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P042",
+          "property_identity": "trip_driving_impact:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P043",
+          "property_identity": "vehicle_trip_detection_states:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P044",
+          "property_identity": "vehicle_trip_detection_states:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P045",
+          "property_identity": "vehicle_trip_detection_states:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P046",
+          "property_identity": "vehicle_trip_detection_states:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P047",
+          "property_identity": "vehicle_trip_detection_states:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P048",
+          "property_identity": "vehicle_trip_detection_states:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P049",
+          "property_identity": "brake_trip_metrics:columns",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P050",
+          "property_identity": "brake_trip_metrics:types",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P051",
+          "property_identity": "brake_trip_metrics:nullability",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P052",
+          "property_identity": "brake_trip_metrics:defaults",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P053",
+          "property_identity": "brake_trip_metrics:constraints",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        },
+        {
+          "authority_id": "P054",
+          "property_identity": "brake_trip_metrics:indexes",
+          "pass": true,
+          "mismatch_count": 0,
+          "mismatches": []
+        }
+      ],
+      "enum_results": [
+        {
+          "enum": "TripAssignmentStatus",
+          "pass": true,
+          "expected_labels": [
+            "ASSIGNED_DRIVER",
+            "ASSIGNED_BOOKING_CUSTOMER",
+            "PRIVATE_UNASSIGNED",
+            "UNKNOWN_ASSIGNMENT"
+          ],
+          "actual_labels": [
+            "ASSIGNED_DRIVER",
+            "ASSIGNED_BOOKING_CUSTOMER",
+            "PRIVATE_UNASSIGNED",
+            "UNKNOWN_ASSIGNMENT"
+          ]
+        },
+        {
+          "enum": "TripAssignmentSubjectType",
+          "pass": true,
+          "expected_labels": [
+            "DRIVER",
+            "BOOKING_CUSTOMER"
+          ],
+          "actual_labels": [
+            "DRIVER",
+            "BOOKING_CUSTOMER"
+          ]
+        },
+        {
+          "enum": "DrivingEventType",
+          "pass": true,
+          "expected_labels": [
+            "HARSH_BRAKING",
+            "EXTREME_BRAKING",
+            "HARSH_ACCELERATION",
+            "HARSH_CORNERING",
+            "SPEEDING",
+            "IDLE_EXCESSIVE",
+            "UNMAPPED_PROVIDER_EVENT",
+            "SAFETY_COLLISION"
+          ],
+          "actual_labels": [
+            "HARSH_BRAKING",
+            "EXTREME_BRAKING",
+            "HARSH_ACCELERATION",
+            "HARSH_CORNERING",
+            "SPEEDING",
+            "IDLE_EXCESSIVE",
+            "UNMAPPED_PROVIDER_EVENT",
+            "SAFETY_COLLISION"
+          ]
+        },
+        {
+          "enum": "BehaviorEventCategory",
+          "pass": true,
+          "expected_labels": [
+            "ACCELERATION",
+            "BRAKING",
+            "ABUSE"
+          ],
+          "actual_labels": [
+            "ACCELERATION",
+            "BRAKING",
+            "ABUSE"
+          ]
+        },
+        {
+          "enum": "BehaviorEventClassification",
+          "pass": true,
+          "expected_labels": [
+            "LIGHT",
+            "MODERATE",
+            "HARD",
+            "EXTREME",
+            "WARNING",
+            "SEVERE",
+            "CRITICAL"
+          ],
+          "actual_labels": [
+            "LIGHT",
+            "MODERATE",
+            "HARD",
+            "EXTREME",
+            "WARNING",
+            "SEVERE",
+            "CRITICAL"
+          ]
+        },
+        {
+          "enum": "TripSource",
+          "pass": true,
+          "expected_labels": [
+            "V2_LIVE",
+            "REPAIRED"
+          ],
+          "actual_labels": [
+            "V2_LIVE",
+            "REPAIRED"
+          ]
+        },
+        {
+          "enum": "TripDetectionState",
+          "pass": true,
+          "expected_labels": [
+            "RESTING",
+            "POSSIBLE_START",
+            "ACTIVE_TRIP",
+            "IDLE_WITHIN_TRIP",
+            "POSSIBLE_END",
+            "ENDED"
+          ],
+          "actual_labels": [
+            "RESTING",
+            "POSSIBLE_START",
+            "ACTIVE_TRIP",
+            "IDLE_WITHIN_TRIP",
+            "POSSIBLE_END",
+            "ENDED"
+          ]
+        },
+        {
+          "enum": "TripTrackingRunType",
+          "pass": true,
+          "expected_labels": [
+            "POSSIBLE_START_VALIDATION",
+            "ACTIVE_TRACKING",
+            "POSSIBLE_END_CHECK",
+            "END_VALIDATION",
+            "FINALIZATION_CHECK"
+          ],
+          "actual_labels": [
+            "POSSIBLE_START_VALIDATION",
+            "ACTIVE_TRACKING",
+            "POSSIBLE_END_CHECK",
+            "END_VALIDATION",
+            "FINALIZATION_CHECK"
+          ]
+        },
+        {
+          "enum": "VehicleDetectionProfile",
+          "pass": true,
+          "expected_labels": [
+            "ICE",
+            "EV",
+            "HYBRID",
+            "UNKNOWN"
+          ],
+          "actual_labels": [
+            "ICE",
+            "EV",
+            "HYBRID",
+            "UNKNOWN"
+          ]
+        },
+        {
+          "enum": "DetectionConfidence",
+          "pass": true,
+          "expected_labels": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ],
+          "actual_labels": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ]
+        }
+      ],
+      "vehicle_trips_trip_status": {
+        "column": "vehicle_trips.trip_status",
+        "expected_type": "\"TripStatus\"",
+        "actual_type": "\"TripStatus\"",
+        "expected_default": "'ONGOING'::\"TripStatus\"",
+        "actual_default": "'ONGOING'::\"TripStatus\"",
+        "historical_state_a_default": "'COMPLETED'::\"TripStatus\"",
+        "accepted_final_default": "'ONGOING'::\"TripStatus\"",
+        "completed_to_ongoing_reconciled": true,
+        "pass": true
+      },
+      "mismatch_records": [],
+      "mismatch_counters": {},
+      "pass": true,
+      "database": "synqdrive",
+      "read_only": true,
+      "source": "live_production_ssh"
+    },
+    "m252_semantic_mismatches": 0,
+    "m252_pass": true
+  },
+  "root_cause": {
+    "incident_root_cause_class": "B",
+    "incident_root_cause_label": "WRONG_PRODUCTION_EXECUTION_USER",
+    "incident_root_cause_detail": "Authorized bridge deploy ran as synqdrive-admin using temp-clone .env symlink without root/sudo env loading; backend.env is root-only 600 so Prisma could not read DATABASE_URL (P1012/EACCES). Production DB unchanged.",
+    "database_state_affected": false,
+    "secondary_factor": "TEMP_CLONE_ENV_SYMLINK_EXECUTION_DESIGN_ERROR when used without canonical sudo/source or root deploy identity"
+  },
+  "proposed_remediation": {
+    "proposed_retry_execution_user": "root (sudo bash -lc on VPS, matching vps-deploy-release.sh)",
+    "proposed_retry_workdir": "Fresh shallow clone of PR branch on VPS with ln -sfn /opt/synqdrive/shared/backend.env backend/.env",
+    "proposed_retry_env_mechanism": "sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a' before Prisma (do NOT chmod backend.env for synqdrive-admin)",
+    "proposed_retry_command": "npm run prisma:migrate:deploy (single attempt, separately re-authorized; pre-deploy gates unchanged)",
+    "execute_in_r3b1r112a": false
+  },
+  "production_immutability": {
+    "production_database_mutations_r3b1r112a": 0,
+    "production_catalog_mutations_r3b1r112a": 0,
+    "production_ledger_mutations_r3b1r112a": 0,
+    "production_immutable_r3b1r112a": true
+  },
+  "no_retry_boundary": {
+    "r3b1r112a_retried_deploy": false,
+    "prisma_migrate_deploy_executed": false,
+    "pr1054_merged": false
+  },
+  "machine_status": {
+    "CI_R3B1R112A_PRODUCTION_ENV_ACCESS_INCIDENT_ASSESSMENT_COMPLETED": true,
+    "R3B1R112_INCIDENT_CLASS": "EXECUTION_ENVIRONMENT_ONLY",
+    "DATABASE_STATE": "UNCHANGED",
+    "R3B1R112_RETRY_READINESS": "READY_FOR_SEPARATE_ENV_REMEDIATION_AND_REAUTHORIZATION",
+    "R3B1R12_READINESS": "NOT_READY",
+    "PR1054_MERGE_READINESS": "BLOCKED"
+  }
+}
