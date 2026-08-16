@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { LegalDocumentEventsService } from '../legal-document-events.service';
 import { DOCUMENT_TYPE, LEGAL_STATUS } from '../documents.constants';
@@ -126,23 +127,27 @@ const LIVE = process.env.LEGAL_DOCUMENTS_POSTGRES_INTEGRATION === '1';
           lastName: `Customer ${fixture.suffix}`,
         },
       });
-      const vehicle = await prisma.vehicle.create({
-        data: {
-          organizationId: fixture.orgA.id,
-          licensePlate: `LP-${fixture.suffix}`.slice(0, 12),
-          vin: `VIN${fixture.suffix}`.slice(0, 17).padEnd(17, '0'),
-          make: 'Test',
-          model: 'Car',
-          year: 2024,
-          fuelType: 'GASOLINE',
-          status: 'AVAILABLE',
-        },
-      });
+      const vehicleId = randomUUID();
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "vehicles" (
+          "id", "organization_id", "license_plate", "vin", "make", "model", "year",
+          "fuel_type", "status", "updated_at"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"FuelType", $9::"VehicleStatus", CURRENT_TIMESTAMP)`,
+        vehicleId,
+        fixture.orgA.id,
+        `LP-${fixture.suffix}`.slice(0, 12),
+        `VIN${fixture.suffix}`.slice(0, 17).padEnd(17, '0'),
+        'Test',
+        'Car',
+        2024,
+        'GASOLINE',
+        'AVAILABLE',
+      );
       const booking = await prisma.booking.create({
         data: {
           organizationId: fixture.orgA.id,
           customerId: customer.id,
-          vehicleId: vehicle.id,
+          vehicleId,
           startDate: new Date('2026-08-01T10:00:00.000Z'),
           endDate: new Date('2026-08-05T10:00:00.000Z'),
           status: 'CONFIRMED',
@@ -189,7 +194,7 @@ const LIVE = process.env.LEGAL_DOCUMENTS_POSTGRES_INTEGRATION === '1';
       });
       await prisma.generatedDocument.deleteMany({ where: { organizationId: fixture.orgA.id } });
       await prisma.booking.deleteMany({ where: { organizationId: fixture.orgA.id } });
-      await prisma.vehicle.deleteMany({ where: { organizationId: fixture.orgA.id } });
+      await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
       await prisma.customer.deleteMany({ where: { organizationId: fixture.orgA.id } });
     });
 
