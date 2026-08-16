@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1Q.3-prep",
+  "R3B1Q3_HARNESS_PREPARED": true,
+  "file_count": 10,
+  "files": [
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1q3_verification_harness.py",
+      "git_blob_sha": "43b8d3ce32b30b9269e9b7404fa599f42ccb7dc9",
+      "sha256": "c427fb5afefb1966cfb2fa7e16a6a04c0e8fc49d1a2067423da61354ef5259c3",
+      "role": "catalog_and_ledger_fingerprint_helper"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_catalog_fingerprint.py",
+      "git_blob_sha": "f092bd48556ee69917b1659ab78b7aacb056be97",
+      "sha256": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+      "role": "catalog_fingerprint_core"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_production_access.py",
+      "git_blob_sha": "ba19e969ddf6718b01068ad0af21755bbb6050bb",
+      "sha256": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+      "role": "production_read_only_access"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1q_tail_identity.py",
+      "git_blob_sha": "23fec88baa5c815477151749e284a22384f5185c",
+      "sha256": "4acb31bf38009f251f68f74c42219c2a8680df4735c95c8535ecf4bbbdf4f75e",
+      "role": "tail_identity_constants"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_m252_exact_parity.py",
+      "git_blob_sha": "a6b01ade33ad03d1a31facf4075d1882a6ddac3a",
+      "sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+      "role": "m252_parity"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+      "git_blob_sha": "af0ee0829e40479f55026420d03295fa2176f9a5",
+      "sha256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+      "role": "r3b_parity_and_diff"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_golden_tests.py",
+      "git_blob_sha": "4cf9f66e0585a270f5328a318e4c16d1bfe9da7e",
+      "sha256": "b734b08352db11b204984249498717d13f399be339bf2685b33e8e23c6f71207",
+      "role": "regression_tests"
+    },
+    {
+      "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_run_source_history_remediation.py",
+      "git_blob_sha": "681340d9d540ced7334d190bfc5882a929dbdf3d",
+      "sha256": "5b2b133c19a92084976935e81c047fa898f8d139e64c5f718419eddf7c8c051c",
+      "role": "q2_orchestrator_read_only"
+    },
+    {
+      "path": "backend/prisma/migrations/20260816110731_ci_r3b_production_history_tail_reconciliation/migration.sql",
+      "git_blob_sha": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+      "sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "role": "physical_tail_sql_source"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1q-tail-sql-2026-08.sql",
+      "git_blob_sha": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+      "sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "role": "executed_tail_sql_evidence"
+    }
+  ]
+}

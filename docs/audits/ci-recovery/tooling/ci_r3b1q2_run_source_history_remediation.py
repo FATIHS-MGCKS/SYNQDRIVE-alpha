@@ -25,6 +25,7 @@ from ci_r3b1n1_production_access import (
 from ci_r3b1n2_catalog_fingerprint import build_catalog_fingerprint
 from ci_r3b1n2_constants import MIG_ROOT, REPO, sha256_file, sha256_text
 from ci_r3b1o1_constants import M252_TABLE
+from ci_r3b1o3_m252_complete_authority import build_m252_complete_physical_authority
 from ci_r3b1o4_m252_exact_parity import compare_m252_exact, read_m252_catalog
 from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract
 from ci_r3b1o1_constants import FROZEN_DIFF_SQL
@@ -155,11 +156,8 @@ def tail_semantic_proof() -> dict[str, Any]:
 def run_prisma_migrate_status_via_ssh(*, branch: str) -> dict[str, Any]:
     remote = f"""set -euo pipefail
 tmpdir=$(mktemp -d /tmp/r3b1q2-status.XXXXXX)
-git clone --depth 1 --branch {branch} https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo" >/dev/null 2>&1 || {{
-  git clone --depth 1 https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo"
-  cd "$tmpdir/repo" && git fetch origin {branch} && git checkout {branch}
-}}
-sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$tmpdir/repo/backend"' && npx prisma migrate status 2>&1'
+git clone --depth 1 --branch {branch} https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo"
+sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$tmpdir/repo/backend"' && npm ci --ignore-scripts >/dev/null 2>&1 && npx prisma migrate status 2>&1'
 """
     proc = ssh_run(remote, timeout=300)
     output = sanitize_log_text(proc.stdout or proc.stderr or "")
@@ -179,7 +177,7 @@ def run_pr_target_diff_via_ssh(*, branch: str, schema_dump: Path) -> dict[str, A
     remote = f"""set -euo pipefail
 tmpdir=$(mktemp -d /tmp/r3b1q2-diff.XXXXXX)
 git clone --depth 1 --branch {branch} https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo"
-sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$tmpdir/repo/backend"' && npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script 2>/dev/null'
+sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$tmpdir/repo/backend"' && npm ci --ignore-scripts >/dev/null 2>&1 && npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script 2>/dev/null'
 """
     proc = ssh_run(remote, timeout=300)
     script = re.sub(r"\nnpm notice[\s\S]*$", "", proc.stdout or "").strip()
@@ -191,7 +189,7 @@ sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$t
         script,
         golden_twin_script=R3B1O_GOLDEN_DIFF.read_text(),
         golden_baseline_script=FROZEN_DIFF_SQL.read_text(),
-        schema_dump=schema_dump.read_text(),
+        schema_dump=schema_dump,
     )
     return {
         "PR_TARGET_TOTAL_DIFF": attr.get("total_operations"),
@@ -322,9 +320,13 @@ def main() -> int:
         ledger_before = export_prisma_ledger(include_logs=False)
         prod_before["ledger_fingerprint"] = ledger_summary_fingerprint(ledger_before)
         prod_before["catalog_fingerprint"] = build_catalog_fingerprint(prod_sql_runner)["fingerprint_sha256"]
-        prod_before["failed_rows"] = sum(1 for r in ledger_before if not r.get("finished_at") and not r.get("rolled_back_at"))
+        prod_before["failed_rows"] = sum(1 for r in ledger_before if not (r.get("finished_at") or "").strip())
         prod_before["incomplete_rows"] = sum(
-            1 for r in ledger_before if r.get("started_at") and not r.get("finished_at") and not r.get("rolled_back_at")
+            1
+            for r in ledger_before
+            if (r.get("started_at") or "").strip()
+            and not (r.get("finished_at") or "").strip()
+            and not (r.get("rolled_back_at") or "").strip()
         )
 
         tail_rows = [r for r in ledger_before if r.get("migration_name") == PHYSICAL_TAIL_MIGRATION_NAME]
@@ -367,7 +369,8 @@ def main() -> int:
         result["prisma_status"]["SOURCE_TAIL_NAME_MATCHES_PRODUCTION_LEDGER"] = physical is not None
         result["prisma_status"]["SOURCE_TAIL_CHECKSUM_MATCHES_PRODUCTION_LEDGER"] = identity.get("source_physical_tail_sha256") == tail_row.get("checksum")
 
-        m252 = compare_m252_exact(read_m252_catalog(prod_sql_runner))
+        m252_catalog = read_m252_catalog(prod_sql_runner)
+        m252 = compare_m252_exact(build_m252_complete_physical_authority(), m252_catalog)
         stale1 = prod_sql_runner(
             "SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname='org_invoices_invoice_number_key';"
         ).strip()

@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1Q.2",
+  "captured_at": "2026-08-16T12:08:06.941433+00:00",
+  "entry": {
+    "REPOSITORY": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "BRANCH": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "ENTRY_HEAD_SHA": "db7ab3a2",
+    "PR_1054": {
+      "headRefName": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+      "headRefOid": "176df50d6f37ebe6aa4aead68d0a3bae0c4fcd3d",
+      "isDraft": true,
+      "state": "OPEN"
+    },
+    "WORKTREE_CLEAN": false
+  },
+  "source_tail": {
+    "path": "backend/prisma/migrations/20260816110731_ci_r3b_production_history_tail_reconciliation/migration.sql",
+    "SOURCE_PHYSICAL_TAIL_SHA256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "PRODUCTION_LEDGER_CHECKSUM": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "TAIL_SOURCE_LEDGER_CHECKSUM_MATCH": true,
+    "TAIL_SOURCE_EXECUTED_SQL_BYTE_IDENTICAL": true
+  },
+  "append_only": {
+    "NEW_MIGRATION_DIRECTORIES_ADDED": 1,
+    "new_migration_directories": [
+      "20260816110731_ci_r3b_production_history_tail_reconciliation"
+    ],
+    "HISTORICAL_MIGRATION_FILES_MODIFIED": 0,
+    "HISTORICAL_MIGRATION_DIRECTORIES_RENAMED": 0,
+    "MIGRATION_FILES_DELETED": 0,
+    "pass": true
+  },
+  "tail_semantic": {
+    "TAIL_TASK_COUNT": 3,
+    "TAIL_EXTRA_TASKS": 0,
+    "TAIL_CASCADE_OPERATIONS": 0,
+    "TAIL_UNAUTHORIZED_DDL": 0,
+    "pass": true
+  },
+  "temporary_tail": {
+    "physical_tail_migration_name": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+    "logical_planning_tail_name": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+    "physical_tail_prisma_directory_exists": true,
+    "temporary_tail_prisma_directory_exists": false,
+    "prisma_discoverable_tail_name": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+    "executed_tail_sql_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "source_physical_tail_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "logical_tail_is_prisma_pending_migration": false,
+    "post_r3b1q_canonical_prisma_identity": "20260816110731_ci_r3b_production_history_tail_reconciliation"
+  },
+  "duplicate_tail": {
+    "PHYSICAL_TAIL_DIRECTORY_COUNT": 1,
+    "DUPLICATE_TAIL_SQL_DIRECTORIES": 0,
+    "duplicate_tail_sql_directory_names": [],
+    "TEMPORARY_TAIL_REAL_DIRECTORY_COUNT": 0,
+    "distinctive_tail_statement_directory_count_excluding_physical": 1,
+    "pass": true
+  },
+  "golden_tests": {
+    "schema_version": 1,
+    "phase": "CI-R3B1Q.2",
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "pass": true,
+    "tests": [
+      {
+        "test_id": "physical_tail_directory_exists",
+        "function": "physical_tail_sql_path",
+        "expected": "true",
+        "actual": "True",
+        "pass": true
+      },
+      {
+        "test_id": "source_physical_tail_sha_matches_executed",
+        "function": "sha256_file",
+        "expected": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "actual": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "pass": true
+      },
+      {
+        "test_id": "evidence_sql_sha_matches_executed",
+        "function": "sha256_file",
+        "expected": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "actual": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "pass": true
+      },
+      {
+        "test_id": "temporary_tail_prisma_directory_absent",
+        "function": "temporary_tail_prisma_directory",
+        "expected": "false",
+        "actual": "False",
+        "pass": true
+      },
+      {
+        "test_id": "prisma_discoverable_tail_is_physical",
+        "function": "prisma_discoverable_tail_name",
+        "expected": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+        "actual": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+        "pass": true
+      },
+      {
+        "test_id": "source_tail_byte_identical_to_evidence",
+        "function": "bytes.compare",
+        "expected": "identical",
+        "actual": "identical",
+        "pass": true
+      },
+      {
+        "test_id": "tail_task_count_three",
+        "function": "build_tail_reconciliation_contract",
+        "expected": "3",
+        "actual": "3",
+        "pass": true
+      },
+      {
+        "test_id": "tail_unauthorized_tasks_zero",
+        "function": "build_tail_reconciliation_contract",
+        "expected": "0",
+        "actual": "0",
+        "pass": true
+      },
+      {
+        "test_id": "tail_statement_count_three",
+        "function": "build_tail_reconciliation_contract",
+        "expected": "3",
+        "actual": "3",
+        "pass": true
+      },
+      {
+        "test_id": "tail_no_cascade",
+        "function": "migration.sql",
+        "expected": "0",
+        "actual": "0",
+        "pass": true
+      },
+      {
+        "test_id": "execution_set_single_tail_entry",
+        "function": "build_execution_set",
+        "expected": "1",
+        "actual": "1",
+        "pass": true
+      },
+      {
+        "test_id": "execution_set_tail_uses_physical_name",
+        "function": "build_execution_set",
+        "expected": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+        "actual": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+        "pass": true
+      },
+      {
+        "test_id": "execution_set_logical_tail_not_prisma_pending",
+        "function": "build_execution_set",
+        "expected": "true",
+        "actual": "True",
+        "pass": true
+      },
+      {
+        "test_id": "BROKEN_I_INDEXRELID_REGRESSION_TEST",
+        "function": "fingerprint_regression_status",
+        "expected": "true",
+        "actual": "True",
+        "pass": true
+      },
+      {
+        "test_id": "CORRECT_IX_INDEXRELID_TEST",
+        "function": "fingerprint_regression_status",
+        "expected": "true",
+        "actual": "True",
+        "pass": true
+      },
+      {
+        "test_id": "broken_fixture_contains_alias_defect",
+        "function": "broken_indexrelid_alias_present",
+        "expected": "true",
+        "actual": "True",
+        "pass": true
+      },
+      {
+        "test_id": "VERIFICATION_TOOLING_READ_ONLY",
+        "function": "audit_verification_harness_read_only",
+        "expected": "true",
+        "actual": "True",
+        "pass": true
+      }
+    ],
+    "fingerprint_regression": {
+      "BROKEN_I_INDEXRELID_REGRESSION_TEST": true,
+      "CORRECT_IX_INDEXRELID_TEST": true,
+      "broken_fixture_sha256": "87f9e3be009ce0f9f843b16e9b6f3e59814e16d6e6b350690067bf36dce1686a",
+      "canonical_helper": "ci_r3b1n2_catalog_fingerprint.build_catalog_fingerprint"
+    },
+    "read_only_audit": {
+      "VERIFICATION_TOOLING_READ_ONLY": true,
+      "audits": [
+        {
+          "label": "ci_r3b1q3_verification_harness.build_production_verification_snapshot",
+          "pass": true,
+          "violations": []
+        },
+        {
+          "label": "ci_r3b1n2_catalog_fingerprint.build_catalog_fingerprint",
+          "pass": true,
+          "violations": []
+        }
+      ]
+    }
+  },
+  "fingerprint_tooling": {
+    "BROKEN_I_INDEXRELID_REGRESSION_TEST": true,
+    "CORRECT_IX_INDEXRELID_TEST": true,
+    "broken_fixture_sha256": "87f9e3be009ce0f9f843b16e9b6f3e59814e16d6e6b350690067bf36dce1686a",
+    "canonical_helper": "ci_r3b1n2_catalog_fingerprint.build_catalog_fingerprint",
+    "read_only_audit": {
+      "VERIFICATION_TOOLING_READ_ONLY": true,
+      "audits": [
+        {
+          "label": "ci_r3b1q3_verification_harness.build_production_verification_snapshot",
+          "pass": true,
+          "violations": []
+        },
+        {
+          "label": "ci_r3b1n2_catalog_fingerprint.build_catalog_fingerprint",
+          "pass": true,
+          "violations": []
+        }
+      ]
+    }
+  },
+  "production_tail": {
+    "migration_name": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+    "checksum": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "started_at": "2026-08-16 11:09:24.305931+00",
+    "finished_at": "2026-08-16 11:09:24.335275+00",
+    "rolled_back_at": "",
+    "applied_steps_count": "1",
+    "TAIL_STILL_FINISHED": true,
+    "TAIL_STILL_NOT_ROLLED_BACK": true,
+    "TAIL_LEDGER_CHECKSUM_MATCHES": true
+  },
+  "would_deploy": {
+    "PR_SOURCE_WOULD_DEPLOY": [],
+    "EXPECTED_NOOP_DEPLOY_SET_EMPTY": true
+  },
+  "prisma_status": {
+    "exit_code": 0,
+    "output": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n306 migrations found in prisma/migrations\n\nDatabase schema is up to date!\n",
+    "PRISMA_STATUS_PENDING_COUNT": 0,
+    "PRISMA_STATUS_PENDING_NAMES": [],
+    "pass": true,
+    "SOURCE_MATCHING_TAIL_EXISTS": true,
+    "SOURCE_TAIL_NAME_MATCHES_PRODUCTION_LEDGER": true,
+    "SOURCE_TAIL_CHECKSUM_MATCHES_PRODUCTION_LEDGER": true
+  },
+  "m252": {
+    "M252_SEMANTIC_MISMATCHES": 0,
+    "STALE_INDEX_1_ABSENT": true,
+    "STALE_INDEX_2_ABSENT": true,
+    "pass": true
+  },
+  "r3b": {
+    "objects_matched": 19,
+    "objects_expected": 19,
+    "tables_matched": 9,
+    "tables_expected": 9,
+    "enums_matched": 10,
+    "enums_expected": 10,
+    "properties_matched": 54,
+    "properties_expected": 54,
+    "UNAUTHORIZED": 0,
+    "UNKNOWN_AUTHORITY": 0,
+    "AMBIGUOUS_AUTHORITY": 0,
+    "STATEMENT_UNBOUND": 0,
+    "KEY_ONLY_AUTHORIZATION": 0,
+    "STATEMENT_SHA_MISMATCH": 0,
+    "EVIDENCE_CODE_MISMATCH": 0,
+    "pass": true
+  },
+  "failed_rows": {
+    "FAILED_MIGRATION_ROWS_ABSOLUTE": 16,
+    "NEW_FAILED_ROWS_SINCE_R3B1Q": 0,
+    "INCOMPLETE_MIGRATION_ROWS": 0,
+    "PARTIALLY_APPLIED_TAIL": false
+  },
+  "pr_target_diff": {
+    "PR_TARGET_TOTAL_DIFF": 393,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "UNKNOWN_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNATTRIBUTED": 0,
+    "script_sha256": "d5dd15726d77d2ed3bed6ad5e6c09662d778b8268953b3af31f3812b298e4161",
+    "path": "docs/audits/ci-recovery/data/ci-r3b1q2-pr-target-live-diff-2026-08.sql",
+    "pass": true
+  },
+  "application_health": {
+    "APPLICATION_HEALTH_PASS": true,
+    "health_payload": {
+      "status": "ok",
+      "uptime": 4042,
+      "timestamp": "2026-08-16T12:16:47.189Z"
+    },
+    "NORMAL_OPERATIONS_ACTIVE": false,
+    "R3B1Q_LOCK_CLEARED": true,
+    "pm2_excerpt": "LOCK_CLEARED\n[]"
+  },
+  "production_immutability": {
+    "before": {
+      "ledger_fingerprint": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+      "catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+      "failed_rows": 16,
+      "incomplete_rows": 0
+    },
+    "after": {
+      "ledger_fingerprint": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+      "catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58"
+    },
+    "PRODUCTION_IMMUTABLE_DURING_R3B1Q2": true,
+    "PRODUCTION_MUTATIONS_EXECUTED_R3B1Q2": 0
+  },
+  "live_production_access": true,
+  "harness_manifest": {
+    "schema_version": 1,
+    "phase": "CI-R3B1Q.3-prep",
+    "R3B1Q3_HARNESS_PREPARED": true,
+    "file_count": 10,
+    "files": [
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q3_verification_harness.py",
+        "git_blob_sha": "43b8d3ce32b30b9269e9b7404fa599f42ccb7dc9",
+        "sha256": "c427fb5afefb1966cfb2fa7e16a6a04c0e8fc49d1a2067423da61354ef5259c3",
+        "role": "catalog_and_ledger_fingerprint_helper"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_catalog_fingerprint.py",
+        "git_blob_sha": "f092bd48556ee69917b1659ab78b7aacb056be97",
+        "sha256": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+        "role": "catalog_fingerprint_core"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_production_access.py",
+        "git_blob_sha": "ba19e969ddf6718b01068ad0af21755bbb6050bb",
+        "sha256": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+        "role": "production_read_only_access"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q_tail_identity.py",
+        "git_blob_sha": "23fec88baa5c815477151749e284a22384f5185c",
+        "sha256": "4acb31bf38009f251f68f74c42219c2a8680df4735c95c8535ecf4bbbdf4f75e",
+        "role": "tail_identity_constants"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_m252_exact_parity.py",
+        "git_blob_sha": "a6b01ade33ad03d1a31facf4075d1882a6ddac3a",
+        "sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+        "role": "m252_parity"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+        "git_blob_sha": "af0ee0829e40479f55026420d03295fa2176f9a5",
+        "sha256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+        "role": "r3b_parity_and_diff"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_golden_tests.py",
+        "git_blob_sha": "4cf9f66e0585a270f5328a318e4c16d1bfe9da7e",
+        "sha256": "b734b08352db11b204984249498717d13f399be339bf2685b33e8e23c6f71207",
+        "role": "regression_tests"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_run_source_history_remediation.py",
+        "git_blob_sha": "681340d9d540ced7334d190bfc5882a929dbdf3d",
+        "sha256": "5b2b133c19a92084976935e81c047fa898f8d139e64c5f718419eddf7c8c051c",
+        "role": "q2_orchestrator_read_only"
+      },
+      {
+        "path": "backend/prisma/migrations/20260816110731_ci_r3b_production_history_tail_reconciliation/migration.sql",
+        "git_blob_sha": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+        "sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "role": "physical_tail_sql_source"
+      },
+      {
+        "path": "docs/audits/ci-recovery/data/ci-r3b1q-tail-sql-2026-08.sql",
+        "git_blob_sha": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+        "sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "role": "executed_tail_sql_evidence"
+      }
+    ]
+  },
+  "machine_status": {
+    "status": "CI_R3B1Q2_SOURCE_HISTORY_REMEDIATION_COMPLETED",
+    "R3B1Q_SOURCE_HISTORY": "SOURCE_HISTORY_ALIGNED_WITH_PRODUCTION_TAIL",
+    "R3B1Q3_READINESS": "READY_FOR_SEPARATELY_AUTHORIZED_FROZEN_IDEMPOTENCY_COMPLETION",
+    "PR1054_MERGE_READINESS": "BLOCKED_PENDING_R3B1Q3"
+  },
+  "success": true
+}
