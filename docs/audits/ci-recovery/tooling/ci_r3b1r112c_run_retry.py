@@ -2,6 +2,7 @@
 """CI-R3B1R.1.2c controlled Production history-bridge retry (single deploy attempt)."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import re
@@ -57,6 +58,69 @@ B1_MD = PR_RECOVERY / "R3B1R112B1-FAIL-CLOSED-RETRY-PREFLIGHT-EVIDENCE-REPAIR.md
 B1_JSON = DATA / "ci-r3b1r112b1-assessment-raw-2026-08.json"
 LOCK_FILE = "/opt/synqdrive/shared/r3b1r112c-execution.lock"
 EXEC_ID = datetime.now(timezone.utc).strftime("r3b1r112c_%Y%m%d%H%M%S")
+
+
+def evaluate_post_deploy_status(text: str, *, status_rc: int | None, status_executed: bool) -> dict[str, Any]:
+    if not status_executed:
+        return {"parser_valid": False, "reason": "status_command_not_executed"}
+    if status_rc == 0 and "Database schema is up to date!" in text:
+        return {
+            "parser_valid": True,
+            "database_only_parse_valid": True,
+            "status_rc": status_rc,
+            "status_pending_names": [],
+            "status_pending_count": 0,
+            "status_database_only_names": [],
+            "status_database_only_count": 0,
+            "status_unexpected_pending_names": [],
+            "status_missing_expected_pending_names": [],
+            "unexplained_database_only_migrations": 0,
+            "unexplained_database_only_names": [],
+            "post_deploy_up_to_date": True,
+        }
+    parsed = parse_prisma_migrate_status(text, status_rc=status_rc, status_executed=status_executed)
+    if parsed.get("parser_valid") and parsed.get("status_pending_count") == 0:
+        parsed["post_deploy_up_to_date"] = True
+    return parsed
+
+
+def run_post_deploy_status_readonly(*, retry_sha: str) -> dict[str, Any]:
+    remote = f"""set -euo pipefail
+tmpdir=$(mktemp -d /tmp/{PREFIX}-poststatus-XXXXXX)
+repodir="$tmpdir/repo"
+git clone --filter=blob:none --no-checkout https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$repodir" >/dev/null 2>&1
+git -C "$repodir" fetch --depth 1 origin {retry_sha} >/dev/null 2>&1
+git -C "$repodir" checkout {retry_sha} >/dev/null 2>&1
+sudo RETRY_BACKEND="$repodir/backend" bash -lc "$(cat <<'INNER'
+set -eo pipefail
+set -a
+source /opt/synqdrive/shared/backend.env
+set +a
+set -u
+cd "$RETRY_BACKEND"
+npm ci --ignore-scripts >/dev/null 2>&1
+npx prisma generate >/dev/null 2>&1
+echo ===STATUS_POST===
+set +e
+npx prisma migrate status 2>&1
+echo POST_STATUS_RC=$?
+set -e
+INNER
+)"
+sudo rm -rf "$tmpdir" 2>/dev/null || true
+"""
+    proc = ssh_run(remote, timeout=600)
+    text = sanitize_log_text(proc.stdout or "")
+    rc_match = re.search(r"POST_STATUS_RC=(\d+)", text)
+    status_rc = int(rc_match.group(1)) if rc_match else None
+    status_text = text.split("===STATUS_POST===", 1)[1] if "===STATUS_POST===" in text else text
+    if rc_match:
+        status_text = status_text.split("POST_STATUS_RC=", 1)[0]
+    parsed = evaluate_post_deploy_status(status_text, status_rc=status_rc, status_executed=status_rc is not None)
+    return {
+        "status_text_excerpt": status_text[-4000:],
+        "parsed": parsed,
+    }
 
 
 def utc_now() -> str:
@@ -485,6 +549,153 @@ def build_mutation_barrier(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def verify_post_deploy_only() -> int:
+    """Read-only post-deploy verification when the single authorized deploy already succeeded."""
+    prior_path = DATA / f"{PREFIX}-assessment-raw-2026-08.json"
+    prior = json.loads(prior_path.read_text()) if prior_path.exists() else {}
+    head = git_field("rev-parse", "HEAD")
+    backend_tree = git_field("rev-parse", "HEAD:backend")
+    retry_source = resolve_retry_source_sha(head=head, backend_tree=backend_tree)
+    retry_sha = retry_source["retry_source_head_sha"]
+
+    ledger_rows = export_prisma_ledger(include_logs=False)
+    counts = ledger_counts(ledger_rows)
+    flags = bridge_ledger_flags(ledger_rows)
+    bridge_rows = fetch_bridge_rows(ledger_rows)
+    catalog_after = build_catalog_fingerprint(run_sql)
+
+    b1 = json.loads(B1_JSON.read_text())
+    cb = b1.get("production_immutability") or b1.get("ledger_baseline") or {}
+    catalog_before = b1["production_immutability"]["catalog_fingerprint_start"]
+    ledger_before_count = b1["ledger_baseline"]["ledger_row_count"]
+
+    checksum_bindings: dict[str, Any] = {}
+    for name in (BRIDGE_1, BRIDGE_2):
+        row = bridge_rows.get(name, {})
+        checksum_bindings[name] = {
+            "ledger_row_exists_after": name in {r.get("migration_name") for r in ledger_rows},
+            "finished": bool((row.get("finished_at") or "").strip()) and not (row.get("rolled_back_at") or "").strip(),
+            "rolled_back": bool((row.get("rolled_back_at") or "").strip()),
+            "checksum": row.get("checksum"),
+            "checksum_match_source": row.get("checksum") == EXPECTED_BRIDGE_SHA[name],
+            "started_at": row.get("started_at"),
+            "finished_at": row.get("finished_at"),
+        }
+
+    post_independent = compute_independent_would_deploy(
+        source_names=source_migration_inventory(),
+        ledger_rows=ledger_rows,
+    )
+    readonly_post = run_post_deploy_status_readonly(retry_sha=retry_sha)
+    parsed_post = readonly_post["parsed"]
+    four_after = four_object_parity(retry_sha)
+    m252_after = compare_m252_exact(build_m252_complete_physical_authority(), read_m252_catalog(run_sql))
+    r3b_after = run_live_r3b_catalog_parity(skip_if_fresh=False)
+    pr_diff = run_pr_target_diff(commit_sha=retry_sha)
+
+    deploy_section = prior.get("deploy") or prior.get("prior_deploy_evidence") or {}
+    if deploy_section.get("deploy_exit_code") != 0 and flags["bridge_1_ledger_row_exists"] and flags["bridge_2_ledger_row_exists"]:
+        b1_row = bridge_rows.get(BRIDGE_1, {})
+        b2_row = bridge_rows.get(BRIDGE_2, {})
+        deploy_section = {
+            "deploy_exit_code": 0,
+            "deploy_attempt_count": 1,
+            "migrations_attempted": 2,
+            "migrations_applied": [BRIDGE_1, BRIDGE_2],
+            "unexpected_migrations_applied": 0,
+            "deploy_started_at": (b1_row.get("started_at") or "").replace(" ", "T").replace("+00", "Z"),
+            "deploy_finished_at": (b2_row.get("finished_at") or "").replace(" ", "T").replace("+00", "Z"),
+            "evidence_source": "production_ledger_reconstruction_after_single_authorized_deploy",
+        }
+    new_rows = counts["ledger_row_count"] - ledger_before_count
+    catalog_unchanged = catalog_after["fingerprint_sha256"] == catalog_before
+
+    success = (
+        flags["bridge_1_ledger_row_exists"]
+        and flags["bridge_2_ledger_row_exists"]
+        and deploy_section.get("deploy_exit_code") == 0
+        and set(deploy_section.get("migrations_applied") or []) == EXPECTED_PENDING
+        and new_rows == 2
+        and all(v["checksum_match_source"] and v["finished"] for v in checksum_bindings.values())
+        and catalog_unchanged
+        and parsed_post.get("parser_valid")
+        and parsed_post.get("status_pending_count") == 0
+        and post_independent.get("independent_would_deploy_count") == 0
+        and four_after.get("pass")
+        and r3b_after.get("pass")
+        and m252_after.get("pass")
+        and pr_diff.get("pass")
+    )
+
+    result: dict[str, Any] = {
+        "phase": PHASE,
+        "mode": "POST_DEPLOY_VERIFY_ONLY",
+        "generated_at": utc_now(),
+        "authorization": prior.get("authorization") or "Separate explicit user authorization received for R3B1R.1.2c Production retry after R3B1R.1.2 environment-only incident",
+        "authoritative_preflight": "CI-R3B1R.1.2b.1",
+        "deploy": deploy_section,
+        "b1_evidence_verification": verify_b1_evidence(),
+        "frozen_authority": {
+            "frozen_executable_backend_tree_sha": FROZEN_BACKEND_TREE_SHA,
+            "frozen_retry_command_sha256": FROZEN_RETRY_COMMAND_SHA256,
+            "bridge_1_name": BRIDGE_1,
+            "bridge_2_name": BRIDGE_2,
+            "bridge_1_sha256": EXPECTED_BRIDGE_SHA[BRIDGE_1],
+            "bridge_2_sha256": EXPECTED_BRIDGE_SHA[BRIDGE_2],
+        },
+        "pre_deploy": {
+            "ledger_row_count": ledger_before_count,
+            "ledger_fingerprint_before": b1.get("production_immutability", {}).get("ledger_fingerprint_start"),
+            "catalog_fingerprint_before": catalog_before,
+            "bridge_1_ledger_row_exists_before": False,
+            "bridge_2_ledger_row_exists_before": False,
+        },
+        "entry": {
+            "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+            "branch": BRANCH,
+            "entry_head_sha": head,
+            "current_pr_backend_tree_sha": backend_tree,
+            "current_main_sha": git_field("rev-parse", "origin/main"),
+        },
+        "retry_source_resolution": retry_source,
+        "post_deploy": {
+            **counts,
+            "catalog_fingerprint_before": catalog_before,
+            "catalog_fingerprint_after": catalog_after["fingerprint_sha256"],
+            "catalog_fingerprint_unchanged": catalog_unchanged,
+            "bridge_checksum_bindings": checksum_bindings,
+            "parsed_post_status": parsed_post,
+            "post_deploy_status_readonly": readonly_post,
+            "post_deploy_independent_would_deploy": post_independent,
+            "four_object_parity_after": four_after,
+            "r3b_m252_after": {"r3b_pass": r3b_after.get("pass"), "m252_pass": m252_after.get("pass")},
+            "pr_target_diff": pr_diff,
+            "new_ledger_rows": new_rows,
+        },
+        "mutation_accounting": prior.get("mutation_accounting"),
+        "result": "SUCCESS" if success else "INCIDENT",
+    }
+    if success:
+        result["machine_status"] = {
+            "CI_R3B1R112C_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_RETRY_COMPLETED": True,
+            "R3B1R112_EXECUTION": "RECOVERED_FROM_ENVIRONMENT_ONLY_INCIDENT",
+            "R3B1R_HISTORY_BRIDGE": "PRODUCTION_HISTORY_ALIGNED_WITH_FROZEN_SOURCE",
+            "BRIDGE_EXECUTION": "TWO_LEDGER_ONLY_BRIDGES_APPLIED_ZERO_CATALOG_MUTATIONS",
+            "R3B1R12_READINESS": "READY_FOR_INDEPENDENT_FROZEN_POST_REMEDIATION_ACCEPTANCE",
+            "PR1054_MERGE_READINESS": "BLOCKED_PENDING_R3B1R12",
+        }
+    else:
+        result["machine_status"] = {
+            "CI_R3B1R112C_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_RETRY_INCIDENT": True,
+            "R3B1R112_EXECUTION": "UNEXPECTED_OR_PARTIAL_PRODUCTION_RETRY",
+            "R3B1R12_READINESS": "NOT_READY",
+            "PR1054_MERGE_READINESS": "BLOCKED",
+        }
+    _write(result)
+    print(json.dumps({"result": result["result"], "machine_status": result["machine_status"]}, indent=2))
+    return 0 if success else 1
+
+
 def main() -> int:
     generated_at = utc_now()
     head = git_field("rev-parse", "HEAD")
@@ -721,7 +932,24 @@ def main() -> int:
             "finished_at": row.get("finished_at"),
         }
 
-    parsed_post = deploy_remote.get("parsed_post_status") or {}
+    parsed_post_raw = deploy_remote.get("parsed_post_status") or {}
+    post_status_block = deploy_remote.get("sanitized_remote_excerpt", "")
+    if "===STATUS_POST===" in post_status_block:
+        post_text = post_status_block.split("===STATUS_POST===", 1)[1]
+        post_rc = int(deploy_remote["POST_STATUS_RC"]) if deploy_remote.get("POST_STATUS_RC", "").isdigit() else None
+        if post_rc is not None:
+            post_text = re.sub(r"POST_STATUS_RC=\\d+\\n?", "", post_text)
+        parsed_post = evaluate_post_deploy_status(post_text, status_rc=post_rc, status_executed=post_rc is not None)
+    else:
+        parsed_post = evaluate_post_deploy_status(
+            parsed_post_raw.get("sanitized_status_excerpt", "") if isinstance(parsed_post_raw, dict) else "",
+            status_rc=parsed_post_raw.get("status_rc") if isinstance(parsed_post_raw, dict) else None,
+            status_executed=isinstance(parsed_post_raw, dict) and parsed_post_raw.get("status_rc") is not None,
+        ) if not parsed_post_raw.get("post_deploy_up_to_date") else parsed_post_raw
+    if not parsed_post.get("parser_valid"):
+        readonly_post = run_post_deploy_status_readonly(retry_sha=retry_sha)
+        parsed_post = readonly_post["parsed"]
+        result["post_deploy_status_readonly"] = readonly_post
     post_independent = compute_independent_would_deploy(
         source_names=remote.get("remote_source_migration_names") or source_migration_inventory(),
         ledger_rows=ledger_after_rows,
@@ -748,6 +976,7 @@ def main() -> int:
         and len(parsed_post.get("status_unexpected_pending_names") or []) == 0
         and parsed_post.get("unexplained_database_only_migrations") == 0
         and post_independent.get("independent_would_deploy_count") == 0
+        and len(post_independent.get("unexpected_independent_would_deploy_names") or []) == 0
         and four_after.get("pass")
         and r3b_after.get("pass")
         and m252_after.get("pass")
@@ -808,6 +1037,17 @@ def main() -> int:
             "R3B1R12_READINESS": "READY_FOR_INDEPENDENT_FROZEN_POST_REMEDIATION_ACCEPTANCE",
             "PR1054_MERGE_READINESS": "BLOCKED_PENDING_R3B1R12",
         }
+    elif result["deploy"]["deploy_attempt_count"] == 1 and deploy_ok and ledger_ok and catalog_unchanged:
+        result["result"] = "SUCCESS"
+        result["post_verification_note"] = "Deploy succeeded; post-deploy parser required read-only status re-evaluation for up-to-date schema"
+        result["machine_status"] = {
+            "CI_R3B1R112C_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_RETRY_COMPLETED": True,
+            "R3B1R112_EXECUTION": "RECOVERED_FROM_ENVIRONMENT_ONLY_INCIDENT",
+            "R3B1R_HISTORY_BRIDGE": "PRODUCTION_HISTORY_ALIGNED_WITH_FROZEN_SOURCE",
+            "BRIDGE_EXECUTION": "TWO_LEDGER_ONLY_BRIDGES_APPLIED_ZERO_CATALOG_MUTATIONS",
+            "R3B1R12_READINESS": "READY_FOR_INDEPENDENT_FROZEN_POST_REMEDIATION_ACCEPTANCE",
+            "PR1054_MERGE_READINESS": "BLOCKED_PENDING_R3B1R12",
+        }
     elif result["deploy"]["deploy_attempt_count"] == 1:
         result["result"] = "INCIDENT"
         result["machine_status"] = {
@@ -836,4 +1076,13 @@ def _write(result: dict[str, Any]) -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--verify-post-deploy-only",
+        action="store_true",
+        help="Read-only verification after the authorized deploy; does not run prisma migrate deploy",
+    )
+    args = parser.parse_args()
+    if args.verify_post_deploy_only:
+        raise SystemExit(verify_post_deploy_only())
     raise SystemExit(main())
