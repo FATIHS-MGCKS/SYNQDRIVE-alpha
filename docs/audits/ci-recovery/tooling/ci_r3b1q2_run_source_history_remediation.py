@@ -153,10 +153,16 @@ def tail_semantic_proof() -> dict[str, Any]:
     }
 
 
-def run_prisma_migrate_status_via_ssh(*, branch: str) -> dict[str, Any]:
+def _remote_repo_checkout(*, commit_sha: str, tmp_prefix: str) -> str:
+    return f"""tmpdir=$(mktemp -d /tmp/{tmp_prefix}.XXXXXX)
+git clone --depth 1 https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo"
+cd "$tmpdir/repo" && git fetch --depth 1 origin {commit_sha} && git checkout {commit_sha}
+"""
+
+
+def run_prisma_migrate_status_via_ssh(*, commit_sha: str) -> dict[str, Any]:
     remote = f"""set -euo pipefail
-tmpdir=$(mktemp -d /tmp/r3b1q2-status.XXXXXX)
-git clone --depth 1 --branch {branch} https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo"
+{_remote_repo_checkout(commit_sha=commit_sha, tmp_prefix="r3b1q2-status")}
 sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$tmpdir/repo/backend"' && npm ci --ignore-scripts >/dev/null 2>&1 && npx prisma migrate status 2>&1'
 """
     proc = ssh_run(remote, timeout=300)
@@ -173,10 +179,9 @@ sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$t
     }
 
 
-def run_pr_target_diff_via_ssh(*, branch: str, schema_dump: Path) -> dict[str, Any]:
+def run_pr_target_diff_via_ssh(*, commit_sha: str, schema_dump: Path) -> dict[str, Any]:
     remote = f"""set -euo pipefail
-tmpdir=$(mktemp -d /tmp/r3b1q2-diff.XXXXXX)
-git clone --depth 1 --branch {branch} https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$tmpdir/repo"
+{_remote_repo_checkout(commit_sha=commit_sha, tmp_prefix="r3b1q2-diff")}
 sudo bash -lc 'set -a; source /opt/synqdrive/shared/backend.env; set +a; cd '"$tmpdir/repo/backend"' && npm ci --ignore-scripts >/dev/null 2>&1 && npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script 2>/dev/null'
 """
     proc = ssh_run(remote, timeout=300)
@@ -362,8 +367,8 @@ def main() -> int:
         }
 
         # prisma migrate status using local inventory against production is equivalent when would_deploy empty and all local applied
-        branch = result["entry"]["BRANCH"]
-        status = run_prisma_migrate_status_via_ssh(branch=branch)
+        commit_sha = result["entry"]["ENTRY_HEAD_SHA"]
+        status = run_prisma_migrate_status_via_ssh(commit_sha=commit_sha)
         result["prisma_status"] = status
         result["prisma_status"]["SOURCE_MATCHING_TAIL_EXISTS"] = physical is not None
         result["prisma_status"]["SOURCE_TAIL_NAME_MATCHES_PRODUCTION_LEDGER"] = physical is not None
@@ -411,7 +416,7 @@ def main() -> int:
             "PARTIALLY_APPLIED_TAIL": False,
         }
 
-        result["pr_target_diff"] = run_pr_target_diff_via_ssh(branch=branch, schema_dump=schema_dump)
+        result["pr_target_diff"] = run_pr_target_diff_via_ssh(commit_sha=commit_sha, schema_dump=schema_dump)
         result["application_health"] = application_health()
 
         ledger_after = export_prisma_ledger(include_logs=False)

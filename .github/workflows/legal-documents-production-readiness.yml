@@ -185,7 +185,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate && npx prisma migrate deploy
+      - run: npm ci && npx prisma generate && bash scripts/test/prisma-migrate-deploy-resilient.sh
         working-directory: backend
         env:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public

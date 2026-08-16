@@ -909,7 +909,7 @@ export async function openVehicleFromFleet(page: Page, plate: string) {
   await expect(row.first()).toBeVisible({ timeout: 20_000 });
   await row.first().getByRole('button', { name: 'Open vehicle details' }).click();
   await expect(page.getByRole('heading', { name: /VW Golf/ })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toBeVisible();
+  await expect(page.locator('#vehicle-detail-tab-overview')).toBeVisible({ timeout: 20_000 });
 }
 
 export async function openVehicleBySearch(page: Page, query: string) {
