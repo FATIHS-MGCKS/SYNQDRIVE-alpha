@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1Q.2",
+  "total": 17,
+  "passed": 17,
+  "failed": 0,
+  "pass": true,
+  "tests": [
+    {
+      "test_id": "physical_tail_directory_exists",
+      "function": "physical_tail_sql_path",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "source_physical_tail_sha_matches_executed",
+      "function": "sha256_file",
+      "expected": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "actual": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "pass": true
+    },
+    {
+      "test_id": "evidence_sql_sha_matches_executed",
+      "function": "sha256_file",
+      "expected": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "actual": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "pass": true
+    },
+    {
+      "test_id": "temporary_tail_prisma_directory_absent",
+      "function": "temporary_tail_prisma_directory",
+      "expected": "false",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "prisma_discoverable_tail_is_physical",
+      "function": "prisma_discoverable_tail_name",
+      "expected": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+      "actual": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+      "pass": true
+    },
+    {
+      "test_id": "source_tail_byte_identical_to_evidence",
+      "function": "bytes.compare",
+      "expected": "identical",
+      "actual": "identical",
+      "pass": true
+    },
+    {
+      "test_id": "tail_task_count_three",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "3",
+      "actual": "3",
+      "pass": true
+    },
+    {
+      "test_id": "tail_unauthorized_tasks_zero",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "0",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "tail_statement_count_three",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "3",
+      "actual": "3",
+      "pass": true
+    },
+    {
+      "test_id": "tail_no_cascade",
+      "function": "migration.sql",
+      "expected": "0",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "execution_set_single_tail_entry",
+      "function": "build_execution_set",
+      "expected": "1",
+      "actual": "1",
+      "pass": true
+    },
+    {
+      "test_id": "execution_set_tail_uses_physical_name",
+      "function": "build_execution_set",
+      "expected": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+      "actual": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+      "pass": true
+    },
+    {
+      "test_id": "execution_set_logical_tail_not_prisma_pending",
+      "function": "build_execution_set",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "BROKEN_I_INDEXRELID_REGRESSION_TEST",
+      "function": "fingerprint_regression_status",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "CORRECT_IX_INDEXRELID_TEST",
+      "function": "fingerprint_regression_status",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "broken_fixture_contains_alias_defect",
+      "function": "broken_indexrelid_alias_present",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "VERIFICATION_TOOLING_READ_ONLY",
+      "function": "audit_verification_harness_read_only",
+      "expected": "true",
+      "actual": "True",
+      "pass": true
+    }
+  ],
+  "fingerprint_regression": {
+    "BROKEN_I_INDEXRELID_REGRESSION_TEST": true,
+    "CORRECT_IX_INDEXRELID_TEST": true,
+    "broken_fixture_sha256": "87f9e3be009ce0f9f843b16e9b6f3e59814e16d6e6b350690067bf36dce1686a",
+    "canonical_helper": "ci_r3b1n2_catalog_fingerprint.build_catalog_fingerprint"
+  },
+  "read_only_audit": {
+    "VERIFICATION_TOOLING_READ_ONLY": true,
+    "audits": [
+      {
+        "label": "ci_r3b1q3_verification_harness.build_production_verification_snapshot",
+        "pass": true,
+        "violations": []
+      },
+      {
+        "label": "ci_r3b1n2_catalog_fingerprint.build_catalog_fingerprint",
+        "pass": true,
+        "violations": []
+      }
+    ]
+  }
+}
