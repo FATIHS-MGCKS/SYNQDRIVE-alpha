@@ -42,6 +42,7 @@ recreate_db() {
 run_migrate_deploy() {
   local db="$1"
   DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}?schema=public" \
+    PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
     bash scripts/test/prisma-migrate-deploy-resilient.sh
 }
 
