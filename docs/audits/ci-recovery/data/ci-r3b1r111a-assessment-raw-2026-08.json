@@ -23,10 +23,22 @@
     "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": "5531600e0d864eb28fc3b838301a869acaf0cc677ac3c2ad743e9792994aed99"
   },
   "bridge_effects": [
-    {"migration": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge", "effect": "ADD COLUMN organizations.short_code TEXT nullable"},
-    {"migration": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge", "effect": "CREATE UNIQUE INDEX organizations_short_code_key ON organizations(short_code)"},
-    {"migration": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge", "effect": "CREATE TYPE public.DriveType ENUM (FWD,RWD,AWD,FOUR_WD)"},
-    {"migration": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge", "effect": "ADD COLUMN vehicles.drive_type public.DriveType nullable"}
+    {
+      "migration": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "effect": "ADD COLUMN organizations.short_code TEXT nullable"
+    },
+    {
+      "migration": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "effect": "CREATE UNIQUE INDEX organizations_short_code_key ON organizations(short_code)"
+    },
+    {
+      "migration": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+      "effect": "CREATE TYPE public.DriveType ENUM (FWD,RWD,AWD,FOUR_WD)"
+    },
+    {
+      "migration": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+      "effect": "ADD COLUMN vehicles.drive_type public.DriveType nullable"
+    }
   ],
   "bridge_effect_count": 4,
   "short_code": {
@@ -45,7 +57,12 @@
     "drive_type_history_bridge_required": true,
     "live_drivetype_exists": true,
     "live_drivetype_schema": "public",
-    "live_drivetype_labels_in_order": ["FWD", "RWD", "AWD", "FOUR_WD"],
+    "live_drivetype_labels_in_order": [
+      "FWD",
+      "RWD",
+      "AWD",
+      "FOUR_WD"
+    ],
     "live_vehicles_drive_type_exists": true,
     "live_vehicles_drive_type_udt_schema": "public",
     "live_vehicles_drive_type_udt_name": "DriveType",
@@ -114,5 +131,6 @@
     "NEXT_PHASE": "R3B1R1_2_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_REQUIRES_SEPARATE_AUTHORIZATION",
     "R3B1R12_READINESS": "NOT_READY_PENDING_PRODUCTION_HISTORY_BRIDGE",
     "PR1054_MERGE_READINESS": "BLOCKED"
-  }
+  },
+  "final_head_sha": "d48646a556e2b9a9197993e74a69b45feaf6770b"
 }
