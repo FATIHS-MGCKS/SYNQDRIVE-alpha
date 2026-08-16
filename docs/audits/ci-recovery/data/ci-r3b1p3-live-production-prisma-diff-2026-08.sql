@@ -235,6 +235,9 @@ ALTER TABLE "enforcement_policy_vehicles" DROP CONSTRAINT "enforcement_policy_ve
 ALTER TABLE "enforcement_policy_vehicles" DROP CONSTRAINT "enforcement_policy_vehicles_vehicle_id_fkey";
 
 -- DropForeignKey
+ALTER TABLE "evaluations_entity_references" DROP CONSTRAINT "evaluations_entity_references_organization_id_fkey";
+
+-- DropForeignKey
 ALTER TABLE "legal_basis_assessment_evidence_refs" DROP CONSTRAINT "legal_basis_assessment_evidence_refs_legal_basis_assessment_id_";
 
 -- DropForeignKey
@@ -467,6 +470,9 @@ DROP COLUMN "foreign_travel_policy",
 DROP COLUMN "young_driver_policy";
 
 -- AlterTable
+ALTER TABLE "organization_role_assignment_drift_reconciliation_applications" RENAME CONSTRAINT "org_role_asgn_drift_recon_apps_pkey" TO "organization_role_assignment_drift_reconciliation_applicat_pkey";
+
+-- AlterTable
 ALTER TABLE "organizations" DROP COLUMN "data_processing_four_eyes_enabled";
 
 -- AlterTable
@@ -594,6 +600,9 @@ DROP TABLE "enforcement_policy_stations";
 
 -- DropTable
 DROP TABLE "enforcement_policy_vehicles";
+
+-- DropTable
+DROP TABLE "evaluations_entity_references";
 
 -- DropTable
 DROP TABLE "legal_basis_assessment_evidence_refs";
@@ -782,6 +791,15 @@ DROP TYPE "EnforcementPolicyScopeMigrationSource";
 DROP TYPE "EnforcementPolicyScopeResourceType";
 
 -- DropEnum
+DROP TYPE "EvaluationsEntityType";
+
+-- DropEnum
+DROP TYPE "EvaluationsReferenceOwnerType";
+
+-- DropEnum
+DROP TYPE "EvaluationsRelationType";
+
+-- DropEnum
 DROP TYPE "LegalBasisConsentRequirement";
 
 -- DropEnum
@@ -880,29 +898,6 @@ DROP TYPE "brake_dtc_category";
 -- DropEnum
 DROP TYPE "brake_dtc_freshness";
 
--- CreateTable
-CREATE TABLE "organization_role_assignment_drift_reconciliation_applications" (
-    "id" TEXT NOT NULL,
-    "idempotency_key" TEXT NOT NULL,
-    "organization_id" TEXT NOT NULL,
-    "membership_id" TEXT NOT NULL,
-    "evidence_hash" TEXT NOT NULL,
-    "expected_git_commit" TEXT NOT NULL,
-    "operator" TEXT NOT NULL,
-    "reason" TEXT NOT NULL,
-    "classification" TEXT NOT NULL,
-    "result" JSONB,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "organization_role_assignment_drift_reconciliation_applicat_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex
-CREATE UNIQUE INDEX "organization_role_assignment_drift_reconciliation_applicati_key" ON "organization_role_assignment_drift_reconciliation_applications"("idempotency_key");
-
--- CreateIndex
-CREATE INDEX "organization_role_assignment_drift_reconciliation_applicati_idx" ON "organization_role_assignment_drift_reconciliation_applications"("organization_id", "membership_id", "created_at");
-
 -- CreateIndex
 CREATE UNIQUE INDEX "billing_usage_snapshots_idempotency_key_key" ON "billing_usage_snapshots"("idempotency_key");
 
@@ -979,6 +974,12 @@ ALTER TABLE "org_task_automation_rule_override_revisions" RENAME CONSTRAINT "org
 ALTER TABLE "organization_legal_document_retention_policies" RENAME CONSTRAINT "organization_legal_document_retention_policies_organization_id_" TO "organization_legal_document_retention_policies_organizatio_fkey";
 
 -- RenameForeignKey
+ALTER TABLE "organization_role_assignment_drift_reconciliation_applications" RENAME CONSTRAINT "org_role_asgn_drift_recon_apps_mbr_id_fkey" TO "org_role_assignment_drift_recon_app_mem_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "organization_role_assignment_drift_reconciliation_applications" RENAME CONSTRAINT "org_role_asgn_drift_recon_apps_org_id_fkey" TO "org_role_assignment_drift_recon_app_org_fkey";
+
+-- RenameForeignKey
 ALTER TABLE "organization_role_change_applications" RENAME CONSTRAINT "organization_role_change_applications_created_role_version_id_f" TO "organization_role_change_applications_created_role_version_fkey";
 
 -- RenameForeignKey
@@ -989,12 +990,6 @@ ALTER TABLE "vehicle_battery_reference_capacity_changes" RENAME CONSTRAINT "vehi
 
 -- AddForeignKey
 ALTER TABLE "iam_session_revocation_intents" ADD CONSTRAINT "iam_session_revocation_intents_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "organization_role_assignment_drift_reconciliation_applications" ADD CONSTRAINT "org_role_assignment_drift_recon_app_org_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "organization_role_assignment_drift_reconciliation_applications" ADD CONSTRAINT "org_role_assignment_drift_recon_app_mem_fkey" FOREIGN KEY ("membership_id") REFERENCES "organization_memberships"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "rental_driving_analyses" ADD CONSTRAINT "rental_driving_analyses_driver_id_fkey" FOREIGN KEY ("driver_id") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1157,6 +1152,12 @@ ALTER INDEX "organization_legal_document_retention_policies_organization_id_" RE
 
 -- RenameIndex
 ALTER INDEX "organization_legal_documents_organization_id_document_type__idx" RENAME TO "organization_legal_documents_org_type_status_idx";
+
+-- RenameIndex
+ALTER INDEX "org_role_asgn_drift_recon_apps_idem_key" RENAME TO "organization_role_assignment_drift_reconciliation_applicati_key";
+
+-- RenameIndex
+ALTER INDEX "org_role_asgn_drift_recon_apps_org_mbr_created_idx" RENAME TO "organization_role_assignment_drift_reconciliation_applicati_idx";
 
 -- RenameIndex
 ALTER INDEX "organization_role_assignments_organization_id_membership_id_is_" RENAME TO "organization_role_assignments_organization_id_membership_id_idx";
