@@ -144,7 +144,7 @@ Any M252-table operation whose SQL contained CREATE INDEX / CREATE UNIQUE INDEX 
 
 - Branch: `audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08`
 - Pre-remediation SHA: `813ceaf9`
-- Post-remediation SHA: `813ceaf9ac9ddb9c458128c151267c736f198443`
+- Post-remediation SHA: `3aba4f39`
 
 ## 21. Exact next-phase boundary
 

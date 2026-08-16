@@ -140,8 +140,7 @@
   "R3B1P1_REGRESSION_TEST_PRESENT": true,
   "worktree": {
     "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-    "head_sha": "813ceaf9ac9ddb9c458128c151267c736f198443",
-    "pre_remediation_sha": "813ceaf9",
+    "post_remediation_sha": "3aba4f39",
     "status_short": "M docs/audits/ci-recovery/tooling/ci_r3b1o3_diff_attribution.py\n M docs/audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py\n?? docs/audits/ci-recovery/ci-r3b1p2-authorized-strategy-exact-identity-hardening-2026-08.md\n?? docs/audits/ci-recovery/data/ci-r3b1p2-golden-tests-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-legitimate-operation-proof-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-production-readonly-validation-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-remediation-summary-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-static-matcher-audit-2026-08.json\n?? docs/audits/ci-recovery/data/ci-r3b1p2-terminal-gate-fail-closed-2026-08.json\n?? docs/audits/ci-recovery/tooling/ci_r3b1p2_authorized_strategy_authority.py\n?? docs/audits/ci-recovery/tooling/ci_r3b1p2_golden_tests.py\n?? docs/audits/ci-recovery/tooling/ci_r3b1p2_run_remediation.py\n?? docs/audits/pr-recovery/R3B1P2-AUTHORIZED-STRATEGY-EXACT-IDENTITY-HARDENING.md",
     "diff_stat": ".../ci-recovery/tooling/ci_r3b1o3_diff_attribution.py    | 11 +++++++----\n .../audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py | 16 ++++++++++++++--\n 2 files changed, 21 insertions(+), 6 deletions(-)"
   },
