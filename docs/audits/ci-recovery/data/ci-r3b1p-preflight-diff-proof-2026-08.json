@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P",
+  "checks": {
+    "gate_r3b_scope_zero": true,
+    "gate_m252_scope_zero": true,
+    "gate_unknown_scope_zero": true,
+    "gate_new_strategy_drift_zero": true,
+    "gate_unattributed_zero": true,
+    "m252_total_matches_authorized": true,
+    "r3b_total_matches_authorized": true,
+    "pass_flag_true": true
+  },
+  "metrics": {
+    "total_operations": 399,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "R3B_SCOPE_TOTAL": 1,
+    "M252_SCOPE_TOTAL": 5,
+    "R3B_SCOPE_AUTHORIZED": 1,
+    "M252_SCOPE_AUTHORIZED": 5
+  },
+  "pass": true
+}

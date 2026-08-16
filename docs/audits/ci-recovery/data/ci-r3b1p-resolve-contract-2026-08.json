@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P",
+  "steps": [
+    {
+      "migration_name": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "label": "R3B1G",
+      "resolve_mode": "applied",
+      "command": "prisma migrate resolve --applied \"20260716182730_ci_r3b_tire_setup_status_predecessor\"",
+      "mutation_classification": "MUTATING",
+      "expected_before": "absent or failed ledger row; migration effects already present in production catalog from recovery path",
+      "expected_after": "finished ledger row without re-executing SQL",
+      "why": "R3B1G predecessor collision resolved without replaying conflicting SQL",
+      "read_only_post_check": "SELECT migration_name, finished_at FROM \"_prisma_migrations\" WHERE migration_name = '20260716182730_ci_r3b_tire_setup_status_predecessor';",
+      "stop_condition": "exit code != 0 OR finished_at IS NULL after resolve",
+      "unambiguous": true
+    },
+    {
+      "migration_name": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "label": "R3B1I",
+      "resolve_mode": "applied",
+      "command": "prisma migrate resolve --applied \"20260721245000_ci_r3b_iam_membership_permissions_predecessor\"",
+      "mutation_classification": "MUTATING",
+      "expected_before": "absent or failed ledger row; migration effects already present in production catalog from recovery path",
+      "expected_after": "finished ledger row without re-executing SQL",
+      "why": "R3B1I predecessor collision resolved without replaying conflicting SQL",
+      "read_only_post_check": "SELECT migration_name, finished_at FROM \"_prisma_migrations\" WHERE migration_name = '20260721245000_ci_r3b_iam_membership_permissions_predecessor';",
+      "stop_condition": "exit code != 0 OR finished_at IS NULL after resolve",
+      "unambiguous": true
+    }
+  ],
+  "pass": true
+}
