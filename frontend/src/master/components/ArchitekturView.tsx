@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E7C Recommendations Frontend Integration (Phase 3 — V4.9.897)', icon: Layers,
+    endpoint: 'GET …/insights/recommendations consumed by EvaluationsPage via useEvaluationsRecommendations (period-aware query key).',
+    service: 'E7C presentation-only: RecommendationsActionsSection after Executive Summary; server order/status/emptyState preserved; fail-closed copy-key i18n; canonical money/percent formatting; allowlisted EVALUATIONS_SECTION scroll actions; driver lazy-reveal preserved (no auto-fetch). Shared contract via @synq/evaluations-recommendations alias.',
+    dataSource: 'frontend/src/rental/components/evaluations/{RecommendationsActionsSection,RecommendationCard,recommendation-presentation}.*; docs/audits/pr-recovery/phase3-e7c-*.md. E7D next: integrated acceptance.' },
   { name: 'Auswertungen E7B.1 Fail-Closed Recommendation Authority (Phase 3 — V4.9.896)', icon: Layers,
     endpoint: 'Same GET …/insights/recommendations endpoint; E7B.1 hardens derivation gates only (no API shape change).',
     service: 'E7B.1 conformance: Finance exact AVAILABLE-only; Driver AVAILABLE+factors; Cost PARTIAL-only; source-scoped E5 quality limitations + supersession; empty-state fail-closed; discriminated action targets + runtime allowlist validation. Preserves one-summary orchestration and derive-on-read.',

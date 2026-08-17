@@ -3262,5 +3262,71 @@ export const de: Record<TranslationKey, string> = {
   'evaluations.driver.piiTier.none': 'Keine Identität',
   'evaluations.driver.relationship.ASSOCIATED_WITH': 'assoziiert mit',
   'evaluations.driver.relationship.CORRELATES_WITH': 'korreliert mit',
+
+  'evaluations.section.recommendations': 'Empfehlungen & Aktionen',
+  'evaluations.recommendations.intro':
+    'Serverseitig abgeleitete Empfehlungen für diesen Bereich. Reihenfolge und Priorität sind verbindlich.',
+  'evaluations.recommendations.copyUnavailable': 'Details für diese Empfehlung nicht verfügbar.',
+  'evaluations.recommendations.empty.NO_ACTION_NEEDED': 'Für die aktuelle Evidenz sind keine Maßnahmen erforderlich.',
+  'evaluations.recommendations.empty.INSUFFICIENT_EVIDENCE':
+    'Nicht genügend Evidenz, um Empfehlungen für diesen Bereich abzuleiten.',
+  'evaluations.recommendations.empty.fallback': 'Empfehlungen sind nicht verfügbar.',
+  'evaluations.recommendations.evidence': 'Evidenz',
+  'evaluations.recommendations.sourcePeriod': 'Quellzeitraum',
+  'evaluations.recommendations.sourceSections': 'Quellbereiche',
+  'evaluations.recommendations.qualityLimitations': 'Qualitätslimitierungen',
+  'evaluations.recommendations.calculationVersion': 'Berechnungsversion',
+  'evaluations.recommendations.severity.INFO': 'Info',
+  'evaluations.recommendations.severity.WARNING': 'Warnung',
+  'evaluations.recommendations.severity.CRITICAL': 'Kritisch',
+  'evaluations.recommendations.category.FINANCE': 'Finanzen',
+  'evaluations.recommendations.category.FLEET': 'Flotte',
+  'evaluations.recommendations.category.OPERATIONS': 'Betrieb',
+  'evaluations.recommendations.category.QUALITY': 'Qualität',
+  'evaluations.recommendations.category.DRIVER': 'Fahrer',
+  'evaluations.recommendations.category.INSIGHT': 'Erkenntnis',
+  'evaluations.recommendations.sourceSection.finance': 'Finanzen',
+  'evaluations.recommendations.sourceSection.weaknesses': 'Schwächen',
+  'evaluations.recommendations.sourceSection.strengths': 'Stärken',
+  'evaluations.recommendations.sourceSection.utilization': 'Auslastung',
+  'evaluations.recommendations.sourceSection.cost': 'Kosten',
+  'evaluations.recommendations.sourceSection.quality': 'Datenqualität',
+  'evaluations.recommendations.sourceSection.driver': 'Fahrereinfluss',
+  'evaluations.recommendations.receivablesAttention.title': 'Überfällige Forderungen prüfen',
+  'evaluations.recommendations.receivablesAttention.explanation':
+    'Überfällige Forderungen von {amount} erfordern Aufmerksamkeit in Finanzen.',
+  'evaluations.recommendations.openReceivablesReview.title': 'Offene Forderungen prüfen',
+  'evaluations.recommendations.openReceivablesReview.explanation':
+    'Offene Forderungen von {amount} sollten in Finanzen nachverfolgt werden.',
+  'evaluations.recommendations.utilizationAttention.title': 'Geringe Flottenauslastung',
+  'evaluations.recommendations.utilizationAttention.explanation':
+    'Auslastung liegt bei {observedPercent} (Schwellenwert {thresholdPercent}).',
+  'evaluations.recommendations.weaknessAttention.title': 'Betriebliche Schwäche erkannt',
+  'evaluations.recommendations.weaknessAttention.explanation':
+    'Regel {ruleId} meldet beobachteten Wert {observed}.',
+  'evaluations.recommendations.strengthReinforce.title': 'Stärke verstärken',
+  'evaluations.recommendations.strengthReinforce.explanation':
+    'Erwägen Sie, die Leistung für Regel {ruleId} zu verstärken.',
+  'evaluations.recommendations.costEvidenceIncomplete.title': 'Kostenevidenz unvollständig',
+  'evaluations.recommendations.costEvidenceIncomplete.explanation':
+    'Die Betriebskostenevidenz ist für diesen Bereich unvollständig.',
+  'evaluations.recommendations.dataQualityLimited.title': 'Datenqualitätslimitierungen',
+  'evaluations.recommendations.dataQualityLimited.explanation':
+    'Limitierungen der Analysequalität können einige Erkenntnisse beeinflussen.',
+  'evaluations.recommendations.detectionInputSkipped.title': 'Erkennungseingaben übersprungen',
+  'evaluations.recommendations.detectionInputSkipped.explanation':
+    'Einige Erkennungsdimensionen wurden wegen unzureichender Eingaben übersprungen.',
+  'evaluations.recommendations.driverInfluenceReview.title': 'Fahrereinfluss prüfen',
+  'evaluations.recommendations.driverInfluenceReview.explanation':
+    'Faktoren zum Fahrereinfluss können eine Prüfung rechtfertigen. Personenbezogene Daten werden erst nach expliziter Freigabe geladen.',
+  'evaluations.recommendations.actions.viewFinance': 'Finanzen anzeigen',
+  'evaluations.recommendations.actions.viewUtilization': 'Auslastung anzeigen',
+  'evaluations.recommendations.actions.viewWeaknesses': 'Schwächen anzeigen',
+  'evaluations.recommendations.actions.viewStrengths': 'Stärken anzeigen',
+  'evaluations.recommendations.actions.viewCost': 'Kosten anzeigen',
+  'evaluations.recommendations.actions.viewQuality': 'Datenqualität anzeigen',
+  'evaluations.recommendations.actions.viewDetection': 'Erkennung anzeigen',
+  'evaluations.recommendations.actions.viewDriverInfluence': 'Fahrereinfluss anzeigen',
+
   ...legalDocumentsDe,
 };

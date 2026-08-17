@@ -124,13 +124,28 @@ describe('E6A query keys — scope-safe + deterministic + finance MTD', () => {
     expect(EVALUATIONS_FINANCE_PERIOD_AUTHORITY).toBe('MTD');
   });
 
-  it('capability is part of the key (summary vs quality vs driver)', () => {
+  it('capability is part of the key (summary vs quality vs driver vs recommendations)', () => {
     expect(evaluationsQueryKeyString('insights-summary', org)).not.toBe(
       evaluationsQueryKeyString('quality', org),
     );
     expect(evaluationsQueryKeyString('quality', org)).not.toBe(
       evaluationsQueryKeyString('driver-analysis', org),
     );
+    expect(evaluationsQueryKeyString('recommendations', org, { periodType: 'MTD' })).not.toBe(
+      evaluationsQueryKeyString('finance', org, { periodType: 'MTD' }),
+    );
+  });
+
+  it('recommendations key is period-aware (unlike finance MTD lock)', () => {
+    const mtd = evaluationsQueryKeyString('recommendations', org, { periodType: 'MTD' });
+    const rolling = evaluationsQueryKeyString('recommendations', org, { periodType: 'ROLLING_30_DAYS' });
+    expect(mtd).not.toBe(rolling);
+  });
+
+  it('recommendations station order is stable', () => {
+    const ab = evaluationsQueryKeyString('recommendations', org, { stationIds: ['a', 'b'], periodType: 'MTD' });
+    const ba = evaluationsQueryKeyString('recommendations', org, { stationIds: ['b', 'a'], periodType: 'MTD' });
+    expect(ab).toBe(ba);
   });
 });
 

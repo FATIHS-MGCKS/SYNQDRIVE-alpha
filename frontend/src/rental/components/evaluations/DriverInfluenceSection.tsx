@@ -188,7 +188,8 @@ export function DriverInfluenceSection({
 
   return (
     <section
-      className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col gap-3"
+      id="evaluations-section-driver"
+      className="scroll-mt-24 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col gap-3"
       aria-labelledby="evaluations-driver-heading"
       data-testid="evaluations-driver"
     >

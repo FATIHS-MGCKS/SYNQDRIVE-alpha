@@ -11,6 +11,7 @@ export default defineConfig({
       '@synq/evaluations-metrics': path.resolve(__dirname, '../shared/evaluations-metrics'),
       '@synq/evaluations-periods': path.resolve(__dirname, '../shared/evaluations-periods'),
       '@synq/evaluations-finance': path.resolve(__dirname, '../shared/evaluations-finance'),
+      '@synq/evaluations-recommendations': path.resolve(__dirname, '../shared/evaluations-recommendations'),
     },
   },
   server: {

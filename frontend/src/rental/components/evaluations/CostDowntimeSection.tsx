@@ -57,6 +57,7 @@ export function CostDowntimeSection({
 }) {
   const { t } = useLanguage();
   return (
+    <div id="evaluations-section-cost" className="scroll-mt-24">
     <EvaluationsSectionShell
       titleKey="evaluations.section.cost"
       async={costModel}
@@ -77,5 +78,6 @@ export function CostDowntimeSection({
         </div>
       )}
     </EvaluationsSectionShell>
+    </div>
   );
 }

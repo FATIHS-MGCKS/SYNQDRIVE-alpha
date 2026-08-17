@@ -48,12 +48,17 @@
   Cost PARTIAL-only authority, source-scoped quality limitations and supersession, empty-state fail-closed,
   discriminated action targets with runtime validation. See
   `phase3-e7b1-recommendation-authority-conformance-hardening-2026-08.md`.
+- **E7C (frontend integration, branch):** `@synq/evaluations-recommendations` alias wired to frontend;
+  `analyticsRecommendations` API + `fetchEvaluationsRecommendations` + `useEvaluationsRecommendations`;
+  `RecommendationsActionsSection` after Executive Summary on `EvaluationsPage`; server copy keys + typed
+  copy param formatting; section anchor navigation; driver lazy-reveal preserved. See
+  `phase3-e7c-canonical-recommendations-actions-frontend-integration-2026-08.md`.
 - **Actions (initial).** Non-mutating only: NAVIGATION / FILTER / OPEN_ENTITY /
   OPEN_WORKFLOW link. E7B.1: discriminated union targets + runtime allowlist validation.
 - **Workflow boundary.** Link to existing workflow-automation route with context;
   no hidden action engine inside Evaluations.
-- **UI (E7C plan).** New section on `EvaluationsPage` after Executive Summary;
-  no second Evaluations page.
+- **UI (E7C implemented on branch).** `RecommendationsActionsSection` on `EvaluationsPage` immediately
+  after Executive Summary; one E7 request; presentation-only (no client derivation/reorder).
 - **Proposed API (E7B).** `GET …/evaluations/analytics/insights/recommendations`
   with deterministic stable ids and `recommendations-e7-v1` calculation version.
   **Implemented on branch** (E7B); not merged to main.

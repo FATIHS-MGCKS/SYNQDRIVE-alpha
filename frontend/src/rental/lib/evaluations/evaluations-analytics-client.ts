@@ -17,6 +17,7 @@ import type {
   EvaluationsQualityReport,
   EvaluationsDriverInfluenceSection,
 } from './evaluations-canonical.types';
+import type { EvaluationsRecommendationsResponse } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
 
 export function mapEvaluationsResult<T>(r: RequestResult<T>): EvaluationsCanonicalResult<T> {
   if (r.ok && r.data !== undefined) return { state: 'AVAILABLE', data: r.data };
@@ -61,5 +62,14 @@ export async function fetchEvaluationsDriverInfluence(
 ): Promise<EvaluationsCanonicalResult<EvaluationsDriverInfluenceSection>> {
   return mapEvaluationsResult(
     await api.evaluations.driverAnalysis(organizationId, toClientReq(req)),
+  );
+}
+
+export async function fetchEvaluationsRecommendations(
+  organizationId: string,
+  req?: EvaluationsAnalyticsRequest,
+): Promise<EvaluationsCanonicalResult<EvaluationsRecommendationsResponse>> {
+  return mapEvaluationsResult(
+    await api.evaluations.analyticsRecommendations(organizationId, toClientReq(req)),
   );
 }

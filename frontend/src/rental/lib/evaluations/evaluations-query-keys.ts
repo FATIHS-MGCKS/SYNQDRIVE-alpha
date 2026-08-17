@@ -12,7 +12,8 @@ export type EvaluationsCapability =
   | 'insights-summary'
   | 'quality'
   | 'driver-analysis'
-  | 'finance';
+  | 'finance'
+  | 'recommendations';
 
 function stationKeyPart(stationIds: readonly string[] | null | undefined): string {
   if (stationIds == null) return 'all';

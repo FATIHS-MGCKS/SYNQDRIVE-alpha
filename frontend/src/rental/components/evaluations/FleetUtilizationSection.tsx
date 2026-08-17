@@ -18,6 +18,7 @@ export function FleetUtilizationSection({
 }) {
   const { t } = useLanguage();
   return (
+    <div id="evaluations-section-utilization" className="scroll-mt-24">
     <EvaluationsSectionShell
       titleKey="evaluations.section.utilization"
       async={utilization}
@@ -63,5 +64,6 @@ export function FleetUtilizationSection({
         );
       }}
     </EvaluationsSectionShell>
+    </div>
   );
 }

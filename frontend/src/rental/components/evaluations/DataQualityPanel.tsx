@@ -198,6 +198,7 @@ export function DataQualityPanel({
 }) {
   const { t } = useLanguage();
   return (
+    <div id="evaluations-section-quality" className="scroll-mt-24">
     <EvaluationsSectionShell
       titleKey="evaluations.section.dataQuality"
       async={quality}
@@ -235,5 +236,6 @@ export function DataQualityPanel({
         </div>
       )}
     </EvaluationsSectionShell>
+    </div>
   );
 }

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e7c-recommendations-frontend-integration-2026-08-17',
+    version: '4.9.897',
+    title: 'V4.9.897 — Evaluations E7C: canonical Recommendations frontend integration',
+    summary: [
+      'Wired shared `@synq/evaluations-recommendations` into frontend (Vite/Vitest/tsconfig alias). Added analyticsRecommendations API, transport client, period-aware query key, and useEvaluationsRecommendations hook.',
+      'New RecommendationsActionsSection on EvaluationsPage after Executive Summary: server copy keys with fail-closed i18n, typed copy param formatting (money/percent), provenance disclosure, allowlisted non-mutating section navigation.',
+      'Driver CTA scrolls only — lazy reveal preserved. Comprehensive frontend tests + backend E7 smoke unchanged. Zero Prisma/migration/production changes.',
+    ],
+    reason:
+      'E7C presents canonical server recommendations on the existing Evaluations page without client business derivation.',
+    previousBehavior:
+      'E7B/B.1 delivered backend recommendations only. EvaluationsPage had no Recommendations section or E7 transport.',
+    details:
+      'frontend/vite.config.ts, frontend/src/lib/api.ts, frontend/src/rental/{lib/evaluations,hooks,components/evaluations}/*, docs/audits/pr-recovery/phase3-e7c-*.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T12:00:00.000Z',
+  },
+  {
     id: 'evaluations-e7b1-recommendation-authority-conformance-2026-08-17',
     version: '4.9.896',
     title: 'V4.9.896 — Evaluations E7B.1: fail-closed recommendation authority hardening',
