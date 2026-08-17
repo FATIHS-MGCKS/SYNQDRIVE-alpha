@@ -104,7 +104,15 @@ const state = {
   driverAnalysisRequestCount: 0,
   // E6C.1: which driver scenario the driver-analysis route serves.
   driverScenario: 'pseudonymous' as EvaluationsDriverScenario,
+  // E7D: recommendations mock scenario for canonical E7 endpoint.
+  recommendationsScenario: 'available' as EvaluationsRecommendationsScenario,
 };
+
+export type EvaluationsRecommendationsScenario =
+  | 'available'
+  | 'partial-insufficient'
+  | 'no-action-needed'
+  | 'driver-review';
 
 /** Toggle the canonical E4/E5 feature-disabled (generic 404) behavior for a test. */
 export function setCanonicalFeatureDisabled(disabled: boolean) {
@@ -114,6 +122,11 @@ export function setCanonicalFeatureDisabled(disabled: boolean) {
 /** E6C.1: select which driver-analysis scenario the mock serves. */
 export function setDriverScenario(scenario: EvaluationsDriverScenario) {
   state.driverScenario = scenario;
+}
+
+/** E7D: select which recommendations payload the mock serves. */
+export function setRecommendationsScenario(scenario: EvaluationsRecommendationsScenario) {
+  state.recommendationsScenario = scenario;
 }
 
 /** E6C: number of direct driver-analysis requests observed since the last reset. */
@@ -298,7 +311,6 @@ const CANON_DRIVER_COVERAGE = {
 const CANON_DRIVER_DISCLAIMER =
   'Driver influence factors indicate statistical association only. Correlation is not causation; no causal claim is made about any individual driver.';
 
-// E6C: direct E5B driver-analysis response (separate from the summary's embedded slice).
 function canonicalDriverInfluence(scenario: EvaluationsDriverScenario): EvaluationsDriverInfluenceSection {
   const base = {
     calculationVersion: 'driver-influence-e4-v1',
@@ -331,6 +343,115 @@ function canonicalDriverInfluence(scenario: EvaluationsDriverScenario): Evaluati
     reason: null,
     factors,
     piiTier: scenario === 'full' ? 'full' : 'pseudonymous',
+  };
+}
+
+const CANON_MTD_PERIOD = { ...CANON_PERIOD, periodType: 'MTD' as const };
+
+function canonicalRecommendations() {
+  const base = {
+    schemaVersion: '1.0.0' as const,
+    generatedAt: EVAL_E2E_FIXED_NOW,
+    calculationVersion: 'recommendations-e7-v1' as const,
+    requestPeriod: CANON_PERIOD,
+    scope: CANON_SCOPE,
+    reason: null as string | null,
+  };
+
+  if (state.recommendationsScenario === 'no-action-needed') {
+    return {
+      ...base,
+      status: 'AVAILABLE' as const,
+      recommendations: [] as const,
+      emptyState: 'NO_ACTION_NEEDED' as const,
+    };
+  }
+
+  if (state.recommendationsScenario === 'partial-insufficient') {
+    return {
+      ...base,
+      status: 'PARTIAL' as const,
+      recommendations: [] as const,
+      emptyState: 'INSUFFICIENT_EVIDENCE' as const,
+    };
+  }
+
+  const financeRec = {
+    id: 'rec-e2e-finance-z-order-first',
+    family: 'RECEIVABLES_ATTENTION' as const,
+    category: 'FINANCE' as const,
+    severity: 'WARNING' as const,
+    titleKey: 'evaluations.recommendations.receivablesAttention.title',
+    explanationKey: 'evaluations.recommendations.receivablesAttention.explanation',
+    copyParams: [{ key: 'amount', type: 'MONEY' as const, value: { amountMinor: 5000, currency: 'EUR' } }],
+    actionability: 'ACTIONABLE' as const,
+    actions: [
+      {
+        actionType: 'NAVIGATION' as const,
+        mutating: false as const,
+        labelKey: 'evaluations.recommendations.actions.viewFinance',
+        target: { kind: 'EVALUATIONS_SECTION' as const, value: 'finance' as const },
+        confirmationRequired: false as const,
+      },
+    ],
+    provenance: {
+      calculationVersion: 'recommendations-e7-v1' as const,
+      sourceSections: ['finance'] as const,
+      sourceRuleIds: [] as const,
+      sourceMetricIds: ['fin.overdue_receivables'] as const,
+      period: CANON_MTD_PERIOD,
+      sourcePeriods: [{ source: 'finance', period: CANON_MTD_PERIOD }] as const,
+      scope: CANON_SCOPE,
+      inputStatuses: { finance: 'AVAILABLE' as const },
+      qualityLimitations: [] as const,
+      lineageRefs: [] as const,
+      derivationReason: 'RECEIVABLES_OVERDUE:EUR',
+    },
+  };
+
+  const driverRec = {
+    id: 'rec-e2e-driver-order-second',
+    family: 'DRIVER_INFLUENCE_REVIEW' as const,
+    category: 'DRIVER' as const,
+    severity: 'INFO' as const,
+    titleKey: 'evaluations.recommendations.driverInfluenceReview.title',
+    explanationKey: 'evaluations.recommendations.driverInfluenceReview.explanation',
+    copyParams: [] as const,
+    actionability: 'ACTIONABLE' as const,
+    actions: [
+      {
+        actionType: 'NAVIGATION' as const,
+        mutating: false as const,
+        labelKey: 'evaluations.recommendations.actions.viewDriverInfluence',
+        target: { kind: 'EVALUATIONS_SECTION' as const, value: 'driver' as const },
+        confirmationRequired: false as const,
+      },
+    ],
+    provenance: {
+      calculationVersion: 'recommendations-e7-v1' as const,
+      sourceSections: ['driverInfluence'] as const,
+      sourceRuleIds: [] as const,
+      sourceMetricIds: [] as const,
+      period: CANON_PERIOD,
+      sourcePeriods: [{ source: 'driverInfluence', period: CANON_PERIOD }] as const,
+      scope: CANON_SCOPE,
+      inputStatuses: { driverInfluence: 'AVAILABLE' as const },
+      qualityLimitations: [] as const,
+      lineageRefs: [] as const,
+      derivationReason: 'DRIVER_INFLUENCE_REVIEW',
+    },
+  };
+
+  const recommendations =
+    state.recommendationsScenario === 'driver-review'
+      ? [driverRec, financeRec]
+      : [financeRec, driverRec];
+
+  return {
+    ...base,
+    status: 'AVAILABLE' as const,
+    recommendations,
+    emptyState: null,
   };
 }
 
@@ -546,6 +667,7 @@ export function resetEvaluationsMockState(profile: EvaluationsScenarioProfile = 
   state.canonicalFeatureDisabled = false;
   state.driverAnalysisRequestCount = 0;
   state.driverScenario = 'pseudonymous';
+  state.recommendationsScenario = 'available';
   state.invoices = [];
   state.insights = [];
   state.customers = [];
@@ -852,6 +974,13 @@ export async function installEvaluationsMocks(
       }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalQualityReport()) });
     }
+    // E7 canonical recommendations — separate endpoint from summary/quality/driver.
+    if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/recommendations`) && method === 'GET') {
+      if (state.canonicalFeatureDisabled) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ statusCode: 404, message: 'Not found', error: 'Not Found' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(canonicalRecommendations()) });
+    }
     // E5B driver-analysis (E6C Driver Influence) — a SEPARATE direct request that must
     // only fire after the explicit reveal. Count tracks lazy-request assertions.
     if (url.includes(`/organizations/${EVAL_E2E_ORG_ID}/evaluations/analytics/insights/driver-analysis`) && method === 'GET') {
@@ -901,11 +1030,11 @@ export async function openEvaluationsPage(
     theme?: 'light' | 'dark';
     user?: typeof mockUserFull;
     canonicalFeatureDisabled?: boolean;
+    recommendationsScenario?: EvaluationsRecommendationsScenario;
   },
 ) {
   const profile = options?.profile ?? 'full-org';
   resetEvaluationsMockState(profile);
-  if (options?.canonicalFeatureDisabled) state.canonicalFeatureDisabled = true;
 
   await installEvaluationsClockFreeze(page);
   await page.addInitScript(
@@ -924,6 +1053,9 @@ export async function openEvaluationsPage(
   );
 
   await installEvaluationsMocks(page, { profile, user: options?.user });
+  // Apply scenario overrides after route registration — installEvaluationsMocks resets profile state.
+  if (options?.canonicalFeatureDisabled) state.canonicalFeatureDisabled = true;
+  if (options?.recommendationsScenario) state.recommendationsScenario = options.recommendationsScenario;
   await page.goto('/rental', { waitUntil: 'load' });
   await navigateToEvaluationsView(page);
   await page.getByTestId('evaluations-page').waitFor({ state: 'visible', timeout: 30_000 });

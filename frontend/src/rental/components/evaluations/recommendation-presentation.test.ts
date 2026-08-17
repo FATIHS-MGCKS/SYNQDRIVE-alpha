@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { en } from '../../i18n/translations/en';
 import {
   buildCopyParamVariables,
@@ -11,6 +13,9 @@ import {
   scrollToEvaluationsSection,
   sectionAnchorId,
 } from '../../components/evaluations/recommendation-presentation';
+import { RecommendationCard } from '../../components/evaluations/RecommendationCard';
+import { LanguageProvider } from '../../i18n/LanguageContext';
+import { e7TestRecommendation } from '../../lib/evaluations/evaluations-recommendations-test-fixtures';
 import type { E7CopyParam } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
 
 const t = (key: keyof typeof en, vars?: Record<string, string | number>) => {
@@ -151,5 +156,37 @@ describe('E7C copy param safety', () => {
 
   it('scrollToEvaluationsSection returns false when anchor missing', () => {
     expect(scrollToEvaluationsSection('quality')).toBe(false);
+  });
+});
+
+describe('E7D copy param XSS safety', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('TEXT param with HTML/script renders as text without execution', () => {
+    const rec = e7TestRecommendation({
+      titleKey: 'evaluations.recommendations.weaknessAttention.title',
+      explanationKey: 'evaluations.recommendations.weaknessAttention.explanation',
+      copyParams: [
+        { key: 'ruleId', type: 'TEXT', value: '<img src=x onerror=window.__xss=1>' },
+        { key: 'observed', type: 'NUMBER', value: 1 },
+      ],
+    });
+    act(() => {
+      root.render(createElement(LanguageProvider, null, createElement(RecommendationCard, { recommendation: rec })));
+    });
+    expect((window as unknown as { __xss?: number }).__xss).toBeUndefined();
+    expect(container.textContent ?? '').toContain('<img src=x onerror=window.__xss=1>');
+    expect(container.querySelector('img[src="x"]')).toBeNull();
   });
 });

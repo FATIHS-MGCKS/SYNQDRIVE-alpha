@@ -394,10 +394,14 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E7D Final Integrated Acceptance (Phase 3 — V4.9.898)', icon: Layers,
+    endpoint: 'Same GET …/insights/recommendations + EvaluationsPage E7 section; E7D adds acceptance replay only.',
+    service: 'E7D: full security/privacy/quality/UX replay — backend 1× summary orchestration, Finance MTD, driver lazy reveal, fail-closed empty states, non-mutating actions, E2E browser flow (desktop + mobile 320). Merge simulation green; PR #1055 ready for explicit merge authorization. No E8/E9, no Prisma.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e7d-final-integrated-acceptance-merge-readiness-2026-08.md; frontend/e2e/evaluations-e7-flow.spec.ts.' },
   { name: 'Auswertungen E7C Recommendations Frontend Integration (Phase 3 — V4.9.897)', icon: Layers,
     endpoint: 'GET …/insights/recommendations consumed by EvaluationsPage via useEvaluationsRecommendations (period-aware query key).',
     service: 'E7C presentation-only: RecommendationsActionsSection after Executive Summary; server order/status/emptyState preserved; fail-closed copy-key i18n; canonical money/percent formatting; allowlisted EVALUATIONS_SECTION scroll actions; driver lazy-reveal preserved (no auto-fetch). Shared contract via @synq/evaluations-recommendations alias.',
-    dataSource: 'frontend/src/rental/components/evaluations/{RecommendationsActionsSection,RecommendationCard,recommendation-presentation}.*; docs/audits/pr-recovery/phase3-e7c-*.md. E7D next: integrated acceptance.' },
+    dataSource: 'frontend/src/rental/components/evaluations/{RecommendationsActionsSection,RecommendationCard,recommendation-presentation}.*; docs/audits/pr-recovery/phase3-e7c-*.md.' },
   { name: 'Auswertungen E7B.1 Fail-Closed Recommendation Authority (Phase 3 — V4.9.896)', icon: Layers,
     endpoint: 'Same GET …/insights/recommendations endpoint; E7B.1 hardens derivation gates only (no API shape change).',
     service: 'E7B.1 conformance: Finance exact AVAILABLE-only; Driver AVAILABLE+factors; Cost PARTIAL-only; source-scoped E5 quality limitations + supersession; empty-state fail-closed; discriminated action targets + runtime allowlist validation. Preserves one-summary orchestration and derive-on-read.',

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e7d-final-integrated-acceptance-2026-08-17',
+    version: '4.9.898',
+    title: 'V4.9.898 — Evaluations E7D: final integrated acceptance + merge readiness',
+    summary: [
+      'E7D replayed security/privacy/quality/UX gates: backend orchestration (1× E4 summary), Finance MTD invariance, money/privacy/quality/status/empty-state/action security, tenant isolation, hook race safety.',
+      'Added E7 Playwright flow suite (section order, PARTIAL/NO_ACTION_NEEDED, Finance MTD provenance, driver lazy reveal, mobile 320). Fixed E2E fixture scenario ordering; late-response race + XSS copy safety unit tests.',
+      'Full acceptance matrix GO. PR #1055 ready for separate merge authorization. Zero Prisma/migration/production changes. E8/E9 not started.',
+    ],
+    reason:
+      'E7D is the final independent acceptance gate before PR #1055 merge authorization.',
+    previousBehavior:
+      'E7C integrated frontend presentation; E7D acceptance artifact and E2E coverage were pending.',
+    details:
+      'frontend/e2e/evaluations-e7-flow.spec.ts, frontend/e2e/evaluations-fixtures.ts, docs/audits/pr-recovery/phase3-e7d-*.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T16:00:00.000Z',
+  },
+  {
     id: 'evaluations-e7c-recommendations-frontend-integration-2026-08-17',
     version: '4.9.897',
     title: 'V4.9.897 — Evaluations E7C: canonical Recommendations frontend integration',

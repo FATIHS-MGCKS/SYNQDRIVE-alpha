@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
 import { renderHook, waitForHook } from '../../test/renderHook';
 import type { RequestResult } from '../../lib/api';
 import type { EvaluationsRecommendationsResponse } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
@@ -115,6 +116,33 @@ describe('E7C recommendations hook lifecycle', () => {
     await waitForHook(() => result.current.phase === 'SETTLED');
     await rerender({ orgId: null });
     await waitForHook(() => result.current.phase === 'IDLE');
+    unmount();
+  });
+
+  it('E7 late org-A response after org-B is discarded (race guard)', async () => {
+    let resolveA: (v: RequestResult<EvaluationsRecommendationsResponse>) => void = () => {};
+    const promiseA = new Promise<RequestResult<EvaluationsRecommendationsResponse>>((r) => {
+      resolveA = r;
+    });
+    recommendationsMock.mockImplementation((orgId: string) => {
+      if (orgId === 'org-a') return promiseA;
+      return Promise.resolve({ ok: false, status: 403, errorMessage: 'Forbidden' });
+    });
+
+    const { result, rerender, unmount } = renderHook(
+      (p: { orgId: string }) => useEvaluationsRecommendations(p.orgId),
+      { initialProps: { orgId: 'org-a' } },
+    );
+    await rerender({ orgId: 'org-b' });
+    await waitForHook(
+      () => result.current.phase === 'SETTLED' && result.current.result.state === 'UNAUTHORIZED',
+    );
+    resolveA({ ok: true, status: 200, data: PAYLOAD });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.phase === 'SETTLED' && result.current.result.state).toBe('UNAUTHORIZED');
     unmount();
   });
 });

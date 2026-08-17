@@ -13,7 +13,7 @@ lesen, dann arbeiten.
 - **R3B status:** COMPLETE — E7 ist explizit autorisiert
 - Arbeits-/PR-Branch: `integration/evaluations-e7-recommendations-actions-2026-08`
 - Draft-PR: **#1055** — „Evaluations Recovery E7 – Recommendations & Actions“
-  (OPEN, Draft, base `main`). **Bleibt Draft — nicht mergen, nicht Ready markieren.**
+  (OPEN, Ready for Review after E7D, base `main`). **Nicht mergen ohne explizite Autorisierung.**
 
 ## 2. Zuerst lesen: Regeln / Arbeitsanweisungen
 
@@ -26,6 +26,7 @@ lesen, dann arbeiten.
 - `docs/audits/pr-recovery/phase3-e7b-canonical-recommendations-backend-implementation-2026-08.md` (**E7B backend implementation**)
 - `docs/audits/pr-recovery/phase3-e7b1-recommendation-authority-conformance-hardening-2026-08.md` (**E7B.1 fail-closed hardening**)
 - `docs/audits/pr-recovery/phase3-e7c-canonical-recommendations-actions-frontend-integration-2026-08.md` (**E7C frontend integration**)
+- `docs/audits/pr-recovery/phase3-e7d-final-integrated-acceptance-merge-readiness-2026-08.md` (**E7D final acceptance**)
 
 Backend-Hintergrund (E1–E6, bereits in `main`):
 
@@ -50,7 +51,7 @@ Backend-Hintergrund (E1–E6, bereits in `main`):
 | **E7B** | Canonical backend Recommendations derivation + API | ✅ (dieser Branch) |
 | **E7B.1** | Fail-closed authority conformance hardening | ✅ (dieser Branch) |
 | **E7C** | Recommendations / Actions frontend integration | ✅ (dieser Branch) |
-| **E7D** | Integrated privacy/security/quality/UX acceptance + merge readiness | ⬜ offen |
+| **E7D** | Integrated privacy/security/quality/UX acceptance + merge readiness | ✅ (dieser Branch) |
 | E8 | Predictive Risk / `estimatedExposure` | ⬜ ausgeschlossen bis E8 autorisiert |
 | E9 | Forecast UI | ⬜ ausgeschlossen bis E9 autorisiert |
 
@@ -105,5 +106,5 @@ Base main: 06bae11f (R3B/#1054 merged). R3B COMPLETE.
 
 Bitte lies docs/audits/pr-recovery/E7-ONBOARDING.md und phase3-e7a-recommendations-actions-authority-baseline-2026-08.md.
 
-E7A ist abgeschlossen (authority freeze, docs-only). E7B liefert canonical backend Recommendations + API (derive-on-read, no Prisma). E7B.1 schließt fail-closed Semantik-Lücken (Finance AVAILABLE-only, Driver/Cost gates, quality supersession, empty-state). E7C integriert den canonical Server-Endpoint in EvaluationsPage (presentation-only, server order/status/empty-state preserved, driver lazy-reveal preserved). Nächstes Gate: E7D integrated acceptance. PR bleibt Draft. Kein E8/E9, keine erfundenen Schwellen, keine Client-Business-Derivation.
+E7A ist abgeschlossen (authority freeze, docs-only). E7B liefert canonical backend Recommendations + API (derive-on-read, no Prisma). E7B.1 schließt fail-closed Semantik-Lücken. E7C integriert den canonical Server-Endpoint in EvaluationsPage. E7D replayed security/privacy/quality/UX + merge readiness (E2E, race/XSS tests, fixture fix). PR bereit für Review — Merge nur mit expliziter Autorisierung. Kein E8/E9.
 ```
