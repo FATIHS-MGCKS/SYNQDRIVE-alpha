@@ -9,10 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 SSH_USER="$(cloud_agent_ssh_user)"
-# Production VPS (2A.2): root SSH disabled — use synqdrive-admin on Hostinger.
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 DEPLOY_SCRIPT="${CLOUD_AGENT_VPS_DEPLOY_SCRIPT:-/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh}"
@@ -66,14 +62,10 @@ preflight_git() {
 
 run_remote_deploy() {
   echo "[cloud-agent] Deploying via SSH ${SSH_USER}@${VPS_HOST}:${SSH_PORT} ..."
-  # The release script owns root-only paths (/opt/synqdrive, pm2 daemon, postgres).
-  # -H keeps HOME=/root so pm2 resolves the same daemon it was started under.
-  local remote_cmd="bash ${DEPLOY_SCRIPT}"
-  if [[ "${SSH_USER}" != "root" ]]; then
-    remote_cmd="sudo -n -H bash ${DEPLOY_SCRIPT}"
-  fi
+  # Release script owns privileged paths (/opt/synqdrive, pm2 daemon, postgres).
+  # synqdrive-admin escalates via passwordless sudo; -H keeps HOME=/root for pm2.
   ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-    "${SSH_USER}@${VPS_HOST}" "$remote_cmd"
+    "${SSH_USER}@${VPS_HOST}" "sudo -n -H bash ${DEPLOY_SCRIPT}"
 }
 
 verify_health() {

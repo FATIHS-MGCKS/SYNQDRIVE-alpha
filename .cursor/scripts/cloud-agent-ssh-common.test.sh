@@ -48,9 +48,14 @@ cloud_agent_materialize_ssh_key "${TMPDIR}/multi"
 assert_key_parseable "${TMPDIR}/multi" "multi-line PEM"
 
 echo "==> cloud_agent_ssh_user trims whitespace"
-CLOUD_AGENT_SSH_USER=$' root \n'
-[[ "$(cloud_agent_ssh_user)" == "root" ]] || fail "ssh user trim"
+CLOUD_AGENT_SSH_USER=$' synqdrive-admin \n'
+[[ "$(cloud_agent_ssh_user)" == "synqdrive-admin" ]] || fail "ssh user trim"
 pass "ssh user trim"
+
+echo "==> cloud_agent_ssh_user maps legacy root to synqdrive-admin"
+CLOUD_AGENT_SSH_USER='root'
+[[ "$(cloud_agent_ssh_user)" == "synqdrive-admin" ]] || fail "root remap"
+pass "root remap"
 
 if [[ -n "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
   echo "==> live secret from environment"

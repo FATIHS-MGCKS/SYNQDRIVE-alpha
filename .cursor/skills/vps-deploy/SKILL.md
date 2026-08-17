@@ -20,7 +20,7 @@ User says: deploy, commit and deploy, release, production, VPS.
 |------|------|
 | `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable → `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable → `root` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable → `synqdrive-admin` |
 
 Do **not** add `TAILSCALE_AUTH_KEY`.
 
@@ -54,8 +54,8 @@ Remote script: `backend/scripts/ops/vps-deploy-release.sh` on the VPS.
 If running on the developer machine with SSH key at `~/.ssh/id_ed25519`:
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes root@srv1374778.hstgr.cloud \
-  "bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh"
+ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes synqdrive-admin@srv1374778.hstgr.cloud \
+  "sudo -n -H bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh"
 ```
 
 Cloud Agents must use `cloud-agent-deploy.sh` (dashboard SSH key; Tailscale optional).

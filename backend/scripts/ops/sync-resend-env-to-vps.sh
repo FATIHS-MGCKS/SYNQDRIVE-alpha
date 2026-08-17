@@ -17,7 +17,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LOCAL_ENV="${ROOT}/.env"
 REMOTE_ENV="/opt/synqdrive/shared/backend.env"
 VPS_HOST="${RESEND_SYNC_VPS_HOST:-${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud}}"
-SSH_USER="${RESEND_SYNC_SSH_USER:-${CLOUD_AGENT_SSH_USER:-root}}"
+SSH_USER="${RESEND_SYNC_SSH_USER:-${CLOUD_AGENT_SSH_USER:-synqdrive-admin}}"
 
 read_var() {
   local name="$1"
