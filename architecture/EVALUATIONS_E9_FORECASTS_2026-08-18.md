@@ -2,26 +2,29 @@
 
 ## Changes
 
-- E9A authority freeze (docs-only): forecast taxonomy, time-series inventory, historical salvage archaeology, empirical viability assessment, proposed forecast contract, backtest plan, quality fail-closed matrix, E9B/C/D topology.
-- Machine artifact: `docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json`
-- Production read-only probe tooling prepared: `docs/audits/ci-recovery/tooling/e9a01_production_readonly_timeseries_remote.py` (SSH blocked in E9A run)
+- E9A authority freeze (docs-only): forecast taxonomy, time-series inventory, salvage archaeology, contract/backtest **design**, quality fail-closed matrix.
+- **E9A.1:** Production read-only empirical certification via E8B0.1 SSH path (`synqdrive-admin`); corrected E8 lineage; removed unvalidated salvage thresholds as authority.
+- **E9D-DEFER:** measured `CERTIFIED_INSUFFICIENT` — 5 invoices, 1-day span, 3 daily buckets, 0 rolling origins; runtime deferred.
+- Machine artifact v2: `docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json`
 - **No runtime, Prisma, migration, or Production mutation**
 
 ## Architektur
 
 ### Role in Evaluations Recovery
 
-E9 is the **canonical Forecast / Time-Series phase**. It extends E1–E7 authorities and is **independent of deferred E8 predictive risk runtime**.
+E9 extends E1–E7 and is **independent of deferred E8 predictive risk runtime**.
 
-| Phase | Purpose | E9A status |
-|-------|---------|------------|
-| E9A | Authority + empirical viability + contract freeze | ✅ COMPLETE |
-| E9B | Canonical forecast backend + shared contract + backtesting | NOT_READY |
-| E9C | Forecast frontend on `EvaluationsPage` | Blocked |
-| E9D | Integrated acceptance | Blocked |
-| E9D-DEFER | Final deferral acceptance | Candidate |
+**E8 merge:** `83b140b5c2be591c65058293052468e358b2eba3` (PR #1056) — not CI-fix SHA `b3f2827`.
 
-**E9A outcome:** `DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY` — authority defined, no MVP runtime target authorized.
+| Phase | Status |
+|-------|--------|
+| E9A | ✅ COMPLETE_CORRECTED |
+| E9A.1 | ✅ COMPLETE (Production probe) |
+| E9B | ⏸ DEFERRED |
+| E9C | NOT_REQUIRED_WHILE_RUNTIME_DEFERRED |
+| E9D-DEFER | ✅ COMPLETE |
+
+**Outcome:** `E9_EMPIRICAL_VIABILITY=CERTIFIED_INSUFFICIENT`; `E9_RUNTIME=DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY`; `E9B_READINESS=NOT_READY`.
 
 ---
 
@@ -79,18 +82,34 @@ Zero cross-import of `riskScore`, `eventProbability`, `estimatedExposure`, `conf
 | `vehicle-forecast-engine.ts` | Vehicle maintenance planning, not org evaluations |
 | Dashboard pulse MTD helpers | Legacy parallel path |
 
-**Gap:** zero `GET …/series` or forecast endpoints with `{bucketStart, bucketEnd, value}[]`.
+**Gap:** zero multi-bucket API today — classified as **E9B_IMPLEMENTATION_PREREQUISITE**, not empirical data absence.
 
 ---
 
-### Candidate targets (priority when data exists)
+### Empirical viability (E9A.1 — measured Production)
+
+| Metric | Measured value |
+|--------|----------------|
+| transaction_read_only | on |
+| Qualifying invoices | 5 |
+| Orgs with history | 1 |
+| Observation span | 1 day |
+| Max closed daily buckets | 3 |
+| Rolling origins | 0 |
+
+Deferral reason: **CERTIFIED_INSUFFICIENT** (not UNVERIFIED, not inferred from fleet size).
+
+Evidence: `e9a01-forecast-timeseries-viability-2026-08.json` v2; `phase3-e9d-*.md`
+
+---
+
+### Candidate targets (reference when history sufficient)
 
 #### 1. `fin.daily_issued_revenue` (primary)
 
 - **UNIT:** MONEY (`amountMinor` + `currency`)
-- **GRAIN:** DAILY (org local calendar)
 - **SCOPE:** ORGANIZATION_ONLY (E3 station fail-closed)
-- **TIME_FIELD:** `COALESCE(invoiceDate, createdAt)` per E3 revenue business time
+- **TIME_FIELD:** `COALESCE(issued_at, invoice_date)` per E3 `resolveRevenueBusinessMs` (not `createdAt`)
 - **PIT:** closed invoice business timestamps
 - **MONEY:** per-currency series; never sum mixed currencies
 
@@ -116,11 +135,13 @@ Zero cross-import of `riskScore`, `eventProbability`, `estimatedExposure`, `conf
 
 ### Horizon & lookback (E9A freeze)
 
-| Field | E9A value |
-|-------|-----------|
-| FORECAST_HORIZON | **NONE** (runtime deferred) |
-| LOOKBACK | NOT_AUTHORIZED until empirical certification |
-| Salvage reference gates (revalidate) | revenue 180d rule / 365d stat; utilization 14d / 60d |
+| Field | E9 authority |
+|-------|--------------|
+| FORECAST_HORIZON | **NONE** (measured insufficient) |
+| LOOKBACK / min history / min folds | **NOT_YET_EMPIRICALLY_FROZEN** |
+| Salvage numbers (180d, 14d, MA14, 4 folds) | **REFERENCE_ONLY_REQUIRES_REVALIDATION** |
+| SELECTED_NONTRIVIAL_BASELINE | **NONE** |
+| Trivial comparator | LAST_OBSERVED_VALUE only |
 
 No invented horizons. Future E9B must prove horizon via rolling-origin backtest before product exposure.
 

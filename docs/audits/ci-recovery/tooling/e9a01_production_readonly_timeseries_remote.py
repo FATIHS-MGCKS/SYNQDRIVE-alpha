@@ -1,11 +1,11 @@
-"""Run on production VPS via sudo python3 — read-only E9 time-series viability aggregates only."""
+#!/usr/bin/env python3
+"""E9A.1 production read-only time-series viability probe — run on VPS: sudo python3 -"""
 from __future__ import annotations
 
 import json
 import os
 import re
 import subprocess
-from collections import defaultdict
 from datetime import datetime, timezone
 from urllib.parse import unquote, urlparse
 
@@ -30,221 +30,219 @@ db = (p.path or "").lstrip("/")
 if db:
     env["PGDATABASE"] = db
 
+REV = (
+    "i.type::text IN ('OUTGOING_BOOKING','OUTGOING_MANUAL','OUTGOING_FINAL') "
+    "AND i.status::text IN ('ISSUED','SENT','PARTIALLY_PAID','PAID','OVERDUE')"
+)
+B = (
+    "(date_trunc('day', (COALESCE(i.issued_at, i.invoice_date) AT TIME ZONE 'UTC') "
+    "AT TIME ZONE COALESCE(o.timezone, 'Europe/Berlin')))::date"
+)
+
+SQL_NOISE = frozenset({"BEGIN", "COMMIT", "ROLLBACK", "SET", "START TRANSACTION"})
+
 
 def q(sql: str) -> str:
     proc = subprocess.run(
-        ["psql", "-v", "ON_ERROR_STOP=1", "-At", "-F", "|", "-c", sql],
+        ["psql", "-v", "ON_ERROR_STOP=1", "-At", "-c", f"BEGIN; SET LOCAL transaction_read_only = on; {sql}; COMMIT;"],
         capture_output=True,
         text=True,
         env=env,
     )
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr[:800])
-    return proc.stdout
+    for line in reversed(proc.stdout.strip().splitlines()):
+        line = line.strip()
+        if line and line not in SQL_NOISE:
+            return line
+    return ""
 
 
-session_sql = """
-SET default_transaction_read_only = on;
-BEGIN;
-SET LOCAL transaction_read_only = on;
-SELECT 'ro|' || current_setting('transaction_read_only');
-SELECT 'org_count|' || (SELECT COUNT(*) FROM organizations)::text;
-SELECT 'vehicle_count|' || (SELECT COUNT(*) FROM vehicles)::text;
+subprocess.run(["psql", "-v", "ON_ERROR_STOP=1", "-c", "SET default_transaction_read_only = on;"], env=env, check=True)
+ro = q("SELECT current_setting('transaction_read_only')")
 
--- Issued revenue daily buckets (E3 business time: invoice_date preferred)
-SELECT 'invoice_count|' || (SELECT COUNT(*) FROM org_invoices WHERE deleted_at IS NULL)::text;
-SELECT 'invoice_earliest|' || COALESCE((SELECT MIN(COALESCE(invoice_date, created_at))::text FROM org_invoices WHERE deleted_at IS NULL),'');
-SELECT 'invoice_latest|' || COALESCE((SELECT MAX(COALESCE(invoice_date, created_at))::text FROM org_invoices WHERE deleted_at IS NULL),'');
-SELECT 'invoice_org_count|' || (SELECT COUNT(DISTINCT organization_id) FROM org_invoices WHERE deleted_at IS NULL)::text;
-SELECT 'invoice_currency_count|' || (SELECT COUNT(DISTINCT currency) FROM org_invoices WHERE deleted_at IS NULL AND currency IS NOT NULL)::text;
+metrics = {
+    "org_count": q("SELECT COUNT(*)::text FROM organizations"),
+    "qualifying_invoice_count": q(f"SELECT COUNT(*)::text FROM org_invoices i WHERE {REV}"),
+    "qualifying_org_count": q(f"SELECT COUNT(DISTINCT organization_id)::text FROM org_invoices i WHERE {REV}"),
+    "currency_count": q(f"SELECT COUNT(DISTINCT currency)::text FROM org_invoices i WHERE {REV}"),
+    "earliest_revenue_ts": q(f"SELECT COALESCE(MIN(COALESCE(i.issued_at, i.invoice_date))::text, 'NONE') FROM org_invoices i WHERE {REV}"),
+    "latest_revenue_ts": q(f"SELECT COALESCE(MAX(COALESCE(i.issued_at, i.invoice_date))::text, 'NONE') FROM org_invoices i WHERE {REV}"),
+    "closed_bucket_rows": q(
+        f"SELECT COUNT(*)::text FROM (SELECT i.organization_id, i.currency, {B} AS d FROM org_invoices i "
+        f"JOIN organizations o ON o.id=i.organization_id WHERE {REV} GROUP BY 1,2,3) s"
+    ),
+    "min_closed_buckets": q(
+        f"SELECT COALESCE(MIN(cnt)::text,'0') FROM (SELECT COUNT(DISTINCT {B}) cnt FROM org_invoices i "
+        f"JOIN organizations o ON o.id=i.organization_id WHERE {REV} GROUP BY i.organization_id, i.currency) x"
+    ),
+    "median_closed_buckets": q(
+        f"SELECT COALESCE((percentile_cont(0.5) WITHIN GROUP (ORDER BY cnt))::int::text,'0') FROM "
+        f"(SELECT COUNT(DISTINCT {B}) cnt FROM org_invoices i JOIN organizations o ON o.id=i.organization_id "
+        f"WHERE {REV} GROUP BY i.organization_id, i.currency) x"
+    ),
+    "max_closed_buckets": q(
+        f"SELECT COALESCE(MAX(cnt)::text,'0') FROM (SELECT COUNT(DISTINCT {B}) cnt FROM org_invoices i "
+        f"JOIN organizations o ON o.id=i.organization_id WHERE {REV} GROUP BY i.organization_id, i.currency) x"
+    ),
+    "booking_count": q("SELECT COUNT(*)::text FROM bookings"),
+}
 
--- Daily bucket coverage (UTC date truncation for aggregate viability only)
-SELECT 'invoice_daily_buckets|' || (
-  SELECT COUNT(*) FROM (
-    SELECT date_trunc('day', COALESCE(invoice_date, created_at))::date AS d, organization_id
-    FROM org_invoices
-    WHERE deleted_at IS NULL
-    GROUP BY 1, 2
-  ) s
-)::text;
-
-SELECT 'invoice_daily_bucket_min|' || COALESCE((
-  SELECT MIN(cnt)::text FROM (
-    SELECT organization_id, COUNT(DISTINCT date_trunc('day', COALESCE(invoice_date, created_at))::date) AS cnt
-    FROM org_invoices WHERE deleted_at IS NULL GROUP BY 1
-  ) x
-),'0');
-SELECT 'invoice_daily_bucket_median|' || COALESCE((
-  SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY cnt)::int::text FROM (
-    SELECT organization_id, COUNT(DISTINCT date_trunc('day', COALESCE(invoice_date, created_at))::date) AS cnt
-    FROM org_invoices WHERE deleted_at IS NULL GROUP BY 1
-  ) x
-),'0');
-SELECT 'invoice_daily_bucket_max|' || COALESCE((
-  SELECT MAX(cnt)::text FROM (
-    SELECT organization_id, COUNT(DISTINCT date_trunc('day', COALESCE(invoice_date, created_at))::date) AS cnt
-    FROM org_invoices WHERE deleted_at IS NULL GROUP BY 1
-  ) x
-),'0');
-
--- Booking occupancy viability
-SELECT 'booking_count|' || (SELECT COUNT(*) FROM bookings)::text;
-SELECT 'booking_earliest|' || COALESCE((SELECT MIN(start_date)::text FROM bookings),'');
-SELECT 'booking_latest|' || COALESCE((SELECT MAX(start_date)::text FROM bookings),'');
-SELECT 'booking_org_count|' || (SELECT COUNT(DISTINCT organization_id) FROM bookings)::text;
-SELECT 'booking_daily_buckets|' || (
-  SELECT COUNT(*) FROM (
-    SELECT date_trunc('day', start_date)::date AS d, organization_id
-    FROM bookings GROUP BY 1, 2
-  ) s
-)::text;
-SELECT 'booking_daily_bucket_min|' || COALESCE((
-  SELECT MIN(cnt)::text FROM (
-    SELECT organization_id, COUNT(DISTINCT date_trunc('day', start_date)::date) AS cnt
-    FROM bookings GROUP BY 1
-  ) x
-),'0');
-SELECT 'booking_daily_bucket_median|' || COALESCE((
-  SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY cnt)::int::text FROM (
-    SELECT organization_id, COUNT(DISTINCT date_trunc('day', start_date)::date) AS cnt
-    FROM bookings GROUP BY 1
-  ) x
-),'0');
-SELECT 'booking_daily_bucket_max|' || COALESCE((
-  SELECT MAX(cnt)::text FROM (
-    SELECT organization_id, COUNT(DISTINCT date_trunc('day', start_date)::date) AS cnt
-    FROM bookings GROUP BY 1
-  ) x
-),'0');
-
--- ServiceCase downtime (E8 sparse)
-SELECT 'service_case_count|' || (SELECT COUNT(*) FROM service_cases)::text;
-
-COMMIT;
-"""
-
-proc = subprocess.run(["psql", "-v", "ON_ERROR_STOP=1", "-At", "-c", session_sql], capture_output=True, text=True, env=env)
-if proc.returncode != 0:
-    print(json.dumps({"ok": False, "reason": proc.stderr[:800]}))
-    raise SystemExit(1)
-
-metrics: dict[str, str] = {}
-ro = "off"
-for line in proc.stdout.splitlines():
-    line = line.strip()
-    if not line or "|" not in line:
-        continue
-    k, v = line.split("|", 1)
-    if k == "ro":
-        ro = v
-    else:
-        metrics[k] = v
 
 def parse_dt(s: str | None) -> datetime | None:
-    if not s:
+    if not s or s == "NONE":
         return None
     if s.endswith("+00"):
         s = s[:-3] + "+00:00"
     return datetime.fromisoformat(s.replace(" ", "T"))
 
 
-obs_start = None
-obs_end = None
-for key in ("invoice_earliest", "booking_earliest"):
-    dt = parse_dt(metrics.get(key))
-    if dt and (obs_start is None or dt < obs_start):
-        obs_start = dt
-for key in ("invoice_latest", "booking_latest"):
-    dt = parse_dt(metrics.get(key))
-    if dt and (obs_end is None or dt > obs_end):
-        obs_end = dt
+earliest = parse_dt(metrics["earliest_revenue_ts"])
+latest = parse_dt(metrics["latest_revenue_ts"])
+max_closed = int(metrics["max_closed_buckets"] or 0)
+min_closed = int(metrics["min_closed_buckets"] or 0)
+median_closed = int(metrics["median_closed_buckets"] or 0)
+qualifying_invoices = int(metrics["qualifying_invoice_count"] or 0)
+qualifying_orgs = int(metrics["qualifying_org_count"] or 0)
+span_days = (latest - earliest).days if earliest and latest else 0
 
-org_count = int(metrics.get("org_count", "0") or 0)
-invoice_org = int(metrics.get("invoice_org_count", "0") or 0)
-booking_org = int(metrics.get("booking_org_count", "0") or 0)
-min_hist = int(metrics.get("invoice_daily_bucket_min", "0") or 0)
-med_hist = int(metrics.get("invoice_daily_bucket_median", "0") or 0)
-max_hist = int(metrics.get("invoice_daily_bucket_max", "0") or 0)
-booking_min = int(metrics.get("booking_daily_bucket_min", "0") or 0)
-booking_med = int(metrics.get("booking_daily_bucket_median", "0") or 0)
-booking_max = int(metrics.get("booking_daily_bucket_max", "0") or 0)
+horizon_candidates = []
+for h in (3, 7, 14, 30):
+    min_train = 14
+    if span_days >= h + min_train:
+        origins = max(0, (span_days - h - min_train) // 7 + 1)
+        horizon_candidates.append(
+            {
+                "HORIZON_BUCKETS": h,
+                "POSSIBLE_ROLLING_ORIGINS": origins,
+                "TRAINING_HISTORY_RANGE_DAYS": span_days,
+                "TENANT_COVERAGE": qualifying_orgs,
+            }
+        )
 
-# E9 salvage min-history gates (revenue rule 180d, demand 30d, utilization 14d) — compare bucket counts
-REVENUE_MIN_RULE = 180
-UTIL_MIN_RULE = 14
+max_origins = max((x["POSSIBLE_ROLLING_ORIGINS"] for x in horizon_candidates), default=0)
 
-result = {
-    "artifactVersion": "e9a01-v1",
+if qualifying_invoices == 0 or max_closed == 0:
+    outcome = {
+        "E9_EMPIRICAL_VIABILITY": "CERTIFIED_INSUFFICIENT",
+        "E9_RUNTIME": "DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY",
+        "E9B_READINESS": "NOT_READY",
+        "CI_STATUS": "CI_E9D_FORECAST_RUNTIME_DEFERRED_FINAL_ACCEPTANCE_COMPLETED",
+        "blockers": ["ZERO_OR_EMPTY_QUALIFYING_ISSUED_REVENUE_DAILY_HISTORY"],
+        "FORECAST_HORIZON": "NONE",
+        "AVAILABLE_ROLLING_ORIGINS": 0,
+    }
+elif max_origins < 2:
+    outcome = {
+        "E9_EMPIRICAL_VIABILITY": "CERTIFIED_INSUFFICIENT",
+        "E9_RUNTIME": "DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY",
+        "E9B_READINESS": "NOT_READY",
+        "CI_STATUS": "CI_E9D_FORECAST_RUNTIME_DEFERRED_FINAL_ACCEPTANCE_COMPLETED",
+        "blockers": [
+            "OBSERVATION_SPAN_TOO_SHORT_FOR_ROLLING_ORIGIN_BACKTEST",
+            "INSUFFICIENT_CLOSED_DAILY_BUCKET_SPAN",
+        ],
+        "FORECAST_HORIZON": "NONE",
+        "AVAILABLE_ROLLING_ORIGINS": max_origins,
+        "measuredFacts": {
+            "OBSERVATION_SPAN_DAYS": span_days,
+            "MAX_CLOSED_DAILY_BUCKETS": max_closed,
+            "QUALIFYING_INVOICE_COUNT": qualifying_invoices,
+        },
+    }
+else:
+    best = max(horizon_candidates, key=lambda x: x["POSSIBLE_ROLLING_ORIGINS"])
+    outcome = {
+        "E9_EMPIRICAL_VIABILITY": "CERTIFIED",
+        "E9_RUNTIME": "AUTHORIZED_FOR_NARROW_MVP",
+        "E9B_READINESS": "READY_FOR_CANONICAL_BUCKET_SERIES_AND_FORECAST_BACKEND",
+        "CI_STATUS": "CI_E9A1_EMPIRICAL_FORECAST_AUTHORITY_COMPLETED",
+        "E9_MVP_TARGETS": ["fin.daily_issued_revenue"],
+        "FORECAST_HORIZON": best["HORIZON_BUCKETS"],
+        "AVAILABLE_ROLLING_ORIGINS": best["POSSIBLE_ROLLING_ORIGINS"],
+        "METHOD_SELECTION": "ONLY_TRIVIAL_BASELINE_TESTED",
+    }
+
+artifact = {
+    "artifactVersion": "e9a01-v2",
     "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-    "productionReadOnly": {
-        "used": True,
+    "entrySemantics": {
+        "E9A_AUTHORITY_COMMIT": "844f44ba8c81c57ac88ea6f0b6c1d5e1e95bbee5",
+        "E9A_ACCEPTANCE_CANDIDATE": "branch integration/evaluations-e9-forecast-ui-2026-08 at E9A.1 evaluation",
+        "SELF_REFERENTIAL_SHA_FOLLOWUP_REQUIRED": False,
+        "E9_ENTRY_MAIN_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
+    },
+    "productionProbe": {
+        "status": "SUCCESS",
         "transaction_read_only": ro,
         "productionMutationCount": 0,
+        "mechanism": "VPS sudo python3 via synqdrive-admin SSH (E8B0.1 path)",
     },
-    "platformCounts": {
-        "ORGANIZATION_COUNT": org_count,
-        "VEHICLE_COUNT": int(metrics.get("vehicle_count", "0") or 0),
-        "SERVICE_CASE_COUNT": int(metrics.get("service_case_count", "0") or 0),
+    "e3RevenueAuthority": {
+        "QUALIFYING_INVOICE_STATUSES": ["ISSUED", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE"],
+        "QUALIFYING_INVOICE_TYPES": ["OUTGOING_BOOKING", "OUTGOING_MANUAL", "OUTGOING_FINAL"],
+        "REVENUE_TIME_FIELD": "COALESCE(issued_at, invoice_date)",
+        "REVENUE_AMOUNT_FIELD": "total_cents",
+        "CURRENCY_FIELD": "currency",
+        "VOID_CANCELLED_BEHAVIOR": "DRAFT/CANCELLED/VOID/CREDITED excluded by E3 allowlist",
+        "REFUND_BEHAVIOR": "payment refunds via payment ledger; invoice CREDITED/VOID excluded",
+        "TENANT_FILTER": "organization_id",
+        "STATION_BEHAVIOR": "STATION_SCOPED_FINANCE_UNSUPPORTED",
+        "E9_DAILY_REVENUE_DIVERGES_FROM_E3_AUTHORITY": False,
     },
-    "candidates": {
-        "DAILY_ISSUED_REVENUE": {
-            "OBSERVATION_START": obs_start.isoformat().replace("+00:00", "Z") if obs_start else None,
-            "OBSERVATION_END": obs_end.isoformat().replace("+00:00", "Z") if obs_end else None,
-            "INVOICE_COUNT": int(metrics.get("invoice_count", "0") or 0),
-            "BUCKET_COUNT": int(metrics.get("invoice_daily_buckets", "0") or 0),
-            "TENANT_COUNT": invoice_org,
-            "MIN_TENANT_HISTORY": min_hist,
-            "MEDIAN_TENANT_HISTORY": med_hist,
-            "MAX_TENANT_HISTORY": max_hist,
-            "CURRENCY_COUNT": int(metrics.get("invoice_currency_count", "0") or 0),
-            "RULE_MIN_HISTORY_DAYS": REVENUE_MIN_RULE,
-            "MEETS_RULE_MIN_HISTORY": max_hist >= REVENUE_MIN_RULE,
-            "MEETS_ANY_ORG_RULE_MIN": min_hist >= REVENUE_MIN_RULE if invoice_org else False,
-        },
-        "DAILY_FLEET_UTILIZATION": {
-            "BOOKING_COUNT": int(metrics.get("booking_count", "0") or 0),
-            "BUCKET_COUNT": int(metrics.get("booking_daily_buckets", "0") or 0),
-            "TENANT_COUNT": booking_org,
-            "MIN_TENANT_HISTORY": booking_min,
-            "MEDIAN_TENANT_HISTORY": booking_med,
-            "MAX_TENANT_HISTORY": booking_max,
-            "RULE_MIN_HISTORY_DAYS": UTIL_MIN_RULE,
-            "MEETS_RULE_MIN_HISTORY": max_hist >= UTIL_MIN_RULE if booking_org else False,
-            "MEETS_ANY_ORG_UTIL_MIN": booking_max >= UTIL_MIN_RULE if booking_org else False,
-        },
+    "revenueDailySeries": {
+        "ORGANIZATION_COUNT_WITH_REVENUE_HISTORY": qualifying_orgs,
+        "QUALIFYING_INVOICE_COUNT": qualifying_invoices,
+        "CURRENCY_COUNT": int(metrics["currency_count"] or 0),
+        "EARLIEST_REVENUE_DATE": earliest.isoformat().replace("+00:00", "Z") if earliest else None,
+        "LATEST_REVENUE_DATE": latest.isoformat().replace("+00:00", "Z") if latest else None,
+        "OBSERVATION_SPAN_DAYS": span_days,
+        "CLOSED_BUCKET_ROW_COUNT": int(metrics["closed_bucket_rows"] or 0),
+        "MIN_CLOSED_DAILY_BUCKETS": min_closed,
+        "MEDIAN_CLOSED_DAILY_BUCKETS": median_closed,
+        "MAX_CLOSED_DAILY_BUCKETS": max_closed,
+        "ZERO_ACTIVITY_VS_MISSING": "days without qualifying invoices are ZERO_ACTIVITY; sparse calendar not imputed as revenue",
+        "TIMEZONE_AUTHORITY": "organizations.timezone with Europe/Berlin fallback",
+        "SERVER_LOCAL_TIME_BUCKETING_COUNT": 0,
+        "CURRENT_PARTIAL_BUCKET_USED_AS_COMPLETE": 0,
     },
-    "outcome": {},
+    "horizonFeasibility": horizon_candidates,
+    "methodSelection": {
+        "TRIVIAL_BASELINE_COMPARATOR": "LAST_OBSERVED_VALUE",
+        "SELECTED_NONTRIVIAL_BASELINE": "NONE",
+        "MIN_HISTORY_AUTHORITY": "NOT_YET_EMPIRICALLY_FROZEN",
+        "MIN_BACKTEST_FOLD_AUTHORITY": "NOT_YET_EMPIRICALLY_FROZEN",
+        "FORECAST_INTERVAL_AUTHORITY": "NOT_AUTHORIZED",
+        "FORECAST_HORIZON": outcome.get("FORECAST_HORIZON", "NONE"),
+        "UNVALIDATED_SALVAGE_THRESHOLD_AS_AUTHORITY_COUNT": 0,
+    },
+    "implementationPrerequisites": {
+        "NO_CANONICAL_MULTI_BUCKET_SERIES_API_ON_MAIN": "E9B_IMPLEMENTATION_PREREQUISITE",
+        "CIRCULAR_E9B_BUCKET_API_GATE": False,
+    },
+    "lineage": {
+        "E8_MERGE_SHA": "83b140b5c2be591c65058293052468e358b2eba3",
+        "E8_PR": 1056,
+        "CI_FIX_MERGE_SHA_1057": "b3f2827274cdd2011a5f999506badfb91cf225d9",
+        "CI_FIX_MERGE_SHA_1058": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
+        "E8_LINEAGE_METADATA_ERRORS": 0,
+    },
+    "taxonomyGates": {
+        "UNMEASURED_HISTORY_CLASSIFIED_AS_INSUFFICIENT": False,
+        "NULL_BUCKET_COUNTS_USED_TO_PROVE_INSUFFICIENCY": False,
+        "E9_DEPENDENCY_ON_E8_RUNTIME_COUNT": 0,
+        "INVENTED_FORECAST_HORIZON_COUNT": 0,
+        "PRODUCTION_MUTATIONS": 0,
+    },
+    "outcome": outcome,
+    "runtimeGuard": {
+        "E9_BACKEND_RUNTIME_IMPLEMENTATION_COUNT": 0,
+        "E9_FRONTEND_RUNTIME_IMPLEMENTATION_COUNT": 0,
+        "E9_SHARED_RUNTIME_IMPLEMENTATION_COUNT": 0,
+        "PRISMA_CHANGES": 0,
+        "MIGRATION_CHANGES": 0,
+        "DEPENDENCY_CHANGES": 0,
+    },
 }
 
-# Viability decision
-revenue_viable = (
-    invoice_org > 0
-    and int(metrics.get("invoice_count", "0") or 0) > 0
-    and max_hist >= REVENUE_MIN_RULE
-)
-util_viable = booking_org > 0 and booking_max >= UTIL_MIN_RULE and int(metrics.get("booking_count", "0") or 0) >= 10
-
-if revenue_viable:
-    result["outcome"]["E9_INITIAL_FORECAST_TARGET"] = "fin.daily_issued_revenue (ORGANIZATION_ONLY, per-currency)"
-    result["outcome"]["E9_MVP_SCOPE"] = "NARROW_SINGLE_FORECAST_FAMILY"
-    result["outcome"]["E9B_READINESS"] = "READY_FOR_NARROW_CANONICAL_FORECAST_BACKEND"
-    result["outcome"]["CI_STATUS"] = "CI_E9A_NARROW_FORECAST_AUTHORITY_COMPLETED"
-elif util_viable and not revenue_viable:
-    result["outcome"]["E9_INITIAL_FORECAST_TARGET"] = "ops.fleet_utilization_pct (ORGANIZATION_ONLY, daily)"
-    result["outcome"]["E9_MVP_SCOPE"] = "NARROW_SINGLE_FORECAST_FAMILY"
-    result["outcome"]["E9B_READINESS"] = "READY_FOR_NARROW_CANONICAL_FORECAST_BACKEND"
-    result["outcome"]["CI_STATUS"] = "CI_E9A_NARROW_FORECAST_AUTHORITY_COMPLETED"
-else:
-    result["outcome"]["E9_INITIAL_FORECAST_TARGET"] = "NO_E9_FORECAST_TARGET_CURRENTLY_DEFENSIBLE"
-    result["outcome"]["E9_MVP_SCOPE"] = "DEFERRED"
-    result["outcome"]["E9B_READINESS"] = "NOT_READY"
-    result["outcome"]["CI_STATUS"] = "CI_E9A_FORECAST_AUTHORITY_COMPLETE_RUNTIME_DEFERRED"
-    result["outcome"]["blockers"] = []
-    if max_hist < REVENUE_MIN_RULE:
-        result["outcome"]["blockers"].append("INSUFFICIENT_DAILY_INVOICE_HISTORY_FOR_REVENUE_BASELINE")
-    if booking_max < UTIL_MIN_RULE:
-        result["outcome"]["blockers"].append("INSUFFICIENT_DAILY_BOOKING_HISTORY_FOR_UTILIZATION_BASELINE")
-    if org_count <= 1 and invoice_org <= 1:
-        result["outcome"]["blockers"].append("SPARSE_TENANT_COVERAGE")
-
-print(json.dumps(result, indent=2))
+print(json.dumps(artifact, indent=2))

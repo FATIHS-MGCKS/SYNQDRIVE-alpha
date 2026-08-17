@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E9D-DEFER Forecast Runtime Deferred (Phase 3 — V4.9.904)', icon: Layers,
+    endpoint: 'E9 runtime deferred — no forecast API/UI in product.',
+    service: 'E9D-DEFER: E9A.1 Production read-only certification (5 invoices, 1-day span, 3 daily buckets, 0 rolling origins) → CERTIFIED_INSUFFICIENT. Authority complete; E9B NOT_READY. E8 merge 83b140b5. PR #1059 Ready — not merged.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e9d-forecast-runtime-deferred-final-acceptance-merge-readiness-2026-08.md; docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json' },
   { name: 'Auswertungen E9A Forecast Authority (Phase 3 — V4.9.903)', icon: Layers,
     endpoint: 'E9 runtime deferred — no forecast API/UI in product.',
     service: 'E9A: forecast taxonomy + time-series inventory + salvage archaeology + proposed contract/backtest plan. E9 independent of E8. Best candidate fin.daily_issued_revenue (org-only, per-currency) when bucket API + history exist. E9_MVP_TARGETS=[]; DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY; E9B NOT_READY. FORECAST_HORIZON=NONE; intervals NOT_AUTHORIZED.',

@@ -1,123 +1,107 @@
 {
-  "artifactVersion": "e9a01-v1",
-  "generatedAt": "2026-08-17T22:30:00Z",
-  "entry": {
-    "E9A_ENTRY_MAIN_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
-    "E9A_ENTRY_HEAD_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
-    "E9A_FINAL_HEAD_SHA": "48b6fba1",
-    "E9A_COMMIT_SHA": "844f44ba",
-    "E9_PR_NUMBER": 1059,
-    "E9_PR_URL": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1059",
-    "E9_PR_IS_DRAFT": true,
-    "WORKTREE_CLEAN_AT_ENTRY": true,
-    "branch": "integration/evaluations-e9-forecast-ui-2026-08",
-    "E8_RUNTIME_DEPENDENCY_ALLOWED": false,
-    "E8_MERGED_MAIN_SHA": "b3f2827274cdd2011a5f999506badfb91cf225d9"
+  "artifactVersion": "e9a01-v2",
+  "generatedAt": "2026-08-17T22:31:09Z",
+  "entrySemantics": {
+    "E9A_AUTHORITY_COMMIT": "844f44ba8c81c57ac88ea6f0b6c1d5e1e95bbee5",
+    "E9A_ACCEPTANCE_CANDIDATE": "branch integration/evaluations-e9-forecast-ui-2026-08 at E9A.1 evaluation",
+    "SELF_REFERENTIAL_SHA_FOLLOWUP_REQUIRED": false,
+    "E9_ENTRY_MAIN_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25"
   },
-  "productionReadOnly": {
-    "used": false,
-    "attempted": true,
-    "attemptMethod": "VPS remote script e9a01_production_readonly_timeseries_remote.py",
-    "blocker": "SSH Permission denied (publickey) from Cloud Agent to srv1374778.hstgr.cloud",
+  "productionProbe": {
+    "status": "SUCCESS",
+    "transaction_read_only": "on",
     "productionMutationCount": 0,
-    "crossReference": "docs/audits/ci-recovery/data/e8b01-production-readonly-predictive-certification-2026-08.json"
+    "mechanism": "VPS sudo python3 via synqdrive-admin SSH (E8B0.1 path)"
   },
-  "platformCrossReference": {
-    "ORGANIZATION_COUNT": 4,
-    "VEHICLE_COUNT": 9,
-    "SERVICE_CASE_COUNT": 0,
-    "note": "E8B0.1 canonical Production read-only facts; time-series bucket counts not re-queried in E9A due to SSH blocker"
+  "e3RevenueAuthority": {
+    "QUALIFYING_INVOICE_STATUSES": [
+      "ISSUED",
+      "SENT",
+      "PARTIALLY_PAID",
+      "PAID",
+      "OVERDUE"
+    ],
+    "QUALIFYING_INVOICE_TYPES": [
+      "OUTGOING_BOOKING",
+      "OUTGOING_MANUAL",
+      "OUTGOING_FINAL"
+    ],
+    "REVENUE_TIME_FIELD": "COALESCE(issued_at, invoice_date)",
+    "REVENUE_AMOUNT_FIELD": "total_cents",
+    "CURRENCY_FIELD": "currency",
+    "VOID_CANCELLED_BEHAVIOR": "DRAFT/CANCELLED/VOID/CREDITED excluded by E3 allowlist",
+    "REFUND_BEHAVIOR": "payment refunds via payment ledger; invoice CREDITED/VOID excluded",
+    "TENANT_FILTER": "organization_id",
+    "STATION_BEHAVIOR": "STATION_SCOPED_FINANCE_UNSUPPORTED",
+    "E9_DAILY_REVENUE_DIVERGES_FROM_E3_AUTHORITY": false
   },
-  "canonicalGapOnMain": {
-    "MULTI_BUCKET_SERIES_API_COUNT": 0,
-    "CLIENT_DERIVED_DAILY_FINANCE_SERIES": true,
-    "E3_FINANCE_PERIOD_LOCKED_MTD": true,
-    "FC_REGISTRY_PLANNED_ONLY": true
+  "revenueDailySeries": {
+    "ORGANIZATION_COUNT_WITH_REVENUE_HISTORY": 1,
+    "QUALIFYING_INVOICE_COUNT": 5,
+    "CURRENCY_COUNT": 1,
+    "EARLIEST_REVENUE_DATE": "2026-07-13T19:48:56.617000",
+    "LATEST_REVENUE_DATE": "2026-07-14T22:27:33.514000",
+    "OBSERVATION_SPAN_DAYS": 1,
+    "CLOSED_BUCKET_ROW_COUNT": 3,
+    "MIN_CLOSED_DAILY_BUCKETS": 3,
+    "MEDIAN_CLOSED_DAILY_BUCKETS": 3,
+    "MAX_CLOSED_DAILY_BUCKETS": 3,
+    "ZERO_ACTIVITY_VS_MISSING": "days without qualifying invoices are ZERO_ACTIVITY; sparse calendar not imputed as revenue",
+    "TIMEZONE_AUTHORITY": "organizations.timezone with Europe/Berlin fallback",
+    "SERVER_LOCAL_TIME_BUCKETING_COUNT": 0,
+    "CURRENT_PARTIAL_BUCKET_USED_AS_COMPLETE": 0
   },
-  "candidates": {
-    "fin.daily_issued_revenue": {
-      "CANONICAL_DATA_AUTHORITY": "HIGH_FACTS_LOW_SERIES_API",
-      "OBSERVATION_START": null,
-      "OBSERVATION_END": null,
-      "BUCKET_COUNT": null,
-      "NON_NULL_BUCKETS": null,
-      "ZERO_BUCKETS": null,
-      "MISSING_BUCKETS": null,
-      "TENANT_COUNT": null,
-      "MIN_TENANT_HISTORY": null,
-      "MEDIAN_TENANT_HISTORY": null,
-      "MAX_TENANT_HISTORY": null,
-      "SALVAGE_RULE_MIN_HISTORY_DAYS": 180,
-      "EMPIRICAL_STATUS": "INSUFFICIENT_EVIDENCE",
-      "WHY": "E3 issued revenue facts authoritative but no server daily series; Production bucket depth unmeasured; 180d salvage gate unlikely on 4-org fleet"
-    },
-    "ops.fleet_utilization_pct": {
-      "CANONICAL_DATA_AUTHORITY": "MEDIUM_PARTIAL_SCALAR_ONLY",
-      "OBSERVATION_START": null,
-      "OBSERVATION_END": null,
-      "BUCKET_COUNT": null,
-      "TENANT_COUNT": null,
-      "MIN_TENANT_HISTORY": null,
-      "MEDIAN_TENANT_HISTORY": null,
-      "MAX_TENANT_HISTORY": null,
-      "SALVAGE_RULE_MIN_HISTORY_DAYS": 14,
-      "EMPIRICAL_STATUS": "INSUFFICIENT_EVIDENCE",
-      "WHY": "E4 interval domain authoritative for period scalar; daily bucket series not served; scheduled occupancy PARTIAL; station scope fail-closed"
-    }
+  "horizonFeasibility": [],
+  "methodSelection": {
+    "TRIVIAL_BASELINE_COMPARATOR": "LAST_OBSERVED_VALUE",
+    "SELECTED_NONTRIVIAL_BASELINE": "NONE",
+    "MIN_HISTORY_AUTHORITY": "NOT_YET_EMPIRICALLY_FROZEN",
+    "MIN_BACKTEST_FOLD_AUTHORITY": "NOT_YET_EMPIRICALLY_FROZEN",
+    "FORECAST_INTERVAL_AUTHORITY": "NOT_AUTHORIZED",
+    "FORECAST_HORIZON": "NONE",
+    "UNVALIDATED_SALVAGE_THRESHOLD_AS_AUTHORITY_COUNT": 0
+  },
+  "implementationPrerequisites": {
+    "NO_CANONICAL_MULTI_BUCKET_SERIES_API_ON_MAIN": "E9B_IMPLEMENTATION_PREREQUISITE",
+    "CIRCULAR_E9B_BUCKET_API_GATE": false
+  },
+  "lineage": {
+    "E8_MERGE_SHA": "83b140b5c2be591c65058293052468e358b2eba3",
+    "E8_PR": 1056,
+    "CI_FIX_MERGE_SHA_1057": "b3f2827274cdd2011a5f999506badfb91cf225d9",
+    "CI_FIX_MERGE_SHA_1058": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
+    "E8_LINEAGE_METADATA_ERRORS": 0
   },
   "taxonomyGates": {
-    "HISTORICAL_SERIES_AS_FORECAST_COUNT": 0,
-    "PROJECTION_AS_VALIDATED_FORECAST_COUNT": 0,
-    "SCENARIO_AS_FORECAST_COUNT": 0,
-    "E8_RISK_OUTPUT_USED_AS_E9_TARGET": false,
-    "E8_RISK_OUTPUT_USED_AS_E9_FEATURE": false,
+    "UNMEASURED_HISTORY_CLASSIFIED_AS_INSUFFICIENT": false,
+    "NULL_BUCKET_COUNTS_USED_TO_PROVE_INSUFFICIENCY": false,
     "E9_DEPENDENCY_ON_E8_RUNTIME_COUNT": 0,
-    "AMBIGUOUS_FORECAST_TIMEZONE": 0,
     "INVENTED_FORECAST_HORIZON_COUNT": 0,
-    "MISSING_BUCKET_AS_ZERO_COUNT": 0,
-    "PARTIAL_CURRENT_BUCKET_USED_AS_COMPLETE": 0,
-    "FORECAST_TARGET_LEAKAGE_COUNT": 0,
-    "ARBITRARY_FORECAST_INTERVAL_COUNT": 0,
-    "LLM_FORECAST_VALUE_AUTHORITY_COUNT": 0,
-    "CLIENT_FORECAST_BUSINESS_DERIVATION_COUNT": 0,
-    "OBSERVED_FORECAST_POINT_AMBIGUITY": 0,
-    "INVALID_NEGATIVE_COUNT_FORECAST_COUNT": 0,
-    "MIXED_CURRENCY_FORECAST_SUM_COUNT": 0,
-    "PERSON_LEVEL_FORECAST_TARGET_COUNT": 0,
-    "NONDETERMINISTIC_FORECAST_AUTHORITY_COUNT": 0
-  },
-  "frozenAuthority": {
-    "E9_INITIAL_FORECAST_TARGET_CANDIDATE": "fin.daily_issued_revenue",
-    "E9_MVP_TARGETS": [],
-    "E9_RUNTIME_AUTHORITY": "DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY",
-    "FORECAST_GRAIN": "DAILY",
-    "FORECAST_HORIZON": "NONE",
-    "LOOKBACK_WINDOW": "NOT_AUTHORIZED_UNTIL_EMPIRICAL",
-    "SELECTED_BASELINE_METHOD": "LAST_OBSERVED_VALUE_THEN_MA14_AFTER_REVALIDATION",
-    "FORECAST_INTERVAL_AUTHORITY": "NOT_AUTHORIZED",
-    "E9_PERSISTENCE_DECISION": "DERIVED_ON_READ",
-    "SCOPE": "ORGANIZATION_ONLY"
+    "PRODUCTION_MUTATIONS": 0
   },
   "outcome": {
-    "CI_STATUS": "CI_E9A_FORECAST_AUTHORITY_COMPLETE_RUNTIME_DEFERRED",
-    "E9_PHASE": "E9A_COMPLETE",
-    "E9_FORECAST_AUTHORITY": "DEFINED",
+    "E9_EMPIRICAL_VIABILITY": "CERTIFIED_INSUFFICIENT",
     "E9_RUNTIME": "DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY",
-    "E9_E8_RUNTIME_DEPENDENCY": "NONE",
     "E9B_READINESS": "NOT_READY",
+    "CI_STATUS": "CI_E9D_FORECAST_RUNTIME_DEFERRED_FINAL_ACCEPTANCE_COMPLETED",
     "blockers": [
-      "NO_CANONICAL_MULTI_BUCKET_SERIES_API_ON_MAIN",
-      "PRODUCTION_TIMESERIES_PROBE_BLOCKED_SSH",
-      "INSUFFICIENT_PLATFORM_HISTORY_FOR_SALVAGE_MIN_GATES",
-      "SPARSE_TENANT_COVERAGE_E8B01_CROSSREF"
-    ]
+      "OBSERVATION_SPAN_TOO_SHORT_FOR_ROLLING_ORIGIN_BACKTEST",
+      "INSUFFICIENT_CLOSED_DAILY_BUCKET_SPAN"
+    ],
+    "FORECAST_HORIZON": "NONE",
+    "AVAILABLE_ROLLING_ORIGINS": 0,
+    "measuredFacts": {
+      "OBSERVATION_SPAN_DAYS": 1,
+      "MAX_CLOSED_DAILY_BUCKETS": 3,
+      "QUALIFYING_INVOICE_COUNT": 5
+    }
   },
   "runtimeGuard": {
-    "E9A_BACKEND_RUNTIME_CHANGES": 0,
-    "E9A_FRONTEND_RUNTIME_CHANGES": 0,
-    "E9A_SHARED_RUNTIME_CHANGES": 0,
+    "E9_BACKEND_RUNTIME_IMPLEMENTATION_COUNT": 0,
+    "E9_FRONTEND_RUNTIME_IMPLEMENTATION_COUNT": 0,
+    "E9_SHARED_RUNTIME_IMPLEMENTATION_COUNT": 0,
     "PRISMA_CHANGES": 0,
     "MIGRATION_CHANGES": 0,
-    "PRODUCTION_MUTATIONS": 0
+    "DEPENDENCY_CHANGES": 0
   }
 }

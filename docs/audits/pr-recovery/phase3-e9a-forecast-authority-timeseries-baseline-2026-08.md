@@ -1,11 +1,12 @@
 # Phase 3 E9A — Forecast Authority, Time-Series Contract, Baseline Salvage, Empirical Viability Freeze (2026-08)
 
-## CI_E9A_FORECAST_AUTHORITY_COMPLETE_RUNTIME_DEFERRED
+## CI_E9A_FORECAST_AUTHORITY_COMPLETE — superseded empirical outcome by E9A.1 / E9D
 
-**E9A docs-only authority freeze.** No E9 backend/frontend runtime, no Prisma, no Production mutations.
+**E9A docs-only authority freeze.** Empirical certification corrected in **E9A.1**; final deferral in **E9D-DEFER**.
 
-Machine artifact (canonical): `docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json`  
-Production remote SQL (prepared, blocked): `docs/audits/ci-recovery/tooling/e9a01_production_readonly_timeseries_remote.py`
+Machine artifact (canonical, v2): `docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json`  
+Production probe: `docs/audits/ci-recovery/tooling/e9a01_production_readonly_timeseries_remote.py`  
+Final acceptance: `phase3-e9d-forecast-runtime-deferred-final-acceptance-merge-readiness-2026-08.md`
 
 ---
 
@@ -17,7 +18,8 @@ Production remote SQL (prepared, blocked): `docs/audits/ci-recovery/tooling/e9a0
 | WORKTREE_CLEAN_AT_ENTRY | `true` |
 | E9_BRANCH_FROM_CURRENT_MAIN | `true` |
 | Branch | `integration/evaluations-e9-forecast-ui-2026-08` |
-| E8 merged reachable | `b3f2827274cdd2011a5f999506badfb91cf225d9` (PR #1056) |
+| E8 merged reachable | `83b140b5c2be591c65058293052468e358b2eba3` (**PR #1056**) |
+| E9A_AUTHORITY_COMMIT | `844f44ba8c81c57ac88ea6f0b6c1d5e1e95bbee5` |
 | E8_RUNTIME_DEPENDENCY_ALLOWED | `false` |
 | E9_DRAFT_PR_CREATED | see commit footer |
 | PR_STATE | `DRAFT` |
@@ -115,16 +117,11 @@ Branches inspected read-only:
 | `fin.daily_issued_revenue` | Authority 4, depth ?, grain 5, backtest 5, money complexity 3 | INSUFFICIENT_EVIDENCE |
 | `ops.fleet_utilization_pct` daily | Authority 3, partial occupancy, station fail-closed | INSUFFICIENT_EVIDENCE |
 
-### Frozen decision
+### Frozen decision (E9A — superseded by E9A.1 measured outcome)
 
-```
-E9_INITIAL_FORECAST_TARGET_CANDIDATE = fin.daily_issued_revenue
-E9_MVP_TARGETS = []
-E9_RUNTIME_AUTHORITY = DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY
-E9_SAFE_MVP_DECISION_DEFINED = true
-```
+E9A initially deferred without Production measurement. **E9A.1 superseded** with `CERTIFIED_INSUFFICIENT` — see E9D doc and JSON artifact v2.
 
-**Rationale:** No defensible runtime target until (1) server canonical daily bucket series exists and (2) Production/staging proves min-history for rolling-origin backtest. Platform cross-ref (E8B0.1): 4 orgs, 9 vehicles — sparse.
+Salvage reference thresholds (180d, 14d, MA14, 4 folds) are **REFERENCE_ONLY_REQUIRES_REVALIDATION** — not canonical gates.
 
 ---
 
@@ -132,7 +129,7 @@ E9_SAFE_MVP_DECISION_DEFINED = true
 
 | Field | Value |
 |-------|-------|
-| OBSERVATION_TIME_FIELD | `COALESCE(invoiceDate, createdAt)` for revenue; booking `startDate`/`endDate` for utilization |
+| OBSERVATION_TIME_FIELD | `COALESCE(issued_at, invoice_date)` per E3 `resolveRevenueBusinessMs` |
 | EVENT_TIME_OR_RECORD_TIME | **Event/business time** (invoice business date, booking interval) |
 | TIMEZONE_AUTHORITY | E1 `EvaluationsTimezoneContext` — org → station → platform fallback |
 | BUCKET_BOUNDARY | `[start, endExclusive)` local calendar day in effectiveTimezone |
@@ -168,8 +165,8 @@ Salvage lists 7/30/60/90d — **not copied without empirical proof.**
 
 | Field | Value |
 |-------|-------|
-| LOOKBACK_WINDOW | NOT_AUTHORIZED_UNTIL_EMPIRICAL |
-| Salvage reference (revalidate) | Revenue rule 180d / stat 365d; utilization rule 14d / stat 60d |
+| LOOKBACK_WINDOW | NOT_YET_EMPIRICALLY_FROZEN |
+| Salvage reference (not authority) | historical branch mentions 180d/365d/14d/60d — requires revalidation |
 | MIN_HISTORY_BEHAVIOR | `INSUFFICIENT_EVIDENCE` — never emit zero forecast merely because history absent |
 
 ---
@@ -323,13 +320,9 @@ Guards: OrgScopingGuard, RolesGuard, PermissionsGuard, EvaluationsAnalyticsFeatu
 
 ## 23. Empirical viability audit
 
-| Attempt | Result |
-|---------|--------|
-| Production read-only SQL | **Blocked** — SSH publickey denied from Cloud Agent |
-| Cross-reference E8B0.1 | ORG=4, VEHICLE=9, SERVICE_CASE=0 |
-| Fresh bucket counts | **Not captured** |
+**Superseded by E9A.1** — see `e9a01-forecast-timeseries-viability-2026-08.json` v2 and E9D doc.
 
-Per-candidate empirical fields remain null in JSON artifact. Blockers listed in outcome.
+E9A initially listed `UNVERIFIED` (SSH blocked with wrong user). E9A.1 succeeded via synqdrive-admin + measured **CERTIFIED_INSUFFICIENT**.
 
 ---
 
@@ -379,26 +372,22 @@ Per-candidate empirical fields remain null in JSON artifact. Blockers listed in 
 
 ## 27. Machine outcome
 
+Superseded — canonical outcome in E9D:
+
 ```
-CI_STATUS = CI_E9A_FORECAST_AUTHORITY_COMPLETE_RUNTIME_DEFERRED
-E9_PHASE = E9A_COMPLETE
-E9_FORECAST_AUTHORITY = DEFINED
+CI_STATUS = CI_E9D_FORECAST_RUNTIME_DEFERRED_FINAL_ACCEPTANCE_COMPLETED
+E9_EMPIRICAL_VIABILITY = CERTIFIED_INSUFFICIENT
 E9_RUNTIME = DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY
-E9_E8_RUNTIME_DEPENDENCY = NONE
 E9B_READINESS = NOT_READY
 ```
 
-**Exact data blockers:** see §6 and JSON artifact `outcome.blockers`.
-
 ---
 
-## 28. Commit footer (updated at push)
+## 28. Commit semantics (E9A.1)
 
 | Field | Value |
 |-------|-------|
-| E9A_ENTRY_HEAD_SHA | `2284f4ee8b367468356a54eb6670c48dd6c4dd25` |
-| E9A_FINAL_HEAD_SHA | `48b6fba1` |
-| E9A_COMMIT_SHA | `844f44ba` |
-| E9_PR_NUMBER | **1059** |
-| E9_PR_URL | https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1059 |
-| PR_IS_DRAFT | true |
+| E9A_AUTHORITY_COMMIT | `844f44ba8c81c57ac88ea6f0b6c1d5e1e95bbee5` |
+| E9A_ACCEPTANCE_CANDIDATE | branch `integration/evaluations-e9-forecast-ui-2026-08` at E9A.1 evaluation |
+| SELF_REFERENTIAL_SHA_FOLLOWUP_REQUIRED | false |
+| PR | **#1059** |

@@ -9,7 +9,7 @@ from pathlib import Path
 
 SSH_KEY = Path.home() / ".ssh/id_ed25519"
 SSH_HOST = os.environ.get("CLOUD_AGENT_VPS_HOST", "srv1374778.hstgr.cloud")
-SSH_USER = (os.environ.get("CLOUD_AGENT_SSH_USER") or "synqdrive-admin").strip() or "synqdrive-admin"
+SSH_USER = "synqdrive-admin"  # E8B0.1 proven path; ignore empty CLOUD_AGENT_SSH_USER=root
 
 REMOTE_SCRIPT = r"""set -euo pipefail
 sudo python3 - <<'PY'

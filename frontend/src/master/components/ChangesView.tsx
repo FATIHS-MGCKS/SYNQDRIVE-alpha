@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e9d-forecast-runtime-deferred-2026-08-17',
+    version: '4.9.904',
+    title: 'V4.9.904 — Evaluations E9A.1/E9D-DEFER: measured Production certification + runtime deferral',
+    summary: [
+      'E9A.1 corrects E9A: E8 merge SHA 83b140b5 (PR #1056), removes unvalidated salvage thresholds as authority, reclassifies missing bucket API as E9B prerequisite.',
+      'Production read-only probe SUCCESS (transaction_read_only=on): 5 qualifying invoices, 1 org, 1-day span, 3 daily buckets, 0 rolling origins → CERTIFIED_INSUFFICIENT.',
+      'E9D-DEFER complete: authority frozen, runtime DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY, E9B NOT_READY. PR #1059 Ready for Review — not merged.',
+    ],
+    reason:
+      'E9 runtime must not ship without measured walk-forward backtest geometry; E9A unverified deferral corrected by real Production aggregates.',
+    previousBehavior:
+      'E9A deferred without Production measurement and carried salvage 180d/14d references as quasi-authority; wrong E8 merge SHA in docs.',
+    details:
+      'docs/audits/pr-recovery/phase3-e9d-forecast-runtime-deferred-final-acceptance-merge-readiness-2026-08.md; docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T22:35:00.000Z',
+  },
+  {
     id: 'evaluations-e9a-forecast-authority-deferred-2026-08-17',
     version: '4.9.903',
     title: 'V4.9.903 — Evaluations E9A: forecast authority + time-series baseline (runtime deferred)',
