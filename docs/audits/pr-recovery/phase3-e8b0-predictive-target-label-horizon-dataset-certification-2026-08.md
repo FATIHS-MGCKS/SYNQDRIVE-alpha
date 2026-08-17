@@ -20,7 +20,10 @@ Harness: `docs/audits/ci-recovery/tooling/e8b0_predictive_target_certification.p
 | Field | Value |
 |-------|-------|
 | E8B0_ENTRY_HEAD_SHA | `9501a985d06e2ef7e59f37299e7adbb387f1de52` |
-| E8B0_FINAL_HEAD_SHA | *(set at commit)* |
+| E8B0_FINAL_HEAD_SHA | `74112512327c645d50d0b9dd6f4f9dd44ddc50b0` |
+| E8B0_COMMIT_SHA | `74112512327c645d50d0b9dd6f4f9dd44ddc50b0` |
+| E8_PR_NUMBER | **#1056** |
+| PR_IS_DRAFT | `true` |
 | CURRENT_BRANCH | `integration/evaluations-e8-predictive-risk-2026-08` |
 | CURRENT_MAIN_SHA | `bd732a8f7a6467565a8668ea136e81b79a04666a` |
 | WORKTREE_CLEAN_AT_ENTRY | `true` |
@@ -33,10 +36,10 @@ Harness: `docs/audits/ci-recovery/tooling/e8b0_predictive_target_certification.p
 
 | Field | Value |
 |-------|-------|
-| E8_DRAFT_PR_VERIFIED | `true` *(after repair — see commit)* |
-| E8_PR_NUMBER | *(set after PR create)* |
-| E8_PR_URL | *(set after PR create)* |
-| PR repair required | **yes** — E8A failed to create PR; E8B0 created Draft PR |
+| E8_DRAFT_PR_VERIFIED | `true` |
+| E8_PR_NUMBER | **#1056** |
+| E8_PR_URL | https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1056 |
+| PR repair required | **yes** — E8A failed to create PR; E8B0 created Draft PR #1056 |
 
 ---
 

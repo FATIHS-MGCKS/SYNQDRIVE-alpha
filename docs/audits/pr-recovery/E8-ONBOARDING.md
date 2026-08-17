@@ -12,7 +12,7 @@ Zuerst lesen, dann arbeiten.
 - **E7 merge commit:** `bd732a8f7a6467565a8668ea136e81b79a04666a` (squash-merge PR #1055)
 - **E8 entry main SHA:** siehe `phase3-e8a-*.md` (branch von aktuellem `origin/main`)
 - Arbeits-/PR-Branch: `integration/evaluations-e8-predictive-risk-2026-08`
-- Draft-PR: **Evaluations Recovery E8 – Predictive Risk & estimatedExposure** (OPEN, Draft, base `main`) — PR number recorded in `phase3-e8b0-*.md`
+- Draft-PR: **#1056** — [Evaluations Recovery E8 – Predictive Risk & estimatedExposure](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1056) (OPEN, Draft, base `main`)
 - **Bleibt Draft bis E8D — nicht mergen ohne explizite Autorisierung**
 
 ## 2. Zuerst lesen
