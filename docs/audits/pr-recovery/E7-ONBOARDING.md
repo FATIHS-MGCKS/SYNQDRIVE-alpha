@@ -23,6 +23,7 @@ lesen, dann arbeiten.
 - `.cursor/rules/Architectur-Updates.mdc`
 - `docs/audits/pr-recovery/E6-ONBOARDING.md` (Vorgänger-Kontext)
 - `docs/audits/pr-recovery/phase3-e7a-recommendations-actions-authority-baseline-2026-08.md` (**E7A authority freeze**)
+- `docs/audits/pr-recovery/phase3-e7b-canonical-recommendations-backend-implementation-2026-08.md` (**E7B backend implementation**)
 
 Backend-Hintergrund (E1–E6, bereits in `main`):
 
@@ -44,7 +45,7 @@ Backend-Hintergrund (E1–E6, bereits in `main`):
 | E5 | Quality / Privacy / Audit | ✅ gemerged |
 | E6 | Canonical Presentation Layer (`EvaluationsPage` / `financial-insights`) | ✅ gemerged (via main nach E6-Merge) |
 | **E7A** | **Authority / contract / implementation scope freeze** | ✅ (dieser Branch) |
-| **E7B** | Canonical backend Recommendations derivation + API | ⬜ offen |
+| **E7B** | Canonical backend Recommendations derivation + API | ✅ (dieser Branch) |
 | **E7C** | Recommendations / Actions frontend integration | ⬜ offen |
 | **E7D** | Integrated privacy/security/quality/UX acceptance + merge readiness | ⬜ offen |
 | E8 | Predictive Risk / `estimatedExposure` | ⬜ ausgeschlossen bis E8 autorisiert |
@@ -101,5 +102,5 @@ Base main: 06bae11f (R3B/#1054 merged). R3B COMPLETE.
 
 Bitte lies docs/audits/pr-recovery/E7-ONBOARDING.md und phase3-e7a-recommendations-actions-authority-baseline-2026-08.md.
 
-E7A ist abgeschlossen (authority freeze, docs-only). Nächstes Gate: E7B canonical backend Recommendations + API. PR bleibt Draft. Kein E8/E9, keine erfundenen Schwellen, keine Client-Business-Derivation.
+E7A ist abgeschlossen (authority freeze, docs-only). E7B liefert canonical backend Recommendations + API (derive-on-read, no Prisma). Nächstes Gate: E7C frontend integration. PR bleibt Draft. Kein E8/E9, keine erfundenen Schwellen, keine Client-Business-Derivation.
 ```

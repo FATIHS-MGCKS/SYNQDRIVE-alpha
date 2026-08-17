@@ -69,6 +69,7 @@ import { EvaluationsAnalyticsModule } from '@modules/evaluations-analytics/evalu
 import { EvaluationsFinanceModule } from '@modules/evaluations-finance/evaluations-finance.module';
 import { EvaluationsInsightsModule } from '@modules/evaluations-analytics/e4/evaluations-insights.module';
 import { EvaluationsQualityModule } from '@modules/evaluations-analytics/e5/evaluations-quality.module';
+import { EvaluationsRecommendationsModule } from '@modules/evaluations-analytics/e7/evaluations-recommendations.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { TechnicalObservationsModule } from '@modules/technical-observations/technical-observations.module';
@@ -262,6 +263,7 @@ export class AppModule {
         EvaluationsFinanceModule,
         EvaluationsInsightsModule,
         EvaluationsQualityModule,
+        EvaluationsRecommendationsModule,
         HighMobilityModule,
         RentalHealthModule,
         TechnicalObservationsModule,

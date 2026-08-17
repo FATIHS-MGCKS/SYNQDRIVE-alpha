@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E7B Canonical Recommendations Backend (Phase 3 — V4.9.895)', icon: Layers,
+    endpoint: 'GET /organizations/:orgId/evaluations/analytics/insights/recommendations — derive-on-read, tenant/station scoped (E7B branch). Inputs: 1× E4 summary + E5 quality from summary (no second getSummary, no direct E3 finance).',
+    service: 'Shared `@synq/evaluations-recommendations` contract + pure `evaluations-recommendations.derive` domain. Nine families (weakness/strength/utilization/receivables/cost-quality/driver/skipped). Deterministic stable ids (FNV-1a), supersession (UNDERUTILIZATION→UTILIZATION_ATTENTION, receivables/quality dedup), titleKey/explanationKey/copyParams only. Actions: non-mutating NAVIGATION with allowlisted EVALUATIONS_SECTION targets. No persistence, no estimatedExposure/forecast, no client business derivation.',
+    dataSource: 'shared/evaluations-recommendations/*; backend/src/modules/evaluations-analytics/e7/*; docs/audits/pr-recovery/phase3-e7b-*.md. E7C next: EvaluationsPage presentation only.' },
   { name: 'Auswertungen E7A Recommendations & Actions Authority (Phase 3 — V4.9.894)', icon: Layers,
     endpoint: 'E7A docs-only freeze. Planned E7B: GET .../evaluations/analytics/insights/recommendations (not implemented on main). Existing inputs: E3 finance/insights, E4 summary sections, E5 quality, E5B driver-analysis.',
     service: 'Authority baseline before runtime. Recommendations are deterministic, evidence-backed, server-derived from E1–E6 only — no client business derivation, no invented thresholds, no estimatedExposure/forecast. Initial actions: non-mutating NAVIGATION/FILTER/OPEN_ENTITY/OPEN_WORKFLOW links only. UI plan (E7C): dedicated Recommendations section on `EvaluationsPage` after Executive Summary. Rejects historical org_recommendations salvage (monetary benefit fields) and dashboard `insights-categories.ts` client strings.',

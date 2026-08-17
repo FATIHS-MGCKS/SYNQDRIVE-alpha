@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e7b-canonical-recommendations-backend-2026-08-17',
+    version: '4.9.895',
+    title: 'V4.9.895 — Evaluations E7B: canonical Recommendations backend + API',
+    summary: [
+      'Shared `@synq/evaluations-recommendations` contract (schema 1.0.0, calculation recommendations-e7-v1) with deterministic stable ids, provenance, and non-mutating action metadata.',
+      'Pure domain derivation from E4 summary + E5 quality (one getSummary per request; no direct E3 finance call; E5 buildQualityReportFromSummary refactor preserves public getQualityReport semantics).',
+      'Tenant/station-safe GET …/evaluations/analytics/insights/recommendations with nine implemented families, supersession rules, and comprehensive backend tests. Zero Prisma/migration/production changes.',
+    ],
+    reason:
+      'E7B delivers the canonical server-side Recommendations authority required before E7C frontend integration.',
+    previousBehavior:
+      'E7A froze authority only (docs). No recommendations endpoint or shared contract existed on the E7 branch.',
+    details:
+      'shared/evaluations-recommendations/*, backend/src/modules/evaluations-analytics/e7/*, docs/audits/pr-recovery/phase3-e7b-canonical-recommendations-backend-implementation-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T06:00:00.000Z',
+  },
+  {
     id: 'evaluations-e7a-recommendations-actions-authority-2026-08-17',
     version: '4.9.894',
     title: 'V4.9.894 — Evaluations E7A: Recommendations & Actions authority baseline',
