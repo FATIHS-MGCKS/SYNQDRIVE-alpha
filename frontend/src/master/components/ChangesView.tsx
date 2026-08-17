@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e9a-forecast-authority-deferred-2026-08-17',
+    version: '4.9.903',
+    title: 'V4.9.903 — Evaluations E9A: forecast authority + time-series baseline (runtime deferred)',
+    summary: [
+      'E9A docs-only authority freeze after E8 merge (2284f4ee). Forecast taxonomy frozen (historical series / projection / baseline / statistical / scenario). E9 independent of E8 runtime — zero E8 risk output as target or feature.',
+      'Time-series inventory: canonical period scalars (E3 MTD finance, E4 utilization) but zero multi-bucket series APIs on main; FinancialInsightsView daily chart flagged non-canonical. Salvage branches classified (baseline-forecasts E9_ONLY; maintenance-risk REJECT).',
+      'Empirical viability: Production bucket probe blocked (SSH); E8B0.1 cross-ref 4 orgs / 9 vehicles. E9_MVP_TARGETS=[]; E9_RUNTIME=DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY; E9B NOT_READY. Proposed forecast contract + rolling-origin backtest plan. Zero runtime/Prisma/migration/production mutations.',
+    ],
+    reason:
+      'E9 product runtime must not ship without canonical server bucketed history and defensible rolling-origin backtest; E9A freezes authority without inventing horizons, intervals, or forecast values.',
+    previousBehavior:
+      'No E9 forecast authority; fc.* registry placeholders only; client daily finance chart non-canonical.',
+    details:
+      'docs/audits/pr-recovery/{E9-ONBOARDING,phase3-e9a-forecast-authority-timeseries-baseline-2026-08}.md; architecture/EVALUATIONS_E9_FORECASTS_2026-08-18.md; docs/audits/ci-recovery/data/e9a01-forecast-timeseries-viability-2026-08.json',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T22:45:00.000Z',
+  },
+  {
     id: 'evaluations-e8d-deferred-final-acceptance-2026-08-17',
     version: '4.9.902',
     title: 'V4.9.902 — Evaluations E8D-DEFER: predictive risk deferred final acceptance',

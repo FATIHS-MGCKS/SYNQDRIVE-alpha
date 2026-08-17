@@ -1,0 +1,117 @@
+{
+  "artifactVersion": "e9a01-v1",
+  "generatedAt": "2026-08-17T22:30:00Z",
+  "entry": {
+    "E9A_ENTRY_MAIN_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
+    "WORKTREE_CLEAN_AT_ENTRY": true,
+    "branch": "integration/evaluations-e9-forecast-ui-2026-08",
+    "E8_RUNTIME_DEPENDENCY_ALLOWED": false,
+    "E8_MERGED_MAIN_SHA": "b3f2827274cdd2011a5f999506badfb91cf225d9"
+  },
+  "productionReadOnly": {
+    "used": false,
+    "attempted": true,
+    "attemptMethod": "VPS remote script e9a01_production_readonly_timeseries_remote.py",
+    "blocker": "SSH Permission denied (publickey) from Cloud Agent to srv1374778.hstgr.cloud",
+    "productionMutationCount": 0,
+    "crossReference": "docs/audits/ci-recovery/data/e8b01-production-readonly-predictive-certification-2026-08.json"
+  },
+  "platformCrossReference": {
+    "ORGANIZATION_COUNT": 4,
+    "VEHICLE_COUNT": 9,
+    "SERVICE_CASE_COUNT": 0,
+    "note": "E8B0.1 canonical Production read-only facts; time-series bucket counts not re-queried in E9A due to SSH blocker"
+  },
+  "canonicalGapOnMain": {
+    "MULTI_BUCKET_SERIES_API_COUNT": 0,
+    "CLIENT_DERIVED_DAILY_FINANCE_SERIES": true,
+    "E3_FINANCE_PERIOD_LOCKED_MTD": true,
+    "FC_REGISTRY_PLANNED_ONLY": true
+  },
+  "candidates": {
+    "fin.daily_issued_revenue": {
+      "CANONICAL_DATA_AUTHORITY": "HIGH_FACTS_LOW_SERIES_API",
+      "OBSERVATION_START": null,
+      "OBSERVATION_END": null,
+      "BUCKET_COUNT": null,
+      "NON_NULL_BUCKETS": null,
+      "ZERO_BUCKETS": null,
+      "MISSING_BUCKETS": null,
+      "TENANT_COUNT": null,
+      "MIN_TENANT_HISTORY": null,
+      "MEDIAN_TENANT_HISTORY": null,
+      "MAX_TENANT_HISTORY": null,
+      "SALVAGE_RULE_MIN_HISTORY_DAYS": 180,
+      "EMPIRICAL_STATUS": "INSUFFICIENT_EVIDENCE",
+      "WHY": "E3 issued revenue facts authoritative but no server daily series; Production bucket depth unmeasured; 180d salvage gate unlikely on 4-org fleet"
+    },
+    "ops.fleet_utilization_pct": {
+      "CANONICAL_DATA_AUTHORITY": "MEDIUM_PARTIAL_SCALAR_ONLY",
+      "OBSERVATION_START": null,
+      "OBSERVATION_END": null,
+      "BUCKET_COUNT": null,
+      "TENANT_COUNT": null,
+      "MIN_TENANT_HISTORY": null,
+      "MEDIAN_TENANT_HISTORY": null,
+      "MAX_TENANT_HISTORY": null,
+      "SALVAGE_RULE_MIN_HISTORY_DAYS": 14,
+      "EMPIRICAL_STATUS": "INSUFFICIENT_EVIDENCE",
+      "WHY": "E4 interval domain authoritative for period scalar; daily bucket series not served; scheduled occupancy PARTIAL; station scope fail-closed"
+    }
+  },
+  "taxonomyGates": {
+    "HISTORICAL_SERIES_AS_FORECAST_COUNT": 0,
+    "PROJECTION_AS_VALIDATED_FORECAST_COUNT": 0,
+    "SCENARIO_AS_FORECAST_COUNT": 0,
+    "E8_RISK_OUTPUT_USED_AS_E9_TARGET": false,
+    "E8_RISK_OUTPUT_USED_AS_E9_FEATURE": false,
+    "E9_DEPENDENCY_ON_E8_RUNTIME_COUNT": 0,
+    "AMBIGUOUS_FORECAST_TIMEZONE": 0,
+    "INVENTED_FORECAST_HORIZON_COUNT": 0,
+    "MISSING_BUCKET_AS_ZERO_COUNT": 0,
+    "PARTIAL_CURRENT_BUCKET_USED_AS_COMPLETE": 0,
+    "FORECAST_TARGET_LEAKAGE_COUNT": 0,
+    "ARBITRARY_FORECAST_INTERVAL_COUNT": 0,
+    "LLM_FORECAST_VALUE_AUTHORITY_COUNT": 0,
+    "CLIENT_FORECAST_BUSINESS_DERIVATION_COUNT": 0,
+    "OBSERVED_FORECAST_POINT_AMBIGUITY": 0,
+    "INVALID_NEGATIVE_COUNT_FORECAST_COUNT": 0,
+    "MIXED_CURRENCY_FORECAST_SUM_COUNT": 0,
+    "PERSON_LEVEL_FORECAST_TARGET_COUNT": 0,
+    "NONDETERMINISTIC_FORECAST_AUTHORITY_COUNT": 0
+  },
+  "frozenAuthority": {
+    "E9_INITIAL_FORECAST_TARGET_CANDIDATE": "fin.daily_issued_revenue",
+    "E9_MVP_TARGETS": [],
+    "E9_RUNTIME_AUTHORITY": "DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY",
+    "FORECAST_GRAIN": "DAILY",
+    "FORECAST_HORIZON": "NONE",
+    "LOOKBACK_WINDOW": "NOT_AUTHORIZED_UNTIL_EMPIRICAL",
+    "SELECTED_BASELINE_METHOD": "LAST_OBSERVED_VALUE_THEN_MA14_AFTER_REVALIDATION",
+    "FORECAST_INTERVAL_AUTHORITY": "NOT_AUTHORIZED",
+    "E9_PERSISTENCE_DECISION": "DERIVED_ON_READ",
+    "SCOPE": "ORGANIZATION_ONLY"
+  },
+  "outcome": {
+    "CI_STATUS": "CI_E9A_FORECAST_AUTHORITY_COMPLETE_RUNTIME_DEFERRED",
+    "E9_PHASE": "E9A_COMPLETE",
+    "E9_FORECAST_AUTHORITY": "DEFINED",
+    "E9_RUNTIME": "DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY",
+    "E9_E8_RUNTIME_DEPENDENCY": "NONE",
+    "E9B_READINESS": "NOT_READY",
+    "blockers": [
+      "NO_CANONICAL_MULTI_BUCKET_SERIES_API_ON_MAIN",
+      "PRODUCTION_TIMESERIES_PROBE_BLOCKED_SSH",
+      "INSUFFICIENT_PLATFORM_HISTORY_FOR_SALVAGE_MIN_GATES",
+      "SPARSE_TENANT_COVERAGE_E8B01_CROSSREF"
+    ]
+  },
+  "runtimeGuard": {
+    "E9A_BACKEND_RUNTIME_CHANGES": 0,
+    "E9A_FRONTEND_RUNTIME_CHANGES": 0,
+    "E9A_SHARED_RUNTIME_CHANGES": 0,
+    "PRISMA_CHANGES": 0,
+    "MIGRATION_CHANGES": 0,
+    "PRODUCTION_MUTATIONS": 0
+  }
+}

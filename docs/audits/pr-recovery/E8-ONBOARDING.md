@@ -37,7 +37,10 @@ Zuerst lesen, dann arbeiten.
 | **E8B** | **Canonical backend predictive risk + offline validation** | ⏸ DEFERRED_PENDING_EMPIRICAL_HISTORY |
 | **E8C** | **Predictive Risk frontend integration** | ⏸ NOT_REQUIRED_WHILE_RUNTIME_DEFERRED |
 | **E8D-DEFER** | **Final deferral acceptance + merge readiness** | ✅ COMPLETE |
-| **E9** | **Forecast UI / time-series presentation** | ⏳ READY_AFTER_E8_PR_MERGE |
+| **E9A** | **Forecast authority + time-series contract + empirical viability freeze** | ✅ COMPLETE (docs-only; runtime deferred) |
+| **E9B** | **Canonical forecast backend + backtesting** | ⏸ NOT_READY |
+| **E9C** | **Forecast frontend integration** | ⏸ blocked by E9B |
+| **E9** | **Forecast UI / time-series presentation** | ⏸ DEFERRED_INSUFFICIENT_TIME_SERIES_HISTORY |
 
 ## 4. E8 frozen authority (E8D-DEFER)
 
@@ -60,7 +63,7 @@ Zuerst lesen, dann arbeiten.
 | Model path (future) | DETERMINISTIC_POLICY_RULE baseline → STATISTICAL_BASELINE; no ML in initial E8B |
 | Persistence | DERIVED_ON_READ; no Prisma in E8 phases completed so far |
 | E7 | Separate section; no circular E7↔E8 truth |
-| E9 | May begin after PR #1056 merge; must not depend on unavailable E8 runtime |
+| E9 | E9A complete on branch `integration/evaluations-e9-forecast-ui-2026-08`; must not depend on unavailable E8 runtime; E9B NOT_READY |
 
 ## 5. Leitplanken (gelten für zukünftiges E8B+)
 
