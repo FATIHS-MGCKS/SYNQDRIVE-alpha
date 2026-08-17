@@ -289,9 +289,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Baseline-aware dependency audit (PR base vs head)
+      - name: Baseline-aware dependency audit (baseline vs head)
         env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          PUSH_BEFORE_SHA: ${{ github.event_name == 'push' && github.event.before || '' }}
           PR_HEAD_SHA: ${{ github.sha }}
         run: bash scripts/audits/audit-dependencies.sh
 
