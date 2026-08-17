@@ -24,6 +24,7 @@ lesen, dann arbeiten.
 - `docs/audits/pr-recovery/E6-ONBOARDING.md` (Vorgänger-Kontext)
 - `docs/audits/pr-recovery/phase3-e7a-recommendations-actions-authority-baseline-2026-08.md` (**E7A authority freeze**)
 - `docs/audits/pr-recovery/phase3-e7b-canonical-recommendations-backend-implementation-2026-08.md` (**E7B backend implementation**)
+- `docs/audits/pr-recovery/phase3-e7b1-recommendation-authority-conformance-hardening-2026-08.md` (**E7B.1 fail-closed hardening**)
 
 Backend-Hintergrund (E1–E6, bereits in `main`):
 
