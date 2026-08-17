@@ -12,8 +12,8 @@ lesen, dann arbeiten.
 - **E7 entry main SHA:** `06bae11f37a1843836dedf6a4cfcab0eb2fe37a5` (R3B closure via squash-merge PR #1054)
 - **R3B status:** COMPLETE — E7 ist explizit autorisiert
 - Arbeits-/PR-Branch: `integration/evaluations-e7-recommendations-actions-2026-08`
-- Draft-PR: siehe `phase3-e7a-recommendations-actions-authority-baseline-2026-08.md` (E7_PR_NUMBER / E7_PR_URL)
-- **Bleibt Draft** bis unabhängige E7D-Abnahme — nicht mergen, nicht Ready markieren ohne Autorisierung
+- Draft-PR: **#1055** — „Evaluations Recovery E7 – Recommendations & Actions“
+  (OPEN, Draft, base `main`). **Bleibt Draft — nicht mergen, nicht Ready markieren.**
 
 ## 2. Zuerst lesen: Regeln / Arbeitsanweisungen
 
