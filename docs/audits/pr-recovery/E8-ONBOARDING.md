@@ -20,7 +20,8 @@ Zuerst lesen, dann arbeiten.
 - `AGENTS.md`, `.cursor/rules/projektregel.mdc`, `.cursor/rules/Dimo-Rule.mdc`
 - `docs/audits/pr-recovery/E7-ONBOARDING.md` + E7A–E7D authority docs
 - `docs/audits/pr-recovery/phase3-e8a-predictive-risk-estimated-exposure-authority-baseline-2026-08.md` (**E8A authority freeze**)
-- `docs/audits/pr-recovery/phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md` (**E8B0 certification — read before E8B runtime**)
+- `docs/audits/pr-recovery/phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md`
+- `docs/audits/pr-recovery/phase3-e8b01-production-readonly-predictive-certification-2026-08.md` (**E8B0.1 — read before E8B runtime**)
 - `architecture/EVALUATIONS_E8_PREDICTIVE_RISK_2026-08-17.md`
 - E1–E6 final authority documents (contracts, finance MTD, analytics, quality/privacy)
 
@@ -30,8 +31,9 @@ Zuerst lesen, dann arbeiten.
 |--------|--------|--------|
 | E7 | Recommendations / Actions (observed, server-derived) | ✅ merged (`bd732a8`) |
 | **E8A** | **Predictive risk + estimatedExposure authority / model governance freeze** | ✅ (docs-only) |
-| **E8B0** | **Target label / horizon / PIT dataset certification (runtime gate)** | ✅ (docs + offline harness) |
-| E8B | Canonical backend predictive risk + offline validation | ⬜ blocked pending product horizon + threshold authority |
+| **E8B0** | **Target label / horizon / PIT dataset certification (runtime gate)** | ✅ (synthetic harness — superseded by E8B0.1) |
+| **E8B0.1** | **Production read-only empirical certification + leakage correction** | ✅ (real Production read-only; zero ServiceCase history) |
+| E8B | Canonical backend predictive risk + offline validation | ⬜ blocked — insufficient real labels + product authority |
 | E8C | Predictive Risk frontend integration | ⬜ offen |
 | E8D | Integrated validation / calibration / merge readiness | ⬜ offen |
 | E9 | Forecast UI / time-series presentation | ⬜ ausgeschlossen bis E9 autorisiert |
@@ -42,9 +44,9 @@ Zuerst lesen, dann arbeiten.
 
 | Authority | E8A decision |
 |-----------|--------------|
-| E8 predictive target | **`FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION`** (E8B0 certified; E8A `unplanned` name rejected) |
-| E8 scope | **ORGANIZATION_ONLY** (station not PIT-reconstructible for MVP) |
-| E8 horizon | **`NEXT_30_DAYS` recommended** — **REQUIRES_EXPLICIT_PRODUCT_APPROVAL** before runtime |
+| E8 predictive target | **`FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION`** (E8B0.1 certified semantics; event truth within horizon) |
+| E8 scope | **ORGANIZATION_ONLY** |
+| E8 horizon | **`NONE` recommended on current Production** (zero ServiceCase rows) — product approval required when history exists |
 | Initial risk output | `RISK_CATEGORY` + provenance (no numeric probability until calibration) |
 | estimatedExposure | **DEFERRED** — insufficient mathematical/money authority for EXPECTED LOSS or standalone field |
 | Model path | DETERMINISTIC_POLICY_RULE baseline → STATISTICAL_BASELINE (historical rate); no ML in initial E8B |
@@ -92,5 +94,5 @@ E7 merged @ bd732a8. E8A complete (docs-only authority freeze).
 
 Bitte lies E8-ONBOARDING.md und phase3-e8a-predictive-risk-estimated-exposure-authority-baseline-2026-08.md.
 
-E8A froze Form B governance (no probability, estimatedExposure deferred). E8B0 certified target `FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION`, org-only scope, PIT feature set, and leakage gates. Runtime blocked until product approves horizon + ELEVATED/NORMAL threshold. PR bleibt Draft.
+E8A froze Form B governance. E8B0.1 executed Production read-only certification (`transaction_read_only=on`), corrected leakage harness, and certified target `FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION`. Production currently has zero ServiceCase rows — E8B blocked. PR #1056 bleibt Draft.
 ```

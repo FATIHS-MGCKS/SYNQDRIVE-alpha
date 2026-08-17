@@ -7,9 +7,8 @@
   changes.
 - E8A selected initial predictive target name `FLEET_UNPLANNED_MAINTENANCE_DISRUPTION` /
   horizon `NEXT_30_DAYS` at org/station scope — **E8B0 corrected target name** (see below).
-- **E8B0 (certification, docs + offline harness):** empirically certified target label,
-  PIT dataset rules, org-only scope, leakage tests, and quality gates. **Horizon and
-  ELEVATED/NORMAL threshold require explicit product approval** before E8B runtime.
+- **E8B0 (synthetic certification):** superseded by E8B0.1 for empirical authority.
+- **E8B0.1 (Production read-only):** corrected leakage harness (mutant-sensitive), reconciled E8B0 evidence drift, closed target semantics to **`FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION`** (`EVENT_TRUTH_WITHIN_HORIZON`; no mutable `blocksRental`/`status` in label). Production read-only audit: `transaction_read_only=on`, **0 ServiceCase rows** — horizon recommendation **`NONE`**, E8B blocked pending real label history.
 - **estimatedExposure deferred** — insufficient authority for EXPECTED LOSS or
   standalone monetary field; E3 observed receivables remain Class A facts only.
 - Model governance: DETERMINISTIC_POLICY_RULE + STATISTICAL_BASELINE first; no ML/LLM;
@@ -22,9 +21,9 @@
 
 - **E8 scope.** Canonical **predictive risk** about a defined future operational event
   — not E7 observed recommendations, not E9 time-series forecasts.
-- **Certified target (E8B0).** `FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION` — new
-  rental-blocking ServiceCase with `openedAt` and `downtimeStart` within horizon.
-  E8A `unplanned` name rejected (no ServiceCase unplanned authority).
+- **Certified target (E8B0.1).** `FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION` — `openedAt`
+  + `downtimeStart` within horizon; ambiguous when downtime missing; no `blocksRental`/
+  `status` in label.
 - **Scope (E8B0).** `ORGANIZATION_ONLY` for MVP; station filtering
   `NOT_SUPPORTED_FOR_E8_MVP` until vehicle/station PIT history is complete.
 - **Horizon (E8B0).** `NEXT_30_DAYS` recommended empirically; **product approval
@@ -46,15 +45,17 @@
   presentation-only; labels distinguish Observed / Predicted / Potential.
 - **Docs:** `docs/audits/pr-recovery/E8-ONBOARDING.md`,
   `phase3-e8a-predictive-risk-estimated-exposure-authority-baseline-2026-08.md`,
-  `phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md`
+  `phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md`,
+  `phase3-e8b01-production-readonly-predictive-certification-2026-08.md`
 
 ## Phase topology
 
 | Phase | Status |
 |-------|--------|
 | E8A | Complete (authority freeze) |
-| E8B0 | Complete (target/PIT/horizon certification — product gates remain) |
-| E8B | Backend + offline validation — **blocked pending product horizon + threshold** |
+| E8B0 | Complete (synthetic — superseded) |
+| E8B0.1 | Complete (Production read-only; insufficient ServiceCase history) |
+| E8B | Backend — **blocked** (`INSUFFICIENT_REAL_POSITIVE_LABELS`) |
 | E8C | Frontend integration |
 | E8D | Merge readiness |
 

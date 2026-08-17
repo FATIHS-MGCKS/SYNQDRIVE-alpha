@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e8b01-production-readonly-certification-2026-08-17',
+    version: '4.9.901',
+    title: 'V4.9.901 — Evaluations E8B0.1: Production read-only predictive certification',
+    summary: [
+      'E8B0.1 corrects E8B0 synthetic-only gaps: reconciled QUALIFYING_LABEL_COUNT + ServiceCaseSource enum drift, rebuilt leakage harness with adversarial sentinels and mutant sensitivity proofs.',
+      'Production read-only audit (transaction_read_only=on): 4 orgs, 9 vehicles, 0 ServiceCase rows. Certified target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION (event truth within horizon; no mutable blocksRental/status label).',
+      'Horizon recommendation NONE on current Production; E8B blocked (INSUFFICIENT_REAL_POSITIVE_LABELS). Zero runtime/Prisma/migration/production mutations.',
+    ],
+    reason:
+      'Predictive runtime requires real empirical label history and a leakage harness that can fail on deliberately broken extractors.',
+    previousBehavior:
+      'E8B0 used synthetic-only data with evidence inconsistencies and non-detecting leakage assertions.',
+    details:
+      'docs/audits/pr-recovery/phase3-e8b01-*.md; docs/audits/ci-recovery/data/e8b01-production-readonly-predictive-certification-2026-08.json',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T12:30:00.000Z',
+  },
+  {
     id: 'evaluations-e8b0-predictive-target-certification-2026-08-17',
     version: '4.9.900',
     title: 'V4.9.900 — Evaluations E8B0: predictive target / horizon / PIT dataset certification',
