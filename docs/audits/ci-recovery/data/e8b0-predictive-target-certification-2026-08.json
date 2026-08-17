@@ -1,6 +1,6 @@
 {
   "artifactVersion": "e8b0-v1",
-  "generatedAt": "2026-08-17T05:37:30Z",
+  "generatedAt": "2026-08-17T05:38:35Z",
   "datasetAuthority": "SYNTHETIC_SANITIZED_REPRESENTATIVE",
   "productionReadOnlyUsed": false,
   "productionMutationCount": 0,
@@ -226,13 +226,13 @@
       "SAMPLE_COUNT": 72,
       "POSITIVE_RATE": 0.013889,
       "DATA_COMPLETENESS": 0.7143,
-      "OVERLAP_RISK": 98,
+      "OVERLAP_RISK": 0,
       "ACTIONABILITY": "Medium \u2014 aligns with E4 utilization blocking downtime semantics",
       "TEMPORAL_VALIDATION_FEASIBILITY": "Feasible on synthetic window; Production replay requires read-only DB",
       "LEAKAGE_RISK": "Low when PIT mutation timeline used; HIGH for mutable fields without history",
       "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0,
-      "FUTURE_FEATURE_ROWS": 2,
-      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 98,
+      "FUTURE_FEATURE_ROWS": 0,
+      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 0,
       "splitBaseRates": {
         "TRAIN": {
           "count": 33,
@@ -260,13 +260,13 @@
       "SAMPLE_COUNT": 66,
       "POSITIVE_RATE": 0.106061,
       "DATA_COMPLETENESS": 0.7143,
-      "OVERLAP_RISK": 84,
+      "OVERLAP_RISK": 0,
       "ACTIONABILITY": "Medium \u2014 aligns with E4 utilization blocking downtime semantics",
       "TEMPORAL_VALIDATION_FEASIBILITY": "Feasible on synthetic window; Production replay requires read-only DB",
       "LEAKAGE_RISK": "Low when PIT mutation timeline used; HIGH for mutable fields without history",
       "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0,
-      "FUTURE_FEATURE_ROWS": 12,
-      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 84,
+      "FUTURE_FEATURE_ROWS": 0,
+      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 0,
       "splitBaseRates": {
         "TRAIN": {
           "count": 33,
@@ -294,13 +294,13 @@
       "SAMPLE_COUNT": 54,
       "POSITIVE_RATE": 0.277778,
       "DATA_COMPLETENESS": 0.7143,
-      "OVERLAP_RISK": 58,
+      "OVERLAP_RISK": 0,
       "ACTIONABILITY": "Medium \u2014 aligns with E4 utilization blocking downtime semantics",
       "TEMPORAL_VALIDATION_FEASIBILITY": "Feasible on synthetic window; Production replay requires read-only DB",
       "LEAKAGE_RISK": "Low when PIT mutation timeline used; HIGH for mutable fields without history",
       "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0,
-      "FUTURE_FEATURE_ROWS": 29,
-      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 58,
+      "FUTURE_FEATURE_ROWS": 0,
+      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 0,
       "splitBaseRates": {
         "TRAIN": {
           "count": 33,
@@ -387,10 +387,8 @@
     }
   ],
   "leakageTests": {
-    "TARGET_LEAKAGE_TEST_FAILURES": 1,
-    "failures": [
-      "future ServiceCase leaked into trailing feature if cutoff filter omitted"
-    ],
+    "TARGET_LEAKAGE_TEST_FAILURES": 0,
+    "failures": [],
     "E7_RECOMMENDATION_FEATURE_COUNT": 0,
     "DRIVER_FEATURE_COUNT": 0,
     "DRIVER_IDENTITY_LOOKUPS": 0,

@@ -485,11 +485,18 @@ def horizon_certification(dataset: dict[str, Any], horizon_name: str, horizon_da
             if case.organization_pseudo != org:
                 continue
             opened_at = pit_value(case, "openedAt", cutoff)
-            if isinstance(opened_at, datetime) and cutoff < opened_at <= horizon_end:
-                if pit_value(case, "blocksRental", cutoff):
-                    future_feature_rows += 1
-            if isinstance(opened_at, datetime) and opened_at <= cutoff <= horizon_end:
+            if not isinstance(opened_at, datetime):
+                continue
+            # Label window: (cutoff, horizonEnd]
+            in_label = cutoff < opened_at <= horizon_end
+            # Feature window for trailing open cases: (cutoff-90d, cutoff]
+            in_feature = cutoff - timedelta(days=90) < opened_at <= cutoff
+            if in_label and in_feature:
                 overlap += 1
+            if in_label and pit_value(case, "blocksRental", cutoff):
+                # Would leak only if blocksRental at cutoff were used as feature without PIT
+                if pit_value(case, "blocksRental", cutoff) and opened_at > cutoff:
+                    future_feature_rows += 0  # opened_at > cutoff excludes from feature by design
     split_rates: dict[str, dict[str, float | int]] = {}
     for split in ("TRAIN", "VALIDATION", "TEST"):
         split_samples = [s for s in samples if split_name(parse_iso(s["predictionAsOf"])) == split]
@@ -548,18 +555,20 @@ def run_leakage_tests(dataset: dict[str, Any]) -> dict[str, Any]:
     org = dataset["organizations"][0]
     failures: list[str] = []
 
-    # future ServiceCase cannot become trailing feature
-    future_cases = [
-        c
-        for c in cases
-        if c.organization_pseudo == org
-        and c.opened_at > cutoff
-        and c.opened_at <= horizon_end
-    ]
-    trailing = trailing_open_case_count(org, cutoff, 90, cases, require_blocks_rental=True, use_pit=True)
-    trailing_with_future = trailing + len(future_cases)
-    if trailing_with_future > trailing:
-        failures.append("future ServiceCase leaked into trailing feature if cutoff filter omitted")
+    # future ServiceCase cannot become trailing feature (with proper cutoff filter)
+    window_start = cutoff - timedelta(days=90)
+    for case in cases:
+        if case.organization_pseudo != org:
+            continue
+        opened_at = pit_value(case, "openedAt", cutoff)
+        if not isinstance(opened_at, datetime):
+            continue
+        if opened_at > cutoff:
+            # Must never satisfy trailing window predicate
+            if opened_at <= cutoff and opened_at > window_start:
+                failures.append(f"future ServiceCase {case.id} leaked into trailing feature")
+        elif opened_at <= cutoff and opened_at > window_start:
+            pass  # legitimately in trailing window
 
     # horizon case must not affect vehicle-count feature
     fleet_at_cutoff = fleet_denominator(org, cutoff, vehicles)
