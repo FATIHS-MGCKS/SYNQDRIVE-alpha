@@ -1,0 +1,281 @@
+{
+  "artifactVersion": "e8b01-v1",
+  "generatedAt": "2026-08-17T12:20:56Z",
+  "entry": {
+    "E8B01_ENTRY_HEAD_SHA": "e957b9fe1549e23dc20bffe3ee1dec993c69a587",
+    "CURRENT_MAIN_SHA": "bd732a8f7a6467565a8668ea136e81b79a04666a",
+    "branch": "integration/evaluations-e8-predictive-risk-2026-08",
+    "E8_PR_NUMBER": 1056
+  },
+  "e8b0EvidenceReconciliation": {
+    "QUALIFYING_LABEL_COUNT_CONTRADICTION_RESOLVED": true,
+    "resolution": "QUALIFYING_LABEL_COUNT counts ServiceCase rows with downtime_start NOT NULL and status != CANCELLED in synthetic E8B0 fixture (4). E8B0 markdown value 5 incorrectly included a non-qualifying row.",
+    "SERVICE_CASE_SOURCE_ENUM_COUNT": 7,
+    "SERVICE_CASE_CATEGORY_ENUM_COUNT": 9,
+    "e8b0MarkdownErrors": [
+      "QUALIFYING_LABEL_COUNT 5 vs JSON 4",
+      "ServiceCaseSource claimed 8 values; Prisma has 7"
+    ]
+  },
+  "leakageHarness": {
+    "sentinelFailures": [],
+    "FEATURE_LABEL_WINDOW_OVERLAP": 0,
+    "FUTURE_FEATURE_ROWS": 0,
+    "cutoffBoundaryAtInclusive": true,
+    "genuine_count": 2,
+    "mutantA_count": 3,
+    "mutantB_count": 3,
+    "mutantC_count": 3,
+    "MUTANT_FUTURE_ROW_ACCEPTED_BY_TEST": false,
+    "MUTANT_WINDOW_OVERLAP_ACCEPTED_BY_TEST": false,
+    "MUTANT_MUTABLE_FIELD_ACCEPTED_BY_TEST": false,
+    "genuinePass": true,
+    "TARGET_LEAKAGE_TEST_FAILURES": 0,
+    "LEAKAGE_TEST_SENSITIVITY_PROVEN": true,
+    "HARNESS_DETERMINISTIC": true
+  },
+  "targetSemanticAudit": {
+    "optionsEvaluated": {
+      "A_FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION": {
+        "accepted": false,
+        "reason": "No canonical maintenance category subset; DAMAGE is not maintenance"
+      },
+      "B_FLEET_NEW_BLOCKING_SERVICE_CASE_DISRUPTION": {
+        "accepted": false,
+        "reason": "blocksRental/status mutable without field history \u2014 not label-safe at horizon"
+      },
+      "C_FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION": {
+        "accepted": true,
+        "reason": "Label uses openedAt + downtimeStart event timestamps within horizon only"
+      },
+      "D_NO_CERTIFIED_TARGET": {
+        "accepted": false
+      }
+    },
+    "TARGET_NAME": "FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION",
+    "TARGET_NAME_MATCHES_EXACT_LABEL_SEMANTICS": true,
+    "labelMeaning": "EVENT_TRUTH_WITHIN_HORIZON",
+    "labelPredicate": "openedAt > predictionAsOf AND openedAt <= horizonEnd AND downtimeStart > predictionAsOf AND downtimeStart <= horizonEnd",
+    "excludedFromLabel": [
+      "blocksRental",
+      "status",
+      "category naming as maintenance"
+    ],
+    "ambiguousRule": "openedAt in horizon window but downtimeStart null and not cancelled \u2014 AMBIGUOUS (not negative)"
+  },
+  "labelMaturity": [
+    {
+      "field": "openedAt",
+      "EVENT_TIME": "openedAt",
+      "FIELD_CAN_BE_BACKFILLED": false,
+      "FIELD_CAN_CHANGE": false,
+      "HISTORY_EXISTS": true,
+      "MATURITY_OBSERVABLE": "at creation",
+      "labelUse": "AUTHORIZED"
+    },
+    {
+      "field": "downtimeStart",
+      "EVENT_TIME": "downtimeStart",
+      "FIELD_CAN_BE_BACKFILLED": true,
+      "FIELD_CAN_CHANGE": true,
+      "HISTORY_EXISTS": false,
+      "MATURITY_OBSERVABLE": "unknown without audit trail",
+      "labelUse": "AUTHORIZED_WITH_AMBIGUOUS_WINDOWS"
+    },
+    {
+      "field": "blocksRental",
+      "EVENT_TIME": null,
+      "FIELD_CAN_BE_BACKFILLED": true,
+      "FIELD_CAN_CHANGE": true,
+      "HISTORY_EXISTS": false,
+      "MATURITY_OBSERVABLE": "not observable historically",
+      "labelUse": "FORBIDDEN"
+    },
+    {
+      "field": "status",
+      "EVENT_TIME": null,
+      "FIELD_CAN_BE_BACKFILLED": true,
+      "FIELD_CAN_CHANGE": true,
+      "HISTORY_EXISTS": false,
+      "MATURITY_OBSERVABLE": "not observable historically",
+      "labelUse": "FORBIDDEN"
+    }
+  ],
+  "mutableLabelResult": {
+    "priorE8B0RuleRejected": "labelFinalizationAt=max(horizonEnd, observationEnd) on blocksRental/status",
+    "frozenLabelMeaning": "EVENT_TRUTH_WITHIN_HORIZON",
+    "blocksRentalInLabel": false,
+    "statusInLabel": false
+  },
+  "productionReadOnly": {
+    "used": true,
+    "productionMutationCount": 0,
+    "analysis": {
+      "ok": true,
+      "transaction_read_only": "on",
+      "productionMutationCount": 0,
+      "observation": {
+        "OBSERVATION_START": null,
+        "OBSERVATION_END": null,
+        "ORGANIZATION_COUNT": 4,
+        "VEHICLE_COUNT": 9,
+        "SERVICE_CASE_COUNT": 0,
+        "EARLIEST_SERVICE_CASE_OPENED_AT": null,
+        "LATEST_SERVICE_CASE_OPENED_AT": null
+      },
+      "fieldCoverage": {
+        "missingOpenedAt": 0,
+        "missingDowntimeStart": 0,
+        "missingDowntimeEnd": 0,
+        "blockingCount": 0,
+        "cancelledCount": 0,
+        "statusDistribution": {},
+        "categoryDistribution": {},
+        "sourceDistribution": {},
+        "QUALIFYING_EVENT_COUNT": 0
+      },
+      "temporalSplit": {
+        "TRAIN_END": null,
+        "VALIDATION_START": null,
+        "VALIDATION_END": null,
+        "TEST_START": null
+      },
+      "horizons": {
+        "NEXT_7_DAYS": {
+          "SAMPLE_COUNT": 0,
+          "POSITIVE_COUNT": 0,
+          "TRAIN_POSITIVES": 0,
+          "VALIDATION_POSITIVES": 0,
+          "TEST_POSITIVES": 0,
+          "RIGHT_CENSORED": 0,
+          "AMBIGUOUS": 0,
+          "NEGATIVE": 0,
+          "FUTURE_FEATURE_ROWS": 0,
+          "FEATURE_LABEL_WINDOW_OVERLAP": 0
+        },
+        "NEXT_30_DAYS": {
+          "SAMPLE_COUNT": 0,
+          "POSITIVE_COUNT": 0,
+          "TRAIN_POSITIVES": 0,
+          "VALIDATION_POSITIVES": 0,
+          "TEST_POSITIVES": 0,
+          "RIGHT_CENSORED": 0,
+          "AMBIGUOUS": 0,
+          "NEGATIVE": 0,
+          "FUTURE_FEATURE_ROWS": 0,
+          "FEATURE_LABEL_WINDOW_OVERLAP": 0
+        },
+        "NEXT_90_DAYS": {
+          "SAMPLE_COUNT": 0,
+          "POSITIVE_COUNT": 0,
+          "TRAIN_POSITIVES": 0,
+          "VALIDATION_POSITIVES": 0,
+          "TEST_POSITIVES": 0,
+          "RIGHT_CENSORED": 0,
+          "AMBIGUOUS": 0,
+          "NEGATIVE": 0,
+          "FUTURE_FEATURE_ROWS": 0,
+          "FEATURE_LABEL_WINDOW_OVERLAP": 0
+        }
+      },
+      "labelSummary": {
+        "POSITIVE": 0,
+        "NEGATIVE": 0,
+        "AMBIGUOUS": 0,
+        "RIGHT_CENSORED": 0
+      }
+    }
+  },
+  "pitFeatureCertification": {
+    "features": [
+      {
+        "feature": "trailing_open_case_count_90d",
+        "PIT_RECONSTRUCTIBLE": true,
+        "rules": "openedAt <= predictionAsOf AND openedAt > predictionAsOf - 90d; no status/blocks/category filters",
+        "SAFE_FOR_MODEL": true
+      },
+      {
+        "feature": "fleet_vehicle_count",
+        "PIT_RECONSTRUCTIBLE": true,
+        "rules": "vehicle.createdAt < predictionAsOf; deletion/archive uncertainty documented",
+        "SAFE_FOR_MODEL": true,
+        "denominatorUncertainty": "Vehicle deletion timestamps incomplete \u2014 bias quantified in production aggregates only"
+      }
+    ],
+    "UNSUPPORTED_PIT_FEATURE_COUNT": 0,
+    "certifiedPitFeatureSet": [
+      "trailing_open_case_count_90d",
+      "fleet_vehicle_count"
+    ]
+  },
+  "thresholdStudy": {
+    "THRESHOLD_CANDIDATES": [
+      ">=1 trailing open case",
+      ">=2 trailing open cases"
+    ],
+    "SELECTED_CANDIDATE": null,
+    "SELECTION_CRITERION": "TRAIN+VALIDATION only \u2014 not executed due to sparse validation/test support",
+    "VALIDATION_RESULT": {
+      "positives": 0
+    },
+    "TEST_RESULT": {
+      "positives": 0,
+      "untouched": true
+    },
+    "RISK_CATEGORY_THRESHOLD_AUTHORITY": "INSUFFICIENT_EMPIRICAL_SUPPORT",
+    "RISK_THRESHOLD_PRODUCT_RECOMMENDATION": "No threshold frozen \u2014 insufficient validation/test positive support"
+  },
+  "horizonRecommendation": {
+    "RECOMMENDED_HORIZON": "NONE",
+    "HORIZON_PRODUCT_RECOMMENDATION": "NONE",
+    "note": "Production contains zero ServiceCase rows \u2014 no empirical horizon support",
+    "empiricallyViableOnRealData": false,
+    "PRODUCT_APPROVAL_REQUIRED": true
+  },
+  "qualityAndColdStart": {
+    "coldStartBehavior": "INSUFFICIENT_EVIDENCE",
+    "COLD_START_AS_NORMAL_COUNT": 0,
+    "PARTIAL": "MUST_SUPPRESS",
+    "STALE": "MUST_SUPPRESS",
+    "UNAVAILABLE": "MUST_SUPPRESS",
+    "ERROR": "MUST_SUPPRESS",
+    "FRESHNESS_UNKNOWN_liveDependent": "MUST_SUPPRESS"
+  },
+  "probabilityAndExposure": {
+    "EVENT_PROBABILITY_RUNTIME_AUTHORITY": false,
+    "NUMERIC_CONFIDENCE_RUNTIME_AUTHORITY": false,
+    "E8_ESTIMATED_EXPOSURE_AUTHORITY": "DEFERRED_INSUFFICIENT_AUTHORITY"
+  },
+  "runtimeGuard": {
+    "E8_RUNTIME_CHANGED": false,
+    "PRISMA_CHANGED": false,
+    "MIGRATIONS_CHANGED": false,
+    "DEPENDENCY_GRAPH_CHANGED": false
+  },
+  "consistency": {
+    "MARKDOWN_JSON_VALUE_MISMATCHES": 0,
+    "ENUM_DOCUMENTATION_MISMATCHES": 0,
+    "AGGREGATE_COUNT_MISMATCHES": 0,
+    "note": "Markdown generated from this JSON artifact"
+  },
+  "labelCertification": {
+    "AMBIGUOUS_LABEL_AS_NEGATIVE_COUNT": 0,
+    "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0
+  },
+  "outcome": {
+    "CI_STATUS": "CI_E8B01_PRODUCTION_READONLY_CERTIFICATION_BLOCKED",
+    "E8_TARGET_LABEL_AUTHORITY": "REAL_DATA_CERTIFIED_EMPTY_FLEET",
+    "E8_PIT_DATASET_AUTHORITY": "REAL_DATA_CERTIFIED_LIMITED",
+    "LEAKAGE_HARNESS_AUTHORITY": "SENSITIVITY_PROVEN",
+    "HORIZON_PRODUCT_AUTHORITY": "REQUIRES_EXPLICIT_USER_APPROVAL",
+    "RISK_THRESHOLD_PRODUCT_AUTHORITY": "INSUFFICIENT_EMPIRICAL_SUPPORT",
+    "E8B_READINESS": "NOT_READY",
+    "blockers": [
+      "INSUFFICIENT_REAL_POSITIVE_LABELS",
+      "NO_VALIDATION_SUPPORT",
+      "NO_TEST_SUPPORT"
+    ],
+    "PRODUCT_APPROVAL_REQUIRED": true
+  },
+  "datasetFingerprintSha256": "819474a3386ac6dccdf77c8fb106db423f96abb77bbd5cd063afa1d000a6deed"
+}

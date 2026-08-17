@@ -394,6 +394,22 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E8D-DEFER Final Deferral Acceptance (Phase 3 — V4.9.902)', icon: Layers,
+    endpoint: 'E8 runtime deferred — no predictive API/UI in product.',
+    service: 'E8D-DEFER: authority + E8B0.1 empirical certification complete; runtime DEFERRED_PENDING_EMPIRICAL_HISTORY; target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION; RECOMMENDED_HORIZON=NONE; eventProbability/confidence/estimatedExposure NOT_AUTHORIZED. PR #1056 merge-ready (not merged). E9 independent after merge.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8d-predictive-risk-deferred-final-acceptance-merge-readiness-2026-08.md' },
+  { name: 'Auswertungen E8B0.1 Production Read-Only Certification (Phase 3 — V4.9.901)', icon: Layers,
+    endpoint: 'E8B runtime blocked — Production has zero ServiceCase rows.',
+    service: 'E8B0.1: Production read-only SQL (transaction_read_only=on), leakage harness mutant sensitivity proven, target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION, horizon NONE on current data. estimatedExposure still deferred.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8b01-production-readonly-predictive-certification-2026-08.md' },
+  { name: 'Auswertungen E8B0 Predictive Target/PIT Certification (Phase 3 — V4.9.900)', icon: Layers,
+    endpoint: 'E8B runtime blocked — pending product horizon + threshold approval.',
+    service: 'E8B0 certified target FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION (blocking downtime predicate); org-only scope; PIT feature subset; leakage tests; quality fail-closed. Horizon NEXT_30_DAYS recommended but REQUIRES_EXPLICIT_PRODUCT_APPROVAL. estimatedExposure still deferred.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md; docs/audits/ci-recovery/data/e8b0-predictive-target-certification-2026-08.json' },
+  { name: 'Auswertungen E8A Predictive Risk Authority (Phase 3 — V4.9.899)', icon: Layers,
+    endpoint: 'Planned E8B: GET …/insights/predictive-risk (not implemented — E8A docs-only freeze).',
+    service: 'E8A authority: FLEET_UNPLANNED_MAINTENANCE_DISRUPTION target, NEXT_30_DAYS horizon, RISK_CATEGORY output only; estimatedExposure deferred; DETERMINISTIC_POLICY_RULE + STATISTICAL_BASELINE; strict as-of/freshness/leakage/quality fail-closed; no ML/LLM; separate from E7/E9.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8a-predictive-risk-estimated-exposure-authority-baseline-2026-08.md; architecture/EVALUATIONS_E8_PREDICTIVE_RISK_2026-08-17.md. E8B next.' },
   { name: 'Auswertungen E7D Final Integrated Acceptance (Phase 3 — V4.9.898)', icon: Layers,
     endpoint: 'Same GET …/insights/recommendations + EvaluationsPage E7 section; E7D adds acceptance replay only.',
     service: 'E7D: full security/privacy/quality/UX replay — backend 1× summary orchestration, Finance MTD, driver lazy reveal, fail-closed empty states, non-mutating actions, E2E browser flow (desktop + mobile 320). Merge simulation green; PR #1055 ready for explicit merge authorization. No E8/E9, no Prisma.',

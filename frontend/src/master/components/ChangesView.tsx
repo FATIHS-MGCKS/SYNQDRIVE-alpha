@@ -35,6 +35,82 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e8d-deferred-final-acceptance-2026-08-17',
+    version: '4.9.902',
+    title: 'V4.9.902 — Evaluations E8D-DEFER: predictive risk deferred final acceptance',
+    summary: [
+      'E8D-DEFER completes authority + empirical certification without E8 product runtime. E8A complete; E8B0 superseded; E8B0.1 Production read-only certification canonical.',
+      'Frozen Production facts: 4 orgs, 9 vehicles, 0 ServiceCase rows; all horizon samples zero. Target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION; RECOMMENDED_HORIZON=NONE.',
+      'Runtime deferred (INSUFFICIENT_REAL_POSITIVE_LABELS). eventProbability, numeric confidence, and estimatedExposure NOT_AUTHORIZED. PR #1056 Ready for Review — not merged. E9 may begin after merge independently.',
+    ],
+    reason:
+      'Predictive runtime must not ship without defensible real outcome history; deferral acceptance documents merge readiness without inventing risk scores or probabilities.',
+    previousBehavior:
+      'E8B0.1 blocked E8B but E8D final acceptance artifact and PR Ready state were missing.',
+    details:
+      'docs/audits/pr-recovery/phase3-e8d-predictive-risk-deferred-final-acceptance-merge-readiness-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T13:30:00.000Z',
+  },
+  {
+    id: 'evaluations-e8b01-production-readonly-certification-2026-08-17',
+    version: '4.9.901',
+    title: 'V4.9.901 — Evaluations E8B0.1: Production read-only predictive certification',
+    summary: [
+      'E8B0.1 corrects E8B0 synthetic-only gaps: reconciled QUALIFYING_LABEL_COUNT + ServiceCaseSource enum drift, rebuilt leakage harness with adversarial sentinels and mutant sensitivity proofs.',
+      'Production read-only audit (transaction_read_only=on): 4 orgs, 9 vehicles, 0 ServiceCase rows. Certified target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION (event truth within horizon; no mutable blocksRental/status label).',
+      'Horizon recommendation NONE on current Production; E8B blocked (INSUFFICIENT_REAL_POSITIVE_LABELS). Zero runtime/Prisma/migration/production mutations.',
+    ],
+    reason:
+      'Predictive runtime requires real empirical label history and a leakage harness that can fail on deliberately broken extractors.',
+    previousBehavior:
+      'E8B0 used synthetic-only data with evidence inconsistencies and non-detecting leakage assertions.',
+    details:
+      'docs/audits/pr-recovery/phase3-e8b01-*.md; docs/audits/ci-recovery/data/e8b01-production-readonly-predictive-certification-2026-08.json',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T12:30:00.000Z',
+  },
+  {
+    id: 'evaluations-e8b0-predictive-target-certification-2026-08-17',
+    version: '4.9.900',
+    title: 'V4.9.900 — Evaluations E8B0: predictive target / horizon / PIT dataset certification',
+    summary: [
+      'E8B0 read-only domain audit: ServiceCase has no canonical unplanned classification; E4 UNPLANNED_MAINTENANCE is cost-label only. Certified target FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION with blocking downtime predicate.',
+      'PIT certification: ServiceCase field history LIMITED; org-only scope; frozen feature set (trailing_open_case_count_90d, fleet_vehicle_count); leakage tests pass. Horizon NEXT_30_DAYS recommended but REQUIRES_EXPLICIT_PRODUCT_APPROVAL; ELEVATED/NORMAL threshold REQUIRES_PRODUCT_APPROVAL.',
+      'Deterministic offline harness + JSON artifact. E8B runtime blocked until product approves horizon and risk-category threshold. Zero runtime/Prisma/migration/production changes.',
+    ],
+    reason:
+      'E8B runtime must not begin until target label, horizon, and PIT dataset are empirically certified.',
+    previousBehavior:
+      'E8A froze governance with FLEET_UNPLANNED_MAINTENANCE_DISRUPTION target name pending empirical validation.',
+    details:
+      'docs/audits/pr-recovery/phase3-e8b0-*.md; docs/audits/ci-recovery/data/e8b0-predictive-target-certification-2026-08.json; tooling/e8b0_predictive_target_certification.py',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T18:00:00.000Z',
+  },
+  {
+    id: 'evaluations-e8a-predictive-risk-authority-2026-08-17',
+    version: '4.9.899',
+    title: 'V4.9.899 — Evaluations E8A: predictive risk & estimatedExposure authority freeze',
+    summary: [
+      'E8A docs-only authority baseline after E7 merge (bd732a8). Inventoried predictive/risk code on main; classified historical cursor/evaluations-* salvage branches.',
+      'Froze predictive target FLEET_UNPLANNED_MAINTENANCE_DISRUPTION (NEXT_30_DAYS) with strict observed-vs-predictive taxonomy, as-of/freshness/leakage gates, offline validation plan.',
+      'estimatedExposure deferred — no EXPECTED LOSS without calibrated probability; E8B scoped to risk category only. Zero runtime/Prisma/migration/production changes.',
+    ],
+    reason:
+      'E8 must define mathematically and architecturally defensible predictive risk before any implementation.',
+    previousBehavior:
+      'E7 complete on main; no canonical predictive risk contract or estimatedExposure authority.',
+    details:
+      'docs/audits/pr-recovery/{E8-ONBOARDING,phase3-e8a-*}.md; architecture/EVALUATIONS_E8_PREDICTIVE_RISK_2026-08-17.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T17:00:00.000Z',
+  },
+  {
     id: 'evaluations-e7d-final-integrated-acceptance-2026-08-17',
     version: '4.9.898',
     title: 'V4.9.898 — Evaluations E7D: final integrated acceptance + merge readiness',
