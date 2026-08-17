@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e7a-recommendations-actions-authority-2026-08-17',
+    version: '4.9.894',
+    title: 'V4.9.894 — Evaluations E7A: Recommendations & Actions authority baseline',
+    summary: [
+      'E7A freezes the canonical Recommendations / Actions layer before runtime implementation (docs-only on branch integration/evaluations-e7-recommendations-actions-2026-08).',
+      'Maps E1–E6 inputs, inventories legacy recommendation code (dashboard insights-categories, historical recommendation-domain salvage), and rejects E8/E9 monetary prediction fields.',
+      'Defines nine accepted evidence-backed recommendation families, zero invented thresholds, non-mutating initial actions, provenance contract, and proposed GET …/insights/recommendations API for E7B.',
+    ],
+    reason:
+      'E7 must not implement runtime logic before authority freeze; R3B (#1054) merged at 06bae11f enables a new E7 branch from main.',
+    previousBehavior:
+      'Evaluations E6 presentation had no recommendations section; legacy dashboard/client insight strings and historical org_recommendations salvage existed off-main only.',
+    details:
+      'docs/audits/pr-recovery/{E7-ONBOARDING,phase3-e7a-recommendations-actions-authority-baseline-2026-08}.md, architecture/EVALUATIONS_E7_RECOMMENDATIONS_ACTIONS_2026-08-17.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T03:30:00.000Z',
+  },
+  {
     id: 'evaluations-e6c1-canonical-evidence-completeness-2026-08-12',
     version: '4.9.893',
     title: 'V4.9.893 — Evaluations E6C.1: canonical coverage + lineage evidence completeness',

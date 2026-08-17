@@ -1,0 +1,43 @@
+# Evaluations E7 — Recommendations & Actions Authority (2026-08-17)
+
+## Changes
+
+- **E7A (authority freeze, docs-only):** frozen the Recommendations / Actions layer
+  for the canonical Evaluations product (`financial-insights` / `EvaluationsPage`).
+  No runtime, Prisma, migration, or production changes.
+- Documented the E1–E6 input matrix, legacy/salvage inventory, accepted/rejected
+  recommendation families, threshold authority (zero invented thresholds),
+  status/quality fail-closed behavior, money/privacy boundaries, action model
+  (non-mutating initial surface), provenance contract, stable identity/dedup,
+  sort authority, proposed backend API, UI placement, 35-case test matrix, and
+  E7B/C/D topology.
+- Onboarding: `docs/audits/pr-recovery/E7-ONBOARDING.md`
+- Authority baseline: `docs/audits/pr-recovery/phase3-e7a-recommendations-actions-authority-baseline-2026-08.md`
+
+## Architektur
+
+- **E7 scope.** Operator-facing recommendations answer: what to pay attention to, why,
+  with what evidence, and what non-mutating next step is available. They are **not**
+  predictive risk (E8), forecasts (E9), or client-derived dashboard insight strings.
+- **Authority chain.** E7B derivation orchestrates existing authorities only:
+  E2 scope → E1 period (analytics) + E3 finance (MTD/current) → E4 sections → E5
+  quality/privacy gates → E7 recommendation envelope. `PARALLEL_RECOMMENDATION_TRUTH_COUNT = 0`
+  (target for E7B).
+- **Thresholds.** Only reuse E4 `E4_DETECTION_THRESHOLDS` and observed E3 money facts
+  (`amountMinor > 0`). `UNAUTHORIZED_INVENTED_THRESHOLDS = 0`.
+- **Money.** Observed canonical `EvaluationsMoney` only; no `estimatedExposure`,
+  `expectedBenefit`, or forecast fields.
+- **Privacy.** Reuse E5B `piiTier`; driver families fail-closed at `none`; pseudonymous
+  stays pseudonymous; no identity join from `driverRef`.
+- **Actions (initial).** Non-mutating only: NAVIGATION / FILTER / OPEN_ENTITY /
+  OPEN_WORKFLOW link. No acknowledge/dismiss/state-changing ops in initial E7.
+- **Workflow boundary.** Link to existing workflow-automation route with context;
+  no hidden action engine inside Evaluations.
+- **UI (E7C plan).** New section on `EvaluationsPage` after Executive Summary;
+  no second Evaluations page.
+- **Proposed API (E7B).** `GET …/evaluations/analytics/insights/recommendations`
+  with deterministic stable ids and `recommendations-e7-v1` calculation version.
+- **Legacy rejection.** Historical `origin/cursor/evaluations-recommendation-domain-8427`
+  (persistence + monetary benefit fields) and `insights-categories.ts` client strings
+  are **not** canonical E7 authority.
+- **Boundaries preserved.** E8 predictive risk and E9 forecast UI remain excluded.
