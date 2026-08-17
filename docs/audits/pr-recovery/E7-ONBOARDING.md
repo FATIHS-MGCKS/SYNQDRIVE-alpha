@@ -52,7 +52,7 @@ Backend-Hintergrund (E1–E6, bereits in `main`):
 | **E7B.1** | Fail-closed authority conformance hardening | ✅ (dieser Branch) |
 | **E7C** | Recommendations / Actions frontend integration | ✅ (dieser Branch) |
 | **E7D** | Integrated privacy/security/quality/UX acceptance + merge readiness | ✅ (dieser Branch) |
-| E8 | Predictive Risk / `estimatedExposure` | ⬜ ausgeschlossen bis E8 autorisiert |
+| E8 | Predictive Risk / `estimatedExposure` | 🔄 E8A complete (authority freeze; exposure deferred) |
 | E9 | Forecast UI | ⬜ ausgeschlossen bis E9 autorisiert |
 
 ## 4. Leitplanken (gelten für E7B–E7D)

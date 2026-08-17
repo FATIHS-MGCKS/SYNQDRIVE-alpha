@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E8A Predictive Risk Authority (Phase 3 — V4.9.899)', icon: Layers,
+    endpoint: 'Planned E8B: GET …/insights/predictive-risk (not implemented — E8A docs-only freeze).',
+    service: 'E8A authority: FLEET_UNPLANNED_MAINTENANCE_DISRUPTION target, NEXT_30_DAYS horizon, RISK_CATEGORY output only; estimatedExposure deferred; DETERMINISTIC_POLICY_RULE + STATISTICAL_BASELINE; strict as-of/freshness/leakage/quality fail-closed; no ML/LLM; separate from E7/E9.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8a-predictive-risk-estimated-exposure-authority-baseline-2026-08.md; architecture/EVALUATIONS_E8_PREDICTIVE_RISK_2026-08-17.md. E8B next.' },
   { name: 'Auswertungen E7D Final Integrated Acceptance (Phase 3 — V4.9.898)', icon: Layers,
     endpoint: 'Same GET …/insights/recommendations + EvaluationsPage E7 section; E7D adds acceptance replay only.',
     service: 'E7D: full security/privacy/quality/UX replay — backend 1× summary orchestration, Finance MTD, driver lazy reveal, fail-closed empty states, non-mutating actions, E2E browser flow (desktop + mobile 320). Merge simulation green; PR #1055 ready for explicit merge authorization. No E8/E9, no Prisma.',

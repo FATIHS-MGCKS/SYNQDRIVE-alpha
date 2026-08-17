@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e8a-predictive-risk-authority-2026-08-17',
+    version: '4.9.899',
+    title: 'V4.9.899 — Evaluations E8A: predictive risk & estimatedExposure authority freeze',
+    summary: [
+      'E8A docs-only authority baseline after E7 merge (bd732a8). Inventoried predictive/risk code on main; classified historical cursor/evaluations-* salvage branches.',
+      'Froze predictive target FLEET_UNPLANNED_MAINTENANCE_DISRUPTION (NEXT_30_DAYS) with strict observed-vs-predictive taxonomy, as-of/freshness/leakage gates, offline validation plan.',
+      'estimatedExposure deferred — no EXPECTED LOSS without calibrated probability; E8B scoped to risk category only. Zero runtime/Prisma/migration/production changes.',
+    ],
+    reason:
+      'E8 must define mathematically and architecturally defensible predictive risk before any implementation.',
+    previousBehavior:
+      'E7 complete on main; no canonical predictive risk contract or estimatedExposure authority.',
+    details:
+      'docs/audits/pr-recovery/{E8-ONBOARDING,phase3-e8a-*}.md; architecture/EVALUATIONS_E8_PREDICTIVE_RISK_2026-08-17.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T17:00:00.000Z',
+  },
+  {
     id: 'evaluations-e7d-final-integrated-acceptance-2026-08-17',
     version: '4.9.898',
     title: 'V4.9.898 — Evaluations E7D: final integrated acceptance + merge readiness',
