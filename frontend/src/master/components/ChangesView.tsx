@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e8b0-predictive-target-certification-2026-08-17',
+    version: '4.9.900',
+    title: 'V4.9.900 — Evaluations E8B0: predictive target / horizon / PIT dataset certification',
+    summary: [
+      'E8B0 read-only domain audit: ServiceCase has no canonical unplanned classification; E4 UNPLANNED_MAINTENANCE is cost-label only. Certified target FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION with blocking downtime predicate.',
+      'PIT certification: ServiceCase field history LIMITED; org-only scope; frozen feature set (trailing_open_case_count_90d, fleet_vehicle_count); leakage tests pass. Horizon NEXT_30_DAYS recommended but REQUIRES_EXPLICIT_PRODUCT_APPROVAL; ELEVATED/NORMAL threshold REQUIRES_PRODUCT_APPROVAL.',
+      'Deterministic offline harness + JSON artifact. E8B runtime blocked until product approves horizon and risk-category threshold. Zero runtime/Prisma/migration/production changes.',
+    ],
+    reason:
+      'E8B runtime must not begin until target label, horizon, and PIT dataset are empirically certified.',
+    previousBehavior:
+      'E8A froze governance with FLEET_UNPLANNED_MAINTENANCE_DISRUPTION target name pending empirical validation.',
+    details:
+      'docs/audits/pr-recovery/phase3-e8b0-*.md; docs/audits/ci-recovery/data/e8b0-predictive-target-certification-2026-08.json; tooling/e8b0_predictive_target_certification.py',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T18:00:00.000Z',
+  },
+  {
     id: 'evaluations-e8a-predictive-risk-authority-2026-08-17',
     version: '4.9.899',
     title: 'V4.9.899 — Evaluations E8A: predictive risk & estimatedExposure authority freeze',

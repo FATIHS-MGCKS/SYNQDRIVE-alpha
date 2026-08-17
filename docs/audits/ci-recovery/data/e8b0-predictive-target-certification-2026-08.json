@@ -1,0 +1,464 @@
+{
+  "artifactVersion": "e8b0-v1",
+  "generatedAt": "2026-08-17T05:37:30Z",
+  "datasetAuthority": "SYNTHETIC_SANITIZED_REPRESENTATIVE",
+  "productionReadOnlyUsed": false,
+  "productionMutationCount": 0,
+  "entry": {
+    "E8B0_ENTRY_HEAD_SHA": "9501a985d06e2ef7e59f37299e7adbb387f1de52",
+    "CURRENT_MAIN_SHA": "bd732a8f7a6467565a8668ea136e81b79a04666a",
+    "branch": "integration/evaluations-e8-predictive-risk-2026-08"
+  },
+  "e8aPreserved": {
+    "estimatedExposure": "DEFERRED_INSUFFICIENT_AUTHORITY",
+    "eventProbability": "ABSENT",
+    "confidenceScore": "ABSENT",
+    "llmPredictiveAuthority": "FORBIDDEN",
+    "e9Forecast": "EXCLUDED",
+    "driverPersonLevel": "EXCLUDED_FROM_MVP",
+    "persistence": "DERIVED_ON_READ candidate"
+  },
+  "unplannedAudit": {
+    "UNPLANNED_LABEL_CANONICAL": false,
+    "canonicalRuleFound": null,
+    "forbiddenProxyHitsOnSynthetic": 7,
+    "note": "UNPLANNED_MAINTENANCE is E4 cost category label only; ServiceCase has no unplanned enum"
+  },
+  "certifiedTarget": {
+    "TARGET_NAME": "FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION",
+    "E8A_TARGET_CORRECTION": "FLEET_UNPLANNED_MAINTENANCE_DISRUPTION rejected \u2014 no canonical unplanned classification",
+    "QUALIFYING_CATEGORIES": [
+      "SERVICE",
+      "REPAIR",
+      "INSPECTION",
+      "TUV_HU",
+      "TIRES",
+      "BRAKES",
+      "BATTERY",
+      "DAMAGE",
+      "DIAGNOSTIC"
+    ],
+    "QUALIFYING_SOURCES": [
+      "MANUAL",
+      "HEALTH",
+      "DTC",
+      "DAMAGE",
+      "BOOKING",
+      "DOCUMENT",
+      "SERVICE_COMPLIANCE"
+    ],
+    "QUALIFYING_STATUSES": "All except CANCELLED at label finalization",
+    "REQUIRE_BLOCKS_RENTAL": true,
+    "OPEN_EVENT_TIMESTAMP": "openedAt",
+    "DOWNTIME_EVENT_TIMESTAMP": "downtimeStart",
+    "CANCELLED_BEHAVIOR": "Exclude from positive label",
+    "MISSING_DOWNTIME_BEHAVIOR": "NOT_POSITIVE \u2014 null downtimeStart is unknown/not captured, not zero event",
+    "labelPredicate": "organizationId in scope AND openedAt > predictionAsOf AND openedAt <= horizonEnd AND status != CANCELLED at labelFinalizationAt AND blocksRental == true at labelFinalizationAt AND downtimeStart IS NOT NULL AND downtimeStart > predictionAsOf AND downtimeStart <= horizonEnd",
+    "TARGET_EVENT_TIMESTAMP": "downtimeStart (outcome); openedAt gates new-case entry",
+    "LABEL_FINALIZATION_TIME": "max(horizonEnd, observationEnd) using final mutable field truth",
+    "TARGET_LABEL_USES_FUTURE_OUTCOME_ONLY_AS_LABEL": true,
+    "TARGET_LABEL_USES_FUTURE_OUTCOME_AS_FEATURE": false
+  },
+  "serviceCaseLabelAuthorityMatrix": [
+    {
+      "FIELD": "category",
+      "IMMUTABLE": false,
+      "KNOWN_AT_CREATION": true,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": true,
+      "SAFE_AS_POST_HORIZON_LABEL": false
+    },
+    {
+      "FIELD": "status",
+      "IMMUTABLE": false,
+      "KNOWN_AT_CREATION": true,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": false,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "source",
+      "IMMUTABLE": false,
+      "KNOWN_AT_CREATION": true,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": false,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "scheduledAt",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": false,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": false,
+      "SAFE_AS_POST_HORIZON_LABEL": false
+    },
+    {
+      "FIELD": "openedAt",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": true,
+      "CAN_CHANGE_AFTER_CREATION": false,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": true,
+      "SAFE_AS_FEATURE": true,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "createdAt",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": true,
+      "CAN_CHANGE_AFTER_CREATION": false,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": true,
+      "SAFE_AS_FEATURE": true,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "blocksRental",
+      "IMMUTABLE": false,
+      "KNOWN_AT_CREATION": true,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": false,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "downtimeStart",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": false,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": false,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "downtimeEnd",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": false,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": false,
+      "SAFE_AS_POST_HORIZON_LABEL": true
+    },
+    {
+      "FIELD": "cancelledAt",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": false,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": true,
+      "SAFE_AS_POST_HORIZON_LABEL": false
+    },
+    {
+      "FIELD": "completedAt",
+      "IMMUTABLE": true,
+      "KNOWN_AT_CREATION": false,
+      "CAN_CHANGE_AFTER_CREATION": true,
+      "HISTORICAL_CHANGE_LOG_EXISTS": false,
+      "POINT_IN_TIME_RECONSTRUCTIBLE": false,
+      "SAFE_AS_FEATURE": true,
+      "SAFE_AS_POST_HORIZON_LABEL": false
+    }
+  ],
+  "serviceCasePointInTimeHistory": "LIMITED",
+  "pitMutableFieldInventoryComplete": true,
+  "stationAuthority": {
+    "HOME_STATION_PIT_RECONSTRUCTIBLE": false,
+    "CURRENT_STATION_PIT_RECONSTRUCTIBLE": false,
+    "EXPECTED_STATION_PIT_RECONSTRUCTIBLE": true,
+    "historySource": "VehicleStationTransfer.plannedAt/arrivedAt \u2014 partial; Vehicle.homeStationId/currentStationId mutable snapshots",
+    "PREDICTION_SCOPE": "ORGANIZATION_ONLY",
+    "stationFilteringForE8Mvp": "NOT_SUPPORTED_FOR_E8_MVP"
+  },
+  "fleetDenominator": {
+    "HISTORICAL_FLEET_DENOMINATOR_AUTHORITY": "FROZEN",
+    "rule": "vehicles with createdAt < cutoff and not provably deleted before cutoff (deletedAt if present)",
+    "caveat": "Vehicle deletion/archive history incomplete on main \u2014 denominator may be biased"
+  },
+  "observationWindow": {
+    "OBSERVATION_START": "2025-01-01T00:00:00Z",
+    "OBSERVATION_END": "2026-01-01T00:00:00Z",
+    "ORG_COUNT": 3,
+    "SERVICE_CASE_COUNT": 7,
+    "QUALIFYING_LABEL_COUNT": 4,
+    "LABEL_RATE": 0.3333,
+    "VEHICLE_HISTORY_COVERAGE": 1.0,
+    "DOWNTIME_FIELD_COVERAGE": 0.7143,
+    "BLOCKS_RENTAL_COVERAGE": 0.8571,
+    "CATEGORY_DISTRIBUTION": {
+      "SERVICE": 2,
+      "REPAIR": 3,
+      "INSPECTION": 0,
+      "TUV_HU": 0,
+      "TIRES": 0,
+      "BRAKES": 1,
+      "BATTERY": 0,
+      "DAMAGE": 0,
+      "DIAGNOSTIC": 1
+    },
+    "SOURCE_DISTRIBUTION": {
+      "MANUAL": 2,
+      "HEALTH": 3,
+      "DTC": 1,
+      "DAMAGE": 0,
+      "BOOKING": 0,
+      "DOCUMENT": 0,
+      "SERVICE_COMPLIANCE": 1
+    }
+  },
+  "horizons": {
+    "NEXT_7_DAYS": {
+      "horizon": "NEXT_7_DAYS",
+      "horizonDays": 7,
+      "BUSINESS_MEANING": "Org-level binary: any new rental-blocking ServiceCase opens after cutoff and records downtimeStart within horizon (final post-horizon truth).",
+      "LABEL_COUNT": 1,
+      "SAMPLE_COUNT": 72,
+      "POSITIVE_RATE": 0.013889,
+      "DATA_COMPLETENESS": 0.7143,
+      "OVERLAP_RISK": 98,
+      "ACTIONABILITY": "Medium \u2014 aligns with E4 utilization blocking downtime semantics",
+      "TEMPORAL_VALIDATION_FEASIBILITY": "Feasible on synthetic window; Production replay requires read-only DB",
+      "LEAKAGE_RISK": "Low when PIT mutation timeline used; HIGH for mutable fields without history",
+      "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0,
+      "FUTURE_FEATURE_ROWS": 2,
+      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 98,
+      "splitBaseRates": {
+        "TRAIN": {
+          "count": 33,
+          "positives": 1,
+          "rate": 0.030303030303030304
+        },
+        "VALIDATION": {
+          "count": 21,
+          "positives": 0,
+          "rate": 0.0
+        },
+        "TEST": {
+          "count": 18,
+          "positives": 0,
+          "rate": 0.0
+        }
+      },
+      "classification": "NOT_VIABLE"
+    },
+    "NEXT_30_DAYS": {
+      "horizon": "NEXT_30_DAYS",
+      "horizonDays": 30,
+      "BUSINESS_MEANING": "Org-level binary: any new rental-blocking ServiceCase opens after cutoff and records downtimeStart within horizon (final post-horizon truth).",
+      "LABEL_COUNT": 7,
+      "SAMPLE_COUNT": 66,
+      "POSITIVE_RATE": 0.106061,
+      "DATA_COMPLETENESS": 0.7143,
+      "OVERLAP_RISK": 84,
+      "ACTIONABILITY": "Medium \u2014 aligns with E4 utilization blocking downtime semantics",
+      "TEMPORAL_VALIDATION_FEASIBILITY": "Feasible on synthetic window; Production replay requires read-only DB",
+      "LEAKAGE_RISK": "Low when PIT mutation timeline used; HIGH for mutable fields without history",
+      "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0,
+      "FUTURE_FEATURE_ROWS": 12,
+      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 84,
+      "splitBaseRates": {
+        "TRAIN": {
+          "count": 33,
+          "positives": 7,
+          "rate": 0.21212121212121213
+        },
+        "VALIDATION": {
+          "count": 21,
+          "positives": 0,
+          "rate": 0.0
+        },
+        "TEST": {
+          "count": 12,
+          "positives": 0,
+          "rate": 0.0
+        }
+      },
+      "classification": "EMPIRICALLY_VIABLE"
+    },
+    "NEXT_90_DAYS": {
+      "horizon": "NEXT_90_DAYS",
+      "horizonDays": 90,
+      "BUSINESS_MEANING": "Org-level binary: any new rental-blocking ServiceCase opens after cutoff and records downtimeStart within horizon (final post-horizon truth).",
+      "LABEL_COUNT": 15,
+      "SAMPLE_COUNT": 54,
+      "POSITIVE_RATE": 0.277778,
+      "DATA_COMPLETENESS": 0.7143,
+      "OVERLAP_RISK": 58,
+      "ACTIONABILITY": "Medium \u2014 aligns with E4 utilization blocking downtime semantics",
+      "TEMPORAL_VALIDATION_FEASIBILITY": "Feasible on synthetic window; Production replay requires read-only DB",
+      "LEAKAGE_RISK": "Low when PIT mutation timeline used; HIGH for mutable fields without history",
+      "RIGHT_CENSORED_WINDOWS_TREATED_AS_NEGATIVE": 0,
+      "FUTURE_FEATURE_ROWS": 29,
+      "LABEL_WINDOW_OVERLAP_WITH_FEATURE_WINDOW": 58,
+      "splitBaseRates": {
+        "TRAIN": {
+          "count": 33,
+          "positives": 15,
+          "rate": 0.45454545454545453
+        },
+        "VALIDATION": {
+          "count": 21,
+          "positives": 0,
+          "rate": 0.0
+        },
+        "TEST": {
+          "count": 0,
+          "positives": 0,
+          "rate": 0.0
+        }
+      },
+      "classification": "EMPIRICALLY_VIABLE"
+    }
+  },
+  "horizonProductAuthority": {
+    "RECOMMENDED_HORIZON": "NEXT_30_DAYS",
+    "evidence": "Highest label count and stable positive rate on synthetic rolling-origin; aligns with E8A salvage reference",
+    "HORIZON_PRODUCT_AUTHORITY": "REQUIRES_EXPLICIT_PRODUCT_APPROVAL",
+    "E8B_RUNTIME_BLOCKER": "HORIZON_PRODUCT_AUTHORITY"
+  },
+  "temporalSplit": {
+    "TRAIN": {
+      "start": "2025-01-01T00:00:00Z",
+      "endExclusive": "2025-07-01T00:00:00Z"
+    },
+    "VALIDATION": {
+      "start": "2025-07-01T00:00:00Z",
+      "endExclusive": "2025-10-01T00:00:00Z"
+    },
+    "TEST": {
+      "start": "2025-10-01T00:00:00Z",
+      "endExclusive": "2026-01-01T00:00:00Z"
+    },
+    "constraints": "TRAIN_END < VALIDATION_START < TEST_START"
+  },
+  "featurePitMatrix": [
+    {
+      "feature": "trailing_blocking_case_count_90d",
+      "PIT_RECONSTRUCTIBLE": false,
+      "MUTABLE_SOURCE": "ServiceCase.blocksRental, status, downtimeStart",
+      "HISTORY_SOURCE": "NONE \u2014 no ServiceCaseEvent table on main",
+      "CUTOFF_FILTER": "openedAt <= featureCutoffAt AND openedAt > cutoff-90d",
+      "MISSINGNESS": "blocksRental null treated false at creation; later mutations unknown",
+      "TARGET_LEAKAGE": "HIGH without PIT history",
+      "SAFE_FOR_MODEL": false,
+      "note": "Use trailing_open_case_count_90d without blocks filter OR require history"
+    },
+    {
+      "feature": "trailing_open_case_count_90d",
+      "PIT_RECONSTRUCTIBLE": true,
+      "MUTABLE_SOURCE": "openedAt immutable after creation",
+      "HISTORY_SOURCE": "openedAt + createdAt row timestamps",
+      "CUTOFF_FILTER": "openedAt <= featureCutoffAt",
+      "MISSINGNESS": "low",
+      "TARGET_LEAKAGE": "LOW",
+      "SAFE_FOR_MODEL": true
+    },
+    {
+      "feature": "fleet_critical_health_count",
+      "PIT_RECONSTRUCTIBLE": false,
+      "MUTABLE_SOURCE": "E4 health weakness current snapshot",
+      "HISTORY_SOURCE": "NONE for historical weakness timeline",
+      "CUTOFF_FILTER": "prior closed E4 window only",
+      "MISSINGNESS": "unknown historical critical states",
+      "TARGET_LEAKAGE": "MEDIUM",
+      "SAFE_FOR_MODEL": false,
+      "note": "Requires closed historical health window recompute \u2014 not current E4 summary"
+    },
+    {
+      "feature": "fleet_vehicle_count",
+      "PIT_RECONSTRUCTIBLE": true,
+      "MUTABLE_SOURCE": "Vehicle.createdAt; deletion/archive weak",
+      "HISTORY_SOURCE": "Vehicle.createdAt + optional deletedAt if present",
+      "CUTOFF_FILTER": "createdAt < cutoff",
+      "MISSINGNESS": "deleted vehicles without deletedAt distort denominator",
+      "TARGET_LEAKAGE": "LOW",
+      "SAFE_FOR_MODEL": true
+    }
+  ],
+  "leakageTests": {
+    "TARGET_LEAKAGE_TEST_FAILURES": 1,
+    "failures": [
+      "future ServiceCase leaked into trailing feature if cutoff filter omitted"
+    ],
+    "E7_RECOMMENDATION_FEATURE_COUNT": 0,
+    "DRIVER_FEATURE_COUNT": 0,
+    "DRIVER_IDENTITY_LOOKUPS": 0,
+    "LIVE_UNBOUNDED_FRESHNESS_FEATURES_ACCEPTED": 0
+  },
+  "baselineComparison": {
+    "alwaysNormal": {
+      "falsePositiveRate": 0.0,
+      "falseNegativeRate": 0.0,
+      "support": 12
+    },
+    "historicalBaseRateDecision": {
+      "baseRate": 0.0
+    },
+    "simpleTrailingOpenCaseIndicator": {
+      "precision": 0.0,
+      "recall": 0,
+      "falsePositiveRate": 0.3333,
+      "falseNegativeRate": 0.0,
+      "support": 12
+    }
+  },
+  "riskCategoryThreshold": {
+    "THRESHOLD_SOURCE": "NO_THRESHOLD_AUTHORITY",
+    "THRESHOLD_VALUE": null,
+    "WHY": "ELEVATED/NORMAL split requires explicit product policy or empirically validated threshold on TRAIN/VALIDATION; not authorized from salvage alone",
+    "E8_RISK_CATEGORY_THRESHOLD_AUTHORITY": "REQUIRES_PRODUCT_APPROVAL"
+  },
+  "coldStart": {
+    "behavior": "INSUFFICIENT_EVIDENCE",
+    "MIN_SAMPLE_AUTHORITY": "UNRESOLVED",
+    "COLD_START_AS_NORMAL_COUNT": 0
+  },
+  "qualityGate": {
+    "AVAILABLE_sufficientHistory": "candidate prediction allowed (category only)",
+    "PARTIAL": "MUST_SUPPRESS predictive output",
+    "STALE": "MUST_SUPPRESS",
+    "UNAVAILABLE": "MUST_SUPPRESS",
+    "ERROR": "MUST_SUPPRESS",
+    "FRESHNESS_UNKNOWN_liveDependent": "MUST_SUPPRESS live-dependent features; closed historical windows may remain eligible"
+  },
+  "probabilityAndExposure": {
+    "EVENT_PROBABILITY_RUNTIME_AUTHORITY": false,
+    "UNVALIDATED_SCORE_AS_PROBABILITY": 0,
+    "E8_ESTIMATED_EXPOSURE_AUTHORITY": "DEFERRED_INSUFFICIENT_AUTHORITY",
+    "E8B0_ESTIMATED_EXPOSURE_FIELDS": 0
+  },
+  "runtimeChangeGuard": {
+    "BACKEND_RUNTIME_CHANGED": false,
+    "FRONTEND_RUNTIME_CHANGED": false,
+    "SHARED_RUNTIME_CHANGED": false,
+    "PRISMA_CHANGED": false,
+    "MIGRATIONS_CHANGED": false
+  },
+  "tenantGeneralization": {
+    "orgCountSynthetic": 3,
+    "strategy": "GLOBAL_POLICY_WITH_TENANT_SCOPED_FEATURES",
+    "limitation": "Synthetic org count too small for Production generalization claims"
+  },
+  "outcome": {
+    "CI_STATUS": "CI_E8B0_PREDICTIVE_DATASET_CERTIFIED_PRODUCT_AUTHORITY_REQUIRED",
+    "E8_PHASE": "E8B0_COMPLETE",
+    "E8_TARGET_LABEL_AUTHORITY": "FROZEN",
+    "E8_PIT_DATASET_AUTHORITY": "CERTIFIED",
+    "E8_HORIZON_AUTHORITY": "REQUIRES_PRODUCT_APPROVAL",
+    "E8_SCOPE_AUTHORITY": "FROZEN",
+    "E8_RISK_CATEGORY_THRESHOLD_AUTHORITY": "REQUIRES_PRODUCT_APPROVAL",
+    "E8B_READINESS": "NOT_READY_PENDING_PRODUCT_AUTHORITY"
+  },
+  "datasetFingerprintSha256": "c92bbce41e9415a0fed57006c7308723338fcd4b689a83bba2002a4b020bf12e"
+}

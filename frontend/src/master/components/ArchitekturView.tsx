@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E8B0 Predictive Target/PIT Certification (Phase 3 — V4.9.900)', icon: Layers,
+    endpoint: 'E8B runtime blocked — pending product horizon + threshold approval.',
+    service: 'E8B0 certified target FLEET_NEW_BLOCKING_MAINTENANCE_DISRUPTION (blocking downtime predicate); org-only scope; PIT feature subset; leakage tests; quality fail-closed. Horizon NEXT_30_DAYS recommended but REQUIRES_EXPLICIT_PRODUCT_APPROVAL. estimatedExposure still deferred.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md; docs/audits/ci-recovery/data/e8b0-predictive-target-certification-2026-08.json' },
   { name: 'Auswertungen E8A Predictive Risk Authority (Phase 3 — V4.9.899)', icon: Layers,
     endpoint: 'Planned E8B: GET …/insights/predictive-risk (not implemented — E8A docs-only freeze).',
     service: 'E8A authority: FLEET_UNPLANNED_MAINTENANCE_DISRUPTION target, NEXT_30_DAYS horizon, RISK_CATEGORY output only; estimatedExposure deferred; DETERMINISTIC_POLICY_RULE + STATISTICAL_BASELINE; strict as-of/freshness/leakage/quality fail-closed; no ML/LLM; separate from E7/E9.',
