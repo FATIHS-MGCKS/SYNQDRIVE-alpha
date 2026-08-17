@@ -1,8 +1,8 @@
 # R3B1R.3.2 — Installed Dependency Tree / Lockfile Contract Closure
 
 **Phase:** `CI-R3B1R.3.2`  
-**PR_HEAD_SHA:** `a6699dc5788f7d260688d255dded57352003152e`  
-**Generated:** `2026-08-17T00:37:06+00:00`  
+**PR_HEAD_SHA:** `edf5856151509f3ae5dcd667a076224cef3ae782`
+**Generated:** `2026-08-17T00:47:52+00:00`  
 **Result:** **BLOCKED**  
 **Machine status:** `CI_R3B1R32_INSTALLED_TREE_LOCKFILE_CONTRACT_CLOSURE_BLOCKED`
 

@@ -1,11 +1,11 @@
 {
   "phase": "CI-R3B1R.3.2",
-  "generated_at": "2026-08-17T00:37:06+00:00",
+  "generated_at": "2026-08-17T00:47:52+00:00",
   "result": "BLOCKED",
   "machine_status": "CI_R3B1R32_INSTALLED_TREE_LOCKFILE_CONTRACT_CLOSURE_BLOCKED",
   "entry": {
-    "entry_head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-    "pr_1054_head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+    "entry_head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+    "pr_1054_head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
     "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
     "pr_state": "OPEN",
     "pr_is_draft": true,
@@ -362,179 +362,182 @@
   },
   "github_checks": {
     "available": true,
-    "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+    "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
     "checks": [
       {
         "name": "CI gate (all critical jobs)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95250674407
+        "run_id": 95253033554
       },
       {
         "name": "CI gate (all critical jobs)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
-        "conclusion": "success",
-        "run_id": 95250458198
-      },
-      {
-        "name": "Playwright E2E",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987497
-      },
-      {
-        "name": "Typecheck",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987480
-      },
-      {
-        "name": "Backend unit tests",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987465
-      },
-      {
-        "name": "Accessibility (axe)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987463
-      },
-      {
-        "name": "Backend integration tests",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987461
+        "conclusion": "skipped",
+        "run_id": 95252855377
       },
       {
         "name": "Production build",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249987451
-      },
-      {
-        "name": "Frontend component tests",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987439
-      },
-      {
-        "name": "Migration tests (PostgreSQL)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987438
-      },
-      {
-        "name": "Prisma validate",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987435
-      },
-      {
-        "name": "Security / dependency scan",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249987428
+        "run_id": 95252365699
       },
       {
         "name": "Lint",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249987407
+        "run_id": 95252365646
       },
       {
-        "name": "Production build",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "name": "Frontend component tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249972622
-      },
-      {
-        "name": "Security / dependency scan",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249972608
-      },
-      {
-        "name": "Accessibility (axe)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249972593
+        "run_id": 95252365539
       },
       {
         "name": "Backend unit tests",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249972577
+        "run_id": 95252365526
       },
       {
-        "name": "Playwright E2E (Vehicle Detail)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "name": "Security / dependency scan",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249972569
-      },
-      {
-        "name": "Typecheck",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249972565
-      },
-      {
-        "name": "Lint",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249972559
-      },
-      {
-        "name": "Frontend component tests",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95249972558
+        "run_id": 95252365522
       },
       {
         "name": "Backend security tests",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249972550
+        "run_id": 95252365519
+      },
+      {
+        "name": "Typecheck",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365514
+      },
+      {
+        "name": "Playwright E2E (Vehicle Detail)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365512
+      },
+      {
+        "name": "Accessibility (axe)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365504
+      },
+      {
+        "name": "Security / dependency scan",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "failure",
+        "run_id": 95252359244
+      },
+      {
+        "name": "Playwright E2E",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359193
+      },
+      {
+        "name": "Production build",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359174
+      },
+      {
+        "name": "Typecheck",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359170
+      },
+      {
+        "name": "Accessibility (axe)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359168
+      },
+      {
+        "name": "Backend unit tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359156
+      },
+      {
+        "name": "Prisma validate",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359139
+      },
+      {
+        "name": "Frontend component tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359123
+      },
+      {
+        "name": "Migration tests (PostgreSQL)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359120
+      },
+      {
+        "name": "Backend integration tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359098
+      },
+      {
+        "name": "Lint",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359038
       },
       {
         "name": "Install (lockfile)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249853090
+        "run_id": 95252244617
       },
       {
         "name": "Install (lockfile)",
-        "head_sha": "a6699dc5788f7d260688d255dded57352003152e",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95249852940
+        "run_id": 95252244386
       }
     ],
-    "required_checks_failed": 0,
+    "required_checks_failed": 1,
     "required_checks_pending": 0,
+    "failed_required": [
+      "Security / dependency scan"
+    ],
     "missing_required": []
   },
   "next_required_phase": "NESTJS_11_FRAMEWORK_UPGRADE_OR_SWAGGER_PARENT_PATCH",
