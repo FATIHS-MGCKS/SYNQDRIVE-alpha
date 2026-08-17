@@ -90,6 +90,7 @@ describe('evaluations shared contract backend build mirror', () => {
       'evaluations-recommendations.contract.ts',
       'evaluations-recommendations.constants.ts',
       'evaluations-recommendations-id.ts',
+      'evaluations-recommendations-action-target.ts',
     ]) {
       expect(
         readRepositoryFile(`backend/src/synq/evaluations-recommendations/${fileName}`),

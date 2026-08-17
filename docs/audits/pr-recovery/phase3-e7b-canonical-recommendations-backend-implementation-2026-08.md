@@ -173,6 +173,22 @@ cd backend && npm run build
 
 ---
 
+## E7B.1 POST-IMPLEMENTATION AUTHORITY HARDENING (2026-08-17)
+
+See `phase3-e7b1-recommendation-authority-conformance-hardening-2026-08.md`.
+
+Summary of fail-closed corrections (does not rewrite E7B evidence above):
+
+- Finance recommendations: exact E3 metric `AVAILABLE` only (not PARTIAL/STALE).
+- Driver recommendations: exact `AVAILABLE` + factors + non-`none` piiTier.
+- Cost recommendations: `PARTIAL` with canonical incomplete evidence only (not total UNAVAILABLE).
+- Provenance: source-scoped E5 quality limitations on emitted recommendations.
+- Quality supersession: source-scoped keys (not global cost/skipped suppression).
+- Empty state: `NO_ACTION_NEEDED` only when collection `AVAILABLE`; otherwise fail-closed `INSUFFICIENT_EVIDENCE`.
+- Action targets: discriminated union + runtime `assertValidE7ActionTarget()`.
+
+---
+
 ## Next phase
 
 **E7C** — frontend Recommendations / Actions integration on `EvaluationsPage` (presentation only; no client business derivation).

@@ -9,8 +9,10 @@ import type { EvaluationsAnalyticsInsightsSummary } from '../../e4/contracts/eva
 import type { E4WeaknessResult, E4StrengthResult } from '../../e4/contracts/evaluations-insights.contract';
 import type { EvaluationsQualityReport } from '../../e5/contracts/evaluations-quality.contract';
 import {
+  E7_QUALITY_DIMENSIONS,
   E7_RECOMMENDATIONS_CALCULATION_VERSION,
   E7_RECOMMENDATIONS_SCHEMA_VERSION,
+  type E7EvaluationsSectionTarget,
   type E7QualityLimitation,
   type E7Recommendation,
   type E7RecommendationAction,
@@ -20,6 +22,7 @@ import {
   type E7RecommendationScope,
   type EvaluationsRecommendationsResponse,
 } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
+import { assertValidE7ActionTarget } from '@synq/evaluations-recommendations/evaluations-recommendations-action-target';
 import {
   E7_FAMILY_CATEGORY,
   E7_RECOMMENDATION_SORT_BUCKET_ORDER,
@@ -30,6 +33,9 @@ import { buildE7RecommendationId } from '@synq/evaluations-recommendations/evalu
 
 export const E7_FINANCE_METRIC_OVERDUE = 'fin.overdue_receivables';
 export const E7_FINANCE_METRIC_OPEN = 'fin.open_receivables';
+
+/** Canonical E3 non-overdue open receivables metric (total minus overdue). */
+export const OPEN_RECEIVABLES_SOURCE = E7_FINANCE_METRIC_OPEN;
 
 export interface E7DerivationInput {
   readonly summary: EvaluationsAnalyticsInsightsSummary;
@@ -45,18 +51,24 @@ function isValueAvailable(status: EvaluationsMetricStatus): boolean {
   return status === 'AVAILABLE' || status === 'PARTIAL' || status === 'STALE';
 }
 
-function readMoney(metric: EvaluationsMetricResponse | undefined): EvaluationsMoney | null {
+/** Finance recommendations require exact E3 metric status AVAILABLE (E7A/E7B.1). */
+function readFinanceMoney(metric: EvaluationsMetricResponse | undefined): EvaluationsMoney | null {
   if (!metric || metric.valueType !== 'MONEY') return null;
-  if (!isValueAvailable(metric.status)) return null;
+  if (metric.status !== 'AVAILABLE') return null;
   return metric.value ?? null;
 }
 
-function sectionNavigationAction(section: string, labelKey: string): E7RecommendationAction {
+function sectionNavigationAction(
+  section: E7EvaluationsSectionTarget,
+  labelKey: string,
+): E7RecommendationAction {
+  const target = { kind: 'EVALUATIONS_SECTION' as const, value: section };
+  assertValidE7ActionTarget(target);
   return {
     actionType: 'NAVIGATION',
     mutating: false,
     labelKey,
-    target: { kind: 'EVALUATIONS_SECTION', value: section },
+    target,
     requiredPermission: 'evaluations:read',
     confirmationRequired: false,
   };
@@ -68,7 +80,97 @@ function buildProvenance(
   return { calculationVersion: E7_RECOMMENDATIONS_CALCULATION_VERSION, ...partial };
 }
 
+export function qualityLimitationKey(l: E7QualityLimitation): string {
+  return `${l.section ?? ''}:${l.dimension}:${l.state}:${l.reason ?? ''}`;
+}
+
+/** E5 quality limitations for the source sections a recommendation relies on. */
+export function qualityLimitationsForSections(
+  quality: EvaluationsQualityReport,
+  sourceSections: readonly string[],
+): E7QualityLimitation[] {
+  const wanted = new Set(sourceSections);
+  const out: E7QualityLimitation[] = [];
+  for (const section of quality.sections) {
+    if (!wanted.has(section.section)) continue;
+    for (const dim of E7_QUALITY_DIMENSIONS) {
+      const state = section.dimensions[dim];
+      if (dim === 'FRESHNESS' && state === 'UNKNOWN') {
+        out.push({
+          dimension: dim,
+          state,
+          section: section.section,
+          reason: 'STRUCTURAL_PIPELINE_UNKNOWN',
+        });
+        continue;
+      }
+      if (state === 'PARTIAL' || state === 'UNAVAILABLE' || (dim !== 'FRESHNESS' && state === 'UNKNOWN')) {
+        out.push({ dimension: dim, state, section: section.section, reason: section.reason });
+      }
+    }
+  }
+  return out;
+}
+
+function getActionableQualityLimitations(quality: EvaluationsQualityReport): E7QualityLimitation[] {
+  if (quality.overall.status === 'UNAVAILABLE' || quality.overall.status === 'ERROR') {
+    return [];
+  }
+  const out: E7QualityLimitation[] = [];
+  for (const section of quality.sections) {
+    if (section.status === 'PARTIAL') {
+      out.push({
+        dimension: 'COMPLETENESS',
+        state: 'PARTIAL',
+        section: section.section,
+        reason: section.reason,
+      });
+    }
+    if (section.status === 'UNAVAILABLE' && section.section !== 'finance') {
+      out.push({
+        dimension: 'COMPLETENESS',
+        state: 'UNAVAILABLE',
+        section: section.section,
+        reason: section.reason,
+      });
+    }
+    for (const dim of E7_QUALITY_DIMENSIONS) {
+      const state = section.dimensions[dim];
+      if (dim === 'FRESHNESS' && state === 'UNKNOWN') continue;
+      if (dim === 'VALIDITY' && state === 'UNKNOWN') continue;
+      if (state === 'PARTIAL' || state === 'UNAVAILABLE' || (dim !== 'FRESHNESS' && state === 'UNKNOWN')) {
+        out.push({ dimension: dim, state, section: section.section, reason: section.reason });
+      }
+    }
+  }
+  const seen = new Set<string>();
+  return out.filter((l) => {
+    const key = qualityLimitationKey(l);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function limitationsCoveredByFamily(
+  family: E7RecommendationFamily,
+  limitations: readonly E7QualityLimitation[],
+): readonly string[] {
+  if (family === 'COST_EVIDENCE_INCOMPLETE') {
+    return limitations.filter((l) => l.section === 'costModel').map(qualityLimitationKey);
+  }
+  if (family === 'DETECTION_INPUT_SKIPPED') {
+    return limitations
+      .filter((l) => l.section === 'strengths' || l.section === 'weaknesses')
+      .map(qualityLimitationKey);
+  }
+  return [];
+}
+
 function finalizeDraft(draft: DraftRecommendation): E7Recommendation {
+  for (const action of draft.actions) {
+    assertValidE7ActionTarget(action.target);
+  }
   const period = draft.provenance.period;
   const id =
     draft.id ??
@@ -94,13 +196,14 @@ function finalizeDraft(draft: DraftRecommendation): E7Recommendation {
 }
 
 function deriveReceivables(input: E7DerivationInput): DraftRecommendation[] {
-  const { summary, scope } = input;
+  const { summary, scope, quality } = input;
   const finance = summary.sections.finance;
   const overdueMetric = finance.metrics[E7_FINANCE_METRIC_OVERDUE];
   const openMetric = finance.metrics[E7_FINANCE_METRIC_OPEN];
-  const overdueMoney = readMoney(overdueMetric);
-  const openMoney = readMoney(openMetric);
+  const overdueMoney = readFinanceMoney(overdueMetric);
+  const openMoney = readFinanceMoney(openMetric);
   const financePeriod = overdueMetric?.period ?? openMetric?.period ?? summary.period;
+  const financeQuality = qualityLimitationsForSections(quality, ['finance']);
   const out: DraftRecommendation[] = [];
 
   if (overdueMoney && overdueMoney.amountMinor > 0) {
@@ -124,13 +227,15 @@ function deriveReceivables(input: E7DerivationInput): DraftRecommendation[] {
           finance: finance.status,
           [E7_FINANCE_METRIC_OVERDUE]: overdueMetric?.status ?? 'UNAVAILABLE',
         },
-        qualityLimitations: [],
+        qualityLimitations: financeQuality,
         lineageRefs: [],
         derivationReason: `RECEIVABLES_OVERDUE:${overdueMoney.currency}`,
       }),
     });
   }
 
+  // OPEN_RECEIVABLES_REVIEW uses E3 fin.open_receivables (non-overdue population).
+  // When overdue > 0, suppress open review: UI_ACTION_SUPERSESSION (same Finance surface).
   if (
     openMoney &&
     openMoney.amountMinor > 0 &&
@@ -148,15 +253,15 @@ function deriveReceivables(input: E7DerivationInput): DraftRecommendation[] {
       provenance: buildProvenance({
         sourceSections: ['finance'],
         sourceRuleIds: [],
-        sourceMetricIds: [E7_FINANCE_METRIC_OPEN],
+        sourceMetricIds: [OPEN_RECEIVABLES_SOURCE],
         period: financePeriod,
         sourcePeriods: [{ source: 'finance', period: financePeriod }],
         scope,
         inputStatuses: {
           finance: finance.status,
-          [E7_FINANCE_METRIC_OPEN]: openMetric?.status ?? 'UNAVAILABLE',
+          [OPEN_RECEIVABLES_SOURCE]: openMetric?.status ?? 'UNAVAILABLE',
         },
-        qualityLimitations: [],
+        qualityLimitations: financeQuality,
         lineageRefs: [],
         derivationReason: `OPEN_RECEIVABLES:${openMoney.currency}`,
       }),
@@ -176,9 +281,11 @@ function deriveFromWeakness(
   input: E7DerivationInput,
   weakness: E4WeaknessResult,
 ): DraftRecommendation | null {
-  const { summary, scope } = input;
+  const { summary, scope, quality } = input;
   const section = summary.sections.weaknesses;
   if (!isValueAvailable(section.status)) return null;
+  const sourceSections = ['weaknesses'] as const;
+  const qualityLimits = qualityLimitationsForSections(quality, sourceSections);
 
   if (weakness.ruleId === E7_WEAKNESS_RULE_UNDERUTILIZATION) {
     const utilization = summary.sections.utilization;
@@ -190,6 +297,7 @@ function deriveFromWeakness(
     ) {
       return null;
     }
+    const utilSections = ['weaknesses', 'utilization'] as const;
     return {
       family: 'UTILIZATION_ATTENTION',
       category: 'FLEET',
@@ -203,7 +311,7 @@ function deriveFromWeakness(
       actionability: 'ACTIONABLE',
       actions: [sectionNavigationAction('utilization', 'evaluations.recommendations.actions.viewUtilization')],
       provenance: buildProvenance({
-        sourceSections: ['weaknesses', 'utilization'],
+        sourceSections: utilSections,
         sourceRuleIds: [weakness.ruleId],
         sourceMetricIds: weakness.evidence.metricId ? [weakness.evidence.metricId] : [],
         period: section.period,
@@ -216,7 +324,7 @@ function deriveFromWeakness(
           weaknesses: section.status,
           utilization: summary.sections.utilization.status,
         },
-        qualityLimitations: [],
+        qualityLimitations: qualityLimitationsForSections(quality, utilSections),
         lineageRefs: [],
         derivationReason: `UTILIZATION_UNDER:${weakness.dimension}`,
       }),
@@ -236,14 +344,14 @@ function deriveFromWeakness(
     actionability: 'ACTIONABLE',
     actions: [sectionNavigationAction('weaknesses', 'evaluations.recommendations.actions.viewWeaknesses')],
     provenance: buildProvenance({
-      sourceSections: ['weaknesses'],
+      sourceSections: sourceSections,
       sourceRuleIds: [weakness.ruleId],
       sourceMetricIds: weakness.evidence.metricId ? [weakness.evidence.metricId] : [],
       period: section.period,
       sourcePeriods: [{ source: 'weaknesses', period: section.period }],
       scope,
       inputStatuses: { weaknesses: section.status },
-      qualityLimitations: [],
+      qualityLimitations: qualityLimits,
       lineageRefs: [],
       derivationReason: `WEAKNESS:${weakness.ruleId}:${weakness.dimension}`,
     }),
@@ -253,6 +361,7 @@ function deriveFromWeakness(
 function deriveStrength(input: E7DerivationInput, strength: E4StrengthResult): DraftRecommendation | null {
   const section = input.summary.sections.strengths;
   if (!isValueAvailable(section.status)) return null;
+  const sourceSections = ['strengths'] as const;
   return {
     family: 'STRENGTH_REINFORCE',
     category: 'INSIGHT',
@@ -263,14 +372,14 @@ function deriveStrength(input: E7DerivationInput, strength: E4StrengthResult): D
     actionability: 'INFORMATIONAL',
     actions: [sectionNavigationAction('strengths', 'evaluations.recommendations.actions.viewStrengths')],
     provenance: buildProvenance({
-      sourceSections: ['strengths'],
+      sourceSections: sourceSections,
       sourceRuleIds: [strength.ruleId],
       sourceMetricIds: strength.evidence.metricId ? [strength.evidence.metricId] : [],
       period: section.period,
       sourcePeriods: [{ source: 'strengths', period: section.period }],
       scope: input.scope,
       inputStatuses: { strengths: section.status },
-      qualityLimitations: [],
+      qualityLimitations: qualityLimitationsForSections(input.quality, sourceSections),
       lineageRefs: [],
       derivationReason: `STRENGTH:${strength.ruleId}:${strength.dimension}`,
     }),
@@ -279,75 +388,52 @@ function deriveStrength(input: E7DerivationInput, strength: E4StrengthResult): D
 
 function deriveCostIncomplete(input: E7DerivationInput): DraftRecommendation | null {
   const cost = input.summary.sections.costModel;
-  if (cost.status === 'AVAILABLE') return null;
-  if (cost.status !== 'PARTIAL' && cost.status !== 'UNAVAILABLE') return null;
+  if (cost.status !== 'PARTIAL') return null;
   const unsupported = cost.categories.filter((c) => c.status === 'UNAVAILABLE');
-  if (cost.status === 'UNAVAILABLE' && unsupported.length === 0 && !cost.reason) return null;
+  const hasCanonicalEvidence = unsupported.length > 0 || Boolean(cost.reason);
+  if (!hasCanonicalEvidence) return null;
 
+  const sourceSections = ['costModel'] as const;
   return {
     family: 'COST_EVIDENCE_INCOMPLETE',
     category: 'OPERATIONS',
-    severity: cost.status === 'UNAVAILABLE' ? 'WARNING' : 'INFO',
+    severity: 'INFO',
     titleKey: 'evaluations.recommendations.costEvidenceIncomplete.title',
     explanationKey: 'evaluations.recommendations.costEvidenceIncomplete.explanation',
     copyParams: [{ key: 'reason', type: 'TEXT', value: cost.reason ?? 'COST_SOURCES_UNSUPPORTED' }],
     actionability: 'INFORMATIONAL',
     actions: [sectionNavigationAction('cost', 'evaluations.recommendations.actions.viewCost')],
     provenance: buildProvenance({
-      sourceSections: ['costModel'],
+      sourceSections: sourceSections,
       sourceRuleIds: [],
       sourceMetricIds: [],
       period: cost.period,
       sourcePeriods: [{ source: 'costModel', period: cost.period }],
       scope: input.scope,
       inputStatuses: { costModel: cost.status },
-      qualityLimitations: [],
+      qualityLimitations: qualityLimitationsForSections(input.quality, sourceSections),
       lineageRefs: [],
-      derivationReason: `COST_INCOMPLETE:${cost.reason ?? cost.status}`,
+      derivationReason: `COST_INCOMPLETE:${cost.reason ?? 'PARTIAL_CATEGORIES'}`,
     }),
   };
 }
 
-function mapQualityLimitations(quality: EvaluationsQualityReport): readonly E7QualityLimitation[] {
-  const out: E7QualityLimitation[] = [];
-  for (const section of quality.sections) {
-    for (const dim of ['FRESHNESS', 'COMPLETENESS', 'PROVENANCE', 'VALIDITY', 'TEMPORAL_APPLICABILITY'] as const) {
-      const state = section.dimensions[dim];
-      if (dim === 'FRESHNESS' && state === 'UNKNOWN') {
-        out.push({ dimension: dim, state, section: section.section, reason: 'STRUCTURAL_PIPELINE_UNKNOWN' });
-        continue;
-      }
-      if (state === 'PARTIAL' || state === 'UNAVAILABLE' || (dim !== 'FRESHNESS' && state === 'UNKNOWN')) {
-        out.push({ dimension: dim, state, section: section.section, reason: section.reason });
-      }
-    }
-  }
-  return out;
-}
-
-function hasActionableQualityLimitation(quality: EvaluationsQualityReport): boolean {
-  if (quality.overall.status === 'UNAVAILABLE' || quality.overall.status === 'ERROR') {
-    return false;
-  }
-  for (const section of quality.sections) {
-    if (section.status === 'PARTIAL') return true;
-    if (section.status === 'UNAVAILABLE' && section.section !== 'finance') return true;
-    const dims = section.dimensions;
-    if (dims.COMPLETENESS === 'PARTIAL' || dims.COMPLETENESS === 'UNAVAILABLE') return true;
-    if (dims.PROVENANCE === 'PARTIAL') return true;
-    // FRESHNESS UNKNOWN and VALIDITY UNKNOWN are structural on current main — never alone actionable.
-  }
-  return false;
-}
-
 function deriveQualityLimited(
   input: E7DerivationInput,
-  existingFamilies: Set<E7RecommendationFamily>,
+  drafts: readonly DraftRecommendation[],
 ): DraftRecommendation | null {
-  if (existingFamilies.has('COST_EVIDENCE_INCOMPLETE') || existingFamilies.has('DETECTION_INPUT_SKIPPED')) {
-    return null;
+  const actionable = getActionableQualityLimitations(input.quality);
+  if (actionable.length === 0) return null;
+
+  const covered = new Set<string>();
+  for (const draft of drafts) {
+    for (const key of limitationsCoveredByFamily(draft.family, actionable)) {
+      covered.add(key);
+    }
   }
-  if (!hasActionableQualityLimitation(input.quality)) return null;
+
+  const remaining = actionable.filter((l) => !covered.has(qualityLimitationKey(l)));
+  if (remaining.length === 0) return null;
 
   return {
     family: 'DATA_QUALITY_LIMITED',
@@ -366,7 +452,7 @@ function deriveQualityLimited(
       sourcePeriods: [{ source: 'quality', period: input.quality.period }],
       scope: input.scope,
       inputStatuses: { quality: input.quality.overall.status },
-      qualityLimitations: mapQualityLimitations(input.quality),
+      qualityLimitations: remaining,
       lineageRefs: [],
       derivationReason: 'DATA_QUALITY_LIMITED',
     }),
@@ -386,6 +472,7 @@ function deriveSkippedDetection(input: E7DerivationInput): DraftRecommendation[]
   }
   if (skipped.length === 0) return [];
 
+  const sourceSections = ['strengths', 'weaknesses'] as const;
   return [
     {
       family: 'DETECTION_INPUT_SKIPPED',
@@ -393,13 +480,15 @@ function deriveSkippedDetection(input: E7DerivationInput): DraftRecommendation[]
       severity: 'INFO',
       titleKey: 'evaluations.recommendations.detectionInputSkipped.title',
       explanationKey: 'evaluations.recommendations.detectionInputSkipped.explanation',
-      copyParams: skipped.map((s, i) => ({ key: `skipped_${i}`, type: 'TEXT' as const, value: `${s.dimension}:${s.reason}` })),
+      copyParams: skipped.map((s, i) => ({
+        key: `skipped_${i}`,
+        type: 'TEXT' as const,
+        value: `${s.dimension}:${s.reason}`,
+      })),
       actionability: 'INFORMATIONAL',
-      actions: [
-        sectionNavigationAction('weaknesses', 'evaluations.recommendations.actions.viewDetection'),
-      ],
+      actions: [sectionNavigationAction('weaknesses', 'evaluations.recommendations.actions.viewDetection')],
       provenance: buildProvenance({
-        sourceSections: ['strengths', 'weaknesses'],
+        sourceSections: sourceSections,
         sourceRuleIds: [],
         sourceMetricIds: [],
         period: input.requestPeriod,
@@ -412,7 +501,7 @@ function deriveSkippedDetection(input: E7DerivationInput): DraftRecommendation[]
           strengths: strengths.status,
           weaknesses: weaknesses.status,
         },
-        qualityLimitations: [],
+        qualityLimitations: qualityLimitationsForSections(input.quality, sourceSections),
         lineageRefs: [],
         derivationReason: `DETECTION_SKIPPED:${skipped.map((s) => s.dimension).sort().join(',')}`,
       }),
@@ -422,10 +511,11 @@ function deriveSkippedDetection(input: E7DerivationInput): DraftRecommendation[]
 
 function deriveDriverInfluence(input: E7DerivationInput): DraftRecommendation | null {
   const driver = input.summary.sections.driverInfluence;
-  if (driver.status !== 'AVAILABLE' && driver.status !== 'PARTIAL') return null;
+  if (driver.status !== 'AVAILABLE') return null;
   if (driver.piiTier === 'none') return null;
-  if (driver.factors.length === 0 && driver.status !== 'PARTIAL') return null;
+  if (driver.factors.length === 0) return null;
 
+  const sourceSections = ['driverInfluence'] as const;
   return {
     family: 'DRIVER_INFLUENCE_REVIEW',
     category: 'DRIVER',
@@ -436,14 +526,14 @@ function deriveDriverInfluence(input: E7DerivationInput): DraftRecommendation | 
     actionability: 'ACTIONABLE',
     actions: [sectionNavigationAction('driver', 'evaluations.recommendations.actions.viewDriverInfluence')],
     provenance: buildProvenance({
-      sourceSections: ['driverInfluence'],
+      sourceSections: sourceSections,
       sourceRuleIds: [],
       sourceMetricIds: [],
       period: driver.period,
       sourcePeriods: [{ source: 'driverInfluence', period: driver.period }],
       scope: input.scope,
       inputStatuses: { driverInfluence: driver.status },
-      qualityLimitations: [],
+      qualityLimitations: qualityLimitationsForSections(input.quality, sourceSections),
       lineageRefs: [],
       derivationReason: 'DRIVER_INFLUENCE_AVAILABLE',
     }),
@@ -465,6 +555,14 @@ function sortRecommendations(items: readonly E7Recommendation[]): E7Recommendati
   });
 }
 
+/**
+ * Collection status rollup precedence:
+ * 1. ERROR if any governing status is ERROR
+ * 2. UNAVAILABLE if all governing statuses are UNAVAILABLE or NOT_APPLICABLE
+ * 3. STALE if any governing status is STALE
+ * 4. PARTIAL if any governing status is PARTIAL or UNAVAILABLE (mixed)
+ * 5. AVAILABLE otherwise
+ */
 function rollupCollectionStatus(statuses: readonly EvaluationsMetricStatus[]): EvaluationsMetricStatus {
   if (statuses.length === 0) return 'UNAVAILABLE';
   if (statuses.includes('ERROR')) return 'ERROR';
@@ -476,22 +574,13 @@ function rollupCollectionStatus(statuses: readonly EvaluationsMetricStatus[]): E
 
 function deriveEmptyState(
   recommendations: readonly E7Recommendation[],
-  input: E7DerivationInput,
   collectionStatus: EvaluationsMetricStatus,
 ): E7RecommendationEmptyState | null {
   if (recommendations.length > 0) return null;
-  if (collectionStatus === 'UNAVAILABLE' || collectionStatus === 'ERROR') {
-    return 'INSUFFICIENT_EVIDENCE';
+  if (collectionStatus === 'AVAILABLE') {
+    return 'NO_ACTION_NEEDED';
   }
-  const sections = input.summary.sections;
-  const evaluable =
-    isValueAvailable(sections.finance.status) ||
-    isValueAvailable(sections.utilization.status) ||
-    isValueAvailable(sections.weaknesses.status) ||
-    isValueAvailable(sections.strengths.status) ||
-    sections.costModel.status !== 'ERROR' ||
-    input.quality.overall.status !== 'ERROR';
-  return evaluable ? 'NO_ACTION_NEEDED' : 'INSUFFICIENT_EVIDENCE';
+  return 'INSUFFICIENT_EVIDENCE';
 }
 
 export function deriveEvaluationsRecommendations(
@@ -516,8 +605,7 @@ export function deriveEvaluationsRecommendations(
 
   drafts.push(...deriveSkippedDetection(input));
 
-  const familySet = new Set(drafts.map((d) => d.family));
-  const qualityRec = deriveQualityLimited(input, familySet);
+  const qualityRec = deriveQualityLimited(input, drafts);
   if (qualityRec) drafts.push(qualityRec);
 
   const driverRec = deriveDriverInfluence(input);
@@ -536,7 +624,7 @@ export function deriveEvaluationsRecommendations(
   ];
 
   const status = rollupCollectionStatus(governingStatuses);
-  const emptyState = deriveEmptyState(recommendations, input, status);
+  const emptyState = deriveEmptyState(recommendations, status);
 
   return {
     schemaVersion: E7_RECOMMENDATIONS_SCHEMA_VERSION,

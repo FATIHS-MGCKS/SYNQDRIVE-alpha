@@ -109,6 +109,10 @@ export type E7EvaluationsSectionTarget = (typeof E7_EVALUATIONS_SECTION_TARGETS)
 export const E7_APPLICATION_ROUTE_TARGETS = ['financial-insights', 'workflow-automation'] as const;
 export type E7ApplicationRouteTarget = (typeof E7_APPLICATION_ROUTE_TARGETS)[number];
 
+/** Non-PII entity kinds permitted for ENTITY_REFERENCE actions (emission deferred in E7B). */
+export const E7_ENTITY_REFERENCE_KINDS = ['vehicle', 'booking', 'invoice'] as const;
+export type E7EntityReferenceKind = (typeof E7_ENTITY_REFERENCE_KINDS)[number];
+
 export const E7_COPY_PARAM_TYPES = ['TEXT', 'NUMBER', 'PERCENT', 'MONEY', 'COUNT'] as const;
 export type E7CopyParamType = (typeof E7_COPY_PARAM_TYPES)[number];
 
@@ -143,10 +147,20 @@ export interface E7RecommendationProvenance {
   readonly derivationReason: string;
 }
 
-export interface E7ActionTarget {
-  readonly kind: E7ActionTargetKind;
-  readonly value: string;
-}
+export type E7ActionTarget =
+  | {
+      readonly kind: 'EVALUATIONS_SECTION';
+      readonly value: E7EvaluationsSectionTarget;
+    }
+  | {
+      readonly kind: 'APPLICATION_ROUTE';
+      readonly value: E7ApplicationRouteTarget;
+    }
+  | {
+      readonly kind: 'ENTITY_REFERENCE';
+      readonly entityKind: E7EntityReferenceKind;
+      readonly entityId: string;
+    };
 
 export interface E7RecommendationAction {
   readonly actionType: E7ActionType;

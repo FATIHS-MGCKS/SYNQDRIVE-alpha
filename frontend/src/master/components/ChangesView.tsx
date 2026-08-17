@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e7b1-recommendation-authority-conformance-2026-08-17',
+    version: '4.9.896',
+    title: 'V4.9.896 — Evaluations E7B.1: fail-closed recommendation authority hardening',
+    summary: [
+      'Finance recommendations require exact E3 metric AVAILABLE (not PARTIAL/STALE). Driver requires AVAILABLE + factors + non-none piiTier. Cost recommendation emits only from PARTIAL with canonical incomplete evidence.',
+      'Source-scoped E5 quality limitations in provenance; source-scoped supersession for DATA_QUALITY_LIMITED (not global cost/skipped suppression). Empty-state fail-closed: NO_ACTION_NEEDED only when collection AVAILABLE.',
+      'Discriminated E7ActionTarget union + runtime assertValidE7ActionTarget(). 31 new E7B.1 conformance tests + HTTP security integration explicitly run.',
+    ],
+    reason:
+      'Independent post-E7B review found authority-conformance gaps that must close before E7C UI integration.',
+    previousBehavior:
+      'E7B allowed Finance from PARTIAL/STALE metrics, Driver from PARTIAL/zero factors, Cost from UNAVAILABLE, global quality supersession, and optimistic empty-state on incomplete evidence.',
+    details:
+      'shared/evaluations-recommendations/evaluations-recommendations-action-target.ts, backend/.../evaluations-recommendations.derive.ts, docs/audits/pr-recovery/phase3-e7b1-*.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T08:00:00.000Z',
+  },
+  {
     id: 'evaluations-e7b-canonical-recommendations-backend-2026-08-17',
     version: '4.9.895',
     title: 'V4.9.895 — Evaluations E7B: canonical Recommendations backend + API',

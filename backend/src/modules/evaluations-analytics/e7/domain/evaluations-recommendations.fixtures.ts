@@ -38,7 +38,7 @@ export function e7PercentMetric(
   metricId: string,
   value: number | null,
   period: EvaluationsPeriodWindow,
-  status: 'AVAILABLE' | 'UNAVAILABLE' | 'PARTIAL' = 'AVAILABLE',
+  status: 'AVAILABLE' | 'UNAVAILABLE' | 'PARTIAL' | 'STALE' = 'AVAILABLE',
 ): EvaluationsMetricResponse {
   return {
     schemaVersion: '1.0.0',
@@ -64,7 +64,7 @@ export function e7MoneyMetric(
   amountMinor: number,
   currency: string,
   period: EvaluationsPeriodWindow,
-  status: 'AVAILABLE' | 'UNAVAILABLE' | 'PARTIAL' = 'AVAILABLE',
+  status: 'AVAILABLE' | 'UNAVAILABLE' | 'PARTIAL' | 'STALE' = 'AVAILABLE',
 ): EvaluationsMetricResponse {
   return {
     schemaVersion: '1.0.0',
@@ -81,7 +81,7 @@ export function e7MoneyMetric(
     valueType: 'MONEY',
     unit: 'CURRENCY_MINOR',
     status,
-    value: status === 'AVAILABLE' || status === 'PARTIAL' ? { amountMinor, currency } : null,
+    value: status === 'AVAILABLE' || status === 'PARTIAL' || status === 'STALE' ? { amountMinor, currency } : null,
   } as EvaluationsMetricResponse;
 }
 

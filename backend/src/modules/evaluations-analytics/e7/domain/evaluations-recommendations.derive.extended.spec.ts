@@ -211,7 +211,7 @@ describe('E7 recommendation derivation — extended coverage', () => {
           finance: {
             status: 'STALE',
             metrics: {
-              [E7_FINANCE_METRIC_OVERDUE]: e7MoneyMetric(E7_FINANCE_METRIC_OVERDUE, 100, 'EUR', E7_FIXTURE_MTD_PERIOD),
+              [E7_FINANCE_METRIC_OVERDUE]: e7MoneyMetric(E7_FINANCE_METRIC_OVERDUE, 0, 'EUR', E7_FIXTURE_MTD_PERIOD),
               [E7_FINANCE_METRIC_OPEN]: e7MoneyMetric(E7_FINANCE_METRIC_OPEN, 0, 'EUR', E7_FIXTURE_MTD_PERIOD),
             },
             reason: 'STALE_EVIDENCE',
@@ -224,11 +224,22 @@ describe('E7 recommendation derivation — extended coverage', () => {
       generatedAt: GEN,
     });
     expect(result.status).toBe('STALE');
+    expect(result.emptyState).toBe('INSUFFICIENT_EVIDENCE');
   });
 
   it('creates actionable quality recommendation for section PARTIAL', () => {
     const result = deriveEvaluationsRecommendations({
-      summary: e7BaseSummary(),
+      summary: e7BaseSummary({
+        sections: {
+          utilization: { ...e7BaseSummary().sections.utilization, status: 'AVAILABLE' },
+          driverInfluence: {
+            ...e7BaseSummary().sections.driverInfluence,
+            status: 'NOT_APPLICABLE',
+            piiTier: 'none',
+            factors: [],
+          },
+        },
+      }),
       quality: e7BaseQuality({
         sections: [
           {
@@ -249,6 +260,7 @@ describe('E7 recommendation derivation — extended coverage', () => {
             reason: 'PARTIAL_COVERAGE',
           },
         ],
+        overall: { status: 'PARTIAL', complete: false, reason: 'QUALITY_INCOMPLETE' },
       }),
       requestPeriod: E7_FIXTURE_ANALYTICS_PERIOD,
       scope: E7_FIXTURE_SCOPE,

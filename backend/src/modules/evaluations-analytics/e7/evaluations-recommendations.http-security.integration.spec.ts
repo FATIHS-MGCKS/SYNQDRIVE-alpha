@@ -50,6 +50,7 @@ const MEMBERSHIPS: Record<string, { id: string; role: string; status: string; pe
 
 const STATIONS = [
   { id: 's-a1', organizationId: 'org-a' },
+  { id: 's-a2', organizationId: 'org-a' },
   { id: 's-b1', organizationId: 'org-b' },
 ];
 
@@ -184,5 +185,32 @@ describe('EvaluationsRecommendationsController — HTTP security integration', (
     } finally {
       process.env[EVALUATIONS_ANALYTICS_V2_MODE_ENV] = 'on';
     }
+  });
+
+  it('accepts valid periodType MTD', async () => {
+    await request(app.getHttpServer())
+      .get(`${base}/org-a/evaluations/analytics/insights/recommendations?periodType=MTD`)
+      .set(...auth(adminA))
+      .expect(200);
+  });
+
+  it('rejects invalid periodType with 400', async () => {
+    await request(app.getHttpServer())
+      .get(`${base}/org-a/evaluations/analytics/insights/recommendations?periodType=INVALID`)
+      .set(...auth(adminA))
+      .expect(400);
+  });
+
+  it('normalizes station query order without changing authorized scope', async () => {
+    const resA = await request(app.getHttpServer())
+      .get(`${base}/org-a/evaluations/analytics/insights/recommendations?stationIds=s-a2,s-a1`)
+      .set(...auth(adminA))
+      .expect(200);
+    const resB = await request(app.getHttpServer())
+      .get(`${base}/org-a/evaluations/analytics/insights/recommendations?stationIds=s-a1,s-a2`)
+      .set(...auth(adminA))
+      .expect(200);
+    expect(resA.body.scope.organizationId).toBe('org-a');
+    expect(resB.body.scope.organizationId).toBe('org-a');
   });
 });

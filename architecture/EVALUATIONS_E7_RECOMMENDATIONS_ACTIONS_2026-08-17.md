@@ -44,8 +44,12 @@
   `expectedBenefit`, or forecast fields.
 - **Privacy.** Reuse E5B `piiTier`; driver families fail-closed at `none`; pseudonymous
   stays pseudonymous; no identity join from `driverRef`.
+- **E7B.1 (fail-closed hardening, branch):** Finance exact AVAILABLE gate, Driver AVAILABLE+factors gate,
+  Cost PARTIAL-only authority, source-scoped quality limitations and supersession, empty-state fail-closed,
+  discriminated action targets with runtime validation. See
+  `phase3-e7b1-recommendation-authority-conformance-hardening-2026-08.md`.
 - **Actions (initial).** Non-mutating only: NAVIGATION / FILTER / OPEN_ENTITY /
-  OPEN_WORKFLOW link. No acknowledge/dismiss/state-changing ops in initial E7.
+  OPEN_WORKFLOW link. E7B.1: discriminated union targets + runtime allowlist validation.
 - **Workflow boundary.** Link to existing workflow-automation route with context;
   no hidden action engine inside Evaluations.
 - **UI (E7C plan).** New section on `EvaluationsPage` after Executive Summary;

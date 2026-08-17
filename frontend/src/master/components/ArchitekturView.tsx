@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E7B.1 Fail-Closed Recommendation Authority (Phase 3 — V4.9.896)', icon: Layers,
+    endpoint: 'Same GET …/insights/recommendations endpoint; E7B.1 hardens derivation gates only (no API shape change).',
+    service: 'E7B.1 conformance: Finance exact AVAILABLE-only; Driver AVAILABLE+factors; Cost PARTIAL-only; source-scoped E5 quality limitations + supersession; empty-state fail-closed; discriminated action targets + runtime allowlist validation. Preserves one-summary orchestration and derive-on-read.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e7b1-recommendation-authority-conformance-hardening-2026-08.md; shared/evaluations-recommendations/evaluations-recommendations-action-target.ts.' },
   { name: 'Auswertungen E7B Canonical Recommendations Backend (Phase 3 — V4.9.895)', icon: Layers,
     endpoint: 'GET /organizations/:orgId/evaluations/analytics/insights/recommendations — derive-on-read, tenant/station scoped (E7B branch). Inputs: 1× E4 summary + E5 quality from summary (no second getSummary, no direct E3 finance).',
     service: 'Shared `@synq/evaluations-recommendations` contract + pure `evaluations-recommendations.derive` domain. Nine families (weakness/strength/utilization/receivables/cost-quality/driver/skipped). Deterministic stable ids (FNV-1a), supersession (UNDERUTILIZATION→UTILIZATION_ATTENTION, receivables/quality dedup), titleKey/explanationKey/copyParams only. Actions: non-mutating NAVIGATION with allowlisted EVALUATIONS_SECTION targets. No persistence, no estimatedExposure/forecast, no client business derivation.',

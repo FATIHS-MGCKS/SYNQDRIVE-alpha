@@ -308,15 +308,30 @@ describe('E7 recommendation derivation', () => {
     expect(result.recommendations.some((r) => r.family === 'DRIVER_INFLUENCE_REVIEW')).toBe(false);
   });
 
-  it('uses NO_ACTION_NEEDED when evaluable and no triggers', () => {
+  it('uses NO_ACTION_NEEDED when collection is AVAILABLE and no triggers', () => {
+    const base = e7BaseSummary();
     const result = deriveEvaluationsRecommendations({
-      summary: e7BaseSummary(),
-      quality: e7BaseQuality(),
+      summary: {
+        ...base,
+        sections: {
+          ...base.sections,
+          utilization: { ...base.sections.utilization, status: 'AVAILABLE' },
+          driverInfluence: {
+            ...base.sections.driverInfluence,
+            status: 'NOT_APPLICABLE',
+            reason: 'NOT_REQUESTED',
+            piiTier: 'none',
+            factors: [],
+          },
+        },
+      },
+      quality: e7BaseQuality({ overall: { status: 'AVAILABLE', complete: true, reason: null } }),
       requestPeriod: E7_FIXTURE_ANALYTICS_PERIOD,
       scope: E7_FIXTURE_SCOPE,
       generatedAt: GEN,
     });
     expect(result.recommendations).toHaveLength(0);
+    expect(result.status).toBe('AVAILABLE');
     expect(result.emptyState).toBe('NO_ACTION_NEEDED');
   });
 
