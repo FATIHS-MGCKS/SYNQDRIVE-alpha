@@ -1,0 +1,636 @@
+{
+  "phase": "CI-R3B1R.3.3",
+  "generated_at": "2026-08-17T01:09:01+00:00",
+  "result": "BLOCKED",
+  "machine_status": "CI_R3B1R33_NESTJS11_SECURITY_UPGRADE_PREFLIGHT_BLOCKED",
+  "entry": {
+    "entry_head_sha": "b8ca5049a37abc7d51ebe37e73f258804ef64f78",
+    "pr_1054_head_sha": "b8ca5049a37abc7d51ebe37e73f258804ef64f78",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean_at_entry": false
+  },
+  "inherited_r3b1r32": {
+    "result": "BLOCKED",
+    "machine_status": "CI_R3B1R32_INSTALLED_TREE_LOCKFILE_CONTRACT_CLOSURE_BLOCKED",
+    "semver_out_of_range_production_edges": 0,
+    "lockfile_runtime_version_mismatches": 0,
+    "backend_high": 4
+  },
+  "database_immutability": {
+    "schema_sha": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+    "migration_tree_sha": "868dcbb8cef8078cbc16d70c939751b470f45bb01fa420f023119d45259beee6",
+    "prisma_cli_version": "^5.20.0",
+    "prisma_client_version": "^5.20.0",
+    "database_files_changed": 0,
+    "prisma_toolchain_changed": false
+  },
+  "current_high_findings": [
+    {
+      "package": "@nestjs/platform-express",
+      "advisory_ids": [],
+      "underlying_packages": [],
+      "vulnerable_range": "<=11.1.14 || 12.0.0-alpha.0 - 12.0.0-alpha.2",
+      "dependency_path": [
+        "@nestjs/core",
+        "@nestjs/testing"
+      ],
+      "current_parent": "@nestjs/core",
+      "fix_available_parent": "@nestjs/platform-express",
+      "fix_available_version": "11.2.1",
+      "fix_is_semver_major": true
+    },
+    {
+      "package": "js-yaml",
+      "advisory_ids": [
+        "1112715",
+        "1121860",
+        "1123911",
+        "1138115",
+        "GHSA-52cp-r559-cp3m",
+        "GHSA-5p4m-2wfm-xmqj",
+        "GHSA-h67p-54hq-rp68",
+        "GHSA-mh29-5h37-fv8m"
+      ],
+      "underlying_packages": [
+        "js-yaml"
+      ],
+      "vulnerable_range": "4.0.0 - 4.3.0",
+      "dependency_path": [
+        "@nestjs/swagger"
+      ],
+      "current_parent": "@nestjs/swagger",
+      "fix_available_parent": "@nestjs/swagger",
+      "fix_available_version": "11.4.6",
+      "fix_is_semver_major": true
+    },
+    {
+      "package": "lodash",
+      "advisory_ids": [
+        "1115806",
+        "1115810",
+        "1120370",
+        "GHSA-f23m-r3pf-42rh",
+        "GHSA-r5fr-rjxr-66jc",
+        "GHSA-xxjr-mmjv-4gpg"
+      ],
+      "underlying_packages": [
+        "lodash"
+      ],
+      "vulnerable_range": "<=4.17.23",
+      "dependency_path": [
+        "@nestjs/swagger"
+      ],
+      "current_parent": "@nestjs/swagger",
+      "fix_available_parent": "@nestjs/swagger",
+      "fix_available_version": "11.4.6",
+      "fix_is_semver_major": true
+    },
+    {
+      "package": "multer",
+      "advisory_ids": [
+        "1113635",
+        "1113636",
+        "1113996",
+        "1121089",
+        "1121091",
+        "GHSA-3p4h-7m6x-2hcm",
+        "GHSA-5528-5vmv-3xc2",
+        "GHSA-72gw-mp4g-v24j",
+        "GHSA-v52c-386h-88mc",
+        "GHSA-xf7r-hgr6-v32p"
+      ],
+      "underlying_packages": [
+        "multer"
+      ],
+      "vulnerable_range": "<=2.1.1",
+      "dependency_path": [
+        "@nestjs/platform-express"
+      ],
+      "current_parent": "@nestjs/platform-express",
+      "fix_available_parent": "@nestjs/platform-express",
+      "fix_available_version": "11.2.1",
+      "fix_is_semver_major": true
+    }
+  ],
+  "unexplained_high_findings": 0,
+  "high_critical_advisory_identity_valid": false,
+  "nest_package_matrix": [
+    {
+      "package": "@nestjs/bullmq",
+      "classification": "INTEGRATION_RUNTIME",
+      "current_version": "10.2.3",
+      "declared_range": "^10.2.0",
+      "candidate_version": "11.0.5",
+      "peer_dependencies": {
+        "bullmq": "^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0",
+        "@nestjs/core": "^10.0.0 || ^11.0.0",
+        "@nestjs/common": "^10.0.0 || ^11.0.0"
+      },
+      "requires_upgrade": true,
+      "reason": "peer range on 10.x; upgrade to 11.0.5 for Nest 11 coherence"
+    },
+    {
+      "package": "@nestjs/cli",
+      "classification": "DEV_TOOLING",
+      "current_version": "11.0.24",
+      "declared_range": "^11.0.24",
+      "candidate_version": "11.0.24",
+      "peer_dependencies": {
+        "@swc/cli": "^0.1.62 || ^0.3.0 || ^0.4.0 || ^0.5.0 || ^0.6.0 || ^0.7.0 || ^0.8.0",
+        "@swc/core": "^1.3.62"
+      },
+      "requires_upgrade": false,
+      "reason": "already compatible or dev tooling"
+    },
+    {
+      "package": "@nestjs/common",
+      "classification": "CORE_RUNTIME",
+      "current_version": "10.4.22",
+      "declared_range": "^10.4.0",
+      "candidate_version": "11.2.1",
+      "peer_dependencies": {
+        "rxjs": "^7.1.0",
+        "class-validator": ">=0.13.2",
+        "reflect-metadata": "^0.1.12 || ^0.2.0",
+        "class-transformer": ">=0.4.1"
+      },
+      "requires_upgrade": true,
+      "reason": "resolves remaining HIGH advisories"
+    },
+    {
+      "package": "@nestjs/config",
+      "classification": "INTEGRATION_RUNTIME",
+      "current_version": "4.0.4",
+      "declared_range": "^4.0.4",
+      "candidate_version": "4.0.4",
+      "peer_dependencies": {
+        "rxjs": "^7.1.0",
+        "@nestjs/common": "^10.0.0 || ^11.0.0"
+      },
+      "requires_upgrade": false,
+      "reason": "already compatible or dev tooling"
+    },
+    {
+      "package": "@nestjs/core",
+      "classification": "CORE_RUNTIME",
+      "current_version": "10.4.22",
+      "declared_range": "^10.4.0",
+      "candidate_version": "11.2.1",
+      "peer_dependencies": {
+        "rxjs": "^7.1.0",
+        "@nestjs/common": "^11.0.0",
+        "reflect-metadata": "^0.1.12 || ^0.2.0",
+        "@nestjs/websockets": "^11.0.0",
+        "@nestjs/microservices": "^11.0.0",
+        "@nestjs/platform-express": "^11.0.0"
+      },
+      "requires_upgrade": true,
+      "reason": "resolves remaining HIGH advisories"
+    },
+    {
+      "package": "@nestjs/platform-express",
+      "classification": "PLATFORM_RUNTIME",
+      "current_version": "10.4.22",
+      "declared_range": "^10.4.0",
+      "candidate_version": "11.2.1",
+      "peer_dependencies": {
+        "@nestjs/core": "^11.0.0",
+        "@nestjs/common": "^11.0.0"
+      },
+      "requires_upgrade": true,
+      "reason": "resolves remaining HIGH advisories"
+    },
+    {
+      "package": "@nestjs/schedule",
+      "classification": "INTEGRATION_RUNTIME",
+      "current_version": "4.1.2",
+      "declared_range": "^4.1.0",
+      "candidate_version": "6.1.3",
+      "peer_dependencies": {
+        "@nestjs/common": "^10.0.0 || ^11.0.0",
+        "@nestjs/core": "^10.0.0 || ^11.0.0"
+      },
+      "requires_upgrade": true,
+      "reason": "peer range on 4.x limited to Nest 10; upgrade to 6.1.3"
+    },
+    {
+      "package": "@nestjs/schematics",
+      "classification": "DEV_TOOLING",
+      "current_version": "11.1.0",
+      "declared_range": "^11.0.10",
+      "candidate_version": "11.1.0",
+      "peer_dependencies": {
+        "prettier": "^3.0.0",
+        "typescript": ">=4.8.2"
+      },
+      "requires_upgrade": false,
+      "reason": "already compatible or dev tooling"
+    },
+    {
+      "package": "@nestjs/swagger",
+      "classification": "INTEGRATION_RUNTIME",
+      "current_version": "7.4.2",
+      "declared_range": "^7.4.0",
+      "candidate_version": "11.4.6",
+      "peer_dependencies": {
+        "@fastify/static": "^8.0.0 || ^9.0.0 || ^10.0.0",
+        "@nestjs/common": "^11.0.1",
+        "@nestjs/core": "^11.0.1",
+        "class-transformer": "*",
+        "class-validator": "*",
+        "reflect-metadata": "^0.1.12 || ^0.2.0"
+      },
+      "requires_upgrade": true,
+      "reason": "resolves remaining HIGH advisories"
+    },
+    {
+      "package": "@nestjs/testing",
+      "classification": "PLATFORM_RUNTIME",
+      "current_version": "10.4.22",
+      "declared_range": "^10.4.0",
+      "candidate_version": "11.2.1",
+      "peer_dependencies": {
+        "@nestjs/core": "^11.0.0",
+        "@nestjs/common": "^11.0.0",
+        "@nestjs/microservices": "^11.0.0",
+        "@nestjs/platform-express": "^11.0.0"
+      },
+      "requires_upgrade": true,
+      "reason": "resolves remaining HIGH advisories"
+    },
+    {
+      "package": "@nestjs/throttler",
+      "classification": "INTEGRATION_RUNTIME",
+      "current_version": "6.5.0",
+      "declared_range": "^6.5.0",
+      "candidate_version": "6.5.0",
+      "peer_dependencies": {
+        "@nestjs/common": "^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0",
+        "@nestjs/core": "^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0",
+        "reflect-metadata": "^0.1.13 || ^0.2.0"
+      },
+      "requires_upgrade": false,
+      "reason": "already compatible or dev tooling"
+    }
+  ],
+  "candidate_versions": {
+    "@nestjs/common": "11.2.1",
+    "@nestjs/core": "11.2.1",
+    "@nestjs/platform-express": "11.2.1",
+    "@nestjs/testing": "11.2.1",
+    "@nestjs/swagger": "11.4.6",
+    "@nestjs/bullmq": "11.0.5",
+    "@nestjs/schedule": "6.1.3",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/throttler": "6.5.0",
+    "multer": "2.2.0",
+    "@types/express": "^5.0.0"
+  },
+  "strategy_comparison": [
+    {
+      "strategy": "A",
+      "description": "upgrade only @nestjs/swagger",
+      "supported_by_peer_ranges": false,
+      "backend_high_expected": ">0",
+      "express_major": 4,
+      "application_breaking_surface": "low but multer HIGH remains",
+      "direct_packages_changed": 1,
+      "rejected_reason": "does not fix multer/platform-express HIGH; swagger 7.x still pins vulnerable lodash/js-yaml"
+    },
+    {
+      "strategy": "B",
+      "description": "upgrade only platform-express family",
+      "supported_by_peer_ranges": false,
+      "backend_high_expected": ">0",
+      "express_major": 5,
+      "application_breaking_surface": "Express 5 routing without swagger fix",
+      "direct_packages_changed": 2,
+      "rejected_reason": "core/testing remain Nest 10; peer conflict with platform-express 11"
+    },
+    {
+      "strategy": "C",
+      "description": "coherent Nest 11 core/platform/testing + swagger + bullmq + schedule",
+      "supported_by_peer_ranges": true,
+      "backend_high_expected": "2 residual (js-yaml via swagger 11.4.6) without upstream patch",
+      "express_major": 5,
+      "application_breaking_surface": "Express 5 route rewrites + middleware order verification",
+      "direct_packages_changed": 8,
+      "selected": true
+    }
+  ],
+  "minimum_supported_security_upgrade_topology": "STRATEGY_C_COHERENT_NEST11_CORE_PLATFORM_TESTING_SWAGGER_BULLMQ_SCHEDULE",
+  "express5_route_inventory": {
+    "total_route_patterns": 1192,
+    "express5_sensitive_route_patterns": 0,
+    "express5_requires_rewrite_patterns": 4,
+    "express5_confirmed_incompatible_patterns": 4
+  },
+  "express5_rewrite_patterns": [
+    {
+      "file": "backend/src/spa-fallback.controller.ts",
+      "decorator": "Get",
+      "pattern": "login/*",
+      "classification": "EXPRESS5_REQUIRES_REWRITE"
+    },
+    {
+      "file": "backend/src/spa-fallback.controller.ts",
+      "decorator": "Get",
+      "pattern": "master/*",
+      "classification": "EXPRESS5_REQUIRES_REWRITE"
+    },
+    {
+      "file": "backend/src/spa-fallback.controller.ts",
+      "decorator": "Get",
+      "pattern": "rental/*",
+      "classification": "EXPRESS5_REQUIRES_REWRITE"
+    },
+    {
+      "file": "backend/src/spa-fallback.controller.ts",
+      "decorator": "Get",
+      "pattern": "verification/*",
+      "classification": "EXPRESS5_REQUIRES_REWRITE"
+    }
+  ],
+  "global_prefix_express5_plan_complete": true,
+  "global_prefix_plan": {
+    "current_excludes": [
+      "master",
+      "master/(.*)",
+      "rental",
+      "rental/(.*)"
+    ],
+    "candidate_actions": [
+      "Validate Nest 11 exclude semantics for regex entries",
+      "Add HTTP smoke matrix for /master, /rental, /api/v1/*"
+    ]
+  },
+  "static_asset_migration_plan_complete": true,
+  "static_asset_plan": {
+    "current": "express.static(public) with manual /api/ skip in main.ts",
+    "tests_required": [
+      "GET /",
+      "SPA deep link",
+      "/uploads/*",
+      "/api/* passthrough",
+      "404"
+    ]
+  },
+  "multer_upload_plan_complete": true,
+  "multer_endpoints": [
+    "legal-documents.controller (memoryStorage)",
+    "document-extraction.controller (memoryStorage)",
+    "document-extraction-org.controller (memoryStorage)",
+    "customers/support/invoices/fines/tenant-organization-profile (diskStorage)"
+  ],
+  "swagger_upgrade_plan_complete": true,
+  "openapi_baseline_sha256": "e8f571317d67d635e6d73472a2222775b8cd86e9fe7d10d13a0629e109efbbd8",
+  "spike_investigation": {
+    "location": "/tmp/r3b1r33-spike",
+    "committed": false,
+    "candidate_versions": {
+      "@nestjs/common": "11.2.1",
+      "@nestjs/core": "11.2.1",
+      "@nestjs/platform-express": "11.2.1",
+      "@nestjs/testing": "11.2.1",
+      "@nestjs/swagger": "11.4.6",
+      "@nestjs/bullmq": "11.0.5",
+      "@nestjs/schedule": "6.1.3",
+      "@nestjs/config": "4.0.4",
+      "@nestjs/throttler": "6.5.0",
+      "multer": "2.2.0",
+      "@types/express": "^5.0.0"
+    },
+    "npm_install_success": true,
+    "audit_without_js_yaml_patch": {
+      "high": 2,
+      "critical": 0,
+      "residual_packages": [
+        "js-yaml",
+        "@nestjs/swagger"
+      ]
+    },
+    "audit_with_investigation_js_yaml_5_3_0_only": {
+      "high": 0,
+      "critical": 0,
+      "note": "disposable override only; not semver-valid vs swagger exact pin 5.2.1"
+    },
+    "npm_ls_invalid": 0,
+    "build_success": true,
+    "typecheck_error_count": 9,
+    "typecheck_errors_preexisting_spec": true,
+    "module_graph_boot_pass": true,
+    "openapi_candidate_paths": 959,
+    "openapi_baseline_paths": 959,
+    "openapi_diff_summary": "path count unchanged; metadata/component ordering deltas only (EXPECTED_FRAMEWORK_METADATA_CHANGE)",
+    "unexplained_openapi_breaking_changes": 0,
+    "schema_changed": false,
+    "migrations_changed": 0,
+    "prisma_toolchain_changed": false,
+    "openapi_baseline_sha256": "e8f571317d67d635e6d73472a2222775b8cd86e9fe7d10d13a0629e109efbbd8",
+    "openapi_candidate_sha256": "7cde3b3fc4f322a5c4a5660b59a0ce1762367417a89af026d6ac56b79b3f9716",
+    "openapi_diff": {
+      "baseline_paths": 959,
+      "candidate_paths": 959,
+      "only_baseline": [
+        "/login/*",
+        "/master/*",
+        "/rental/*",
+        "/verification/*"
+      ],
+      "only_candidate": [
+        "/login/{path}",
+        "/master/{path}",
+        "/rental/{path}",
+        "/verification/{path}"
+      ],
+      "classification": "EXPECTED_FRAMEWORK_METADATA_CHANGE",
+      "unexplained_openapi_breaking_changes": 0
+    }
+  },
+  "implementation_plan_r3b1r34": {
+    "dependency_changes": [
+      {
+        "path": "backend/package.json",
+        "why_required": "Coherent Nest 11 runtime stack",
+        "breaking_risk": "HIGH",
+        "test_authority": "npm ls + npm audit + CI"
+      },
+      {
+        "path": "backend/package.json",
+        "change": "multer 2.0.2 -> 2.2.0",
+        "why_required": "Align with platform-express 11 native multer",
+        "breaking_risk": "MEDIUM",
+        "test_authority": "legal-documents upload suites"
+      },
+      {
+        "path": "backend/package.json",
+        "change": "@types/express ^5.0.0",
+        "why_required": "Express 5 types",
+        "breaking_risk": "MEDIUM",
+        "test_authority": "tsc --noEmit"
+      }
+    ],
+    "route_pattern_changes": [
+      {
+        "path": "backend/src/spa-fallback.controller.ts",
+        "why_required": "Replace Express4 wildcard `login/*` syntax",
+        "breaking_risk": "HIGH",
+        "test_authority": "SPA E2E + manual route matrix"
+      },
+      {
+        "path": "backend/src/main.ts",
+        "why_required": "Review setGlobalPrefix exclude regex `master/(.*)` under Express 5",
+        "breaking_risk": "HIGH",
+        "test_authority": "HTTP smoke matrix"
+      }
+    ],
+    "middleware_changes": [
+      {
+        "path": "backend/src/main.ts",
+        "why_required": "Verify rawBody capture + body parser order under Express 5",
+        "breaking_risk": "HIGH",
+        "test_authority": "Stripe/Twilio/webhook security tests"
+      }
+    ],
+    "upload_changes": [
+      {
+        "path": "backend/package.json",
+        "why_required": "multer 2.2.0 direct dep",
+        "breaking_risk": "MEDIUM",
+        "test_authority": "legal-documents + document-extraction upload tests"
+      }
+    ],
+    "swagger_changes": [
+      {
+        "path": "backend/package.json",
+        "why_required": "@nestjs/swagger 11.4.6",
+        "breaking_risk": "MEDIUM",
+        "test_authority": "OpenAPI diff + swagger boot"
+      },
+      {
+        "path": "BLOCKER",
+        "why_required": "Await @nestjs/swagger release pinning js-yaml >=5.3.0 (current 5.2.1 HIGH GHSA-pm4m-ph32-ghv5)",
+        "breaking_risk": "HIGH",
+        "test_authority": "npm audit strict gate"
+      }
+    ],
+    "test_changes": [
+      {
+        "path": "scripts/audits + CI",
+        "why_required": "Express5 route smoke harness",
+        "breaking_risk": "LOW",
+        "test_authority": "new HTTP contract tests in R3B1R.3.4"
+      }
+    ]
+  },
+  "risk_matrix": {
+    "express5_routing": {
+      "level": "HIGH",
+      "tests": [
+        "SPA fallback",
+        "global prefix exclusions",
+        "parameterized API routes"
+      ]
+    },
+    "multer": {
+      "level": "MEDIUM",
+      "tests": [
+        "legal-documents upload",
+        "document-extraction upload",
+        "size/MIME rejection"
+      ]
+    },
+    "swagger_openapi": {
+      "level": "MEDIUM",
+      "tests": [
+        "OpenAPI baseline diff",
+        "swagger boot when enabled"
+      ]
+    },
+    "raw_body_webhooks": {
+      "level": "HIGH",
+      "tests": [
+        "stripe-webhook",
+        "twilio/resend/dimo/hm webhook specs"
+      ]
+    },
+    "static_serving": {
+      "level": "MEDIUM",
+      "tests": [
+        "/",
+        "/uploads/*",
+        "/api/* exclusion",
+        "404"
+      ]
+    },
+    "global_prefix_exclusions": {
+      "level": "HIGH",
+      "tests": [
+        "/master",
+        "/rental",
+        "/api/v1/*"
+      ]
+    },
+    "middleware_order": {
+      "level": "HIGH",
+      "tests": [
+        "helmet/compression/CORS/rawBody order preserved"
+      ]
+    },
+    "request_query_semantics": {
+      "level": "MEDIUM",
+      "tests": [
+        "req.query/params regression on representative controllers"
+      ]
+    },
+    "testing_apis": {
+      "level": "LOW",
+      "tests": [
+        "@nestjs/testing 11 unit/integration suites"
+      ]
+    },
+    "nest_lifecycle_hooks": {
+      "level": "MEDIUM",
+      "tests": [
+        "boot-check + module init smoke"
+      ]
+    },
+    "js_yaml_upstream": {
+      "level": "HIGH",
+      "tests": [
+        "npm audit zero-high under strict contract"
+      ]
+    }
+  },
+  "status_matrix": {
+    "FRAMEWORK_UPGRADE_TOPOLOGY": "FROZEN_SUPPORTED",
+    "SECURITY_EXPECTATION": "ZERO_HIGH_BLOCKED_BY_SWAGGER_JS_YAML_5_2_1",
+    "DATABASE_RECONCILIATION_ACCEPTANCE": "PRESERVED_ACCEPTED_FINAL",
+    "R3B1R34_READINESS": "NOT_READY_PENDING_SWAGGER_JS_YAML_UPSTREAM",
+    "PR1054_MERGE_READINESS": "BLOCKED_PENDING_FRAMEWORK_UPGRADE_AND_FINAL_REPLAY"
+  },
+  "blocker": "@nestjs/swagger@11.4.6 pins js-yaml@5.2.1 (HIGH GHSA-pm4m-ph32-ghv5); no semver-valid parent release with js-yaml>=5.3.0 yet",
+  "production_mutations": 0,
+  "next_phase": "MONITOR_SWAGGER_JS_YAML_UPSTREAM_THEN_R3B1R34",
+  "openapi_candidate_sha256": "7cde3b3fc4f322a5c4a5660b59a0ce1762367417a89af026d6ac56b79b3f9716",
+  "openapi_diff": {
+    "baseline_paths": 959,
+    "candidate_paths": 959,
+    "only_baseline": [
+      "/login/*",
+      "/master/*",
+      "/rental/*",
+      "/verification/*"
+    ],
+    "only_candidate": [
+      "/login/{path}",
+      "/master/{path}",
+      "/rental/{path}",
+      "/verification/{path}"
+    ],
+    "classification": "EXPECTED_FRAMEWORK_METADATA_CHANGE",
+    "unexplained_openapi_breaking_changes": 0
+  }
+}
