@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { RawBodyRequest } from '@nestjs/common/interfaces';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import type { Request } from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import * as express from 'express';
 import { ValidationPipe, Logger, LogLevel, BadRequestException } from '@nestjs/common';
 import { buildValidationFailedResponse } from '@shared/validation/validation-error.util';
 import { ConfigService } from '@nestjs/config';
@@ -79,6 +80,15 @@ async function bootstrap() {
   }
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });
+
+  const publicRoot = join(process.cwd(), 'public');
+  const publicStatic = express.static(publicRoot);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    return publicStatic(req, res, next);
+  });
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port', 3000);

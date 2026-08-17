@@ -1,0 +1,30 @@
+# R3B1R.3.2 — Installed Dependency Tree / Lockfile Contract Closure
+
+**Phase:** `CI-R3B1R.3.2`  
+**PR_HEAD_SHA:** `a6699dc5788f7d260688d255dded57352003152e`  
+**Generated:** `2026-08-17T00:37:06+00:00`  
+**Result:** **BLOCKED**  
+**Machine status:** `CI_R3B1R32_INSTALLED_TREE_LOCKFILE_CONTRACT_CLOSURE_BLOCKED`
+
+## Inherited R3B1R.3.1 defect
+
+- R3B1R31_SEMVER_GATE_DEFECT_ACKNOWLEDGED=True
+- incompatible_override_edges_semver (R3B1R.3.1): 5
+- R3B1R.3.1 incorrectly reduced to zero via runtime-proof reclassification
+
+## Strict gate summary
+
+- SEMVER_OUT_OF_RANGE_PRODUCTION_EDGES=0
+- LOCKFILE_RUNTIME_VERSION_MISMATCHES=0
+- BACKEND_HIGH=4 BACKEND_CRITICAL=0
+- FRONTEND_HIGH=0 FRONTEND_CRITICAL=0
+- UNRESOLVED_HIGH_CRITICAL=4
+
+## Dispositions
+
+- SERVE_STATIC_DISPOSITION=REMOVED_UNUSED_PACKAGE_REPLACED_WITH_NESTEXPRESS_STATIC
+- MULTER_DISPOSITION=BLOCKED_REQUIRES_SEPARATELY_SCOPED_PARENT_FRAMEWORK_UPGRADE (@nestjs/platform-express@11.2.1+ native multer 2.2.0)
+- LODASH_DISPOSITION=BLOCKED_REQUIRES_SEPARATELY_SCOPED_PARENT_UPGRADE (@nestjs/swagger exact lodash 4.17.21; no Nest10-compatible patched release)
+- JS_YAML_DISPOSITION=BLOCKED_REQUIRES_SEPARATELY_SCOPED_PARENT_UPGRADE (@nestjs/swagger exact js-yaml 4.1.0; no Nest10-compatible patched release)
+
+**R3B1R.3.2 DID NOT MUTATE PRODUCTION.**
