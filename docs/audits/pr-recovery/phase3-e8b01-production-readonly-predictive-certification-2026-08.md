@@ -15,7 +15,8 @@ Production remote SQL: `docs/audits/ci-recovery/tooling/e8b01_production_readonl
 | Field | Value |
 |-------|-------|
 | E8B01_ENTRY_HEAD_SHA | `e957b9fe1549e23dc20bffe3ee1dec993c69a587` |
-| E8B01_FINAL_HEAD_SHA | *(set at commit)* |
+| E8B01_FINAL_HEAD_SHA | `ab633ddd4b5f3c87dcd96ae3662af32f9e9080c2` |
+| COMMIT_SHA | `ab633ddd4b5f3c87dcd96ae3662af32f9e9080c2` |
 | CURRENT_MAIN_SHA | `bd732a8f7a6467565a8668ea136e81b79a04666a` |
 | PR | **#1056** OPEN, Draft, base `main` |
 | Commits after `7411251` | `e957b9fe` (E8B0 PR number doc) |
