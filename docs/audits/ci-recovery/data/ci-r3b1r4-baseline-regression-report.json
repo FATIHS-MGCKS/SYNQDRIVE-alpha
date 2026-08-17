@@ -1,0 +1,819 @@
+{
+  "security_gate_mode": "BASELINE_REGRESSION_FAIL_CLOSED",
+  "backend": {
+    "surface": "backend",
+    "base_high_critical_identities": [
+      "critical:handlebars:GHSA-2qvq-rjwj-gvw9+GHSA-2w6w-674q-4c4q+GHSA-3mfm-83xf-c92r+GHSA-442j-39wm-28r2+GHSA-7rx3-28cr-v5wh+GHSA-9cx6-37pm-9jff+GHSA-xhpv-hc6g-r9c6+GHSA-xjpj-3mr7-gcpf",
+      "high:@nestjs/cli:@nestjs/cli:2.0.0-rc.1 - 11.0.16 || >=12.0.0-alpha.0",
+      "high:@nestjs/platform-express:@nestjs/platform-express:<=11.1.14 || 12.0.0-alpha.0 - 12.0.0-alpha.2",
+      "high:@nestjs/serve-static:@nestjs/serve-static:<=4.0.2",
+      "high:axios:GHSA-35jp-ww65-95wh+GHSA-3g43-6gmg-66jw+GHSA-3p68-rc4w-qgx5+GHSA-3w6x-2g7m-8v23+GHSA-42h9-826w-cgv3+GHSA-445q-vr5w-6q77+GHSA-5c9x-8gcm-mpgx+GHSA-62hf-57xw-28j9+GHSA-6chq-wfr3-2hj9+GHSA-777c-7fjr-54vf+GHSA-7q8q-rj6j-mhjq+GHSA-898c-q2cr-xwhg+GHSA-fvcv-3m26-pcqx+GHSA-hfxv-24rg-xrqf+GHSA-j5f8-grm9-p9fc+GHSA-jqh4-m9w3-8hp9+GHSA-m7pr-hjqh-92cm+GHSA-mmx7-hfxf-jppx+GHSA-mwf2-3pr3-8698+GHSA-p92q-9vqr-4j8v+GHSA-pf86-5x62-jrwf+GHSA-pmv8-rq9r-6j72+GHSA-pmwg-cvhr-8vh7+GHSA-q8qp-cvcw-x6jj+GHSA-vf2m-468p-8v99+GHSA-w9j2-pvgh-6h63+GHSA-xhjh-pmcv-23jw+GHSA-xx6v-rp6x-q39c",
+      "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+      "high:flatted:GHSA-rf6f-7fwh-wjgh",
+      "high:form-data:GHSA-hmw2-7cc7-3qxx",
+      "high:glob:GHSA-5j98-mcp5-4vw2",
+      "high:ip-address:GHSA-mwp4-54f8-5fhr+GHSA-v2v4-37r5-5v8g",
+      "high:js-yaml:GHSA-52cp-r559-cp3m+GHSA-5p4m-2wfm-xmqj+GHSA-h67p-54hq-rp68+GHSA-mh29-5h37-fv8m",
+      "high:lodash:GHSA-f23m-r3pf-42rh+GHSA-r5fr-rjxr-66jc+GHSA-xxjr-mmjv-4gpg",
+      "high:multer:GHSA-3p4h-7m6x-2hcm+GHSA-5528-5vmv-3xc2+GHSA-72gw-mp4g-v24j+GHSA-v52c-386h-88mc+GHSA-xf7r-hgr6-v32p",
+      "high:path-to-regexp:GHSA-37ch-88jc-xwx2+GHSA-9wv6-86v2-598j",
+      "high:picomatch:GHSA-3v7f-55p6-f55p+GHSA-c2c7-rcm5-vvqj",
+      "high:tmp:GHSA-52f5-9888-hmc6+GHSA-ph9p-34f9-6g65",
+      "high:ws:GHSA-58qx-3vcg-4xpx+GHSA-96hv-2xvq-fx4p"
+    ],
+    "pr_high_critical_identities": [
+      "high:@nestjs/cli:@nestjs/cli:2.0.0-rc.1 - 11.0.16 || >=12.0.0-alpha.0",
+      "high:@nestjs/platform-express:@nestjs/platform-express:<=11.1.14 || 12.0.0-alpha.0 - 12.0.0-alpha.2",
+      "high:@nestjs/serve-static:@nestjs/serve-static:<=4.0.2",
+      "high:glob:GHSA-5j98-mcp5-4vw2",
+      "high:js-yaml:GHSA-52cp-r559-cp3m+GHSA-5p4m-2wfm-xmqj+GHSA-h67p-54hq-rp68+GHSA-mh29-5h37-fv8m",
+      "high:lodash:GHSA-f23m-r3pf-42rh+GHSA-r5fr-rjxr-66jc+GHSA-xxjr-mmjv-4gpg",
+      "high:multer:GHSA-3p4h-7m6x-2hcm+GHSA-5528-5vmv-3xc2+GHSA-72gw-mp4g-v24j+GHSA-v52c-386h-88mc+GHSA-xf7r-hgr6-v32p",
+      "high:path-to-regexp:GHSA-9wv6-86v2-598j",
+      "high:picomatch:GHSA-3v7f-55p6-f55p+GHSA-c2c7-rcm5-vvqj",
+      "high:tmp:GHSA-52f5-9888-hmc6+GHSA-ph9p-34f9-6g65"
+    ],
+    "introduced_high_critical_identities": [],
+    "removed_high_critical_identities": [
+      "critical:handlebars:GHSA-2qvq-rjwj-gvw9+GHSA-2w6w-674q-4c4q+GHSA-3mfm-83xf-c92r+GHSA-442j-39wm-28r2+GHSA-7rx3-28cr-v5wh+GHSA-9cx6-37pm-9jff+GHSA-xhpv-hc6g-r9c6+GHSA-xjpj-3mr7-gcpf",
+      "high:axios:GHSA-35jp-ww65-95wh+GHSA-3g43-6gmg-66jw+GHSA-3p68-rc4w-qgx5+GHSA-3w6x-2g7m-8v23+GHSA-42h9-826w-cgv3+GHSA-445q-vr5w-6q77+GHSA-5c9x-8gcm-mpgx+GHSA-62hf-57xw-28j9+GHSA-6chq-wfr3-2hj9+GHSA-777c-7fjr-54vf+GHSA-7q8q-rj6j-mhjq+GHSA-898c-q2cr-xwhg+GHSA-fvcv-3m26-pcqx+GHSA-hfxv-24rg-xrqf+GHSA-j5f8-grm9-p9fc+GHSA-jqh4-m9w3-8hp9+GHSA-m7pr-hjqh-92cm+GHSA-mmx7-hfxf-jppx+GHSA-mwf2-3pr3-8698+GHSA-p92q-9vqr-4j8v+GHSA-pf86-5x62-jrwf+GHSA-pmv8-rq9r-6j72+GHSA-pmwg-cvhr-8vh7+GHSA-q8qp-cvcw-x6jj+GHSA-vf2m-468p-8v99+GHSA-w9j2-pvgh-6h63+GHSA-xhjh-pmcv-23jw+GHSA-xx6v-rp6x-q39c",
+      "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+      "high:flatted:GHSA-rf6f-7fwh-wjgh",
+      "high:form-data:GHSA-hmw2-7cc7-3qxx",
+      "high:ip-address:GHSA-mwp4-54f8-5fhr+GHSA-v2v4-37r5-5v8g",
+      "high:path-to-regexp:GHSA-37ch-88jc-xwx2",
+      "high:ws:GHSA-58qx-3vcg-4xpx+GHSA-96hv-2xvq-fx4p"
+    ],
+    "severity_escalations": [],
+    "new_vulnerable_direct_dependencies": [],
+    "new_vulnerable_node_paths": [],
+    "introduced": [],
+    "removed": [
+      {
+        "identity": "critical:handlebars:GHSA-2qvq-rjwj-gvw9+GHSA-2w6w-674q-4c4q+GHSA-3mfm-83xf-c92r+GHSA-442j-39wm-28r2+GHSA-7rx3-28cr-v5wh+GHSA-9cx6-37pm-9jff+GHSA-xhpv-hc6g-r9c6+GHSA-xjpj-3mr7-gcpf",
+        "package": "handlebars",
+        "severity": "critical",
+        "advisory_ids": [
+          "GHSA-2qvq-rjwj-gvw9",
+          "GHSA-2w6w-674q-4c4q",
+          "GHSA-3mfm-83xf-c92r",
+          "GHSA-442j-39wm-28r2",
+          "GHSA-7rx3-28cr-v5wh",
+          "GHSA-9cx6-37pm-9jff",
+          "GHSA-xhpv-hc6g-r9c6",
+          "GHSA-xjpj-3mr7-gcpf"
+        ],
+        "affected_node_paths": [
+          "node_modules/handlebars"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:axios:GHSA-35jp-ww65-95wh+GHSA-3g43-6gmg-66jw+GHSA-3p68-rc4w-qgx5+GHSA-3w6x-2g7m-8v23+GHSA-42h9-826w-cgv3+GHSA-445q-vr5w-6q77+GHSA-5c9x-8gcm-mpgx+GHSA-62hf-57xw-28j9+GHSA-6chq-wfr3-2hj9+GHSA-777c-7fjr-54vf+GHSA-7q8q-rj6j-mhjq+GHSA-898c-q2cr-xwhg+GHSA-fvcv-3m26-pcqx+GHSA-hfxv-24rg-xrqf+GHSA-j5f8-grm9-p9fc+GHSA-jqh4-m9w3-8hp9+GHSA-m7pr-hjqh-92cm+GHSA-mmx7-hfxf-jppx+GHSA-mwf2-3pr3-8698+GHSA-p92q-9vqr-4j8v+GHSA-pf86-5x62-jrwf+GHSA-pmv8-rq9r-6j72+GHSA-pmwg-cvhr-8vh7+GHSA-q8qp-cvcw-x6jj+GHSA-vf2m-468p-8v99+GHSA-w9j2-pvgh-6h63+GHSA-xhjh-pmcv-23jw+GHSA-xx6v-rp6x-q39c",
+        "package": "axios",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-35jp-ww65-95wh",
+          "GHSA-3g43-6gmg-66jw",
+          "GHSA-3p68-rc4w-qgx5",
+          "GHSA-3w6x-2g7m-8v23",
+          "GHSA-42h9-826w-cgv3",
+          "GHSA-445q-vr5w-6q77",
+          "GHSA-5c9x-8gcm-mpgx",
+          "GHSA-62hf-57xw-28j9",
+          "GHSA-6chq-wfr3-2hj9",
+          "GHSA-777c-7fjr-54vf",
+          "GHSA-7q8q-rj6j-mhjq",
+          "GHSA-898c-q2cr-xwhg",
+          "GHSA-fvcv-3m26-pcqx",
+          "GHSA-hfxv-24rg-xrqf",
+          "GHSA-j5f8-grm9-p9fc",
+          "GHSA-jqh4-m9w3-8hp9",
+          "GHSA-m7pr-hjqh-92cm",
+          "GHSA-mmx7-hfxf-jppx",
+          "GHSA-mwf2-3pr3-8698",
+          "GHSA-p92q-9vqr-4j8v",
+          "GHSA-pf86-5x62-jrwf",
+          "GHSA-pmv8-rq9r-6j72",
+          "GHSA-pmwg-cvhr-8vh7",
+          "GHSA-q8qp-cvcw-x6jj",
+          "GHSA-vf2m-468p-8v99",
+          "GHSA-w9j2-pvgh-6h63",
+          "GHSA-xhjh-pmcv-23jw",
+          "GHSA-xx6v-rp6x-q39c"
+        ],
+        "affected_node_paths": [
+          "node_modules/axios"
+        ],
+        "direct": true,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+        "package": "brace-expansion",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-3jxr-9vmj-r5cp",
+          "GHSA-f886-m6hf-6m8v",
+          "GHSA-jxxr-4gwj-5jf2",
+          "GHSA-mh99-v99m-4gvg",
+          "GHSA-rgw5-rvv9-x895"
+        ],
+        "affected_node_paths": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "node_modules/brace-expansion",
+          "node_modules/glob/node_modules/brace-expansion",
+          "node_modules/rimraf/node_modules/brace-expansion"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:flatted:GHSA-rf6f-7fwh-wjgh",
+        "package": "flatted",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-rf6f-7fwh-wjgh"
+        ],
+        "affected_node_paths": [
+          "node_modules/flatted"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:form-data:GHSA-hmw2-7cc7-3qxx",
+        "package": "form-data",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-hmw2-7cc7-3qxx"
+        ],
+        "affected_node_paths": [
+          "node_modules/form-data"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:ip-address:GHSA-mwp4-54f8-5fhr+GHSA-v2v4-37r5-5v8g",
+        "package": "ip-address",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-mwp4-54f8-5fhr",
+          "GHSA-v2v4-37r5-5v8g"
+        ],
+        "affected_node_paths": [
+          "node_modules/ip-address"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:path-to-regexp:GHSA-37ch-88jc-xwx2",
+        "package": "path-to-regexp",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-37ch-88jc-xwx2"
+        ],
+        "affected_node_paths": [
+          "node_modules/@nestjs/serve-static/node_modules/path-to-regexp",
+          "node_modules/express/node_modules/path-to-regexp"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:ws:GHSA-58qx-3vcg-4xpx+GHSA-96hv-2xvq-fx4p",
+        "package": "ws",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-58qx-3vcg-4xpx",
+          "GHSA-96hv-2xvq-fx4p"
+        ],
+        "affected_node_paths": [
+          "node_modules/mqtt/node_modules/ws",
+          "node_modules/ws"
+        ],
+        "direct": false,
+        "surface": "backend"
+      }
+    ],
+    "exact_identity_introduced": [
+      {
+        "identity": "high:path-to-regexp:GHSA-9wv6-86v2-598j",
+        "package": "path-to-regexp",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-9wv6-86v2-598j"
+        ],
+        "affected_node_paths": [
+          "node_modules/@nestjs/serve-static/node_modules/path-to-regexp"
+        ],
+        "direct": false,
+        "surface": "backend"
+      }
+    ],
+    "exact_identity_removed": [
+      {
+        "identity": "critical:handlebars:GHSA-2qvq-rjwj-gvw9+GHSA-2w6w-674q-4c4q+GHSA-3mfm-83xf-c92r+GHSA-442j-39wm-28r2+GHSA-7rx3-28cr-v5wh+GHSA-9cx6-37pm-9jff+GHSA-xhpv-hc6g-r9c6+GHSA-xjpj-3mr7-gcpf",
+        "package": "handlebars",
+        "severity": "critical",
+        "advisory_ids": [
+          "GHSA-2qvq-rjwj-gvw9",
+          "GHSA-2w6w-674q-4c4q",
+          "GHSA-3mfm-83xf-c92r",
+          "GHSA-442j-39wm-28r2",
+          "GHSA-7rx3-28cr-v5wh",
+          "GHSA-9cx6-37pm-9jff",
+          "GHSA-xhpv-hc6g-r9c6",
+          "GHSA-xjpj-3mr7-gcpf"
+        ],
+        "affected_node_paths": [
+          "node_modules/handlebars"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:axios:GHSA-35jp-ww65-95wh+GHSA-3g43-6gmg-66jw+GHSA-3p68-rc4w-qgx5+GHSA-3w6x-2g7m-8v23+GHSA-42h9-826w-cgv3+GHSA-445q-vr5w-6q77+GHSA-5c9x-8gcm-mpgx+GHSA-62hf-57xw-28j9+GHSA-6chq-wfr3-2hj9+GHSA-777c-7fjr-54vf+GHSA-7q8q-rj6j-mhjq+GHSA-898c-q2cr-xwhg+GHSA-fvcv-3m26-pcqx+GHSA-hfxv-24rg-xrqf+GHSA-j5f8-grm9-p9fc+GHSA-jqh4-m9w3-8hp9+GHSA-m7pr-hjqh-92cm+GHSA-mmx7-hfxf-jppx+GHSA-mwf2-3pr3-8698+GHSA-p92q-9vqr-4j8v+GHSA-pf86-5x62-jrwf+GHSA-pmv8-rq9r-6j72+GHSA-pmwg-cvhr-8vh7+GHSA-q8qp-cvcw-x6jj+GHSA-vf2m-468p-8v99+GHSA-w9j2-pvgh-6h63+GHSA-xhjh-pmcv-23jw+GHSA-xx6v-rp6x-q39c",
+        "package": "axios",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-35jp-ww65-95wh",
+          "GHSA-3g43-6gmg-66jw",
+          "GHSA-3p68-rc4w-qgx5",
+          "GHSA-3w6x-2g7m-8v23",
+          "GHSA-42h9-826w-cgv3",
+          "GHSA-445q-vr5w-6q77",
+          "GHSA-5c9x-8gcm-mpgx",
+          "GHSA-62hf-57xw-28j9",
+          "GHSA-6chq-wfr3-2hj9",
+          "GHSA-777c-7fjr-54vf",
+          "GHSA-7q8q-rj6j-mhjq",
+          "GHSA-898c-q2cr-xwhg",
+          "GHSA-fvcv-3m26-pcqx",
+          "GHSA-hfxv-24rg-xrqf",
+          "GHSA-j5f8-grm9-p9fc",
+          "GHSA-jqh4-m9w3-8hp9",
+          "GHSA-m7pr-hjqh-92cm",
+          "GHSA-mmx7-hfxf-jppx",
+          "GHSA-mwf2-3pr3-8698",
+          "GHSA-p92q-9vqr-4j8v",
+          "GHSA-pf86-5x62-jrwf",
+          "GHSA-pmv8-rq9r-6j72",
+          "GHSA-pmwg-cvhr-8vh7",
+          "GHSA-q8qp-cvcw-x6jj",
+          "GHSA-vf2m-468p-8v99",
+          "GHSA-w9j2-pvgh-6h63",
+          "GHSA-xhjh-pmcv-23jw",
+          "GHSA-xx6v-rp6x-q39c"
+        ],
+        "affected_node_paths": [
+          "node_modules/axios"
+        ],
+        "direct": true,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+        "package": "brace-expansion",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-3jxr-9vmj-r5cp",
+          "GHSA-f886-m6hf-6m8v",
+          "GHSA-jxxr-4gwj-5jf2",
+          "GHSA-mh99-v99m-4gvg",
+          "GHSA-rgw5-rvv9-x895"
+        ],
+        "affected_node_paths": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "node_modules/brace-expansion",
+          "node_modules/glob/node_modules/brace-expansion",
+          "node_modules/rimraf/node_modules/brace-expansion"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:flatted:GHSA-rf6f-7fwh-wjgh",
+        "package": "flatted",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-rf6f-7fwh-wjgh"
+        ],
+        "affected_node_paths": [
+          "node_modules/flatted"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:form-data:GHSA-hmw2-7cc7-3qxx",
+        "package": "form-data",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-hmw2-7cc7-3qxx"
+        ],
+        "affected_node_paths": [
+          "node_modules/form-data"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:ip-address:GHSA-mwp4-54f8-5fhr+GHSA-v2v4-37r5-5v8g",
+        "package": "ip-address",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-mwp4-54f8-5fhr",
+          "GHSA-v2v4-37r5-5v8g"
+        ],
+        "affected_node_paths": [
+          "node_modules/ip-address"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:path-to-regexp:GHSA-37ch-88jc-xwx2+GHSA-9wv6-86v2-598j",
+        "package": "path-to-regexp",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-37ch-88jc-xwx2",
+          "GHSA-9wv6-86v2-598j"
+        ],
+        "affected_node_paths": [
+          "node_modules/@nestjs/serve-static/node_modules/path-to-regexp",
+          "node_modules/express/node_modules/path-to-regexp"
+        ],
+        "direct": false,
+        "surface": "backend"
+      },
+      {
+        "identity": "high:ws:GHSA-58qx-3vcg-4xpx+GHSA-96hv-2xvq-fx4p",
+        "package": "ws",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-58qx-3vcg-4xpx",
+          "GHSA-96hv-2xvq-fx4p"
+        ],
+        "affected_node_paths": [
+          "node_modules/mqtt/node_modules/ws",
+          "node_modules/ws"
+        ],
+        "direct": false,
+        "surface": "backend"
+      }
+    ]
+  },
+  "frontend": {
+    "surface": "frontend",
+    "base_high_critical_identities": [
+      "high:@playwright/test:@playwright/test:0.9.7 - 0.1112.0-alpha2 || 1.38.0-alpha-1692262648000 - 1.55.1-beta-1758616458000",
+      "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+      "high:flatted:GHSA-rf6f-7fwh-wjgh",
+      "high:js-yaml:GHSA-52cp-r559-cp3m+GHSA-5p4m-2wfm-xmqj+GHSA-h67p-54hq-rp68",
+      "high:nanoid:GHSA-28wg-ghj8-5hjv+GHSA-2v37-7h3g-55p8",
+      "high:picomatch:GHSA-3v7f-55p6-f55p+GHSA-c2c7-rcm5-vvqj",
+      "high:playwright:GHSA-7mvr-c777-76hp",
+      "high:postcss:GHSA-6g55-p6wh-862q+GHSA-fxqj-rqcc-2cmp+GHSA-qx2v-qp2m-jg93+GHSA-r28c-9q8g-f849",
+      "high:react-router-dom:react-router-dom:7.0.0-pre.0 - 7.14.1",
+      "high:react-router:GHSA-2j2x-hqr9-3h42+GHSA-337j-9hxr-rhxg+GHSA-49rj-9fvp-4h2h+GHSA-84g9-w2xq-vcv6+GHSA-8646-j5j9-6r62+GHSA-8x6r-g9mw-2r78+GHSA-chx6-hx7r-mcp5+GHSA-f22v-gfqf-p8f3+GHSA-h8fp-f39c-q6mh+GHSA-qwww-vcr4-c8h2+GHSA-rxv8-25v2-qmq8+GHSA-wrjc-x8rr-h8h6",
+      "high:svgo:GHSA-2p49-hgcm-8545",
+      "high:vite:GHSA-4w7w-66w2-5vf9+GHSA-fx2h-pf6j-xcff+GHSA-p9ff-h696-f583+GHSA-v2wj-q39q-566r+GHSA-v6wh-96g9-6wx3"
+    ],
+    "pr_high_critical_identities": [],
+    "introduced_high_critical_identities": [],
+    "removed_high_critical_identities": [
+      "high:@playwright/test:@playwright/test:0.9.7 - 0.1112.0-alpha2 || 1.38.0-alpha-1692262648000 - 1.55.1-beta-1758616458000",
+      "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+      "high:flatted:GHSA-rf6f-7fwh-wjgh",
+      "high:js-yaml:GHSA-52cp-r559-cp3m+GHSA-5p4m-2wfm-xmqj+GHSA-h67p-54hq-rp68",
+      "high:nanoid:GHSA-28wg-ghj8-5hjv+GHSA-2v37-7h3g-55p8",
+      "high:picomatch:GHSA-3v7f-55p6-f55p+GHSA-c2c7-rcm5-vvqj",
+      "high:playwright:GHSA-7mvr-c777-76hp",
+      "high:postcss:GHSA-6g55-p6wh-862q+GHSA-fxqj-rqcc-2cmp+GHSA-qx2v-qp2m-jg93+GHSA-r28c-9q8g-f849",
+      "high:react-router-dom:react-router-dom:7.0.0-pre.0 - 7.14.1",
+      "high:react-router:GHSA-2j2x-hqr9-3h42+GHSA-337j-9hxr-rhxg+GHSA-49rj-9fvp-4h2h+GHSA-84g9-w2xq-vcv6+GHSA-8646-j5j9-6r62+GHSA-8x6r-g9mw-2r78+GHSA-chx6-hx7r-mcp5+GHSA-f22v-gfqf-p8f3+GHSA-h8fp-f39c-q6mh+GHSA-qwww-vcr4-c8h2+GHSA-rxv8-25v2-qmq8+GHSA-wrjc-x8rr-h8h6",
+      "high:svgo:GHSA-2p49-hgcm-8545",
+      "high:vite:GHSA-4w7w-66w2-5vf9+GHSA-fx2h-pf6j-xcff+GHSA-p9ff-h696-f583+GHSA-v2wj-q39q-566r+GHSA-v6wh-96g9-6wx3"
+    ],
+    "severity_escalations": [],
+    "new_vulnerable_direct_dependencies": [],
+    "new_vulnerable_node_paths": [],
+    "introduced": [],
+    "removed": [
+      {
+        "identity": "high:@playwright/test:@playwright/test:0.9.7 - 0.1112.0-alpha2 || 1.38.0-alpha-1692262648000 - 1.55.1-beta-1758616458000",
+        "package": "@playwright/test",
+        "severity": "high",
+        "advisory_ids": [
+          "@playwright/test:0.9.7 - 0.1112.0-alpha2 || 1.38.0-alpha-1692262648000 - 1.55.1-beta-1758616458000"
+        ],
+        "affected_node_paths": [
+          "node_modules/@playwright/test"
+        ],
+        "direct": true,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+        "package": "brace-expansion",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-3jxr-9vmj-r5cp",
+          "GHSA-f886-m6hf-6m8v",
+          "GHSA-jxxr-4gwj-5jf2",
+          "GHSA-mh99-v99m-4gvg",
+          "GHSA-rgw5-rvv9-x895"
+        ],
+        "affected_node_paths": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "node_modules/brace-expansion",
+          "node_modules/glob/node_modules/brace-expansion"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:flatted:GHSA-rf6f-7fwh-wjgh",
+        "package": "flatted",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-rf6f-7fwh-wjgh"
+        ],
+        "affected_node_paths": [
+          "node_modules/flatted"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:js-yaml:GHSA-52cp-r559-cp3m+GHSA-5p4m-2wfm-xmqj+GHSA-h67p-54hq-rp68",
+        "package": "js-yaml",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-52cp-r559-cp3m",
+          "GHSA-5p4m-2wfm-xmqj",
+          "GHSA-h67p-54hq-rp68"
+        ],
+        "affected_node_paths": [
+          "node_modules/js-yaml"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:nanoid:GHSA-28wg-ghj8-5hjv+GHSA-2v37-7h3g-55p8",
+        "package": "nanoid",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-28wg-ghj8-5hjv",
+          "GHSA-2v37-7h3g-55p8"
+        ],
+        "affected_node_paths": [
+          "node_modules/nanoid"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:picomatch:GHSA-3v7f-55p6-f55p+GHSA-c2c7-rcm5-vvqj",
+        "package": "picomatch",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-3v7f-55p6-f55p",
+          "GHSA-c2c7-rcm5-vvqj"
+        ],
+        "affected_node_paths": [
+          "node_modules/picomatch"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:playwright:GHSA-7mvr-c777-76hp",
+        "package": "playwright",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-7mvr-c777-76hp"
+        ],
+        "affected_node_paths": [
+          "node_modules/playwright"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:postcss:GHSA-6g55-p6wh-862q+GHSA-fxqj-rqcc-2cmp+GHSA-qx2v-qp2m-jg93+GHSA-r28c-9q8g-f849",
+        "package": "postcss",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-6g55-p6wh-862q",
+          "GHSA-fxqj-rqcc-2cmp",
+          "GHSA-qx2v-qp2m-jg93",
+          "GHSA-r28c-9q8g-f849"
+        ],
+        "affected_node_paths": [
+          "node_modules/postcss"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:react-router-dom:react-router-dom:7.0.0-pre.0 - 7.14.1",
+        "package": "react-router-dom",
+        "severity": "high",
+        "advisory_ids": [
+          "react-router-dom:7.0.0-pre.0 - 7.14.1"
+        ],
+        "affected_node_paths": [
+          "node_modules/react-router-dom"
+        ],
+        "direct": true,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:react-router:GHSA-2j2x-hqr9-3h42+GHSA-337j-9hxr-rhxg+GHSA-49rj-9fvp-4h2h+GHSA-84g9-w2xq-vcv6+GHSA-8646-j5j9-6r62+GHSA-8x6r-g9mw-2r78+GHSA-chx6-hx7r-mcp5+GHSA-f22v-gfqf-p8f3+GHSA-h8fp-f39c-q6mh+GHSA-qwww-vcr4-c8h2+GHSA-rxv8-25v2-qmq8+GHSA-wrjc-x8rr-h8h6",
+        "package": "react-router",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-2j2x-hqr9-3h42",
+          "GHSA-337j-9hxr-rhxg",
+          "GHSA-49rj-9fvp-4h2h",
+          "GHSA-84g9-w2xq-vcv6",
+          "GHSA-8646-j5j9-6r62",
+          "GHSA-8x6r-g9mw-2r78",
+          "GHSA-chx6-hx7r-mcp5",
+          "GHSA-f22v-gfqf-p8f3",
+          "GHSA-h8fp-f39c-q6mh",
+          "GHSA-qwww-vcr4-c8h2",
+          "GHSA-rxv8-25v2-qmq8",
+          "GHSA-wrjc-x8rr-h8h6"
+        ],
+        "affected_node_paths": [
+          "node_modules/react-router"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:svgo:GHSA-2p49-hgcm-8545",
+        "package": "svgo",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-2p49-hgcm-8545"
+        ],
+        "affected_node_paths": [
+          "node_modules/svgo"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:vite:GHSA-4w7w-66w2-5vf9+GHSA-fx2h-pf6j-xcff+GHSA-p9ff-h696-f583+GHSA-v2wj-q39q-566r+GHSA-v6wh-96g9-6wx3",
+        "package": "vite",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-4w7w-66w2-5vf9",
+          "GHSA-fx2h-pf6j-xcff",
+          "GHSA-p9ff-h696-f583",
+          "GHSA-v2wj-q39q-566r",
+          "GHSA-v6wh-96g9-6wx3"
+        ],
+        "affected_node_paths": [
+          "node_modules/vite"
+        ],
+        "direct": true,
+        "surface": "frontend"
+      }
+    ],
+    "exact_identity_introduced": [],
+    "exact_identity_removed": [
+      {
+        "identity": "high:@playwright/test:@playwright/test:0.9.7 - 0.1112.0-alpha2 || 1.38.0-alpha-1692262648000 - 1.55.1-beta-1758616458000",
+        "package": "@playwright/test",
+        "severity": "high",
+        "advisory_ids": [
+          "@playwright/test:0.9.7 - 0.1112.0-alpha2 || 1.38.0-alpha-1692262648000 - 1.55.1-beta-1758616458000"
+        ],
+        "affected_node_paths": [
+          "node_modules/@playwright/test"
+        ],
+        "direct": true,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:brace-expansion:GHSA-3jxr-9vmj-r5cp+GHSA-f886-m6hf-6m8v+GHSA-jxxr-4gwj-5jf2+GHSA-mh99-v99m-4gvg+GHSA-rgw5-rvv9-x895",
+        "package": "brace-expansion",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-3jxr-9vmj-r5cp",
+          "GHSA-f886-m6hf-6m8v",
+          "GHSA-jxxr-4gwj-5jf2",
+          "GHSA-mh99-v99m-4gvg",
+          "GHSA-rgw5-rvv9-x895"
+        ],
+        "affected_node_paths": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "node_modules/brace-expansion",
+          "node_modules/glob/node_modules/brace-expansion"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:flatted:GHSA-rf6f-7fwh-wjgh",
+        "package": "flatted",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-rf6f-7fwh-wjgh"
+        ],
+        "affected_node_paths": [
+          "node_modules/flatted"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:js-yaml:GHSA-52cp-r559-cp3m+GHSA-5p4m-2wfm-xmqj+GHSA-h67p-54hq-rp68",
+        "package": "js-yaml",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-52cp-r559-cp3m",
+          "GHSA-5p4m-2wfm-xmqj",
+          "GHSA-h67p-54hq-rp68"
+        ],
+        "affected_node_paths": [
+          "node_modules/js-yaml"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:nanoid:GHSA-28wg-ghj8-5hjv+GHSA-2v37-7h3g-55p8",
+        "package": "nanoid",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-28wg-ghj8-5hjv",
+          "GHSA-2v37-7h3g-55p8"
+        ],
+        "affected_node_paths": [
+          "node_modules/nanoid"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:picomatch:GHSA-3v7f-55p6-f55p+GHSA-c2c7-rcm5-vvqj",
+        "package": "picomatch",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-3v7f-55p6-f55p",
+          "GHSA-c2c7-rcm5-vvqj"
+        ],
+        "affected_node_paths": [
+          "node_modules/picomatch"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:playwright:GHSA-7mvr-c777-76hp",
+        "package": "playwright",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-7mvr-c777-76hp"
+        ],
+        "affected_node_paths": [
+          "node_modules/playwright"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:postcss:GHSA-6g55-p6wh-862q+GHSA-fxqj-rqcc-2cmp+GHSA-qx2v-qp2m-jg93+GHSA-r28c-9q8g-f849",
+        "package": "postcss",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-6g55-p6wh-862q",
+          "GHSA-fxqj-rqcc-2cmp",
+          "GHSA-qx2v-qp2m-jg93",
+          "GHSA-r28c-9q8g-f849"
+        ],
+        "affected_node_paths": [
+          "node_modules/postcss"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:react-router-dom:react-router-dom:7.0.0-pre.0 - 7.14.1",
+        "package": "react-router-dom",
+        "severity": "high",
+        "advisory_ids": [
+          "react-router-dom:7.0.0-pre.0 - 7.14.1"
+        ],
+        "affected_node_paths": [
+          "node_modules/react-router-dom"
+        ],
+        "direct": true,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:react-router:GHSA-2j2x-hqr9-3h42+GHSA-337j-9hxr-rhxg+GHSA-49rj-9fvp-4h2h+GHSA-84g9-w2xq-vcv6+GHSA-8646-j5j9-6r62+GHSA-8x6r-g9mw-2r78+GHSA-chx6-hx7r-mcp5+GHSA-f22v-gfqf-p8f3+GHSA-h8fp-f39c-q6mh+GHSA-qwww-vcr4-c8h2+GHSA-rxv8-25v2-qmq8+GHSA-wrjc-x8rr-h8h6",
+        "package": "react-router",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-2j2x-hqr9-3h42",
+          "GHSA-337j-9hxr-rhxg",
+          "GHSA-49rj-9fvp-4h2h",
+          "GHSA-84g9-w2xq-vcv6",
+          "GHSA-8646-j5j9-6r62",
+          "GHSA-8x6r-g9mw-2r78",
+          "GHSA-chx6-hx7r-mcp5",
+          "GHSA-f22v-gfqf-p8f3",
+          "GHSA-h8fp-f39c-q6mh",
+          "GHSA-qwww-vcr4-c8h2",
+          "GHSA-rxv8-25v2-qmq8",
+          "GHSA-wrjc-x8rr-h8h6"
+        ],
+        "affected_node_paths": [
+          "node_modules/react-router"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:svgo:GHSA-2p49-hgcm-8545",
+        "package": "svgo",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-2p49-hgcm-8545"
+        ],
+        "affected_node_paths": [
+          "node_modules/svgo"
+        ],
+        "direct": false,
+        "surface": "frontend"
+      },
+      {
+        "identity": "high:vite:GHSA-4w7w-66w2-5vf9+GHSA-fx2h-pf6j-xcff+GHSA-p9ff-h696-f583+GHSA-v2wj-q39q-566r+GHSA-v6wh-96g9-6wx3",
+        "package": "vite",
+        "severity": "high",
+        "advisory_ids": [
+          "GHSA-4w7w-66w2-5vf9",
+          "GHSA-fx2h-pf6j-xcff",
+          "GHSA-p9ff-h696-f583",
+          "GHSA-v2wj-q39q-566r",
+          "GHSA-v6wh-96g9-6wx3"
+        ],
+        "affected_node_paths": [
+          "node_modules/vite"
+        ],
+        "direct": true,
+        "surface": "frontend"
+      }
+    ]
+  },
+  "summary": {
+    "pr_introduced_critical": 0,
+    "pr_introduced_high": 0,
+    "pr_severity_escalations": 0,
+    "pr_new_vulnerable_direct_dependencies": 0,
+    "security_regression": false,
+    "base_backend_metadata": {
+      "info": 0,
+      "low": 4,
+      "moderate": 21,
+      "high": 16,
+      "critical": 1,
+      "total": 42
+    },
+    "base_frontend_metadata": {
+      "info": 0,
+      "low": 2,
+      "moderate": 1,
+      "high": 12,
+      "critical": 0,
+      "total": 15
+    },
+    "pr_backend_metadata": {
+      "info": 0,
+      "low": 3,
+      "moderate": 18,
+      "high": 10,
+      "critical": 0,
+      "total": 31
+    },
+    "pr_frontend_metadata": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  }
+}

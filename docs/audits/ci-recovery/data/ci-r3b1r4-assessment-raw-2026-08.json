@@ -1,0 +1,633 @@
+{
+  "phase": "CI-R3B1R.4",
+  "generated_at": "2026-08-17T02:33:44+00:00",
+  "result": "SUCCESS",
+  "machine_status": "CI_R3B1R4_RECOVERY_PR_SCOPE_RESTORATION_FINAL_MERGE_READINESS_COMPLETED",
+  "recovery_pr_scope": "RESTORED_AND_CLEAN",
+  "security_gate": "BASELINE_REGRESSION_FREE",
+  "pr1054_merge_readiness": "READY_FOR_SEPARATE_EXPLICIT_MERGE_AUTHORIZATION",
+  "r3b1s_readiness": "READY_FOR_SEPARATELY_AUTHORIZED_PR1054_MERGE",
+  "e7_readiness": "BLOCKED_ONLY_ON_PR1054_MERGE",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+    "pr_head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+    "pr_base_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "current_origin_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "open",
+    "pr_is_draft": true,
+    "pr_merged": false,
+    "worktree_clean_at_entry": false,
+    "porcelain_lines": [
+      "ocs/audits/ci-recovery/data/ci-r3b1m-index-owner-inventory-2026-08.json",
+      "docs/audits/ci-recovery/tooling/ci_r3b1r4_run_scope_restoration.py",
+      "docs/audits/ci-recovery/data/ci-r3b1r4-assessment-raw-2026-08.json",
+      "docs/audits/ci-recovery/data/ci-r3b1r4-base-backend.json",
+      "docs/audits/ci-recovery/data/ci-r3b1r4-base-frontend.json",
+      "docs/audits/ci-recovery/data/ci-r3b1r4-baseline-regression-report.json",
+      "docs/audits/ci-recovery/data/ci-r3b1r4-pr-backend.json",
+      "docs/audits/ci-recovery/data/ci-r3b1r4-pr-frontend.json",
+      "docs/audits/pr-recovery/R3B1R4-RECOVERY-PR-SCOPE-RESTORATION-FINAL-MERGE-READINESS.md"
+    ]
+  },
+  "r3b1r2_acceptance": {
+    "accepted_pr_sha": "03856708cbb434b2ee8d10a746cd25000014fec5",
+    "artifact": "/workspace/docs/audits/pr-recovery/R3B1R2-INDEPENDENT-FROZEN-POST-REMEDIATION-ACCEPTANCE.md",
+    "database_reconciliation_acceptance": "PRESERVED_ACCEPTED_FINAL"
+  },
+  "post_r2_inventory": {
+    "rows": [
+      {
+        "status": "M",
+        "path": ".github/workflows/legal-documents-production-readiness.yml",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r3-assessment-raw-2026-08.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r31-assessment-raw-2026-08.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r31-main-backend-audit.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r31-main-frontend-audit.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r31-pre-backend-audit.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r32-assessment-raw-2026-08.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33-assessment-raw-2026-08.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33-current-backend-audit.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33-openapi-baseline.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33-openapi-candidate-spike.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33-spike-audit-no-override.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33-spike-audit-with-override.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/data/ci-r3b1r33a-assessment-raw-2026-08.json",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r31_override_edge_inventory.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r31_run_closure.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r32_measure_parent_resolution.js",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r32_run_closure.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r33_openapi_baseline.js",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r33_route_inventory.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r33_run_preflight.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r33a_run_reentry_gate.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r3_changeset_classifier.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r3_run_remediation.py",
+        "bucket": "SECURITY_EXPERIMENT_TOOLING"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1r4_run_scope_restoration.py",
+        "bucket": "OTHER"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/pr-recovery/R3B1R3-SECURITY-DEPENDENCY-GATE-REMEDIATION.md",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/pr-recovery/R3B1R31-DEPENDENCY-OVERRIDE-COMPATIBILITY-ADVISORY-PROVENANCE-CLOSURE.md",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/pr-recovery/R3B1R32-INSTALLED-TREE-LOCKFILE-CONTRACT-CLOSURE.md",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/pr-recovery/R3B1R33-NESTJS11-SECURITY-UPGRADE-PREFLIGHT.md",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/pr-recovery/R3B1R33A-SWAGGER-JS-YAML-UPSTREAM-BLOCKER-REENTRY-GATE.md",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "A",
+        "path": "docs/audits/pr-recovery/R3B1R4-INHERITED-DEPENDENCY-SECURITY-DEBT.md",
+        "bucket": "AUDIT_EVIDENCE"
+      },
+      {
+        "status": "M",
+        "path": "scripts/audits/audit-dependencies.sh",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/compare-dependency-audit-baseline.js",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/base-direct.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/base-empty.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/base-high-only.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/base-one-high.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/pr-add-critical.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/pr-add-high.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/pr-critical-same-advisory.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/pr-empty.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/pr-new-direct.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/fixtures/dependency-audit/pr-one-high.json",
+        "bucket": "CI_SECURITY_GATE"
+      },
+      {
+        "status": "A",
+        "path": "scripts/audits/test-dependency-audit-baseline-regression.sh",
+        "bucket": "CI_SECURITY_GATE"
+      }
+    ],
+    "buckets": {
+      "CI_SECURITY_GATE": [
+        ".github/workflows/legal-documents-production-readiness.yml",
+        "scripts/audits/audit-dependencies.sh",
+        "scripts/audits/compare-dependency-audit-baseline.js",
+        "scripts/audits/fixtures/dependency-audit/base-direct.json",
+        "scripts/audits/fixtures/dependency-audit/base-empty.json",
+        "scripts/audits/fixtures/dependency-audit/base-high-only.json",
+        "scripts/audits/fixtures/dependency-audit/base-one-high.json",
+        "scripts/audits/fixtures/dependency-audit/pr-add-critical.json",
+        "scripts/audits/fixtures/dependency-audit/pr-add-high.json",
+        "scripts/audits/fixtures/dependency-audit/pr-critical-same-advisory.json",
+        "scripts/audits/fixtures/dependency-audit/pr-empty.json",
+        "scripts/audits/fixtures/dependency-audit/pr-new-direct.json",
+        "scripts/audits/fixtures/dependency-audit/pr-one-high.json",
+        "scripts/audits/test-dependency-audit-baseline-regression.sh"
+      ],
+      "AUDIT_EVIDENCE": [
+        "docs/audits/ci-recovery/data/ci-r3b1r3-assessment-raw-2026-08.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r31-assessment-raw-2026-08.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r31-main-backend-audit.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r31-main-frontend-audit.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r31-pre-backend-audit.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r32-assessment-raw-2026-08.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33-assessment-raw-2026-08.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33-current-backend-audit.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33-openapi-baseline.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33-openapi-candidate-spike.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33-spike-audit-no-override.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33-spike-audit-with-override.json",
+        "docs/audits/ci-recovery/data/ci-r3b1r33a-assessment-raw-2026-08.json",
+        "docs/audits/pr-recovery/R3B1R3-SECURITY-DEPENDENCY-GATE-REMEDIATION.md",
+        "docs/audits/pr-recovery/R3B1R31-DEPENDENCY-OVERRIDE-COMPATIBILITY-ADVISORY-PROVENANCE-CLOSURE.md",
+        "docs/audits/pr-recovery/R3B1R32-INSTALLED-TREE-LOCKFILE-CONTRACT-CLOSURE.md",
+        "docs/audits/pr-recovery/R3B1R33-NESTJS11-SECURITY-UPGRADE-PREFLIGHT.md",
+        "docs/audits/pr-recovery/R3B1R33A-SWAGGER-JS-YAML-UPSTREAM-BLOCKER-REENTRY-GATE.md",
+        "docs/audits/pr-recovery/R3B1R4-INHERITED-DEPENDENCY-SECURITY-DEBT.md"
+      ],
+      "SECURITY_EXPERIMENT_TOOLING": [
+        "docs/audits/ci-recovery/tooling/ci_r3b1r31_override_edge_inventory.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r31_run_closure.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r32_measure_parent_resolution.js",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r32_run_closure.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r33_openapi_baseline.js",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r33_route_inventory.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r33_run_preflight.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r33a_run_reentry_gate.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r3_changeset_classifier.py",
+        "docs/audits/ci-recovery/tooling/ci_r3b1r3_run_remediation.py"
+      ],
+      "OTHER": [
+        "docs/audits/ci-recovery/tooling/ci_r3b1r4_run_scope_restoration.py"
+      ]
+    }
+  },
+  "scope_restoration": {
+    "restored_paths": [
+      "backend/package.json",
+      "backend/package-lock.json",
+      "backend/src/main.ts",
+      "backend/src/app.module.ts"
+    ],
+    "application_runtime_equals_r3b1r2_accepted": true,
+    "abandoned_framework_implementation_present": false,
+    "abandoned_override_implementation_present": false,
+    "retained_historical_evidence_glob": "docs/audits/**/R3B1R3*",
+    "removed_paths": [
+      "scripts/audits/test-audit-dependencies-exec.sh"
+    ]
+  },
+  "security": {
+    "security_gate_mode": "BASELINE_REGRESSION_FAIL_CLOSED",
+    "base_backend": {
+      "high": 16,
+      "critical": 1,
+      "moderate": 21,
+      "total": 42
+    },
+    "base_frontend": {
+      "high": 12,
+      "critical": 0,
+      "moderate": 1,
+      "total": 15
+    },
+    "pr_backend": {
+      "high": 10,
+      "critical": 0,
+      "moderate": 18,
+      "total": 31
+    },
+    "pr_frontend": {
+      "high": 0,
+      "critical": 0,
+      "moderate": 0,
+      "total": 0
+    },
+    "compare_summary": {
+      "pr_introduced_critical": 0,
+      "pr_introduced_high": 0,
+      "pr_severity_escalations": 0,
+      "pr_new_vulnerable_direct_dependencies": 0,
+      "security_regression": false,
+      "base_backend_metadata": {
+        "info": 0,
+        "low": 4,
+        "moderate": 21,
+        "high": 16,
+        "critical": 1,
+        "total": 42
+      },
+      "base_frontend_metadata": {
+        "info": 0,
+        "low": 2,
+        "moderate": 1,
+        "high": 12,
+        "critical": 0,
+        "total": 15
+      },
+      "pr_backend_metadata": {
+        "info": 0,
+        "low": 3,
+        "moderate": 18,
+        "high": 10,
+        "critical": 0,
+        "total": 31
+      },
+      "pr_frontend_metadata": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "compare_exit_code": 0,
+    "security_regression": false,
+    "security_gate_tests": 9,
+    "security_gate_false_acceptances": 0
+  },
+  "database_immutability": {
+    "schema_sha_before": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+    "schema_sha_after": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+    "migration_tree_sha_before": "868dcbb8cef8078cbc16d70c939751b470f45bb01fa420f023119d45259beee6",
+    "migration_tree_sha_after": "868dcbb8cef8078cbc16d70c939751b470f45bb01fa420f023119d45259beee6",
+    "prisma_version_before": "^5.20.0",
+    "prisma_version_after": "^5.20.0",
+    "prisma_client_version_before": "^5.20.0",
+    "prisma_client_version_after": "^5.20.0",
+    "migration_source_changed": 0,
+    "schema_prisma_changed": false,
+    "prisma_toolchain_changed": false,
+    "database_reconciliation_acceptance": "PRESERVED_ACCEPTED_FINAL"
+  },
+  "production_replay": {
+    "live_production_access": true,
+    "application_health_pass": true,
+    "application_health_body": "{\"status\":\"ok\",\"uptime\":55516,\"timestamp\":\"2026-08-17T02:34:41.441Z\"}",
+    "execution_lock_absent": true,
+    "ledger_row_count": 341,
+    "would_deploy_count": 0,
+    "would_deploy_set": [],
+    "pending_count": 0,
+    "prisma_status_pass": true,
+    "bridge_source_sha_mismatches": 0,
+    "bridge_rows": {
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+        "exists": true,
+        "finished": true,
+        "checksum_match": true
+      },
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+        "exists": true,
+        "finished": true,
+        "checksum_match": true
+      }
+    },
+    "diff_scopes": {
+      "r3b_scope": 0,
+      "m252_scope": 0,
+      "unknown_scope": 0,
+      "new_strategy_drift": 0,
+      "unattributed": 0,
+      "pass": true
+    }
+  },
+  "merge_simulation": {
+    "merge_conflicts": 0,
+    "merge_simulation_pass": true,
+    "merged_production_replay": {
+      "merged_pending_count": 0,
+      "merged_would_deploy_count": 0,
+      "merged_diff_scopes": {
+        "merged_r3b_scope": 0,
+        "merged_m252_scope": 0,
+        "merged_unknown_scope": 0,
+        "merged_new_strategy_drift": 0,
+        "merged_unattributed": 0,
+        "merged_target_total_diff": 393,
+        "pass": true
+      }
+    },
+    "merged_security_regression": false,
+    "merged_compare_summary": {
+      "pr_introduced_critical": 0,
+      "pr_introduced_high": 0,
+      "pr_severity_escalations": 0,
+      "pr_new_vulnerable_direct_dependencies": 0,
+      "security_regression": false,
+      "base_backend_metadata": {
+        "info": 0,
+        "low": 4,
+        "moderate": 21,
+        "high": 16,
+        "critical": 1,
+        "total": 42
+      },
+      "base_frontend_metadata": {
+        "info": 0,
+        "low": 2,
+        "moderate": 1,
+        "high": 12,
+        "critical": 0,
+        "total": 15
+      },
+      "pr_backend_metadata": {
+        "info": 0,
+        "low": 3,
+        "moderate": 18,
+        "high": 10,
+        "critical": 0,
+        "total": 31
+      },
+      "pr_frontend_metadata": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "merged_compare_exit_code": 0
+  },
+  "github_checks": {
+    "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+    "check_runs_total": 24,
+    "critical_required_checks": {
+      "Migration tests (PostgreSQL)": {
+        "runs": [
+          {
+            "name": "Migration tests (PostgreSQL)",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265164838,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553025/job/95265164838",
+            "workflow": null
+          }
+        ],
+        "green_if_any_success": true,
+        "failed_if_any_failure": false,
+        "pending_if_any_pending": false
+      },
+      "Backend integration tests": {
+        "runs": [
+          {
+            "name": "Backend integration tests",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265164827,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553025/job/95265164827",
+            "workflow": null
+          }
+        ],
+        "green_if_any_success": true,
+        "failed_if_any_failure": false,
+        "pending_if_any_pending": false
+      },
+      "Playwright E2E (Vehicle Detail)": {
+        "runs": [
+          {
+            "name": "Playwright E2E (Vehicle Detail)",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265182489,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553033/job/95265182489",
+            "workflow": null
+          }
+        ],
+        "green_if_any_success": true,
+        "failed_if_any_failure": false,
+        "pending_if_any_pending": false
+      },
+      "Security / dependency scan": {
+        "runs": [
+          {
+            "name": "Security / dependency scan",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265182463,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553033/job/95265182463",
+            "workflow": null
+          },
+          {
+            "name": "Security / dependency scan",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265164849,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553025/job/95265164849",
+            "workflow": null
+          }
+        ],
+        "green_if_any_success": true,
+        "failed_if_any_failure": false,
+        "pending_if_any_pending": false
+      },
+      "CI gate (all critical jobs)": {
+        "runs": [
+          {
+            "name": "CI gate (all critical jobs)",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265865332,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553033/job/95265865332",
+            "workflow": null
+          },
+          {
+            "name": "CI gate (all critical jobs)",
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": 95265583116,
+            "head_sha": "335c6575b9407f593edf82291f5927496246f8fc",
+            "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31987553025/job/95265583116",
+            "workflow": null
+          }
+        ],
+        "green_if_any_success": true,
+        "failed_if_any_failure": false,
+        "pending_if_any_pending": false
+      }
+    },
+    "required_checks_failed": 0,
+    "required_checks_pending": 0,
+    "security_required_check_green": true,
+    "legal_documents_security_failures": [],
+    "legal_documents_ci_gate_green": true
+  },
+  "final_merge_readiness_matrix": {
+    "DATABASE_RECONCILIATION_ACCEPTANCE": "GO",
+    "MIGRATION_SOURCE_IMMUTABILITY": "GO",
+    "BASELINE_SECURITY_REGRESSION_FREE": "GO",
+    "CHANGESET_SCOPE_CLEAN": "GO",
+    "APPLICATION_RUNTIME_EQUALS_R3B1R2": "GO",
+    "PR_STATUS_ZERO_PENDING": "GO",
+    "PR_WOULD_DEPLOY_ZERO": "GO",
+    "PR_DIFF_SCOPES_ZERO": "GO",
+    "APPLICATION_HEALTH": "GO",
+    "MERGE_SIMULATION_CONFLICT_FREE": "GO",
+    "MERGED_SECURITY_REGRESSION_FREE": "GO",
+    "MERGED_STATUS_ZERO_PENDING": "GO",
+    "MERGED_WOULD_DEPLOY_ZERO": "GO",
+    "MERGED_DIFF_SCOPES_ZERO": "GO",
+    "CURRENT_HEAD_REQUIRED_CI_GREEN": "GO"
+  },
+  "inherited_security_debt_artifact": "/workspace/docs/audits/pr-recovery/R3B1R4-INHERITED-DEPENDENCY-SECURITY-DEBT.md"
+}

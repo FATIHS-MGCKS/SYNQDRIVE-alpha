@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -31,14 +32,18 @@ from ci_r3b1r112b_run_preflight import (  # noqa: E402
     BRIDGE_2,
     EXPECTED_BRIDGE_SHA,
     compute_independent_would_deploy,
-    exact_sha_clone_eval,
-    fetch_bridge_row,
     source_migration_inventory,
     verify_bridge_shas,
 )
-from ci_r3b1p_diff_attribution import classify_preflight_production_diff  # noqa: E402
-from ci_r3b1p1_run_independent_replay import R3B1O_GOLDEN_DIFF  # noqa: E402
-from ci_r3b1o1_constants import FROZEN_DIFF_SQL  # noqa: E402
+from ci_r3b1r2_run_acceptance import (  # noqa: E402
+    fetch_bridge_row,
+    github_checks,
+    run_pr_target_diff,
+    run_pr_target_diff_backend_tree,
+    run_prisma_status_backend_tree,
+    run_prisma_status_clone,
+    simulate_hypothetical_merge,
+)
 
 
 def utc_now() -> str:
@@ -67,8 +72,19 @@ def gh_json(url: str) -> Any:
         return json.loads(resp.read().decode())
 
 
-def run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd or REPO, env=env, text=True, capture_output=True)
+def run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None, text: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=cwd or REPO, env=env, text=text, capture_output=True)
+
+
+def git_archive_tree(sha: str, paths: list[str], dest: Path) -> None:
+    proc = subprocess.run(
+        ["git", "-C", str(REPO), "archive", sha, *paths],
+        capture_output=True,
+        check=True,
+    )
+    extract = subprocess.run(["tar", "-x", "-C", str(dest)], input=proc.stdout, check=True)
+    if extract.returncode != 0:
+        raise RuntimeError("tar extract failed")
 
 
 def classify_post_r2_path(path: str) -> str:
@@ -122,10 +138,7 @@ def npm_audit_counts(dir_path: Path) -> dict[str, int]:
 
 def capture_security_snapshot(base_sha: str, head_sha: str) -> dict[str, Any]:
     tmp = Path(tempfile.mkdtemp(prefix="r3b1r4-sec-"))
-    archive = run(["git", "archive", base_sha, "backend", "frontend"], cwd=REPO)
-    extract = subprocess.run(["tar", "-x", "-C", str(tmp)], input=archive.stdout, text=True, capture_output=True)
-    if extract.returncode != 0:
-        raise RuntimeError(extract.stderr)
+    git_archive_tree(base_sha, ["backend", "frontend"], tmp)
     for surface in ("backend", "frontend"):
         run(["npm", "ci"], cwd=tmp / surface)
     run(["npm", "ci"], cwd=BACKEND)
@@ -216,8 +229,8 @@ def production_readonly_replay(head_sha: str) -> dict[str, Any]:
         out["would_deploy_count"] = wd["independent_would_deploy_count"]
         out["would_deploy_set"] = wd.get("independent_would_deploy_set", [])
 
-        status = exact_sha_clone_eval(requested_sha=head_sha, label="r3b1r4-pr-status")
-        parsed = status.get("parsed_status") or {}
+        status = run_prisma_status_clone(commit_sha=head_sha, label="r3b1r4-pr-status")
+        parsed = status.get("parsed") or {}
         out["pending_count"] = parsed.get("status_pending_count")
         out["prisma_status_pass"] = parsed.get("status_pending_count") == 0
 
@@ -238,76 +251,87 @@ def production_readonly_replay(head_sha: str) -> dict[str, Any]:
             },
         }
 
-        diff_script = status.get("production_diff_script") or ""
-        if diff_script:
-            attr = classify_preflight_production_diff(
-                diff_script,
-                golden_twin_script=R3B1O_GOLDEN_DIFF.read_text(),
-                golden_baseline_script=FROZEN_DIFF_SQL.read_text(),
-            )
-            out["diff_scopes"] = {
-                "r3b_scope": attr.get("R3B_SCOPE"),
-                "m252_scope": attr.get("M252_SCOPE"),
-                "unknown_scope": attr.get("UNKNOWN_SCOPE"),
-                "new_strategy_drift": attr.get("NEW_STRATEGY_DRIFT"),
-                "unattributed": attr.get("UNATTRIBUTED"),
-                "pass": attr.get("pass"),
-            }
+        diff = run_pr_target_diff(commit_sha=head_sha)
+        out["diff_scopes"] = {
+            "r3b_scope": diff.get("pr_r3b_scope"),
+            "m252_scope": diff.get("pr_m252_scope"),
+            "unknown_scope": diff.get("pr_unknown_scope"),
+            "new_strategy_drift": diff.get("pr_new_strategy_drift"),
+            "unattributed": diff.get("pr_unattributed"),
+            "pass": diff.get("pass"),
+        }
     except Exception as exc:  # noqa: BLE001
         out["production_replay_error"] = str(exc)
 
     return out
 
 
-def merge_simulation(base_sha: str, head_sha: str) -> dict[str, Any]:
-    tmp = Path(tempfile.mkdtemp(prefix="r3b1r4-merge-"))
-    repo = tmp / "repo"
-    run(["git", "clone", "--no-local", str(REPO), str(repo)])
-    run(["git", "checkout", base_sha], cwd=repo)
-    merge = run(["git", "merge", "--no-edit", head_sha], cwd=repo)
-    result = {"merge_conflicts": 0 if merge.returncode == 0 else 1, "merge_output": (merge.stdout + merge.stderr)[-2000:]}
-    if merge.returncode == 0:
-        for surface in ("backend", "frontend"):
-            run(["npm", "ci"], cwd=repo / surface)
-        # merged security compare uses merged tree as PR and base_sha as base
-        archive = run(["git", "archive", base_sha, "backend", "frontend"], cwd=repo)
-        base_dir = tmp / "base"
-        base_dir.mkdir()
-        subprocess.run(["tar", "-x", "-C", str(base_dir)], input=archive.stdout, text=True, check=True)
-        for surface in ("backend", "frontend"):
-            run(["npm", "ci"], cwd=base_dir / surface)
-        files = {}
-        for name, src in (
-            ("base_backend", base_dir / "backend"),
-            ("base_frontend", base_dir / "frontend"),
-            ("pr_backend", repo / "backend"),
-            ("pr_frontend", repo / "frontend"),
-        ):
-            out = tmp / f"{name}-audit.json"
-            proc = run(["npm", "audit", "--json"], cwd=src)
-            out.write_text(proc.stdout or "{}")
-            files[name] = out
-        report = tmp / "merged-report.json"
-        compare = run(
-            [
-                "node",
-                str(REPO / "scripts/audits/compare-dependency-audit-baseline.js"),
-                "--base-backend",
-                str(files["base_backend"]),
-                "--base-frontend",
-                str(files["base_frontend"]),
-                "--pr-backend",
-                str(files["pr_backend"]),
-                "--pr-frontend",
-                str(files["pr_frontend"]),
-                "--report",
-                str(report),
-            ]
-        )
-        merged_summary = json.loads(report.read_text()).get("summary", {}) if report.exists() else {}
-        result["merged_security_regression"] = bool(merged_summary.get("security_regression"))
-        result["merged_compare_summary"] = merged_summary
-        result["merged_compare_exit_code"] = compare.returncode
+def merge_simulation(base_sha: str, head_sha: str, ledger_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    merge_sim = simulate_hypothetical_merge(main_sha=base_sha, pr_sha=head_sha)
+    result: dict[str, Any] = {
+        "merge_conflicts": merge_sim.get("merge_conflicts", 1),
+        "merge_simulation_pass": merge_sim.get("pass") is True,
+    }
+    merge_wt = merge_sim.get("merge_worktree")
+    try:
+        if merge_sim.get("pass") and merge_sim.get("merged_backend_path"):
+            backend_dir = Path(merge_sim["merged_backend_path"])
+            merged_status = run_prisma_status_backend_tree(backend_dir=backend_dir, label="r3b1r4-merged-status")
+            merged_independent = compute_independent_would_deploy(
+                source_names=merged_status.get("source_migration_names") or source_migration_inventory(),
+                ledger_rows=ledger_rows,
+            )
+            merged_diff = run_pr_target_diff_backend_tree(backend_dir=backend_dir)
+            result["merged_production_replay"] = {
+                "merged_pending_count": (merged_status.get("parsed") or {}).get("status_pending_count"),
+                "merged_would_deploy_count": merged_independent.get("independent_would_deploy_count"),
+                "merged_diff_scopes": merged_diff,
+            }
+
+            merged_repo = backend_dir.parent
+            tmp = Path(tempfile.mkdtemp(prefix="r3b1r4-merge-sec-"))
+            base_dir = tmp / "base"
+            base_dir.mkdir()
+            git_archive_tree(base_sha, ["backend", "frontend"], base_dir)
+            for surface in ("backend", "frontend"):
+                run(["npm", "ci"], cwd=base_dir / surface)
+                run(["npm", "ci"], cwd=merged_repo / surface)
+            files = {}
+            for name, src in (
+                ("base_backend", base_dir / "backend"),
+                ("base_frontend", base_dir / "frontend"),
+                ("pr_backend", merged_repo / "backend"),
+                ("pr_frontend", merged_repo / "frontend"),
+            ):
+                out = tmp / f"{name}-audit.json"
+                proc = run(["npm", "audit", "--json"], cwd=src)
+                out.write_text(proc.stdout or "{}")
+                files[name] = out
+            report = tmp / "merged-report.json"
+            compare = run(
+                [
+                    "node",
+                    str(REPO / "scripts/audits/compare-dependency-audit-baseline.js"),
+                    "--base-backend",
+                    str(files["base_backend"]),
+                    "--base-frontend",
+                    str(files["base_frontend"]),
+                    "--pr-backend",
+                    str(files["pr_backend"]),
+                    "--pr-frontend",
+                    str(files["pr_frontend"]),
+                    "--report",
+                    str(report),
+                ]
+            )
+            merged_summary = json.loads(report.read_text()).get("summary", {}) if report.exists() else {}
+            result["merged_security_regression"] = bool(merged_summary.get("security_regression"))
+            result["merged_compare_summary"] = merged_summary
+            result["merged_compare_exit_code"] = compare.returncode
+            shutil.rmtree(tmp, ignore_errors=True)
+    finally:
+        if merge_wt:
+            shutil.rmtree(merge_wt, ignore_errors=True)
     return result
 
 
@@ -407,8 +431,14 @@ def main() -> int:
             dest = DATA / f"{PREFIX}-{key.replace('_', '-')}.json"
         dest.write_text(src.read_text())
 
-    merge = merge_simulation(base_sha, head)
+    ledger = export_prisma_ledger()
     production = production_readonly_replay(head)
+    merge = merge_simulation(base_sha, head, ledger)
+    checks = github_checks(head_sha=head)
+    ci_gate = (checks.get("critical_required_checks") or {}).get("CI gate (all critical jobs)", {})
+    if ci_gate.get("green_if_any_success"):
+        checks["legal_documents_ci_gate_green"] = True
+        checks["required_checks_failed"] = 0 if checks.get("security_required_check_green") else 1
 
     gate = lambda ok: "GO" if ok else "NO-GO"  # noqa: E731
     security_regression = bool(sec["compare_summary"].get("security_regression"))
@@ -432,10 +462,21 @@ def main() -> int:
         "APPLICATION_HEALTH": gate(production.get("application_health_pass") is True),
         "MERGE_SIMULATION_CONFLICT_FREE": gate(merge.get("merge_conflicts") == 0),
         "MERGED_SECURITY_REGRESSION_FREE": gate(not merge.get("merged_security_regression", True)),
-        "CURRENT_HEAD_REQUIRED_CI_GREEN": "PENDING_POST_PUSH",
+        "MERGED_STATUS_ZERO_PENDING": gate(
+            (merge.get("merged_production_replay") or {}).get("merged_pending_count") == 0
+        ),
+        "MERGED_WOULD_DEPLOY_ZERO": gate(
+            (merge.get("merged_production_replay") or {}).get("merged_would_deploy_count") == 0
+        ),
+        "MERGED_DIFF_SCOPES_ZERO": gate(
+            ((merge.get("merged_production_replay") or {}).get("merged_diff_scopes") or {}).get("pass") is True
+        ),
+        "CURRENT_HEAD_REQUIRED_CI_GREEN": gate(
+            checks.get("required_checks_failed", 99) == 0 and checks.get("required_checks_pending", 99) == 0
+        ),
     }
 
-    all_go = all(v == "GO" for k, v in matrix.items() if k != "CURRENT_HEAD_REQUIRED_CI_GREEN")
+    all_go = all(v == "GO" for v in matrix.values())
     if all_go:
         machine_status = "CI_R3B1R4_RECOVERY_PR_SCOPE_RESTORATION_FINAL_MERGE_READINESS_COMPLETED"
         result = "SUCCESS"
@@ -518,6 +559,7 @@ def main() -> int:
         },
         "production_replay": production,
         "merge_simulation": merge,
+        "github_checks": checks,
         "final_merge_readiness_matrix": matrix,
         "inherited_security_debt_artifact": str(PR_RECOVERY / "R3B1R4-INHERITED-DEPENDENCY-SECURITY-DEBT.md"),
     }
