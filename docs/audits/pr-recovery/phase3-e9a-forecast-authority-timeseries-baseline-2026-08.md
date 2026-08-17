@@ -397,7 +397,8 @@ E9B_READINESS = NOT_READY
 | Field | Value |
 |-------|-------|
 | E9A_ENTRY_HEAD_SHA | `2284f4ee8b367468356a54eb6670c48dd6c4dd25` |
-| E9A_FINAL_HEAD_SHA | `eae9b4538c81c57ac88ea6f0b6c1d5e1e95bbee5` |
-| E9A_COMMIT_SHA | `844f44ba8c81c57ac88ea6f0b6c1d5e1e95bbee5` |
-| E9_PR_NUMBER | _(set at PR create)_ |
+| E9A_FINAL_HEAD_SHA | `48b6fba1` |
+| E9A_COMMIT_SHA | `844f44ba` |
+| E9_PR_NUMBER | **1059** |
+| E9_PR_URL | https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1059 |
 | PR_IS_DRAFT | true |
