@@ -26,8 +26,9 @@
   `status` in label.
 - **Scope (E8B0).** `ORGANIZATION_ONLY` for MVP; station filtering
   `NOT_SUPPORTED_FOR_E8_MVP` until vehicle/station PIT history is complete.
-- **Horizon (E8B0).** `NEXT_30_DAYS` recommended empirically; **product approval
-  required** before runtime (`HORIZON_PRODUCT_AUTHORITY`).
+- **Horizon (E8B0.1 / E8D).** **`RECOMMENDED_HORIZON=NONE`** on current Production
+  (zero ServiceCase rows). E8B0 synthetic `NEXT_30_DAYS` recommendation is superseded.
+  Product approval required when history exists before any runtime horizon selection.
 - **Authority chain (planned E8B).** E2 org scope → historical ServiceCase features
   (≤ featureCutoffAt, PIT-safe subset) → E5 quality fail-closed → risk category
   output. No E7 recommendation features. No live unbounded freshness features.
@@ -43,21 +44,25 @@
 - **API (proposed).** `GET …/evaluations/analytics/insights/predictive-risk`
 - **UI (proposed E8C).** New section on `EvaluationsPage` after Recommendations;
   presentation-only; labels distinguish Observed / Predicted / Potential.
+- **E8D-DEFER (2026-08):** Final deferral acceptance — authority + empirical
+  certification complete; runtime deferred; PR #1056 merge readiness without merge.
 - **Docs:** `docs/audits/pr-recovery/E8-ONBOARDING.md`,
   `phase3-e8a-predictive-risk-estimated-exposure-authority-baseline-2026-08.md`,
   `phase3-e8b0-predictive-target-label-horizon-dataset-certification-2026-08.md`,
-  `phase3-e8b01-production-readonly-predictive-certification-2026-08.md`
+  `phase3-e8b01-production-readonly-predictive-certification-2026-08.md`,
+  `phase3-e8d-predictive-risk-deferred-final-acceptance-merge-readiness-2026-08.md`
 
 ## Phase topology
 
 | Phase | Status |
 |-------|--------|
-| E8A | Complete (authority freeze) |
-| E8B0 | Complete (synthetic — superseded) |
-| E8B0.1 | Complete (Production read-only; insufficient ServiceCase history) |
-| E8B | Backend — **blocked** (`INSUFFICIENT_REAL_POSITIVE_LABELS`) |
-| E8C | Frontend integration |
-| E8D | Merge readiness |
+| E8A | COMPLETE (authority freeze) |
+| E8B0 | SUPERSEDED_SYNTHETIC_CERTIFICATION |
+| E8B0.1 | COMPLETE_REAL_READONLY_CERTIFICATION |
+| E8B | DEFERRED_PENDING_EMPIRICAL_HISTORY |
+| E8C | NOT_REQUIRED_WHILE_RUNTIME_DEFERRED |
+| E8D-DEFER | COMPLETE (final deferral acceptance) |
+| E9 | READY_AFTER_E8_PR_MERGE |
 
 ## Boundaries
 

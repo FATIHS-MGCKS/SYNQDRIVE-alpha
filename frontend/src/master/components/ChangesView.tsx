@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e8d-deferred-final-acceptance-2026-08-17',
+    version: '4.9.902',
+    title: 'V4.9.902 — Evaluations E8D-DEFER: predictive risk deferred final acceptance',
+    summary: [
+      'E8D-DEFER completes authority + empirical certification without E8 product runtime. E8A complete; E8B0 superseded; E8B0.1 Production read-only certification canonical.',
+      'Frozen Production facts: 4 orgs, 9 vehicles, 0 ServiceCase rows; all horizon samples zero. Target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION; RECOMMENDED_HORIZON=NONE.',
+      'Runtime deferred (INSUFFICIENT_REAL_POSITIVE_LABELS). eventProbability, numeric confidence, and estimatedExposure NOT_AUTHORIZED. PR #1056 Ready for Review — not merged. E9 may begin after merge independently.',
+    ],
+    reason:
+      'Predictive runtime must not ship without defensible real outcome history; deferral acceptance documents merge readiness without inventing risk scores or probabilities.',
+    previousBehavior:
+      'E8B0.1 blocked E8B but E8D final acceptance artifact and PR Ready state were missing.',
+    details:
+      'docs/audits/pr-recovery/phase3-e8d-predictive-risk-deferred-final-acceptance-merge-readiness-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T13:30:00.000Z',
+  },
+  {
     id: 'evaluations-e8b01-production-readonly-certification-2026-08-17',
     version: '4.9.901',
     title: 'V4.9.901 — Evaluations E8B0.1: Production read-only predictive certification',

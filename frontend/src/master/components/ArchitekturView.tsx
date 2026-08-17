@@ -394,6 +394,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Auswertungen E8D-DEFER Final Deferral Acceptance (Phase 3 — V4.9.902)', icon: Layers,
+    endpoint: 'E8 runtime deferred — no predictive API/UI in product.',
+    service: 'E8D-DEFER: authority + E8B0.1 empirical certification complete; runtime DEFERRED_PENDING_EMPIRICAL_HISTORY; target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION; RECOMMENDED_HORIZON=NONE; eventProbability/confidence/estimatedExposure NOT_AUTHORIZED. PR #1056 merge-ready (not merged). E9 independent after merge.',
+    dataSource: 'docs/audits/pr-recovery/phase3-e8d-predictive-risk-deferred-final-acceptance-merge-readiness-2026-08.md' },
   { name: 'Auswertungen E8B0.1 Production Read-Only Certification (Phase 3 — V4.9.901)', icon: Layers,
     endpoint: 'E8B runtime blocked — Production has zero ServiceCase rows.',
     service: 'E8B0.1: Production read-only SQL (transaction_read_only=on), leakage harness mutant sensitivity proven, target FLEET_NEW_SERVICE_CASE_DOWNTIME_DISRUPTION, horizon NONE on current data. estimatedExposure still deferred.',
