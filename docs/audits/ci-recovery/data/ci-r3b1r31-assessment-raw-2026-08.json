@@ -4,12 +4,12 @@
   "result": "SUCCESS",
   "machine_status": "CI_R3B1R31_DEPENDENCY_OVERRIDE_COMPATIBILITY_ADVISORY_PROVENANCE_CLOSURE_COMPLETED",
   "entry": {
-    "entry_head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-    "pr_1054_head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+    "entry_head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+    "pr_1054_head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
     "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
     "pr_state": "OPEN",
     "pr_is_draft": true,
-    "worktree_clean_at_entry": false
+    "worktree_clean_at_entry": true
   },
   "inherited_r3b1r3": {
     "evidence": "docs/audits/pr-recovery/R3B1R3-SECURITY-DEPENDENCY-GATE-REMEDIATION.md",
@@ -1727,200 +1727,200 @@
   "database_reconciliation_acceptance_preserved": true,
   "github_checks": {
     "available": true,
-    "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+    "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
     "checks": [
       {
         "name": "CI gate (all critical jobs)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244677588
+        "run_id": 95248711840
       },
       {
         "name": "CI gate (all critical jobs)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244514837
-      },
-      {
-        "name": "Security / dependency scan",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090361
+        "run_id": 95248460609
       },
       {
         "name": "Playwright E2E (Vehicle Detail)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244090346
-      },
-      {
-        "name": "Lint",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090344
-      },
-      {
-        "name": "Production build",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090333
-      },
-      {
-        "name": "Frontend component tests",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090302
-      },
-      {
-        "name": "Backend security tests",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090301
-      },
-      {
-        "name": "Accessibility (axe)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090298
-      },
-      {
-        "name": "Typecheck",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090295
-      },
-      {
-        "name": "Backend unit tests",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244090283
-      },
-      {
-        "name": "Accessibility (axe)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244085637
+        "run_id": 95247976627
       },
       {
         "name": "Security / dependency scan",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244085606
-      },
-      {
-        "name": "Frontend component tests",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244085592
-      },
-      {
-        "name": "Backend integration tests",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244085572
+        "run_id": 95247976619
       },
       {
         "name": "Lint",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244085570
+        "run_id": 95247976610
+      },
+      {
+        "name": "Accessibility (axe)",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247976601
       },
       {
         "name": "Production build",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244085567
+        "run_id": 95247976580
       },
       {
-        "name": "Prisma validate",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "name": "Frontend component tests",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244085566
+        "run_id": 95247976552
       },
       {
-        "name": "Typecheck",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "name": "Backend security tests",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244085561
-      },
-      {
-        "name": "Migration tests (PostgreSQL)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244085559
-      },
-      {
-        "name": "Playwright E2E",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "status": "completed",
-        "conclusion": "success",
-        "run_id": 95244085549
+        "run_id": 95247976543
       },
       {
         "name": "Backend unit tests",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95244085547
+        "run_id": 95247976537
+      },
+      {
+        "name": "Typecheck",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247976504
+      },
+      {
+        "name": "Backend unit tests",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953405
+      },
+      {
+        "name": "Playwright E2E",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953359
+      },
+      {
+        "name": "Security / dependency scan",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953327
+      },
+      {
+        "name": "Production build",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953307
+      },
+      {
+        "name": "Prisma validate",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953300
+      },
+      {
+        "name": "Backend integration tests",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953298
+      },
+      {
+        "name": "Typecheck",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953292
+      },
+      {
+        "name": "Accessibility (axe)",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953291
+      },
+      {
+        "name": "Migration tests (PostgreSQL)",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953288
+      },
+      {
+        "name": "Lint",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953264
+      },
+      {
+        "name": "Frontend component tests",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95247953262
       },
       {
         "name": "Install (lockfile)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95243977835
+        "run_id": 95247851494
       },
       {
         "name": "Install (lockfile)",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
         "status": "completed",
         "conclusion": "success",
-        "run_id": 95243977804
+        "run_id": 95247848886
       }
     ],
     "required_check_status": {
       "CI gate (all critical jobs)": {
-        "id": 95244514837,
+        "id": 95248460609,
         "name": "CI gate (all critical jobs)",
-        "node_id": "CR_kwDOR2KQhs8AAAAWLQP2FQ",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "external_id": "1a9dd71a-e387-5b23-b2cc-9a365e833440",
-        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244514837",
-        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244514837",
-        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244514837",
+        "node_id": "CR_kwDOR2KQhs8AAAAWLUArQQ",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "external_id": "39a54e3b-fa15-5bfe-b624-6d4693aa82cb",
+        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95248460609",
+        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95248460609",
+        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95248460609",
         "status": "completed",
         "conclusion": "success",
-        "started_at": "2026-08-16T23:39:28Z",
-        "completed_at": "2026-08-16T23:39:31Z",
+        "started_at": "2026-08-17T00:12:29Z",
+        "completed_at": "2026-08-17T00:12:33Z",
         "output": {
           "title": null,
           "summary": null,
           "text": null,
           "annotations_count": 0,
-          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244514837/annotations"
+          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95248460609/annotations"
         },
         "check_suite": {
-          "id": 86705313814
+          "id": 86708887711
         },
         "app": {
           "id": 15368,
@@ -2019,146 +2019,7 @@
             "number": 1054,
             "head": {
               "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-              "sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-              "repo": {
-                "id": 1197641862,
-                "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
-                "name": "SYNQDRIVE-alpha"
-              }
-            },
-            "base": {
-              "ref": "main",
-              "sha": "721ad893d15cfa46786a112860548ce12a2be71d",
-              "repo": {
-                "id": 1197641862,
-                "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
-                "name": "SYNQDRIVE-alpha"
-              }
-            }
-          }
-        ]
-      },
-      "Security / dependency scan": {
-        "id": 95244085606,
-        "name": "Security / dependency scan",
-        "node_id": "CR_kwDOR2KQhs8AAAAWLP1pZg",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "external_id": "a3ab4dd5-5cef-5008-8eaf-727f82c80153",
-        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085606",
-        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085606",
-        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085606",
-        "status": "completed",
-        "conclusion": "success",
-        "started_at": "2026-08-16T23:35:43Z",
-        "completed_at": "2026-08-16T23:35:57Z",
-        "output": {
-          "title": null,
-          "summary": null,
-          "text": null,
-          "annotations_count": 1,
-          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085606/annotations"
-        },
-        "check_suite": {
-          "id": 86705313814
-        },
-        "app": {
-          "id": 15368,
-          "client_id": "Iv1.05c79e9ad1f6bdfa",
-          "slug": "github-actions",
-          "node_id": "MDM6QXBwMTUzNjg=",
-          "owner": {
-            "login": "github",
-            "id": 9919,
-            "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
-            "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
-            "gravatar_id": "",
-            "url": "https://api.github.com/users/github",
-            "html_url": "https://github.com/github",
-            "followers_url": "https://api.github.com/users/github/followers",
-            "following_url": "https://api.github.com/users/github/following{/other_user}",
-            "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
-            "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
-            "subscriptions_url": "https://api.github.com/users/github/subscriptions",
-            "organizations_url": "https://api.github.com/users/github/orgs",
-            "repos_url": "https://api.github.com/users/github/repos",
-            "events_url": "https://api.github.com/users/github/events{/privacy}",
-            "received_events_url": "https://api.github.com/users/github/received_events",
-            "type": "Organization",
-            "user_view_type": "public",
-            "site_admin": false
-          },
-          "name": "GitHub Actions",
-          "description": "Automate your workflow from idea to production",
-          "external_url": "https://help.github.com/en/actions",
-          "html_url": "https://github.com/apps/github-actions",
-          "created_at": "2018-07-30T09:30:17Z",
-          "updated_at": "2026-06-18T16:17:48Z",
-          "permissions": {
-            "actions": "write",
-            "administration": "read",
-            "artifact_metadata": "write",
-            "attestations": "write",
-            "checks": "write",
-            "code_quality": "write",
-            "contents": "write",
-            "copilot_requests": "write",
-            "deployments": "write",
-            "discussions": "write",
-            "drives": "write",
-            "issues": "write",
-            "merge_queues": "write",
-            "metadata": "read",
-            "models": "read",
-            "packages": "write",
-            "pages": "write",
-            "pull_requests": "write",
-            "repository_hooks": "write",
-            "repository_projects": "write",
-            "security_events": "write",
-            "statuses": "write",
-            "vulnerability_alerts": "read"
-          },
-          "events": [
-            "branch_protection_rule",
-            "check_run",
-            "check_suite",
-            "create",
-            "delete",
-            "deployment",
-            "deployment_status",
-            "discussion",
-            "discussion_comment",
-            "fork",
-            "gollum",
-            "issues",
-            "issue_comment",
-            "label",
-            "merge_group",
-            "milestone",
-            "page_build",
-            "public",
-            "pull_request",
-            "pull_request_review",
-            "pull_request_review_comment",
-            "push",
-            "registry_package",
-            "release",
-            "repository",
-            "repository_dispatch",
-            "status",
-            "watch",
-            "workflow_dispatch",
-            "workflow_run"
-          ]
-        },
-        "pull_requests": [
-          {
-            "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/pulls/1054",
-            "id": 4287611370,
-            "number": 1054,
-            "head": {
-              "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-              "sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+              "sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
               "repo": {
                 "id": 1197641862,
                 "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
@@ -2178,27 +2039,27 @@
         ]
       },
       "Playwright E2E (Vehicle Detail)": {
-        "id": 95244090346,
+        "id": 95247976627,
         "name": "Playwright E2E (Vehicle Detail)",
-        "node_id": "CR_kwDOR2KQhs8AAAAWLP176g",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "external_id": "459f59f4-d424-56a2-b674-9a8f2070a4be",
-        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244090346",
-        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524039/job/95244090346",
-        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524039/job/95244090346",
+        "node_id": "CR_kwDOR2KQhs8AAAAWLTjIsw",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "external_id": "9faf07b9-edf7-546c-9d0f-c5d7e0869d62",
+        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247976627",
+        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080390/job/95247976627",
+        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080390/job/95247976627",
         "status": "completed",
         "conclusion": "success",
-        "started_at": "2026-08-16T23:35:45Z",
-        "completed_at": "2026-08-16T23:40:49Z",
+        "started_at": "2026-08-17T00:09:06Z",
+        "completed_at": "2026-08-17T00:14:12Z",
         "output": {
           "title": null,
           "summary": null,
           "text": null,
           "annotations_count": 1,
-          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244090346/annotations"
+          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247976627/annotations"
         },
         "check_suite": {
-          "id": 86705313837
+          "id": 86708888288
         },
         "app": {
           "id": 15368,
@@ -2297,7 +2158,7 @@
             "number": 1054,
             "head": {
               "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-              "sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+              "sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
               "repo": {
                 "id": 1197641862,
                 "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
@@ -2316,28 +2177,28 @@
           }
         ]
       },
-      "Backend integration tests": {
-        "id": 95244085572,
-        "name": "Backend integration tests",
-        "node_id": "CR_kwDOR2KQhs8AAAAWLP1pRA",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "external_id": "1c612f56-6f80-579d-97d2-89a334ac37b2",
-        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085572",
-        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085572",
-        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085572",
+      "Security / dependency scan": {
+        "id": 95247953327,
+        "name": "Security / dependency scan",
+        "node_id": "CR_kwDOR2KQhs8AAAAWLThtrw",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "external_id": "3519d527-01bf-5358-95ee-ca9eba1726b9",
+        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953327",
+        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953327",
+        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953327",
         "status": "completed",
         "conclusion": "success",
-        "started_at": "2026-08-16T23:35:42Z",
-        "completed_at": "2026-08-16T23:39:01Z",
+        "started_at": "2026-08-17T00:08:56Z",
+        "completed_at": "2026-08-17T00:09:11Z",
         "output": {
           "title": null,
           "summary": null,
           "text": null,
           "annotations_count": 1,
-          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085572/annotations"
+          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953327/annotations"
         },
         "check_suite": {
-          "id": 86705313814
+          "id": 86708887711
         },
         "app": {
           "id": 15368,
@@ -2436,7 +2297,7 @@
             "number": 1054,
             "head": {
               "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-              "sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+              "sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
               "repo": {
                 "id": 1197641862,
                 "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
@@ -2456,27 +2317,27 @@
         ]
       },
       "Prisma validate": {
-        "id": 95244085566,
+        "id": 95247953300,
         "name": "Prisma validate",
-        "node_id": "CR_kwDOR2KQhs8AAAAWLP1pPg",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "external_id": "75428eee-e7d6-5ab8-9533-a7648ca54fe0",
-        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085566",
-        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085566",
-        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085566",
+        "node_id": "CR_kwDOR2KQhs8AAAAWLThtlA",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "external_id": "06bacef0-3ff6-5496-b818-96a1dcadbeae",
+        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953300",
+        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953300",
+        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953300",
         "status": "completed",
         "conclusion": "success",
-        "started_at": "2026-08-16T23:35:41Z",
-        "completed_at": "2026-08-16T23:36:21Z",
+        "started_at": "2026-08-17T00:08:55Z",
+        "completed_at": "2026-08-17T00:09:41Z",
         "output": {
           "title": null,
           "summary": null,
           "text": null,
           "annotations_count": 1,
-          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085566/annotations"
+          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953300/annotations"
         },
         "check_suite": {
-          "id": 86705313814
+          "id": 86708887711
         },
         "app": {
           "id": 15368,
@@ -2575,7 +2436,146 @@
             "number": 1054,
             "head": {
               "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-              "sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+              "sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+              "repo": {
+                "id": 1197641862,
+                "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
+                "name": "SYNQDRIVE-alpha"
+              }
+            },
+            "base": {
+              "ref": "main",
+              "sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+              "repo": {
+                "id": 1197641862,
+                "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
+                "name": "SYNQDRIVE-alpha"
+              }
+            }
+          }
+        ]
+      },
+      "Backend integration tests": {
+        "id": 95247953298,
+        "name": "Backend integration tests",
+        "node_id": "CR_kwDOR2KQhs8AAAAWLThtkg",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "external_id": "8960c584-ee24-5090-8125-948eabf35cea",
+        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953298",
+        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953298",
+        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953298",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-08-17T00:08:55Z",
+        "completed_at": "2026-08-17T00:12:02Z",
+        "output": {
+          "title": null,
+          "summary": null,
+          "text": null,
+          "annotations_count": 1,
+          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953298/annotations"
+        },
+        "check_suite": {
+          "id": 86708887711
+        },
+        "app": {
+          "id": 15368,
+          "client_id": "Iv1.05c79e9ad1f6bdfa",
+          "slug": "github-actions",
+          "node_id": "MDM6QXBwMTUzNjg=",
+          "owner": {
+            "login": "github",
+            "id": 9919,
+            "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+            "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/github",
+            "html_url": "https://github.com/github",
+            "followers_url": "https://api.github.com/users/github/followers",
+            "following_url": "https://api.github.com/users/github/following{/other_user}",
+            "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+            "organizations_url": "https://api.github.com/users/github/orgs",
+            "repos_url": "https://api.github.com/users/github/repos",
+            "events_url": "https://api.github.com/users/github/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/github/received_events",
+            "type": "Organization",
+            "user_view_type": "public",
+            "site_admin": false
+          },
+          "name": "GitHub Actions",
+          "description": "Automate your workflow from idea to production",
+          "external_url": "https://help.github.com/en/actions",
+          "html_url": "https://github.com/apps/github-actions",
+          "created_at": "2018-07-30T09:30:17Z",
+          "updated_at": "2026-06-18T16:17:48Z",
+          "permissions": {
+            "actions": "write",
+            "administration": "read",
+            "artifact_metadata": "write",
+            "attestations": "write",
+            "checks": "write",
+            "code_quality": "write",
+            "contents": "write",
+            "copilot_requests": "write",
+            "deployments": "write",
+            "discussions": "write",
+            "drives": "write",
+            "issues": "write",
+            "merge_queues": "write",
+            "metadata": "read",
+            "models": "read",
+            "packages": "write",
+            "pages": "write",
+            "pull_requests": "write",
+            "repository_hooks": "write",
+            "repository_projects": "write",
+            "security_events": "write",
+            "statuses": "write",
+            "vulnerability_alerts": "read"
+          },
+          "events": [
+            "branch_protection_rule",
+            "check_run",
+            "check_suite",
+            "create",
+            "delete",
+            "deployment",
+            "deployment_status",
+            "discussion",
+            "discussion_comment",
+            "fork",
+            "gollum",
+            "issues",
+            "issue_comment",
+            "label",
+            "merge_group",
+            "milestone",
+            "page_build",
+            "public",
+            "pull_request",
+            "pull_request_review",
+            "pull_request_review_comment",
+            "push",
+            "registry_package",
+            "release",
+            "repository",
+            "repository_dispatch",
+            "status",
+            "watch",
+            "workflow_dispatch",
+            "workflow_run"
+          ]
+        },
+        "pull_requests": [
+          {
+            "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/pulls/1054",
+            "id": 4287611370,
+            "number": 1054,
+            "head": {
+              "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+              "sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
               "repo": {
                 "id": 1197641862,
                 "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",
@@ -2595,27 +2595,27 @@
         ]
       },
       "Migration tests (PostgreSQL)": {
-        "id": 95244085559,
+        "id": 95247953288,
         "name": "Migration tests (PostgreSQL)",
-        "node_id": "CR_kwDOR2KQhs8AAAAWLP1pNw",
-        "head_sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
-        "external_id": "266e0a56-e8b5-5bc2-abcd-158412749534",
-        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085559",
-        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085559",
-        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31979524028/job/95244085559",
+        "node_id": "CR_kwDOR2KQhs8AAAAWLThtiA",
+        "head_sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
+        "external_id": "7377bbef-a069-548c-a986-e15ddc01a266",
+        "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953288",
+        "html_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953288",
+        "details_url": "https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/31981080142/job/95247953288",
         "status": "completed",
         "conclusion": "success",
-        "started_at": "2026-08-16T23:35:41Z",
-        "completed_at": "2026-08-16T23:37:54Z",
+        "started_at": "2026-08-17T00:08:56Z",
+        "completed_at": "2026-08-17T00:11:28Z",
         "output": {
           "title": null,
           "summary": null,
           "text": null,
           "annotations_count": 1,
-          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95244085559/annotations"
+          "annotations_url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha/check-runs/95247953288/annotations"
         },
         "check_suite": {
-          "id": 86705313814
+          "id": 86708887711
         },
         "app": {
           "id": 15368,
@@ -2714,7 +2714,7 @@
             "number": 1054,
             "head": {
               "ref": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
-              "sha": "d6bdbefe709a9da34ceae5c6cf428042e192553d",
+              "sha": "9f8edb93b4b9f449f3ee16de828dcf53c2759ef3",
               "repo": {
                 "id": 1197641862,
                 "url": "https://api.github.com/repos/FATIHS-MGCKS/SYNQDRIVE-alpha",

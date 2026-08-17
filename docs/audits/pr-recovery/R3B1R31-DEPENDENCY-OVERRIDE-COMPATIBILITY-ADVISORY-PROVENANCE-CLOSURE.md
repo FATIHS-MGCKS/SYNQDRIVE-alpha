@@ -1,6 +1,8 @@
 # R3B1R.3.1 — Dependency Override Compatibility + Advisory Provenance Closure
 
 **Phase:** `CI-R3B1R.3.1`  
+**PR_HEAD_SHA:** `9f8edb93b4b9f449f3ee16de828dcf53c2759ef3`
+
 **Generated:** `2026-08-17T00:01:24+00:00`  
 **Result:** **SUCCESS**  
 **Machine status:** `CI_R3B1R31_DEPENDENCY_OVERRIDE_COMPATIBILITY_ADVISORY_PROVENANCE_CLOSURE_COMPLETED`
