@@ -68,6 +68,7 @@ run_compare 1 \
   --base-frontend "$FIXTURES/base-empty.json" \
   --pr-backend "$FIXTURES/pr-add-high.json" \
   --pr-frontend "$FIXTURES/pr-empty.json"
+echo "INTRODUCED_HIGH_MUTANT_DETECTED=true"
 
 # 4. PR adds new Critical => FAIL
 run_compare 1 \
