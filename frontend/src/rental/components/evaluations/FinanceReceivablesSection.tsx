@@ -37,6 +37,7 @@ export function FinanceReceivablesSection({
 }) {
   const { t, locale } = useLanguage();
   return (
+    <div id="evaluations-section-finance" className="scroll-mt-24">
     <EvaluationsSectionShell
       titleKey="evaluations.section.finance"
       async={finance}
@@ -77,5 +78,6 @@ export function FinanceReceivablesSection({
         </div>
       )}
     </EvaluationsSectionShell>
+    </div>
   );
 }

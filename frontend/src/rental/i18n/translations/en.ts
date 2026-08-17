@@ -3264,6 +3264,73 @@ export const en = {
   'evaluations.driver.piiTier.none': 'No identity',
   'evaluations.driver.relationship.ASSOCIATED_WITH': 'associated with',
   'evaluations.driver.relationship.CORRELATES_WITH': 'correlates with',
+
+  // E7 — canonical recommendations / actions (server copy keys)
+  'evaluations.section.recommendations': 'Recommendations & actions',
+  'evaluations.recommendations.intro':
+    'Server-derived recommendations for this scope. Order and priority are authoritative.',
+  'evaluations.recommendations.copyUnavailable': 'Details unavailable for this recommendation.',
+  'evaluations.recommendations.empty.NO_ACTION_NEEDED': 'No actions needed for the current evidence.',
+  'evaluations.recommendations.empty.INSUFFICIENT_EVIDENCE':
+    'Not enough evidence to derive recommendations for this scope.',
+  'evaluations.recommendations.empty.fallback': 'Recommendations are not available.',
+  'evaluations.recommendations.evidence': 'Evidence',
+  'evaluations.recommendations.sourcePeriod': 'Source period',
+  'evaluations.recommendations.sourceSections': 'Source sections',
+  'evaluations.recommendations.qualityLimitations': 'Quality limitations',
+  'evaluations.recommendations.calculationVersion': 'Calculation version',
+  'evaluations.recommendations.severity.INFO': 'Info',
+  'evaluations.recommendations.severity.WARNING': 'Warning',
+  'evaluations.recommendations.severity.CRITICAL': 'Critical',
+  'evaluations.recommendations.category.FINANCE': 'Finance',
+  'evaluations.recommendations.category.FLEET': 'Fleet',
+  'evaluations.recommendations.category.OPERATIONS': 'Operations',
+  'evaluations.recommendations.category.QUALITY': 'Quality',
+  'evaluations.recommendations.category.DRIVER': 'Driver',
+  'evaluations.recommendations.category.INSIGHT': 'Insight',
+  'evaluations.recommendations.sourceSection.finance': 'Finance',
+  'evaluations.recommendations.sourceSection.weaknesses': 'Weaknesses',
+  'evaluations.recommendations.sourceSection.strengths': 'Strengths',
+  'evaluations.recommendations.sourceSection.utilization': 'Utilization',
+  'evaluations.recommendations.sourceSection.cost': 'Costs',
+  'evaluations.recommendations.sourceSection.quality': 'Data quality',
+  'evaluations.recommendations.sourceSection.driver': 'Driver influence',
+  'evaluations.recommendations.receivablesAttention.title': 'Review overdue receivables',
+  'evaluations.recommendations.receivablesAttention.explanation':
+    'Overdue receivables of {amount} require attention in Finance.',
+  'evaluations.recommendations.openReceivablesReview.title': 'Review open receivables',
+  'evaluations.recommendations.openReceivablesReview.explanation':
+    'Open receivables of {amount} may need follow-up in Finance.',
+  'evaluations.recommendations.utilizationAttention.title': 'Low fleet utilization',
+  'evaluations.recommendations.utilizationAttention.explanation':
+    'Utilization is {observedPercent} (threshold {thresholdPercent}).',
+  'evaluations.recommendations.weaknessAttention.title': 'Operational weakness detected',
+  'evaluations.recommendations.weaknessAttention.explanation':
+    'Rule {ruleId} reported observed value {observed}.',
+  'evaluations.recommendations.strengthReinforce.title': 'Reinforce a strength',
+  'evaluations.recommendations.strengthReinforce.explanation':
+    'Consider reinforcing performance for rule {ruleId}.',
+  'evaluations.recommendations.costEvidenceIncomplete.title': 'Cost evidence incomplete',
+  'evaluations.recommendations.costEvidenceIncomplete.explanation':
+    'Operating cost evidence is incomplete for this scope.',
+  'evaluations.recommendations.dataQualityLimited.title': 'Data quality limitations',
+  'evaluations.recommendations.dataQualityLimited.explanation':
+    'Analytics quality limitations may affect some insights.',
+  'evaluations.recommendations.detectionInputSkipped.title': 'Detection inputs skipped',
+  'evaluations.recommendations.detectionInputSkipped.explanation':
+    'Some detection dimensions were skipped due to insufficient input.',
+  'evaluations.recommendations.driverInfluenceReview.title': 'Review driver influence',
+  'evaluations.recommendations.driverInfluenceReview.explanation':
+    'Driver influence factors may warrant review. Explicit reveal is required before person-level data loads.',
+  'evaluations.recommendations.actions.viewFinance': 'View finance',
+  'evaluations.recommendations.actions.viewUtilization': 'View utilization',
+  'evaluations.recommendations.actions.viewWeaknesses': 'View weaknesses',
+  'evaluations.recommendations.actions.viewStrengths': 'View strengths',
+  'evaluations.recommendations.actions.viewCost': 'View costs',
+  'evaluations.recommendations.actions.viewQuality': 'View data quality',
+  'evaluations.recommendations.actions.viewDetection': 'View detection',
+  'evaluations.recommendations.actions.viewDriverInfluence': 'View driver influence',
+
   ...legalDocumentsEn,
 } as const;
 

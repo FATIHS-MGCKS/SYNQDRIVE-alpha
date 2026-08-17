@@ -267,4 +267,15 @@ describe('E5.2 VALIDITY / dimension truth per section status', () => {
     expect(finance?.dimensions.VALIDITY).toBe('UNKNOWN');
     expect(finance?.dimensions.VALIDITY).not.toBe('COMPLETE');
   });
+
+  it('buildQualityReportFromSummary matches getQualityReport for the same summary', async () => {
+    const summary = summaryFixture();
+    const { service, insights } = buildService({ summary });
+    const viaPublic = await service.getQualityReport(orgScope, actor, GEN);
+    const viaSummary = await service.buildQualityReportFromSummary(summary as never, orgScope, GEN);
+    expect(insights.getSummary).toHaveBeenCalledTimes(1);
+    expect(viaSummary.overall).toEqual(viaPublic.overall);
+    expect(viaSummary.period).toEqual(viaPublic.period);
+    expect(viaSummary.sections).toEqual(viaPublic.sections);
+  });
 });

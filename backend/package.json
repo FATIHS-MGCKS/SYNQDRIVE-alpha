@@ -69,7 +69,7 @@
     "test:vehicle-detail:observability": "jest vehicle-detail-prometheus.metrics vehicle-detail-log.util",
     "test:vehicle-detail:verify": "bash scripts/test/vehicle-detail-backend-verify.sh all",
     "test:vehicle-detail:verify:unit": "bash scripts/test/vehicle-detail-backend-verify.sh unit",
-    "test:evaluations": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='business-insights|financial-insights\\.logic|data-analyse\\.utils|dashboard-insights|insight-health-gate|misuse-cases\\.service|evaluations-baseline|evaluations-metric\\.registry|evaluations-calculation-provenance|evaluations-metric-calculation-versions|evaluations-period\\.resolver|evaluations-metric-response|evaluations-shared-contract-mirror|evaluations-analytics|evaluations-finance|evaluations-money|evaluations-fx' --testPathIgnorePatterns='integration|live'",
+    "test:evaluations": "NODE_OPTIONS='--max-old-space-size=8192' jest --runInBand --testPathPattern='business-insights|financial-insights\\.logic|data-analyse\\.utils|dashboard-insights|insight-health-gate|misuse-cases\\.service|evaluations-baseline|evaluations-metric\\.registry|evaluations-calculation-provenance|evaluations-metric-calculation-versions|evaluations-period\\.resolver|evaluations-metric-response|evaluations-shared-contract-mirror|evaluations-analytics|evaluations-finance|evaluations-money|evaluations-fx|evaluations-recommendations' --testPathIgnorePatterns='integration|live'",
     "prisma:validate": "DATABASE_URL=${DATABASE_URL:-postgresql://synqdrive:synqdrive@localhost:5432/synqdrive} prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
@@ -177,7 +177,8 @@
       "^@synq/evaluations-metrics/(.*)$": "<rootDir>/synq/evaluations-metrics/$1",
       "^@synq/evaluations-periods/(.*)$": "<rootDir>/synq/evaluations-periods/$1",
       "^@synq/evaluations-analytics/(.*)$": "<rootDir>/synq/evaluations-analytics/$1",
-      "^@synq/evaluations-finance/(.*)$": "<rootDir>/synq/evaluations-finance/$1"
+      "^@synq/evaluations-finance/(.*)$": "<rootDir>/synq/evaluations-finance/$1",
+      "^@synq/evaluations-recommendations/(.*)$": "<rootDir>/synq/evaluations-recommendations/$1"
     }
   }
 }

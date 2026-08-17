@@ -68,8 +68,9 @@ function Panel({
       : isFullyAvailable
         ? 'evaluations.weaknesses.emptyAvailable'
         : 'evaluations.weaknesses.emptyPartial';
+  const anchorId = kind === 'strengths' ? 'evaluations-section-strengths' : 'evaluations-section-weaknesses';
   return (
-    <div className="flex flex-col gap-2" data-testid={`evaluations-${kind}`}>
+    <div id={anchorId} className="scroll-mt-24 flex flex-col gap-2" data-testid={`evaluations-${kind}`}>
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold">{t(`evaluations.section.${kind}` as TranslationKey)}</h3>
         <MetricStatusBadge status={section.status} />

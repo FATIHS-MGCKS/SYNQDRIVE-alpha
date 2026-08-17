@@ -16,12 +16,14 @@ import { readPersistedDashboardStationId } from '../../lib/fleet-station-filter'
 import {
   useEvaluationsInsightsSummary,
   useEvaluationsQuality,
+  useEvaluationsRecommendations,
 } from '../../hooks/useEvaluationsCanonicalAnalytics';
 import { useEvaluationsFinanceBundle } from '../../hooks/useEvaluationsFinanceBundle';
 import type { EvaluationsPeriodType, EvaluationsAnalyticsRequest } from '../../lib/evaluations/evaluations-request';
 import { deriveSectionAsync } from './evaluations-section-derive';
 import { EvaluationsHeaderControls } from './EvaluationsHeaderControls';
 import { ExecutiveSummarySection } from './ExecutiveSummarySection';
+import { RecommendationsActionsSection } from './RecommendationsActionsSection';
 import { StrengthWeaknessSection } from './StrengthWeaknessSection';
 import { FinanceReceivablesSection } from './FinanceReceivablesSection';
 import { FleetUtilizationSection } from './FleetUtilizationSection';
@@ -50,6 +52,7 @@ export function EvaluationsPage() {
   // E6C: one E5 quality request, loaded with the page (same org/period/station scope).
   // Driver Influence is intentionally NOT requested here — it is lazy (see below).
   const quality = useEvaluationsQuality(organizationId, req);
+  const recommendations = useEvaluationsRecommendations(organizationId, req);
 
   const executive = summary;
   const strengths = useMemo(() => deriveSectionAsync(summary, (s) => s.sections.strengths), [summary]);
@@ -66,6 +69,7 @@ export function EvaluationsPage() {
         stationScopeLabel={stationId ?? t('evaluations.station.all')}
       />
       <ExecutiveSummarySection summary={executive} />
+      <RecommendationsActionsSection recommendations={recommendations} />
       <StrengthWeaknessSection strengths={strengths} weaknesses={weaknesses} />
       <FinanceReceivablesSection finance={finance} />
       <FleetUtilizationSection utilization={utilization} />

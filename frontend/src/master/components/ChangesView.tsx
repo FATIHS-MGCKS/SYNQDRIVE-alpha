@@ -35,6 +35,101 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'evaluations-e7d-final-integrated-acceptance-2026-08-17',
+    version: '4.9.898',
+    title: 'V4.9.898 — Evaluations E7D: final integrated acceptance + merge readiness',
+    summary: [
+      'E7D replayed security/privacy/quality/UX gates: backend orchestration (1× E4 summary), Finance MTD invariance, money/privacy/quality/status/empty-state/action security, tenant isolation, hook race safety.',
+      'Added E7 Playwright flow suite (section order, PARTIAL/NO_ACTION_NEEDED, Finance MTD provenance, driver lazy reveal, mobile 320). Fixed E2E fixture scenario ordering; late-response race + XSS copy safety unit tests.',
+      'Full acceptance matrix GO. PR #1055 ready for separate merge authorization. Zero Prisma/migration/production changes. E8/E9 not started.',
+    ],
+    reason:
+      'E7D is the final independent acceptance gate before PR #1055 merge authorization.',
+    previousBehavior:
+      'E7C integrated frontend presentation; E7D acceptance artifact and E2E coverage were pending.',
+    details:
+      'frontend/e2e/evaluations-e7-flow.spec.ts, frontend/e2e/evaluations-fixtures.ts, docs/audits/pr-recovery/phase3-e7d-*.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T16:00:00.000Z',
+  },
+  {
+    id: 'evaluations-e7c-recommendations-frontend-integration-2026-08-17',
+    version: '4.9.897',
+    title: 'V4.9.897 — Evaluations E7C: canonical Recommendations frontend integration',
+    summary: [
+      'Wired shared `@synq/evaluations-recommendations` into frontend (Vite/Vitest/tsconfig alias). Added analyticsRecommendations API, transport client, period-aware query key, and useEvaluationsRecommendations hook.',
+      'New RecommendationsActionsSection on EvaluationsPage after Executive Summary: server copy keys with fail-closed i18n, typed copy param formatting (money/percent), provenance disclosure, allowlisted non-mutating section navigation.',
+      'Driver CTA scrolls only — lazy reveal preserved. Comprehensive frontend tests + backend E7 smoke unchanged. Zero Prisma/migration/production changes.',
+    ],
+    reason:
+      'E7C presents canonical server recommendations on the existing Evaluations page without client business derivation.',
+    previousBehavior:
+      'E7B/B.1 delivered backend recommendations only. EvaluationsPage had no Recommendations section or E7 transport.',
+    details:
+      'frontend/vite.config.ts, frontend/src/lib/api.ts, frontend/src/rental/{lib/evaluations,hooks,components/evaluations}/*, docs/audits/pr-recovery/phase3-e7c-*.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T12:00:00.000Z',
+  },
+  {
+    id: 'evaluations-e7b1-recommendation-authority-conformance-2026-08-17',
+    version: '4.9.896',
+    title: 'V4.9.896 — Evaluations E7B.1: fail-closed recommendation authority hardening',
+    summary: [
+      'Finance recommendations require exact E3 metric AVAILABLE (not PARTIAL/STALE). Driver requires AVAILABLE + factors + non-none piiTier. Cost recommendation emits only from PARTIAL with canonical incomplete evidence.',
+      'Source-scoped E5 quality limitations in provenance; source-scoped supersession for DATA_QUALITY_LIMITED (not global cost/skipped suppression). Empty-state fail-closed: NO_ACTION_NEEDED only when collection AVAILABLE.',
+      'Discriminated E7ActionTarget union + runtime assertValidE7ActionTarget(). 31 new E7B.1 conformance tests + HTTP security integration explicitly run.',
+    ],
+    reason:
+      'Independent post-E7B review found authority-conformance gaps that must close before E7C UI integration.',
+    previousBehavior:
+      'E7B allowed Finance from PARTIAL/STALE metrics, Driver from PARTIAL/zero factors, Cost from UNAVAILABLE, global quality supersession, and optimistic empty-state on incomplete evidence.',
+    details:
+      'shared/evaluations-recommendations/evaluations-recommendations-action-target.ts, backend/.../evaluations-recommendations.derive.ts, docs/audits/pr-recovery/phase3-e7b1-*.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T08:00:00.000Z',
+  },
+  {
+    id: 'evaluations-e7b-canonical-recommendations-backend-2026-08-17',
+    version: '4.9.895',
+    title: 'V4.9.895 — Evaluations E7B: canonical Recommendations backend + API',
+    summary: [
+      'Shared `@synq/evaluations-recommendations` contract (schema 1.0.0, calculation recommendations-e7-v1) with deterministic stable ids, provenance, and non-mutating action metadata.',
+      'Pure domain derivation from E4 summary + E5 quality (one getSummary per request; no direct E3 finance call; E5 buildQualityReportFromSummary refactor preserves public getQualityReport semantics).',
+      'Tenant/station-safe GET …/evaluations/analytics/insights/recommendations with nine implemented families, supersession rules, and comprehensive backend tests. Zero Prisma/migration/production changes.',
+    ],
+    reason:
+      'E7B delivers the canonical server-side Recommendations authority required before E7C frontend integration.',
+    previousBehavior:
+      'E7A froze authority only (docs). No recommendations endpoint or shared contract existed on the E7 branch.',
+    details:
+      'shared/evaluations-recommendations/*, backend/src/modules/evaluations-analytics/e7/*, docs/audits/pr-recovery/phase3-e7b-canonical-recommendations-backend-implementation-2026-08.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T06:00:00.000Z',
+  },
+  {
+    id: 'evaluations-e7a-recommendations-actions-authority-2026-08-17',
+    version: '4.9.894',
+    title: 'V4.9.894 — Evaluations E7A: Recommendations & Actions authority baseline',
+    summary: [
+      'E7A freezes the canonical Recommendations / Actions layer before runtime implementation (docs-only on branch integration/evaluations-e7-recommendations-actions-2026-08).',
+      'Maps E1–E6 inputs, inventories legacy recommendation code (dashboard insights-categories, historical recommendation-domain salvage), and rejects E8/E9 monetary prediction fields.',
+      'Defines nine accepted evidence-backed recommendation families, zero invented thresholds, non-mutating initial actions, provenance contract, and proposed GET …/insights/recommendations API for E7B.',
+    ],
+    reason:
+      'E7 must not implement runtime logic before authority freeze; R3B (#1054) merged at 06bae11f enables a new E7 branch from main.',
+    previousBehavior:
+      'Evaluations E6 presentation had no recommendations section; legacy dashboard/client insight strings and historical org_recommendations salvage existed off-main only.',
+    details:
+      'docs/audits/pr-recovery/{E7-ONBOARDING,phase3-e7a-recommendations-actions-authority-baseline-2026-08}.md, architecture/EVALUATIONS_E7_RECOMMENDATIONS_ACTIONS_2026-08-17.md',
+    affectsArchitecture: true,
+    module: 'Auswertungen / Analytics',
+    createdAt: '2026-08-17T03:30:00.000Z',
+  },
+  {
     id: 'evaluations-e6c1-canonical-evidence-completeness-2026-08-12',
     version: '4.9.893',
     title: 'V4.9.893 — Evaluations E6C.1: canonical coverage + lineage evidence completeness',

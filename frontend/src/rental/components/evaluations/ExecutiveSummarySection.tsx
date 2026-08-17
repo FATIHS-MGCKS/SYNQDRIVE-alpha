@@ -20,6 +20,7 @@ export function ExecutiveSummarySection({
 }) {
   const { t, locale } = useLanguage();
   return (
+    <div id="evaluations-section-executive" className="scroll-mt-24">
     <EvaluationsSectionShell
       titleKey="evaluations.section.executive"
       async={summary}
@@ -70,5 +71,6 @@ export function ExecutiveSummarySection({
         );
       }}
     </EvaluationsSectionShell>
+    </div>
   );
 }

@@ -28,6 +28,7 @@
       "@synq/evaluations-metrics/*": ["../shared/evaluations-metrics/*"],
       "@synq/evaluations-periods/*": ["../shared/evaluations-periods/*"],
       "@synq/evaluations-finance/*": ["../shared/evaluations-finance/*"],
+      "@synq/evaluations-recommendations/*": ["../shared/evaluations-recommendations/*"],
       "@synq/money/*": ["../shared/money/*"]
     }
   },
@@ -36,6 +37,7 @@
     "../shared/evaluations-metrics/**/*.ts",
     "../shared/evaluations-periods/**/*.ts",
     "../shared/evaluations-finance/**/*.ts",
+    "../shared/evaluations-recommendations/**/*.ts",
     "../shared/money/**/*.ts"
   ],
   "exclude": ["src/**/*.test.ts"]

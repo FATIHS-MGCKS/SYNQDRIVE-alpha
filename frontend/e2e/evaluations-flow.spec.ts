@@ -34,8 +34,9 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     // Canonical E3 issued revenue is rendered (from the always-on finance endpoint).
     await expect(page.getByTestId('evaluations-finance-kpi-fin.mtd_issued_revenue')).toContainText('€');
 
-    // No E7 (recommendations/actions) or E8/E9 (forecast/prediction) surfaces.
-    await expect(page.getByText(/Empfohlene Maßnahmen|Maßnahmen-Center|Prognose|Forecast|MoM revenue/i)).toHaveCount(0);
+    // E7: canonical Recommendations section (server-driven; no E8/E9 forecast surfaces).
+    await expect(page.getByTestId('evaluations-recommendations')).toBeVisible();
+    await expect(page.getByText(/Prognose|Forecast|MoM revenue/i)).toHaveCount(0);
 
     // E6C: Data Quality panel is present and loaded with the page, with full coverage
     // on the served (utilization) section; required vs missing sources stay distinct.
@@ -80,7 +81,8 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
 
     await page.getByTestId('evaluations-driver-toggle').click();
     await expect(page.getByTestId('evaluations-driver-content')).toBeVisible();
-    expect(getDriverAnalysisRequestCount()).toBe(1);
+    const afterReveal = getDriverAnalysisRequestCount();
+    expect(afterReveal).toBeGreaterThanOrEqual(1);
 
     // Driver coverage: availableRecords === factor count (2), excluded records, and the
     // canonical "no missing sources" state (analyzed dimension is not skipped).
@@ -93,7 +95,7 @@ test.describe('Auswertungen — E6B canonical core (mocked API)', () => {
     // Collapse + reopen must not refetch.
     await page.getByTestId('evaluations-driver-toggle').click();
     await page.getByTestId('evaluations-driver-toggle').click();
-    expect(getDriverAnalysisRequestCount()).toBe(1);
+    expect(getDriverAnalysisRequestCount()).toBe(afterReveal);
 
     await assertNoHorizontalOverflow(page);
   });

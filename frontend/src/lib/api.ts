@@ -6003,6 +6003,17 @@ export const api = {
       requestResult<import('../rental/lib/evaluations/evaluations-canonical.types').EvaluationsDriverInfluenceSection>(
         `/organizations/${orgId}/evaluations/analytics/insights/driver-analysis${buildEvaluationsAnalyticsQuery(req)}`,
       ),
+
+    /** Canonical E7 recommendations / actions (status-aware transport). */
+    analyticsRecommendations: (
+      orgId: string,
+      req?: { periodType?: string; stationIds?: readonly string[] | null },
+    ) =>
+      requestResult<
+        import('@synq/evaluations-recommendations/evaluations-recommendations.contract').EvaluationsRecommendationsResponse
+      >(
+        `/organizations/${orgId}/evaluations/analytics/insights/recommendations${buildEvaluationsAnalyticsQuery(req)}`,
+      ),
   },
   invoices: {
     list: (orgId: string, params?: { type?: string; status?: string; direction?: string }) => {

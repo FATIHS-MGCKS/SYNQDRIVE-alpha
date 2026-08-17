@@ -33,12 +33,14 @@ import {
   fetchEvaluationsInsightsSummary,
   fetchEvaluationsQuality,
   fetchEvaluationsDriverInfluence,
+  fetchEvaluationsRecommendations,
 } from '../lib/evaluations/evaluations-analytics-client';
 import type {
   EvaluationsAnalyticsInsightsSummary,
   EvaluationsQualityReport,
   EvaluationsDriverInfluenceSection,
 } from '../lib/evaluations/evaluations-canonical.types';
+import type { EvaluationsRecommendationsResponse } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
 
 export interface EvaluationsCanonicalAnalytics {
   readonly summary: EvaluationsAsyncResult<EvaluationsAnalyticsInsightsSummary>;
@@ -118,4 +120,12 @@ export function useEvaluationsDriverInfluence(
   req?: EvaluationsAnalyticsRequest,
 ): EvaluationsAsyncResult<EvaluationsDriverInfluenceSection> {
   return useCanonicalResource('driver-analysis', organizationId, req, fetchEvaluationsDriverInfluence);
+}
+
+/** Canonical E7 recommendations — period-aware query key (unlike finance MTD lock). */
+export function useEvaluationsRecommendations(
+  organizationId: string | null | undefined,
+  req?: EvaluationsAnalyticsRequest,
+): EvaluationsAsyncResult<EvaluationsRecommendationsResponse> {
+  return useCanonicalResource('recommendations', organizationId, req, fetchEvaluationsRecommendations);
 }

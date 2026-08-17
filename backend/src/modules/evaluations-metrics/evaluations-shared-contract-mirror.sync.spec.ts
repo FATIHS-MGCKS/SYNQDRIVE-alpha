@@ -85,6 +85,19 @@ describe('evaluations shared contract backend build mirror', () => {
     }
   });
 
+  it('keeps the E7 recommendations contracts byte-identical', () => {
+    for (const fileName of [
+      'evaluations-recommendations.contract.ts',
+      'evaluations-recommendations.constants.ts',
+      'evaluations-recommendations-id.ts',
+      'evaluations-recommendations-action-target.ts',
+    ]) {
+      expect(
+        readRepositoryFile(`backend/src/synq/evaluations-recommendations/${fileName}`),
+      ).toBe(readRepositoryFile(`shared/evaluations-recommendations/${fileName}`));
+    }
+  });
+
   it('keeps shared time independent from evaluations contracts', () => {
     expect(
       readRepositoryFile('backend/src/shared/time/iana-timezone.util.ts'),

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EvaluationsInsightsService } from '../e4/evaluations-insights.service';
+import type { EvaluationsAnalyticsInsightsSummary } from '../e4/contracts/evaluations-insights.contract';
 import type { EvaluationsAuthorizedAnalyticsScope } from '@synq/evaluations-analytics/evaluations-analytics.contract';
 import type {
   EvaluationsMetricStatus,
@@ -59,7 +60,18 @@ export class EvaluationsQualityService {
   ): Promise<EvaluationsQualityReport> {
     const generatedAt = now ?? new Date();
     const summary = await this.insights.getSummary(scope, actor, generatedAt);
+    return this.buildQualityReportFromSummary(summary, scope, generatedAt);
+  }
 
+  /**
+   * Builds the E5 quality report from an already-authoritative E4 summary.
+   * E7 reuses this path to avoid a second `getSummary()` call.
+   */
+  async buildQualityReportFromSummary(
+    summary: EvaluationsAnalyticsInsightsSummary,
+    scope: EvaluationsAuthorizedAnalyticsScope,
+    generatedAt: Date,
+  ): Promise<EvaluationsQualityReport> {
     const emptyRange: E5FreshnessRange = { newestMs: null, oldestMs: null };
 
     // Station-scoped requests never trigger org-wide freshness/lineage reads: the
