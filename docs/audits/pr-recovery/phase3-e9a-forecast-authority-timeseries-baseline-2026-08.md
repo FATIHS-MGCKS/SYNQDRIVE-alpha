@@ -397,7 +397,7 @@ E9B_READINESS = NOT_READY
 | Field | Value |
 |-------|-------|
 | E9A_ENTRY_HEAD_SHA | `2284f4ee8b367468356a54eb6670c48dd6c4dd25` |
-| E9A_FINAL_HEAD_SHA | _(set at push)_ |
-| E9A_COMMIT_SHA | _(set at push)_ |
+| E9A_FINAL_HEAD_SHA | `844f44ba` |
+| E9A_COMMIT_SHA | `844f44ba` |
 | E9_PR_NUMBER | _(set at PR create)_ |
 | PR_IS_DRAFT | true |

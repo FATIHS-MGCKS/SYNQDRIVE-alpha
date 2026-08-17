@@ -3,6 +3,9 @@
   "generatedAt": "2026-08-17T22:30:00Z",
   "entry": {
     "E9A_ENTRY_MAIN_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
+    "E9A_ENTRY_HEAD_SHA": "2284f4ee8b367468356a54eb6670c48dd6c4dd25",
+    "E9A_FINAL_HEAD_SHA": "844f44ba",
+    "E9A_COMMIT_SHA": "844f44ba",
     "WORKTREE_CLEAN_AT_ENTRY": true,
     "branch": "integration/evaluations-e9-forecast-ui-2026-08",
     "E8_RUNTIME_DEPENDENCY_ALLOWED": false,
