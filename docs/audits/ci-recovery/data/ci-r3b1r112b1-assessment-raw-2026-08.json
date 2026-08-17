@@ -1,0 +1,361 @@
+{
+  "phase": "CI-R3B1R.1.2b.1",
+  "generated_at": "2026-08-16T18:47:03+00:00",
+  "result": "SUCCESS",
+  "supersedes": {
+    "prior_phase": "CI-R3B1R.1.2b",
+    "prior_artifact_md": "docs/audits/pr-recovery/R3B1R112B-CANONICAL-RETRY-PATH-FROZEN-PREFLIGHT.md",
+    "prior_artifact_json": "docs/audits/ci-recovery/data/ci-r3b1r112b-assessment-raw-2026-08.json",
+    "r3b1r112b_evidence": "SUPERSEDED_BY_FAIL_CLOSED_REPLAY"
+  },
+  "r3b1r112b_evidence_defects_acknowledged": true,
+  "r3b1r112b_evidence_defects": {
+    "A": "Broken migration-line regex used r'^\\d{{14}}_' (invalid / non-matching) instead of ^\\d{14}_",
+    "B": "Parser fallback substituted expected bridge names from arbitrary output text",
+    "C": "would_deploy_set hardcoded count=2 and bridge names without independent derivation",
+    "D": "GIT_STATUS_BEFORE_ENV emitted but omitted from meta parser; SUCCESS despite dirty clone signal",
+    "E": "entry.worktree_clean hardcoded True instead of measured git status --porcelain",
+    "F": "Non-root secret probe printed synqdrive_admin_readable=false on both success and PermissionError"
+  },
+  "tooling_scope": {
+    "application_runtime_changed": 0,
+    "backend_runtime_changed": 0,
+    "migration_source_changed": 0,
+    "schema_prisma_changed": false,
+    "audit_tool_retained": "docs/audits/ci-recovery/tooling/ci_r3b1r112b_run_preflight.py"
+  },
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "pr_1054_head_sha": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "entry_head_equals_remote_pr_head": true,
+    "backend_tree_sha_at_entry": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "entry_worktree_clean_measured": true,
+    "entry_worktree_porcelain_lines": [],
+    "entry_worktree_clean": true,
+    "worktree_clean_at_entry": true
+  },
+  "frozen_executable_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+  "final_pr_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+  "backend_tree_unchanged_by_docs_only_commit_scope": true,
+  "status_parser_negative_tests": {
+    "status_parser_negative_tests_total": 6,
+    "status_parser_false_acceptances": 0,
+    "cases": [
+      {
+        "case_id": "case1_exact_two_bridges",
+        "expected_pass": true,
+        "actual_pass": true,
+        "parser_valid": true,
+        "status_pending_names": [
+          "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+          "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+        ]
+      },
+      {
+        "case_id": "case2_two_bridges_plus_unknown",
+        "expected_pass": false,
+        "actual_pass": true,
+        "parser_valid": true,
+        "status_pending_names": [
+          "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+          "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+          "20990101010101_synthetic_unknown_migration"
+        ]
+      },
+      {
+        "case_id": "case3_one_bridge_missing",
+        "expected_pass": false,
+        "actual_pass": true,
+        "parser_valid": true,
+        "status_pending_names": [
+          "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge"
+        ]
+      },
+      {
+        "case_id": "case4_malformed_pending_section",
+        "expected_pass": false,
+        "actual_pass": true,
+        "parser_valid": false,
+        "status_pending_names": null
+      },
+      {
+        "case_id": "case5_unknown_database_only",
+        "expected_pass": false,
+        "actual_pass": true,
+        "parser_valid": true,
+        "status_pending_names": [
+          "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+          "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+        ]
+      },
+      {
+        "case_id": "case6_status_command_failure",
+        "expected_pass": false,
+        "actual_pass": true,
+        "parser_valid": false,
+        "status_pending_names": null
+      }
+    ],
+    "pass": true
+  },
+  "fail_open_expected_value_fallbacks": 0,
+  "secret_permissions": {
+    "env_file_path": "/opt/synqdrive/shared/backend.env",
+    "owner": "root",
+    "group": "root",
+    "mode": "600",
+    "secret_permission_configuration_canonical": true,
+    "secret_permission_change_required": false,
+    "synqdrive_admin_env_readable": false,
+    "root_env_readable": true,
+    "database_url_present": true,
+    "database_url_length_gt_zero": true
+  },
+  "replay_a": {
+    "label": "replay-a",
+    "REQUESTED_RETRY_SOURCE_SHA": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "ACTUAL_RETRY_SOURCE_SHA": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "ACTUAL_RETRY_BACKEND_TREE_SHA": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "GIT_STATUS_BEFORE_ENV": "0",
+    "NO_ENV_BEFORE": "true",
+    "VALIDATE_RC": "0",
+    "STATUS_RC": "1",
+    "fresh_retry_clone_git_status_count_before_runtime": 0,
+    "fresh_retry_clone_clean_before_runtime": true,
+    "no_env_before_runtime": true,
+    "requested_matches_actual_sha": true,
+    "prisma_validate_exit_code": 0,
+    "prisma_validate_pass": true,
+    "prisma_status_command_executed": true,
+    "sanitized_status_excerpt": "\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n308 migrations found in prisma/migrations\nYour local migration history and the migrations table from your database are different:\n\nThe last common migration is: 20260816110731_ci_r3b_production_history_tail_reconciliation\n\nThe migrations have not yet been applied:\n20260816152200_ci_r3b1r11_organizations_short_code_history_bridge\n20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge\n\nThe migrations from the database are not found locally in prisma/migrations:\n20260723230000_privacy_domain_foundation\n20260723230000_privacy_domain_foundation\n20260723233000_legal_basis_assessment_professional\n20260723234500_consent_provider_sharing_domains\n20260724000000_enforcement_policy_relational_scopes\n20260724010000_data_authorization_legacy_migration_tracking\n20260724020000_privacy_policy_lifecycle\n20260724030000_data_processing_review_workflow\n20260724040000_data_authorization_audit_logging\n20260724050000_data_authorization_revocation_workflow\n20260724060000_data_authorization_deny_switch\n20260724070000_provider_grant_webhook_idempotency\n20260724080000_revocation_queue_control\n20260724090000_processing_activity_register\n20260724100000_dpia_workflow\n20260724110000_processor_dpa_management\n20260724120000_retention_deletion_legal_hold\n20260724130000_compliance_evidence\nSTATUS_RC=1\n",
+    "status_pending_set": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "independent_would_deploy_set": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "parsed_status": {
+      "parser_valid": true,
+      "database_only_parse_valid": true,
+      "status_rc": 1,
+      "status_pending_names": [
+        "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+        "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+      ],
+      "status_pending_count": 2,
+      "status_database_only_names": [
+        "20260723230000_privacy_domain_foundation",
+        "20260723233000_legal_basis_assessment_professional",
+        "20260723234500_consent_provider_sharing_domains",
+        "20260724000000_enforcement_policy_relational_scopes",
+        "20260724010000_data_authorization_legacy_migration_tracking",
+        "20260724020000_privacy_policy_lifecycle",
+        "20260724030000_data_processing_review_workflow",
+        "20260724040000_data_authorization_audit_logging",
+        "20260724050000_data_authorization_revocation_workflow",
+        "20260724060000_data_authorization_deny_switch",
+        "20260724070000_provider_grant_webhook_idempotency",
+        "20260724080000_revocation_queue_control",
+        "20260724090000_processing_activity_register",
+        "20260724100000_dpia_workflow",
+        "20260724110000_processor_dpa_management",
+        "20260724120000_retention_deletion_legal_hold",
+        "20260724130000_compliance_evidence"
+      ],
+      "status_database_only_count": 17,
+      "status_unexpected_pending_names": [],
+      "status_missing_expected_pending_names": [],
+      "unexplained_database_only_migrations": 0,
+      "unexplained_database_only_names": [],
+      "status_pending_exactly_expected": true
+    }
+  },
+  "replay_b": {
+    "label": "replay-b",
+    "REQUESTED_RETRY_SOURCE_SHA": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "ACTUAL_RETRY_SOURCE_SHA": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "ACTUAL_RETRY_BACKEND_TREE_SHA": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "GIT_STATUS_BEFORE_ENV": "0",
+    "NO_ENV_BEFORE": "true",
+    "VALIDATE_RC": "0",
+    "STATUS_RC": "1",
+    "fresh_retry_clone_git_status_count_before_runtime": 0,
+    "fresh_retry_clone_clean_before_runtime": true,
+    "no_env_before_runtime": true,
+    "requested_matches_actual_sha": true,
+    "prisma_validate_exit_code": 0,
+    "prisma_validate_pass": true,
+    "prisma_status_command_executed": true,
+    "sanitized_status_excerpt": "\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n308 migrations found in prisma/migrations\nYour local migration history and the migrations table from your database are different:\n\nThe last common migration is: 20260816110731_ci_r3b_production_history_tail_reconciliation\n\nThe migrations have not yet been applied:\n20260816152200_ci_r3b1r11_organizations_short_code_history_bridge\n20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge\n\nThe migrations from the database are not found locally in prisma/migrations:\n20260723230000_privacy_domain_foundation\n20260723230000_privacy_domain_foundation\n20260723233000_legal_basis_assessment_professional\n20260723234500_consent_provider_sharing_domains\n20260724000000_enforcement_policy_relational_scopes\n20260724010000_data_authorization_legacy_migration_tracking\n20260724020000_privacy_policy_lifecycle\n20260724030000_data_processing_review_workflow\n20260724040000_data_authorization_audit_logging\n20260724050000_data_authorization_revocation_workflow\n20260724060000_data_authorization_deny_switch\n20260724070000_provider_grant_webhook_idempotency\n20260724080000_revocation_queue_control\n20260724090000_processing_activity_register\n20260724100000_dpia_workflow\n20260724110000_processor_dpa_management\n20260724120000_retention_deletion_legal_hold\n20260724130000_compliance_evidence\nSTATUS_RC=1\n",
+    "status_pending_set": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "independent_would_deploy_set": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "parsed_status": {
+      "parser_valid": true,
+      "database_only_parse_valid": true,
+      "status_rc": 1,
+      "status_pending_names": [
+        "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+        "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+      ],
+      "status_pending_count": 2,
+      "status_database_only_names": [
+        "20260723230000_privacy_domain_foundation",
+        "20260723233000_legal_basis_assessment_professional",
+        "20260723234500_consent_provider_sharing_domains",
+        "20260724000000_enforcement_policy_relational_scopes",
+        "20260724010000_data_authorization_legacy_migration_tracking",
+        "20260724020000_privacy_policy_lifecycle",
+        "20260724030000_data_processing_review_workflow",
+        "20260724040000_data_authorization_audit_logging",
+        "20260724050000_data_authorization_revocation_workflow",
+        "20260724060000_data_authorization_deny_switch",
+        "20260724070000_provider_grant_webhook_idempotency",
+        "20260724080000_revocation_queue_control",
+        "20260724090000_processing_activity_register",
+        "20260724100000_dpia_workflow",
+        "20260724110000_processor_dpa_management",
+        "20260724120000_retention_deletion_legal_hold",
+        "20260724130000_compliance_evidence"
+      ],
+      "status_database_only_count": 17,
+      "status_unexpected_pending_names": [],
+      "status_missing_expected_pending_names": [],
+      "unexplained_database_only_migrations": 0,
+      "unexplained_database_only_names": [],
+      "status_pending_exactly_expected": true
+    }
+  },
+  "deterministic_replay": {
+    "replay_a_source_sha": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "replay_b_source_sha": "14a48b002d3221c57a4717625645f2f7b47ac093",
+    "replay_a_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "replay_b_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "source_sha_match": true,
+    "backend_tree_sha_match": true,
+    "status_pending_sets_match": true,
+    "independent_sets_match": true,
+    "pass": true
+  },
+  "bridge_sha_freeze": {
+    "bridge_sha_mismatches": 0,
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+      "expected_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "actual_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "sha_match": true
+    },
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+      "expected_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "actual_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "sha_match": true
+    },
+    "source_evidence_sha_mismatches": 0
+  },
+  "independent_would_deploy": {
+    "independent_would_deploy_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "independent_would_deploy_count": 2,
+    "independent_calculation_valid": true,
+    "unexpected_independent_would_deploy_names": [],
+    "missing_expected_independent_names": [],
+    "source_migration_count": 308,
+    "finished_ledger_unique_count": 323
+  },
+  "status_vs_independent": {
+    "status_pending_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "independent_would_deploy_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "status_vs_independent_set_match": true
+  },
+  "four_object_parity": {
+    "live_short_code_exact": true,
+    "live_short_code_index_exact": true,
+    "live_drivetype_exact": true,
+    "live_vehicles_drive_type_exact": true,
+    "pass": true
+  },
+  "ledger_baseline": {
+    "ledger_row_count": 339,
+    "ledger_finished_count": 323,
+    "ledger_failed_count": 16,
+    "ledger_incomplete_count": 0,
+    "ledger_fingerprint": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "bridge_1_ledger_row_exists": false,
+    "bridge_2_ledger_row_exists": false,
+    "new_failed_rows_since_r3b1r112b": 0
+  },
+  "production_immutability": {
+    "ledger_fingerprint_start": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "ledger_fingerprint_end": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_start": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_fingerprint_end": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "ledger_fingerprint_unchanged": true,
+    "catalog_fingerprint_unchanged": true,
+    "production_database_mutations_r3b1r112b1": 0,
+    "production_ledger_mutations_r3b1r112b1": 0,
+    "production_catalog_mutations_r3b1r112b1": 0,
+    "production_immutable_r3b1r112b1": true
+  },
+  "r3b_m252_parity": {
+    "r3b_objects": "19/19",
+    "r3b_tables": "9/9",
+    "r3b_enums": "10/10",
+    "r3b_properties": "54/54",
+    "m252_semantic_mismatches": 0,
+    "r3b_pass": true,
+    "m252_pass": true
+  },
+  "frozen_retry_command": {
+    "retry_execution_user": "root",
+    "retry_execution_wrapper": "sudo bash -lc",
+    "env_source": "/opt/synqdrive/shared/backend.env",
+    "env_loading_steps": [
+      "set -a",
+      "source /opt/synqdrive/shared/backend.env",
+      "set +a",
+      "set -u"
+    ],
+    "frozen_executable_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "workdir_path_placeholder": "<EXACT_RETRY_BACKEND_PATH>",
+    "workdir_path_pattern": "/tmp/synqdrive-r3b1r112-retry-<UTC_TIMESTAMP>/repo/backend",
+    "command": "npm run prisma:migrate:deploy",
+    "retry_env_file_mechanism": "EXPLICIT_SOURCE_ONLY",
+    "no_temp_env_symlink_required": true,
+    "sanitized_command_template": "sudo bash -lc '\nset -eo pipefail\nset -a\nsource /opt/synqdrive/shared/backend.env\nset +a\nset -u\ncd \"<EXACT_RETRY_BACKEND_PATH>\"\nnpm run prisma:migrate:deploy\n'",
+    "retry_command_sha256": "192edfa3eb4dc110c788e7fca80f4478b55a2a325e71899a725dd67f08dbfcbc"
+  },
+  "no_deploy_boundary": {
+    "prisma_migrate_deploy_executed": false,
+    "pr1054_merged": false,
+    "r3b1r2_started": false
+  },
+  "machine_status": {
+    "CI_R3B1R112B1_FAIL_CLOSED_RETRY_PREFLIGHT_EVIDENCE_REPAIR_COMPLETED": true,
+    "R3B1R112B_EVIDENCE": "SUPERSEDED_BY_FAIL_CLOSED_REPLAY",
+    "RETRY_PREFLIGHT_AUTHORITY": "INDEPENDENTLY_DERIVED_AND_FAIL_CLOSED",
+    "EXECUTION_ENV_REMEDIATION": "CANONICAL_ROOT_SUDO_PATH_VERIFIED",
+    "DATABASE_STATE": "UNCHANGED",
+    "R3B1R112_RETRY_READINESS": "READY_FOR_SEPARATE_EXPLICIT_PRODUCTION_RETRY_AUTHORIZATION",
+    "R3B1R12_READINESS": "NOT_READY",
+    "PR1054_MERGE_READINESS": "BLOCKED"
+  }
+}

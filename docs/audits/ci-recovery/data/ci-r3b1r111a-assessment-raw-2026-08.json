@@ -1,0 +1,136 @@
+{
+  "phase": "CI-R3B1R.1.1a",
+  "generated_at": "2026-08-16T15:15:00+00:00",
+  "supersedes_partially": "docs/audits/ci-recovery/data/ci-r3b1r11-assessment-raw-2026-08.json",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "e47bf35a08e7acd719c17929406faa1a867b0bad",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean_at_entry": true
+  },
+  "r3b1r11_sha_discrepancy": {
+    "original_short_code_only_sha256": "00511c4d29b7b16ccc660c68bf27b8021c19c857eba85aaa39af1c42631fc713",
+    "bundled_short_code_plus_drive_type_sha256": "7612396773727d3153baae5a3f547f592d865dbcd1609df7b2b987f49aeb599d",
+    "markdown_reported_at_end_of_r3b1r11": "7612396773727d3153baae5a3f547f592d865dbcd1609df7b2b987f49aeb599d",
+    "raw_json_reported_at_end_of_r3b1r11": "7612396773727d3153baae5a3f547f592d865dbcd1609df7b2b987f49aeb599d",
+    "resolution": "R3B1R.1.1 bundled undocumented DriveType DDL; R3B1R.1.1a split and re-canonicalized"
+  },
+  "canonical_bridge_shas": {
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": "a483d6ca2791c9c917ddd28c54ce04126dc4369d9ebfbde31ee37ca992059a30",
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": "5531600e0d864eb28fc3b838301a869acaf0cc677ac3c2ad743e9792994aed99"
+  },
+  "bridge_effects": [
+    {
+      "migration": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "effect": "ADD COLUMN organizations.short_code TEXT nullable"
+    },
+    {
+      "migration": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "effect": "CREATE UNIQUE INDEX organizations_short_code_key ON organizations(short_code)"
+    },
+    {
+      "migration": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+      "effect": "CREATE TYPE public.DriveType ENUM (FWD,RWD,AWD,FOUR_WD)"
+    },
+    {
+      "migration": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+      "effect": "ADD COLUMN vehicles.drive_type public.DriveType nullable"
+    }
+  ],
+  "bridge_effect_count": 4,
+  "short_code": {
+    "in_schema": true,
+    "created_by_existing_migration": false,
+    "history_gap": true,
+    "live_present": true,
+    "expected_catalog_mutations_on_production": 0
+  },
+  "drive_type": {
+    "enum_in_schema": true,
+    "column_in_schema": true,
+    "enum_created_by_existing_migration": false,
+    "column_created_by_existing_migration": false,
+    "history_gap": true,
+    "drive_type_history_bridge_required": true,
+    "live_drivetype_exists": true,
+    "live_drivetype_schema": "public",
+    "live_drivetype_labels_in_order": [
+      "FWD",
+      "RWD",
+      "AWD",
+      "FOUR_WD"
+    ],
+    "live_vehicles_drive_type_exists": true,
+    "live_vehicles_drive_type_udt_schema": "public",
+    "live_vehicles_drive_type_udt_name": "DriveType",
+    "live_vehicles_drive_type_nullable": "YES",
+    "live_vehicles_drive_type_default": null,
+    "origin_provenance": "Present in schema.prisma from initial monorepo; absent from migration tree; live Production catalog contains exact enum + nullable column",
+    "expected_catalog_mutations_on_production": 0
+  },
+  "ephemeral_recovery": {
+    "default_enabled": false,
+    "explicit_opt_in_required": true,
+    "production_uses_resilient_helper": false,
+    "production_sets_ephemeral_flag": false
+  },
+  "historical_m252": {
+    "source_sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "production_ledger_checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "applied_historical_migrations_rewritten_unauthorized": 0
+  },
+  "production": {
+    "mutations_r3b1r111a": 0,
+    "immutable": true,
+    "ledger_fingerprint_before": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "ledger_fingerprint_after": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_before": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_fingerprint_after": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58"
+  },
+  "pending_set": [
+    {
+      "position": 1,
+      "migration_name": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "sha256": "a483d6ca2791c9c917ddd28c54ce04126dc4369d9ebfbde31ee37ca992059a30",
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    },
+    {
+      "position": 2,
+      "migration_name": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+      "sha256": "5531600e0d864eb28fc3b838301a869acaf0cc677ac3c2ad743e9792994aed99",
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    }
+  ],
+  "tests": {
+    "empty_database_deploy_pass": true,
+    "legacy_database_deploy_pass": true,
+    "backend_integration_pass": true,
+    "postgres_invariants_pass": true,
+    "m252_negative_tests": 7,
+    "short_code_semantic_negative_tests": 7,
+    "drive_type_semantic_negative_tests": 6,
+    "ephemeral_gate_tests": 3,
+    "golden_tests_pass": 17,
+    "migration_related_failed": 0,
+    "dependency_findings_high": 10,
+    "dependency_findings_pr_introduced": 0,
+    "dependency_graph_changed_by_remediation": false,
+    "main_has_same_findings": true,
+    "local_dependency_audit_failed": true
+  },
+  "source_evidence_mismatches": 0,
+  "machine_status": {
+    "CI_R3B1R111A_BRIDGE_SCOPE_EVIDENCE_FAIL_CLOSED_CLOSURE_COMPLETED": true,
+    "BRIDGE_SOURCE_AUTHORITY": "FROZEN_AND_EXACT",
+    "BRIDGE_EXPECTED_PRODUCTION_CATALOG_MUTATIONS": 0,
+    "NEXT_PHASE": "R3B1R1_2_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_REQUIRES_SEPARATE_AUTHORIZATION",
+    "R3B1R12_READINESS": "NOT_READY_PENDING_PRODUCTION_HISTORY_BRIDGE",
+    "PR1054_MERGE_READINESS": "BLOCKED"
+  },
+  "final_head_sha": "66048d93ee94674577b5ff0a2f027f5fdba539d2"
+}

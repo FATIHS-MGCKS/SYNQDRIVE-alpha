@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P",
+  "ledger_fingerprint_before": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+  "ledger_fingerprint_after": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+  "catalog_fingerprint_before": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+  "catalog_fingerprint_after": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+  "production_mutation_count": 0,
+  "PRODUCTION_IMMUTABLE": true
+}

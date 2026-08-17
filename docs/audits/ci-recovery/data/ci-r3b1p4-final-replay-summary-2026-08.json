@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P.4",
+  "captured_at": "2026-08-16T10:09:00+00:00",
+  "result": "GO",
+  "final_status": "CI_R3B1P4_FINAL_PREEXISTING_HARNESS_FROZEN_REPLAY_COMPLETED",
+  "r3b1p_acceptance": "R3B1P_ACCEPTED_FINAL",
+  "r3b1q_readiness": "R3B1Q_READY_SEPARATELY_AUTHORIZED_PRODUCTION_EXECUTION",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "ENTRY_HEAD_SHA": "9bdaa72f5e22f43248bef4797c807d6d4eb48f4d",
+    "PR_1054_HEAD_SHA": "9bdaa72f5e22f43248bef4797c807d6d4eb48f4d",
+    "PR_1054_STATE": "OPEN",
+    "PR_1054_DRAFT": true,
+    "WORKTREE_CLEAN_AT_ENTRY": true,
+    "R3B1P3_ORCHESTRATOR_ALREADY_EXISTS_AT_ENTRY": true,
+    "orchestrator_path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+    "orchestrator_git_blob_sha": "af0ee0829e40479f55026420d03295fa2176f9a5",
+    "orchestrator_sha256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+    "R3B1P2_REMEDIATION_SHA": "db8799d4"
+  },
+  "harness": {
+    "FROZEN_HARNESS_FILE_COUNT": 61,
+    "ORCHESTRATOR_FROZEN_AT_ENTRY": true,
+    "FROZEN_HARNESS": true,
+    "HARNESS_FILES_CHANGED_DURING_R3B1P4": 0,
+    "EVALUATOR_CHANGED_DURING_R3B1P4": false,
+    "ORCHESTRATOR_CHANGED_DURING_R3B1P4": false
+  },
+  "orchestrator_execution": {
+    "command": "python3 docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+    "cwd": "docs/audits/ci-recovery/tooling",
+    "EXIT_CODE": 0,
+    "orchestrator_unmodified": true
+  },
+  "local_suites": {
+    "GOLDEN_TOTAL": 169,
+    "GOLDEN_PASSED": 169,
+    "GOLDEN_FAILED": 0,
+    "GOLDEN_SKIPPED": 0,
+    "P2_TOTAL": 47,
+    "P2_PASSED": 47,
+    "P2_FAILED": 0,
+    "P2_SKIPPED": 0,
+    "P1_REGRESSION_TOTAL": 3,
+    "P1_REGRESSION_BLOCKED": 3,
+    "P1_REGRESSION_FALSE_POSITIVES": 0
+  },
+  "live_production": {
+    "LIVE_PRODUCTION_ACCESS": true,
+    "FRESH_LIVE_PRODUCTION_SNAPSHOT": true,
+    "PRODUCTION_TARGET_CONFIRMED": true,
+    "postgresql_version": "PostgreSQL 16.14",
+    "database_name": "synqdrive",
+    "instance_fingerprint_sha256": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+    "LEDGER_FINGERPRINT_BEFORE": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+    "LEDGER_FINGERPRINT_AFTER": "6fcda6dc1f83b15d4b70d7be571bfdf8bd0a78b5f1eed7b3f7410ee70be237a7",
+    "CATALOG_FINGERPRINT_BEFORE": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+    "CATALOG_FINGERPRINT_AFTER": "38063aba14a7a21e464a5d1aacdeb12de5b65f4a127f43056a746766bfaa32f7",
+    "PRODUCTION_MUTATIONS": 0,
+    "PRODUCTION_IMMUTABLE": true,
+    "fresh_live_diff_path": "docs/audits/ci-recovery/data/ci-r3b1p3-live-production-prisma-diff-2026-08.sql",
+    "fresh_live_diff_regenerated_at": "2026-08-16T10:09:00+00:00",
+    "fresh_live_diff_blob_sha": "10863a1663bb1f6817a338f33454b94b31492719"
+  },
+  "live_classification": {
+    "LIVE_TOTAL_DIFF": 399,
+    "LIVE_PRE_EXISTING": 394,
+    "LIVE_AUTHORIZED_STRATEGY": 5,
+    "LIVE_R3B_SCOPE": 0,
+    "LIVE_M252_SCOPE": 0,
+    "LIVE_UNKNOWN_SCOPE": 0,
+    "LIVE_NEW_STRATEGY_DRIFT": 0,
+    "LIVE_UNATTRIBUTED": 0
+  },
+  "authorized_strategy": {
+    "AUTHORIZED_STRATEGY_LEGITIMATE_TOTAL": 5,
+    "AUTHORIZED_STRATEGY_LEGITIMATE_PASSED": 5,
+    "AUTHORIZED_STRATEGY_FALSE_POSITIVES": 0,
+    "AUTHORIZED_STRATEGY_AMBIGUOUS_ACCEPTANCES": 0,
+    "NEW_DRIFT_MISCLASSIFIED_AS_PRE_EXISTING": 0
+  },
+  "diff_reconciliation": {
+    "r3b1o_total_operations": 393,
+    "live_total_operations": 399,
+    "delta": 6,
+    "HISTORICAL_TO_CURRENT_DIFF_FULLY_EXPLAINED": true
+  },
+  "r3b_parity": {
+    "objects": "19/19",
+    "tables": "9/9",
+    "enums": "10/10",
+    "properties": "54/54",
+    "pass": true
+  },
+  "m252_pre_execution": {
+    "M252_PRE_EXECUTION_PASS": true,
+    "m252_table_absent": true
+  },
+  "resolve": {
+    "R3B1G": {
+      "migration_name": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "INTENDED_FUTURE_RESOLVE_FLAG": "--applied",
+      "R3B1G_RESOLVE_UNAMBIGUOUS": true
+    },
+    "R3B1I": {
+      "migration_name": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "INTENDED_FUTURE_RESOLVE_FLAG": "--applied",
+      "R3B1I_RESOLVE_UNAMBIGUOUS": true
+    }
+  },
+  "pending_migrations": {
+    "NORMAL_PENDING_MIGRATION_COUNT": 21,
+    "UNEXPECTED_PENDING_MIGRATIONS": 0
+  },
+  "tail": {
+    "TAIL_MIGRATION_NAME": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+    "TAIL_TASK_COUNT": 3,
+    "TAIL_SHA_FROZEN": true,
+    "HISTORICAL_MIGRATION_REWRITES": 0
+  },
+  "stale_index_lifecycle": {
+    "STALE_INDEX_LIFECYCLE_PROVEN": true
+  },
+  "terminal_fail_closed": {
+    "TERMINAL_FAIL_CLOSED_TOTAL": 8,
+    "TERMINAL_FAIL_CLOSED_BLOCKED": 8
+  },
+  "source_change_audit": {
+    "SAFETY_CODE_FILES_CHANGED": 0,
+    "MIGRATION_FILES_CHANGED": 0,
+    "APPLICATION_FILES_CHANGED": 0
+  },
+  "blockers": []
+}

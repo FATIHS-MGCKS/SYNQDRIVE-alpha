@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4",
+  "entries": [
+    {
+      "source_file": "ci_r3b1o3_m252_exact_parity.py",
+      "sha256": "4c76e76573e7696483528f15649b57b78c66fdb83c8f3c22082522eff46ec8a3",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o3_diff_attribution.py",
+      "sha256": "5c937761b0daa86b832d579a3d65f4c6f383daf55974534cfdb347b04d005ec4",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o4_golden_tests.py",
+      "sha256": "0ba1075bb49f83e810e90c81c641f2732eb9cbf5c230fbf00fab59802776c448",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o4_terminal_gate.py",
+      "sha256": "63f2d457a450bee337213672789f58105d05e2fb34e08ea2e0a36e495026ecf6",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o4_stale_index_authority.py",
+      "sha256": "c9b1a7f6ca49bff9f21c8b33636ee9711e1d8c4982cb7da81f696243374b6cfb",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o4_tail_contract.py",
+      "sha256": "a63aa3c3e47d84a41e3154767975dd7151717668100a2babfd86f1302f834fdf",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o4_final_twin.py",
+      "sha256": "02f63f3e9b9778c71568896ef1fca7118c67554f8f4621f341005ecb566a9be4",
+      "exists": true
+    },
+    {
+      "source_file": "ci_r3b1o4_catalog_delta.py",
+      "sha256": "41436efefc75144160c9e014b80c2d0458d7cfeea695a90fae9b9cae9fe16ef1",
+      "exists": true
+    }
+  ],
+  "evidence_code_mismatch_count": 0,
+  "pass": true
+}

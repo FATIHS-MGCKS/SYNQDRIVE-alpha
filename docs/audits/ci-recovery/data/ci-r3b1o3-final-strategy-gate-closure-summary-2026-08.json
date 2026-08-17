@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3",
+  "baseline": {
+    "PRE_R3B1O3_SHA": "819d67307fb7405a0bcf62a6ea75dbb829dbd2f0",
+    "R3B1O2_REMOTE_HEAD": "819d67307fb7405a0bcf62a6ea75dbb829dbd2f0",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "WORKTREE_CLEAN": true,
+    "WORKTREE_STRICT_EMPTY": false,
+    "worktree_lines": [
+      "?? docs/audits/ci-recovery/data/ci-r3b1o3-final-strategy-gate-closure-summary-2026-08.json",
+      "?? docs/audits/ci-recovery/data/ci-r3b1o3-golden-test-coverage-2026-08.json",
+      "?? docs/audits/ci-recovery/data/ci-r3b1o3-golden-test-results-2026-08.json",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_constants.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_diff_attribution.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_final_twin.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_generate_report.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_golden_tests.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_complete_authority.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_exact_parity.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_run_audit.py",
+      "?? docs/audits/ci-recovery/tooling/ci_r3b1o3_terminal_gate.py"
+    ]
+  },
+  "prior_unmatched_operations": {
+    "expected_from_r3b1o2": 2,
+    "actual": 2,
+    "resolved": [
+      {
+        "ordinal": 137,
+        "classification": "OUT_OF_SCOPE_POSITIVELY_PROVEN",
+        "reason": "positive catalog/schema index map outside R3B universe; owner=org_invoices; proven outside R3B/M252 strategy universe"
+      },
+      {
+        "ordinal": 144,
+        "classification": "OUT_OF_SCOPE_POSITIVELY_PROVEN",
+        "reason": "positive catalog/schema index map outside R3B universe; owner=whatsapp_conversations; proven outside R3B/M252 strategy universe"
+      }
+    ]
+  },
+  "diff_attribution": {
+    "golden_operations": 1275,
+    "final_operations": 395,
+    "PRE_EXISTING_PRODUCTION_DRIFT": 393,
+    "EXPECTED_STRATEGY_DELTA": 0,
+    "OUT_OF_SCOPE_POSITIVELY_PROVEN": 2,
+    "OWNER_UNKNOWN": 0,
+    "UNRESOLVED": 0,
+    "UNATTRIBUTED": 0,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 0
+  },
+  "m252_exact": {
+    "TABLE": {
+      "pass": true,
+      "mismatches": []
+    },
+    "COLUMNS": {
+      "pass": true,
+      "mismatches": []
+    },
+    "PK": {
+      "pass": true,
+      "mismatches": []
+    },
+    "UNIQUE": {
+      "pass": true,
+      "mismatches": []
+    },
+    "COMPOSITE_INDEX": {
+      "pass": true,
+      "mismatches": []
+    },
+    "ORG_FK": {
+      "pass": true,
+      "mismatches": []
+    },
+    "MEMBERSHIP_FK": {
+      "pass": true,
+      "mismatches": []
+    },
+    "UNEXPECTED_OBJECTS": {
+      "pass": true,
+      "mismatches": []
+    }
+  },
+  "r3b": {
+    "objects": "19/19",
+    "tables": "9/9",
+    "enums": "10/10",
+    "properties": "54/54",
+    "pass": true
+  },
+  "golden_tests": {
+    "required": 60,
+    "implemented": 60,
+    "passed": 60,
+    "failed": 0,
+    "coverage_percent": 100.0,
+    "executed_before_terminal_decision": true
+  },
+  "strategy_replay": {
+    "r3b1g_resolve": true,
+    "r3b1i_resolve": true,
+    "normal_deploy": true,
+    "m252_forward": true
+  },
+  "second_deploy": {
+    "pre_second_deploy_ledger_fingerprint": "f7d08f3c36d31e7d30dc6cd9dfad95bce6cbce0ca625762f244732ec19379043",
+    "post_second_deploy_ledger_fingerprint": "f7d08f3c36d31e7d30dc6cd9dfad95bce6cbce0ca625762f244732ec19379043",
+    "pre_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+    "post_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+    "second_deploy_exit_code": 0,
+    "new_ledger_rows": 0,
+    "new_finished_rows": 0,
+    "new_failed_rows": 0,
+    "catalog_delta": false,
+    "pass": true
+  },
+  "data_risk": {
+    "DDL_SCHEMA_ONLY": 16,
+    "DATA_DEPENDENT_LOW": 6,
+    "DATA_DEPENDENT_HIGH": 0,
+    "UNKNOWN_DATA_DEPENDENCY": 0
+  },
+  "production_immutable": true,
+  "production_mutations": 0,
+  "repository_immutable": {
+    "schema_unchanged": true,
+    "migrations_unchanged": true,
+    "schema_diff_bytes": 0,
+    "migrations_diff_bytes": 0
+  },
+  "terminal_gates": {
+    "pass": true,
+    "final_status": "CI_R3B1O3_FINAL_STRATEGY_DRIFT_PARITY_GATE_CLOSURE_COMPLETED",
+    "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+    "failures": []
+  },
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "final_status": "CI_R3B1O3_FINAL_STRATEGY_DRIFT_PARITY_GATE_CLOSURE_COMPLETED",
+  "pass": true
+}

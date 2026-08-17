@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "original_checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+  "corrected_checksum": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "production_checksum_sanitized_prefix": "12bf2015a256fdd8",
+  "matches_original": true,
+  "matches_corrected": false,
+  "ledger_state": "M252_ORIGINAL_FINISHED",
+  "production_has_pre_correction_migration_history": true,
+  "ledger_rows": 2,
+  "catalog_footprint": {
+    "table_exists": false,
+    "constraints": [],
+    "indexes": [],
+    "legacy_name_artifacts": [],
+    "catalog_state": "M252_CATALOG_ABSENT",
+    "pass": true
+  }
+}

@@ -1,0 +1,1546 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-final-corrective",
+  "resolved_not_executed": [
+    "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "20260721245000_ci_r3b_iam_membership_permissions_predecessor"
+  ],
+  "executing_migration_count": 22,
+  "migrations": [
+    {
+      "migration_name": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "migration_checksum_sha256": "0b41ce77f6cfbdd83cf6bba5b3262ebe8c6c2a32893cee61d08cb14aad18e71f",
+      "classification": "NORMAL_PENDING",
+      "data_risk_classification": "DATA_DEPENDENT_LOW",
+      "data_risk_reason": "validated constraint/index DDL",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "50e20e3e19194d5ef2e7fab4b1361143dd9c80cd6a78b7d0296fb904d6a5ef97",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TripAssignmentStatus') THEN CREATE TYPE \"TripAssignmentStatus\" AS ENUM ( 'ASSIGNED_DRIVER', 'ASSIGNED_USER', 'ASSIGNED_BOOKING_CUSTOMER', 'PRIVATE_UNASSIGNED', 'UNKNOWN_ASSIG"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "52d35681bf047cbfaefc1702fdd9f5f0418359686f3bfd6c38c048958121177b",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TripAssignmentSubjectType') THEN CREATE TYPE \"TripAssignmentSubjectType\" AS ENUM ( 'DRIVER', 'USER', 'BOOKING_CUSTOMER' ); END IF; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "DO",
+          "statement_sha256": "81df0bdabb927616563c8f758bd92989a87ced655fec06d9665f4591ae2c58ee",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'DrivingEventType') THEN CREATE TYPE \"DrivingEventType\" AS ENUM ( 'HARSH_BRAKING', 'EXTREME_BRAKING', 'HARSH_ACCELERATION', 'HARSH_CORNERING', 'SPEEDING', 'IDLE_EXCESSIVE' ); "
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "DO",
+          "statement_sha256": "68afd0ee33bca263ce379aeeadc499f5a2c1c17a4ed0fb0218f1e9438b2332d0",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'BehaviorEventCategory') THEN CREATE TYPE \"BehaviorEventCategory\" AS ENUM ( 'ACCELERATION', 'BRAKING', 'ABUSE' ); END IF; END $$"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "DO",
+          "statement_sha256": "f0bbf23255e1db0499bdd5fe5de9e82b3ddc434152a129c2e348799ddf88aded",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'BehaviorEventClassification') THEN CREATE TYPE \"BehaviorEventClassification\" AS ENUM ( 'LIGHT', 'MODERATE', 'HARD', 'EXTREME', 'WARNING', 'SEVERE', 'CRITICAL' ); END IF; END "
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "bb13ce3b2d3c273df528c59c99ef3749162c52326514bd95cb1530da44836a8f",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TripSource') THEN CREATE TYPE \"TripSource\" AS ENUM ( 'V2_LIVE', 'REPAIRED' ); END IF; END $$"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "DO",
+          "statement_sha256": "6dc4bfb9c9abdd164ba1d32745a65bfaa88667ff705cf874473183eaaa547583",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TripDetectionState') THEN CREATE TYPE \"TripDetectionState\" AS ENUM ( 'RESTING', 'POSSIBLE_START', 'ACTIVE_TRIP', 'IDLE_WITHIN_TRIP', 'POSSIBLE_END', 'ENDED' ); END IF; END $$"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "DO",
+          "statement_sha256": "1306496567e6619bc9f96a286dd040687cb4001558dae77c9a7179828cde1647",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TripTrackingRunType') THEN CREATE TYPE \"TripTrackingRunType\" AS ENUM ( 'POSSIBLE_START_VALIDATION', 'ACTIVE_TRACKING', 'POSSIBLE_END_CHECK', 'END_VALIDATION', 'FINALIZATION_C"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "DO",
+          "statement_sha256": "ce96f963c4c8eca4c8e1061b0607f0db0f1da6ae0e21053fea3a67e6578255e7",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'VehicleDetectionProfile') THEN CREATE TYPE \"VehicleDetectionProfile\" AS ENUM ( 'ICE', 'EV', 'HYBRID', 'UNKNOWN' ); END IF; END $$"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "DO",
+          "statement_sha256": "1fe6cf996a74a1ae2b8e3e8ee3efce4968a245c2c770fb68b18ecdd675a18d40",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'DetectionConfidence') THEN CREATE TYPE \"DetectionConfidence\" AS ENUM ( 'LOW', 'MEDIUM', 'HIGH' ); END IF; END $$"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "632095b972432a6df0d97c787c7580efc2d009562597560c5d22a3bed4364207",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS vehicle_trips ( id text NOT NULL, vehicle_id text NOT NULL, dimo_segment_id text, driver_name text, assignment_status \"TripAssignmentStatus\", assignment_subject_type \"TripAssignmentSubjectType\", assignment_subject"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "DO",
+          "statement_sha256": "aedfca65eaa426d94bbf8abc9f7ec7877c84df94bcd88c627e00cd537cfee22d",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_trips_vehicle_id_fkey') THEN ALTER TABLE vehicle_trips ADD CONSTRAINT vehicle_trips_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE C"
+        },
+        {
+          "ordinal": 13,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "1eece244b3b2155ad794cf33540e0e83814dd83554db29f376d6cd2577a34857",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trips_assigned_booking_id_idx ON vehicle_trips (assigned_booking_id)"
+        },
+        {
+          "ordinal": 14,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "0009b7b0b366af295cad141fecf22ae181d31f0c7077c8ca3d528fae57bf0e7e",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trips_assignment_status_is_private_trip_idx ON vehicle_trips (assignment_status, is_private_trip)"
+        },
+        {
+          "ordinal": 15,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b7b01b43ef6798b2b44e9b9804e71f86a78b4235841b4e5cec6cee803607161d",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trips_assignment_subject_type_assignment_subject_id_idx ON vehicle_trips (assignment_subject_type, assignment_subject_id)"
+        },
+        {
+          "ordinal": 16,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "6ea22bfa09692af3df0357ace58dd5eed059afc2f3ed610c6cb2021bf8f62511",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS vehicle_trips_dimo_segment_id_key ON vehicle_trips (dimo_segment_id)"
+        },
+        {
+          "ordinal": 17,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "c04ead930455b58129dc014ee21762fcecf3294cc90311b8858e17b3f7d0ff3b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trips_start_time_idx ON vehicle_trips (start_time)"
+        },
+        {
+          "ordinal": 18,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "ee106e7c5eab37146e0c99b16e81d761d3f22fed0f8765572b96bf4c755dbbcc",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trips_trip_source_idx ON vehicle_trips (trip_source)"
+        },
+        {
+          "ordinal": 19,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "e12685b50a91ddea9bf53bf1d05536b5562d0cb337fe2cc2da50644199f86d13",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trips_vehicle_id_idx ON vehicle_trips (vehicle_id)"
+        },
+        {
+          "ordinal": 20,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "f797697f891469e58cd7d0ebcd4bcdbd4f9a2fb25a569bfc1a5cb3919b0d28b1",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS driving_events ( id text NOT NULL, vehicle_id text NOT NULL, event_type \"DrivingEventType\" NOT NULL, severity double precision NOT NULL DEFAULT 0, latitude double precision, longitude double precision, speed_kmh d"
+        },
+        {
+          "ordinal": 21,
+          "statement_type": "DO",
+          "statement_sha256": "7af994cca5fa95a7a847b20a729e390122c061341eaa233d195d0e6c9d8547d9",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'driving_events_trip_id_fkey') THEN ALTER TABLE driving_events ADD CONSTRAINT driving_events_trip_id_fkey FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CA"
+        },
+        {
+          "ordinal": 22,
+          "statement_type": "DO",
+          "statement_sha256": "cb7082f702247aebe42721f57fbebe3b44971a71692fe39d12ea612744392997",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'driving_events_vehicle_id_fkey') THEN ALTER TABLE driving_events ADD CONSTRAINT driving_events_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDAT"
+        },
+        {
+          "ordinal": 23,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "3de610a840ad2309c8a1c1e4b904c1f8db87098c390a9e04c0667c1401602def",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS driving_events_vehicle_id_idx ON driving_events (vehicle_id)"
+        },
+        {
+          "ordinal": 24,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "649db87529a7e7114d6c5dc7745b94bf2b770070bf001c7c22117b6b71d2dabd",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS driving_events_recorded_at_idx ON driving_events (recorded_at)"
+        },
+        {
+          "ordinal": 25,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "439d66b645ae4c0f6a9fe80f1e04a0441eed801b471107068b512e899216d319",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS driving_events_event_type_idx ON driving_events (event_type)"
+        },
+        {
+          "ordinal": 26,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "864fabc327457aff7fa2a4890a072289ecbcf505b8c168e88e0900bc17c9465c",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS driving_events_trip_id_idx ON driving_events (trip_id)"
+        },
+        {
+          "ordinal": 27,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "feb23f6b22f536c295df4593cbd015e67af542ef9ce680ffb9485a88cbdd7782",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS trip_behavior_events ( id text NOT NULL, organization_id text, vehicle_id text NOT NULL, trip_id text NOT NULL, event_category \"BehaviorEventCategory\" NOT NULL, event_type text NOT NULL, classification \"BehaviorEv"
+        },
+        {
+          "ordinal": 28,
+          "statement_type": "DO",
+          "statement_sha256": "f9748b6fd68d52713729d309b313956db757aa4c00768faf89910a522630c73e",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trip_behavior_events_trip_id_fkey') THEN ALTER TABLE trip_behavior_events ADD CONSTRAINT trip_behavior_events_trip_id_fkey FOREIGN KEY (trip_id) REFERENCES vehicle_trip"
+        },
+        {
+          "ordinal": 29,
+          "statement_type": "DO",
+          "statement_sha256": "3a49396a85d23c794881a2f7f3e2f0625c1cf5a78e61d2e29e43ea9711d1aa01",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trip_behavior_events_vehicle_id_fkey') THEN ALTER TABLE trip_behavior_events ADD CONSTRAINT trip_behavior_events_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES veh"
+        },
+        {
+          "ordinal": 30,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "a8b2a57585291b859ff8d07c7007b50257621991b10f1b35e9074fd870f47b80",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_behavior_events_event_category_idx ON trip_behavior_events (event_category)"
+        },
+        {
+          "ordinal": 31,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "7b59ff284cfb6c117a67dd68b5912c35a5277403a30832f720d6e362812325b9",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_behavior_events_started_at_idx ON trip_behavior_events (started_at)"
+        },
+        {
+          "ordinal": 32,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "a6ae028f9de1a68234a298f3cf449821bd56b852e780c388c519985a7dc460f4",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_behavior_events_trip_id_idx ON trip_behavior_events (trip_id)"
+        },
+        {
+          "ordinal": 33,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "0cd3907a6255edb5373c98432b7544174f62b3acf8e62331640e9b3d8be1473f",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_behavior_events_vehicle_id_idx ON trip_behavior_events (vehicle_id)"
+        },
+        {
+          "ordinal": 34,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "9fe667bad34c774ae441826146d1cf3f8cb2c42764ba9efd16035edcfc603739",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS vehicle_trip_waypoints ( id text NOT NULL, trip_id text NOT NULL, latitude double precision NOT NULL, longitude double precision NOT NULL, speed_kmh double precision, heading double precision, recorded_at timestam"
+        },
+        {
+          "ordinal": 35,
+          "statement_type": "DO",
+          "statement_sha256": "685985dc23bcf8c8e5d1d04ea6e83d5377dbd4067f4d590e0e9e92d6da46b9f9",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_trip_waypoints_trip_id_fkey') THEN ALTER TABLE vehicle_trip_waypoints ADD CONSTRAINT vehicle_trip_waypoints_trip_id_fkey FOREIGN KEY (trip_id) REFERENCES vehicl"
+        },
+        {
+          "ordinal": 36,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "342826039364cca5a99a92a3a68968d296796aa7cd8a9db7aedaa0dd3c232c77",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_waypoints_recorded_at_idx ON vehicle_trip_waypoints (recorded_at)"
+        },
+        {
+          "ordinal": 37,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "1fc2b4cf908f8e64ad29654ca8d9a309c05bdd171f819e4f3266927e9ab61200",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_waypoints_trip_id_idx ON vehicle_trip_waypoints (trip_id)"
+        },
+        {
+          "ordinal": 38,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "f887bb504f8d4d6babc062be278383475491ed1ea441cc2452bb338affcf10b7",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS vehicle_trip_tracking_runs ( id text NOT NULL, vehicle_id text NOT NULL, organization_id text, trip_id text, state_at_run \"TripDetectionState\" NOT NULL, run_type \"TripTrackingRunType\" NOT NULL, requested_from time"
+        },
+        {
+          "ordinal": 39,
+          "statement_type": "DO",
+          "statement_sha256": "5d3433c8ed9df5816af6a8c38113e7f2e74f27814b4f3701feb9f67d1f0f9bde",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_trip_tracking_runs_vehicle_id_fkey') THEN ALTER TABLE vehicle_trip_tracking_runs ADD CONSTRAINT vehicle_trip_tracking_runs_vehicle_id_fkey FOREIGN KEY (vehicle_"
+        },
+        {
+          "ordinal": 40,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "2a7d2f2ad8786091c4d23838df4ca7eb556f7e24262da17ed994f50fefc6c4c3",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_tracking_runs_created_at_idx ON vehicle_trip_tracking_runs (created_at)"
+        },
+        {
+          "ordinal": 41,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "45844e0368829eb1b3dfc9c12a9696759b6a15e7368553971e9ae3cf5043e50b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_tracking_runs_run_type_idx ON vehicle_trip_tracking_runs (run_type)"
+        },
+        {
+          "ordinal": 42,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b9ab30bcd406a72d7abb52a4c5c4c77d38620ee5a97fa446ad08e8574faba434",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_tracking_runs_trip_id_idx ON vehicle_trip_tracking_runs (trip_id)"
+        },
+        {
+          "ordinal": 43,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "761988132b670c3d6ed525d8b2aa8116dae66e442a08a493e9b8ce8eeab65172",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_tracking_runs_vehicle_id_idx ON vehicle_trip_tracking_runs (vehicle_id)"
+        },
+        {
+          "ordinal": 44,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "929bdd020d0a55fcca09c8f2498a63b292e2f1a0623c17485212e7dedf9355d1",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS trip_repairs ( id text NOT NULL, vehicle_id text NOT NULL, trip_id text, repair_type text NOT NULL, status text NOT NULL DEFAULT 'PROPOSED'::text, reason text NOT NULL, confidence text NOT NULL, window_from timest"
+        },
+        {
+          "ordinal": 45,
+          "statement_type": "DO",
+          "statement_sha256": "066db68fbdebbd9ebac7ce36a07c3a3ac3b278582df5dc22eba8012a09002f74",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trip_repairs_trip_id_fkey') THEN ALTER TABLE trip_repairs ADD CONSTRAINT trip_repairs_trip_id_fkey FOREIGN KEY (trip_id) REFERENCES vehicle_trips(id) ON UPDATE CASCADE "
+        },
+        {
+          "ordinal": 46,
+          "statement_type": "DO",
+          "statement_sha256": "f1ab25043173758ded4b3b5a50908fd1ca1de45600b5496f04785861a4117904",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trip_repairs_vehicle_id_fkey') THEN ALTER TABLE trip_repairs ADD CONSTRAINT trip_repairs_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON UPDATE CASC"
+        },
+        {
+          "ordinal": 47,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "066726dec056273e534650835704617b4dd24ee8dd20c1096711cdf413d875ce",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_repairs_created_at_idx ON trip_repairs (created_at)"
+        },
+        {
+          "ordinal": 48,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "2f0dbdb7b87dc832229abe7cc958702fad6ace90257aa4b98efa12bc990213dc",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_repairs_repair_type_idx ON trip_repairs (repair_type)"
+        },
+        {
+          "ordinal": 49,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "e31a3116c3e914a90a098fdde7e78f8ecfc33b1dc58dd799bed27cc015f20e53",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_repairs_status_idx ON trip_repairs (status)"
+        },
+        {
+          "ordinal": 50,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "8ff1005b7987b515b85a9afb510525e15f0fc162255e96c081d25e9cac83a8c7",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_repairs_trip_id_idx ON trip_repairs (trip_id)"
+        },
+        {
+          "ordinal": 51,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "a1ead5429c2dee09f0f3c32a151a2024aef3ad1c22b0cca26dbe38e2a029f5d3",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_repairs_vehicle_id_idx ON trip_repairs (vehicle_id)"
+        },
+        {
+          "ordinal": 52,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "02735b30c7cef199fc2e0700437f45a8b42f2f0d3ee42bfbead51d70edc17f8e",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS trip_driving_impact ( id text NOT NULL, organization_id text, vehicle_id text NOT NULL, trip_id text NOT NULL, trip_started_at timestamp(3) without time zone NOT NULL, trip_ended_at timestamp(3) without time zone,"
+        },
+        {
+          "ordinal": 53,
+          "statement_type": "DO",
+          "statement_sha256": "5fd5f24d15f838de6bc612f1b3e3b6232e276187de94728102eb6faba8f22533",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trip_driving_impact_vehicle_id_fkey') THEN ALTER TABLE trip_driving_impact ADD CONSTRAINT trip_driving_impact_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES vehicl"
+        },
+        {
+          "ordinal": 54,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "16243a775bde16392b60f4f5c95ad251e846c895c444aecadc0f89ff52fce1b3",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_driving_impact_organization_id_vehicle_id_idx ON trip_driving_impact (organization_id, vehicle_id)"
+        },
+        {
+          "ordinal": 55,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "586bee7642a55129c931f21f231675ffe1b0670d4b029d7bce2caca8eddbc778",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS trip_driving_impact_trip_id_key ON trip_driving_impact (trip_id)"
+        },
+        {
+          "ordinal": 56,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "27acc172916a72ed3b616621f411c7f8ca952b2f54c3b0b492c86c63eb48d7e7",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS trip_driving_impact_vehicle_id_trip_started_at_idx ON trip_driving_impact (vehicle_id, trip_started_at)"
+        },
+        {
+          "ordinal": 57,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "55067733931b7286a3a2a87a23d2bb8c1c7834f01b4d5ff137485534667814d8",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS vehicle_trip_detection_states ( id text NOT NULL, vehicle_id text NOT NULL, organization_id text, state \"TripDetectionState\" NOT NULL DEFAULT 'RESTING'::\"TripDetectionState\", detection_profile \"VehicleDetectionPro"
+        },
+        {
+          "ordinal": 58,
+          "statement_type": "DO",
+          "statement_sha256": "651c3f13bc1045a3da3da005e4318d525eaad3619abd1e2a01e4f9ad4b6115b0",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_trip_detection_states_vehicle_id_fkey') THEN ALTER TABLE vehicle_trip_detection_states ADD CONSTRAINT vehicle_trip_detection_states_vehicle_id_fkey FOREIGN KEY "
+        },
+        {
+          "ordinal": 59,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b95cdb8371efa1458af48d538a860bbb21399e665660787d4a609cb06f09e305",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_detection_states_organization_id_idx ON vehicle_trip_detection_states (organization_id)"
+        },
+        {
+          "ordinal": 60,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "bb4ba0c276b45ba23e8dc9a868b9bcc4d87beae019d01272903d90e288bab7da",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_detection_states_state_idx ON vehicle_trip_detection_states (state)"
+        },
+        {
+          "ordinal": 61,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "470e6c19389e537859fb235238d0e52451af20bbdf624538f659adc4e62b9a64",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS vehicle_trip_detection_states_vehicle_id_key ON vehicle_trip_detection_states (vehicle_id)"
+        },
+        {
+          "ordinal": 62,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "91220ae479e5b7ba720194d109a4d04ec18d611cb86520b141cfeb41e874f485",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS vehicle_trip_detection_states_worker_locked_until_idx ON vehicle_trip_detection_states (worker_locked_until)"
+        },
+        {
+          "ordinal": 63,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "4a26b04a0f7180eccdd807bbfda85fa9db381c81b5d583b478d597231cd2b5fe",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS brake_trip_metrics ( id text NOT NULL, vehicle_id text NOT NULL, trip_id text, brake_energy_kj double precision, hard_brake_count integer NOT NULL DEFAULT 0, avg_deceleration_ms2 double precision, max_deceleration"
+        },
+        {
+          "ordinal": 64,
+          "statement_type": "DO",
+          "statement_sha256": "a9e1721dbe3201c75c91a2d40a00ab2881b095c33056456e888e568381e7d995",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'brake_trip_metrics_vehicle_id_fkey') THEN ALTER TABLE brake_trip_metrics ADD CONSTRAINT brake_trip_metrics_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES vehicles("
+        },
+        {
+          "ordinal": 65,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "d204711b2958ff1a25535767e43865958b3686015cf71c95f9d978c2501fdfc6",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS brake_trip_metrics_recorded_at_idx ON brake_trip_metrics (recorded_at)"
+        },
+        {
+          "ordinal": 66,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "4389e6997c801315444248c1a8b013be11dcb44ca0417301366cffddad0dd61f",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS brake_trip_metrics_vehicle_id_idx ON brake_trip_metrics (vehicle_id)"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "migration_checksum_sha256": "f3579409eb14282ca656f03b36c5f300bcec9dfd2e64dbf197e9c9fb54c7531c",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "968592b948a774adc4546c24e0c34b0ba0c5fc6e9e1e16e1c74671de3807fb4f",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TaskPriority\" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "822b754a7ccd7b42b9f67e9216fb49c98091a19768160e85aee6561278bd038f",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TaskStatus\" AS ENUM ('OPEN', 'IN_PROGRESS', 'DONE', 'CANCELLED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "141075d23dd5b35297fb1db974575b19dcafd087bb23e42446572884fef51264",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"org_tasks\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"title\" TEXT NOT NULL, \"description\" TEXT, \"category\" TEXT, \"status\" \"TaskStatus\" NOT NULL DEFAULT 'OPEN'::\"TaskStatus\", \"priority\" \"TaskPriority\""
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "89a84ed4538b638fe2eebe3c2abfe4be7d6591e06e76438e807b9876550c33ff",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_tasks_organization_id_idx\" ON \"org_tasks\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "86673fc5090798780b6374779192d1c6efa14477ee554cbe571d6a5770cfb9d1",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_tasks_status_idx\" ON \"org_tasks\"(\"status\")"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "36c66df3fbc5a1cbd2471a85b08d9f101f048d5a7db70f38e35020c7eafc557a",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_tasks_fine_id_idx\" ON \"org_tasks\"(\"fine_id\")"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "938a9717a90a3549f407a3d58534443b084189839e1e84c5eb4d74f9cba691af",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_tasks_invoice_id_idx\" ON \"org_tasks\"(\"invoice_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "migration_checksum_sha256": "c1c75f5503258e9af51a4e5073b6a3352e736eb19d1a5e742a0c428ef0d00d28",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "a67779e433e69b44134d0acaefbed99b1f8299555f5eac36d81fcda5f430935e",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"brake_health_current\" ( \"vehicle_id\" TEXT NOT NULL, \"organization_id\" TEXT, \"is_initialized\" BOOLEAN NOT NULL DEFAULT FALSE, \"anchor_service_date\" TIMESTAMP(3) WITHOUT TIME ZONE, \"anchor_odometer_km\" DOUBLE PRECI"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "371ca9eb0ee99c38e767fbd16253af685181c7eec876fdeaa1fb40df2f21e4c0",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'brake_health_current_vehicle_id_fkey' ) THEN ALTER TABLE \"brake_health_current\" ADD CONSTRAINT \"brake_health_current_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERE"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "a22c64ebee21874d5d077c14e4fdde9ce375c8fdddba3e1d4028a352da507b04",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"brake_health_current_organization_id_vehicle_id_idx\" ON \"brake_health_current\"(\"organization_id\", \"vehicle_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "migration_checksum_sha256": "7180508877117aa0238e94dfbcabfed224b340a3d3edb162d1139b59fc537930",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "722352b0d37e87e3c86b21e0d1c593b8ac058735474cb774a583f463033b0f97",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"DocumentExtractionStatus\" AS ENUM ('PENDING', 'CONFIRMED', 'REJECTED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "e2e02454b752775d7358211bad49206aafac0dab8aace65b37b72485d18439f0",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"DocumentExtractionType\" AS ENUM ('SERVICE', 'OIL_CHANGE', 'TIRE', 'BRAKE', 'BATTERY', 'VEHICLE_CONDITION', 'TUV_REPORT', 'BOKRAFT_REPORT', 'INVOICE', 'ACCIDENT', 'DAMAGE', 'FINE', 'OTHER'); EXCEPTION WHEN duplicate_"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "3647e187959f54b713381db8a2651a708534f9dd6d318dbe09492ac7d5fa2834",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vehicle_document_extractions\" ( \"id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"organization_id\" TEXT, \"document_type\" \"DocumentExtractionType\" NOT NULL, \"status\" \"DocumentExtractionStatus\" NOT NULL DEFAULT 'PEN"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "DO",
+          "statement_sha256": "8525702967f835dcf9267e0ccf6c2979744d70341b7774ab2fe45b026dba7f9a",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_document_extractions_vehicle_id_fkey' ) THEN ALTER TABLE \"vehicle_document_extractions\" ADD CONSTRAINT \"vehicle_document_extractions_vehicle_id_fkey\" FOREIGN K"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "c8e00dadcc7aa6f222303808e51ee7de4d1fab9a5ec4ff75d5c19cf3819b83d0",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_document_extractions_vehicle_id_idx\" ON \"vehicle_document_extractions\"(\"vehicle_id\")"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "c01709bd31d2cf7ec726076a3451df37413b1619bc836639338ab2a6e138ebbe",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_document_extractions_status_idx\" ON \"vehicle_document_extractions\"(\"status\")"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "DO",
+          "statement_sha256": "6e3543cb258fd5952e633dcd30969cfb7f8495c04f41034060b7c7e5e3ec6141",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"BatteryEvidenceScope\" AS ENUM ('LV', 'HV'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "DO",
+          "statement_sha256": "08332c4763f4561d517984e267856a05a5ca8d0b3e71db13eaf0e0ca01d53ccd",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"BatteryEvidenceSourceType\" AS ENUM ('PROVIDER_REPORTED', 'TELEMETRY_DERIVED', 'MODEL_DERIVED', 'MANUAL_REPORT', 'DOCUMENT_CONFIRMED', 'WORKSHOP_MEASUREMENT', 'HM_SUPPLEMENTARY'); EXCEPTION WHEN duplicate_object THEN"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "DO",
+          "statement_sha256": "ee585ee6ac02c2d2ecdbd6caeb466a8d4df3c357a9102a542ce5f2ae89a77fa1",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"BatteryEvidenceValueType\" AS ENUM ('SOH_PERCENT', 'SOC_PERCENT', 'RANGE_KM', 'VOLTAGE_V', 'RESTING_VOLTAGE_V', 'CRANKING_VOLTAGE_V', 'CHARGING_VOLTAGE_V', 'BATTERY_TEMPERATURE_C', 'CHARGING_POWER_KW', 'ADDED_ENERGY_"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "b37d3d4cab6cba4a40475662b1e71b4cd3d943228f76b1174f50805a133cc304",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"battery_evidence\" ( \"id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"scope\" \"BatteryEvidenceScope\" NOT NULL, \"source_type\" \"BatteryEvidenceSourceType\" NOT NULL, \"value_type\" \"BatteryEvidenceValueType\" NOT NULL, \""
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "DO",
+          "statement_sha256": "699ec13d2852a4db1e4442d6bd72c885d10df2f098f286e8edf142bd2b582ee4",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'battery_evidence_vehicle_id_fkey' ) THEN ALTER TABLE \"battery_evidence\" ADD CONSTRAINT \"battery_evidence_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERENCES \"vehicl"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "DO",
+          "statement_sha256": "07711a7e82dca4fd4930d19840143c51063e8b7a1efcdbf7305fd05cccb36426",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'battery_evidence_service_event_id_fkey' ) THEN ALTER TABLE \"battery_evidence\" ADD CONSTRAINT \"battery_evidence_service_event_id_fkey\" FOREIGN KEY (\"service_event_id\") "
+        },
+        {
+          "ordinal": 13,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "ec9be919535d97a2a2bf4ead859f03646bdefd125e6f79461ccdc005ac3a1dea",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"battery_evidence_vehicle_id_scope_value_type_observed_at_idx\" ON \"battery_evidence\"(\"vehicle_id\", \"scope\", \"value_type\", \"observed_at\")"
+        },
+        {
+          "ordinal": 14,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "42ba9ba9ad075570ccc4ad2a57db63f07f3f1dedcdf08ad6499d52680e29c371",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"battery_evidence_source_type_observed_at_idx\" ON \"battery_evidence\"(\"source_type\", \"observed_at\")"
+        },
+        {
+          "ordinal": 15,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "6428ddfac38d1369675ad143947f0d271241270752a9449c4ad3418bf0fdff6f",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"battery_evidence_document_extraction_id_idx\" ON \"battery_evidence\"(\"document_extraction_id\")"
+        },
+        {
+          "ordinal": 16,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "2b0c334ccd39efacd32481d61c5e64305a56756b255a74428301c315d16e4f1e",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"battery_evidence_service_event_id_idx\" ON \"battery_evidence\"(\"service_event_id\")"
+        },
+        {
+          "ordinal": 17,
+          "statement_type": "DO",
+          "statement_sha256": "78a7622d8ac417c060e75283f3053153cafb05ecf7b82fbbd9b0a5fa5fb7f8b4",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'battery_evidence_document_extraction_id_fkey' ) THEN ALTER TABLE \"battery_evidence\" ADD CONSTRAINT \"battery_evidence_document_extraction_id_fkey\" FOREIGN KEY (\"documen"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "migration_checksum_sha256": "4d04659f1fad9032dcf96b7e8f7c181481956baa79bb4462c17f701663e63539",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DATA_DEPENDENT_LOW",
+      "data_risk_reason": "validated constraint/index DDL",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "a69544501335abef80baee4bd15ac01088917a5eccb7ea81fcc7d66ac7e96b3b",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"OrgInvoiceStatus\" AS ENUM ('DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "ece538be87e5319ae0cffbd0a7a0df601efff46b5df63e052187b9283d66ad35",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"OrgInvoiceType\" AS ENUM ('OUTGOING_BOOKING', 'OUTGOING_MANUAL', 'INCOMING_VENDOR', 'INCOMING_UPLOADED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE SEQUENCE",
+          "statement_sha256": "93c1ae0f6272c4347cbe103f2dc883788f9fa7340ed77aa3c7ab0c2956acc216",
+          "sql_preview": "CREATE SEQUENCE IF NOT EXISTS \"org_invoices_invoice_number_seq\""
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "391b257589e43cd1b4fa4e20094ae41eb64af3d395f094b7500c88c86f929c56",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"org_invoices\" ( \"id\" TEXT NOT NULL, \"invoice_number\" INTEGER NOT NULL DEFAULT nextval('org_invoices_invoice_number_seq'::regclass), \"organization_id\" TEXT NOT NULL, \"type\" \"OrgInvoiceType\" NOT NULL, \"customer_id\""
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "d2593dea00d82d34e2487f66c88c1f1d5b2c59635bd84adb6f6e4aba9c3cb986",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_invoices_organization_id_idx\" ON \"org_invoices\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "247067d45799d971a5514a9926c54e47b28ec1700f7d2456d684f1a7461f8786",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_invoices_customer_id_idx\" ON \"org_invoices\"(\"customer_id\")"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "05068d3e036dfba0824dbc136590e1a0324b3eaacf868bcb82af9f79fd51a238",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_invoices_booking_id_idx\" ON \"org_invoices\"(\"booking_id\")"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b31e02540ea32762a3bb9e4b0b4456e6ad5c66c620add8bc1b75bb850ccf88c0",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_invoices_status_idx\" ON \"org_invoices\"(\"status\")"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "51fb57ed586a859dde5d87472bfe5e03e21cf66c4d88d1bf2358fb6533a1e14e",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_invoices_type_idx\" ON \"org_invoices\"(\"type\")"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "09c797165efdfa9ed6bca1cb9ec880129dc21fd5047334cc86fcb019f2362fd8",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_invoices_invoice_date_idx\" ON \"org_invoices\"(\"invoice_date\")"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "e0c048e53e2f7a87013f4754bad6fb675517cbbeadee2eefbbe5581fe16aa297",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS \"org_invoices_invoice_number_key\" ON \"org_invoices\"(\"invoice_number\")"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "DO",
+          "statement_sha256": "28140a352d09e9c8f455004fc2f0113febc6243b99f37c1c15bc77f4c94ca480",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"DtcSeverity\" AS ENUM ('INFO', 'WARNING', 'CRITICAL'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 13,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "fe180399b03fc1a1c2eb81eb003782a41acbe3fd8b0bf761f63b1f54c1a77fcf",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vehicle_dtc_events\" ( \"id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"dtc_code\" TEXT NOT NULL, \"description\" TEXT, \"severity\" \"DtcSeverity\" NOT NULL DEFAULT 'WARNING'::\"DtcSeverity\", \"is_active\" BOOLEAN NOT NULL"
+        },
+        {
+          "ordinal": 14,
+          "statement_type": "DO",
+          "statement_sha256": "72702b449abb15ef89fa18d0335677e20c95cbddcb9f6f175e03d7761abf71d7",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_dtc_events_vehicle_id_fkey' ) THEN ALTER TABLE \"vehicle_dtc_events\" ADD CONSTRAINT \"vehicle_dtc_events_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERENCES \""
+        },
+        {
+          "ordinal": 15,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "6e09dd92f48f156d913380cc0b38116056c28c9302c155720ff00865c8f1678b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_dtc_events_vehicle_id_idx\" ON \"vehicle_dtc_events\"(\"vehicle_id\")"
+        },
+        {
+          "ordinal": 16,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "c0ce4119eb87945e53a467a066068036fc907c0f9f768257349b97d610c50150",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_dtc_events_dtc_code_idx\" ON \"vehicle_dtc_events\"(\"dtc_code\")"
+        },
+        {
+          "ordinal": 17,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "aa3b42c87c39cdf03e79943f192f8f981297dfce655ee4b34d9d93c0b7fa6121",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_dtc_events_is_active_idx\" ON \"vehicle_dtc_events\"(\"is_active\")"
+        },
+        {
+          "ordinal": 18,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "36d8764b84c8cd8566c9383c5fbc473c549e8723849e473292a8f54cd15bacfd",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_dtc_events_first_seen_at_idx\" ON \"vehicle_dtc_events\"(\"first_seen_at\")"
+        },
+        {
+          "ordinal": 19,
+          "statement_type": "DO",
+          "statement_sha256": "d00cf5f89b271803ed975936dd2f229a3a8606f4df7f377c48187ab7ca544fb5",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'org_tasks_invoice_id_fkey' ) THEN ALTER TABLE \"org_tasks\" ADD CONSTRAINT \"org_tasks_invoice_id_fkey\" FOREIGN KEY (\"invoice_id\") REFERENCES \"org_invoices\"(\"id\") ON DELE"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "migration_checksum_sha256": "3ac22b6b3c4ac9370e598b0fdde2dbd0c254034c8a2d1584d877020658bdffc8",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "ff813de8fd9103ab072d4bd46f222ce37c61211ad6f2b117a5d78f53c4bfad4d",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"InsightType\" AS ENUM ('TIGHT_HANDOVER', 'RETURN_NEEDS_INSPECTION', 'STATION_SHORTAGE', 'LOW_UTILIZATION', 'SERVICE_WINDOW', 'SERVICE_BEFORE_BOOKING'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "migration_checksum_sha256": "4e9c37a35b679f2eadff76c146c8312f224c82097398ed93c2126ddddb70ef10",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "22a93e92ad2953f70afe135527bf598b279269603e8a0688e123291fdcd4b90c",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vehicle_driving_impact_current\" ( \"vehicle_id\" TEXT NOT NULL, \"organization_id\" TEXT, \"window_days\" INTEGER NOT NULL DEFAULT 30, \"window_started_at\" TIMESTAMP(3) WITHOUT TIME ZONE, \"window_ended_at\" TIMESTAMP(3) "
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "ad08aa791601ea139197a8abdfe61ab06fa2e0e65d74b03a031742dddd45c679",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_driving_impact_current_vehicle_id_fkey' ) THEN ALTER TABLE \"vehicle_driving_impact_current\" ADD CONSTRAINT \"vehicle_driving_impact_current_vehicle_id_fkey\" FOR"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "e60bb14d3435c4feba1d6a12bd81da77c81f4750549979eefda7bbe0b262cbd7",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_driving_impact_current_organization_id_vehicle_id_idx\" ON \"vehicle_driving_impact_current\"(\"organization_id\", \"vehicle_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260424235959_ci_r3b_trip_casing_pre_shim",
+      "migration_checksum_sha256": "45aa03706d46636fac215e3d379657f3afc8a49c20acdbceb2849e579969dcaf",
+      "classification": "NORMAL_PENDING",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "04ef5a1dd6faa72a4d1a04b7d6eea72f35995762af76df89b96554ba1e097b87",
+          "sql_preview": "DO $$ DECLARE target_migration constant text := '20260425000000_retire_user_assignment_and_speeding_severity'; target_present boolean; target_finished boolean; target_unfinished boolean; has_vehicle_trips boolean; has_vehicle_trip boolean; "
+        }
+      ]
+    },
+    {
+      "migration_name": "20260425000001_ci_r3b_trip_casing_post_shim",
+      "migration_checksum_sha256": "aef68c2231bf30f036d54ab06cd341bb6f22cb273a047c7ab71ae0f70ec28710",
+      "classification": "NORMAL_PENDING",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "0be6d42d5e0a3ae3cdc3820abfbe209fd4f0d9ff6847ff0c5bfcb99cdb43f38e",
+          "sql_preview": "DO $$ DECLARE post_shim_migration constant text := '20260425000001_ci_r3b_trip_casing_post_shim'; target_migration constant text := '20260425000000_retire_user_assignment_and_speeding_severity'; unresolved_post_shim_count integer; finished_"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "migration_checksum_sha256": "2f1c5d74082d24dfa158c62bbc2cafaeadfde874d3c49379bbffcfe15e055013",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DATA_DEPENDENT_LOW",
+      "data_risk_reason": "validated constraint/index DDL",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "fa7a3a98182e91e9038c699d20b30d22f25bc6e4f6d989d87ec1f828c365d79a",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"VendorCategory\" AS ENUM ('WORKSHOP', 'SERVICE_PARTNER', 'PAINT_SHOP', 'BODY_REPAIR', 'AUTO_GLASS', 'TIRE_DEALER', 'PARTS_DEALER', 'DETAILING', 'TUV_STATION', 'ONLINE_SUPPLIER', 'OTHER'); EXCEPTION WHEN duplicate_obj"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "459dbe701454669fe425dd934e77359423465e1cfd6d10a183b77e1bc760e882",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"VendorSourceType\" AS ENUM ('LOCAL_BUSINESS', 'ONLINE_VENDOR'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "030c8d4ba09df03d357495eb696573c4bebf3c0124fc0d8e6df27889d5dd2c84",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vendor_vehicles\" ( \"id\" TEXT NOT NULL, \"vendor_id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"notes\" TEXT, \"created_at\" TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \"vendor_vehic"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "98306674905805ee85c145168bd0f8fef046007dc791bfb98a1f99a3a87fc72e",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vendors\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"category\" \"VendorCategory\" NOT NULL DEFAULT 'WORKSHOP'::\"VendorCategory\", \"source_type\" \"VendorSourceType\" NOT NULL DEFAULT '"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "DO",
+          "statement_sha256": "8dfef70b845699a624aa69b8ec7cd25f144d343fa618e1d955b9ae211adac3da",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vendor_vehicles_vehicle_id_fkey' ) THEN ALTER TABLE \"vendor_vehicles\" ADD CONSTRAINT \"vendor_vehicles_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERENCES \"vehicles\""
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "1623bde10477658f021b74e0172cfad3b9b74c4d2134198dbc44ea20d92563ca",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vendor_vehicles_vendor_id_fkey' ) THEN ALTER TABLE \"vendor_vehicles\" ADD CONSTRAINT \"vendor_vehicles_vendor_id_fkey\" FOREIGN KEY (\"vendor_id\") REFERENCES \"vendors\"(\"id"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "DO",
+          "statement_sha256": "f8546fa25684dde0aebe13b1ec3ee668a857d244dd77a2d64ab391a923c5dcb7",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vendors_organization_id_fkey' ) THEN ALTER TABLE \"vendors\" ADD CONSTRAINT \"vendors_organization_id_fkey\" FOREIGN KEY (\"organization_id\") REFERENCES \"organizations\"(\"id"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "ed96bc7434e6605bc98e72341a9bd2d187560747af596f991077c6b9d78b01ff",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS \"vendor_vehicles_vendor_id_vehicle_id_key\" ON \"vendor_vehicles\"(\"vendor_id\", \"vehicle_id\")"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "8ddb00b313144bb0b52c439d62a75761e3412864ecfe2667d19ec9a7659ef19e",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vendor_vehicles_vehicle_id_idx\" ON \"vendor_vehicles\"(\"vehicle_id\")"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b639f55e9f9ffb552c7ac3aec1586eed4987501ee339e69cf4da3fb664f38da9",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vendor_vehicles_vendor_id_idx\" ON \"vendor_vehicles\"(\"vendor_id\")"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "4909382a3829c9f9ae1864bf1d7246f1a6474725c9452dcd5a5d3f8423617c8b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vendors_category_idx\" ON \"vendors\"(\"category\")"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "e585e73f7eded970c4f3043375c5cf3169898339aedd6a3fed5438fb9108b392",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vendors_organization_id_idx\" ON \"vendors\"(\"organization_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "migration_checksum_sha256": "6607ebf402571f4797824ccb53e559b30b49bc3e3c14ed1f1958cb82a6d3e58e",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "ded197f56dd284eb289c836beeb55663632151d1a1f10c6ddd6701503a703bdf",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"WorkflowStatus\" AS ENUM ('ACTIVE', 'DRAFT', 'DISABLED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "f51b1d4a90630971b0d063dbf876b61082b452d2c1e8ea9eaf547ca01c01bbf2",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"org_workflows\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"description\" TEXT, \"category\" TEXT NOT NULL, \"trigger\" JSONB NOT NULL, \"conditions\" JSONB NOT NULL DEFAULT '[]'::jsonb,"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "1cd1ea9a09ca852fbe87b80827de2e40eee256655ae2d8022aea415d00502fd3",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_workflows_category_idx\" ON \"org_workflows\"(\"category\")"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "2af0325b3552b8b7b15b0ed39d84f543d64e47d99232ba61e650f5eef102c85d",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_workflows_organization_id_idx\" ON \"org_workflows\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "68433c563431c51b03e02a0258ae67b71490ed18bdd340aadfa6a237c282539b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_workflows_status_idx\" ON \"org_workflows\"(\"status\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "migration_checksum_sha256": "7b3990532efd3271f107d37afa96a6e38bda8f97199a3e6cb105721b0bd72bc5",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "f237c472574e4811718dc4c10bcb7c5b643001c166d744fe0bda0c21b6a15839",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TireHealthStatus\" AS ENUM ('EXCELLENT', 'GOOD', 'MODERATE', 'POOR', 'REPLACE_NOW'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "b8651e68a4a1a79df66f7b70f9697cbf03b57041e22e55d6116f60fa85d1e448",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TirePosition\" AS ENUM ('FRONT_LEFT', 'FRONT_RIGHT', 'REAR_LEFT', 'REAR_RIGHT'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "DO",
+          "statement_sha256": "c316aa4342792291cb1d6e76dc8fd0aadb94df22e9e2c5a7a37742bc00d9e074",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TireSeason\" AS ENUM ('SUMMER', 'WINTER', 'ALL_SEASON', 'TRACK', 'OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "49c5040493c207ef5d073edf620eb62bb510fef53680ee0c04b3461af50ad84a",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"tires\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"tire_set_id\" TEXT, \"brand\" TEXT, \"tire_model\" TEXT, \"width\" INTEGER, \"aspect_ratio\" INTEGER, \"rim_diameter\" INTEGER, \"loa"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "DO",
+          "statement_sha256": "775cb52c7dd85618204103deb244b372560ffe8d456598ec641eb0bebff0119e",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tires_tire_set_id_fkey' ) THEN ALTER TABLE \"tires\" ADD CONSTRAINT \"tires_tire_set_id_fkey\" FOREIGN KEY (\"tire_set_id\") REFERENCES \"vehicle_tire_setups\"(\"id\") ON DELETE"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "7ef32ec1828db95c28218733aa55d5ca1d711456338bcf83a7d3774bcf06eeba",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tires_vehicle_id_fkey' ) THEN ALTER TABLE \"tires\" ADD CONSTRAINT \"tires_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERENCES \"vehicles\"(\"id\") ON DELETE CASCADE ON UP"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "55c50e46d10ac250e0561a7568d679f29589423889c3ae8ce775ea049321357b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tires_organization_id_vehicle_id_idx\" ON \"tires\"(\"organization_id\", \"vehicle_id\")"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "05cf34c11fac578c9ff208f7d567575cf06ff3ff556961f34a8849998c8391be",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tires_tire_set_id_idx\" ON \"tires\"(\"tire_set_id\")"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "89b96a8b8d566b3d891077d6dcb6b5b8b686aa120d2d08b7937d00259dd78c45",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tires_vehicle_id_active_idx\" ON \"tires\"(\"vehicle_id\", \"active\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "migration_checksum_sha256": "c007ab9da59d95dabd592dd27b0c3b360a305efbc3c6cab473ede6d4c4a2a8e4",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "e206c8200ccf8f9103cedc7dc466eae7ba84aee2fea1339ad47f723903f11fc3",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"DamageSeverity\" AS ENUM ('MINOR', 'MODERATE', 'MAJOR', 'CRITICAL'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "46ce76e9dca167319bdde686bb705426873a1cca7bce83af02f25c1759b18c89",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"DamageType\" AS ENUM ('SCRATCH', 'DENT', 'CRACK', 'BROKEN_PART', 'PAINT_DAMAGE', 'GLASS_DAMAGE', 'TIRE_DAMAGE', 'INTERIOR_DAMAGE', 'OTHER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "8baf85336a91d87445d16c5e311ba4a5ec2eaaf40687e94309ad4d17d431b341",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vehicle_damage_images\" ( \"id\" TEXT NOT NULL, \"damage_id\" TEXT NOT NULL, \"image_data\" TEXT NOT NULL, \"caption\" TEXT, \"created_at\" TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \"vehi"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "b090a1dd8e3a39e84d40c9f25f34c26813da1c0d61914ed7b57e505ec0d66545",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"vehicle_damages\" ( \"id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"damage_type\" \"DamageType\" NOT NULL, \"severity\" \"DamageSeverity\" NOT NULL DEFAULT 'MINOR'::\"DamageSeverity\", \"description\" TEXT, \"location_x\" DOU"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "DO",
+          "statement_sha256": "2a589165bfeaf49bf194a2a5b21b11bd08e68ba35b1e9817ea3d46204deee309",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_damage_images_damage_id_fkey' ) THEN ALTER TABLE \"vehicle_damage_images\" ADD CONSTRAINT \"vehicle_damage_images_damage_id_fkey\" FOREIGN KEY (\"damage_id\") REFERE"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "1e7021735e4c9b0c5b95862f217b02654f0df22688100f1863332da14b1c6031",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'vehicle_damages_vehicle_id_fkey' ) THEN ALTER TABLE \"vehicle_damages\" ADD CONSTRAINT \"vehicle_damages_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REFERENCES \"vehicles\""
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "9fc3b779516bfbacda3072e07f6c517a2d8a5e44d983774f5dd1b07560fcea56",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_damage_images_damage_id_idx\" ON \"vehicle_damage_images\"(\"damage_id\")"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "dd6f91c3331b0c4cb48d2c28429c472f34679c0a0f0ab562f91729d1e87a3c18",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_damages_damage_type_idx\" ON \"vehicle_damages\"(\"damage_type\")"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "89b6c62dba52d6387427293cb4d14edcf0f6d4f5aaaf386b5d966a45bb4ebb38",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"vehicle_damages_vehicle_id_idx\" ON \"vehicle_damages\"(\"vehicle_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "migration_checksum_sha256": "bab1399060fb1da4d57e3d9004aa2e9e6afc934e14857d55dc2be8e939056697",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DATA_DEPENDENT_LOW",
+      "data_risk_reason": "validated constraint/index DDL",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "e7d66e64f97c908f18a55eefea8217e31fadfb2a7570a39eb368f9c6f307e2a9",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"WhatsAppAiMode\" AS ENUM ('OFF', 'SUGGEST_ONLY', 'AUTO_SIMPLE', 'FULL'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "067598db069a573d13208e8f955b9c813697bb8be920f27fd9e1f4ee5e224be9",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"org_whatsapp_configs\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"is_connected\" BOOLEAN NOT NULL DEFAULT false, \"is_active\" BOOLEAN NOT NULL DEFAULT false, \"phone_number\" TEXT, \"business_name\" TEXT, \""
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "d5e73b2663e0dc0dd5560dbea1fd606cc2ffedfb542774ffad92b4fbdfec77e6",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"whatsapp_conversations\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"contact_phone\" TEXT NOT NULL, \"contact_name\" TEXT, \"last_message_at\" TIMESTAMP(3) WITHOUT TIME ZONE, \"last_message_preview\" TEXT, \"u"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "0e86da53b3ea03fa52efdcc5bd2bb1f35e263e155e9184bb39db292a89387b53",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"whatsapp_messages\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"conversation_id\" TEXT NOT NULL, \"direction\" TEXT NOT NULL, \"sender_type\" TEXT NOT NULL, \"sender_name\" TEXT, \"content\" TEXT NOT NULL, \"ai_"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "DO",
+          "statement_sha256": "7b87729523568a63359087e7fc36fb7d49d52ccb5bd1c5fbc79eee258a17bc8e",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'org_whatsapp_configs_organization_id_fkey' ) THEN ALTER TABLE \"org_whatsapp_configs\" ADD CONSTRAINT \"org_whatsapp_configs_organization_id_fkey\" FOREIGN KEY (\"organizat"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "0fae02d350c3e6b8a91dba2fad257e57b4dedc889b2a4b62b701051b17a5ad74",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'whatsapp_conversations_organization_id_fkey' ) THEN ALTER TABLE \"whatsapp_conversations\" ADD CONSTRAINT \"whatsapp_conversations_organization_id_fkey\" FOREIGN KEY (\"org"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "DO",
+          "statement_sha256": "0cceeec795366a5d9207846a753773bc965678c2f9a322ad85d44499a8e84dcb",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'whatsapp_messages_conversation_id_fkey' ) THEN ALTER TABLE \"whatsapp_messages\" ADD CONSTRAINT \"whatsapp_messages_conversation_id_fkey\" FOREIGN KEY (\"conversation_id\") "
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "DO",
+          "statement_sha256": "87b1fcddd735829d27c12a2ab8519e78980e8213986aeb802a0138b3899b1e20",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'whatsapp_messages_organization_id_fkey' ) THEN ALTER TABLE \"whatsapp_messages\" ADD CONSTRAINT \"whatsapp_messages_organization_id_fkey\" FOREIGN KEY (\"organization_id\") "
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "af0fd775e6ad92dd91aa052bd08b60677c36a3994758ff4bc0ab1c36771aed08",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS \"org_whatsapp_configs_organization_id_key\" ON \"org_whatsapp_configs\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "522b646e373175df1c6c17adcec961ef90aae4c1b73fd78bc5ff4cbabfc3f268",
+          "sql_preview": "CREATE UNIQUE INDEX IF NOT EXISTS \"whatsapp_conversations_organization_id_contact_phone_key\" ON \"whatsapp_conversations\"(\"organization_id\", \"contact_phone\")"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "fdff618d9ab64b11f845d528ebc311f0c65392fb3f9c2e573df848bb8b09ada5",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"org_whatsapp_configs_organization_id_idx\" ON \"org_whatsapp_configs\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b006425fa812d326957ff30a7441d7deff367cd4e6048589c1209aa87cf38abb",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"whatsapp_conversations_last_message_at_idx\" ON \"whatsapp_conversations\"(\"last_message_at\")"
+        },
+        {
+          "ordinal": 13,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "dfd71e0fb98966374cea16141407316dc6d3c52d20b4308602247c0af935e757",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"whatsapp_conversations_organization_id_idx\" ON \"whatsapp_conversations\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 14,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "e97a4e923eb68871a8acfc829df73e22b7bd44b038be0d15a6554f453cb5e160",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"whatsapp_messages_conversation_id_created_at_idx\" ON \"whatsapp_messages\"(\"conversation_id\", \"created_at\")"
+        },
+        {
+          "ordinal": 15,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "3b21b7f4828d8516e2dcf208e66bc82ff935afff9bee4062275a2e853a58b12b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"whatsapp_messages_organization_id_idx\" ON \"whatsapp_messages\"(\"organization_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "migration_checksum_sha256": "73ab301b3121e3f5dc8c4d6c14a490d10a2ab68b4097c946ba5ea7359d432d8f",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "e4d90be7f96c927d72c0a086cc0d4f7f96e12f823421b632ab97722049689bd6",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"tire_health_snapshots\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"tire_id\" TEXT, \"tire_set_id\" TEXT, \"snapshot_date\" TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL, \"odometer_km\""
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "ac873e35b7b3e4af2bbf25e7a83be073863ab123eac05b7f64baf4662e4bcfab",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"tire_wear_data_points\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"vehicle_id\" TEXT NOT NULL, \"tire_set_id\" TEXT, \"axle\" TEXT NOT NULL, \"distance_km\" DOUBLE PRECISION NOT NULL, \"predicted_tread_mm\" DO"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "DO",
+          "statement_sha256": "ae494e45f8c94e4201b2e8b70e94045533913803a06c048ee93ca9d96a6c16e0",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tire_health_snapshots_tire_id_fkey' ) THEN ALTER TABLE \"tire_health_snapshots\" ADD CONSTRAINT \"tire_health_snapshots_tire_id_fkey\" FOREIGN KEY (\"tire_id\") REFERENCES \""
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "DO",
+          "statement_sha256": "2558b3140cdd8bb0b61286a7986d9253c0a575cc2b4eee14be1c3b944f6f64ae",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tire_health_snapshots_tire_set_id_fkey' ) THEN ALTER TABLE \"tire_health_snapshots\" ADD CONSTRAINT \"tire_health_snapshots_tire_set_id_fkey\" FOREIGN KEY (\"tire_set_id\") "
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "DO",
+          "statement_sha256": "7e758344d7925b2f49f71bdc1198eb8e61aaea4e03b8b9dd38eeca4b99556da7",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tire_health_snapshots_vehicle_id_fkey' ) THEN ALTER TABLE \"tire_health_snapshots\" ADD CONSTRAINT \"tire_health_snapshots_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REF"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "4293637d9ff0e97e6ee6373d85c315e919d87bee81d6f9befa495926ec097f1d",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tire_wear_data_points_tire_set_id_fkey' ) THEN ALTER TABLE \"tire_wear_data_points\" ADD CONSTRAINT \"tire_wear_data_points_tire_set_id_fkey\" FOREIGN KEY (\"tire_set_id\") "
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "DO",
+          "statement_sha256": "e04380243d734a82a639a0de5754f49ff12df0f72a59604dba486811c21ecccf",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'tire_wear_data_points_vehicle_id_fkey' ) THEN ALTER TABLE \"tire_wear_data_points\" ADD CONSTRAINT \"tire_wear_data_points_vehicle_id_fkey\" FOREIGN KEY (\"vehicle_id\") REF"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "7460f80a29cb2cb8e4210a9c25de8a7f791cb3cd865676c9eacb58610014cf38",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tire_health_snapshots_tire_id_snapshot_date_idx\" ON \"tire_health_snapshots\"(\"tire_id\", \"snapshot_date\")"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "6a19b369f401e0bc101cc7ff72d6b6582c5375a509431aa46473cda465ca0e9b",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tire_health_snapshots_tire_set_id_idx\" ON \"tire_health_snapshots\"(\"tire_set_id\")"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "1e1d8b806014bf221a37a5a79532eae669a687961d4929e8a326d6448e49a654",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tire_health_snapshots_vehicle_id_snapshot_date_idx\" ON \"tire_health_snapshots\"(\"vehicle_id\", \"snapshot_date\")"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "220f97a5ca00bab862369a16a395a05e8c724162e98aacd30b6fc8b0e4a361ad",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tire_wear_data_points_organization_id_idx\" ON \"tire_wear_data_points\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "1576bedfb83406e5fc39d9c56c3fe863d1614389def9fcd12e11585533938e2f",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tire_wear_data_points_tire_set_id_idx\" ON \"tire_wear_data_points\"(\"tire_set_id\")"
+        },
+        {
+          "ordinal": 13,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "eac6cf7005626d99d09f27535c611307f80fd25d5a342df4eaf9072fecb7e52d",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"tire_wear_data_points_vehicle_id_idx\" ON \"tire_wear_data_points\"(\"vehicle_id\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "migration_checksum_sha256": "692d40502c9f09ad2bc6357f047a289cdda22db4898c4ec1c23a96dfa1d5e02b",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "73b34311c6193e43c3ecbe71b5b968f3f3bbbc8fb9217cdae9e069edc9d68606",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TireSetupStatus\" AS ENUM ('ACTIVE', 'STORED', 'DISCARDED', 'SOLD'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "migration_checksum_sha256": "0d3e3401a33daa6615962a1ae9a53d68cb544b244204c0b1150d7cd53e3b35ae",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "cf69275bf5660c93d1f8358af5d405b65433b566a36313adeb3bc7154dcda89e",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"TireEventType\" AS ENUM ('ROTATION', 'TIRE_CHANGE', 'MEASUREMENT', 'RECALCULATION', 'ALERT', 'INSTALL', 'REMOVE'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "migration_checksum_sha256": "606411503605af9f9f7be186da06a4b60c7c7f7ee80a5d561e8a6b39e1bfdba8",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "f36ff3a8deccfb5f69a0d8e5493b7eea93a80f4014b5ec3dc76e15c8bd1fc939",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"InsightEntityScope\" AS ENUM ('VEHICLE', 'STATION', 'VEHICLE_GROUP', 'FLEET'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "75aa46d645253e7d4fb025906be5eeb7f7d7c4ddf9457d6bd9215bcdcd49ab1f",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"InsightSeverity\" AS ENUM ('CRITICAL', 'WARNING', 'OPPORTUNITY', 'INFO'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "DO",
+          "statement_sha256": "39fd951cd1454f0e15eb3b58d9750404b7d72dbf08794ee87688339940748a5f",
+          "sql_preview": "DO $$ BEGIN CREATE TYPE \"InsightType\" AS ENUM ('TIGHT_HANDOVER', 'RETURN_NEEDS_INSPECTION', 'STATION_SHORTAGE', 'LOW_UTILIZATION', 'SERVICE_WINDOW', 'SERVICE_BEFORE_BOOKING', 'BATTERY_CRITICAL', 'TIRE_CRITICAL', 'BRAKE_CRITICAL', 'SERVICE_O"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "f96207baedc803cac076feedac500456f02148a0256e6a8f1bb51e0dfba813ce",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"dashboard_insight_runs\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"trigger\" TEXT NOT NULL, \"started_at\" TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL, \"finished_at\" TIMESTAMP(3) WITHOUT TIME ZONE, \"duratio"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "70b1d2c76c41ade303c6d8e19bd8de8536e081b64dcd062b35b8c4304d3d7b98",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"dashboard_insights\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"run_id\" TEXT NOT NULL, \"type\" \"InsightType\" NOT NULL, \"severity\" \"InsightSeverity\" NOT NULL, \"priority\" INTEGER NOT NULL DEFAULT 0, \"tit"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "DO",
+          "statement_sha256": "233e70991d35860fe4be0b05ebd72d00fe4c0c7699e79fc2e93f528d80d3d8dc",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'dashboard_insight_runs_organization_id_fkey' ) THEN ALTER TABLE \"dashboard_insight_runs\" ADD CONSTRAINT \"dashboard_insight_runs_organization_id_fkey\" FOREIGN KEY (\"org"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "DO",
+          "statement_sha256": "b027190f55eb13687a5ac69dc9fbac0c26ba0b9f3fa780bcdea0093dccab82ac",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'dashboard_insights_organization_id_fkey' ) THEN ALTER TABLE \"dashboard_insights\" ADD CONSTRAINT \"dashboard_insights_organization_id_fkey\" FOREIGN KEY (\"organization_id"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "DO",
+          "statement_sha256": "d290395557eef6ff75d005f82165111144dcb089e0298f86ad979077a6efed7d",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'dashboard_insights_run_id_fkey' ) THEN ALTER TABLE \"dashboard_insights\" ADD CONSTRAINT \"dashboard_insights_run_id_fkey\" FOREIGN KEY (\"run_id\") REFERENCES \"dashboard_in"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "9223c5e1159e3a84756a677c916f3ce9118417de8d0a7953b16d016b4cb2ed93",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"dashboard_insight_runs_created_at_idx\" ON \"dashboard_insight_runs\"(\"created_at\")"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "95efd2514f6916a0424a7e951415b884cee69b3223c447dafe13be9707af6d35",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"dashboard_insight_runs_organization_id_idx\" ON \"dashboard_insight_runs\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "9a28efe9af5498c2e1edcc33e35619316a68b52c1e30ef9faf74a3676a62babc",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"dashboard_insights_dedupe_key_idx\" ON \"dashboard_insights\"(\"dedupe_key\")"
+        },
+        {
+          "ordinal": 12,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "0a2487dc6737d4bbc17887415a989584424f95bd65feaef353cb67cbb0066c4a",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"dashboard_insights_organization_id_is_active_idx\" ON \"dashboard_insights\"(\"organization_id\", \"is_active\")"
+        },
+        {
+          "ordinal": 13,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "d50d993d78ae38cb4711e54f6057db3ab221d9e08a56ba8db7b6fcc521eebe06",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"dashboard_insights_run_id_idx\" ON \"dashboard_insights\"(\"run_id\")"
+        },
+        {
+          "ordinal": 14,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "9f77bbe769e45ee4fa9f18f52f3db089481efb7e6c5b3e2d8ce4addbce3fb2e8",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"dashboard_insights_type_idx\" ON \"dashboard_insights\"(\"type\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "migration_checksum_sha256": "5a0d0defed18fe142989ec88e5ba38946d7471d8e7e0b81e548d2701170845da",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "c8467b6c6a6e484687c4ecb87ad4418057940736cb490a3162c2ba98ea545851",
+          "sql_preview": "CREATE TABLE IF NOT EXISTS \"chat_messages\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"role\" TEXT NOT NULL, \"content\" TEXT NOT NULL, \"created_at\" TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \"cha"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DO",
+          "statement_sha256": "24e9d2b36b15d60ab6a2e9d2c6b87baf22ab166d1441d5cde97865ad7c5386e3",
+          "sql_preview": "DO $$ BEGIN IF NOT EXISTS ( SELECT 1 FROM pg_constraint WHERE conname = 'chat_messages_organization_id_fkey' ) THEN ALTER TABLE \"chat_messages\" ADD CONSTRAINT \"chat_messages_organization_id_fkey\" FOREIGN KEY (\"organization_id\") REFERENCES \""
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "fe5423198e203b608734fe4645c40324cbbb816382ba7682ad813b5a8557b988",
+          "sql_preview": "CREATE INDEX IF NOT EXISTS \"chat_messages_organization_id_created_at_idx\" ON \"chat_messages\"(\"organization_id\", \"created_at\")"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260811060000_evaluations_entity_references",
+      "migration_checksum_sha256": "ec71e133e7cbc2b7cdc40440d99ce568133f8ef65de17d79d372e02fb43d42e5",
+      "classification": "NORMAL_PENDING",
+      "data_risk_classification": "DATA_DEPENDENT_LOW",
+      "data_risk_reason": "validated constraint/index DDL",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "CREATE TYPE",
+          "statement_sha256": "2f6e44dcfa93d905bf6b6036d649b4272c0edb2280ee7577ef592560366ddcb9",
+          "sql_preview": "CREATE TYPE \"EvaluationsReferenceOwnerType\" AS ENUM ('INSIGHT', 'ANALYTICS_GROUP')"
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "CREATE TYPE",
+          "statement_sha256": "a029391e499e6238b8dc28b84a16f193f8a52707da2a7e2c0498389e2dc7ae59",
+          "sql_preview": "CREATE TYPE \"EvaluationsEntityType\" AS ENUM ('VEHICLE', 'BOOKING', 'CUSTOMER', 'DRIVER', 'USER', 'INVOICE', 'PAYMENT', 'TASK', 'SERVICE_CASE', 'DAMAGE', 'DOCUMENT', 'STATION')"
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TYPE",
+          "statement_sha256": "752126e78ee2e12f85f035cdea6cd4f765b578b0ef808f2a45fbdd801f7e0b98",
+          "sql_preview": "CREATE TYPE \"EvaluationsRelationType\" AS ENUM ('PRIMARY_SUBJECT', 'CONTRIBUTOR', 'RELATED', 'SOURCE', 'IMPACTED')"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "eb4541c504336191e17c9c4dc1c7d1cc8fc03a05e1a0a7553aa619e7b3dee847",
+          "sql_preview": "CREATE TABLE \"evaluations_entity_references\" ( \"id\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"station_id\" TEXT, \"owner_type\" \"EvaluationsReferenceOwnerType\" NOT NULL, \"owner_id\" TEXT NOT NULL, \"entity_type\" \"EvaluationsEntityType\" NO"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "8a880ef67c5b814ed5a94221bde6f6df23ffb1491d9d4a4e6cabd4b89655c2cf",
+          "sql_preview": "CREATE INDEX \"evaluations_entity_references_organization_id_idx\" ON \"evaluations_entity_references\"(\"organization_id\")"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "8f1c2b295bf506566258e46c8fa081a2f3e1651c96969352924fec13c690811f",
+          "sql_preview": "CREATE INDEX \"evaluations_entity_references_organization_id_entity_type_e_idx\" ON \"evaluations_entity_references\"(\"organization_id\", \"entity_type\", \"entity_id\")"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "d3846820e5e7557115c55de0701e25f19d6f42289ae20f0bda70aeb498b55f9d",
+          "sql_preview": "CREATE INDEX \"evaluations_entity_references_organization_id_station_id_idx\" ON \"evaluations_entity_references\"(\"organization_id\", \"station_id\")"
+        },
+        {
+          "ordinal": 8,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b26496c9790b253ca7e0d7fdd9527c420e597c291d9f841f4c3d92998048abed",
+          "sql_preview": "CREATE INDEX \"evaluations_entity_references_organization_id_owner_type_ow_idx\" ON \"evaluations_entity_references\"(\"organization_id\", \"owner_type\", \"owner_id\")"
+        },
+        {
+          "ordinal": 9,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "b568e258fb2868c7a67c6866292d0f4da1394dc18c050646b8b6920744323faa",
+          "sql_preview": "CREATE INDEX \"evaluations_entity_references_organization_id_created_at_idx\" ON \"evaluations_entity_references\"(\"organization_id\", \"created_at\")"
+        },
+        {
+          "ordinal": 10,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "7ca0dd54e881dfe6a8592e8c9c769a540a6ff29ceb767216393ac28ab550da1f",
+          "sql_preview": "CREATE UNIQUE INDEX \"evaluations_entity_refs_org_dedupe_key\" ON \"evaluations_entity_references\"(\"organization_id\", \"dedupe_key\")"
+        },
+        {
+          "ordinal": 11,
+          "statement_type": "ALTER TABLE",
+          "statement_sha256": "bf50919aaf636ade3d5d01f61aad90ce3fe638eb82a5e40654ced29496f8fe0d",
+          "sql_preview": "ALTER TABLE \"evaluations_entity_references\" ADD CONSTRAINT \"evaluations_entity_references_organization_id_fkey\" FOREIGN KEY (\"organization_id\") REFERENCES \"organizations\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE"
+        }
+      ]
+    },
+    {
+      "migration_name": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "migration_checksum_sha256": "90c3288ff4b47dc31516fd0c3423b681b68d1dd6c177b99e89d494a0d3894393",
+      "classification": "HISTORICAL_RECOVERY",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "schema-only DDL without DML",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DO",
+          "statement_sha256": "b56559c74b75c403f362a9b4fe8018f810d790aadc933dacba9f97775b01b08b",
+          "sql_preview": "DO $$ BEGIN IF EXISTS ( SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'vehicle_trips' AND column_name = 'trip_status' ) THEN ALTER TABLE vehicle_trips ALTER COLUMN trip_status SET DEFAULT 'ONGOING':"
+        }
+      ]
+    },
+    {
+      "migration_name": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+      "migration_checksum_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+      "classification": "APPEND_ONLY_TAIL_RECONCILIATION",
+      "data_risk_classification": "DDL_SCHEMA_ONLY",
+      "data_risk_reason": "three-task append-only tail reconciliation",
+      "executes_on_strategy": true,
+      "statements": [
+        {
+          "ordinal": 1,
+          "statement_type": "DROP INDEX",
+          "statement_sha256": "2dad439c852b7842bc33a7e6f07e46594d419d5b2987f5b609fd70e5963430b7",
+          "sql_preview": "DROP INDEX IF EXISTS \"org_invoices_invoice_number_key\""
+        },
+        {
+          "ordinal": 2,
+          "statement_type": "DROP INDEX",
+          "statement_sha256": "f76baaf63dff9a47c55aed55c99339f5f6764875afe23d724a7173fc49421dc1",
+          "sql_preview": "DROP INDEX IF EXISTS \"whatsapp_conversations_organization_id_contact_phone_key\""
+        },
+        {
+          "ordinal": 3,
+          "statement_type": "CREATE TABLE",
+          "statement_sha256": "6de0d731b169877c372080b5e020d8561940ade5dcb1d01d8bc036acc53b3a44",
+          "sql_preview": "CREATE TABLE \"organization_role_assignment_drift_reconciliation_applications\" ( \"id\" TEXT NOT NULL, \"idempotency_key\" TEXT NOT NULL, \"organization_id\" TEXT NOT NULL, \"membership_id\" TEXT NOT NULL, \"evidence_hash\" TEXT NOT NULL, \"expected_gi"
+        },
+        {
+          "ordinal": 4,
+          "statement_type": "CREATE UNIQUE INDEX",
+          "statement_sha256": "adb52bfc7d2f71a2300811aae3492fd48b740a9138d3f71cedbe85d1d2d79956",
+          "sql_preview": "CREATE UNIQUE INDEX \"org_role_asgn_drift_recon_apps_idem_key\" ON \"organization_role_assignment_drift_reconciliation_applications\"(\"idempotency_key\")"
+        },
+        {
+          "ordinal": 5,
+          "statement_type": "CREATE INDEX",
+          "statement_sha256": "2814bd3badec1befe2f7edfd47b86bd3b6d324710459a2610ec23d4bb5620d42",
+          "sql_preview": "CREATE INDEX \"org_role_asgn_drift_recon_apps_org_mbr_created_idx\" ON \"organization_role_assignment_drift_reconciliation_applications\"(\"organization_id\", \"membership_id\", \"created_at\")"
+        },
+        {
+          "ordinal": 6,
+          "statement_type": "ALTER TABLE",
+          "statement_sha256": "1db5897e3eb7e507a188f79a68f8cd9bf406eaa079d46f2c7770e4ff9d8095b7",
+          "sql_preview": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" ADD CONSTRAINT \"org_role_asgn_drift_recon_apps_org_id_fkey\" FOREIGN KEY (\"organization_id\") REFERENCES \"organizations\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE"
+        },
+        {
+          "ordinal": 7,
+          "statement_type": "ALTER TABLE",
+          "statement_sha256": "316fae57948bc236bb426b904e072401340ed0e964af42d06f3b42bdb0fbf051",
+          "sql_preview": "ALTER TABLE \"organization_role_assignment_drift_reconciliation_applications\" ADD CONSTRAINT \"org_role_asgn_drift_recon_apps_mbr_id_fkey\" FOREIGN KEY (\"membership_id\") REFERENCES \"organization_memberships\"(\"id\") ON DELETE CASCADE ON UPDATE C"
+        }
+      ]
+    }
+  ],
+  "pass": true
+}

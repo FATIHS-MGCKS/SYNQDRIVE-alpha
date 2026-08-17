@@ -1,0 +1,400 @@
+{
+  "phase": "CI-R3B1Q.3",
+  "captured_at": "2026-08-16T13:01:05.831085+00:00",
+  "entry_head": "561aa5f89c2130279c9342ff801ddf674c8cd4b7",
+  "entry": {
+    "REPOSITORY": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "BRANCH": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "ENTRY_HEAD_SHA": "561aa5f89c2130279c9342ff801ddf674c8cd4b7",
+    "CURRENT_HEAD_SHA": "561aa5f89c2130279c9342ff801ddf674c8cd4b7",
+    "PR_1054_HEAD_SHA": "561aa5f89c2130279c9342ff801ddf674c8cd4b7",
+    "PR_1054_STATE": "OPEN_DRAFT_UNMERGED",
+    "PR_1054": {
+      "headRefName": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+      "headRefOid": "561aa5f89c2130279c9342ff801ddf674c8cd4b7",
+      "isDraft": true,
+      "state": "OPEN"
+    },
+    "WORKTREE_CLEAN_AT_ENTRY": true,
+    "R3B1Q2_ACCEPTED_ENTRY": true
+  },
+  "harness_validation": {
+    "FROZEN_HARNESS_FILE_COUNT": 10,
+    "FROZEN_HARNESS_MATCH": true,
+    "files": [
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q3_verification_harness.py",
+        "EXPECTED_GIT_BLOB_SHA": "43b8d3ce32b30b9269e9b7404fa599f42ccb7dc9",
+        "CURRENT_GIT_BLOB_SHA": "43b8d3ce32b30b9269e9b7404fa599f42ccb7dc9",
+        "EXPECTED_SHA256": "c427fb5afefb1966cfb2fa7e16a6a04c0e8fc49d1a2067423da61354ef5259c3",
+        "CURRENT_SHA256": "c427fb5afefb1966cfb2fa7e16a6a04c0e8fc49d1a2067423da61354ef5259c3",
+        "MATCH": true,
+        "ROLE": "catalog_and_ledger_fingerprint_helper"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_catalog_fingerprint.py",
+        "EXPECTED_GIT_BLOB_SHA": "f092bd48556ee69917b1659ab78b7aacb056be97",
+        "CURRENT_GIT_BLOB_SHA": "f092bd48556ee69917b1659ab78b7aacb056be97",
+        "EXPECTED_SHA256": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+        "CURRENT_SHA256": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+        "MATCH": true,
+        "ROLE": "catalog_fingerprint_core"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_production_access.py",
+        "EXPECTED_GIT_BLOB_SHA": "ba19e969ddf6718b01068ad0af21755bbb6050bb",
+        "CURRENT_GIT_BLOB_SHA": "ba19e969ddf6718b01068ad0af21755bbb6050bb",
+        "EXPECTED_SHA256": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+        "CURRENT_SHA256": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+        "MATCH": true,
+        "ROLE": "production_read_only_access"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q_tail_identity.py",
+        "EXPECTED_GIT_BLOB_SHA": "23fec88baa5c815477151749e284a22384f5185c",
+        "CURRENT_GIT_BLOB_SHA": "23fec88baa5c815477151749e284a22384f5185c",
+        "EXPECTED_SHA256": "4acb31bf38009f251f68f74c42219c2a8680df4735c95c8535ecf4bbbdf4f75e",
+        "CURRENT_SHA256": "4acb31bf38009f251f68f74c42219c2a8680df4735c95c8535ecf4bbbdf4f75e",
+        "MATCH": true,
+        "ROLE": "tail_identity_constants"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_m252_exact_parity.py",
+        "EXPECTED_GIT_BLOB_SHA": "a6b01ade33ad03d1a31facf4075d1882a6ddac3a",
+        "CURRENT_GIT_BLOB_SHA": "a6b01ade33ad03d1a31facf4075d1882a6ddac3a",
+        "EXPECTED_SHA256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+        "CURRENT_SHA256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+        "MATCH": true,
+        "ROLE": "m252_parity"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+        "EXPECTED_GIT_BLOB_SHA": "af0ee0829e40479f55026420d03295fa2176f9a5",
+        "CURRENT_GIT_BLOB_SHA": "af0ee0829e40479f55026420d03295fa2176f9a5",
+        "EXPECTED_SHA256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+        "CURRENT_SHA256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+        "MATCH": true,
+        "ROLE": "r3b_parity_and_diff"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_golden_tests.py",
+        "EXPECTED_GIT_BLOB_SHA": "4cf9f66e0585a270f5328a318e4c16d1bfe9da7e",
+        "CURRENT_GIT_BLOB_SHA": "4cf9f66e0585a270f5328a318e4c16d1bfe9da7e",
+        "EXPECTED_SHA256": "b734b08352db11b204984249498717d13f399be339bf2685b33e8e23c6f71207",
+        "CURRENT_SHA256": "b734b08352db11b204984249498717d13f399be339bf2685b33e8e23c6f71207",
+        "MATCH": true,
+        "ROLE": "regression_tests"
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_run_source_history_remediation.py",
+        "EXPECTED_GIT_BLOB_SHA": "681340d9d540ced7334d190bfc5882a929dbdf3d",
+        "CURRENT_GIT_BLOB_SHA": "681340d9d540ced7334d190bfc5882a929dbdf3d",
+        "EXPECTED_SHA256": "5b2b133c19a92084976935e81c047fa898f8d139e64c5f718419eddf7c8c051c",
+        "CURRENT_SHA256": "5b2b133c19a92084976935e81c047fa898f8d139e64c5f718419eddf7c8c051c",
+        "MATCH": true,
+        "ROLE": "q2_orchestrator_read_only"
+      },
+      {
+        "path": "backend/prisma/migrations/20260816110731_ci_r3b_production_history_tail_reconciliation/migration.sql",
+        "EXPECTED_GIT_BLOB_SHA": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+        "CURRENT_GIT_BLOB_SHA": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+        "EXPECTED_SHA256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "CURRENT_SHA256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "MATCH": true,
+        "ROLE": "physical_tail_sql_source"
+      },
+      {
+        "path": "docs/audits/ci-recovery/data/ci-r3b1q-tail-sql-2026-08.sql",
+        "EXPECTED_GIT_BLOB_SHA": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+        "CURRENT_GIT_BLOB_SHA": "5ad7bd3cae18bbc96e7fdd1577d8719b0c29ea4d",
+        "EXPECTED_SHA256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "CURRENT_SHA256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "MATCH": true,
+        "ROLE": "executed_tail_sql_evidence"
+      }
+    ]
+  },
+  "NEW_Q3_SAFETY_TOOLING_CREATED": 0,
+  "migration_freeze": {
+    "migration_count": 306,
+    "TAIL_SOURCE_CHECKSUM": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "TAIL_SOURCE_CHECKSUM_MATCH": true,
+    "PHYSICAL_TAIL_DIRECTORY_COUNT": 1,
+    "TEMPORARY_TAIL_REAL_DIRECTORY_COUNT": 0,
+    "DUPLICATE_TAIL_SQL_DIRECTORIES": 0
+  },
+  "production_target": {
+    "LIVE_PRODUCTION_ACCESS": true,
+    "PRODUCTION_TARGET_CONFIRMED": true,
+    "instance": {
+      "alias": "PROD_DB_A",
+      "service_alias": "PROD_VPS_A",
+      "postgresql_version_line": "PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+      "system_identifier": "7654152427769393503",
+      "inet_server_addr": "",
+      "inet_server_port": "",
+      "current_database": "synqdrive",
+      "instance_fingerprint_sha256": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+      "database_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d"
+    },
+    "database": {
+      "production_db_name_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d",
+      "host_fingerprint_sha256": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763",
+      "port": 5432,
+      "database_name_length": 9,
+      "production_service": "PROD_VPS_A",
+      "production_database_alias": "PROD_DB_A"
+    },
+    "POSTGRES_VERSION": null,
+    "EXPECTED_SCHEMA": "public"
+  },
+  "ledger_before": {
+    "LEDGER_ROW_COUNT": 339,
+    "LEDGER_FINISHED_COUNT": 323,
+    "LEDGER_FAILED_COUNT": 16,
+    "LEDGER_INCOMPLETE_COUNT": 0,
+    "LEDGER_FINGERPRINT": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "TAIL_LEDGER_NAME": "20260816110731_ci_r3b_production_history_tail_reconciliation",
+    "TAIL_LEDGER_CHECKSUM": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "TAIL_LEDGER_FINISHED_AT": "2026-08-16 11:09:24.335275+00",
+    "TAIL_LEDGER_ROLLED_BACK_AT": "",
+    "TAIL_LEDGER_APPLIED_STEPS_COUNT": "1",
+    "TAIL_LEDGER_FINISHED": true,
+    "TAIL_LEDGER_ROLLED_BACK": false,
+    "TAIL_LEDGER_CHECKSUM_MATCH_SOURCE": true,
+    "NEW_FAILED_ROWS_SINCE_R3B1Q2": 0
+  },
+  "catalog_before": {
+    "CATALOG_FINGERPRINT_BEFORE": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58"
+  },
+  "m252_before": {
+    "label": "before",
+    "M252_SEMANTIC_MISMATCHES": 0,
+    "STALE_INDEX_1_ABSENT": true,
+    "STALE_INDEX_2_ABSENT": true,
+    "pass": true
+  },
+  "r3b_before": {
+    "objects": "19/19",
+    "tables": "9/9",
+    "enums": "10/10",
+    "properties": "54/54",
+    "UNAUTHORIZED": 0,
+    "UNKNOWN_AUTHORITY": 0,
+    "AMBIGUOUS_AUTHORITY": 0,
+    "STATEMENT_UNBOUND": 0,
+    "KEY_ONLY_AUTHORIZATION": 0,
+    "STATEMENT_SHA_MISMATCH": 0,
+    "EVIDENCE_CODE_MISMATCH": 0,
+    "pass": true
+  },
+  "pre_deploy_diff": {
+    "TOTAL_DIFF": 393,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "UNKNOWN_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNATTRIBUTED": 0,
+    "pass": true,
+    "script_sha256": "d5dd15726d77d2ed3bed6ad5e6c09662d778b8268953b3af31f3812b298e4161"
+  },
+  "prisma_status_before": {
+    "exit_code": 0,
+    "output": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n306 migrations found in prisma/migrations\n\nDatabase schema is up to date!\n",
+    "PRISMA_STATUS_PENDING_COUNT": 0,
+    "PRISMA_STATUS_PENDING_NAMES": [],
+    "DATABASE_ONLY_MIGRATIONS": [],
+    "SOURCE_ONLY_MIGRATIONS": [],
+    "pass": true
+  },
+  "would_deploy": {
+    "WOULD_DEPLOY_COUNT": 0,
+    "WOULD_DEPLOY_NAMES": []
+  },
+  "mutation_barrier": {
+    "checks": {
+      "PR_UNMERGED": true,
+      "WORKTREE_CLEAN_AT_ENTRY": true,
+      "FROZEN_HARNESS_MATCH": true,
+      "NEW_Q3_SAFETY_TOOLING_CREATED_0": true,
+      "R3B1Q2_ACCEPTED_ENTRY": true,
+      "TAIL_SOURCE_CHECKSUM_MATCH": true,
+      "PHYSICAL_TAIL_DIRECTORY_COUNT_1": true,
+      "TEMPORARY_TAIL_REAL_DIRECTORY_COUNT_0": true,
+      "DUPLICATE_TAIL_SQL_DIRECTORIES_0": true,
+      "LIVE_PRODUCTION_ACCESS": true,
+      "PRODUCTION_TARGET_CONFIRMED": true,
+      "NEW_FAILED_ROWS_SINCE_R3B1Q2_0": true,
+      "LEDGER_INCOMPLETE_COUNT_BEFORE_0": true,
+      "M252_BEFORE": true,
+      "R3B_BEFORE": true,
+      "PRE_DEPLOY_DIFF": true,
+      "PRISMA_STATUS": true,
+      "DATABASE_ONLY_EMPTY": true,
+      "SOURCE_ONLY_EMPTY": true,
+      "WOULD_DEPLOY_COUNT_0": true,
+      "TAIL_LEDGER_OK": true,
+      "CORRECT_IX_INDEXRELID_TEST": true,
+      "RECOVERY_READINESS": true
+    },
+    "R3B1Q3_MUTATION_BARRIER": "PASS"
+  },
+  "backup": {
+    "BACKUP_METHOD": "postgres_pg_dump_gzip",
+    "BACKUP_OR_SNAPSHOT_IDENTIFIER": "/opt/synqdrive/shared/backups/db-pre-r3b1q3_20260816130942.sql.gz",
+    "BACKUP_SIZE": 58024079,
+    "BACKUP_CHECKSUM": "ac514a1fae00ee4705fcd6299c5459504dd4fe0050fc661620546352cab01cd1",
+    "RECOVERY_POINT_TIMESTAMP": "2026-08-16T13:09:51Z",
+    "RESTORE_OWNER": "platform_ops",
+    "RESTORE_PATH_VERIFIED": true,
+    "RECOVERY_READINESS": true
+  },
+  "deploy": {
+    "DEPLOY_COMMAND": "npm run prisma:migrate:deploy",
+    "DEPLOY_STARTED_AT": "2026-08-16T13:09:52Z",
+    "DEPLOY_FINISHED_AT": "2026-08-16T13:10:11Z",
+    "DEPLOY_EXIT_CODE": 0,
+    "DEPLOY_STDOUT": "> synqdrive-backend@0.1.0 prisma:migrate:deploy\n> prisma migrate deploy\n\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n306 migrations found in prisma/migrations\n\n\nNo pending migrations to apply.",
+    "DEPLOY_STDERR": "",
+    "MIGRATIONS_ATTEMPTED_BY_DEPLOY": 0,
+    "MIGRATIONS_APPLIED_BY_DEPLOY": 0,
+    "APPLYING_MIGRATION_NAMES": [],
+    "pass": true
+  },
+  "DEPLOY_ATTEMPT_COUNT": 1,
+  "ledger_after": {
+    "LEDGER_ROW_COUNT": 339,
+    "LEDGER_FINISHED_COUNT": 323,
+    "LEDGER_FAILED_COUNT": 16,
+    "LEDGER_INCOMPLETE_COUNT": 0,
+    "LEDGER_FINGERPRINT": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2"
+  },
+  "catalog_after": {
+    "CATALOG_FINGERPRINT_AFTER": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58"
+  },
+  "ledger_delta": {
+    "NEW_LEDGER_ROWS": 0,
+    "NEW_FINISHED_ROWS": 0,
+    "NEW_FAILED_ROWS": 0,
+    "NEW_INCOMPLETE_ROWS": 0,
+    "LEDGER_FINGERPRINT_CHANGED": false
+  },
+  "catalog_delta": {
+    "CATALOG_FINGERPRINT_CHANGED": false,
+    "CATALOG_DELTA_AFTER_DEPLOY": 0
+  },
+  "m252_after": {
+    "label": "after",
+    "M252_SEMANTIC_MISMATCHES": 0,
+    "STALE_INDEX_1_ABSENT": true,
+    "STALE_INDEX_2_ABSENT": true,
+    "pass": true
+  },
+  "r3b_after": {
+    "pass": true,
+    "properties": "54/54"
+  },
+  "prisma_status_after": {
+    "exit_code": 0,
+    "output": "Prisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n306 migrations found in prisma/migrations\n\nDatabase schema is up to date!\n",
+    "PRISMA_STATUS_PENDING_COUNT": 0,
+    "PRISMA_STATUS_PENDING_NAMES": [],
+    "DATABASE_ONLY_MIGRATIONS": [],
+    "SOURCE_ONLY_MIGRATIONS": [],
+    "pass": true
+  },
+  "post_deploy_diff": {
+    "TOTAL_DIFF": 393,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "UNKNOWN_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNATTRIBUTED": 0,
+    "pass": true,
+    "script_sha256": "d5dd15726d77d2ed3bed6ad5e6c09662d778b8268953b3af31f3812b298e4161"
+  },
+  "application_health": {
+    "APPLICATION_HEALTH_PASS": true,
+    "DATABASE_CONNECTIVITY_PASS": true,
+    "MIGRATION_LOCK_RELEASED": true
+  },
+  "harness_after": {
+    "HARNESS_FILES_CHANGED_DURING_R3B1Q3": 0,
+    "FROZEN_HARNESS_UNCHANGED": true,
+    "files": [
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q3_verification_harness.py",
+        "SHA256_BEFORE": "c427fb5afefb1966cfb2fa7e16a6a04c0e8fc49d1a2067423da61354ef5259c3",
+        "SHA256_AFTER": "c427fb5afefb1966cfb2fa7e16a6a04c0e8fc49d1a2067423da61354ef5259c3",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1n2_catalog_fingerprint.py",
+        "SHA256_BEFORE": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+        "SHA256_AFTER": "3edc4926b1811e550ae94d339d259f3a07c4366c6c6cf824d7d11422d648fa32",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1n1_production_access.py",
+        "SHA256_BEFORE": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+        "SHA256_AFTER": "bbe1bd4f052cf19d1ff1d97d22b2c80d1c1a8d2c014d1b7533cdf4e7e8fbe612",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q_tail_identity.py",
+        "SHA256_BEFORE": "4acb31bf38009f251f68f74c42219c2a8680df4735c95c8535ecf4bbbdf4f75e",
+        "SHA256_AFTER": "4acb31bf38009f251f68f74c42219c2a8680df4735c95c8535ecf4bbbdf4f75e",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1o4_m252_exact_parity.py",
+        "SHA256_BEFORE": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+        "SHA256_AFTER": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+        "SHA256_BEFORE": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+        "SHA256_AFTER": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_golden_tests.py",
+        "SHA256_BEFORE": "b734b08352db11b204984249498717d13f399be339bf2685b33e8e23c6f71207",
+        "SHA256_AFTER": "b734b08352db11b204984249498717d13f399be339bf2685b33e8e23c6f71207",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/tooling/ci_r3b1q2_run_source_history_remediation.py",
+        "SHA256_BEFORE": "5b2b133c19a92084976935e81c047fa898f8d139e64c5f718419eddf7c8c051c",
+        "SHA256_AFTER": "5b2b133c19a92084976935e81c047fa898f8d139e64c5f718419eddf7c8c051c",
+        "MATCH": true
+      },
+      {
+        "path": "backend/prisma/migrations/20260816110731_ci_r3b_production_history_tail_reconciliation/migration.sql",
+        "SHA256_BEFORE": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "SHA256_AFTER": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "MATCH": true
+      },
+      {
+        "path": "docs/audits/ci-recovery/data/ci-r3b1q-tail-sql-2026-08.sql",
+        "SHA256_BEFORE": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "SHA256_AFTER": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+        "MATCH": true
+      }
+    ]
+  },
+  "source_integrity_after": {
+    "MIGRATION_FILES_CHANGED_DURING_R3B1Q3": 0,
+    "SCHEMA_PRISMA_CHANGED_DURING_R3B1Q3": false,
+    "APPLICATION_CODE_CHANGED_DURING_R3B1Q3": 0,
+    "SAFETY_TOOLING_CHANGED_DURING_Q3": 0
+  },
+  "result_status": "SUCCESS",
+  "machine_status": {
+    "status": "CI_R3B1Q3_FROZEN_IDEMPOTENCY_COMPLETION_COMPLETED",
+    "R3B1Q_EXECUTION": "R3B1Q_PRODUCTION_RECONCILIATION_COMPLETED_AND_IDEMPOTENCY_VERIFIED",
+    "R3B1Q_FINAL_STATUS": "R3B1Q_COMPLETE",
+    "PR1054_MERGE_READINESS": "NOT_READY_PENDING_INDEPENDENT_POST_EXECUTION_ACCEPTANCE"
+  }
+}

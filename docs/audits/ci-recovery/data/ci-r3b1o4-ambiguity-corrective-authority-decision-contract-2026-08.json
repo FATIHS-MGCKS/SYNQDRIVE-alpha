@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-ambiguity-corrective",
+  "decision_model": {
+    "semantic_match_count_0": "UNAUTHORIZED_FINAL_DELTA",
+    "semantic_match_count_1": "unique authorized candidate",
+    "semantic_match_count_gt_1": "AMBIGUOUS_DELTA_AUTHORITY"
+  },
+  "forbidden_disambiguation": [
+    "migration timestamp",
+    "migration position",
+    "recovery/canonical classification",
+    "M252 classification",
+    "match mode",
+    "statement ordinal",
+    "source priority",
+    "score",
+    "rank",
+    "preferred candidate",
+    "M252 bonus",
+    "EXACT bonus"
+  ],
+  "pass": true
+}

@@ -1,0 +1,199 @@
+{
+  "phase": "CI-R3B1R.1.2c",
+  "mode": "POST_DEPLOY_VERIFY_ONLY",
+  "generated_at": "2026-08-16T20:32:17+00:00",
+  "authorization": "Separate explicit user authorization received for R3B1R.1.2c Production retry after R3B1R.1.2 environment-only incident",
+  "authoritative_preflight": "CI-R3B1R.1.2b.1",
+  "deploy": {
+    "deploy_exit_code": 0,
+    "deploy_attempt_count": 1,
+    "migrations_attempted": 2,
+    "migrations_applied": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "unexpected_migrations_applied": 0,
+    "deploy_started_at": "2026-08-16T19:40:12.174153Z",
+    "deploy_finished_at": "2026-08-16T19:40:12.239261Z",
+    "evidence_source": "production_ledger_reconstruction_after_single_authorized_deploy"
+  },
+  "b1_evidence_verification": {
+    "pass": true,
+    "artifact_md": "docs/audits/pr-recovery/R3B1R112B1-FAIL-CLOSED-RETRY-PREFLIGHT-EVIDENCE-REPAIR.md",
+    "artifact_json": "docs/audits/ci-recovery/data/ci-r3b1r112b1-assessment-raw-2026-08.json",
+    "retry_preflight_authority": "INDEPENDENTLY_DERIVED_AND_FAIL_CLOSED",
+    "r3b1r112_retry_readiness": "READY_FOR_SEPARATE_EXPLICIT_PRODUCTION_RETRY_AUTHORIZATION",
+    "frozen_executable_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "frozen_retry_command_sha256": "192edfa3eb4dc110c788e7fca80f4478b55a2a325e71899a725dd67f08dbfcbc"
+  },
+  "frozen_authority": {
+    "frozen_executable_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "frozen_retry_command_sha256": "192edfa3eb4dc110c788e7fca80f4478b55a2a325e71899a725dd67f08dbfcbc",
+    "bridge_1_name": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+    "bridge_2_name": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+    "bridge_1_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+    "bridge_2_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82"
+  },
+  "pre_deploy": {
+    "ledger_row_count": 339,
+    "ledger_fingerprint_before": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_before": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "bridge_1_ledger_row_exists_before": false,
+    "bridge_2_ledger_row_exists_before": false
+  },
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "dd8fd40a9a2e5f4722242ebd83a6dee55457e16f",
+    "current_pr_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d"
+  },
+  "retry_source_resolution": {
+    "entry_head_sha": "dd8fd40a9a2e5f4722242ebd83a6dee55457e16f",
+    "retry_source_head_sha": "dd8fd40a9a2e5f4722242ebd83a6dee55457e16f",
+    "retry_source_head_pushed": true,
+    "origin_branch_tip_sha": "dd8fd40a9a2e5f4722242ebd83a6dee55457e16f",
+    "retry_backend_tree_sha": "453da01cdec9500db1e112f5afa7d0169f6da138"
+  },
+  "post_deploy": {
+    "ledger_row_count": 341,
+    "ledger_finished_count": 325,
+    "ledger_failed_count": 16,
+    "ledger_incomplete_count": 0,
+    "catalog_fingerprint_before": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_fingerprint_after": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_fingerprint_unchanged": true,
+    "bridge_checksum_bindings": {
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": {
+        "ledger_row_exists_after": true,
+        "finished": true,
+        "rolled_back": false,
+        "checksum": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+        "checksum_match_source": true,
+        "started_at": "2026-08-16 19:40:12.174153+00",
+        "finished_at": "2026-08-16 19:40:12.226713+00"
+      },
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": {
+        "ledger_row_exists_after": true,
+        "finished": true,
+        "rolled_back": false,
+        "checksum": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+        "checksum_match_source": true,
+        "started_at": "2026-08-16 19:40:12.229225+00",
+        "finished_at": "2026-08-16 19:40:12.239261+00"
+      }
+    },
+    "parsed_post_status": {
+      "parser_valid": true,
+      "database_only_parse_valid": true,
+      "status_rc": 0,
+      "status_pending_names": [],
+      "status_pending_count": 0,
+      "status_database_only_names": [],
+      "status_database_only_count": 0,
+      "status_unexpected_pending_names": [],
+      "status_missing_expected_pending_names": [],
+      "unexplained_database_only_migrations": 0,
+      "unexplained_database_only_names": [],
+      "post_deploy_up_to_date": true
+    },
+    "post_deploy_status_readonly": {
+      "status_text_excerpt": "\nPrisma schema loaded from prisma/schema.prisma\nDatasource \"db\": PostgreSQL database \"synqdrive\", schema \"public\" at \"localhost:5432\"\n\n308 migrations found in prisma/migrations\n\nDatabase schema is up to date!\n\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502  Update available 5.22.0 -> 7.9.1                       \u2502\n\u2502                                                         \u2502\n\u2502  This is a major update - please follow the guide at    \u2502\n\u2502  https://pris.ly/d/major-version-upgrade                \u2502\n\u2502                                                         \u2502\n\u2502  Run the following to update                            \u2502\n\u2502    npm i --save-dev prisma@latest                       \u2502\n\u2502    npm i @prisma/client@latest                          \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n",
+      "parsed": {
+        "parser_valid": true,
+        "database_only_parse_valid": true,
+        "status_rc": 0,
+        "status_pending_names": [],
+        "status_pending_count": 0,
+        "status_database_only_names": [],
+        "status_database_only_count": 0,
+        "status_unexpected_pending_names": [],
+        "status_missing_expected_pending_names": [],
+        "unexplained_database_only_migrations": 0,
+        "unexplained_database_only_names": [],
+        "post_deploy_up_to_date": true
+      }
+    },
+    "post_deploy_independent_would_deploy": {
+      "independent_would_deploy_names": [],
+      "independent_would_deploy_count": 0,
+      "independent_calculation_valid": true,
+      "unexpected_independent_would_deploy_names": [],
+      "missing_expected_independent_names": [
+        "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+        "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+      ],
+      "source_migration_count": 308,
+      "finished_ledger_unique_count": 325
+    },
+    "four_object_parity_after": {
+      "live_short_code_exact": true,
+      "live_short_code_index_exact": true,
+      "live_drivetype_exact": true,
+      "live_vehicles_drive_type_exact": true,
+      "pass": true
+    },
+    "r3b_m252_after": {
+      "r3b_pass": true,
+      "m252_pass": true
+    },
+    "pr_target_diff": {
+      "post_bridge_r3b_scope": 0,
+      "post_bridge_m252_scope": 0,
+      "post_bridge_unknown_scope": 0,
+      "post_bridge_new_strategy_drift": 0,
+      "post_bridge_unattributed": 0,
+      "pr_target_total_diff": 393,
+      "pass": true
+    },
+    "new_ledger_rows": 2
+  },
+  "backup": {
+    "backup_method": "postgres_pg_dump_gzip",
+    "backup_identifier": "/opt/synqdrive/shared/backups/db-pre-r3b1r112c_20260816192940.sql.gz",
+    "backup_size_bytes": 58346233,
+    "backup_checksum_sha256": "d4c230500e8223daa1d9366550be22df93a6f35e0ff1182921efa5efc027d59d",
+    "restore_owner": "platform_ops",
+    "restore_path_verified": true,
+    "recovery_readiness": true
+  },
+  "application_health": {
+    "application_health_pass": true,
+    "database_connectivity_pass": true,
+    "normal_operations_active": true,
+    "migration_execution_lock_released": true
+  },
+  "dependency_audit": {
+    "legal_dependency_scan_status": "FAIL",
+    "dependency_findings_high": 10,
+    "pr_introduced": 0,
+    "main_reproduces": true,
+    "merge_blocker_remains": true
+  },
+  "source_immutability": {
+    "current_backend_tree_sha_after": "453da01cdec9500db1e112f5afa7d0169f6da138",
+    "bridge_source_changed_during_r3b1r112c": 0,
+    "schema_prisma_changed_during_r3b1r112c": false,
+    "application_runtime_changed_during_r3b1r112c": 0,
+    "precheck_tooling_changed_during_r3b1r112c": 0
+  },
+  "mutation_accounting": {
+    "deploy_invocations_r3b1r112c": 1,
+    "migrations_applied_r3b1r112c": 2,
+    "production_ledger_rows_added_r3b1r112c": 2,
+    "production_finished_ledger_rows_added_r3b1r112c": 2,
+    "production_failed_ledger_rows_added_r3b1r112c": 0,
+    "production_incomplete_ledger_rows_added_r3b1r112c": 0,
+    "production_catalog_mutations_r3b1r112c": 0,
+    "production_schema_semantic_changes_r3b1r112c": 0
+  },
+  "result": "SUCCESS",
+  "machine_status": {
+    "CI_R3B1R112C_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_RETRY_COMPLETED": true,
+    "R3B1R112_EXECUTION": "RECOVERED_FROM_ENVIRONMENT_ONLY_INCIDENT",
+    "R3B1R_HISTORY_BRIDGE": "PRODUCTION_HISTORY_ALIGNED_WITH_FROZEN_SOURCE",
+    "BRIDGE_EXECUTION": "TWO_LEDGER_ONLY_BRIDGES_APPLIED_ZERO_CATALOG_MUTATIONS",
+    "R3B1R12_READINESS": "READY_FOR_INDEPENDENT_FROZEN_POST_REMEDIATION_ACCEPTANCE",
+    "PR1054_MERGE_READINESS": "BLOCKED_PENDING_R3B1R12"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "phase": "CI-R3B1R.1",
+  "captured_at": "2026-08-16T14:30:00+00:00",
+  "entry": {
+    "REPOSITORY": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "BRANCH": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "ENTRY_HEAD_SHA": "7253245587e2c581c9389c7454123ea457658407",
+    "PR_1054_HEAD_SHA": "7253245587e2c581c9389c7454123ea457658407",
+    "CURRENT_MAIN_SHA": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "PR_1054_STATE": "OPEN",
+    "PR_1054_IS_DRAFT": true,
+    "WORKTREE_CLEAN_AT_ENTRY": true,
+    "MAIN_CHANGED_SINCE_R3B1R": false
+  },
+  "inherited_r3b1r_blockers": {
+    "PR_TARGET_DIFF_SAFE": {
+      "branch_clone_TOTAL_DIFF": 400,
+      "branch_clone_UNKNOWN_SCOPE": 1,
+      "branch_clone_UNATTRIBUTED": 1,
+      "sha_checkout_TOTAL_DIFF": 393,
+      "sha_checkout_all_scopes": 0
+    },
+    "NO_UNRELATED_CHANGES": [".gitignore"],
+    "MIGRATION_HISTORY_INTEGRITY": ["20260721270000_iam_role_assignment_drift_reconciliation/migration.sql"],
+    "PR_REQUIRED_CHECKS": [
+      "Migration tests (PostgreSQL)",
+      "Backend integration tests",
+      "Playwright E2E (Vehicle Detail)",
+      "Security / dependency scan"
+    ]
+  },
+  "diff_400_vs_393": {
+    "ROOT_CAUSE": "branch-clone execution path used by R3B1R ephemeral executor (git clone --depth 1 --branch) diverged from deterministic SHA-checkout path; classification counted 7 extra operations as UNKNOWN/UNATTRIBUTED while raw diff SHA matched on reproduction",
+    "REMEDIATION": "Standardized ci_r3b1q2_run_source_history_remediation.py to SHA fetch+checkout instead of branch clone",
+    "PR_TARGET_DIFF_REPRODUCIBLE": true
+  },
+  "m252": {
+    "MAIN_FILE_SHA256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "PR_FILE_SHA256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+    "PRODUCTION_LEDGER_CHECKSUM": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "M252_REPAIR_COMMITTED_BEFORE_FIRST_SUCCESSFUL_PROD_APPLY": false,
+    "PRODUCTION_LEDGER_CHECKSUM_MATCH_PR": false,
+    "PRODUCTION_LEDGER_CHECKSUM_MATCH_MAIN": true,
+    "POST_APPLICATION_REWRITE": true,
+    "REMEDIATION": "Retained identifier-collision repair (ee634cef bytes) for CI/bootstrap; documented ledger/source checksum delta pending separate history remediation"
+  },
+  "gitignore": {
+    "GITIGNORE_DIFF_VS_MAIN": 0,
+    "disposition": "restored to origin/main"
+  },
+  "ci_failures": {
+    "migration_tests": {
+      "CHECK": "Migration tests (PostgreSQL)",
+      "RUN_ID": "31950439377",
+      "JOB_ID": "95173082654",
+      "EXACT_FAILURE": "P3018 SQLSTATE 25001 CREATE INDEX CONCURRENTLY on 20260413230000_add_composite_indexes_batch_c",
+      "ROOT_CAUSE": "Prisma transactional migrate deploy incompatible with CONCURRENTLY",
+      "PR_INTRODUCED": false,
+      "MAIN_REPRODUCES": true,
+      "REMEDIATION": "backend/scripts/test/prisma-migrate-deploy-resilient.sh"
+    },
+    "backend_integration": {
+      "CHECK": "Backend integration tests",
+      "RUN_ID": "31950439377",
+      "JOB_ID": "95173082806",
+      "EXACT_FAILURE": "Same CONCURRENTLY migration failure during prisma migrate deploy",
+      "ROOT_CAUSE": "Same as migration tests",
+      "PR_INTRODUCED": false,
+      "MAIN_REPRODUCES": true,
+      "REMEDIATION": "Workflow uses prisma-migrate-deploy-resilient.sh"
+    },
+    "vehicle_detail_e2e": {
+      "CHECK": "Playwright E2E (Vehicle Detail)",
+      "RUN_ID": "31950439325",
+      "JOB_ID": "95173102243",
+      "EXACT_FAILURE": "Timeout on getByRole tab Overview in openVehicleFromFleet",
+      "ROOT_CAUSE": "openVehicleDetailRental defaults locale de (tab label Uebersicht) while fixture asserted English Overview",
+      "PR_INTRODUCED": false,
+      "MAIN_REPRODUCES": true,
+      "REMEDIATION": "Assert #vehicle-detail-tab-overview (locale-independent)"
+    },
+    "security_scan": {
+      "CHECK": "Security / dependency scan",
+      "RUN_ID": "31950439377",
+      "JOB_ID": "95173082840",
+      "EXACT_FAILURE": "npm audit --audit-level=high exit 1 (frontend high vulns)",
+      "ROOT_CAUSE": "Stale frontend lockfile vulnerabilities",
+      "PR_INTRODUCED": false,
+      "MAIN_REPRODUCES": true,
+      "REMEDIATION": "npm audit fix in frontend (0 high remaining); backend high count reduced, audit script passes locally"
+    }
+  },
+  "local_gates": {
+    "EMPTY_DATABASE_MIGRATION_PASS": true,
+    "LEGACY_DATABASE_MIGRATION_PASS": true,
+    "Q2_GOLDEN_TESTS_PASS": true,
+    "AUDIT_DEPENDENCIES_PASS": true
+  },
+  "production_immutability": {
+    "PRODUCTION_MUTATIONS_R3B1R1": 0,
+    "PRODUCTION_IMMUTABLE_R3B1R1": true
+  },
+  "machine_status": {
+    "status": "CI_R3B1R1_MERGE_READINESS_BLOCKER_REMEDIATION_BLOCKED",
+    "R3B1R_REMEDIATION": "BLOCKERS_REMAIN",
+    "R3B1R2_READINESS": "NOT_READY",
+    "PR1054_MERGE_READINESS": "BLOCKED",
+    "remaining_ci_blockers": [
+      "Backend integration tests — organizations.short_code schema/DB drift (no migration)",
+      "Security / dependency scan (Vehicle Detail workflow) — backend npm audit high severity",
+      "Playwright E2E (Vehicle Detail) — locale fix pushed post-first CI run"
+    ],
+    "remediated_ci_checks": [
+      "Migration tests (PostgreSQL)",
+      "Security / dependency scan (Legal Documents workflow)"
+    ]
+  }
+}

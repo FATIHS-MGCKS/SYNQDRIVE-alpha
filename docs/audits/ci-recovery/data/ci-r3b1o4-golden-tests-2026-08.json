@@ -1,0 +1,663 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4",
+  "required": 78,
+  "implemented": 78,
+  "executed": 86,
+  "passed": 86,
+  "failed": 0,
+  "coverage_complete": true,
+  "test_source_hashes": {
+    "schema_version": 1,
+    "phase": "CI-R3B1O.4",
+    "entries": [
+      {
+        "source_file": "ci_r3b1o3_m252_exact_parity.py",
+        "sha256": "4c76e76573e7696483528f15649b57b78c66fdb83c8f3c22082522eff46ec8a3",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o3_diff_attribution.py",
+        "sha256": "5c937761b0daa86b832d579a3d65f4c6f383daf55974534cfdb347b04d005ec4",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o4_golden_tests.py",
+        "sha256": "0ba1075bb49f83e810e90c81c641f2732eb9cbf5c230fbf00fab59802776c448",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o4_terminal_gate.py",
+        "sha256": "63f2d457a450bee337213672789f58105d05e2fb34e08ea2e0a36e495026ecf6",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o4_stale_index_authority.py",
+        "sha256": "c9b1a7f6ca49bff9f21c8b33636ee9711e1d8c4982cb7da81f696243374b6cfb",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o4_tail_contract.py",
+        "sha256": "a63aa3c3e47d84a41e3154767975dd7151717668100a2babfd86f1302f834fdf",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o4_final_twin.py",
+        "sha256": "02f63f3e9b9778c71568896ef1fca7118c67554f8f4621f341005ecb566a9be4",
+        "exists": true
+      },
+      {
+        "source_file": "ci_r3b1o4_catalog_delta.py",
+        "sha256": "41436efefc75144160c9e014b80c2d0458d7cfeea695a90fae9b9cae9fe16ef1",
+        "exists": true
+      }
+    ],
+    "evidence_code_mismatch_count": 0,
+    "pass": true
+  },
+  "tests": [
+    {
+      "test_id": "m252_positive_control",
+      "function": "compare_m252_exact",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_table_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_missing_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_column_type",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_timestamp_precision",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_nullability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_default",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_identity",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_generated",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_pk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_predicate",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_validity",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_unique_flag",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_index_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_index_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_column_order",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_method",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_composite_predicate",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_source_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_target_table",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_target_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_match",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_on_update",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_on_delete",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_org_fk_validation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_name",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_source_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_target_table",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_target_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_match",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_on_update",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_on_delete",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_deferrability",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_wrong_membership_fk_validation",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_unexpected_extra_object",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "m252_unexpected_column",
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "diff_m252_alter_index_scope",
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_M252",
+      "actual": "OWNER_M252",
+      "pass": true
+    },
+    {
+      "test_id": "diff_unknown_owner_unresolved",
+      "function": "classify_operation_two_axis",
+      "expected": "UNATTRIBUTED",
+      "actual": "UNATTRIBUTED",
+      "pass": true
+    },
+    {
+      "test_id": "diff_m252_name_outside_scope_not_m252",
+      "function": "resolve_owner_fields",
+      "expected": "not OWNER_M252",
+      "actual": "OWNER_UNKNOWN",
+      "pass": true
+    },
+    {
+      "test_id": "diff_r3b_catalog_owner",
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_R3B",
+      "actual": "OWNER_R3B",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_pre_existing_golden_match",
+      "function": "classify_operation_two_axis",
+      "expected": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "actual": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_authorized_delta_explicit",
+      "function": "classify_operation_two_axis",
+      "expected": "AUTHORIZED_STRATEGY_DELTA",
+      "actual": "AUTHORIZED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_out_of_scope_no_golden_new_drift",
+      "function": "classify_operation_two_axis",
+      "expected": "NEW_STRATEGY_DRIFT",
+      "actual": "NEW_STRATEGY_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "diff_no_authority_new_strategy_drift",
+      "function": "classify_operation_two_axis",
+      "expected": "NEW_STRATEGY_DRIFT",
+      "actual": "NEW_STRATEGY_DRIFT",
+      "pass": true
+    },
+    {
+      "test_id": "provenance_unknown_unattributed",
+      "function": "classify_operation_two_axis",
+      "expected": "UNATTRIBUTED",
+      "actual": "UNATTRIBUTED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_all_gates_pass",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "PASS",
+      "actual": "CI_R3B1O3_FINAL_STRATEGY_ACCEPTANCE_CLOSURE_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_baseline_not_clean",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_BASELINE_NOT_CLEAN",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_owner_unknown_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_unattributed_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_new_strategy_drift_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_FINAL_DRIFT_ATTRIBUTION_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_r3b_scope_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_m252_scope_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_m252_parity_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_M252_EXACT_PARITY_GATE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_golden_test_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_GOLDEN_GATE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_second_deploy_new_row_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_REPEAT_DEPLOY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_catalog_delta_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_REPEAT_DEPLOY_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_r3b_parity_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "terminal_production_changed_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "invoice_stale_creator_and_superseding",
+      "function": "build_invoice_stale_index_authority",
+      "expected": "slot4+invoice_finance_workflow",
+      "actual": "20260413225000_ci_r3b_historical_predecessor_slot4->20260616180000_invoice_finance_workflow",
+      "pass": true
+    },
+    {
+      "test_id": "whatsapp_stale_creator_and_superseding",
+      "function": "build_whatsapp_stale_index_authority",
+      "expected": "slot11+whatsapp_business_platform",
+      "actual": "20260620183000_ci_r3b_post_vendor_predecessor_slot11->20260620190000_whatsapp_business_platform",
+      "pass": true
+    },
+    {
+      "test_id": "tail_contract_exactly_three_tasks",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "3",
+      "actual": "3",
+      "pass": true
+    },
+    {
+      "test_id": "tail_contract_no_unauthorized_tasks",
+      "function": "build_tail_reconciliation_contract",
+      "expected": "0",
+      "actual": "0",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_no_cascade",
+      "function": "build_tail_sql",
+      "expected": "no DROP CASCADE",
+      "actual": "none",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_contains_invoice_drop",
+      "function": "build_tail_sql",
+      "expected": "invoice drop",
+      "actual": "present",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_contains_whatsapp_drop",
+      "function": "build_tail_sql",
+      "expected": "whatsapp drop",
+      "actual": "present",
+      "pass": true
+    },
+    {
+      "test_id": "tail_sql_contains_m252_create",
+      "function": "build_tail_sql",
+      "expected": "M252 create",
+      "actual": "present",
+      "pass": true
+    },
+    {
+      "test_id": "tail_contract_fourth_task_fail",
+      "function": "manual",
+      "expected": "FAIL",
+      "actual": "4",
+      "pass": true
+    },
+    {
+      "test_id": "tail_precondition_m252_absent_pass_fixture",
+      "function": "evaluate_tail_preconditions",
+      "expected": "mixed",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "test_id": "tail_precondition_m252_present_fail",
+      "function": "evaluate_tail_preconditions",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "test_id": "o4_terminal_all_gates_pass",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "actual": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+      "pass": true
+    },
+    {
+      "test_id": "o4_terminal_stale_drop_ops_remaining_fail",
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O4_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o3_m252_exact_parity_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o3_m252_exact_parity.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o3_diff_attribution_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o3_diff_attribution.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_golden_tests_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_golden_tests.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_terminal_gate_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_terminal_gate.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_stale_index_authority_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_stale_index_authority.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_tail_contract_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_tail_contract.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_final_twin_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_final_twin.py",
+      "pass": true
+    },
+    {
+      "test_id": "source_hash_present_ci_r3b1o4_catalog_delta_py",
+      "function": "build_test_source_hash_manifest",
+      "expected": "sha256 present",
+      "actual": "ci_r3b1o4_catalog_delta.py",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

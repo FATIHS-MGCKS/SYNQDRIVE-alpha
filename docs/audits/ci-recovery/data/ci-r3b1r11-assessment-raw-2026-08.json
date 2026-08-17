@@ -1,0 +1,93 @@
+{
+  "phase": "CI-R3B1R.1.1",
+  "generated_at": "2026-08-16T14:45:00+00:00",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "63dd1d6a97b812570de7ab5a512d7686aaa7a27f",
+    "pr_1054_head_sha": "63dd1d6a97b812570de7ab5a512d7686aaa7a27f",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean_at_entry": true
+  },
+  "m252": {
+    "main_file_sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "pr_file_sha256_before": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+    "restored_file_sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "production_ledger_checksum": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "first_successful_prod_finished_at": "2026-07-22 13:49:51.333878+00",
+    "repair_commit_sha": "ee634cef5d46004e39f5c61588f9251cc3d4a00b",
+    "repair_commit_time": "2026-08-15 15:06:20 +0000",
+    "post_application_rewrite": true,
+    "source_checksum_matches_production_ledger": true,
+    "post_application_source_checksum_mismatch": false,
+    "applied_historical_migrations_rewritten_unauthorized": 0
+  },
+  "collision": {
+    "exact_failing_statement": "CREATE UNIQUE INDEX \"organization_role_assignment_drift_reconciliation_applications_idempotency_key_key\" ON \"organization_role_assignment_drift_reconciliation_applications\"(\"idempotency_key\")",
+    "postgres_error_code": "42P07",
+    "truncated_identifier_a": "organization_role_assignment_drift_reconciliation_applications_",
+    "truncated_identifier_b": "organization_role_assignment_drift_reconciliation_applications_",
+    "collision_proven": true
+  },
+  "ephemeral_recovery": {
+    "production_recovery_path_for_historical_m252": false,
+    "ephemeral_recovery_exact_identity_bound": true,
+    "ephemeral_recovery_fail_closed": true,
+    "table_existence_only_resolve_allowed": false,
+    "exact_m252_parity_required_before_tail_resolve": true
+  },
+  "short_code": {
+    "short_code_in_schema": true,
+    "short_code_created_by_existing_migration": false,
+    "short_code_existing_creator_migration": null,
+    "short_code_present_in_live_production": true,
+    "short_code_live_type": "text",
+    "short_code_live_nullable": "YES",
+    "short_code_live_default": null,
+    "short_code_live_unique": true,
+    "short_code_live_index_or_constraint_name": "organizations_short_code_key",
+    "short_code_origin_provenance": "Present in schema.prisma from initial monorepo commit; absent from migration tree; live Production catalog contains correct nullable TEXT + unique index",
+    "main_clean_bootstrap_has_short_code": true,
+    "pr_clean_bootstrap_has_short_code": true,
+    "short_code_bridge_migration_required": true,
+    "short_code_bridge_migration_name": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+    "short_code_bridge_sha256": "7612396773727d3153baae5a3f547f592d865dbcd1609df7b2b987f49aeb599d",
+    "expected_production_catalog_change_count": 0,
+    "expected_production_ledger_change_count": 1
+  },
+  "bootstrap": {
+    "empty_database_deploy_pass": true,
+    "empty_database_final_schema_matches_prisma": true,
+    "m252_semantic_mismatches": 0,
+    "short_code_present": true,
+    "short_code_semantics_match": true,
+    "physical_tail_history_complete": true,
+    "failed_migrations": 0,
+    "incomplete_migrations": 0,
+    "legacy_database_deploy_pass": true,
+    "legacy_final_schema_matches_prisma": true
+  },
+  "integration": {
+    "backend_integration_pass": true
+  },
+  "production": {
+    "production_mutations_r3b1r11": 0,
+    "production_immutable_r3b1r11": true,
+    "prisma_pending_count_expected_after_source_remediation": 1,
+    "prisma_pending_names_expected": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge"
+    ],
+    "unexpected_pending_migrations": 0
+  },
+  "outcome": "OUTCOME_B",
+  "machine_status": {
+    "CI_R3B1R11_HISTORICAL_INTEGRITY_SCHEMA_HISTORY_CLOSURE_COMPLETED": true,
+    "HISTORICAL_MIGRATION_INTEGRITY": "RESTORED_AND_LEDGER_ALIGNED",
+    "SCHEMA_HISTORY": "APPEND_ONLY_PRODUCTION_HISTORY_BRIDGE_REQUIRED",
+    "R3B1R12_READINESS": "NOT_READY_PENDING_SEPARATELY_AUTHORIZED_SHORT_CODE_HISTORY_BRIDGE",
+    "PR1054_MERGE_READINESS": "BLOCKED",
+    "NEXT_PHASE": "R3B1R1_2_CONTROLLED_PRODUCTION_HISTORY_BRIDGE"
+  }
+}

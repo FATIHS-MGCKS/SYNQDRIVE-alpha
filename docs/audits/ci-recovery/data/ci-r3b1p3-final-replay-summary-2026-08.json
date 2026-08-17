@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P.3",
+  "terminal": {
+    "result": "GO",
+    "pass": true,
+    "final_status": "CI_R3B1P3_INDEPENDENT_FROZEN_HARDENED_PREFLIGHT_REPLAY_COMPLETED",
+    "r3b1p_acceptance": "R3B1P_ACCEPTED_AFTER_HARDENED_INDEPENDENT_FROZEN_REPLAY",
+    "r3b1q_readiness": "R3B1Q_READY_SEPARATELY_AUTHORIZED_PRODUCTION_EXECUTION",
+    "blockers": [],
+    "acceptance_matrix": {
+      "WORKTREE_CLEAN": "GO",
+      "EVALUATOR_CHANGED_DURING_R3B1P3": "GO",
+      "O4_GOLDEN_TESTS_169": "GO",
+      "P2_GOLDEN_TESTS_47": "GO",
+      "R3B1P1_REGRESSION_BLOCK_LOCAL": "GO",
+      "PRODUCTION_SSH_ACCESS": "GO",
+      "PRODUCTION_MUTATIONS": "GO",
+      "PRODUCTION_IMMUTABLE": "GO",
+      "LIVE_DIFF_CLASSIFICATION": "GO",
+      "DIFF_393_TO_399_FULLY_EXPLAINED": "GO",
+      "AUTHORIZED_STRATEGY_NARROW": "GO",
+      "NEW_DRIFT_MISCLASSIFIED_AS_PRE_EXISTING": "GO",
+      "M252_PRE_EXECUTION": "GO",
+      "R3B1P1_REGRESSION_BLOCK_LIVE": "GO",
+      "R3B_CATALOG_PARITY": "GO",
+      "R3B1G_RESOLVE_UNAMBIGUOUS": "GO",
+      "R3B1I_RESOLVE_UNAMBIGUOUS": "GO",
+      "UNEXPECTED_PENDING_MIGRATIONS": "GO",
+      "STALE_INDEX_LIFECYCLE_PROVEN": "GO",
+      "TAIL_CONTRACT_PRESENT": "GO",
+      "TERMINAL_FAIL_CLOSED": "GO",
+      "R3B_SCOPE_ZERO": "GO",
+      "M252_SCOPE_ZERO": "GO",
+      "UNKNOWN_SCOPE_ZERO": "GO",
+      "NEW_STRATEGY_DRIFT_ZERO": "GO",
+      "UNATTRIBUTED_ZERO": "GO"
+    }
+  },
+  "checks": {
+    "WORKTREE_CLEAN": true,
+    "LOCAL_FROZEN_SUITES": true,
+    "O4_GOLDEN_TESTS": true,
+    "P2_GOLDEN_TESTS": true,
+    "R3B1P1_REGRESSION_BLOCK_LOCAL": true,
+    "PRODUCTION_MUTATIONS": 0,
+    "PRODUCTION_IMMUTABLE": true,
+    "LIVE_DIFF_CLASSIFICATION": true,
+    "DIFF_393_TO_399_FULLY_EXPLAINED": true,
+    "AUTHORIZED_STRATEGY_NARROW": true,
+    "NEW_DRIFT_MISCLASSIFIED_AS_PRE_EXISTING": 0,
+    "M252_PRE_EXECUTION_PASS": true,
+    "R3B1P1_REGRESSION_BLOCK_LIVE": true,
+    "R3B_CATALOG_PARITY": true,
+    "R3B1G_RESOLVE_UNAMBIGUOUS": true,
+    "R3B1I_RESOLVE_UNAMBIGUOUS": true,
+    "UNEXPECTED_PENDING_MIGRATIONS": 0,
+    "STALE_INDEX_LIFECYCLE_PROVEN": true,
+    "TAIL_CONTRACT_PRESENT": true,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "UNKNOWN_SCOPE": 0,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNATTRIBUTED": 0,
+    "EVALUATOR_CHANGED_DURING_R3B1P3": false
+  },
+  "acceptance_matrix": {
+    "WORKTREE_CLEAN": "GO",
+    "EVALUATOR_CHANGED_DURING_R3B1P3": "GO",
+    "O4_GOLDEN_TESTS_169": "GO",
+    "P2_GOLDEN_TESTS_47": "GO",
+    "R3B1P1_REGRESSION_BLOCK_LOCAL": "GO",
+    "PRODUCTION_SSH_ACCESS": "GO",
+    "PRODUCTION_MUTATIONS": "GO",
+    "PRODUCTION_IMMUTABLE": "GO",
+    "LIVE_DIFF_CLASSIFICATION": "GO",
+    "DIFF_393_TO_399_FULLY_EXPLAINED": "GO",
+    "AUTHORIZED_STRATEGY_NARROW": "GO",
+    "NEW_DRIFT_MISCLASSIFIED_AS_PRE_EXISTING": "GO",
+    "M252_PRE_EXECUTION": "GO",
+    "R3B1P1_REGRESSION_BLOCK_LIVE": "GO",
+    "R3B_CATALOG_PARITY": "GO",
+    "R3B1G_RESOLVE_UNAMBIGUOUS": "GO",
+    "R3B1I_RESOLVE_UNAMBIGUOUS": "GO",
+    "UNEXPECTED_PENDING_MIGRATIONS": "GO",
+    "STALE_INDEX_LIFECYCLE_PROVEN": "GO",
+    "TAIL_CONTRACT_PRESENT": "GO",
+    "TERMINAL_FAIL_CLOSED": "GO",
+    "R3B_SCOPE_ZERO": "GO",
+    "M252_SCOPE_ZERO": "GO",
+    "UNKNOWN_SCOPE_ZERO": "GO",
+    "NEW_STRATEGY_DRIFT_ZERO": "GO",
+    "UNATTRIBUTED_ZERO": "GO"
+  },
+  "local": {
+    "o4_golden": {
+      "executed": 169,
+      "passed": 169,
+      "failed": 0,
+      "skipped": 0,
+      "expected_total": 169,
+      "pass": true,
+      "subprocess_rc": 0
+    },
+    "p2_golden": {
+      "executed": 47,
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "expected_total": 47,
+      "pass": true,
+      "subprocess_rc": 0
+    },
+    "local_regressions": {
+      "label": "local_cached_diff",
+      "tests": [
+        {
+          "test_id": "r3b1p1_regression_wrong_fk_target",
+          "label": "local_cached_diff",
+          "blocked": true,
+          "bogus_authorized_count": 0,
+          "pass": true
+        },
+        {
+          "test_id": "r3b1p1_regression_wrong_index_column",
+          "label": "local_cached_diff",
+          "blocked": true,
+          "bogus_authorized_count": 0,
+          "pass": true
+        },
+        {
+          "test_id": "r3b1p1_regression_wrong_unique_index_name",
+          "label": "local_cached_diff",
+          "blocked": true,
+          "bogus_authorized_count": 0,
+          "pass": true
+        }
+      ],
+      "R3B1P1_REGRESSION_FALSE_POSITIVE_COUNT": 0,
+      "R3B1P1_REGRESSION_TESTS_BLOCK": true
+    },
+    "pass": true
+  },
+  "live_access": {
+    "ssh_access": true,
+    "ssh_blocked": false,
+    "prod_identity": {
+      "alias": "PROD_DB_A",
+      "service_alias": "PROD_VPS_A",
+      "postgresql_version_line": "PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+      "system_identifier": "7654152427769393503",
+      "inet_server_addr": "",
+      "inet_server_port": "",
+      "current_database": "synqdrive",
+      "instance_fingerprint_sha256": "987906bfcc4e08944295637f21c6b141dd806c7ef5830a85748df3f063e68b8f",
+      "database_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d"
+    },
+    "prod_db_fp": {
+      "production_db_name_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d",
+      "host_fingerprint_sha256": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763",
+      "port": 5432,
+      "database_name_length": 9,
+      "production_service": "PROD_VPS_A",
+      "production_database_alias": "PROD_DB_A"
+    },
+    "ledger_before_count": 315
+  },
+  "production_mutations_executed": 0
+}

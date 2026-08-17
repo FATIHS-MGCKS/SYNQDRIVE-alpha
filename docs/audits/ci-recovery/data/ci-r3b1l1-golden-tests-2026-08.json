@@ -1,0 +1,543 @@
+{
+  "schema_version": 1,
+  "tests": [
+    {
+      "name": "same_count_wrong_type",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "TYPE_MISMATCH",
+            "column": "b",
+            "expected": "integer",
+            "actual": "bigint"
+          }
+        ]
+      }
+    },
+    {
+      "name": "timestamp_precision_mismatch",
+      "pass": true,
+      "detail": {
+        "expected": "timestamp(3) without time zone",
+        "actual": "timestamp without time zone"
+      }
+    },
+    {
+      "name": "timestamp_timezone_mismatch",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "name": "varchar_length_mismatch",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "name": "numeric_precision_mismatch",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "name": "same_count_wrong_nullability",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "NULLABILITY_MISMATCH",
+            "column": "a",
+            "expected": false,
+            "actual": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "same_count_wrong_default",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "DEFAULT_MISMATCH",
+            "column": "a",
+            "expected": {
+              "kind": "NO_DATABASE_DEFAULT",
+              "value": null
+            },
+            "actual": {
+              "kind": "DATABASE_LITERAL_DEFAULT",
+              "value": "x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "column_replacement_same_count",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "MISSING_COLUMN",
+            "column": "b"
+          },
+          {
+            "category": "UNEXPECTED_COLUMN",
+            "column": "c"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_pk_same_count",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "PK_MISMATCH",
+            "constraint": "t_pkey",
+            "field": "columns",
+            "expected": [
+              "id"
+            ],
+            "actual": [
+              "other"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "pk_deferrability_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "PK_MISMATCH",
+            "constraint": "t_pkey",
+            "field": "deferrable",
+            "expected": false,
+            "actual": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_fk_target",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_ENDPOINT_MISMATCH",
+            "constraint": "t_fkey",
+            "field": "referenced_table",
+            "expected": "a",
+            "actual": "b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fk_match_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_MATCH_MISMATCH",
+            "constraint": "t_fkey",
+            "expected": "SIMPLE",
+            "actual": "FULL"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_fk_action",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_ACTION_MISMATCH",
+            "constraint": "t_fkey",
+            "field": "on_delete",
+            "expected": "CASCADE",
+            "actual": "NO ACTION"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fk_deferrability_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_DEFERRABILITY_MISMATCH",
+            "constraint": "t_fkey",
+            "field": "deferrable",
+            "expected": false,
+            "actual": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "fk_validation_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "FK_VALIDATION_MISMATCH",
+            "constraint": "t_fkey",
+            "expected": true,
+            "actual": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "unexpected_check",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "CHECK_MISMATCH",
+            "constraint": "t_chk",
+            "issue": "unexpected"
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing_check",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "CHECK_MISMATCH",
+            "constraint": "t_chk",
+            "issue": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrong_index_column_order",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_KEY_MISMATCH",
+            "index": "idx",
+            "expected_definition": "create index idx on t using btree (a, b)",
+            "actual_definition": "create index idx on t using btree (b, a)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "index_predicate_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_PREDICATE_MISMATCH",
+            "index": "idx",
+            "expected": "active = true",
+            "actual": null
+          },
+          {
+            "category": "INDEX_KEY_MISMATCH",
+            "index": "idx",
+            "expected_definition": "create index idx on t using btree (a) where active = true",
+            "actual_definition": "create index idx on t using btree (a)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "index_access_method_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_ACCESS_METHOD_MISMATCH",
+            "index": "idx",
+            "expected": "btree",
+            "actual": "hash"
+          },
+          {
+            "category": "INDEX_KEY_MISMATCH",
+            "index": "idx",
+            "expected_definition": "create index idx on t using btree (a)",
+            "actual_definition": "create index idx on t using hash (a)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "index_include_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_INCLUDE_MISMATCH",
+            "index": "idx",
+            "expected": [
+              "b"
+            ],
+            "actual": []
+          },
+          {
+            "category": "INDEX_KEY_MISMATCH",
+            "index": "idx",
+            "expected_definition": "create index idx on t using btree (a) include (b)",
+            "actual_definition": "create index idx on t using btree (a)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "index_expression_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_KEY_MISMATCH",
+            "index": "idx",
+            "expected_definition": "create index idx on t using btree ((lower(a)))",
+            "actual_definition": "create index idx on t using btree ((upper(a)))"
+          }
+        ]
+      }
+    },
+    {
+      "name": "index_state_mismatch",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_STATE_MISMATCH",
+            "index": "idx",
+            "expected_valid": true,
+            "actual_valid": false,
+            "expected_ready": true,
+            "actual_ready": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "extra_index",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "UNEXPECTED_OBJECT",
+            "index": "extra"
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing_index",
+      "pass": true,
+      "detail": {
+        "mismatches": [
+          {
+            "category": "INDEX_KEY_MISMATCH",
+            "index": "idx",
+            "issue": "missing"
+          }
+        ]
+      }
+    },
+    {
+      "name": "enum_label_replacement",
+      "pass": true,
+      "detail": {
+        "expected": [
+          "A",
+          "B",
+          "C"
+        ],
+        "actual": [
+          "A",
+          "X",
+          "C"
+        ]
+      }
+    },
+    {
+      "name": "enum_order_only",
+      "pass": true,
+      "detail": {
+        "expected": [
+          "A",
+          "B"
+        ],
+        "actual": [
+          "B",
+          "A"
+        ]
+      }
+    },
+    {
+      "name": "property_universe_53",
+      "pass": true,
+      "detail": {
+        "schema_version": 1,
+        "authority_ids_total": 54,
+        "authority_ids_evaluated": 53,
+        "authority_ids_matched": 53,
+        "duplicate_evaluations": [],
+        "missing_evaluations": [
+          "P054"
+        ],
+        "unexpected_evaluations": [],
+        "pass": false
+      }
+    },
+    {
+      "name": "property_universe_55",
+      "pass": true,
+      "detail": {
+        "schema_version": 1,
+        "authority_ids_total": 54,
+        "authority_ids_evaluated": 55,
+        "authority_ids_matched": 55,
+        "duplicate_evaluations": [],
+        "missing_evaluations": [],
+        "unexpected_evaluations": [
+          "P999"
+        ],
+        "pass": false
+      }
+    },
+    {
+      "name": "old_37_37_rejection",
+      "pass": true,
+      "detail": {
+        "properties_expected": 54,
+        "properties_checked": 37,
+        "properties_matched": 37,
+        "pass": true
+      }
+    },
+    {
+      "name": "hardcoded_zero_detector",
+      "pass": true,
+      "detail": {
+        "TYPE_MISMATCH": 1
+      }
+    },
+    {
+      "name": "prisma_diff_classification",
+      "pass": true,
+      "detail": {
+        "tests": [
+          {
+            "name": "r3b_column_diff",
+            "pass": true,
+            "detail": {
+              "ordinal": 1,
+              "operation_type": "ALTER TABLE",
+              "raw_sql": "ALTER TABLE \"vehicle_trips\" ADD COLUMN \"new_col\" text;",
+              "target_objects": [
+                "new_col",
+                "vehicle_trips"
+              ],
+              "target_property": "vehicle_trips:columns",
+              "classification": "R3B_SCOPE",
+              "reason": "affects authority object(s): vehicle_trips",
+              "authority_id": "vehicle_trips:columns"
+            }
+          },
+          {
+            "name": "r3b_enum_diff",
+            "pass": true,
+            "detail": {
+              "ordinal": 1,
+              "operation_type": "ALTER TYPE",
+              "raw_sql": "ALTER TYPE \"TripAssignmentStatus\" ADD VALUE 'NEW';",
+              "target_objects": [
+                "TripAssignmentStatus"
+              ],
+              "target_property": "enum:TripAssignmentStatus",
+              "classification": "R3B_SCOPE",
+              "reason": "affects authority object(s): TripAssignmentStatus",
+              "authority_id": "enum:TripAssignmentStatus"
+            }
+          },
+          {
+            "name": "r3b_index_diff",
+            "pass": true,
+            "detail": {
+              "ordinal": 1,
+              "operation_type": "CREATE INDEX",
+              "raw_sql": "CREATE INDEX vehicle_trips_test_idx ON public.vehicle_trips USING btree (id);",
+              "target_objects": [
+                "vehicle_trips",
+                "vehicle_trips_test_idx"
+              ],
+              "target_property": "vehicle_trips:columns",
+              "classification": "R3B_SCOPE",
+              "reason": "affects authority object(s): vehicle_trips",
+              "authority_id": "vehicle_trips:columns"
+            }
+          },
+          {
+            "name": "out_of_scope_enum",
+            "pass": true,
+            "detail": {
+              "ordinal": 1,
+              "operation_type": "CREATE TYPE",
+              "raw_sql": "CREATE TYPE \"DriveType\" AS ENUM ('FWD');",
+              "target_objects": [
+                "DriveType"
+              ],
+              "target_property": null,
+              "classification": "OUT_OF_SCOPE",
+              "reason": "no authority object intersection",
+              "authority_id": null
+            }
+          },
+          {
+            "name": "out_of_scope_table",
+            "pass": true,
+            "detail": {
+              "ordinal": 1,
+              "operation_type": "CREATE TABLE",
+              "raw_sql": "CREATE TABLE \"booking_payment_requests\" (id text);",
+              "target_objects": [
+                "booking_payment_requests"
+              ],
+              "target_property": null,
+              "classification": "OUT_OF_SCOPE",
+              "reason": "no authority object intersection",
+              "authority_id": null
+            }
+          },
+          {
+            "name": "unresolved_parse",
+            "pass": true,
+            "detail": {
+              "ordinal": 1,
+              "operation_type": "UNKNOWN",
+              "raw_sql": "MYSTERY OPERATION xyz;",
+              "target_objects": [],
+              "target_property": null,
+              "classification": "UNRESOLVED",
+              "reason": "unparseable operation type",
+              "authority_id": null
+            }
+          }
+        ],
+        "pass": true
+      }
+    }
+  ],
+  "pass": true,
+  "passed": 32,
+  "total": 32
+}

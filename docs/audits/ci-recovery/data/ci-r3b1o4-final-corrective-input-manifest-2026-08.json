@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-final-corrective",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "FINAL_CORRECTIVE_PRE_SHA": "80cd5385b6e63cae8ef274c62978c9342160459b",
+    "REMOTE_HEAD": "b58ec4b111403cc08c6fef7e1253583985c87774",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "CORRECTIVE_SUMMARY_SHA256": "2beade5d36fe4f872ab0ad8e6331b2a5abab8f2d44b24837c6f25fb337459dd2"
+  },
+  "bound_inputs": {
+    "ci-r3b1o4-corrective-final-acceptance-summary-2026-08.json": {
+      "sha256": "2beade5d36fe4f872ab0ad8e6331b2a5abab8f2d44b24837c6f25fb337459dd2",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-full-catalog-delta-authority-2026-08.json": {
+      "sha256": "bb170d235e04bd10ee37c7e0adaeb812e2535fa0dd57182c06ce3d9229ece6f7",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-golden-catalog-inventory-2026-08.json": {
+      "sha256": "a880334f12a22a66b36b75330c70e7f859c91b86387b33ca6b0704cb42385809",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-final-catalog-inventory-2026-08.json": {
+      "sha256": "4ccec490f42fddf88a6553ad48365a488666be31ee964154ad3e1cf82bd154b6",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-final-m252-exact-parity-2026-08.json": {
+      "sha256": "299041204de06328cb3fbc2af2fa49b747a5e3f5be123c16eba1cc96173a6bfe",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-final-r3b-parity-2026-08.json": {
+      "sha256": "4227009977d4bd42dd009c2a50eab23adce53a36f0107383a61dc49445a8977b",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-final-prisma-diff-attribution-2026-08.json": {
+      "sha256": "8ef40ded948f5cdc62859a218d12d72c08502d9b48180ac5de38c6da10403996",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-second-deploy-idempotency-2026-08.json": {
+      "sha256": "ad3190b5b53c0be27e99803e4d1d45f032c6983c19fc49024eacdc698065002a",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-r3b1p-data-risk-input-2026-08.json": {
+      "sha256": "611cf4621b5a9bdad2869b2d75395cbff4e83361eae6e5bb7136c537a28f780c",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-golden-tests-2026-08.json": {
+      "sha256": "4d073cdec5ea797919d81f424523cac02954b9fc4dd1cfa0e30b1d270decd160",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-evidence-code-crossvalidation-2026-08.json": {
+      "sha256": "df3c49dce2a9b7eddae87e430598043eb2b1f68d1038e9ad5fcf0cc47c8c848f",
+      "exists": true
+    },
+    "ci-r3b1o4-corrective-test-source-hash-manifest-2026-08.json": {
+      "sha256": "7f2a59da4a154ee1a95534da4dfd298c22ee7f07c7c02c59d5974d9d500bb7a4",
+      "exists": true
+    },
+    "ci-r3b1o4-tail-reconciliation-contract-2026-08.json": {
+      "sha256": "a98be4348917b8973363328bd2d7a3b1e9ce7e93d48c720728ccb99de2fe65e9",
+      "exists": true
+    },
+    "backend/prisma/schema.prisma": {
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+      "exists": true
+    },
+    "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql": {
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+      "exists": true
+    }
+  }
+}

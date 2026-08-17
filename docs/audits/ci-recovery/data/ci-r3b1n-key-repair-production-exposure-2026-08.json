@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "r3b1g": {
+    "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "ledger_state": "ABSENT",
+    "catalog": {
+      "exists": true,
+      "type": "TireSetupStatus",
+      "nullable": "NO",
+      "default": "'ACTIVE'::\"TireSetupStatus\""
+    }
+  },
+  "r3b1i": {
+    "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+    "ledger_state": "ABSENT",
+    "catalog": {
+      "exists": true,
+      "type": "jsonb",
+      "nullable": "YES",
+      "default": null
+    }
+  },
+  "migration_249": {
+    "migration": "20260721250000_iam_versioned_role_assignments",
+    "ledger_state": "PRESENT_FINISHED_MATCHING"
+  }
+}

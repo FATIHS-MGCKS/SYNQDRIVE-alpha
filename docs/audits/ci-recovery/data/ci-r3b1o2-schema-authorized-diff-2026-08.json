@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.2",
+  "changed_lines": [
+    {
+      "line": 2322,
+      "before": "  id                  String   @id @default(uuid())",
+      "after": "  id                  String   @id(map: \"org_role_asgn_drift_recon_apps_pkey\") @default(uuid())"
+    },
+    {
+      "line": 2323,
+      "before": "  idempotencyKey      String   @unique @map(\"idempotency_key\")",
+      "after": "  idempotencyKey      String   @unique(map: \"org_role_asgn_drift_recon_apps_idem_key\") @map(\"idempotency_key\")"
+    },
+    {
+      "line": 2334,
+      "before": "  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: \"org_role_assignment_drift_recon_app_org_fkey\")",
+      "after": "  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: \"org_role_asgn_drift_recon_apps_org_id_fkey\")"
+    },
+    {
+      "line": 2335,
+      "before": "  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade, map: \"org_role_assignment_drift_recon_app_mem_fkey\")",
+      "after": "  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade, map: \"org_role_asgn_drift_recon_apps_mbr_id_fkey\")"
+    },
+    {
+      "line": 2337,
+      "before": "  @@index([organizationId, membershipId, createdAt])",
+      "after": "  @@index([organizationId, membershipId, createdAt], map: \"org_role_asgn_drift_recon_apps_org_mbr_created_idx\")"
+    }
+  ],
+  "authorized_change_count": 5,
+  "unauthorized_lines": [],
+  "unauthorized_count": 0,
+  "pass": true
+}

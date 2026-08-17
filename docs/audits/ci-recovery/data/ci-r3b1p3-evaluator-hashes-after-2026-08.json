@@ -1,0 +1,18 @@
+{
+  "phase": "CI-R3B1P.3",
+  "hashes": {
+    "docs/audits/ci-recovery/tooling/ci_r3b1p_diff_attribution.py": "76be9c48e0d7e88d9dee8fe12c564f70e8a57e9ca50ad7c5959873d9533c253b",
+    "docs/audits/ci-recovery/tooling/ci_r3b1p_run_preflight.py": "4731d8e7aaabdc3725f65c0e0be10aa02a02a7325b984f179aff45e93653fc8f",
+    "docs/audits/ci-recovery/tooling/ci_r3b1p_terminal_gate.py": "16cd342cb669e73237a640fc0e5bfa196dc284e6f500f8313db5e94b637dcbb0",
+    "docs/audits/ci-recovery/tooling/ci_r3b1p2_authorized_strategy_authority.py": "70b02167faaeeae43b242e208ecc2c2614e4ca1ae73e64f836b394124094debd",
+    "docs/audits/ci-recovery/tooling/ci_r3b1p2_golden_tests.py": "e3ced9512273b2e7fa26276ea25567edc8b176027f001bef2131c7b263d19f6f",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o3_diff_attribution.py": "b6ea3ac13057f648b0665cf90cb087ce00cd4e546dbdb3eca88297b3b8ea0a00",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o2_diff_classifier.py": "2e4cefd33f47b4bfb721ba8326bbc468bde52cac7b7b55c3919fdd9e3b1b9b25",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o2_r3b_authority.py": "5b5bb711a4a8135e91a3ed9adf0ba088512e85453afb604016100124ce4b0397",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o4_catalog_authority.py": "2242813621993bc19b609ecb05db79b7753ad340fcfb8bf1ea8dcbc2cf93a545",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o4_catalog_semantic_compare.py": "bd41be6692ce9ae6b4430d16f52ff825fb27fa64b207370249b69d36d2dfe912",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o3_m252_complete_authority.py": "bc486ce7b01542b2bee614241873a930156eccdf04960aec31dd07afa0ca4f5e",
+    "docs/audits/ci-recovery/tooling/ci_r3b1o4_golden_tests.py": "fae3d2d33de6aaac5ea113ae1ce706a6d98e43158ec5777134154af76bba752d"
+  },
+  "EVALUATOR_CHANGED_DURING_R3B1P3": false
+}

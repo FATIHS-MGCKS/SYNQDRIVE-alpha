@@ -1,0 +1,488 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3",
+  "required_count": 60,
+  "coverage_rows": [
+    {
+      "required_test_id": "m252_positive_control",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "PASS",
+      "actual": "True",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_table_name",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_missing_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_column_type",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_timestamp_precision",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_nullability",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_default",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_pk_name",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_pk_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_pk_deferrability",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_unique_name",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_unique_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_unique_method",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_unique_predicate",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_unique_validity",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_composite_index_name",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_composite_index_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_composite_column_order",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_composite_method",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_composite_predicate",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_name",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_source_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_target_table",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_target_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_match",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_on_update",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_on_delete",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_deferrability",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_org_fk_validation",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_name",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_source_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_target_table",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_target_column",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_match",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_on_update",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_on_delete",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_deferrability",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_wrong_membership_fk_validation",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "m252_unexpected_extra_object",
+      "implemented": true,
+      "function": "compare_m252_exact",
+      "expected": "FAIL",
+      "actual": "False",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_m252_alter_index_scope",
+      "implemented": true,
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_M252",
+      "actual": "OWNER_M252",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_unknown_owner_unresolved",
+      "implemented": true,
+      "function": "classify_operation_attribution",
+      "expected": "UNRESOLVED",
+      "actual": "UNRESOLVED",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_m252_name_outside_scope_not_m252",
+      "implemented": true,
+      "function": "resolve_owner_fields",
+      "expected": "not OWNER_M252",
+      "actual": "OWNER_UNKNOWN",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_r3b_catalog_owner",
+      "implemented": true,
+      "function": "resolve_owner_fields",
+      "expected": "OWNER_R3B",
+      "actual": "OWNER_R3B",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_golden_match_pre_existing",
+      "implemented": true,
+      "function": "classify_operation_attribution",
+      "expected": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "actual": "PRE_EXISTING_PRODUCTION_DRIFT",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_strategy_contract_expected_delta",
+      "implemented": true,
+      "function": "classify_operation_attribution",
+      "expected": "EXPECTED_STRATEGY_DELTA",
+      "actual": "EXPECTED_STRATEGY_DELTA",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_no_authority_new_strategy_drift",
+      "implemented": true,
+      "function": "classify_operation_attribution",
+      "expected": "NEW_STRATEGY_DRIFT",
+      "actual": "R3B_SCOPE",
+      "pass": true
+    },
+    {
+      "required_test_id": "diff_forbid_catch_all_out_of_scope",
+      "implemented": true,
+      "function": "classify_operation_attribution",
+      "expected": "not OUT_OF_SCOPE",
+      "actual": "UNRESOLVED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_all_gates_pass",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "PASS",
+      "actual": "CI_R3B1O3_FINAL_STRATEGY_DRIFT_PARITY_GATE_CLOSURE_COMPLETED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_owner_unknown_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_unresolved_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_unattributed_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_new_strategy_drift_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_r3b_scope_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_m252_scope_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_m252_parity_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_golden_test_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_second_deploy_new_row_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_catalog_delta_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_r3b_parity_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    },
+    {
+      "required_test_id": "terminal_production_changed_fail",
+      "implemented": true,
+      "function": "evaluate_terminal_acceptance",
+      "expected": "FAIL",
+      "actual": "CI_R3B1O3_TERMINAL_ACCEPTANCE_FAILED",
+      "pass": true
+    }
+  ],
+  "coverage_complete": true
+}

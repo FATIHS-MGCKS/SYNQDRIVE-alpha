@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.2",
+  "baseline": {
+    "PRE_R3B1O2_SHA": "e9b2b7b530549a26999b8dcdfb9a4cc2bebf7348",
+    "R3B1O1_REMOTE_HEAD": "e9b2b7b530549a26999b8dcdfb9a4cc2bebf7348",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "WORKTREE_CLEAN": true
+  },
+  "original_schema_sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1",
+  "final_schema_sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+  "m252_diff_operations": 5,
+  "schema_alignment_entries": 5,
+  "authorized_diff_unauthorized": 0,
+  "prisma_validation_pass": true,
+  "classifier_closure_pass": true,
+  "r3b1o1_former_unresolved": 170,
+  "final_unresolved": 0,
+  "final_classification": {
+    "total_operations": 395,
+    "R3B_SCOPE": 0,
+    "M252_SCOPE": 0,
+    "PRE_EXISTING_PRODUCTION_DRIFT": 393,
+    "OUT_OF_SCOPE": 2,
+    "NEW_STRATEGY_DRIFT": 0,
+    "UNRESOLVED": 0
+  },
+  "m252_exact_parity_pass": true,
+  "r3b_parity_pass": true,
+  "strategy_pass": true,
+  "second_deploy_pass": true,
+  "data_risk_counts": {
+    "DDL_SCHEMA_ONLY": 16,
+    "DATA_DEPENDENT_LOW": 6,
+    "DATA_DEPENDENT_HIGH": 0,
+    "UNKNOWN_DATA_DEPENDENCY": 0
+  },
+  "production_unchanged": true,
+  "production_mutations": 0,
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "final_status": "CI_R3B1O2_M252_PRISMA_MAPPING_FINAL_DIFF_CLOSURE_COMPLETED",
+  "pass": true
+}

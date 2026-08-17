@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "pending_migration_count": 23,
+  "counts": {
+    "DDL_SCHEMA_ONLY": 2,
+    "DATA_DEPENDENT_LOW": 0,
+    "DATA_DEPENDENT_HIGH": 13,
+    "UNKNOWN_DATA_DEPENDENCY": 8
+  },
+  "migrations": [
+    {
+      "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260424235959_ci_r3b_trip_casing_pre_shim",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260425000001_ci_r3b_trip_casing_post_shim",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "classification": "DDL_SCHEMA_ONLY"
+    },
+    {
+      "migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    },
+    {
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "classification": "DDL_SCHEMA_ONLY"
+    },
+    {
+      "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260811060000_evaluations_entity_references",
+      "classification": "DATA_DEPENDENT_HIGH"
+    },
+    {
+      "migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+      "classification": "UNKNOWN_DATA_DEPENDENCY"
+    }
+  ],
+  "schema_only_twin_limitation": true,
+  "production_preflight_required_for_high_or_unknown": true
+}

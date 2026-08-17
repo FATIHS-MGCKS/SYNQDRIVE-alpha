@@ -1,0 +1,1850 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-binding-corrective",
+  "implicit_effect_count": 107,
+  "effects": [
+    {
+      "effect_id": "472f1eb3ee3db932807c55e0ca26b30533236827a8ba2d9f017bc66f137fc113",
+      "parent_effect_id": "628fd5e6ed25298cc3847ad2c77c8e2f5adb96c9a6e646fb342ba44c7ccff014",
+      "parent_migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "141075d23dd5b35297fb1db974575b19dcafd087bb23e42446572884fef51264",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "org_tasks",
+      "after_state": {
+        "kind": "c",
+        "related_table": "org_tasks",
+        "category": "C"
+      },
+      "object_id": "type:org_tasks"
+    },
+    {
+      "effect_id": "637cb48cac61992e69921df01194bcb885f779f9f7ef9b9148e9838cf6836d1c",
+      "parent_effect_id": "628fd5e6ed25298cc3847ad2c77c8e2f5adb96c9a6e646fb342ba44c7ccff014",
+      "parent_migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "141075d23dd5b35297fb1db974575b19dcafd087bb23e42446572884fef51264",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_org_tasks",
+      "after_state": {
+        "kind": "b",
+        "element_type": "org_tasks",
+        "category": "A"
+      },
+      "object_id": "type:_org_tasks"
+    },
+    {
+      "effect_id": "a120f0e2240704f665187a742eb52949eca948e264143b62e38a7932f6c1d5f2",
+      "parent_effect_id": "e062af0cbbc0c4a312e5c03496738f7dc914857841d846921585135edb6fb897",
+      "parent_migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "a67779e433e69b44134d0acaefbed99b1f8299555f5eac36d81fcda5f430935e",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "brake_health_current",
+      "after_state": {
+        "kind": "c",
+        "related_table": "brake_health_current",
+        "category": "C"
+      },
+      "object_id": "type:brake_health_current"
+    },
+    {
+      "effect_id": "826e49958d5df5642d4e67b6922622a8dc32ab62b7de584bcbaf5bae8a0e65f5",
+      "parent_effect_id": "e062af0cbbc0c4a312e5c03496738f7dc914857841d846921585135edb6fb897",
+      "parent_migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "a67779e433e69b44134d0acaefbed99b1f8299555f5eac36d81fcda5f430935e",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_brake_health_current",
+      "after_state": {
+        "kind": "b",
+        "element_type": "brake_health_current",
+        "category": "A"
+      },
+      "object_id": "type:_brake_health_current"
+    },
+    {
+      "effect_id": "d4ba11e3fcb631c6903edabebde9ac5f826c10c8546ebee7b70919ab1a795930",
+      "parent_effect_id": "a4332ed5d8ea4ead1880bd939c8e660ac55a05f1cd279a654ddc979de1243802",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "3647e187959f54b713381db8a2651a708534f9dd6d318dbe09492ac7d5fa2834",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vehicle_document_extractions",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vehicle_document_extractions",
+        "category": "C"
+      },
+      "object_id": "type:vehicle_document_extractions"
+    },
+    {
+      "effect_id": "c2ac4052103147172b50cdfbce02fd124dd2e759513d075afc1035cb81497c32",
+      "parent_effect_id": "a4332ed5d8ea4ead1880bd939c8e660ac55a05f1cd279a654ddc979de1243802",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "3647e187959f54b713381db8a2651a708534f9dd6d318dbe09492ac7d5fa2834",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vehicle_document_extractions",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vehicle_document_extractions",
+        "category": "A"
+      },
+      "object_id": "type:_vehicle_document_extractions"
+    },
+    {
+      "effect_id": "f11c3009a7794021c0237bd3a53fcfa4827b2fe850253563b2bb49bdfae6b3df",
+      "parent_effect_id": "e9afe11efb5f1e587e1f09e9f95cbc25f112ba964fc5c8f4533b120cb0777dc7",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 10,
+      "parent_statement_sha256": "b37d3d4cab6cba4a40475662b1e71b4cd3d943228f76b1174f50805a133cc304",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "battery_evidence",
+      "after_state": {
+        "kind": "c",
+        "related_table": "battery_evidence",
+        "category": "C"
+      },
+      "object_id": "type:battery_evidence"
+    },
+    {
+      "effect_id": "5af2c796085d2f37718c8fee9d53000578704a4e8f658ffb4f1b97a489799b6d",
+      "parent_effect_id": "e9afe11efb5f1e587e1f09e9f95cbc25f112ba964fc5c8f4533b120cb0777dc7",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 10,
+      "parent_statement_sha256": "b37d3d4cab6cba4a40475662b1e71b4cd3d943228f76b1174f50805a133cc304",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_battery_evidence",
+      "after_state": {
+        "kind": "b",
+        "element_type": "battery_evidence",
+        "category": "A"
+      },
+      "object_id": "type:_battery_evidence"
+    },
+    {
+      "effect_id": "89dad14d30d179e783741d9bd2fab1e9537ced6c671e052fec92fd2a0dede3ba",
+      "parent_effect_id": "7ca0a9914699d4103fa78999929f53be6e3d2c07f7c2a88077bd7fe32eb60b6e",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "391b257589e43cd1b4fa4e20094ae41eb64af3d395f094b7500c88c86f929c56",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "org_invoices",
+      "after_state": {
+        "kind": "c",
+        "related_table": "org_invoices",
+        "category": "C"
+      },
+      "object_id": "type:org_invoices"
+    },
+    {
+      "effect_id": "deb4c67d8f702e94724015baf1ca0875dca3bc42d1129f0263abc23499e485e4",
+      "parent_effect_id": "7ca0a9914699d4103fa78999929f53be6e3d2c07f7c2a88077bd7fe32eb60b6e",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "391b257589e43cd1b4fa4e20094ae41eb64af3d395f094b7500c88c86f929c56",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_org_invoices",
+      "after_state": {
+        "kind": "b",
+        "element_type": "org_invoices",
+        "category": "A"
+      },
+      "object_id": "type:_org_invoices"
+    },
+    {
+      "effect_id": "8e2f908863dea52b9e5b79979efa9fdf18361595c3b27435ab712d13362eecfd",
+      "parent_effect_id": "55a1b6d7769502d3f7c65ed04e4482b0ac2aa678443c84506ba324f0b34caceb",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 13,
+      "parent_statement_sha256": "fe180399b03fc1a1c2eb81eb003782a41acbe3fd8b0bf761f63b1f54c1a77fcf",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vehicle_dtc_events",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vehicle_dtc_events",
+        "category": "C"
+      },
+      "object_id": "type:vehicle_dtc_events"
+    },
+    {
+      "effect_id": "3bffe353968061995b6569e8fda8475ba695632004cfa083124c378bc2388b73",
+      "parent_effect_id": "55a1b6d7769502d3f7c65ed04e4482b0ac2aa678443c84506ba324f0b34caceb",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 13,
+      "parent_statement_sha256": "fe180399b03fc1a1c2eb81eb003782a41acbe3fd8b0bf761f63b1f54c1a77fcf",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vehicle_dtc_events",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vehicle_dtc_events",
+        "category": "A"
+      },
+      "object_id": "type:_vehicle_dtc_events"
+    },
+    {
+      "effect_id": "3863db84f8fdecfc7899fb799aadc5ba2c20ccd8d075246536639e0b068498cd",
+      "parent_effect_id": "826addcc4b72285e29b3aa360572fcc46527263a66b70f2c77cdb45784e3d286",
+      "parent_migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "22a93e92ad2953f70afe135527bf598b279269603e8a0688e123291fdcd4b90c",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vehicle_driving_impact_current",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vehicle_driving_impact_current",
+        "category": "C"
+      },
+      "object_id": "type:vehicle_driving_impact_current"
+    },
+    {
+      "effect_id": "c6e908b91c79d8c08965889b59c272a366dc0a285d3f8992007ead706e85b9db",
+      "parent_effect_id": "826addcc4b72285e29b3aa360572fcc46527263a66b70f2c77cdb45784e3d286",
+      "parent_migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "22a93e92ad2953f70afe135527bf598b279269603e8a0688e123291fdcd4b90c",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vehicle_driving_impact_current",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vehicle_driving_impact_current",
+        "category": "A"
+      },
+      "object_id": "type:_vehicle_driving_impact_current"
+    },
+    {
+      "effect_id": "3f463134953859a8238654fade2df05d2d37b9023cb4076e0ce7cd52fa4883e6",
+      "parent_effect_id": "902acae7487926987641bb741ca3fd0c4b559ebcec71b64464b467de7c231ae2",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "030c8d4ba09df03d357495eb696573c4bebf3c0124fc0d8e6df27889d5dd2c84",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vendor_vehicles",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vendor_vehicles",
+        "category": "C"
+      },
+      "object_id": "type:vendor_vehicles"
+    },
+    {
+      "effect_id": "ce96c1129cfae95a125209bc7d2c7b49fcd5f081f38ad343fac0df5517d42f3d",
+      "parent_effect_id": "902acae7487926987641bb741ca3fd0c4b559ebcec71b64464b467de7c231ae2",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "030c8d4ba09df03d357495eb696573c4bebf3c0124fc0d8e6df27889d5dd2c84",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vendor_vehicles",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vendor_vehicles",
+        "category": "A"
+      },
+      "object_id": "type:_vendor_vehicles"
+    },
+    {
+      "effect_id": "faabd5e2963ad80b380cff3a61c1e4782ebe0029ef01ade346ed17e6e9e714cf",
+      "parent_effect_id": "714d32f712e1ffd1cee26bac6f1792bc633ac732ccd94459184d6a8b487dd804",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "98306674905805ee85c145168bd0f8fef046007dc791bfb98a1f99a3a87fc72e",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vendors",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vendors",
+        "category": "C"
+      },
+      "object_id": "type:vendors"
+    },
+    {
+      "effect_id": "daa008a33af9d9dce949f9b20be15e9dccc42a392889b9dd1b429e63d114ff93",
+      "parent_effect_id": "714d32f712e1ffd1cee26bac6f1792bc633ac732ccd94459184d6a8b487dd804",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "98306674905805ee85c145168bd0f8fef046007dc791bfb98a1f99a3a87fc72e",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vendors",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vendors",
+        "category": "A"
+      },
+      "object_id": "type:_vendors"
+    },
+    {
+      "effect_id": "9da399ea72e4092447360ed173864fa1f71a581a345a7f226011075ae908861b",
+      "parent_effect_id": "31c647bfff366a84d718bf4ba5a9c0ae71286e1c5b4b8c39b0c676838ca1aa92",
+      "parent_migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "f51b1d4a90630971b0d063dbf876b61082b452d2c1e8ea9eaf547ca01c01bbf2",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "org_workflows",
+      "after_state": {
+        "kind": "c",
+        "related_table": "org_workflows",
+        "category": "C"
+      },
+      "object_id": "type:org_workflows"
+    },
+    {
+      "effect_id": "a4758c2b699622b8964a91644940a57995dc7fbc40815a6e77cf3d18647d86f0",
+      "parent_effect_id": "31c647bfff366a84d718bf4ba5a9c0ae71286e1c5b4b8c39b0c676838ca1aa92",
+      "parent_migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "f51b1d4a90630971b0d063dbf876b61082b452d2c1e8ea9eaf547ca01c01bbf2",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_org_workflows",
+      "after_state": {
+        "kind": "b",
+        "element_type": "org_workflows",
+        "category": "A"
+      },
+      "object_id": "type:_org_workflows"
+    },
+    {
+      "effect_id": "fd475a8e1bdab7943264f3442c8e831bfe726a46a48a7074f806e08fa9c8a3ed",
+      "parent_effect_id": "fc61754af2aaca02b8ec7d8181e7ac8578e04a2e3dc2726e9836f0aa5ff2cb00",
+      "parent_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "49c5040493c207ef5d073edf620eb62bb510fef53680ee0c04b3461af50ad84a",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "tires",
+      "after_state": {
+        "kind": "c",
+        "related_table": "tires",
+        "category": "C"
+      },
+      "object_id": "type:tires"
+    },
+    {
+      "effect_id": "e3e38041fc17a047844b63f3988ee10740c2094223eab68fe5b8064d704c2d6d",
+      "parent_effect_id": "fc61754af2aaca02b8ec7d8181e7ac8578e04a2e3dc2726e9836f0aa5ff2cb00",
+      "parent_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "49c5040493c207ef5d073edf620eb62bb510fef53680ee0c04b3461af50ad84a",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_tires",
+      "after_state": {
+        "kind": "b",
+        "element_type": "tires",
+        "category": "A"
+      },
+      "object_id": "type:_tires"
+    },
+    {
+      "effect_id": "4c49a640332ed88ac891224ac60f282e700cc8dca631d6f68e8e075fe3cf5885",
+      "parent_effect_id": "bb56b5f83524648d14cae0759fa6fc86fd08b3739fe4e75fd06a3ec53d2554f3",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "8baf85336a91d87445d16c5e311ba4a5ec2eaaf40687e94309ad4d17d431b341",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vehicle_damage_images",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vehicle_damage_images",
+        "category": "C"
+      },
+      "object_id": "type:vehicle_damage_images"
+    },
+    {
+      "effect_id": "0e4f2c1691848485c41ed04e8d9eac861430ecc553c8dac00b07bb21eba233f6",
+      "parent_effect_id": "bb56b5f83524648d14cae0759fa6fc86fd08b3739fe4e75fd06a3ec53d2554f3",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "8baf85336a91d87445d16c5e311ba4a5ec2eaaf40687e94309ad4d17d431b341",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vehicle_damage_images",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vehicle_damage_images",
+        "category": "A"
+      },
+      "object_id": "type:_vehicle_damage_images"
+    },
+    {
+      "effect_id": "b65a44f9d5bcf0f24238e4a6a33c477566a2b817ba69e0565e309765882b68d5",
+      "parent_effect_id": "8c04895063bc247ef5a74ebae163cdb32335b622a443a4d46f0c5b5d262e8435",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "b090a1dd8e3a39e84d40c9f25f34c26813da1c0d61914ed7b57e505ec0d66545",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "vehicle_damages",
+      "after_state": {
+        "kind": "c",
+        "related_table": "vehicle_damages",
+        "category": "C"
+      },
+      "object_id": "type:vehicle_damages"
+    },
+    {
+      "effect_id": "846c2b60c1c2f85f2cc2f9061134ababa66883be47a36ff71c19c9f6c1ecfedc",
+      "parent_effect_id": "8c04895063bc247ef5a74ebae163cdb32335b622a443a4d46f0c5b5d262e8435",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "b090a1dd8e3a39e84d40c9f25f34c26813da1c0d61914ed7b57e505ec0d66545",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_vehicle_damages",
+      "after_state": {
+        "kind": "b",
+        "element_type": "vehicle_damages",
+        "category": "A"
+      },
+      "object_id": "type:_vehicle_damages"
+    },
+    {
+      "effect_id": "4b74702a493303177aa56f38e1407d12ebe17fdad665a9ad43949cb5e91154a1",
+      "parent_effect_id": "f3a8284ff80ff4532960fc06939f0697e1aa28ae3c64350dd7e9a0df5e369384",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "067598db069a573d13208e8f955b9c813697bb8be920f27fd9e1f4ee5e224be9",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "org_whatsapp_configs",
+      "after_state": {
+        "kind": "c",
+        "related_table": "org_whatsapp_configs",
+        "category": "C"
+      },
+      "object_id": "type:org_whatsapp_configs"
+    },
+    {
+      "effect_id": "49911abb02040e5829b6a3a5ec0e083b794c63906632f36a8955709a0214b49b",
+      "parent_effect_id": "f3a8284ff80ff4532960fc06939f0697e1aa28ae3c64350dd7e9a0df5e369384",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "067598db069a573d13208e8f955b9c813697bb8be920f27fd9e1f4ee5e224be9",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_org_whatsapp_configs",
+      "after_state": {
+        "kind": "b",
+        "element_type": "org_whatsapp_configs",
+        "category": "A"
+      },
+      "object_id": "type:_org_whatsapp_configs"
+    },
+    {
+      "effect_id": "9cbb4b2fd69b8c8a98dd962c43a7079ef2d0e42a82f032aa00caf6acb08d37ec",
+      "parent_effect_id": "ab53ce1afeaa03bbfd01030ea504332b554543e74a29bd3e07603013bcf3296e",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "d5e73b2663e0dc0dd5560dbea1fd606cc2ffedfb542774ffad92b4fbdfec77e6",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "whatsapp_conversations",
+      "after_state": {
+        "kind": "c",
+        "related_table": "whatsapp_conversations",
+        "category": "C"
+      },
+      "object_id": "type:whatsapp_conversations"
+    },
+    {
+      "effect_id": "61e53770d70e52be96d145676182051804199ba2a4af798eb4b9a67b2cd46b80",
+      "parent_effect_id": "ab53ce1afeaa03bbfd01030ea504332b554543e74a29bd3e07603013bcf3296e",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "d5e73b2663e0dc0dd5560dbea1fd606cc2ffedfb542774ffad92b4fbdfec77e6",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_whatsapp_conversations",
+      "after_state": {
+        "kind": "b",
+        "element_type": "whatsapp_conversations",
+        "category": "A"
+      },
+      "object_id": "type:_whatsapp_conversations"
+    },
+    {
+      "effect_id": "bd04d11a792c8e084e3494599f23c0878c0f002431d3449cddcd2aa3a8231a1b",
+      "parent_effect_id": "1bf5ddd31cc3ca7e23ab4e762f409f15c8e0dd31681b0f27183c9d6f716bb1d7",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "0e86da53b3ea03fa52efdcc5bd2bb1f35e263e155e9184bb39db292a89387b53",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "whatsapp_messages",
+      "after_state": {
+        "kind": "c",
+        "related_table": "whatsapp_messages",
+        "category": "C"
+      },
+      "object_id": "type:whatsapp_messages"
+    },
+    {
+      "effect_id": "fc001eded1bbc5fc8689e25aa68847b6d015342aaf2f5939ba959f3f096e60bd",
+      "parent_effect_id": "1bf5ddd31cc3ca7e23ab4e762f409f15c8e0dd31681b0f27183c9d6f716bb1d7",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "0e86da53b3ea03fa52efdcc5bd2bb1f35e263e155e9184bb39db292a89387b53",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_whatsapp_messages",
+      "after_state": {
+        "kind": "b",
+        "element_type": "whatsapp_messages",
+        "category": "A"
+      },
+      "object_id": "type:_whatsapp_messages"
+    },
+    {
+      "effect_id": "fd48fb219e5742340ffd0babbcfa19ac8e8acea3a0b8ca4a4496f91d8ef680f9",
+      "parent_effect_id": "67e9a12669113750d9e44705f217c3e98547a1ea7f362e1b83e6f9628642625a",
+      "parent_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "e4d90be7f96c927d72c0a086cc0d4f7f96e12f823421b632ab97722049689bd6",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "tire_health_snapshots",
+      "after_state": {
+        "kind": "c",
+        "related_table": "tire_health_snapshots",
+        "category": "C"
+      },
+      "object_id": "type:tire_health_snapshots"
+    },
+    {
+      "effect_id": "1ff6ca19aca5c3e6d3e497079acc50fcd307d9e18971b819241676dc67048773",
+      "parent_effect_id": "67e9a12669113750d9e44705f217c3e98547a1ea7f362e1b83e6f9628642625a",
+      "parent_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "e4d90be7f96c927d72c0a086cc0d4f7f96e12f823421b632ab97722049689bd6",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_tire_health_snapshots",
+      "after_state": {
+        "kind": "b",
+        "element_type": "tire_health_snapshots",
+        "category": "A"
+      },
+      "object_id": "type:_tire_health_snapshots"
+    },
+    {
+      "effect_id": "e7cd5735ff4b41802e80c004c8935fbd6e000f8e952c7f0ce54df81e748a13f9",
+      "parent_effect_id": "8c69a7b29c0aeed2ec4beb3dd3f3bf73bc931b7bdd8d97b6cfd17c36b2d345e0",
+      "parent_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "ac873e35b7b3e4af2bbf25e7a83be073863ab123eac05b7f64baf4662e4bcfab",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "tire_wear_data_points",
+      "after_state": {
+        "kind": "c",
+        "related_table": "tire_wear_data_points",
+        "category": "C"
+      },
+      "object_id": "type:tire_wear_data_points"
+    },
+    {
+      "effect_id": "cba3e3946e9c61c482897b515b1ac3480ff4d49c85cffaf56e023ac47ba05f7e",
+      "parent_effect_id": "8c69a7b29c0aeed2ec4beb3dd3f3bf73bc931b7bdd8d97b6cfd17c36b2d345e0",
+      "parent_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "ac873e35b7b3e4af2bbf25e7a83be073863ab123eac05b7f64baf4662e4bcfab",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_tire_wear_data_points",
+      "after_state": {
+        "kind": "b",
+        "element_type": "tire_wear_data_points",
+        "category": "A"
+      },
+      "object_id": "type:_tire_wear_data_points"
+    },
+    {
+      "effect_id": "2c6180bc788b40941929595996a3d83b591a0be142983a65316caca7c5c7c26d",
+      "parent_effect_id": "2144d068772668fd48c09e4c2ca6ffa72e93ea5de731746b5f0cd0ee1c686b24",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "f96207baedc803cac076feedac500456f02148a0256e6a8f1bb51e0dfba813ce",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "dashboard_insight_runs",
+      "after_state": {
+        "kind": "c",
+        "related_table": "dashboard_insight_runs",
+        "category": "C"
+      },
+      "object_id": "type:dashboard_insight_runs"
+    },
+    {
+      "effect_id": "c289540d4964027a3b8e7444f5641521c097aa663c075144f53eb13d64f48ae8",
+      "parent_effect_id": "2144d068772668fd48c09e4c2ca6ffa72e93ea5de731746b5f0cd0ee1c686b24",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "f96207baedc803cac076feedac500456f02148a0256e6a8f1bb51e0dfba813ce",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_dashboard_insight_runs",
+      "after_state": {
+        "kind": "b",
+        "element_type": "dashboard_insight_runs",
+        "category": "A"
+      },
+      "object_id": "type:_dashboard_insight_runs"
+    },
+    {
+      "effect_id": "42fb2a2940a8a0ff410dda9df2ee12a24a128647462b7ab1aaaac21ce7f8640b",
+      "parent_effect_id": "7fda76ffa9b0c2ecbc7649eb48f414f05e2654f36e7bfde5394eeab8f143f4f8",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 5,
+      "parent_statement_sha256": "70b1d2c76c41ade303c6d8e19bd8de8536e081b64dcd062b35b8c4304d3d7b98",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "dashboard_insights",
+      "after_state": {
+        "kind": "c",
+        "related_table": "dashboard_insights",
+        "category": "C"
+      },
+      "object_id": "type:dashboard_insights"
+    },
+    {
+      "effect_id": "9cc43c3c8f734afb76ad138046da71f8f3838961d686ec9755420574c28bac74",
+      "parent_effect_id": "7fda76ffa9b0c2ecbc7649eb48f414f05e2654f36e7bfde5394eeab8f143f4f8",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 5,
+      "parent_statement_sha256": "70b1d2c76c41ade303c6d8e19bd8de8536e081b64dcd062b35b8c4304d3d7b98",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_dashboard_insights",
+      "after_state": {
+        "kind": "b",
+        "element_type": "dashboard_insights",
+        "category": "A"
+      },
+      "object_id": "type:_dashboard_insights"
+    },
+    {
+      "effect_id": "4a26424d6ad441a34ee3402a91cfe3bf6c8233e7669d360fa3983efe80cdb6b2",
+      "parent_effect_id": "0414af7f0e6a0f991f85f441d1ce28145cfeb9a8a1852e8174c3fba046e8135d",
+      "parent_migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "c8467b6c6a6e484687c4ecb87ad4418057940736cb490a3162c2ba98ea545851",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "chat_messages",
+      "after_state": {
+        "kind": "c",
+        "related_table": "chat_messages",
+        "category": "C"
+      },
+      "object_id": "type:chat_messages"
+    },
+    {
+      "effect_id": "ea577879be9254503c6972c6dfacdd452ec3e5360f3ebe94e159dfb0f6856a36",
+      "parent_effect_id": "0414af7f0e6a0f991f85f441d1ce28145cfeb9a8a1852e8174c3fba046e8135d",
+      "parent_migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "c8467b6c6a6e484687c4ecb87ad4418057940736cb490a3162c2ba98ea545851",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_chat_messages",
+      "after_state": {
+        "kind": "b",
+        "element_type": "chat_messages",
+        "category": "A"
+      },
+      "object_id": "type:_chat_messages"
+    },
+    {
+      "effect_id": "9446e1139f653b3381ff4c6a12f9efb37edcf61717875f20ea6e367bdfd5ef8e",
+      "parent_effect_id": "cff3a178a5e3b14b3909fcd1aeb2fc031a2e0198d497b1877ac8f1e4a181bc6d",
+      "parent_migration": "20260811060000_evaluations_entity_references",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "eb4541c504336191e17c9c4dc1c7d1cc8fc03a05e1a0a7553aa619e7b3dee847",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "evaluations_entity_references",
+      "after_state": {
+        "kind": "c",
+        "related_table": "evaluations_entity_references",
+        "category": "C"
+      },
+      "object_id": "type:evaluations_entity_references"
+    },
+    {
+      "effect_id": "8af2c2fa171a86721abf80a777d04a4d8335497e059bfd7de55f98aaab942426",
+      "parent_effect_id": "cff3a178a5e3b14b3909fcd1aeb2fc031a2e0198d497b1877ac8f1e4a181bc6d",
+      "parent_migration": "20260811060000_evaluations_entity_references",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "eb4541c504336191e17c9c4dc1c7d1cc8fc03a05e1a0a7553aa619e7b3dee847",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_evaluations_entity_references",
+      "after_state": {
+        "kind": "b",
+        "element_type": "evaluations_entity_references",
+        "category": "A"
+      },
+      "object_id": "type:_evaluations_entity_references"
+    },
+    {
+      "effect_id": "8e61baf952bed9c714cbc9132c8fa08b4307859ef3c5bb0ad237068d8c79b7fb",
+      "parent_effect_id": "7430025560f7a0a4aa43b896203d04aba6821d3ff48b7c3cc0dd4aaf166346fd",
+      "parent_migration": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "6de0d731b169877c372080b5e020d8561940ade5dcb1d01d8bc036acc53b3a44",
+      "postgres_rule": "POSTGRES_TABLE_ROW_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "organization_role_assignment_drift_reconciliation_applications",
+      "after_state": {
+        "kind": "c",
+        "related_table": "organization_role_assignment_drift_reconciliation_applications",
+        "category": "C"
+      },
+      "object_id": "type:organization_role_assignment_drift_reconciliation_applications"
+    },
+    {
+      "effect_id": "0612fa08af554dc5deb88936810c8d4ab024a1947e176b670c5342a2d83e6c31",
+      "parent_effect_id": "7430025560f7a0a4aa43b896203d04aba6821d3ff48b7c3cc0dd4aaf166346fd",
+      "parent_migration": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "6de0d731b169877c372080b5e020d8561940ade5dcb1d01d8bc036acc53b3a44",
+      "postgres_rule": "POSTGRES_COMPOSITE_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_organization_role_assignment_drift_reconciliation_applications",
+      "after_state": {
+        "kind": "b",
+        "element_type": "organization_role_assignment_drift_reconciliation_applications",
+        "category": "A"
+      },
+      "object_id": "type:_organization_role_assignment_drift_reconciliation_applications"
+    },
+    {
+      "effect_id": "5a7330bcc9ab3e7f46cfe88fb1db2c9e4a70385d2d7d4d061f81562e52495e42",
+      "parent_effect_id": "c151d28dc1382c0a32882574163541755ef1028a7b0adf30926abf812fc308f8",
+      "parent_migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "141075d23dd5b35297fb1db974575b19dcafd087bb23e42446572884fef51264",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "org_tasks_pkey",
+      "after_state": {
+        "owner_table": "org_tasks",
+        "name": "org_tasks_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:org_tasks_pkey"
+    },
+    {
+      "effect_id": "abdbcf8e92c368e4e28471c92418bf321aab8396b3b71122cbb81ec7b71327fa",
+      "parent_effect_id": "547a04e276781acd18e822f940bd503227366d61acb412b4101a9f7fc1d06cf9",
+      "parent_migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "a67779e433e69b44134d0acaefbed99b1f8299555f5eac36d81fcda5f430935e",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "brake_health_current_pkey",
+      "after_state": {
+        "owner_table": "brake_health_current",
+        "name": "brake_health_current_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:brake_health_current_pkey"
+    },
+    {
+      "effect_id": "9233968939b37cd76ba6ca877a2a3ed82ae07ec93a3de81333a64d4377ef9fb1",
+      "parent_effect_id": "ae91f203a288e65eb9cf5c7ed0823960e3a04426ff8e95f5949b795dd34deb70",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "3647e187959f54b713381db8a2651a708534f9dd6d318dbe09492ac7d5fa2834",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vehicle_document_extractions_pkey",
+      "after_state": {
+        "owner_table": "vehicle_document_extractions",
+        "name": "vehicle_document_extractions_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vehicle_document_extractions_pkey"
+    },
+    {
+      "effect_id": "6f88a04f745d840bae544b9249a31012234394c3d20c76cd4521e052f502bf4b",
+      "parent_effect_id": "800f57d39362338fa73e173dbaaf5f4f4bfe952f318fd6c0d08b299b20edb491",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 10,
+      "parent_statement_sha256": "b37d3d4cab6cba4a40475662b1e71b4cd3d943228f76b1174f50805a133cc304",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "battery_evidence_pkey",
+      "after_state": {
+        "owner_table": "battery_evidence",
+        "name": "battery_evidence_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:battery_evidence_pkey"
+    },
+    {
+      "effect_id": "10d36ff64464217c8fd7b465cdd7d5e4d84f8f46383b875bb6f82abec1b722f9",
+      "parent_effect_id": "ab693c2ac74e9085c7cb62130e97012f1ea058cd7143bf6c438b7be391fabaa1",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "391b257589e43cd1b4fa4e20094ae41eb64af3d395f094b7500c88c86f929c56",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "org_invoices_pkey",
+      "after_state": {
+        "owner_table": "org_invoices",
+        "name": "org_invoices_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:org_invoices_pkey"
+    },
+    {
+      "effect_id": "9d8075b6d4f02dbbc5b00d89fc02bf674056849cbb73f1fef526b81f0851bcb7",
+      "parent_effect_id": "46e7d2de824489c37daa71d1bf5501463079df2fb46d277dd9620590cea536ae",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 13,
+      "parent_statement_sha256": "fe180399b03fc1a1c2eb81eb003782a41acbe3fd8b0bf761f63b1f54c1a77fcf",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vehicle_dtc_events_pkey",
+      "after_state": {
+        "owner_table": "vehicle_dtc_events",
+        "name": "vehicle_dtc_events_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vehicle_dtc_events_pkey"
+    },
+    {
+      "effect_id": "261be54ce1ab3d7674ff5931d5d93ca076965cd2e75c4027b4d01214fc037247",
+      "parent_effect_id": "e747593df42f8e10f7fa73fd8f081402a6ed004889a3742c2d52c06c08d32ef2",
+      "parent_migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "22a93e92ad2953f70afe135527bf598b279269603e8a0688e123291fdcd4b90c",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vehicle_driving_impact_current_pkey",
+      "after_state": {
+        "owner_table": "vehicle_driving_impact_current",
+        "name": "vehicle_driving_impact_current_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vehicle_driving_impact_current_pkey"
+    },
+    {
+      "effect_id": "58abb5e95b11884fa6a038fc72ee41c9156d704f4dec3da97195a7aae027eb4e",
+      "parent_effect_id": "7665758cb9d89a7297ea6d290c78ee86e160f461eb985fc2abd454cc0d203169",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "030c8d4ba09df03d357495eb696573c4bebf3c0124fc0d8e6df27889d5dd2c84",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vendor_vehicles_pkey",
+      "after_state": {
+        "owner_table": "vendor_vehicles",
+        "name": "vendor_vehicles_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vendor_vehicles_pkey"
+    },
+    {
+      "effect_id": "ea7cc9ced217661f06315cb7427e451bf4624db1afa34f869a2bf4df0e16bc54",
+      "parent_effect_id": "12318f2b38254206feaa598a886524e48ff228e977b09e5908cf62b7d9328c86",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "98306674905805ee85c145168bd0f8fef046007dc791bfb98a1f99a3a87fc72e",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vendors_pkey",
+      "after_state": {
+        "owner_table": "vendors",
+        "name": "vendors_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vendors_pkey"
+    },
+    {
+      "effect_id": "0c9fd3d52e2e82d4d55e41b30e4898b50e1077e5fbfe11cd30b1781c6d4f1f70",
+      "parent_effect_id": "e10630e1979a5d6876389b8b462d452491a7b508ff846202a34a588ca0acef8d",
+      "parent_migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "f51b1d4a90630971b0d063dbf876b61082b452d2c1e8ea9eaf547ca01c01bbf2",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "org_workflows_pkey",
+      "after_state": {
+        "owner_table": "org_workflows",
+        "name": "org_workflows_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:org_workflows_pkey"
+    },
+    {
+      "effect_id": "0d191ad52936cef406317f68ab1593d35e7560b27e99380ae7dbada54d1ed1ec",
+      "parent_effect_id": "189bd4f023f0495b0a52f71c5a567a6e4e6249bb56572830e5c4683531105997",
+      "parent_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "49c5040493c207ef5d073edf620eb62bb510fef53680ee0c04b3461af50ad84a",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "tires_pkey",
+      "after_state": {
+        "owner_table": "tires",
+        "name": "tires_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:tires_pkey"
+    },
+    {
+      "effect_id": "2a236c5ed8288254c9c0012e86d9d12f7421d76e5c5d2f56867e4e75bc272471",
+      "parent_effect_id": "65d68a13571b9c8025170590ea4f81ddc297cd560d159c34bc1f3aab50626512",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "8baf85336a91d87445d16c5e311ba4a5ec2eaaf40687e94309ad4d17d431b341",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vehicle_damage_images_pkey",
+      "after_state": {
+        "owner_table": "vehicle_damage_images",
+        "name": "vehicle_damage_images_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vehicle_damage_images_pkey"
+    },
+    {
+      "effect_id": "c6c0b6b821b08c6960024d43c3da4a82ac5bd7a9795640fbb1428251f4588d26",
+      "parent_effect_id": "6e5670217321c0a7dbb08847a69f3b700f5d7374238c891244d1554b8bcd13b2",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "b090a1dd8e3a39e84d40c9f25f34c26813da1c0d61914ed7b57e505ec0d66545",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "vehicle_damages_pkey",
+      "after_state": {
+        "owner_table": "vehicle_damages",
+        "name": "vehicle_damages_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:vehicle_damages_pkey"
+    },
+    {
+      "effect_id": "a044f751c9d91a1c5a8346ade52fbf87f30d6f4b1461d4751ad222c81c96473e",
+      "parent_effect_id": "c24a31a5d9087589c99321e321dba8884c16c25c0d503d7990cdd469e47c08b2",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "067598db069a573d13208e8f955b9c813697bb8be920f27fd9e1f4ee5e224be9",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "org_whatsapp_configs_pkey",
+      "after_state": {
+        "owner_table": "org_whatsapp_configs",
+        "name": "org_whatsapp_configs_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:org_whatsapp_configs_pkey"
+    },
+    {
+      "effect_id": "ca24600c554aa6de622cd6e195f5c1d6b5d4c6cd1843d8906e37770f760a1662",
+      "parent_effect_id": "ce7b1faa556ea88fbf0be4fd8579e3b1d76dd762f9b167b0f658a7ffc71ac0fd",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "d5e73b2663e0dc0dd5560dbea1fd606cc2ffedfb542774ffad92b4fbdfec77e6",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "whatsapp_conversations_pkey",
+      "after_state": {
+        "owner_table": "whatsapp_conversations",
+        "name": "whatsapp_conversations_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:whatsapp_conversations_pkey"
+    },
+    {
+      "effect_id": "0a0ac237b75f4c8759c08a4f5f01eb04e032dbbe2c57089f49750c841d1544a9",
+      "parent_effect_id": "b511c99deca63bb63a82a07b4558e47a89d6c4aeee3d60fc93be632507e4000f",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "0e86da53b3ea03fa52efdcc5bd2bb1f35e263e155e9184bb39db292a89387b53",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "whatsapp_messages_pkey",
+      "after_state": {
+        "owner_table": "whatsapp_messages",
+        "name": "whatsapp_messages_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:whatsapp_messages_pkey"
+    },
+    {
+      "effect_id": "4860cec511031455892f5c0998cafa9eb6848f8f44160511e7f768e82515ad3c",
+      "parent_effect_id": "efba146b046f34ef98c18120f346c8a5604cd80068b2aad0e6bafe0d6da74965",
+      "parent_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "e4d90be7f96c927d72c0a086cc0d4f7f96e12f823421b632ab97722049689bd6",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "tire_health_snapshots_pkey",
+      "after_state": {
+        "owner_table": "tire_health_snapshots",
+        "name": "tire_health_snapshots_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:tire_health_snapshots_pkey"
+    },
+    {
+      "effect_id": "b0942f42c72a2150bd2b13e10849d49ee0de584de8eadf1b6055551aac934c4a",
+      "parent_effect_id": "8d90cf7492b52a9fd73102bdeaba1f5b58f0e5c90e15c56d0d21e15c62d43755",
+      "parent_migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "ac873e35b7b3e4af2bbf25e7a83be073863ab123eac05b7f64baf4662e4bcfab",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "tire_wear_data_points_pkey",
+      "after_state": {
+        "owner_table": "tire_wear_data_points",
+        "name": "tire_wear_data_points_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:tire_wear_data_points_pkey"
+    },
+    {
+      "effect_id": "6e9a220c4572857b0e7184cce4aca1d26a0103eb3359cf7113f63c573b093cee",
+      "parent_effect_id": "7811974837e6e6c9fc8b8d58d6f4bc1cf05858a4ca40cf019cbeef97f6691e5a",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "f96207baedc803cac076feedac500456f02148a0256e6a8f1bb51e0dfba813ce",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "dashboard_insight_runs_pkey",
+      "after_state": {
+        "owner_table": "dashboard_insight_runs",
+        "name": "dashboard_insight_runs_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:dashboard_insight_runs_pkey"
+    },
+    {
+      "effect_id": "4b5c64c80432089d8b77cc7c1991ae3d5b955f79eccc44b12dceee927e9ee782",
+      "parent_effect_id": "456263936d8ac4580e72b79e4937ad048e3fc3dc6e5ec29d163a5bd2658bad10",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 5,
+      "parent_statement_sha256": "70b1d2c76c41ade303c6d8e19bd8de8536e081b64dcd062b35b8c4304d3d7b98",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "dashboard_insights_pkey",
+      "after_state": {
+        "owner_table": "dashboard_insights",
+        "name": "dashboard_insights_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:dashboard_insights_pkey"
+    },
+    {
+      "effect_id": "058c13e852b158a35e0bea5260ffffcc743dad65b63b569f9eacec56d2fb0e39",
+      "parent_effect_id": "27d5fa471fb8727e42c1d3cb3b56be1393b280da68f426d19646643e1e193d6d",
+      "parent_migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "c8467b6c6a6e484687c4ecb87ad4418057940736cb490a3162c2ba98ea545851",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "chat_messages_pkey",
+      "after_state": {
+        "owner_table": "chat_messages",
+        "name": "chat_messages_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:chat_messages_pkey"
+    },
+    {
+      "effect_id": "d10a8b14dc7dc5abcb954e3670a126ac6ef2c195bb20158b25b2fb8fafc82caa",
+      "parent_effect_id": "b88f465fef886513495cb7649a040eb7566e4bb9eff7ebb3954fa52f9c242c4e",
+      "parent_migration": "20260811060000_evaluations_entity_references",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "eb4541c504336191e17c9c4dc1c7d1cc8fc03a05e1a0a7553aa619e7b3dee847",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "evaluations_entity_references_pkey",
+      "after_state": {
+        "owner_table": "evaluations_entity_references",
+        "name": "evaluations_entity_references_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:evaluations_entity_references_pkey"
+    },
+    {
+      "effect_id": "8e8e917d1e4f3499b0cde8f287c1112f04515d066d1f382acfdc2035f0a46fe3",
+      "parent_effect_id": "617bfbcb55ae7ac38ce6bd40e9bd18aac858dee709c17546113b62dab3d52642",
+      "parent_migration": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "6de0d731b169877c372080b5e020d8561940ade5dcb1d01d8bc036acc53b3a44",
+      "postgres_rule": "POSTGRES_PRIMARY_KEY_INDEX",
+      "change_type": "ADDED",
+      "object_type": "index",
+      "name": "org_role_asgn_drift_recon_apps_pkey",
+      "after_state": {
+        "owner_table": "organization_role_assignment_drift_reconciliation_applications",
+        "name": "org_role_asgn_drift_recon_apps_pkey",
+        "primary": true,
+        "unique": true
+      },
+      "object_id": "index:org_role_asgn_drift_recon_apps_pkey"
+    },
+    {
+      "effect_id": "808fba9773e9ab472ca43fac656f4120790b3befde8cfa46993fd7619c96abba",
+      "parent_effect_id": "635c094f1a0324fadf7183fe1c1375d0c18ab6a614a7f6cd8e5c37e44d1907c3",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "50e20e3e19194d5ef2e7fab4b1361143dd9c80cd6a78b7d0296fb904d6a5ef97",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TripAssignmentStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TripAssignmentStatus",
+        "category": "A"
+      },
+      "object_id": "type:_TripAssignmentStatus"
+    },
+    {
+      "effect_id": "954eea8ab75691d4cf62918fd72beba6e01a8f887ba04fcb0c0c41070db4c0fa",
+      "parent_effect_id": "e4a3090e29ee8e600cccf185ba89cc9d888a1d8e9b6b5040c0cdaadac7b4f1e1",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "52d35681bf047cbfaefc1702fdd9f5f0418359686f3bfd6c38c048958121177b",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TripAssignmentSubjectType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TripAssignmentSubjectType",
+        "category": "A"
+      },
+      "object_id": "type:_TripAssignmentSubjectType"
+    },
+    {
+      "effect_id": "12b80c8f29c7c4e3b468c02fb0902304b1271411495676a09275d085eee13eb4",
+      "parent_effect_id": "9c4b69034874a2a19ecb2ef1e08221f1228c0056258e5f316453916bf5397454",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "81df0bdabb927616563c8f758bd92989a87ced655fec06d9665f4591ae2c58ee",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DrivingEventType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DrivingEventType",
+        "category": "A"
+      },
+      "object_id": "type:_DrivingEventType"
+    },
+    {
+      "effect_id": "0ef04ee79e273958d1ed2d59ee2368c0bf6d57a9f2197bcc8b8b1e288f0746e0",
+      "parent_effect_id": "1923cfdf936d7b32ee732288bfcd404f2feab923dad06b91d38acc400ebb3ee3",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 4,
+      "parent_statement_sha256": "68afd0ee33bca263ce379aeeadc499f5a2c1c17a4ed0fb0218f1e9438b2332d0",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_BehaviorEventCategory",
+      "after_state": {
+        "kind": "b",
+        "element_type": "BehaviorEventCategory",
+        "category": "A"
+      },
+      "object_id": "type:_BehaviorEventCategory"
+    },
+    {
+      "effect_id": "e35051a8d39829bfe1dae0f54a19020a1411230d28eb95898c236a59f45dd533",
+      "parent_effect_id": "3b149ccef6b1b099b4eb4c2070e096813f933126d20c65a6cd1831c2640c68f0",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 5,
+      "parent_statement_sha256": "f0bbf23255e1db0499bdd5fe5de9e82b3ddc434152a129c2e348799ddf88aded",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_BehaviorEventClassification",
+      "after_state": {
+        "kind": "b",
+        "element_type": "BehaviorEventClassification",
+        "category": "A"
+      },
+      "object_id": "type:_BehaviorEventClassification"
+    },
+    {
+      "effect_id": "335a230007c1cdba5294e78d734031f6ac2c2f17ff94164d061c5612e8c8a9fd",
+      "parent_effect_id": "9a46713b16fce17287fbd33631e2f66a7df638627be160143a5eaecdd2dcd6ac",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 6,
+      "parent_statement_sha256": "bb13ce3b2d3c273df528c59c99ef3749162c52326514bd95cb1530da44836a8f",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TripSource",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TripSource",
+        "category": "A"
+      },
+      "object_id": "type:_TripSource"
+    },
+    {
+      "effect_id": "2b71cdac5b9c0af04c77903c6806b0e554779cfc25891edbd838ccf7c33bf87f",
+      "parent_effect_id": "96222128eb467609c6b64417ebe70582099e7d30ca4812634e493c7f53594953",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 7,
+      "parent_statement_sha256": "6dc4bfb9c9abdd164ba1d32745a65bfaa88667ff705cf874473183eaaa547583",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TripDetectionState",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TripDetectionState",
+        "category": "A"
+      },
+      "object_id": "type:_TripDetectionState"
+    },
+    {
+      "effect_id": "609f51a9c40f1636ba1f4ff8f914b733641a2e132b720177cf4675a2cfc656f5",
+      "parent_effect_id": "5f1008495807ec5acec74eb5f079474c0336f9969f0c5ec3025791d9501227de",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 8,
+      "parent_statement_sha256": "1306496567e6619bc9f96a286dd040687cb4001558dae77c9a7179828cde1647",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TripTrackingRunType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TripTrackingRunType",
+        "category": "A"
+      },
+      "object_id": "type:_TripTrackingRunType"
+    },
+    {
+      "effect_id": "eedf227d33aa125351a7ba8e2cea72b7202a599373eb8978cc0e5cfd69fdbfea",
+      "parent_effect_id": "5203e406d02db480774654fb50088155555da7049d5f49cae7705aa49f282153",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 9,
+      "parent_statement_sha256": "ce96f963c4c8eca4c8e1061b0607f0db0f1da6ae0e21053fea3a67e6578255e7",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_VehicleDetectionProfile",
+      "after_state": {
+        "kind": "b",
+        "element_type": "VehicleDetectionProfile",
+        "category": "A"
+      },
+      "object_id": "type:_VehicleDetectionProfile"
+    },
+    {
+      "effect_id": "a5a79478b74b67404e978d588d69ca7b14ecacef0e18e70057f369e36e3de322",
+      "parent_effect_id": "3a6761ea81409d53bf22930459590ad014a39fee5afdea97df2f81841fd15e46",
+      "parent_migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+      "parent_statement_ordinal": 10,
+      "parent_statement_sha256": "1fe6cf996a74a1ae2b8e3e8ee3efce4968a245c2c770fb68b18ecdd675a18d40",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DetectionConfidence",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DetectionConfidence",
+        "category": "A"
+      },
+      "object_id": "type:_DetectionConfidence"
+    },
+    {
+      "effect_id": "a33cc3711a988c5e959fead2473ded236994078709f1e3b60eb60fb2e28207d3",
+      "parent_effect_id": "6785d47e760c118ea7043e9e6779ebec89c2bcec5d1ab0804e8de57c90b0df3c",
+      "parent_migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "968592b948a774adc4546c24e0c34b0ba0c5fc6e9e1e16e1c74671de3807fb4f",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TaskPriority",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TaskPriority",
+        "category": "A"
+      },
+      "object_id": "type:_TaskPriority"
+    },
+    {
+      "effect_id": "26e24f7f77d82142d0e0834cd807ac2b64a6008a5028bbb3006cff0e99cbe33e",
+      "parent_effect_id": "ed14d7f2e3cf0d8f3fa5d1842d7d0bff149ee559857a542d54c22aad296adfcb",
+      "parent_migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "822b754a7ccd7b42b9f67e9216fb49c98091a19768160e85aee6561278bd038f",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TaskStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TaskStatus",
+        "category": "A"
+      },
+      "object_id": "type:_TaskStatus"
+    },
+    {
+      "effect_id": "57f940fb53ed2a87fb0692774e8d4faa4d416835a0a4b9d6f80633740933eefe",
+      "parent_effect_id": "40f67c347b8f85cd3d4c30521454eb1c5047dc02fef562b6a875d1eeb7b9535e",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "722352b0d37e87e3c86b21e0d1c593b8ac058735474cb774a583f463033b0f97",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DocumentExtractionStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DocumentExtractionStatus",
+        "category": "A"
+      },
+      "object_id": "type:_DocumentExtractionStatus"
+    },
+    {
+      "effect_id": "c3136fdec3ac3b3cbc3f86c560e021f679c253082cd9157663ebb4a43550dba0",
+      "parent_effect_id": "52c41285d84be693a05e7636e252993e0f9c1ac59e68accd096d2aae972a66ec",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "e2e02454b752775d7358211bad49206aafac0dab8aace65b37b72485d18439f0",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DocumentExtractionType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DocumentExtractionType",
+        "category": "A"
+      },
+      "object_id": "type:_DocumentExtractionType"
+    },
+    {
+      "effect_id": "83e9eab4206697bd6eb24ea38e547b5c37f9cff7476b79f13eb9bdf9d33d83c8",
+      "parent_effect_id": "f9ff18cec2642024bf695a320a7767a141963bec2d1e8ec97daeba4b29cada26",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 7,
+      "parent_statement_sha256": "6e3543cb258fd5952e633dcd30969cfb7f8495c04f41034060b7c7e5e3ec6141",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_BatteryEvidenceScope",
+      "after_state": {
+        "kind": "b",
+        "element_type": "BatteryEvidenceScope",
+        "category": "A"
+      },
+      "object_id": "type:_BatteryEvidenceScope"
+    },
+    {
+      "effect_id": "3337b4771ae70f6e0e99f64f6505e61e6d7b93d2d6fcc40d58a46a4a9afc1018",
+      "parent_effect_id": "fad02f4f06889bc82ac6ed596afbdaa13265d61fb99817ce738b36bd077a8d75",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 8,
+      "parent_statement_sha256": "08332c4763f4561d517984e267856a05a5ca8d0b3e71db13eaf0e0ca01d53ccd",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_BatteryEvidenceSourceType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "BatteryEvidenceSourceType",
+        "category": "A"
+      },
+      "object_id": "type:_BatteryEvidenceSourceType"
+    },
+    {
+      "effect_id": "a086de55ac080e637586d69fb0af388e06ea41b94ebeaf9cbd582b4ec944b175",
+      "parent_effect_id": "bfb47aa3d63194582cc43be04961258ffa88ac3057b677c0f4316f3d0bb5fec4",
+      "parent_migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+      "parent_statement_ordinal": 9,
+      "parent_statement_sha256": "ee585ee6ac02c2d2ecdbd6caeb466a8d4df3c357a9102a542ce5f2ae89a77fa1",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_BatteryEvidenceValueType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "BatteryEvidenceValueType",
+        "category": "A"
+      },
+      "object_id": "type:_BatteryEvidenceValueType"
+    },
+    {
+      "effect_id": "02908cf0f969d7d8a9a9a4cda57c28714d61bcf794faae4d758621b6d7a8af88",
+      "parent_effect_id": "5bedf84e923a437bc01d11e2db6a648b67dc05ccc5bfa0f5d2b7832271a30d51",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "a69544501335abef80baee4bd15ac01088917a5eccb7ea81fcc7d66ac7e96b3b",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_OrgInvoiceStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "OrgInvoiceStatus",
+        "category": "A"
+      },
+      "object_id": "type:_OrgInvoiceStatus"
+    },
+    {
+      "effect_id": "f645e539be7dfe9848a098e0e0a380f00aa810e58dc61b3b1a7694ab650446b0",
+      "parent_effect_id": "fa4fe43265a31183f2b7d72b0033f6b4579a5482d498013824b09132852959db",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "ece538be87e5319ae0cffbd0a7a0df601efff46b5df63e052187b9283d66ad35",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_OrgInvoiceType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "OrgInvoiceType",
+        "category": "A"
+      },
+      "object_id": "type:_OrgInvoiceType"
+    },
+    {
+      "effect_id": "929a638611c853ec7b534d2b40a5289ebcd243a2fb06cbe3e2a551741b55e132",
+      "parent_effect_id": "ac72d1c1f929e365e4f55dcf5bce9276d429ae31de5a490cd4f1b10d7507711b",
+      "parent_migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "parent_statement_ordinal": 12,
+      "parent_statement_sha256": "28140a352d09e9c8f455004fc2f0113febc6243b99f37c1c15bc77f4c94ca480",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DtcSeverity",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DtcSeverity",
+        "category": "A"
+      },
+      "object_id": "type:_DtcSeverity"
+    },
+    {
+      "effect_id": "11cc405a8d8a6177657fbecb4d41c73a1e497ee7e1f08bfb3b4a3fe8eb666b7e",
+      "parent_effect_id": "d3dfc5dc4119884ecfdc5dd13ecc67e3ec7edc5efaf10068dc73a3e384c2ea8d",
+      "parent_migration": "20260417170000_ci_r3b_historical_predecessor_slot5",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "ff813de8fd9103ab072d4bd46f222ce37c61211ad6f2b117a5d78f53c4bfad4d",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_InsightType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "InsightType",
+        "category": "A"
+      },
+      "object_id": "type:_InsightType"
+    },
+    {
+      "effect_id": "a0116ab7a7740d85cc3672fe5d4a939fa4d8607c39c3830a34895c77b4cc1180",
+      "parent_effect_id": "6e372457d2872ec3080599b86a441bbd8258c2f6abc50ae027779d636efa5fb9",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "fa7a3a98182e91e9038c699d20b30d22f25bc6e4f6d989d87ec1f828c365d79a",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_VendorCategory",
+      "after_state": {
+        "kind": "b",
+        "element_type": "VendorCategory",
+        "category": "A"
+      },
+      "object_id": "type:_VendorCategory"
+    },
+    {
+      "effect_id": "22fea858731189807872f2ddbe84e74d271f0483a9ed280389c66d119ca93c74",
+      "parent_effect_id": "c1b5ab088d5ea3057ba5b992505548f5ab666ba4f1ca87e5065822a8a82aacb2",
+      "parent_migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "459dbe701454669fe425dd934e77359423465e1cfd6d10a183b77e1bc760e882",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_VendorSourceType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "VendorSourceType",
+        "category": "A"
+      },
+      "object_id": "type:_VendorSourceType"
+    },
+    {
+      "effect_id": "83297705b60693749e2f33316b6a1416ca7c5ac81782baffb4eb4861a524902e",
+      "parent_effect_id": "17d82379a0ff37cebed92bc568e355710e66dac167c03d66db950206df453c4a",
+      "parent_migration": "20260616130000_ci_r3b_post_vendor_predecessor_slot08",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "ded197f56dd284eb289c836beeb55663632151d1a1f10c6ddd6701503a703bdf",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_WorkflowStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "WorkflowStatus",
+        "category": "A"
+      },
+      "object_id": "type:_WorkflowStatus"
+    },
+    {
+      "effect_id": "c46d662380968eb744c317d8e5d43d11eae1ebcac7f165e9c6221b8cfa02fe12",
+      "parent_effect_id": "8994a0eccf764dd135ce534c035e7e2b9b1b628d53e5ab69e6f4d457047878c8",
+      "parent_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "f237c472574e4811718dc4c10bcb7c5b643001c166d744fe0bda0c21b6a15839",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TireHealthStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TireHealthStatus",
+        "category": "A"
+      },
+      "object_id": "type:_TireHealthStatus"
+    },
+    {
+      "effect_id": "e9d629a21799e8efd176692f49d046f3aa26760c18b42e22e718d2ccfde49ce8",
+      "parent_effect_id": "31219b6a021b32e4f9ecc6dfe682dce1cdadcb1ec75567bc2468c93fe8d9430b",
+      "parent_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "b8651e68a4a1a79df66f7b70f9697cbf03b57041e22e55d6116f60fa85d1e448",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TirePosition",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TirePosition",
+        "category": "A"
+      },
+      "object_id": "type:_TirePosition"
+    },
+    {
+      "effect_id": "51f1398d73569ee06ad9a58dd7d687a5cdc95daab5845c92e85f580efeec52fb",
+      "parent_effect_id": "6126ea9128a77e6174ea548b262ecdd2900eb1ca2b167ff6110e6394d57a486c",
+      "parent_migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "c316aa4342792291cb1d6e76dc8fd0aadb94df22e9e2c5a7a37742bc00d9e074",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TireSeason",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TireSeason",
+        "category": "A"
+      },
+      "object_id": "type:_TireSeason"
+    },
+    {
+      "effect_id": "0b1c69d8982fcb370ee81080aa514092d5afe0d7519ba3ecb00b7d1ffe81bc5a",
+      "parent_effect_id": "168e5860c122bb598c2e29906a19d814e5c82fb8bc97b8136f5a3d0459cbbfd5",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "e206c8200ccf8f9103cedc7dc466eae7ba84aee2fea1339ad47f723903f11fc3",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DamageSeverity",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DamageSeverity",
+        "category": "A"
+      },
+      "object_id": "type:_DamageSeverity"
+    },
+    {
+      "effect_id": "acf4842027584ee66ec2ab61d16b3fc69257fd34746f7f0a529fae16724b694b",
+      "parent_effect_id": "2104de53898db76426d3fa856e33d03100e0295858145499fa70b62f724ae091",
+      "parent_migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "46ce76e9dca167319bdde686bb705426873a1cca7bce83af02f25c1759b18c89",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_DamageType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "DamageType",
+        "category": "A"
+      },
+      "object_id": "type:_DamageType"
+    },
+    {
+      "effect_id": "d950619cc6c11a956748ccb98f4396f9f73a4c0767b581d3253a106621eea5cb",
+      "parent_effect_id": "14f4a170a7138368d56332ea9e222eec6cfe1d08243ae91db3257344ce707fc3",
+      "parent_migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "e7d66e64f97c908f18a55eefea8217e31fadfb2a7570a39eb368f9c6f307e2a9",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_WhatsAppAiMode",
+      "after_state": {
+        "kind": "b",
+        "element_type": "WhatsAppAiMode",
+        "category": "A"
+      },
+      "object_id": "type:_WhatsAppAiMode"
+    },
+    {
+      "effect_id": "28efcbc7d2c8044cbeb3d4240d1170763a8b2f6330ad0dcd2a914152c1271dd6",
+      "parent_effect_id": "db70920306af935fac900d82fbcff41593bcde4d1a9d953ae13b02c3a0f41cb8",
+      "parent_migration": "20260716182500_ci_r3b_post_vendor_predecessor_slot13",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "73b34311c6193e43c3ecbe71b5b968f3f3bbbc8fb9217cdae9e069edc9d68606",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TireSetupStatus",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TireSetupStatus",
+        "category": "A"
+      },
+      "object_id": "type:_TireSetupStatus"
+    },
+    {
+      "effect_id": "98af925e12d8149de3c15325419a31d5a14ad60d963090df0c07919351832305",
+      "parent_effect_id": "7c9b862eba1b2d5b7ffefa318db47ad997b1fabd6d9c6b477061a4c308a9062c",
+      "parent_migration": "20260716200000_r3b_post_vendor_predecessor_slot14",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "cf69275bf5660c93d1f8358af5d405b65433b566a36313adeb3bc7154dcda89e",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_TireEventType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "TireEventType",
+        "category": "A"
+      },
+      "object_id": "type:_TireEventType"
+    },
+    {
+      "effect_id": "680fe88b30361abda0bdaa56d75efbeff0171552651e3ee608161d9a28c674e4",
+      "parent_effect_id": "9765828df64b8ae0301b29c4ddee132895bf58f50fe589233b3140127ec35ac3",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "f36ff3a8deccfb5f69a0d8e5493b7eea93a80f4014b5ec3dc76e15c8bd1fc939",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_InsightEntityScope",
+      "after_state": {
+        "kind": "b",
+        "element_type": "InsightEntityScope",
+        "category": "A"
+      },
+      "object_id": "type:_InsightEntityScope"
+    },
+    {
+      "effect_id": "9d6df8e46065c4712b6b483667b040a388321ffb74c981b7d4389ca49a891739",
+      "parent_effect_id": "c68f5193b1ccb81094303dc4567285230d5519fdd56b60a4fafa12c0bb41a058",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "75aa46d645253e7d4fb025906be5eeb7f7d7c4ddf9457d6bd9215bcdcd49ab1f",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_InsightSeverity",
+      "after_state": {
+        "kind": "b",
+        "element_type": "InsightSeverity",
+        "category": "A"
+      },
+      "object_id": "type:_InsightSeverity"
+    },
+    {
+      "effect_id": "d1b6326d4a2087284d3a46b1852ab0b49087c952ae864a0940fb0eb50ef2e526",
+      "parent_effect_id": "c04c7bf0c36928936f9c55bceb4e3bc9d299656ffce233407558398bd6baf8b6",
+      "parent_migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "39fd951cd1454f0e15eb3b58d9750404b7d72dbf08794ee87688339940748a5f",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_InsightType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "InsightType",
+        "category": "A"
+      },
+      "object_id": "type:_InsightType"
+    },
+    {
+      "effect_id": "f8d8bc21fe85794292515b94cab2e1215cfada97630d8713c5bddd1094a0dd62",
+      "parent_effect_id": "c42ddede351fb48075bf1e2f152a0f00e35c545a9bd1cfe1d12f78649354a521",
+      "parent_migration": "20260811060000_evaluations_entity_references",
+      "parent_statement_ordinal": 1,
+      "parent_statement_sha256": "2f6e44dcfa93d905bf6b6036d649b4272c0edb2280ee7577ef592560366ddcb9",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_EvaluationsReferenceOwnerType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "EvaluationsReferenceOwnerType",
+        "category": "A"
+      },
+      "object_id": "type:_EvaluationsReferenceOwnerType"
+    },
+    {
+      "effect_id": "ef4f7343f1ac7dffe2a1da2cf20c794c807de2531ce6bd74ea97d4b4664cd8bf",
+      "parent_effect_id": "c03dc6bae3c6497b4fdfc8ec57fe35cca1003fff81668124846e81bbd81996bb",
+      "parent_migration": "20260811060000_evaluations_entity_references",
+      "parent_statement_ordinal": 2,
+      "parent_statement_sha256": "a029391e499e6238b8dc28b84a16f193f8a52707da2a7e2c0498389e2dc7ae59",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_EvaluationsEntityType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "EvaluationsEntityType",
+        "category": "A"
+      },
+      "object_id": "type:_EvaluationsEntityType"
+    },
+    {
+      "effect_id": "21603d5b95d43a3181182851309c5900622548b1a65092220a8059dba4fe2869",
+      "parent_effect_id": "31c038aaff08dd1b51ed8cde6e701a00d23d661998b39858a62b8b65b6f8509c",
+      "parent_migration": "20260811060000_evaluations_entity_references",
+      "parent_statement_ordinal": 3,
+      "parent_statement_sha256": "752126e78ee2e12f85f035cdea6cd4f765b578b0ef808f2a45fbdd801f7e0b98",
+      "postgres_rule": "POSTGRES_ENUM_ARRAY_TYPE",
+      "change_type": "ADDED",
+      "object_type": "type",
+      "name": "_EvaluationsRelationType",
+      "after_state": {
+        "kind": "b",
+        "element_type": "EvaluationsRelationType",
+        "category": "A"
+      },
+      "object_id": "type:_EvaluationsRelationType"
+    }
+  ],
+  "pass": true
+}

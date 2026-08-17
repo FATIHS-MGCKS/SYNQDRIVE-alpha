@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N.1",
+  "confirmed_algorithm_key": "mixed",
+  "confirmed_representation": "mixed",
+  "confirmation_count": 280,
+  "confirmations": [
+    {
+      "migration": "20260311224040_init",
+      "algorithm_key": "raw_bytes_sha256",
+      "checksum": "3350b2baa25e576fbc11a6df4f453ffa95385f184880a5973641b9c79e93699a"
+    },
+    {
+      "migration": "20260312120232_add_dimo_vehicle_snapshot_fields",
+      "algorithm_key": "raw_bytes_sha256",
+      "checksum": "34191c177a76da33151fa76be5fb12a7460268984151d9b8795a168a35e39c7c"
+    },
+    {
+      "migration": "20260315000000_add_rental_driving_analysis",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "9e9181525c6ed4d81981cd15b4157b694a3c9a3fd1bdcc629dca0d23558ec596"
+    },
+    {
+      "migration": "20260325161142_trip_architecture_refactor",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "2230e671fd676f469760e5c819839e8026d96a43cd224a909dc2709fd1eeb8f9"
+    },
+    {
+      "migration": "20260325170000_parts_accessories_module",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "491f349387aca8ab888aaf57a771d2da0e38e0e62766de87926433edae109233"
+    },
+    {
+      "migration": "20260331000000_v3_hardware_type",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "430c8ff7d323019d7dcf0720c9473762151d02e761e4ff31a156264a40b99b33"
+    },
+    {
+      "migration": "20260331130000_vehicle_complaints",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "8901002e056d976405998df1fb60510fe1632e0c7abf6b2af6896fbf2841b724"
+    },
+    {
+      "migration": "20260408120000_high_mobility_phase1",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "746769b9d877c5824f7489d0b4567fc9baf5980d93f845c8e0153c8242d1c1d4"
+    },
+    {
+      "migration": "20260408140000_high_mobility_phase2",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "2d759cfa599084aa638e55f5e40ee37c1b6fa6a8b8893f5d991cae754e8608b1"
+    },
+    {
+      "migration": "20260409120000_hm_signal_group_state",
+      "algorithm_key": "crlf_normalized_sha256",
+      "checksum": "584ddbc2423c1572b60872763ae489cd764b7ad53867c42ad3da09de186d04e6"
+    }
+  ],
+  "pass": false
+}

@@ -1,0 +1,37 @@
+{
+  "scenarios": {
+    "missing_authorized_operation": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "semantic_drift": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "extra_unauthorized": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "ambiguous_match": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "unknown_scope": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "unattributed": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "new_strategy_drift": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    },
+    "m252_scope_nonzero": {
+      "blocked": true,
+      "final_status": "CI_R3B1P_CONTROLLED_PRODUCTION_RECONCILIATION_PREFLIGHT_BLOCKED"
+    }
+  },
+  "all_fail_closed": true
+}

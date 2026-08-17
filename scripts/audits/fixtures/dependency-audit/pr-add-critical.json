@@ -1,0 +1,1 @@
+{"metadata":{"vulnerabilities":{"high":0,"critical":1}},"vulnerabilities":{"pkg":{"name":"pkg","severity":"critical","isDirect":false,"via":[{"source":9999999,"name":"pkg","url":"https://github.com/advisories/GHSA-critical-test","severity":"critical","range":"<1.0.0"}],"range":"<1.0.0","nodes":["node_modules/pkg"]}}}

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "timeline": {
+    "T0_golden_baseline": {
+      "label": "T0",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": false,
+          "definition": null
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": false,
+          "definition": null
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": false
+    },
+    "T1_after_resolves_before_deploy": {
+      "label": "T1",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": false,
+          "definition": null
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": false,
+          "definition": null
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": false
+    },
+    "T2_after_normal_migrate_deploy": {
+      "label": "T2",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": true,
+          "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": true,
+          "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": false
+    },
+    "T3_after_tail_reconciliation": {
+      "label": "T3",
+      "stale_indexes": {
+        "org_invoices_invoice_number_key": {
+          "present": false,
+          "definition": null
+        },
+        "whatsapp_conversations_organization_id_contact_phone_key": {
+          "present": false,
+          "definition": null
+        }
+      },
+      "replacements": {
+        "org_invoices_organization_id_sequence_year_sequence_number_key": {
+          "present": true
+        },
+        "whatsapp_conversations_organization_id_contact_phone_normalized_key": {
+          "present": true,
+          "physical_name": "whatsapp_conversations_organization_id_contact_phone_normal_key"
+        }
+      },
+      "m252_table_present": true
+    }
+  }
+}

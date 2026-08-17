@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P",
+  "interpretation": "Production before reconciliation starts at golden-compatible schema; stale indexes are created by normal deploy before tail removal.",
+  "m252_table_present": false,
+  "m252_table_absent": true,
+  "pre_tail_checks": {
+    "schema_version": 1,
+    "phase": "pre_tail",
+    "expected": {
+      "m252_table_absent": true,
+      "m252_objects_absent": true,
+      "parents_present": true,
+      "invoice_stale_present": true,
+      "whatsapp_stale_present": true,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "actual": {
+      "m252_table_absent": true,
+      "m252_objects_absent": true,
+      "parents_present": true,
+      "invoice_stale_present": false,
+      "whatsapp_stale_present": false,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "checks": {
+      "m252_table_absent": true,
+      "m252_objects_absent": true,
+      "parents_present": true,
+      "invoice_stale_present": false,
+      "whatsapp_stale_present": false,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "stale_indexes": {
+      "org_invoices_invoice_number_key": false,
+      "whatsapp_conversations_organization_id_contact_phone_key": false
+    },
+    "pass": false
+  },
+  "post_tail_checks": {
+    "schema_version": 1,
+    "phase": "post_tail",
+    "expected": {
+      "invoice_stale_absent": true,
+      "whatsapp_stale_absent": true,
+      "m252_table_present": true,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "actual": {
+      "invoice_stale_absent": true,
+      "whatsapp_stale_absent": true,
+      "m252_table_present": false,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "checks": {
+      "invoice_stale_absent": true,
+      "whatsapp_stale_absent": true,
+      "m252_table_present": false,
+      "invoice_replacement_present": true,
+      "whatsapp_replacement_present": true
+    },
+    "stale_indexes": {
+      "org_invoices_invoice_number_key": false,
+      "whatsapp_conversations_organization_id_contact_phone_key": false
+    },
+    "pass": false
+  },
+  "starting_compatible": true,
+  "pass": true
+}

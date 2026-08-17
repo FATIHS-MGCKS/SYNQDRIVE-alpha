@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O",
+  "blockers": [
+    {
+      "id": "B_R3B1G_PENDING_EXISTING_EFFECT",
+      "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+      "type": "PENDING_EXISTING_COLUMN_COLLISION",
+      "severity": "BLOCKER_CRITICAL"
+    },
+    {
+      "id": "B_R3B1I_PENDING_EXISTING_EFFECT",
+      "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+      "type": "PENDING_EXISTING_COLUMN_COLLISION",
+      "severity": "BLOCKER_CRITICAL"
+    },
+    {
+      "id": "B_M252_HISTORICAL_IDENTIFIER_MUTATION",
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "type": "POST_DEPLOY_IDENTIFIER_ONLY_HISTORY_MUTATION",
+      "severity": "BLOCKER_HIGH",
+      "post_deploy_historical_migration_mutation": true,
+      "semantic_change_kind": "IDENTIFIER_ONLY"
+    },
+    {
+      "id": "B_M252_ZERO_STEP_APPLIED_MISSING_EFFECT",
+      "migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+      "type": "LEDGER_APPLIED_CATALOG_EFFECT_MISSING",
+      "severity": "BLOCKER_CRITICAL",
+      "classification": "M252_LEDGER_APPLIED_CATALOG_EFFECT_MISSING"
+    }
+  ]
+}

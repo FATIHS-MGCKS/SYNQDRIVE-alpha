@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-corrective",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "CORRECTIVE_PRE_SHA": "0c4a10af7b03122ebb8cdac4bdeb0a2d17fbd9f7",
+    "REMOTE_HEAD": "c6d099e37f799cf263c5edab711a685fa5ac175c",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d"
+  },
+  "strategy_pass": true,
+  "second_deploy": {
+    "tail_present_pre_second": true,
+    "tail_present_during_second": true,
+    "tail_checksum_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "tail_checksum_post_second": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "pre_second_deploy_ledger_fingerprint": "fb6f7d590222b4ae384c2f00d23f216ce73180c78ea7c4d6dbf885b4012f2ec9",
+    "post_second_deploy_ledger_fingerprint": "fb6f7d590222b4ae384c2f00d23f216ce73180c78ea7c4d6dbf885b4012f2ec9",
+    "pre_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "post_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "pre_second_catalog_inventory_fingerprint": "eba4e869ce9ab222800dfb8cbd72dcc4ce2fee7733ef271c188b30fc99e071e5",
+    "post_second_catalog_inventory_fingerprint": "eba4e869ce9ab222800dfb8cbd72dcc4ce2fee7733ef271c188b30fc99e071e5",
+    "second_deploy_exit_code": 0,
+    "new_ledger_rows": 0,
+    "new_finished_rows": 0,
+    "new_failed_rows": 0,
+    "catalog_delta": false,
+    "catalog_inventory_delta": false,
+    "pass": true
+  },
+  "catalog_delta": {
+    "added": 43,
+    "removed": 0,
+    "changed": 0,
+    "authorized": 43,
+    "unauthorized": 0,
+    "unknown": 0,
+    "total_deltas": 43,
+    "classified_deltas": 43,
+    "UNAUTHORIZED_FINAL_DELTA": 0,
+    "UNKNOWN_DELTA_AUTHORITY": 0
+  },
+  "diff_attribution": {
+    "NEW_STRATEGY_DRIFT": 0,
+    "stale_index_drop_ops_remaining": 0
+  },
+  "golden_tests": {
+    "executed": 111,
+    "passed": 111,
+    "failed": 0
+  },
+  "crossvalidation": {
+    "evidence_code_mismatch_count": 0,
+    "pass": true
+  },
+  "production_immutable": true,
+  "terminal": {
+    "pass": true,
+    "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+    "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+    "failures": []
+  },
+  "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "pass": true
+}

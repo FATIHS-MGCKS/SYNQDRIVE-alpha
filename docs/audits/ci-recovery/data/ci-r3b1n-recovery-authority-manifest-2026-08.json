@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N",
+  "baseline": {
+    "PRE_R3B1N_SHA": "11b2043e328a71b799fde2bb091d2423ea6e8ef8",
+    "R3B1M_REMOTE_HEAD": "11b2043e328a71b799fde2bb091d2423ea6e8ef8",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "R3B1N_BRANCH": "audit/ci-r3b1n-production-exposure-2026-08"
+  },
+  "recovery_branch_sha": "11b2043e328a71b799fde2bb091d2423ea6e8ef8",
+  "main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+  "recovery_authority_artifacts": [
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1m-final-migration-recovery-acceptance-2026-08.json",
+      "sha256": "dbac40c668857e9a3447a990ad4d176bda762c8e73a4dbacdd2fb23c4c9608e5",
+      "role": "R3B1M final migration recovery acceptance"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1m-final-exact-catalog-parity-2026-08.json",
+      "sha256": "c028dc9cf7fa4881174bde26cef6295055c86da05cd03a07babdf5d618ca8205",
+      "role": "R3B1M final exact catalog parity"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1m-full-fresh-replay-result-2026-08.json",
+      "sha256": "ed66e0b7005ddce151d690f34cc162133e1da5029dfa22cefa3e8d9c47f1e606",
+      "role": "R3B1M full fresh replay result"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1m-schema-alignment-result-2026-08.json",
+      "sha256": "422365e27237fcf02fb36120f763bff57a8bcbe4cd50e1ab582ff4cd77e75415",
+      "role": "R3B1M schema alignment result"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1k-migration252-historical-exception-manifest-2026-08.json",
+      "sha256": "8a4a657fe81551a733b565884678aeb12c02affdab88584c4e195a5d762a74f6",
+      "role": "R3B1K migration 252 historical exception"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1i-targeted-iam-repair-proof-2026-08.json",
+      "sha256": "87cea86d32319ee1f85318fc05ff0e4310016d7038daff7f07dd1464fb87f351",
+      "role": "R3B1I IAM repair proof"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1g-tire-repair-migration-manifest-2026-08.json",
+      "sha256": "9bd5a72d64479a49395dd9914f4ddb9d87b7163ac40c7023a0a4fa5b15044fd2",
+      "role": "R3B1G tire repair manifest"
+    }
+  ],
+  "final_migration_count": 305,
+  "migration_head_from_replay": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+  "r3b1g": {
+    "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+    "sha256": "55838c640e292a17a8409a5c49df035173b8668a00b4c08b91f3cde0eda25fca"
+  },
+  "r3b1i": {
+    "migration": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+    "proof_artifact": "docs/audits/ci-recovery/data/ci-r3b1i-targeted-iam-repair-proof-2026-08.json"
+  },
+  "migration_252": {
+    "schema_version": 1,
+    "authority_sha256": "a2e8e728268bbd7d896a629787d8b207973f2e21182416d618145d08e8a64416",
+    "original_migration_sha256": "12bf2015a256fdd898365019335b586d9d67c9f9722a5ae3f69937a5be7ba6d9",
+    "corrected_migration_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+    "approved_mappings": {
+      "organization_role_assignment_drift_reconciliation_applications_pkey": "org_role_asgn_drift_recon_apps_pkey",
+      "organization_role_assignment_drift_reconciliation_applications_idempotency_key_key": "org_role_asgn_drift_recon_apps_idem_key",
+      "organization_role_assignment_drift_reconciliation_applications_organization_id_membership_id_created_at_idx": "org_role_asgn_drift_recon_apps_org_mbr_created_idx",
+      "organization_role_assignment_drift_reconciliation_applications_organization_id_fkey": "org_role_asgn_drift_recon_apps_org_id_fkey",
+      "organization_role_assignment_drift_reconciliation_applications_membership_id_fkey": "org_role_asgn_drift_recon_apps_mbr_id_fkey"
+    },
+    "token_diff_pass": true,
+    "semantic_parity_pass": true,
+    "reason": "POSTGRESQL_IDENTIFIER_COLLISION_REPRODUCIBILITY_CORRECTION",
+    "append_only_feasibility": "APPEND_ONLY_NOT_FEASIBLE"
+  },
+  "schema_alignment_sha256": "23d5ce552d793a159c46464a45aa1cec8cae603c15f824a89c9b0b41b440dcc1",
+  "authority_parity_sha256": "c028dc9cf7fa4881174bde26cef6295055c86da05cd03a07babdf5d618ca8205"
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-ambiguity-corrective",
+  "entries": [
+    {
+      "source_file": "ci_r3b1o4_catalog_authority.py",
+      "sha256": "2242813621993bc19b609ecb05db79b7753ad340fcfb8bf1ea8dcbc2cf93a545"
+    },
+    {
+      "source_file": "ci_r3b1o4_catalog_engine_crossvalidation.py",
+      "sha256": "7642b61833bd6c9f60afbf853524761e9b1bf6f52ad729103cf2dcd6deec3a1a"
+    },
+    {
+      "source_file": "ci_r3b1o4_catalog_inventory.py",
+      "sha256": "ad75357a007a4d17421214d6132310e99a251800b7ba455b7089f23482431a51"
+    },
+    {
+      "source_file": "ci_r3b1o4_catalog_semantic_compare.py",
+      "sha256": "bd41be6692ce9ae6b4430d16f52ff825fb27fa64b207370249b69d36d2dfe912"
+    },
+    {
+      "source_file": "ci_r3b1o4_evidence_crossvalidation.py",
+      "sha256": "05ad6c5298a95d04c99fa3dbd12c961508cf1deba9c5ee712cdb945312265007"
+    },
+    {
+      "source_file": "ci_r3b1o4_execution_set.py",
+      "sha256": "83087fbc34abf17b05c32aab69db85b13a5dcbb43c6cc65548209653c2ff3603"
+    },
+    {
+      "source_file": "ci_r3b1o4_expected_catalog_effects.py",
+      "sha256": "cd400445620cf68b933920e5cd7cf2556a13be98e060058ceddc3a8f0c99f472"
+    },
+    {
+      "source_file": "ci_r3b1o4_final_twin.py",
+      "sha256": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b"
+    },
+    {
+      "source_file": "ci_r3b1o4_golden_tests.py",
+      "sha256": "fae3d2d33de6aaac5ea113ae1ce706a6d98e43158ec5777134154af76bba752d"
+    },
+    {
+      "source_file": "ci_r3b1o4_implicit_catalog_effects.py",
+      "sha256": "b64b625eefcb4ef37d25f875dacab10a9e9e712878c5a5d90b089b3068c1ab40"
+    },
+    {
+      "source_file": "ci_r3b1o4_m252_exact_parity.py",
+      "sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768"
+    },
+    {
+      "source_file": "ci_r3b1o4_no_ranking_proof.py",
+      "sha256": "bcb1a89c7de9694a1a5bfe44e395294e16527edbbda86a5f51575fa183265560"
+    },
+    {
+      "source_file": "ci_r3b1o4_run_ambiguity_corrective_audit.py",
+      "sha256": "8948f3071f9e74851d73212dd5337edb2225ae9821d11459dcb8fe460079bad5"
+    },
+    {
+      "source_file": "ci_r3b1o4_run_binding_corrective_audit.py",
+      "sha256": "a864b04dac6c8aed2f7f969fb8b69a6bc35e5f0f3eda2aeb32630dcf8efcf072"
+    },
+    {
+      "source_file": "ci_r3b1o4_run_final_corrective_audit.py",
+      "sha256": "a837eb02192f1854c16552812aab9e792560bff73c79ee32416f3af03336c11d"
+    },
+    {
+      "source_file": "ci_r3b1o4_statement_crossvalidation.py",
+      "sha256": "19f4c21317894f3bee0e24dbce7103fe0ad063fc0945c27360f6b2688651419a"
+    },
+    {
+      "source_file": "ci_r3b1o4_t2_stale_index_safety.py",
+      "sha256": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d"
+    },
+    {
+      "source_file": "ci_r3b1o4_terminal_gate.py",
+      "sha256": "7587eb9e8d9da0f53e52419ca164663ac1463ae0b5073426dd0a12d85670e2c0"
+    }
+  ],
+  "pre_hashes": {
+    "ci_r3b1o4_m252_exact_parity.py": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+    "ci_r3b1o4_catalog_authority.py": "2242813621993bc19b609ecb05db79b7753ad340fcfb8bf1ea8dcbc2cf93a545",
+    "ci_r3b1o4_catalog_inventory.py": "ad75357a007a4d17421214d6132310e99a251800b7ba455b7089f23482431a51",
+    "ci_r3b1o4_execution_set.py": "83087fbc34abf17b05c32aab69db85b13a5dcbb43c6cc65548209653c2ff3603",
+    "ci_r3b1o4_expected_catalog_effects.py": "cd400445620cf68b933920e5cd7cf2556a13be98e060058ceddc3a8f0c99f472",
+    "ci_r3b1o4_implicit_catalog_effects.py": "b64b625eefcb4ef37d25f875dacab10a9e9e712878c5a5d90b089b3068c1ab40",
+    "ci_r3b1o4_catalog_engine_crossvalidation.py": "7642b61833bd6c9f60afbf853524761e9b1bf6f52ad729103cf2dcd6deec3a1a",
+    "ci_r3b1o4_t2_stale_index_safety.py": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d",
+    "ci_r3b1o4_final_twin.py": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b",
+    "ci_r3b1o4_evidence_crossvalidation.py": "05ad6c5298a95d04c99fa3dbd12c961508cf1deba9c5ee712cdb945312265007",
+    "ci_r3b1o4_golden_tests.py": "fae3d2d33de6aaac5ea113ae1ce706a6d98e43158ec5777134154af76bba752d",
+    "ci_r3b1o4_terminal_gate.py": "7587eb9e8d9da0f53e52419ca164663ac1463ae0b5073426dd0a12d85670e2c0",
+    "ci_r3b1o4_run_final_corrective_audit.py": "a837eb02192f1854c16552812aab9e792560bff73c79ee32416f3af03336c11d",
+    "ci_r3b1o4_catalog_semantic_compare.py": "bd41be6692ce9ae6b4430d16f52ff825fb27fa64b207370249b69d36d2dfe912",
+    "ci_r3b1o4_statement_crossvalidation.py": "19f4c21317894f3bee0e24dbce7103fe0ad063fc0945c27360f6b2688651419a",
+    "ci_r3b1o4_run_binding_corrective_audit.py": "a864b04dac6c8aed2f7f969fb8b69a6bc35e5f0f3eda2aeb32630dcf8efcf072",
+    "ci_r3b1o4_no_ranking_proof.py": "bcb1a89c7de9694a1a5bfe44e395294e16527edbbda86a5f51575fa183265560",
+    "ci_r3b1o4_run_ambiguity_corrective_audit.py": "8948f3071f9e74851d73212dd5337edb2225ae9821d11459dcb8fe460079bad5"
+  },
+  "post_hashes": {
+    "ci_r3b1o4_m252_exact_parity.py": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+    "ci_r3b1o4_catalog_authority.py": "2242813621993bc19b609ecb05db79b7753ad340fcfb8bf1ea8dcbc2cf93a545",
+    "ci_r3b1o4_catalog_inventory.py": "ad75357a007a4d17421214d6132310e99a251800b7ba455b7089f23482431a51",
+    "ci_r3b1o4_execution_set.py": "83087fbc34abf17b05c32aab69db85b13a5dcbb43c6cc65548209653c2ff3603",
+    "ci_r3b1o4_expected_catalog_effects.py": "cd400445620cf68b933920e5cd7cf2556a13be98e060058ceddc3a8f0c99f472",
+    "ci_r3b1o4_implicit_catalog_effects.py": "b64b625eefcb4ef37d25f875dacab10a9e9e712878c5a5d90b089b3068c1ab40",
+    "ci_r3b1o4_catalog_engine_crossvalidation.py": "7642b61833bd6c9f60afbf853524761e9b1bf6f52ad729103cf2dcd6deec3a1a",
+    "ci_r3b1o4_t2_stale_index_safety.py": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d",
+    "ci_r3b1o4_final_twin.py": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b",
+    "ci_r3b1o4_evidence_crossvalidation.py": "05ad6c5298a95d04c99fa3dbd12c961508cf1deba9c5ee712cdb945312265007",
+    "ci_r3b1o4_golden_tests.py": "fae3d2d33de6aaac5ea113ae1ce706a6d98e43158ec5777134154af76bba752d",
+    "ci_r3b1o4_terminal_gate.py": "7587eb9e8d9da0f53e52419ca164663ac1463ae0b5073426dd0a12d85670e2c0",
+    "ci_r3b1o4_run_final_corrective_audit.py": "a837eb02192f1854c16552812aab9e792560bff73c79ee32416f3af03336c11d",
+    "ci_r3b1o4_catalog_semantic_compare.py": "bd41be6692ce9ae6b4430d16f52ff825fb27fa64b207370249b69d36d2dfe912",
+    "ci_r3b1o4_statement_crossvalidation.py": "19f4c21317894f3bee0e24dbce7103fe0ad063fc0945c27360f6b2688651419a",
+    "ci_r3b1o4_run_binding_corrective_audit.py": "a864b04dac6c8aed2f7f969fb8b69a6bc35e5f0f3eda2aeb32630dcf8efcf072",
+    "ci_r3b1o4_no_ranking_proof.py": "bcb1a89c7de9694a1a5bfe44e395294e16527edbbda86a5f51575fa183265560",
+    "ci_r3b1o4_run_ambiguity_corrective_audit.py": "8948f3071f9e74851d73212dd5337edb2225ae9821d11459dcb8fe460079bad5"
+  },
+  "pre_post_match": true,
+  "pass": true
+}

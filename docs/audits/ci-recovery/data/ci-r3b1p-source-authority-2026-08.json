@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P",
+  "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+  "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+  "head_sha256": "f3f780998e1002f7f06fe9b2f1022c95be9ae87b",
+  "execution_set_count": 22,
+  "r3b1g": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+  "r3b1i": "20260721245000_ci_r3b_iam_membership_permissions_predecessor",
+  "m252_source_migration": "20260721270000_iam_role_assignment_drift_reconciliation",
+  "tail_migration_name": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+  "tail_sql_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+  "bound_tail_sql_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+  "migration_checksum_mismatches": [],
+  "schema_prisma_sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+  "m252_migration_sql_sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+  "SOURCE_IMMUTABLE": true,
+  "pass": true
+}

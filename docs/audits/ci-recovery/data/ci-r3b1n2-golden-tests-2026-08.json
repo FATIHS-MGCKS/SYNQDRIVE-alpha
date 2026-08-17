@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N.2",
+  "tests": [
+    {
+      "name": "different_isolated_instance_pass",
+      "pass": true,
+      "expected": "PASS",
+      "actual": "True",
+      "detail": null
+    },
+    {
+      "name": "same_instance_isolation_fail",
+      "pass": true,
+      "expected": "FAIL",
+      "actual": "False",
+      "detail": null
+    },
+    {
+      "name": "mutation_guard_production_fingerprint",
+      "pass": true,
+      "expected": "HARD FAIL",
+      "actual": "SAFETY_ABORT: synthetic target matches production instance fingerprint",
+      "detail": null
+    },
+    {
+      "name": "business_zero_rows_pass",
+      "pass": true,
+      "expected": "PASS",
+      "actual": "nulls=0,total=0",
+      "detail": null
+    },
+    {
+      "name": "business_null_row_count_fail",
+      "pass": true,
+      "expected": "FAIL",
+      "actual": "1",
+      "detail": null
+    },
+    {
+      "name": "match_crlf",
+      "pass": true,
+      "expected": "MATCH_CRLF",
+      "actual": "MATCH_CRLF",
+      "detail": null
+    },
+    {
+      "name": "line_ending_only",
+      "pass": true,
+      "expected": "LINE_ENDING_REPRESENTATION_DIFFERENCE",
+      "actual": "LINE_ENDING_REPRESENTATION_DIFFERENCE",
+      "detail": null
+    },
+    {
+      "name": "semantic_sql_change",
+      "pass": true,
+      "expected": "SEMANTIC_SQL_CHANGE",
+      "actual": "SEMANTIC_SQL_CHANGE",
+      "detail": null
+    },
+    {
+      "name": "empty_effects_unknown",
+      "pass": true,
+      "expected": "PENDING_EFFECT_UNKNOWN",
+      "actual": "PENDING_EFFECT_UNKNOWN",
+      "detail": null
+    },
+    {
+      "name": "modeled_add_column_absent",
+      "pass": true,
+      "expected": "PENDING_AND_PHYSICALLY_ABSENT",
+      "actual": "PENDING_AND_PHYSICALLY_ABSENT",
+      "detail": null
+    },
+    {
+      "name": "modeled_add_column_present",
+      "pass": true,
+      "expected": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "actual": "PENDING_BUT_EFFECT_ALREADY_PRESENT",
+      "detail": null
+    },
+    {
+      "name": "extract_db_error_42701",
+      "pass": true,
+      "expected": "42701",
+      "actual": "42701",
+      "detail": null
+    }
+  ],
+  "total": 12,
+  "passed": 12,
+  "pass": true
+}

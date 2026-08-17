@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "PRE_R3B1N2_SHA": "3d75ac35dbf567e5ee7e8ae5e1d538add36a0af2",
+    "R3B1N1_REMOTE_HEAD": "3d75ac35dbf567e5ee7e8ae5e1d538add36a0af2",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "RECOVERED_HEAD": "11b2043e328a71b799fde2bb091d2423ea6e8ef8"
+  },
+  "inputs": [
+    {
+      "path": "ci-r3b1n1-twin-migrate-deploy-result-2026-08.json",
+      "sha256": "1a70620e9f13ed34018ec4cbbcc760f7dd434ffcc52a8b6436044b6ca00f7778"
+    },
+    {
+      "path": "ci-r3b1n1-production-twin-fidelity-2026-08.json",
+      "sha256": "01a8e87b2ac2d3a463b627740b420a6e8b5d3153a7ff2092563bd58403cacc40"
+    },
+    {
+      "path": "ci-r3b1n1-prisma-checksum-semantics-2026-08.json",
+      "sha256": "b1e9564250a8e31352e2243820d9371580f95ebc9012212049b2a23e2ddfd1a9"
+    },
+    {
+      "path": "ci-r3b1n1-checksum-provenance-classification-2026-08.json",
+      "sha256": "4d0e72b7831aeae34372294ee44fccfbf1bc02de5ad36f074d1f7a2ca6a17dbf"
+    },
+    {
+      "path": "ci-r3b1n1-repo-only-pending-effect-matrix-2026-08.json",
+      "sha256": "7731d339706e644f3b3849b6bde5498ffadb903aaf4ab134e6b3d3f803eed55f"
+    },
+    {
+      "path": "ci-r3b1n1-migration252-forensic-timeline-2026-08.json",
+      "sha256": "9a9c6160c428dcf443d37faeb2b93cb14d2d6eee75de00cfc61e62ea58ad8bc6"
+    },
+    {
+      "path": "ci-r3b1n1-final-history-reconciliation-summary-2026-08.json",
+      "sha256": "b662411a849ce3d7caae56af7931b14de787042a59782d431671bfb2675297f7"
+    }
+  ]
+}

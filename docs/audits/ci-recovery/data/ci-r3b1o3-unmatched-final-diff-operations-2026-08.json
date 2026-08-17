@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3",
+  "expected_from_r3b1o2": 2,
+  "actual_count": 2,
+  "operations": [
+    {
+      "ordinal": 137,
+      "raw_sql": "DROP INDEX \"org_invoices_invoice_number_key\"",
+      "operation_family": "DROP INDEX",
+      "operation_subtype": "drop_index",
+      "primary_target": "org_invoices_invoice_number_key",
+      "owner_table": "org_invoices",
+      "owner_enum": null,
+      "owner_column": null,
+      "owner_constraint": null,
+      "owner_index": "org_invoices_invoice_number_key",
+      "owner_resolution": "OWNER_OUT_OF_SCOPE",
+      "owner_resolution_source": "positive catalog/schema index map outside R3B universe",
+      "quoted_identifiers": [
+        "org_invoices_invoice_number_key"
+      ],
+      "parse_status": "PARSED",
+      "classification": "OUT_OF_SCOPE_POSITIVELY_PROVEN",
+      "reason": "positive catalog/schema index map outside R3B universe; owner=org_invoices; proven outside R3B/M252 strategy universe",
+      "authority_id": null,
+      "property_identity": null,
+      "semantic_fingerprint": "DROP INDEX|drop_index|org_invoices|org_invoices_invoice_number_key|||drop index \"org_invoices_invoice_number_key\"",
+      "golden_semantic_match": false,
+      "golden_baseline_match": false,
+      "r3b_scope": false,
+      "m252_scope": false,
+      "strategy_related": false
+    },
+    {
+      "ordinal": 144,
+      "raw_sql": "DROP INDEX \"whatsapp_conversations_organization_id_contact_phone_key\"",
+      "operation_family": "DROP INDEX",
+      "operation_subtype": "drop_index",
+      "primary_target": "whatsapp_conversations_organization_id_contact_phone_key",
+      "owner_table": "whatsapp_conversations",
+      "owner_enum": null,
+      "owner_column": null,
+      "owner_constraint": null,
+      "owner_index": "whatsapp_conversations_organization_id_contact_phone_key",
+      "owner_resolution": "OWNER_OUT_OF_SCOPE",
+      "owner_resolution_source": "positive catalog/schema index map outside R3B universe",
+      "quoted_identifiers": [
+        "whatsapp_conversations_organization_id_contact_phone_key"
+      ],
+      "parse_status": "PARSED",
+      "classification": "OUT_OF_SCOPE_POSITIVELY_PROVEN",
+      "reason": "positive catalog/schema index map outside R3B universe; owner=whatsapp_conversations; proven outside R3B/M252 strategy universe",
+      "authority_id": null,
+      "property_identity": null,
+      "semantic_fingerprint": "DROP INDEX|drop_index|whatsapp_conversations|whatsapp_conversations_organization_id_contact_phone_key|||drop index \"whatsapp_conversations_organization_id_contact_phone_key\"",
+      "golden_semantic_match": false,
+      "golden_baseline_match": false,
+      "r3b_scope": false,
+      "m252_scope": false,
+      "strategy_related": false
+    }
+  ]
+}

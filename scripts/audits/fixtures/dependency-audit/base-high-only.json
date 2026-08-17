@@ -1,0 +1,1 @@
+{"metadata":{"vulnerabilities":{"high":1,"critical":0}},"vulnerabilities":{"pkg":{"name":"pkg","severity":"high","isDirect":false,"via":[{"source":8888888,"name":"pkg","url":"https://github.com/advisories/GHSA-escalate-test","severity":"high","range":"<1.0.0"}],"range":"<1.0.0","nodes":["node_modules/pkg"]}}}

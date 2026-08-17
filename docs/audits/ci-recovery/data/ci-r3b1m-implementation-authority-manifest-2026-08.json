@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1M",
+  "prefix_inference_acceptance": false,
+  "authority_artifacts": [
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1l21-final-validation-summary-2026-08.json",
+      "sha256": "23bd9021feb01e6d5dab2ebd5d63122fa42bca40de84b847b454dde6b77a5e85",
+      "role": "R3B1L21 final validation summary"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1l21-complete-prisma-diff-classification-2026-08.json",
+      "sha256": "7175639075d1d0b5b5714fbbeef538c63f2f16f3e17ae7d6378cde0a3f685517",
+      "role": "R3B1L21 complete classification"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1l21-r3b-scope-drift-authority-2026-08.json",
+      "sha256": "c7835bbc01ae90dcaaa07900a0c84b0fd2c9bec63fae884d81e2b85da2d8bc79",
+      "role": "R3B1L21 drift authority"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1l1-prisma-schema-db-diff-2026-08.sql",
+      "sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+      "role": "frozen Prisma diff SQL"
+    },
+    {
+      "path": "docs/audits/ci-recovery/ci-r3a7-production-catalog-evidence-2026-08.json",
+      "sha256": "81dcdcc4456a12818491b0edd565a142926b7f4f58f977fe73571290d61290c0",
+      "role": "R3A.7 production catalog"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1l-canonical-54-property-authority-2026-08.json",
+      "sha256": "a4b51841f8e30fcad9316d578772922b08079d0929484c26487ad8bbae6588a5",
+      "role": "R3B1L canonical 54"
+    },
+    {
+      "path": "docs/audits/ci-recovery/data/ci-r3b1k-migration252-historical-exception-manifest-2026-08.json",
+      "sha256": "8a4a657fe81551a733b565884678aeb12c02affdab88584c4e195a5d762a74f6",
+      "role": "R3B1K migration 252 authority"
+    }
+  ],
+  "frozen_diff_sha256": "c388429ffbc63751f214e0aa4c47f55d2c0e16c9f256eaf4b43db419394e9588",
+  "authority_object_count": 19,
+  "authority_table_count": 9,
+  "authority_enum_count": 10,
+  "authority_property_category_count": 54,
+  "currently_authorized_drift_records": []
+}

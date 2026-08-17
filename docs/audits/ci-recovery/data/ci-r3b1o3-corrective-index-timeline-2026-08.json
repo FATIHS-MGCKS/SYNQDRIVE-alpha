@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "timeline": {
+    "T0_golden_baseline": {
+      "org_invoices_invoice_number_key": {
+        "present": false,
+        "definition": null
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": false,
+        "definition": null
+      }
+    },
+    "T1_after_resolves_before_deploy": {
+      "org_invoices_invoice_number_key": {
+        "present": false,
+        "definition": null
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": false,
+        "definition": null
+      }
+    },
+    "T2_after_normal_migrate_deploy": {
+      "org_invoices_invoice_number_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+      }
+    },
+    "T3_after_m252_forward": {
+      "org_invoices_invoice_number_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX org_invoices_invoice_number_key ON public.org_invoices USING btree (invoice_number)"
+      },
+      "whatsapp_conversations_organization_id_contact_phone_key": {
+        "present": true,
+        "definition": "CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone)"
+      }
+    }
+  }
+}

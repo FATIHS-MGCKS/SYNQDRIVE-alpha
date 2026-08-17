@@ -1,0 +1,2473 @@
+{
+  "evidence_input_sha": "ee634cef5d46004e39f5c61588f9251cc3d4a00b",
+  "BASE_R3B1J1_SHA": "b9ca9b0fb2431ec42004e2b14c1ae52fc78a0c74",
+  "REPLAY_INPUT_MANIFEST_SHA256": "325f0f84b2fcf99b9d36e007f08f82311bde2de100548d8db1acfe97a94e7304",
+  "postgresql_version": "16.14 (Ubuntu 16.14-0ubuntu0.24.04.1)",
+  "database_identifier": "synqdrive_r3b1l_full_replay",
+  "transaction_sensitive_scan": {
+    "migrations_scanned": 305,
+    "transaction_sensitive_statements": 184,
+    "special_execution_required_migrations": [
+      "20260413230000_add_composite_indexes_batch_c"
+    ],
+    "records": [
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 9,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:9"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 18,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:18"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 21,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:21"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 24,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:24"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 27,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:27"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 30,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:30"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 40,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:40"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 43,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:43"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 50,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:50"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 53,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:53"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 60,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:60"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 65,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:65"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 72,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:72"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 75,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:75"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 83,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:83"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 89,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:89"
+        ]
+      },
+      {
+        "migration": "20260325161141_ci_r3b_bootstrap_trip_schema_baseline",
+        "statement_order": 96,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161141_ci_r3b_bootstrap_trip_schema_baseline/migration.sql:statement:96"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 11,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:11"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 14,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:14"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 17,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:17"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 20,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:20"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 23,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:23"
+        ]
+      },
+      {
+        "migration": "20260325161142_trip_architecture_refactor",
+        "statement_order": 26,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260325161142_trip_architecture_refactor/migration.sql:statement:26"
+        ]
+      },
+      {
+        "migration": "20260412025000_ci_r3b_historical_predecessor_slot1",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260412025000_ci_r3b_historical_predecessor_slot1/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260412040000_audit_consent_provenance",
+        "statement_order": 25,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260412040000_audit_consent_provenance/migration.sql:statement:25"
+        ]
+      },
+      {
+        "migration": "20260412610000_ci_r3b_historical_predecessor_slot2",
+        "statement_order": 1,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260412610000_ci_r3b_historical_predecessor_slot2/migration.sql:statement:1"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 7,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:7"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 18,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:18"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 22,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:22"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 25,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:25"
+        ]
+      },
+      {
+        "migration": "20260413201500_ci_r3b_historical_predecessor_slot3",
+        "statement_order": 32,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413201500_ci_r3b_historical_predecessor_slot3/migration.sql:statement:32"
+        ]
+      },
+      {
+        "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "statement_order": 19,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:statement:19"
+        ]
+      },
+      {
+        "migration": "20260413225000_ci_r3b_historical_predecessor_slot4",
+        "statement_order": 26,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260413225000_ci_r3b_historical_predecessor_slot4/migration.sql:statement:26"
+        ]
+      },
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "statement_order": 1,
+        "statement_type": "CREATE INDEX CONCURRENTLY",
+        "statement_excerpt": "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"vehicle_dtc_events_vehicle_id_is_active_idx\"",
+        "transaction_sensitive": true,
+        "known_special_executor": "ci_r3b1c_special_composite_index",
+        "replay_risk": "Prisma migrate deploy wraps migration in transaction",
+        "classification": "SPECIAL_EXECUTION_REQUIRED",
+        "evidence": [
+          "backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:1"
+        ]
+      },
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "statement_order": 2,
+        "statement_type": "CREATE INDEX CONCURRENTLY",
+        "statement_excerpt": "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"driving_events_trip_id_event_type_idx\"",
+        "transaction_sensitive": true,
+        "known_special_executor": "ci_r3b1c_special_composite_index",
+        "replay_risk": "Prisma migrate deploy wraps migration in transaction",
+        "classification": "SPECIAL_EXECUTION_REQUIRED",
+        "evidence": [
+          "backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "statement_order": 3,
+        "statement_type": "CREATE INDEX CONCURRENTLY",
+        "statement_excerpt": "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"bookings_organization_id_status_idx\"",
+        "transaction_sensitive": true,
+        "known_special_executor": "ci_r3b1c_special_composite_index",
+        "replay_risk": "Prisma migrate deploy wraps migration in transaction",
+        "classification": "SPECIAL_EXECUTION_REQUIRED",
+        "evidence": [
+          "backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "statement_order": 4,
+        "statement_type": "CREATE INDEX CONCURRENTLY",
+        "statement_excerpt": "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"org_invoices_organization_id_invoice_date_idx\"",
+        "transaction_sensitive": true,
+        "known_special_executor": "ci_r3b1c_special_composite_index",
+        "replay_risk": "Prisma migrate deploy wraps migration in transaction",
+        "classification": "SPECIAL_EXECUTION_REQUIRED",
+        "evidence": [
+          "backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260413230000_add_composite_indexes_batch_c",
+        "statement_order": 5,
+        "statement_type": "CREATE INDEX CONCURRENTLY",
+        "statement_excerpt": "CREATE INDEX CONCURRENTLY IF NOT EXISTS \"org_tasks_organization_id_due_date_idx\"",
+        "transaction_sensitive": true,
+        "known_special_executor": "ci_r3b1c_special_composite_index",
+        "replay_risk": "Prisma migrate deploy wraps migration in transaction",
+        "classification": "SPECIAL_EXECUTION_REQUIRED",
+        "evidence": [
+          "backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql:statement:5"
+        ]
+      },
+      {
+        "migration": "20260420070000_vehicle_energy_events",
+        "statement_order": 2,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260420070000_vehicle_energy_events/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260421180000_ci_r3b_historical_predecessor_slot6",
+        "statement_order": 1,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260421180000_ci_r3b_historical_predecessor_slot6/migration.sql:statement:1"
+        ]
+      },
+      {
+        "migration": "20260424235959_ci_r3b_trip_casing_pre_shim",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260424235959_ci_r3b_trip_casing_pre_shim/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260425000001_ci_r3b_trip_casing_post_shim",
+        "statement_order": 17,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260425000001_ci_r3b_trip_casing_post_shim/migration.sql:statement:17"
+        ]
+      },
+      {
+        "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260613203000_ci_r3b_post_vendor_predecessor_slot07/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+        "statement_order": 8,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260613203000_ci_r3b_post_vendor_predecessor_slot07/migration.sql:statement:8"
+        ]
+      },
+      {
+        "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+        "statement_order": 11,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260613203000_ci_r3b_post_vendor_predecessor_slot07/migration.sql:statement:11"
+        ]
+      },
+      {
+        "migration": "20260613203000_ci_r3b_post_vendor_predecessor_slot07",
+        "statement_order": 14,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260613203000_ci_r3b_post_vendor_predecessor_slot07/migration.sql:statement:14"
+        ]
+      },
+      {
+        "migration": "20260613210000_vendor_management_overhaul",
+        "statement_order": 7,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260613210000_vendor_management_overhaul/migration.sql:statement:7"
+        ]
+      },
+      {
+        "migration": "20260613210000_vendor_management_overhaul",
+        "statement_order": 17,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260613210000_vendor_management_overhaul/migration.sql:statement:17"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 9,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:9"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 30,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:30"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 33,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:33"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 36,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:36"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 39,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:39"
+        ]
+      },
+      {
+        "migration": "20260614120300_battery_health_tables_guard",
+        "statement_order": 42,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260614120300_battery_health_tables_guard/migration.sql:statement:42"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 2,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 4,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 8,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:8"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 39,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:39"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 41,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:41"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 46,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:46"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 48,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:48"
+        ]
+      },
+      {
+        "migration": "20260615120000_customer_module_overhaul",
+        "statement_order": 51,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615120000_customer_module_overhaul/migration.sql:statement:51"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 2,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 4,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 8,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:8"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 10,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:10"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 23,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:23"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 25,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:25"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 27,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:27"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 29,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:29"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 31,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:31"
+        ]
+      },
+      {
+        "migration": "20260615140000_misuse_cases",
+        "statement_order": 39,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260615140000_misuse_cases/migration.sql:statement:39"
+        ]
+      },
+      {
+        "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617120000_r3b_post_vendor_predecessor_slot09/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617120000_r3b_post_vendor_predecessor_slot09/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+        "statement_order": 10,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617120000_r3b_post_vendor_predecessor_slot09/migration.sql:statement:10"
+        ]
+      },
+      {
+        "migration": "20260617120000_r3b_post_vendor_predecessor_slot09",
+        "statement_order": 13,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617120000_r3b_post_vendor_predecessor_slot09/migration.sql:statement:13"
+        ]
+      },
+      {
+        "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617203000_ci_r3b_post_vendor_predecessor_slot10/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+        "statement_order": 8,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617203000_ci_r3b_post_vendor_predecessor_slot10/migration.sql:statement:8"
+        ]
+      },
+      {
+        "migration": "20260617203000_ci_r3b_post_vendor_predecessor_slot10",
+        "statement_order": 11,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260617203000_ci_r3b_post_vendor_predecessor_slot10/migration.sql:statement:11"
+        ]
+      },
+      {
+        "migration": "20260619150000_service_cases",
+        "statement_order": 20,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260619150000_service_cases/migration.sql:statement:20"
+        ]
+      },
+      {
+        "migration": "20260619200000_support_ticket_saas",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260619200000_support_ticket_saas/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "statement_order": 9,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql:statement:9"
+        ]
+      },
+      {
+        "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260620183000_ci_r3b_post_vendor_predecessor_slot11/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260625200000_didit_customer_verification",
+        "statement_order": 2,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260625200000_didit_customer_verification/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260625200000_didit_customer_verification",
+        "statement_order": 4,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260625200000_didit_customer_verification/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260625200000_didit_customer_verification",
+        "statement_order": 9,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260625200000_didit_customer_verification/migration.sql:statement:9"
+        ]
+      },
+      {
+        "migration": "20260625200000_didit_customer_verification",
+        "statement_order": 11,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260625200000_didit_customer_verification/migration.sql:statement:11"
+        ]
+      },
+      {
+        "migration": "20260625200000_didit_customer_verification",
+        "statement_order": 13,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260625200000_didit_customer_verification/migration.sql:statement:13"
+        ]
+      },
+      {
+        "migration": "20260628150000_rpm_webhook_candidate",
+        "statement_order": 2,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260628150000_rpm_webhook_candidate/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260628150000_rpm_webhook_candidate",
+        "statement_order": 10,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260628150000_rpm_webhook_candidate/migration.sql:statement:10"
+        ]
+      },
+      {
+        "migration": "20260715120000_invoice_document_fk_integrity",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715120000_invoice_document_fk_integrity/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260715120000_invoice_document_fk_integrity",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715120000_invoice_document_fk_integrity/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260715170000_org_task_fine_invoice_links",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715170000_org_task_fine_invoice_links/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260715170000_org_task_fine_invoice_links",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715170000_org_task_fine_invoice_links/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260715190000_billing_product_price_schema",
+        "statement_order": 37,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715190000_billing_product_price_schema/migration.sql:statement:37"
+        ]
+      },
+      {
+        "migration": "20260715200000_billing_subscription_items_discounts_schema",
+        "statement_order": 43,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715200000_billing_subscription_items_discounts_schema/migration.sql:statement:43"
+        ]
+      },
+      {
+        "migration": "20260715200000_billing_subscription_items_discounts_schema",
+        "statement_order": 77,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715200000_billing_subscription_items_discounts_schema/migration.sql:statement:77"
+        ]
+      },
+      {
+        "migration": "20260715210000_billing_usage_ledger_outbox_schema",
+        "statement_order": 84,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "CREATE OR REPLACE FUNCTION billing_guard_locked_usage_snapshot()",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715210000_billing_usage_ledger_outbox_schema/migration.sql:statement:84"
+        ]
+      },
+      {
+        "migration": "20260715210000_billing_usage_ledger_outbox_schema",
+        "statement_order": 96,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "CREATE OR REPLACE FUNCTION billing_guard_domain_event_outbox_update()",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260715210000_billing_usage_ledger_outbox_schema/migration.sql:statement:96"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 9,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:9"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 18,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:18"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 21,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:21"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 24,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:24"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 27,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:27"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 30,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:30"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 33,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:33"
+        ]
+      },
+      {
+        "migration": "20260716143000_battery_v2_enums",
+        "statement_order": 36,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716143000_battery_v2_enums/migration.sql:statement:36"
+        ]
+      },
+      {
+        "migration": "20260716150000_battery_v2_measurement_sessions",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716150000_battery_v2_measurement_sessions/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260716150000_battery_v2_measurement_sessions",
+        "statement_order": 18,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716150000_battery_v2_measurement_sessions/migration.sql:statement:18"
+        ]
+      },
+      {
+        "migration": "20260716150000_battery_v2_measurement_sessions",
+        "statement_order": 21,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716150000_battery_v2_measurement_sessions/migration.sql:statement:21"
+        ]
+      },
+      {
+        "migration": "20260716153000_battery_v2_measurements",
+        "statement_order": 9,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716153000_battery_v2_measurements/migration.sql:statement:9"
+        ]
+      },
+      {
+        "migration": "20260716153000_battery_v2_measurements",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716153000_battery_v2_measurements/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260716153000_battery_v2_measurements",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716153000_battery_v2_measurements/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260716153000_battery_v2_measurements",
+        "statement_order": 18,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716153000_battery_v2_measurements/migration.sql:statement:18"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 48,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:48"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 50,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:50"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 52,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:52"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 54,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:54"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 56,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:56"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 58,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:58"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 60,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:60"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 62,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:62"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 64,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:64"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 66,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:66"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 68,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:68"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 70,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:70"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 72,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:72"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 74,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:74"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 76,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:76"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 78,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:78"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 80,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:80"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 82,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:82"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 84,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:84"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 86,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:86"
+        ]
+      },
+      {
+        "migration": "20260716160000_battery_v2_remaining_models",
+        "statement_order": 88,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716160000_battery_v2_remaining_models/migration.sql:statement:88"
+        ]
+      },
+      {
+        "migration": "20260716170000_battery_v2_job_dead_letters",
+        "statement_order": 4,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716170000_battery_v2_job_dead_letters/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260716170000_battery_v2_job_dead_letters",
+        "statement_order": 7,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716170000_battery_v2_job_dead_letters/migration.sql:statement:7"
+        ]
+      },
+      {
+        "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+        "statement_order": 2,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql:statement:2"
+        ]
+      },
+      {
+        "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+        "statement_order": 5,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql:statement:5"
+        ]
+      },
+      {
+        "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+        "statement_order": 8,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql:statement:8"
+        ]
+      },
+      {
+        "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+        "statement_order": 11,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql:statement:11"
+        ]
+      },
+      {
+        "migration": "20260716180000_r3b_post_vendor_predecessor_slot12",
+        "statement_order": 14,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260716180000_r3b_post_vendor_predecessor_slot12/migration.sql:statement:14"
+        ]
+      },
+      {
+        "migration": "20260717190000_fine_document_extraction_idempotency",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717190000_fine_document_extraction_idempotency/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260717200000_invoice_document_extraction_idempotency",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717200000_invoice_document_extraction_idempotency/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260717210000_service_event_document_extraction_idempotency",
+        "statement_order": 4,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717210000_service_event_document_extraction_idempotency/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260717220000_damage_document_extraction_idempotency",
+        "statement_order": 4,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717220000_damage_document_extraction_idempotency/migration.sql:statement:4"
+        ]
+      },
+      {
+        "migration": "20260717230000_technical_document_extraction_idempotency",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717230000_technical_document_extraction_idempotency/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260717250000_brake_evidence_lifecycle",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717250000_brake_evidence_lifecycle/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260717250000_brake_evidence_lifecycle",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260717250000_brake_evidence_lifecycle/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 12,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:12"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 15,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:15"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 19,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:19"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 22,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:22"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 25,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:25"
+        ]
+      },
+      {
+        "migration": "20260723130000_rental_rule_revisions",
+        "statement_order": 28,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723130000_rental_rule_revisions/migration.sql:statement:28"
+        ]
+      },
+      {
+        "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+        "statement_order": 3,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql:statement:3"
+        ]
+      },
+      {
+        "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+        "statement_order": 6,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql:statement:6"
+        ]
+      },
+      {
+        "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+        "statement_order": 11,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql:statement:11"
+        ]
+      },
+      {
+        "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+        "statement_order": 14,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql:statement:14"
+        ]
+      },
+      {
+        "migration": "20260723245000_ci_r3b_post_vendor_predecessor_slot15",
+        "statement_order": 17,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260723245000_ci_r3b_post_vendor_predecessor_slot15/migration.sql:statement:17"
+        ]
+      },
+      {
+        "migration": "20260724210000_ci_r3b_post_vendor_predecessor_slot16",
+        "statement_order": 1,
+        "statement_type": "TRANSACTION_CONTROL",
+        "statement_excerpt": "DO $$ BEGIN",
+        "transaction_sensitive": true,
+        "known_special_executor": null,
+        "replay_risk": "Explicit transaction control in migration SQL",
+        "classification": "SAFE",
+        "evidence": [
+          "backend/prisma/migrations/20260724210000_ci_r3b_post_vendor_predecessor_slot16/migration.sql:statement:1"
+        ]
+      }
+    ],
+    "unresolved_count": 0
+  },
+  "composite_index_checksum": {
+    "migration": "20260413230000_add_composite_indexes_batch_c",
+    "accepted_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+    "observed_sha256": "315ea75619f33af2d3cdd4e61744aa916e461232bcc203738f1eae9c1fae4496",
+    "match": true
+  },
+  "migration_directories_discovered": 305,
+  "normal_migrations_applied": 305,
+  "special_migrations_handled": 1,
+  "failed_migrations": 0,
+  "manual_interventions": 0,
+  "last_successful_migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+  "absolute_head_migration": "20260814130000_ci_r3b_post_replay_parity_reconciliation",
+  "reached_absolute_head": true,
+  "repair_runtime": {
+    "r3b1g_tire_repair": "PASS",
+    "migration_157": "PASS",
+    "r3b1i_iam_repair": "PASS",
+    "migration_249": "PASS",
+    "migration_252_corrected": "PASS"
+  },
+  "r3b_parity": {
+    "authority_objects_expected": 19,
+    "authority_objects_present": 19,
+    "tables_expected": 9,
+    "tables_present": 9,
+    "enums_expected": 10,
+    "enums_present": 10,
+    "property_categories_checked": 37,
+    "property_categories_matched": 37,
+    "missing_objects": [],
+    "property_mismatches": [],
+    "enum_mismatches": [],
+    "mismatch_counters": {
+      "default": 0,
+      "type": 0,
+      "nullability": 0,
+      "constraint": 0,
+      "index": 0,
+      "enum": 0
+    },
+    "pass": true,
+    "objects_pass": 19,
+    "objects_total": 19,
+    "tables_pass": 9,
+    "tables_total": 9,
+    "enums_pass": 10,
+    "enums_total": 10,
+    "properties_pass": 37,
+    "properties_total": 37,
+    "property_categories_total": 37
+  },
+  "prisma_checks": {
+    "prisma_validate": {
+      "exit_code": 0,
+      "pass": true
+    },
+    "prisma_generate": {
+      "exit_code": 0,
+      "pass": true
+    }
+  },
+  "full_replay_pass": true,
+  "final_status": "CI_R3B1K_MIGRATION252_IDENTIFIER_CORRECTION_FULL_REPLAY_COMPLETED"
+}

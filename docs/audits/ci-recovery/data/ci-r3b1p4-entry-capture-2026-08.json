@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1P.4",
+  "captured_at": "2026-08-16T09:55:00+00:00",
+  "REPOSITORY": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+  "BRANCH": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+  "ENTRY_HEAD_SHA": "9bdaa72f5e22f43248bef4797c807d6d4eb48f4d",
+  "PR_1054_HEAD_SHA": "9bdaa72f5e22f43248bef4797c807d6d4eb48f4d",
+  "PR_1054_STATE": "OPEN",
+  "PR_1054_DRAFT": true,
+  "PR_1054_UNMERGED": true,
+  "WORKTREE_CLEAN_AT_ENTRY": true,
+  "R3B1P3_ORCHESTRATOR_ALREADY_EXISTS_AT_ENTRY": true,
+  "R3B1P2_REMEDIATION_SHA": "db8799d4",
+  "R3B1P3_ORCHESTRATOR_COMMIT_SHA": "b15b056a",
+  "R3B1P3_GO_EVIDENCE_HEAD_SHA": "9bdaa72f",
+  "orchestrator": {
+    "path": "docs/audits/ci-recovery/tooling/ci_r3b1p3_run_independent_replay.py",
+    "git_blob_sha": "af0ee0829e40479f55026420d03295fa2176f9a5",
+    "sha256": "b380f6ccd4bd78c724e6a677342bda246e2a73c79a64159936d693bf6d45fbb3"
+  },
+  "procedural_context": "R3B1P.4 replays the complete harness with the R3B1P.3 orchestrator already committed before phase entry; no safety tooling created or modified during P4."
+}

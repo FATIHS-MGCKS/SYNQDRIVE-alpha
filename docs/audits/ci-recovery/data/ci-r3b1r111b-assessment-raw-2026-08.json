@@ -1,0 +1,132 @@
+{
+  "phase": "CI-R3B1R.1.1b",
+  "generated_at": "2026-08-16T16:00:00+00:00",
+  "inherits_from": "docs/audits/pr-recovery/R3B1R111A-BRIDGE-SCOPE-EVIDENCE-FAIL-CLOSED-CLOSURE.md",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "351d8869d6ccf42e932608e4e7c9d621b13326d7",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean_at_entry": true
+  },
+  "inherited_r3b1r111a_bridge_shas_superseded": {
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": "a483d6ca2791c9c917ddd28c54ce04126dc4369d9ebfbde31ee37ca992059a30",
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": "5531600e0d864eb28fc3b838301a869acaf0cc677ac3c2ad743e9792994aed99"
+  },
+  "final_frozen_bridge_shas": {
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82"
+  },
+  "bridge_search_path_dependency": false,
+  "canonical_short_code_index": {
+    "index_schema": "public",
+    "index_table": "organizations",
+    "index_name": "organizations_short_code_key",
+    "relkind": "i",
+    "access_method": "btree",
+    "unique": true,
+    "primary": false,
+    "valid": true,
+    "ready": true,
+    "live": true,
+    "immediate": true,
+    "nulls_not_distinct": false,
+    "key_attribute_count": 1,
+    "total_attribute_count": 1,
+    "ordered_key_columns": ["short_code"],
+    "include_columns": [],
+    "collation_names": ["pg_catalog.default"],
+    "opclass_names": ["pg_catalog.text_ops"],
+    "indoption": "0",
+    "predicate": false,
+    "expression": false
+  },
+  "clean_target_equals_live_production_short_code_index": true,
+  "short_code_index_exact_semantic_guard": true,
+  "short_code_guard_verifier_semantic_parity": true,
+  "short_code_negative_tests_total": 13,
+  "short_code_negative_tests_blocked": 13,
+  "short_code_false_acceptances": 0,
+  "drive_type_authority_deterministic": true,
+  "drive_type_exact_semantic_guard": true,
+  "drive_type_negative_tests": 6,
+  "ephemeral_recovery": {
+    "default_enabled": false,
+    "explicit_opt_in_required": true,
+    "production_uses_resilient_helper": false,
+    "production_sets_ephemeral_flag": false
+  },
+  "live_bridge_object_parity": {
+    "live_short_code_exact": true,
+    "live_short_code_index_exact": true,
+    "live_drivetype_exact": true,
+    "live_vehicles_drive_type_exact": true
+  },
+  "expected_production_catalog_mutations": {
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": 0,
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": 0
+  },
+  "expected_production_ledger_mutations": {
+    "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge": 1,
+    "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge": 1
+  },
+  "bootstrap": {
+    "empty_database_deploy_pass": true,
+    "legacy_database_deploy_pass": true,
+    "final_schema_matches_prisma": true
+  },
+  "regression": {
+    "migration_related_failed": 0,
+    "unexpected_skipped": 0,
+    "golden_tests_pass": 17,
+    "m252_negative_tests_pass": 7
+  },
+  "dependency_audit": {
+    "findings_high": 10,
+    "pr_introduced": 0,
+    "main_reproduces": true,
+    "merge_blocker_remains": true,
+    "vehicle_detail_scan": "PASS",
+    "legal_documents_scan": "FAIL"
+  },
+  "pending_set": [
+    {
+      "position": 1,
+      "migration_name": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    },
+    {
+      "position": 2,
+      "migration_name": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+      "sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+      "expected_catalog_mutations": 0,
+      "expected_ledger_mutations": 1
+    }
+  ],
+  "pending_count": 2,
+  "would_deploy_count": 2,
+  "unexpected_pending_migrations": 0,
+  "production": {
+    "mutations_r3b1r111b": 0,
+    "immutable": true,
+    "ledger_fingerprint_before": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "ledger_fingerprint_after": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_before": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "catalog_fingerprint_after": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58"
+  },
+  "final_substantive_head_sha": "e3c2d2789684c3e62e0c2e8459ec46ce4c6cf565",
+  "source_evidence_sha_mismatches": 0,
+  "machine_status": {
+    "CI_R3B1R111B_FINAL_EXACT_BRIDGE_SEMANTIC_FREEZE_COMPLETED": true,
+    "BRIDGE_SOURCE_AUTHORITY": "FINAL_FROZEN_EXACT_SEMANTICS",
+    "BRIDGE_PENDING_SET": "EXACTLY_TWO_LEDGER_ONLY_HISTORY_BRIDGES",
+    "BRIDGE_EXPECTED_PRODUCTION_CATALOG_MUTATIONS": 0,
+    "R3B1R1_2_READINESS": "READY_FOR_SEPARATELY_AUTHORIZED_CONTROLLED_PRODUCTION_HISTORY_BRIDGE",
+    "R3B1R12_READINESS": "NOT_READY_PENDING_PRODUCTION_HISTORY_BRIDGE",
+    "PR1054_MERGE_READINESS": "BLOCKED"
+  }
+}

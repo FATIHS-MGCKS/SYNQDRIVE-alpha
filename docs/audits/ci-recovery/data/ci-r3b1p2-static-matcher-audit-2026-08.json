@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "pattern": "unsafe_table_gate",
+      "file": "ci_r3b1o3_diff_attribution.py",
+      "found": false,
+      "classification": "REMEDIATED"
+    },
+    {
+      "pattern": "ranked_match",
+      "file": "ci_r3b1o3_diff_attribution.py",
+      "found": false,
+      "classification": "IRRELEVANT"
+    },
+    {
+      "pattern": "fuzzy_match",
+      "file": "ci_r3b1o3_diff_attribution.py",
+      "found": false,
+      "classification": "IRRELEVANT"
+    },
+    {
+      "pattern": "exact_authority_matcher",
+      "file": "ci_r3b1o3_diff_attribution.py",
+      "found": true,
+      "classification": "SAFE"
+    },
+    {
+      "pattern": "semantic_identity_compare",
+      "file": "ci_r3b1p2_authorized_strategy_authority.py",
+      "found": true,
+      "classification": "SAFE"
+    },
+    {
+      "pattern": "fingerprint_cardinality_gate",
+      "file": "ci_r3b1p2_authorized_strategy_authority.py",
+      "found": true,
+      "classification": "SAFE"
+    }
+  ]
+}

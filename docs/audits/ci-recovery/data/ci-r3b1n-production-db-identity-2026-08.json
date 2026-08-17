@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1N",
+  "bound_to_running_service": true,
+  "env_fingerprint": {
+    "bound": true,
+    "host_fingerprint_sha256": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d9763",
+    "port": 5432,
+    "database_name_fingerprint_sha256": "d263036f58a7a9084340194d7b52edebfcea6daf284f0f63a325c9b65f040d5d",
+    "database_name_length": 9,
+    "uses_localhost": true,
+    "service_env_matches_production_db_name": true
+  },
+  "session": {
+    "exit_code": 0,
+    "transaction_read_only": "on",
+    "postgres_version_line": "PostgreSQL 16.14 (Ubuntu 16.14-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "current_database_name": "synqdrive",
+    "pg_is_in_recovery": "f",
+    "pass": true
+  },
+  "production_database_name": "synqdrive",
+  "read_only_transaction_confirmed": true
+}

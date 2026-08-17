@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-ambiguity-corrective",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "CORRECTIVE_PRE_SHA": "67ff2e0974f052c91facf92a018df6803bc5f67f",
+    "REMOTE_HEAD": "bbf8d64ec204f878eb392f1d289cbda6e5162fa8",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "BINDING_CORRECTIVE_SUMMARY_SHA256": "480cbdd04d60ff8a4de375d0aaba78136f525a2d812f05c96c044645f6cddeb1"
+  },
+  "bound_inputs": {
+    "ci-r3b1o4-binding-corrective-expected-catalog-deltas-2026-08.json": {
+      "sha256": "433d702c617e3c72671f3c6caa3114bcef520b38f85455859556c4e187bf390f",
+      "exists": true
+    },
+    "ci-r3b1o4-binding-corrective-authority-candidate-inventory-2026-08.json": {
+      "sha256": "1fddb1f78af984c57b110ae840f3f8a3f9a0732842c894a509924c6339a8dedb",
+      "exists": true
+    },
+    "ci-r3b1o4-binding-corrective-full-catalog-authority-2026-08.json": {
+      "sha256": "9c26b26ef9e85723ce025cb3e96795df9206f5614e306f4fd3d59a897aef3a3c",
+      "exists": true
+    },
+    "ci-r3b1o4-binding-corrective-delta-authority-proof-2026-08.json": {
+      "sha256": "3b676d4a7a5bb779591cc7fac9be9289884876ba175b6fdbf7f67b9914aa3bfb",
+      "exists": true
+    },
+    "ci-r3b1o4-binding-corrective-statement-crossvalidation-2026-08.json": {
+      "sha256": "1f2271bd38abc7a7723d977d66da2ad8adf94023ba4a2a33cd050388d8fb51cb",
+      "exists": true
+    },
+    "ci-r3b1o4-binding-corrective-golden-tests-2026-08.json": {
+      "sha256": "82c8916b58c5a2d4067cb161281a615de26309f1ea987d353be0b048376db40b",
+      "exists": true
+    },
+    "ci-r3b1o4-binding-corrective-final-acceptance-summary-2026-08.json": {
+      "sha256": "480cbdd04d60ff8a4de375d0aaba78136f525a2d812f05c96c044645f6cddeb1",
+      "exists": true
+    },
+    "backend/prisma/schema.prisma": {
+      "sha256": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+      "exists": true
+    },
+    "backend/prisma/migrations/20260721270000_iam_role_assignment_drift_reconciliation/migration.sql": {
+      "sha256": "415f741ebf6d810c10e4d1524bc2d4bda79d557f0f2a6d3594ec43c49338adee",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_catalog_authority.py": {
+      "sha256": "2242813621993bc19b609ecb05db79b7753ad340fcfb8bf1ea8dcbc2cf93a545",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_catalog_semantic_compare.py": {
+      "sha256": "bd41be6692ce9ae6b4430d16f52ff825fb27fa64b207370249b69d36d2dfe912",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_expected_catalog_effects.py": {
+      "sha256": "cd400445620cf68b933920e5cd7cf2556a13be98e060058ceddc3a8f0c99f472",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_implicit_catalog_effects.py": {
+      "sha256": "b64b625eefcb4ef37d25f875dacab10a9e9e712878c5a5d90b089b3068c1ab40",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_execution_set.py": {
+      "sha256": "83087fbc34abf17b05c32aab69db85b13a5dcbb43c6cc65548209653c2ff3603",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_statement_crossvalidation.py": {
+      "sha256": "19f4c21317894f3bee0e24dbce7103fe0ad063fc0945c27360f6b2688651419a",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_golden_tests.py": {
+      "sha256": "fae3d2d33de6aaac5ea113ae1ce706a6d98e43158ec5777134154af76bba752d",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_terminal_gate.py": {
+      "sha256": "7587eb9e8d9da0f53e52419ca164663ac1463ae0b5073426dd0a12d85670e2c0",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_no_ranking_proof.py": {
+      "sha256": "bcb1a89c7de9694a1a5bfe44e395294e16527edbbda86a5f51575fa183265560",
+      "exists": true
+    },
+    "tooling/ci_r3b1o4_run_ambiguity_corrective_audit.py": {
+      "sha256": "8948f3071f9e74851d73212dd5337edb2225ae9821d11459dcb8fe460079bad5",
+      "exists": true
+    }
+  }
+}

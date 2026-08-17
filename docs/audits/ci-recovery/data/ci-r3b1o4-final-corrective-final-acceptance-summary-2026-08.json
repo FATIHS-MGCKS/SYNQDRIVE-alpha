@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-final-corrective",
+  "baseline": {
+    "WORKTREE_STRICT_EMPTY": true,
+    "FINAL_CORRECTIVE_PRE_SHA": "80cd5385b6e63cae8ef274c62978c9342160459b",
+    "REMOTE_HEAD": "b58ec4b111403cc08c6fef7e1253583985c87774",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "CORRECTIVE_SUMMARY_SHA256": "2beade5d36fe4f872ab0ad8e6331b2a5abab8f2d44b24837c6f25fb337459dd2"
+  },
+  "strategy_pass": true,
+  "second_deploy": {
+    "tail_present_pre_second": true,
+    "tail_present_during_second": true,
+    "tail_checksum_sha256": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "tail_checksum_post_second": "c158dcbbd2eb78d081d4851714dec28b0e304374eb272ec7cfe88f999cdcd899",
+    "pre_second_deploy_ledger_fingerprint": "d9a7d063d000b1ef997785aba96f008b6c548156997f13be35affe0dc03569b0",
+    "post_second_deploy_ledger_fingerprint": "d9a7d063d000b1ef997785aba96f008b6c548156997f13be35affe0dc03569b0",
+    "pre_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "post_second_deploy_catalog_fingerprint": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "pre_second_catalog_inventory_fingerprint": "38906102e4d3a82181ab24c876802d2424d5efc187538a8efbeaf7d831d268e8",
+    "post_second_catalog_inventory_fingerprint": "38906102e4d3a82181ab24c876802d2424d5efc187538a8efbeaf7d831d268e8",
+    "second_deploy_exit_code": 0,
+    "new_ledger_rows": 0,
+    "new_finished_rows": 0,
+    "new_failed_rows": 0,
+    "catalog_delta": false,
+    "catalog_inventory_delta": false,
+    "pass": true
+  },
+  "execution_set": {
+    "executing_migration_count": 22,
+    "pass": true
+  },
+  "catalog_delta": {
+    "added": 53,
+    "removed": 0,
+    "changed": 0,
+    "total_raw_deltas": 53,
+    "classified_total": 53,
+    "explicit_authority_matched": 44,
+    "implicit_authority_matched": 9,
+    "UNAUTHORIZED_FINAL_DELTA": 0,
+    "UNKNOWN_DELTA_AUTHORITY": 0,
+    "AMBIGUOUS": 0,
+    "type_deltas": 10
+  },
+  "catalog_engine_crossvalidation": {
+    "pass": true,
+    "missing_stages": []
+  },
+  "diff_attribution": {
+    "NEW_STRATEGY_DRIFT": 0,
+    "stale_index_drop_ops_remaining": 0
+  },
+  "golden_tests": {
+    "executed": 125,
+    "passed": 125,
+    "failed": 0
+  },
+  "crossvalidation": {
+    "evidence_code_mismatch_count": 0,
+    "pass": true
+  },
+  "production_immutable": true,
+  "terminal": {
+    "pass": true,
+    "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+    "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+    "failures": []
+  },
+  "final_status": "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+  "r3b1p_readiness": "R3B1P_READY_CONTROLLED_RECONCILIATION_PLAN",
+  "pass": true
+}

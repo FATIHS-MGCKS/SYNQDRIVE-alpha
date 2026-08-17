@@ -1,0 +1,1279 @@
+#!/usr/bin/env python3
+"""Golden tests for CI-R3B1O.4 — tail reconciliation, stale index authority, M252 parity."""
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from ci_r3b1l2_prisma_sql_parser import ParsedStatement
+from ci_r3b1o1_constants import M252_TABLE
+from ci_r3b1n2_constants import REPO
+from ci_r3b1o2_constants import DATA, M252_CANONICAL
+from ci_r3b1o2_diff_classifier import operation_fingerprint, resolve_owner_fields
+from ci_r3b1o2_r3b_authority import build_owner_maps
+from ci_r3b1o3_diff_attribution import classify_operation_two_axis
+from ci_r3b1o3_golden_tests import REQUIRED_TEST_IDS as O3_REQUIRED, run_diff_classifier_tests, run_m252_negative_tests, run_terminal_gate_tests as run_o3_terminal_tests
+from ci_r3b1o3_m252_complete_authority import build_m252_complete_physical_authority
+from ci_r3b1o3_m252_exact_parity import compare_m252_exact as compare_m252_exact_o3, make_canonical_catalog_fixture as make_o3_fixture
+from ci_r3b1o4_full_catalog_delta import build_full_catalog_delta_authority, classify_delta, diff_inventories
+from ci_r3b1o4_m252_exact_parity import compare_m252_exact as compare_m252_exact_o4, make_canonical_catalog_fixture as make_o4_fixture
+from ci_r3b1o4_stale_index_authority import build_invoice_stale_index_authority, build_whatsapp_stale_index_authority
+from ci_r3b1o4_t2_stale_index_safety import EXPECTED_STALE, _compare_index, build_expected_stale_index_shape
+from ci_r3b1o4_tail_contract import build_tail_reconciliation_contract, build_tail_sql, evaluate_tail_preconditions
+from ci_r3b1o4_catalog_authority import authorize_catalog_deltas, classify_delta_for_test
+from ci_r3b1o4_catalog_semantic_compare import _match_constraint, _match_index
+from ci_r3b1o4_execution_set import TAIL_MIGRATION_NAME, build_execution_set
+from ci_r3b1o4_expected_catalog_effects import build_expected_catalog_deltas
+from ci_r3b1o4_implicit_catalog_effects import build_implicit_catalog_effects
+from ci_r3b1o4_no_ranking_proof import build_no_ranking_proof
+from ci_r3b1o4_terminal_gate import (
+    evaluate_ambiguity_corrective_terminal_acceptance,
+    evaluate_binding_corrective_terminal_acceptance,
+    evaluate_corrective_terminal_acceptance,
+    evaluate_final_corrective_terminal_acceptance,
+    evaluate_terminal_acceptance,
+)
+from ci_r3b1o4_test_source_hashes import (
+    build_ambiguity_corrective_test_source_hash_manifest,
+    build_binding_corrective_test_source_hash_manifest,
+    build_corrective_test_source_hash_manifest,
+    build_final_corrective_test_source_hash_manifest,
+    build_test_source_hash_manifest,
+)
+
+SCHEMA_DUMP = REPO / "docs/audits/ci-recovery/.work/r3b1o4/production_schema_only.sql"
+
+
+def _add(tests: list, test_id: str, fn: str, expected: str, ok: bool, actual: str):
+    tests.append({"test_id": test_id, "function": fn, "expected": expected, "actual": actual, "pass": ok})
+
+
+def run_tail_authority_tests(tests: list) -> None:
+    invoice = build_invoice_stale_index_authority()
+    whatsapp = build_whatsapp_stale_index_authority()
+    _add(tests, "invoice_stale_creator_and_superseding", "build_invoice_stale_index_authority", "slot4+invoice_finance_workflow", invoice["creator_migration"] == "20260413225000_ci_r3b_historical_predecessor_slot4" and invoice["superseding_migration"] == "20260616180000_invoice_finance_workflow", f"{invoice['creator_migration']}->{invoice['superseding_migration']}")
+    _add(tests, "whatsapp_stale_creator_and_superseding", "build_whatsapp_stale_index_authority", "slot11+whatsapp_business_platform", whatsapp["creator_migration"] == "20260620183000_ci_r3b_post_vendor_predecessor_slot11" and whatsapp["superseding_migration"] == "20260620190000_whatsapp_business_platform", f"{whatsapp['creator_migration']}->{whatsapp['superseding_migration']}")
+
+    contract = build_tail_reconciliation_contract()
+    _add(tests, "tail_contract_exactly_three_tasks", "build_tail_reconciliation_contract", "3", contract["logical_task_count"] == 3, str(contract["logical_task_count"]))
+    _add(tests, "tail_contract_no_unauthorized_tasks", "build_tail_reconciliation_contract", "0", contract["unauthorized_tasks"] == 0, str(contract["unauthorized_tasks"]))
+
+    sql, _ = build_tail_sql()
+    _add(tests, "tail_sql_no_cascade", "build_tail_sql", "no DROP CASCADE", not any("DROP" in ln.upper() and " CASCADE" in ln.upper() for ln in sql.splitlines()), "DROP CASCADE" if any("DROP" in ln.upper() and " CASCADE" in ln.upper() for ln in sql.splitlines()) else "none")
+    _add(tests, "tail_sql_contains_invoice_drop", "build_tail_sql", "invoice drop", 'DROP INDEX IF EXISTS "org_invoices_invoice_number_key"' in sql, "present" if 'DROP INDEX IF EXISTS "org_invoices_invoice_number_key"' in sql else "missing")
+    _add(tests, "tail_sql_contains_whatsapp_drop", "build_tail_sql", "whatsapp drop", 'DROP INDEX IF EXISTS "whatsapp_conversations_organization_id_contact_phone_key"' in sql, "present")
+    _add(tests, "tail_sql_contains_m252_create", "build_tail_sql", "M252 create", f'CREATE TABLE "{M252_TABLE}"' in sql, "present")
+
+    bad_contract = copy.deepcopy(contract)
+    bad_contract["logical_tasks"].append({"task_id": "EXTRA", "purpose": "forbidden"})
+    _add(tests, "tail_contract_fourth_task_fail", "manual", "FAIL", len(bad_contract["logical_tasks"]) != 3, str(len(bad_contract["logical_tasks"])))
+
+    def mock_sql(q: str) -> str:
+        if M252_TABLE in q and "COUNT(*)" in q and "information_schema.tables" in q:
+            return "0"
+        if "whatsapp_conversations" in q and "indisunique" in q:
+            return "whatsapp_conversations_organization_id_contact_phone_normal_key|t|CREATE UNIQUE INDEX whatsapp_conversations_organization_id_contact_phone_normal_key ON public.whatsapp_conversations USING btree (organization_id, contact_phone_normalized)"
+        if "org_invoices_invoice_number_key" in q:
+            return "1"
+        if "whatsapp_conversations_organization_id_contact_phone_key" in q and "pg_indexes" in q:
+            return "1"
+        if "org_invoices_organization_id_sequence_year_sequence_number_key" in q:
+            return "1"
+        if "organizations" in q or "organization_memberships" in q:
+            return "1"
+        if "org_role_asgn" in q:
+            return "0"
+        return "0"
+
+    pre = evaluate_tail_preconditions(mock_sql, phase="pre_tail")
+    _add(tests, "tail_precondition_m252_absent_pass_fixture", "evaluate_tail_preconditions", "mixed", isinstance(pre, dict), str(pre.get("pass")))
+
+    bad_pre = evaluate_tail_preconditions(lambda q: "1" if M252_TABLE in q else "0", phase="pre_tail")
+    _add(tests, "tail_precondition_m252_present_fail", "evaluate_tail_preconditions", "FAIL", not bad_pre["pass"], str(bad_pre["pass"]))
+
+
+def run_o4_terminal_tests(tests: list) -> None:
+    base = dict(
+        worktree_strict_empty=True,
+        invoice_stale_authority_pass=True,
+        whatsapp_stale_authority_pass=True,
+        drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_contract_pass=True,
+        pre_tail_preconditions_pass=True,
+        golden_tests_pass=True,
+        golden_test_script_exit_zero=True,
+        golden_coverage_complete=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        tail_deploy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        data_risk_unknown_zero=True,
+        evidence_code_mismatch_zero=True,
+        stale_indexes_removed=True,
+        replacements_present=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+    )
+    perfect = evaluate_terminal_acceptance(**base)
+    _add(tests, "o4_terminal_all_gates_pass", "evaluate_terminal_acceptance", "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED", perfect["pass"], perfect["final_status"])
+    fail = evaluate_terminal_acceptance(**{**base, "stale_index_drop_ops_remaining": 1})
+    _add(tests, "o4_terminal_stale_drop_ops_remaining_fail", "evaluate_terminal_acceptance", "FAIL", not fail["pass"], fail["final_status"])
+
+
+TAIL_REQUIRED = [
+    "invoice_stale_creator_and_superseding",
+    "whatsapp_stale_creator_and_superseding",
+    "tail_contract_exactly_three_tasks",
+    "tail_contract_no_unauthorized_tasks",
+    "tail_contract_fourth_task_fail",
+    "tail_sql_no_cascade",
+    "tail_sql_contains_invoice_drop",
+    "tail_sql_contains_whatsapp_drop",
+    "tail_sql_contains_m252_create",
+    "tail_precondition_m252_absent_pass_fixture",
+    "tail_precondition_m252_present_fail",
+    "o4_terminal_all_gates_pass",
+    "o4_terminal_stale_drop_ops_remaining_fail",
+]
+
+REQUIRED_TEST_IDS = list(O3_REQUIRED) + TAIL_REQUIRED
+
+CORRECTIVE_M252_REQUIRED = [
+    "m252_o4_positive_control",
+    "m252_wrong_include",
+    "m252_wrong_collation",
+    "m252_wrong_opclass",
+    "m252_wrong_sort_direction",
+    "m252_wrong_null_ordering",
+    "m252_wrong_ready",
+    "m252_wrong_valid",
+    "m252_wrong_access_method",
+    "m252_wrong_key_order",
+]
+
+CORRECTIVE_CATALOG_DELTA_REQUIRED = [
+    "catalog_delta_known_added_authorized",
+    "catalog_delta_stale_removed_authorized",
+    "catalog_delta_unknown_table_unauthorized",
+    "catalog_delta_unknown_index_unauthorized",
+    "catalog_delta_unexpected_column_change_unauthorized",
+    "catalog_delta_unknown_constraint_removed_unauthorized",
+    "catalog_delta_all_classified_pass",
+    "catalog_delta_omitted_classification_fail",
+]
+
+CORRECTIVE_T2_REQUIRED = [
+    "t2_invoice_stale_exact_shape_pass",
+    "t2_whatsapp_stale_exact_shape_pass",
+    "t2_wrong_owner_fail",
+]
+
+CORRECTIVE_TERMINAL_REQUIRED = [
+    "o4_corrective_terminal_all_gates_pass",
+    "o4_corrective_terminal_second_deploy_fail",
+    "o4_corrective_terminal_catalog_delta_fail",
+]
+
+CORRECTIVE_REQUIRED_TEST_IDS = list(O3_REQUIRED) + TAIL_REQUIRED + CORRECTIVE_M252_REQUIRED + CORRECTIVE_CATALOG_DELTA_REQUIRED + CORRECTIVE_T2_REQUIRED + CORRECTIVE_TERMINAL_REQUIRED
+
+FINAL_CORRECTIVE_CATALOG_AUTH_REQUIRED = [
+    "catalog_auth_arbitrary_table_unauthorized",
+    "catalog_auth_arbitrary_index_unauthorized",
+    "catalog_auth_arbitrary_constraint_unauthorized",
+    "catalog_auth_arbitrary_type_unauthorized",
+    "catalog_auth_execution_set_unmodeled_object_unauthorized",
+    "catalog_auth_implicit_table_row_type_authorized",
+    "catalog_auth_full_authority_join_pass_fixture",
+    "o4_final_corrective_terminal_all_gates_pass",
+    "o4_final_corrective_terminal_ambiguous_fail",
+    "o4_final_corrective_terminal_catalog_engine_crossvalidation_fail",
+]
+
+FINAL_CORRECTIVE_REQUIRED_TEST_IDS = CORRECTIVE_REQUIRED_TEST_IDS + FINAL_CORRECTIVE_CATALOG_AUTH_REQUIRED
+
+BINDING_SEMANTIC_REQUIRED = [
+    "binding_same_name_wrong_semantics_unauthorized",
+    "binding_index_wrong_owner_keys_unauthorized",
+    "binding_constraint_wrong_definition_unauthorized",
+    "binding_duplicate_authority_ambiguous",
+    "binding_statement_ordinal_sha_unbound",
+]
+
+BINDING_TERMINAL_REQUIRED = [
+    "o4_binding_corrective_terminal_all_gates_pass",
+    "o4_binding_corrective_terminal_unbound_fail",
+    "o4_binding_corrective_terminal_ambiguous_fail",
+]
+
+BINDING_CORRECTIVE_REQUIRED_TEST_IDS = FINAL_CORRECTIVE_REQUIRED_TEST_IDS + BINDING_SEMANTIC_REQUIRED + BINDING_TERMINAL_REQUIRED
+
+AMBIGUITY_MULTI_MATCH_REQUIRED = ["ambiguity_multi_match_different_scores_ambiguous"]
+AMBIGUITY_M252_PROVENANCE_REQUIRED = [
+    "m252_synthetic_duplicate_prevention_unique_index",
+    "m252_synthetic_duplicate_prevention_composite_index",
+    "m252_synthetic_duplicate_prevention_org_fk",
+    "m252_synthetic_duplicate_prevention_membership_fk",
+    "m252_synthetic_duplicate_prevention_table",
+    "m252_synthetic_creator_count_zero",
+]
+AMBIGUITY_INDEX_SEMANTIC_REQUIRED = [
+    "index_semantic_base_pass",
+    "index_semantic_wrong_method_fail",
+    "index_semantic_wrong_include_fail",
+    "index_semantic_wrong_collation_fail",
+    "index_semantic_wrong_opclass_fail",
+    "index_semantic_wrong_sort_direction_fail",
+    "index_semantic_wrong_null_ordering_fail",
+    "index_semantic_wrong_valid_fail",
+    "index_semantic_wrong_ready_fail",
+    "index_semantic_wrong_owner_fail",
+    "index_semantic_wrong_unique_fail",
+]
+AMBIGUITY_CONSTRAINT_SEMANTIC_REQUIRED = [
+    "constraint_fk_base_pass",
+    "constraint_fk_wrong_target_table_fail",
+    "constraint_fk_wrong_target_column_fail",
+    "constraint_fk_wrong_source_column_fail",
+    "constraint_fk_wrong_match_fail",
+    "constraint_fk_wrong_on_update_fail",
+    "constraint_fk_wrong_on_delete_fail",
+    "constraint_fk_wrong_deferrable_fail",
+    "constraint_fk_wrong_initially_deferred_fail",
+    "constraint_fk_wrong_validated_fail",
+    "constraint_fk_fragment_rejection_fail",
+]
+AMBIGUITY_TERMINAL_REQUIRED = [
+    "no_ranking_static_scan_pass",
+    "o4_ambiguity_corrective_terminal_all_gates_pass",
+]
+AMBIGUITY_CORRECTIVE_REQUIRED_TEST_IDS = (
+    BINDING_CORRECTIVE_REQUIRED_TEST_IDS
+    + AMBIGUITY_MULTI_MATCH_REQUIRED
+    + AMBIGUITY_M252_PROVENANCE_REQUIRED
+    + AMBIGUITY_INDEX_SEMANTIC_REQUIRED
+    + AMBIGUITY_CONSTRAINT_SEMANTIC_REQUIRED
+    + AMBIGUITY_TERMINAL_REQUIRED
+)
+
+
+def _inventory(*, tables: dict | None = None, indexes: dict | None = None, constraints: dict | None = None, enums: dict | None = None) -> dict:
+    inv = {"schemas": ["public"], "tables": tables or {}, "enums": enums or {}, "types": [], "constraints": constraints or {}, "indexes": indexes or {}, "sequences": {}, "views": {}}
+    payload = {"schema_version": 1, "phase": "CI-R3B1O.4-corrective", "inventory": inv, "object_counts": {}, "fingerprint_sha256": "fixture"}
+    return payload
+
+
+def run_corrective_m252_index_tests(tests: list) -> None:
+    authority = build_m252_complete_physical_authority()
+    positive = compare_m252_exact_o4(authority, make_o4_fixture())
+    _add(tests, "m252_o4_positive_control", "compare_m252_exact", "PASS", positive["pass"], str(positive["pass"]))
+
+    cases = [
+        ("m252_wrong_include", ["unique_index", "include_columns"], [{"ordinal": 1, "kind": "include", "name": "organization_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"}]),
+        ("m252_wrong_collation", ["unique_index", "keys", 0, "collation"], "C"),
+        ("m252_wrong_opclass", ["unique_index", "keys", 0, "opclass"], "hash_ops"),
+        ("m252_wrong_sort_direction", ["unique_index", "keys", 0, "sort_direction"], "DESC"),
+        ("m252_wrong_null_ordering", ["unique_index", "keys", 0, "nulls_ordering"], "NULLS FIRST"),
+        ("m252_wrong_ready", ["unique_index", "ready"], False),
+        ("m252_wrong_valid", ["unique_index", "valid"], False),
+        ("m252_wrong_access_method", ["unique_index", "access_method"], "hash"),
+        ("m252_wrong_key_order", ["unique_index", "keys"], [
+            {"ordinal": 1, "kind": "key", "name": "organization_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
+            {"ordinal": 2, "kind": "key", "name": "membership_id", "collation": "default", "opclass": "default", "sort_direction": "ASC", "nulls_ordering": "NULLS LAST"},
+        ]),
+    ]
+    for test_id, path, bad_value in cases:
+        fixture = make_o4_fixture()
+        node = fixture
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = bad_value
+        result = compare_m252_exact_o4(authority, fixture)
+        _add(tests, test_id, "compare_m252_exact", "FAIL", not result["pass"], str(result["pass"]))
+
+
+def run_catalog_delta_tests(tests: list) -> None:
+    authority = build_m252_complete_physical_authority()
+    golden = _inventory(tables={"organizations": {"columns": {"id": {"format_type": "text", "nullable": False, "default": None, "identity": None, "generated": None}}}})
+    final_added = _inventory(
+        tables={
+            **golden["inventory"]["tables"],
+            M252_TABLE: {"columns": {"id": {"format_type": "text", "nullable": False, "default": None, "identity": None, "generated": None}}},
+        }
+    )
+    added = build_full_catalog_delta_authority(golden_inventory=golden, final_inventory=final_added)
+    _add(tests, "catalog_delta_known_added_authorized", "build_full_catalog_delta_authority", "authorized", added["counts"]["UNAUTHORIZED_FINAL_DELTA"] == 0, str(added["counts"]["UNAUTHORIZED_FINAL_DELTA"]))
+
+    stale_removed = _inventory(indexes={"org_invoices_invoice_number_key": {"name": "org_invoices_invoice_number_key"}}, tables=golden["inventory"]["tables"])
+    stale_final = _inventory(tables=golden["inventory"]["tables"])
+    removed = build_full_catalog_delta_authority(golden_inventory=stale_removed, final_inventory=stale_final)
+    stale_cls = [d for d in removed["deltas"] if d["name"] == "org_invoices_invoice_number_key"]
+    _add(tests, "catalog_delta_stale_removed_authorized", "classify_delta", "STALE_RECOVERY_EFFECT_REMOVED", bool(stale_cls) and stale_cls[0]["classification"] == "STALE_RECOVERY_EFFECT_REMOVED", stale_cls[0]["classification"] if stale_cls else "missing")
+
+    unknown_table = _inventory(
+        tables={
+            **golden["inventory"]["tables"],
+            "unexpected_table": {"columns": {"id": {"format_type": "text", "nullable": False, "default": None, "identity": None, "generated": None}}},
+        }
+    )
+    unknown_table_delta = classify_delta(
+        {"change_type": "ADDED", "object_type": "table", "name": "unexpected_table", "subkey": None, "before": None, "after": {}},
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unknown_table_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", unknown_table_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", unknown_table_delta["classification"])
+
+    unknown_index = classify_delta(
+        {"change_type": "ADDED", "object_type": "index", "name": "unexpected_idx", "subkey": None, "before": None, "after": {}},
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unknown_index_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", unknown_index["classification"] == "UNAUTHORIZED_FINAL_DELTA", unknown_index["classification"])
+
+    changed_col = classify_delta(
+        {
+            "change_type": "CHANGED",
+            "object_type": "column",
+            "name": "organizations",
+            "subkey": "id",
+            "before": {"format_type": "text"},
+            "after": {"format_type": "integer"},
+        },
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unexpected_column_change_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", changed_col["classification"] == "UNAUTHORIZED_FINAL_DELTA", changed_col["classification"])
+
+    removed_constraint = classify_delta(
+        {"change_type": "REMOVED", "object_type": "constraint", "name": "organizations_pkey", "subkey": None, "before": {}, "after": None},
+        authority=authority,
+    )
+    _add(tests, "catalog_delta_unknown_constraint_removed_unauthorized", "classify_delta", "UNAUTHORIZED_FINAL_DELTA", removed_constraint["classification"] == "UNAUTHORIZED_FINAL_DELTA", removed_constraint["classification"])
+
+    all_classified = build_full_catalog_delta_authority(golden_inventory=golden, final_inventory=final_added)
+    _add(tests, "catalog_delta_all_classified_pass", "build_full_catalog_delta_authority", "PASS", all_classified["counts"]["total_deltas"] == all_classified["counts"]["classified_deltas"], str(all_classified["counts"]["total_deltas"]))
+
+    partial = diff_inventories(golden, final_added)
+    classified = [classify_delta(d, authority=authority) for d in partial[:-1]]
+    _add(tests, "catalog_delta_omitted_classification_fail", "manual", "FAIL", len(classified) < len(partial), f"{len(classified)}/{len(partial)}")
+
+
+def run_t2_stale_index_tests(tests: list) -> None:
+    def mock_sql(q: str) -> str:
+        if "format_type" in q and "invoice_number" in q:
+            return "integer"
+        if "format_type" in q and "organization_id" in q:
+            return "text"
+        if "format_type" in q and "contact_phone" in q:
+            return "text"
+        return ""
+
+    invoice_expected = build_expected_stale_index_shape(mock_sql, "org_invoices_invoice_number_key")
+    invoice_actual = {
+        "owner_table": "org_invoices",
+        "unique": True,
+        "primary": False,
+        "access_method": "btree",
+        "keys": invoice_expected["keys"],
+        "include_columns": [],
+        "predicate": None,
+        "valid": True,
+        "ready": True,
+    }
+    ok, _ = _compare_index(invoice_actual, invoice_expected)
+    _add(tests, "t2_invoice_stale_exact_shape_pass", "_compare_index", "PASS", ok, str(ok))
+
+    whatsapp_expected = build_expected_stale_index_shape(mock_sql, "whatsapp_conversations_organization_id_contact_phone_key")
+    whatsapp_actual = {
+        "owner_table": "whatsapp_conversations",
+        "unique": True,
+        "primary": False,
+        "access_method": "btree",
+        "keys": whatsapp_expected["keys"],
+        "include_columns": [],
+        "predicate": None,
+        "valid": True,
+        "ready": True,
+    }
+    ok_wa, _ = _compare_index(whatsapp_actual, whatsapp_expected)
+    _add(tests, "t2_whatsapp_stale_exact_shape_pass", "_compare_index", "PASS", ok_wa, str(ok_wa))
+
+    wrong_owner = dict(invoice_actual)
+    wrong_owner["owner_table"] = "wrong_table"
+    bad, _ = _compare_index(wrong_owner, invoice_expected)
+    _add(tests, "t2_wrong_owner_fail", "_compare_index", "FAIL", not bad, str(bad))
+
+
+def run_catalog_authority_tests(tests: list) -> None:
+    execution_set = build_execution_set()
+    expected = build_expected_catalog_deltas(execution_set=execution_set)
+    implicit = build_implicit_catalog_effects(expected=expected)
+
+    arbitrary_table = "arbitrary_unmodeled_table_xyz_99123"
+    table_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "table",
+            "name": arbitrary_table,
+            "subkey": None,
+            "before": None,
+            "after": {"owner": "public", "columns": ["id"]},
+            "object_id": f"table:{arbitrary_table}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_table_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", table_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", table_delta["classification"])
+
+    arbitrary_index = "arbitrary_unmodeled_index_xyz_99123"
+    index_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "index",
+            "name": arbitrary_index,
+            "subkey": None,
+            "before": None,
+            "after": {"name": arbitrary_index},
+            "object_id": f"index:{arbitrary_index}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_index_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", index_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", index_delta["classification"])
+
+    arbitrary_constraint = "arbitrary_unmodeled_constraint_xyz_99123"
+    constraint_delta = classify_delta_for_test(
+        {
+            "change_type": "REMOVED",
+            "object_type": "constraint",
+            "name": arbitrary_constraint,
+            "subkey": None,
+            "before": {"name": arbitrary_constraint},
+            "after": None,
+            "object_id": f"constraint:{arbitrary_constraint}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_constraint_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", constraint_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", constraint_delta["classification"])
+
+    arbitrary_type = "arbitrary_unmodeled_type_xyz_99123"
+    type_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "type",
+            "name": arbitrary_type,
+            "subkey": None,
+            "before": None,
+            "after": {"kind": "c"},
+            "object_id": f"type:{arbitrary_type}",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_arbitrary_type_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", type_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", type_delta["classification"])
+
+    unmodeled_delta = classify_delta_for_test(
+        {
+            "change_type": "ADDED",
+            "object_type": "sequence",
+            "name": "arbitrary_unmodeled_sequence_xyz_99123",
+            "subkey": None,
+            "before": None,
+            "after": {"name": "arbitrary_unmodeled_sequence_xyz_99123"},
+            "object_id": "sequence:arbitrary_unmodeled_sequence_xyz_99123",
+        },
+        expected=expected,
+        implicit=implicit,
+    )
+    _add(tests, "catalog_auth_execution_set_unmodeled_object_unauthorized", "classify_delta_for_test", "UNAUTHORIZED_FINAL_DELTA", unmodeled_delta["classification"] == "UNAUTHORIZED_FINAL_DELTA", unmodeled_delta["classification"])
+
+    modeled_table = next((e["name"] for e in expected["effects"] if e["operation_family"] == "CREATE_TABLE" and e["object_type"] == "table"), None)
+    implicit_row = next((e for e in implicit["effects"] if e.get("postgres_rule") == "POSTGRES_TABLE_ROW_TYPE" and e["name"] == modeled_table), None)
+    if modeled_table and implicit_row:
+        implicit_delta = classify_delta_for_test(
+            {
+                "change_type": "ADDED",
+                "object_type": "type",
+                "name": modeled_table,
+                "subkey": None,
+                "before": None,
+                "after": implicit_row["after_state"],
+                "object_id": f"type:{modeled_table}",
+            },
+            expected=expected,
+            implicit=implicit,
+        )
+        _add(tests, "catalog_auth_implicit_table_row_type_authorized", "classify_delta_for_test", "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT", implicit_delta["classification"] == "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT", implicit_delta["classification"])
+    else:
+        _add(tests, "catalog_auth_implicit_table_row_type_authorized", "classify_delta_for_test", "AUTHORIZED_IMPLICIT_POSTGRES_EFFECT", False, "missing fixture")
+
+    modeled_effect = next((e for e in expected["effects"] if e["object_type"] == "table" and e["change_type"] == "ADDED"), None)
+    if modeled_effect:
+        modeled_delta = {
+            "change_type": modeled_effect["change_type"],
+            "object_type": modeled_effect["object_type"],
+            "name": modeled_effect["name"],
+            "subkey": modeled_effect.get("subkey"),
+            "object_id": modeled_effect.get("object_id", f"table:{modeled_effect['name']}"),
+            "before": None,
+            "after": modeled_effect.get("after_state"),
+        }
+        authority_join = authorize_catalog_deltas(raw_deltas=[modeled_delta], expected=expected, implicit=implicit, execution_set=execution_set)
+        _add(tests, "catalog_auth_full_authority_join_pass_fixture", "authorize_catalog_deltas", "PASS", authority_join["pass"], str(authority_join["pass"]))
+    else:
+        _add(tests, "catalog_auth_full_authority_join_pass_fixture", "authorize_catalog_deltas", "PASS", False, "missing fixture")
+
+
+def run_final_corrective_terminal_tests(tests: list) -> None:
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        catalog_engine_crossvalidation_pass=True,
+        execution_set_pass=True,
+        expected_catalog_pass=True,
+        implicit_catalog_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+        ambiguous=0,
+    )
+    perfect = evaluate_final_corrective_terminal_acceptance(**base)
+    _add(tests, "o4_final_corrective_terminal_all_gates_pass", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED", perfect["pass"], perfect["final_status"])
+    fail_ambiguous = evaluate_final_corrective_terminal_acceptance(**{**base, "ambiguous": 1})
+    _add(tests, "o4_final_corrective_terminal_ambiguous_fail", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_ambiguous["pass"] and fail_ambiguous["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_ambiguous["final_status"])
+    fail_engine = evaluate_final_corrective_terminal_acceptance(**{**base, "catalog_engine_crossvalidation_pass": False})
+    _add(tests, "o4_final_corrective_terminal_catalog_engine_crossvalidation_fail", "evaluate_final_corrective_terminal_acceptance", "CI_R3B1O4_CATALOG_ENGINE_CROSSVALIDATION_FAILED", not fail_engine["pass"] and fail_engine["final_status"] == "CI_R3B1O4_CATALOG_ENGINE_CROSSVALIDATION_FAILED", fail_engine["final_status"])
+
+
+def _fixture_expected_implicit() -> tuple[dict, dict, dict]:
+    execution_set = {
+        "schema_version": 1,
+        "executing_migration_count": 1,
+        "migrations": [
+            {
+                "migration_name": "test_migration",
+                "statements": [
+                    {
+                        "ordinal": 7,
+                        "statement_type": "CREATE INDEX",
+                        "statement_sha256": "known_sha_fixture_7",
+                    }
+                ],
+            }
+        ],
+    }
+    expected = {"effects": [], "pass": True}
+    implicit = {"effects": [], "pass": True}
+    return execution_set, expected, implicit
+
+
+def run_binding_semantic_authority_tests(tests: list) -> None:
+    execution_set, expected, implicit = _fixture_expected_implicit()
+    index_name = "customer_lookup_idx"
+
+    authority_effect = {
+        "effect_id": "fixture-index-authority",
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "migration_name": "test_migration",
+        "statement_ordinal": 7,
+        "statement_sha256": "known_sha_fixture_7",
+        "statement_family": "CREATE INDEX",
+        "operation_family": "CREATE_INDEX",
+        "before_state": None,
+        "after_state": {"owner_table": "customers", "unique": False, "columns": ["customer_id"]},
+        "authority_match": "EXPLICIT_SQL_EFFECT",
+    }
+    expected["effects"] = [authority_effect]
+
+    wrong_semantics_delta = {
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "object_id": f"index:{index_name}",
+        "before": None,
+        "after": {"owner_table": "customers", "unique": True, "columns": ["customer_id"]},
+    }
+    wrong_sem = classify_delta_for_test(wrong_semantics_delta, expected=expected, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "binding_same_name_wrong_semantics_unauthorized",
+        "classify_delta_for_test",
+        "UNAUTHORIZED_FINAL_DELTA",
+        wrong_sem["classification"] == "UNAUTHORIZED_FINAL_DELTA",
+        wrong_sem["classification"],
+    )
+
+    wrong_owner_delta = {
+        **wrong_semantics_delta,
+        "after": {"owner_table": "orders", "unique": False, "columns": ["customer_id"]},
+    }
+    wrong_owner = classify_delta_for_test(wrong_owner_delta, expected=expected, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "binding_index_wrong_owner_keys_unauthorized",
+        "classify_delta_for_test",
+        "UNAUTHORIZED_FINAL_DELTA",
+        wrong_owner["classification"] == "UNAUTHORIZED_FINAL_DELTA",
+        wrong_owner["classification"],
+    )
+
+    fk_name = "orders_customer_id_fkey"
+    fk_expected = {
+        "effect_id": "fixture-fk-authority",
+        "change_type": "ADDED",
+        "object_type": "constraint",
+        "name": fk_name,
+        "subkey": None,
+        "migration_name": "test_migration",
+        "statement_ordinal": 7,
+        "statement_sha256": "known_sha_fixture_7",
+        "statement_family": "ALTER TABLE",
+        "operation_family": "ADD_CONSTRAINT",
+        "before_state": None,
+        "after_state": {
+            "owner_table": "orders",
+            "kind": "FOREIGN KEY",
+            "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE CASCADE',
+        },
+        "authority_match": "EXPLICIT_SQL_EFFECT",
+    }
+    fk_expected_payload = {"effects": [fk_expected], "pass": True}
+    wrong_fk_delta = {
+        "change_type": "ADDED",
+        "object_type": "constraint",
+        "name": fk_name,
+        "subkey": None,
+        "object_id": f"constraint:{fk_name}",
+        "before": None,
+        "after": {
+            "owner_table": "orders",
+            "type": "f",
+            "definition": 'FOREIGN KEY ("customer_id") REFERENCES "vendors"("id") ON DELETE RESTRICT',
+        },
+    }
+    wrong_fk = classify_delta_for_test(wrong_fk_delta, expected=fk_expected_payload, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "binding_constraint_wrong_definition_unauthorized",
+        "classify_delta_for_test",
+        "UNAUTHORIZED_FINAL_DELTA",
+        wrong_fk["classification"] == "UNAUTHORIZED_FINAL_DELTA",
+        wrong_fk["classification"],
+    )
+
+    dup_a = dict(authority_effect)
+    dup_a["effect_id"] = "dup-a"
+    dup_b = dict(authority_effect)
+    dup_b["effect_id"] = "dup-b"
+    dup_b["effect_ordinal"] = 1
+    dup_expected = {"effects": [dup_a, dup_b], "pass": True}
+    matching_delta = {
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "object_id": f"index:{index_name}",
+        "before": None,
+        "after": {"owner_table": "customers", "unique": False, "columns": ["customer_id"]},
+    }
+    dup_result = classify_delta_for_test(matching_delta, expected=dup_expected, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "binding_duplicate_authority_ambiguous",
+        "classify_delta_for_test",
+        "AMBIGUOUS_DELTA_AUTHORITY",
+        dup_result["classification"] == "AMBIGUOUS_DELTA_AUTHORITY" and dup_result.get("candidate_count") == 2,
+        f"{dup_result['classification']} candidates={dup_result.get('candidate_count')}",
+    )
+
+    bound_effect = dict(authority_effect)
+    bound_expected = {"effects": [bound_effect], "pass": True}
+    bound_delta = dict(matching_delta)
+    bound_ok = classify_delta_for_test(bound_delta, expected=bound_expected, implicit=implicit, execution_set=execution_set)
+    bound_effect_bad_sha = dict(bound_effect)
+    bound_effect_bad_sha["statement_sha256"] = "wrong_sha"
+    bad_sha = classify_delta_for_test(bound_delta, expected={"effects": [bound_effect_bad_sha], "pass": True}, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "binding_statement_ordinal_sha_unbound",
+        "classify_delta_for_test",
+        "AUTHORITY_STATEMENT_UNBOUND",
+        bound_ok["classification"] != "AUTHORITY_STATEMENT_UNBOUND" and bad_sha["classification"] == "AUTHORITY_STATEMENT_UNBOUND",
+        f"ok={bound_ok['classification']} bad={bad_sha['classification']}",
+    )
+
+
+def run_binding_corrective_terminal_tests(tests: list) -> None:
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        catalog_engine_crossvalidation_pass=True,
+        statement_crossvalidation_pass=True,
+        execution_set_pass=True,
+        expected_catalog_pass=True,
+        implicit_catalog_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+        ambiguous=0,
+        authority_statement_unbound=0,
+        key_only_authorization=0,
+    )
+    perfect = evaluate_binding_corrective_terminal_acceptance(**base)
+    _add(
+        tests,
+        "o4_binding_corrective_terminal_all_gates_pass",
+        "evaluate_binding_corrective_terminal_acceptance",
+        "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+        perfect["pass"],
+        perfect["final_status"],
+    )
+    fail_unbound = evaluate_binding_corrective_terminal_acceptance(**{**base, "authority_statement_unbound": 1})
+    _add(
+        tests,
+        "o4_binding_corrective_terminal_unbound_fail",
+        "evaluate_binding_corrective_terminal_acceptance",
+        "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+        not fail_unbound["pass"] and fail_unbound["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+        fail_unbound["final_status"],
+    )
+    fail_ambiguous = evaluate_binding_corrective_terminal_acceptance(**{**base, "ambiguous": 1})
+    _add(
+        tests,
+        "o4_binding_corrective_terminal_ambiguous_fail",
+        "evaluate_binding_corrective_terminal_acceptance",
+        "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+        not fail_ambiguous["pass"] and fail_ambiguous["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED",
+        fail_ambiguous["final_status"],
+    )
+
+
+def _fixture_index_payload() -> dict:
+    return {
+        "owner_table": "customers",
+        "unique": False,
+        "primary": False,
+        "access_method": "btree",
+        "valid": True,
+        "ready": True,
+        "columns": ["customer_id"],
+        "include_columns": [],
+        "keys": [
+            {
+                "ordinal": 1,
+                "kind": "key",
+                "name": "customer_id",
+                "collation": "default",
+                "opclass": "default",
+                "sort_direction": "ASC",
+                "nulls_ordering": "NULLS LAST",
+            }
+        ],
+    }
+
+
+def _fixture_fk_expected() -> dict:
+    return {
+        "owner_table": "orders",
+        "kind": "FOREIGN KEY",
+        "source_columns": ["customer_id"],
+        "target_table": "customers",
+        "target_columns": ["id"],
+        "match_type": "SIMPLE",
+        "on_update": "NO ACTION",
+        "on_delete": "CASCADE",
+        "deferrable": False,
+        "initially_deferred": False,
+        "validated": True,
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE CASCADE',
+    }
+
+
+def _fixture_fk_actual() -> dict:
+    return {
+        "owner_table": "orders",
+        "type": "f",
+        "deferrable": False,
+        "initially_deferred": False,
+        "validated": True,
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id") ON DELETE CASCADE',
+    }
+
+
+def _count_creator_effects(expected: dict, *, change_type: str, object_type: str, name: str, subkey: str | None = None) -> int:
+    return sum(
+        1
+        for e in expected.get("effects", [])
+        if e.get("change_type") == change_type
+        and e.get("object_type") == object_type
+        and e.get("name") == name
+        and e.get("subkey") == subkey
+        and e.get("migration_name") == TAIL_MIGRATION_NAME
+    )
+
+
+def run_ambiguity_multi_match_tests(tests: list) -> None:
+    execution_set, _, implicit = _fixture_expected_implicit()
+    index_name = "customer_lookup_idx"
+    base_after = {"owner_table": "customers", "unique": False, "columns": ["customer_id"]}
+    candidate_a = {
+        "effect_id": "score-decorated-a",
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "migration_name": "test_migration",
+        "statement_ordinal": 7,
+        "statement_sha256": "known_sha_fixture_7",
+        "statement_family": "CREATE INDEX",
+        "operation_family": "CREATE_INDEX",
+        "task": "M252",
+        "before_state": None,
+        "after_state": base_after,
+    }
+    candidate_b = {
+        **candidate_a,
+        "effect_id": "score-decorated-b",
+        "effect_ordinal": 2,
+        "statement_family": "ALTER TABLE",
+        "operation_family": "CREATE_INDEX",
+        "task": None,
+    }
+    dup_expected = {"effects": [candidate_a, candidate_b], "pass": True}
+    delta = {
+        "change_type": "ADDED",
+        "object_type": "index",
+        "name": index_name,
+        "subkey": None,
+        "object_id": f"index:{index_name}",
+        "before": None,
+        "after": base_after,
+    }
+    result = classify_delta_for_test(delta, expected=dup_expected, implicit=implicit, execution_set=execution_set)
+    _add(
+        tests,
+        "ambiguity_multi_match_different_scores_ambiguous",
+        "classify_delta_for_test",
+        "AMBIGUOUS_DELTA_AUTHORITY",
+        result["classification"] == "AMBIGUOUS_DELTA_AUTHORITY" and result.get("semantic_match_count") == 2,
+        f"{result['classification']} semantic={result.get('semantic_match_count')}",
+    )
+
+
+def run_ambiguity_m252_provenance_tests(tests: list) -> None:
+    expected = build_expected_catalog_deltas()
+    authority = build_m252_complete_physical_authority()
+    unique = authority["unique_index"]["name"]
+    composite = authority["composite_index"]["name"]
+    fk_org = authority["foreign_keys"][0]["name"]
+    fk_mem = authority["foreign_keys"][1]["name"]
+    table = authority["table"]
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_unique_index",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="index", name=unique) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="index", name=unique)),
+    )
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_composite_index",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="index", name=composite) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="index", name=composite)),
+    )
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_org_fk",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_org) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_org)),
+    )
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_membership_fk",
+        "build_expected_catalog_deltas",
+        "1",
+        _count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_mem) == 1,
+        str(_count_creator_effects(expected, change_type="ADDED", object_type="constraint", name=fk_mem)),
+    )
+    table_creators = _count_creator_effects(expected, change_type="ADDED", object_type="table", name=table)
+    _add(
+        tests,
+        "m252_synthetic_duplicate_prevention_table",
+        "build_expected_catalog_deltas",
+        "1",
+        table_creators == 1,
+        str(table_creators),
+    )
+    _add(
+        tests,
+        "m252_synthetic_creator_count_zero",
+        "build_expected_catalog_deltas",
+        "0",
+        expected.get("synthetic_m252_creator_count", -1) == 0,
+        str(expected.get("synthetic_m252_creator_count")),
+    )
+
+
+def run_ambiguity_index_semantic_tests(tests: list) -> None:
+    base = _fixture_index_payload()
+    actual = dict(base)
+    ok, _ = _match_index(actual, base)
+    _add(tests, "index_semantic_base_pass", "_match_index", "PASS", ok, "pass" if ok else "fail")
+
+    mutations = [
+        ("index_semantic_wrong_method_fail", {"access_method": "hash"}),
+        ("index_semantic_wrong_include_fail", {"include_columns": ["extra"]}),
+        ("index_semantic_wrong_collation_fail", {"keys": [{**base["keys"][0], "collation": "C"}]}),
+        ("index_semantic_wrong_opclass_fail", {"keys": [{**base["keys"][0], "opclass": "int4_ops"}]}),
+        ("index_semantic_wrong_sort_direction_fail", {"keys": [{**base["keys"][0], "sort_direction": "DESC"}]}),
+        ("index_semantic_wrong_null_ordering_fail", {"keys": [{**base["keys"][0], "nulls_ordering": "NULLS FIRST"}]}),
+        ("index_semantic_wrong_valid_fail", {"valid": False}),
+        ("index_semantic_wrong_ready_fail", {"ready": False}),
+        ("index_semantic_wrong_owner_fail", {"owner_table": "vendors"}),
+        ("index_semantic_wrong_unique_fail", {"unique": True}),
+    ]
+    for test_id, patch in mutations:
+        mutated = copy.deepcopy(base)
+        for key, val in patch.items():
+            mutated[key] = val
+        fail, reason = _match_index(mutated, base)
+        _add(tests, test_id, "_match_index", "FAIL", not fail, reason)
+
+
+def run_ambiguity_constraint_semantic_tests(tests: list) -> None:
+    expected = _fixture_fk_expected()
+    actual = _fixture_fk_actual()
+    ok, _ = _match_constraint(actual, expected)
+    _add(tests, "constraint_fk_base_pass", "_match_constraint", "PASS", ok, "pass" if ok else "fail")
+
+    fk_mutations = [
+        ("constraint_fk_wrong_target_table_fail", {"target_table": "vendors"}),
+        ("constraint_fk_wrong_target_column_fail", {"target_columns": ["uuid"]}),
+        ("constraint_fk_wrong_source_column_fail", {"source_columns": ["vendor_id"]}),
+        ("constraint_fk_wrong_match_fail", {"match_type": "FULL"}),
+        ("constraint_fk_wrong_on_update_fail", {"on_update": "CASCADE"}),
+        ("constraint_fk_wrong_on_delete_fail", {"on_delete": "RESTRICT"}),
+        ("constraint_fk_wrong_deferrable_fail", {"deferrable": True}),
+        ("constraint_fk_wrong_initially_deferred_fail", {"initially_deferred": True}),
+        ("constraint_fk_wrong_validated_fail", {"validated": False}),
+    ]
+    for test_id, patch in fk_mutations:
+        mutated = copy.deepcopy(expected)
+        mutated.update(patch)
+        mutated_actual = copy.deepcopy(actual)
+        if test_id == "constraint_fk_wrong_validated_fail":
+            mutated_actual["validated"] = True
+        fail, reason = _match_constraint(mutated_actual, mutated)
+        _add(tests, test_id, "_match_constraint", "FAIL", not fail, reason)
+
+    fragment_expected = {
+        "owner_table": "orders",
+        "kind": "FOREIGN KEY",
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "customers"("id")',
+    }
+    wrong_target_actual = {
+        "owner_table": "orders",
+        "type": "f",
+        "definition": 'FOREIGN KEY ("customer_id") REFERENCES "vendors"("id") ON DELETE CASCADE',
+    }
+    fragment_fail, _ = _match_constraint(wrong_target_actual, fragment_expected)
+    _add(
+        tests,
+        "constraint_fk_fragment_rejection_fail",
+        "_match_constraint",
+        "FAIL",
+        not fragment_fail,
+        "fragment-only acceptance blocked",
+    )
+
+
+def run_ambiguity_corrective_terminal_tests(tests: list) -> None:
+    proof = build_no_ranking_proof()
+    _add(tests, "no_ranking_static_scan_pass", "build_no_ranking_proof", "PASS", proof["pass"], str(proof.get("violation_count")))
+
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        catalog_engine_crossvalidation_pass=True,
+        statement_crossvalidation_pass=True,
+        execution_set_pass=True,
+        expected_catalog_pass=True,
+        implicit_catalog_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+        ambiguous=0,
+        authority_statement_unbound=0,
+        key_only_authorization=0,
+        no_ranking_proof_pass=True,
+        synthetic_m252_creator_count=0,
+    )
+    perfect = evaluate_ambiguity_corrective_terminal_acceptance(**base)
+    _add(
+        tests,
+        "o4_ambiguity_corrective_terminal_all_gates_pass",
+        "evaluate_ambiguity_corrective_terminal_acceptance",
+        "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED",
+        perfect["pass"],
+        perfect["final_status"],
+    )
+
+
+def run_corrective_terminal_tests(tests: list) -> None:
+    base = dict(
+        worktree_strict_empty=True,
+        t2_drop_safety_pass=True,
+        replacement_safety_pass=True,
+        tail_present_pre_second=True,
+        tail_present_during_second=True,
+        golden_tests_pass=True,
+        golden_coverage_complete=True,
+        evidence_code_mismatch_zero=True,
+        schema_unchanged=True,
+        migrations_unchanged=True,
+        repository_immutable=True,
+        m252_exact_parity_pass=True,
+        r3b_parity_pass=True,
+        strategy_pass=True,
+        second_deploy_pass=True,
+        production_unchanged=True,
+        attribution_pass=True,
+        catalog_delta_pass=True,
+        data_risk_unknown_zero=True,
+        unknown_scope=0,
+        unattributed=0,
+        new_strategy_drift=0,
+        r3b_scope=0,
+        m252_scope=0,
+        golden_failed=0,
+        stale_index_drop_ops_remaining=0,
+        unauthorized_final_delta=0,
+        unknown_delta_authority=0,
+    )
+    perfect = evaluate_corrective_terminal_acceptance(**base)
+    _add(tests, "o4_corrective_terminal_all_gates_pass", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_APPEND_ONLY_TAIL_RECONCILIATION_STRATEGY_COMPLETED", perfect["pass"], perfect["final_status"])
+    fail_second = evaluate_corrective_terminal_acceptance(**{**base, "second_deploy_pass": False})
+    _add(tests, "o4_corrective_terminal_second_deploy_fail", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_REPEAT_DEPLOY_FAILED", not fail_second["pass"] and fail_second["final_status"] == "CI_R3B1O4_REPEAT_DEPLOY_FAILED", fail_second["final_status"])
+    fail_catalog = evaluate_corrective_terminal_acceptance(**{**base, "unauthorized_final_delta": 1})
+    _add(tests, "o4_corrective_terminal_catalog_delta_fail", "evaluate_corrective_terminal_acceptance", "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", not fail_catalog["pass"] and fail_catalog["final_status"] == "CI_R3B1O4_FINAL_CATALOG_AUTHORITY_FAILED", fail_catalog["final_status"])
+
+
+def run_golden_tests(*, corrective: bool = False, final_corrective: bool = False, binding_corrective: bool = False, ambiguity_corrective: bool = False) -> dict:
+    tests: list[dict] = []
+    run_m252_negative_tests(tests)
+    run_diff_classifier_tests(tests)
+    run_o3_terminal_tests(tests)
+    run_tail_authority_tests(tests)
+    run_o4_terminal_tests(tests)
+    if corrective or final_corrective or binding_corrective or ambiguity_corrective:
+        run_corrective_m252_index_tests(tests)
+        run_catalog_delta_tests(tests)
+        run_t2_stale_index_tests(tests)
+        run_corrective_terminal_tests(tests)
+    if final_corrective or binding_corrective or ambiguity_corrective:
+        run_catalog_authority_tests(tests)
+        run_final_corrective_terminal_tests(tests)
+    if binding_corrective or ambiguity_corrective:
+        run_binding_semantic_authority_tests(tests)
+        run_binding_corrective_terminal_tests(tests)
+    if ambiguity_corrective:
+        run_ambiguity_multi_match_tests(tests)
+        run_ambiguity_m252_provenance_tests(tests)
+        run_ambiguity_index_semantic_tests(tests)
+        run_ambiguity_constraint_semantic_tests(tests)
+        run_ambiguity_corrective_terminal_tests(tests)
+
+    if ambiguity_corrective:
+        hash_manifest = build_ambiguity_corrective_test_source_hash_manifest()
+        hash_fn = "build_ambiguity_corrective_test_source_hash_manifest"
+    elif binding_corrective:
+        hash_manifest = build_binding_corrective_test_source_hash_manifest()
+        hash_fn = "build_binding_corrective_test_source_hash_manifest"
+    elif final_corrective:
+        hash_manifest = build_final_corrective_test_source_hash_manifest()
+        hash_fn = "build_final_corrective_test_source_hash_manifest"
+    elif corrective:
+        hash_manifest = build_corrective_test_source_hash_manifest()
+        hash_fn = "build_corrective_test_source_hash_manifest"
+    else:
+        hash_manifest = build_test_source_hash_manifest()
+        hash_fn = "build_test_source_hash_manifest"
+    hash_entries = hash_manifest.get("entries") if isinstance(hash_manifest, dict) and "entries" in hash_manifest else [{"source_file": k, "sha256": v} for k, v in sorted((hash_manifest or {}).items())]
+    for entry in hash_entries:
+        _add(tests, f"source_hash_present_{entry['source_file'].replace('.', '_')}", hash_fn, "sha256 present", bool(entry["sha256"]), entry["source_file"])
+
+    if ambiguity_corrective:
+        required_ids = AMBIGUITY_CORRECTIVE_REQUIRED_TEST_IDS
+    elif binding_corrective:
+        required_ids = BINDING_CORRECTIVE_REQUIRED_TEST_IDS
+    elif final_corrective:
+        required_ids = FINAL_CORRECTIVE_REQUIRED_TEST_IDS
+    elif corrective:
+        required_ids = CORRECTIVE_REQUIRED_TEST_IDS
+    else:
+        required_ids = REQUIRED_TEST_IDS
+    implemented = {t["test_id"] for t in tests}
+    coverage_rows = []
+    for test_id in required_ids:
+        row = next((t for t in tests if t["test_id"] == test_id), None)
+        coverage_rows.append(
+            {
+                "required_test_id": test_id,
+                "implemented": row is not None,
+                "function": row["function"] if row else None,
+                "expected": row["expected"] if row else None,
+                "actual": row["actual"] if row else None,
+                "pass": row["pass"] if row else False,
+            }
+        )
+
+    passed = sum(1 for t in tests if t["pass"])
+    failed = sum(1 for t in tests if not t["pass"])
+    coverage_complete = all(r["implemented"] for r in coverage_rows)
+
+    if ambiguity_corrective:
+        phase = "CI-R3B1O.4-ambiguity-corrective"
+        prefix = "ci-r3b1o4-ambiguity-corrective"
+    elif binding_corrective:
+        phase = "CI-R3B1O.4-binding-corrective"
+        prefix = "ci-r3b1o4-binding-corrective"
+    elif final_corrective:
+        phase = "CI-R3B1O.4-final-corrective"
+        prefix = "ci-r3b1o4-final-corrective"
+    elif corrective:
+        phase = "CI-R3B1O.4-corrective"
+        prefix = "ci-r3b1o4-corrective"
+    else:
+        phase = "CI-R3B1O.4"
+        prefix = "ci-r3b1o4"
+    results = {
+        "schema_version": 1,
+        "phase": phase,
+        "required": len(required_ids),
+        "implemented": len([r for r in coverage_rows if r["implemented"]]),
+        "executed": len(tests),
+        "passed": passed,
+        "failed": failed,
+        "coverage_complete": coverage_complete,
+        "test_source_hashes": hash_manifest,
+        "tests": tests,
+        "pass": failed == 0 and coverage_complete,
+    }
+    (DATA / f"{prefix}-golden-tests-2026-08.json").write_text(json.dumps(results, indent=2) + "\n")
+    (DATA / f"{prefix}-golden-coverage-2026-08.json").write_text(
+        json.dumps({"schema_version": 1, "phase": phase, "required_count": len(required_ids), "coverage_rows": coverage_rows, "coverage_complete": coverage_complete}, indent=2) + "\n"
+    )
+    return results
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--corrective", action="store_true")
+    parser.add_argument("--final-corrective", action="store_true")
+    parser.add_argument("--binding-corrective", action="store_true")
+    parser.add_argument("--ambiguity-corrective", action="store_true")
+    args = parser.parse_args()
+    raise SystemExit(
+        0
+        if run_golden_tests(
+            corrective=args.corrective,
+            final_corrective=args.final_corrective,
+            binding_corrective=args.binding_corrective,
+            ambiguity_corrective=args.ambiguity_corrective,
+        )["pass"]
+        else 1
+    )

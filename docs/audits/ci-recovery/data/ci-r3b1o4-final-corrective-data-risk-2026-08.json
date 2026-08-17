@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-final-corrective",
+  "UNKNOWN_DATA_DEPENDENCY": 0,
+  "counts": {
+    "DDL_SCHEMA_ONLY": 16,
+    "DATA_DEPENDENT_LOW": 5,
+    "DATA_DEPENDENT_HIGH": 0,
+    "UNKNOWN_DATA_DEPENDENCY": 0
+  },
+  "pass": true
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.2",
+  "tests": [
+    {
+      "name": "m252_unique_index_owner_resolved",
+      "pass": true,
+      "actual": "OWNER_M252"
+    },
+    {
+      "name": "unrelated_alter_index_owner_resolved",
+      "pass": true,
+      "actual": "OWNER_OUT_OF_SCOPE"
+    },
+    {
+      "name": "unauthorized_schema_change_gate",
+      "pass": true,
+      "actual": 0
+    },
+    {
+      "name": "wrong_pk_name_fails_parity",
+      "pass": true,
+      "actual": true
+    }
+  ],
+  "total": 4,
+  "passed": 4,
+  "pass": true
+}

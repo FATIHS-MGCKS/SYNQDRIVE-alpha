@@ -1,0 +1,12 @@
+{
+  "pre_second_deploy_ledger_fingerprint": "15b11f643066b2f21bd483c26eeb052dc091b073839df49f3455a9d9f5da48ca",
+  "post_second_deploy_ledger_fingerprint": "15b11f643066b2f21bd483c26eeb052dc091b073839df49f3455a9d9f5da48ca",
+  "pre_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+  "post_second_deploy_catalog_fingerprint": "849cf448e5b9bbc2f2c4e0139888dcdd07710df580591173c9b67999b26c536f",
+  "second_deploy_exit_code": 0,
+  "new_ledger_rows": 0,
+  "new_finished_rows": 0,
+  "new_failed_rows": 0,
+  "catalog_delta": false,
+  "pass": true
+}

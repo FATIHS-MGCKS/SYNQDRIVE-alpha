@@ -1,0 +1,30 @@
+{
+  "indexes": [
+    {
+      "INDEX_NAME": "org_invoices_invoice_number_key",
+      "CURRENT_PRE_EXECUTION_STATE": "absent",
+      "CREATED_BY_MIGRATION": "20260413225000_ci_r3b_historical_predecessor_slot4",
+      "CREATION_STEP": "Step 3 normal pending migrations (prisma migrate deploy)",
+      "EXPECTED_SEMANTIC_DEFINITION_AFTER_CREATION": "CREATE UNIQUE INDEX IF NOT EXISTS \"org_invoices_invoice_number_key\" ON \"org_invoices\"(\"invoice_number\")",
+      "REMOVED_BY_MIGRATION": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+      "REMOVAL_STEP": "Step 4 append-only tail",
+      "FINAL_EXPECTED_STATE": "absent",
+      "replacement_index": null,
+      "superseding_migration": "20260616180000_invoice_finance_workflow"
+    },
+    {
+      "INDEX_NAME": "whatsapp_conversations_organization_id_contact_phone_key",
+      "CURRENT_PRE_EXECUTION_STATE": "absent",
+      "CREATED_BY_MIGRATION": "20260620183000_ci_r3b_post_vendor_predecessor_slot11",
+      "CREATION_STEP": "Step 3 normal pending migrations (prisma migrate deploy)",
+      "EXPECTED_SEMANTIC_DEFINITION_AFTER_CREATION": "CREATE UNIQUE INDEX IF NOT EXISTS \"whatsapp_conversations_organization_id_contact_phone_key\" ON \"whatsapp_conversations\"(\"organization_id\", \"contact_phone\")",
+      "REMOVED_BY_MIGRATION": "TEMPORARY_TAIL_RECONCILIATION_20260815",
+      "REMOVAL_STEP": "Step 4 append-only tail",
+      "FINAL_EXPECTED_STATE": "absent",
+      "replacement_index": null,
+      "superseding_migration": "20260620190000_whatsapp_business_platform"
+    }
+  ],
+  "STALE_INDEX_LIFECYCLE_PROVEN": true,
+  "topology": "absent_now -> created_by_normal_pending -> removed_by_tail -> absent_final"
+}

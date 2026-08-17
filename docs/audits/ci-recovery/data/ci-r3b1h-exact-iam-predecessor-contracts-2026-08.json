@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "contract_id": "R3B1H-organization_memberships-permissions",
+      "relation": "organization_memberships",
+      "column": "permissions",
+      "postgres_type": "jsonb",
+      "nullable": true,
+      "default_semantics": "NO_DATABASE_DEFAULT",
+      "default_value": null,
+      "enum_dependency": null,
+      "foreign_key": null,
+      "generated_semantics": null,
+      "classification": "MISSING_HISTORY",
+      "first_consumer_migration": "20260721250000_iam_versioned_role_assignments",
+      "first_consumer_statement": 31,
+      "repair_boundary": {
+        "after_migration": "20260721240000_iam_last_selected_organization",
+        "before_migration": "20260721250000_iam_versioned_role_assignments",
+        "topology_id": "R3B1H-IAM-PERMISSIONS-PREDECESSOR",
+        "rationale": "Earliest append-only boundary after organization_memberships table and IAM-era predecessors exist, immediately before migration 249 INSERT-SELECT backfill reads m.permissions."
+      },
+      "provenance": {
+        "sources": [
+          "git:68150912:OrganizationMembership.permissions Json?",
+          "migration:20260721250000_iam_versioned_role_assignments:statement:31:WHERE m.permissions IS NOT NULL",
+          "catalog:ci-r3b1h-pre-249-catalog-snapshot:organization_memberships.permissions=missing",
+          "creator_search:no ADD COLUMN permissions in migration history"
+        ]
+      }
+    }
+  ],
+  "compiled": [
+    {
+      "contract_id": "R3B1H-organization_memberships-permissions",
+      "compiled_sql": "ALTER TABLE \"organization_memberships\" ADD COLUMN \"permissions\" \"jsonb\";",
+      "compiled_sql_sha256": "edbfdf9b2298bc6f158921bf90d886c46b70112873eae2741b5d8d924faf7952",
+      "semantic_equivalence": "PASS"
+    }
+  ]
+}

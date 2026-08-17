@@ -1,0 +1,102 @@
+{
+  "phase": "CI-R3B1R.1.2",
+  "generated_at": "2026-08-16T16:40:00+00:00",
+  "result": "INCIDENT",
+  "authorization": "Separate explicit user authorization received for R3B1R.1.2 after R3B1R.1.1b FINAL_FROZEN_EXACT_SEMANTICS",
+  "inherited_entry_gate": "CI_R3B1R111B_FINAL_EXACT_BRIDGE_SEMANTIC_FREEZE_COMPLETED",
+  "entry": {
+    "repository": "FATIHS-MGCKS/SYNQDRIVE-alpha",
+    "branch": "audit/ci-r3b1o4-tail-reconciliation-strategy-closure-2026-08",
+    "entry_head_sha": "be199f7806583a66cac45de8cba2044dfaffa7a3",
+    "pr_1054_head_sha": "be199f7806583a66cac45de8cba2044dfaffa7a3",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean_at_entry": true,
+    "r3b1r111b_accepted_entry": true
+  },
+  "frozen_bridges": {
+    "bridge_1_name": "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+    "bridge_1_sha256": "30557c650d38c40ce58923d52d4243f1a39ab7ee85591443e217d18316610006",
+    "bridge_1_sha_match": true,
+    "bridge_2_name": "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge",
+    "bridge_2_sha256": "a5054affe5a97b14dddc8eee10103597f49f206e916d6620baa4809a54277c82",
+    "bridge_2_sha_match": true,
+    "source_evidence_sha_mismatches": 0
+  },
+  "backup": {
+    "backup_method": "postgres_pg_dump_gzip",
+    "backup_or_snapshot_identifier": "/opt/synqdrive/shared/backups/db-pre-r3b1r112_20260816163505.sql.gz",
+    "backup_started_at": "2026-08-16T16:35:05Z",
+    "backup_completed_at": "2026-08-16T16:35:23Z",
+    "backup_size_bytes": 58213268,
+    "backup_checksum_sha256": "7ea0442cf3bde6565fb7341dae3ba7384986cd00cbb57c3de908efe2eaa16c85",
+    "recovery_point_timestamp": "2026-08-16T16:35:23Z",
+    "restore_owner": "platform_ops",
+    "restore_path_verified": true,
+    "recovery_readiness": true
+  },
+  "pre_deploy": {
+    "ledger_row_count_before": 339,
+    "ledger_finished_count_before": 323,
+    "ledger_failed_count_before": 16,
+    "ledger_incomplete_count_before": 0,
+    "ledger_fingerprint_before": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_before": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "bridge_1_ledger_row_exists_before": false,
+    "bridge_2_ledger_row_exists_before": false,
+    "live_short_code_exact": true,
+    "live_short_code_index_exact": true,
+    "live_drivetype_exact": true,
+    "live_vehicles_drive_type_exact": true,
+    "r3b_properties_matched": "54/54",
+    "m252_semantic_mismatches": 0,
+    "pending_count": 2,
+    "would_deploy_count": 2,
+    "would_deploy_names": [
+      "20260816152200_ci_r3b1r11_organizations_short_code_history_bridge",
+      "20260816163000_ci_r3b1r11_vehicles_drive_type_history_bridge"
+    ],
+    "unexpected_pending_migrations": 0,
+    "mutation_barrier_pre_deploy": "PASS"
+  },
+  "deploy": {
+    "deploy_command": "npm run prisma:migrate:deploy",
+    "deploy_started_at": "2026-08-16T16:37:15Z",
+    "deploy_finished_at": "2026-08-16T16:37:16Z",
+    "deploy_exit_code": 1,
+    "deploy_attempt_count": 1,
+    "failure_class": "ENV_ACCESS_INCIDENT",
+    "failure_summary": "Prisma could not read DATABASE_URL from symlinked /opt/synqdrive/shared/backend.env in temp clone (EACCES). No migration SQL executed.",
+    "migrations_attempted": 0,
+    "migrations_applied": 0,
+    "unexpected_migrations_applied": 0,
+    "retry_performed": false
+  },
+  "post_attempt": {
+    "ledger_row_count_after": 339,
+    "ledger_fingerprint_after": "b6ec53dbfd6c09ab8641fce2c96fe9fa996b3ec0dcd36c6a1c0c605c71e684e2",
+    "catalog_fingerprint_after": "407bf140508aea746e8fd5f62911c79ba1341bae8c836a079b73ee7a8fec2e58",
+    "bridge_1_ledger_row_exists_after": false,
+    "bridge_2_ledger_row_exists_after": false,
+    "ledger_unchanged": true,
+    "catalog_unchanged": true,
+    "production_ledger_rows_added": 0,
+    "production_catalog_mutations": 0,
+    "application_health_pass": true
+  },
+  "dependency_audit": {
+    "legal_dependency_scan_status": "FAIL",
+    "dependency_findings_high": 10,
+    "pr_introduced": 0,
+    "main_reproduces": true,
+    "merge_blocker_remains": true
+  },
+  "machine_status": {
+    "CI_R3B1R112_CONTROLLED_PRODUCTION_HISTORY_BRIDGE_INCIDENT": true,
+    "BRIDGE_EXECUTION": "PARTIAL_OR_UNEXPECTED_PRODUCTION_EXECUTION",
+    "R3B1R12_READINESS": "NOT_READY",
+    "PR1054_MERGE_READINESS": "BLOCKED"
+  },
+  "next_phase": "SEPARATE_INCIDENT_ASSESSMENT_REQUIRED — do not retry prisma migrate deploy in R3B1R.1.2; fix Production env access path and re-authorize"
+}

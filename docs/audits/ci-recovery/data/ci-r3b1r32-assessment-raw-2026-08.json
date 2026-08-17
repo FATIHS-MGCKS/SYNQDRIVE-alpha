@@ -1,0 +1,545 @@
+{
+  "phase": "CI-R3B1R.3.2",
+  "generated_at": "2026-08-17T00:47:52+00:00",
+  "result": "BLOCKED",
+  "machine_status": "CI_R3B1R32_INSTALLED_TREE_LOCKFILE_CONTRACT_CLOSURE_BLOCKED",
+  "entry": {
+    "entry_head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+    "pr_1054_head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+    "current_main_sha": "721ad893d15cfa46786a112860548ce12a2be71d",
+    "pr_state": "OPEN",
+    "pr_is_draft": true,
+    "worktree_clean_at_entry": false
+  },
+  "inherited_r3b1r31": {
+    "evidence_md": "docs/audits/pr-recovery/R3B1R31-DEPENDENCY-OVERRIDE-COMPATIBILITY-ADVISORY-PROVENANCE-CLOSURE.md",
+    "evidence_json": "docs/audits/ci-recovery/data/ci-r3b1r31-assessment-raw-2026-08.json",
+    "prior_result": "SUCCESS",
+    "prior_machine_status": "CI_R3B1R31_DEPENDENCY_OVERRIDE_COMPATIBILITY_ADVISORY_PROVENANCE_CLOSURE_COMPLETED"
+  },
+  "r3b1r31_defect": {
+    "acknowledged": true,
+    "incompatible_override_edges_semver": 5,
+    "runtime_proof_reclassification_rejected": true
+  },
+  "fresh_npm_ci": {
+    "node_version": "v22.14.0",
+    "npm_version": "10.9.8",
+    "package_json_sha": "bfa2ebfb2ed7b792efe488e93454e867a5341c11358919c0e3b6f915c23aaf0a",
+    "package_lock_sha": "56c680d7d4125abf4b0f0d3edb3a7811d76c38658f4733a4902153b06ee5bd6b",
+    "npm_ci_exit_code": 0
+  },
+  "serve_static_usage": {
+    "package_used": true,
+    "import_paths": [
+      "backend/src/app.module.ts (removed)",
+      "backend/src/main.ts (NestExpress static middleware)"
+    ],
+    "runtime_purpose": "Serve built frontend assets from public/ excluding /api/*",
+    "disposition": "REMOVED @nestjs/serve-static; replaced with express.static via NestExpressApplication"
+  },
+  "parent_context_resolution": {
+    "edges": [
+      {
+        "parent": "@nestjs/core",
+        "parent_version": "10.4.22",
+        "child": "path-to-regexp",
+        "parent_declared_range": "3.3.0",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/path-to-regexp/package.json",
+        "actual_resolved_version": "3.3.0",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/@nestjs/core/node_modules/path-to-regexp",
+        "package_lock_version": null,
+        "lockfile_matches_runtime": null
+      },
+      {
+        "parent": "@nestjs/swagger",
+        "parent_version": "7.4.2",
+        "child": "path-to-regexp",
+        "parent_declared_range": "3.3.0",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/path-to-regexp/package.json",
+        "actual_resolved_version": "3.3.0",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/@nestjs/swagger/node_modules/path-to-regexp",
+        "package_lock_version": null,
+        "lockfile_matches_runtime": null
+      },
+      {
+        "parent": "@nestjs/swagger",
+        "parent_version": "7.4.2",
+        "child": "lodash",
+        "parent_declared_range": "4.17.21",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/@nestjs/swagger/node_modules/lodash/package.json",
+        "actual_resolved_version": "4.17.21",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/@nestjs/swagger/node_modules/lodash",
+        "package_lock_version": "4.17.21",
+        "lockfile_matches_runtime": true
+      },
+      {
+        "parent": "@nestjs/swagger",
+        "parent_version": "7.4.2",
+        "child": "js-yaml",
+        "parent_declared_range": "4.1.0",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/@nestjs/swagger/node_modules/js-yaml/package.json",
+        "actual_resolved_version": "4.1.0",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/@nestjs/swagger/node_modules/js-yaml",
+        "package_lock_version": "4.1.0",
+        "lockfile_matches_runtime": true
+      },
+      {
+        "parent": "express",
+        "parent_version": "4.22.1",
+        "child": "path-to-regexp",
+        "parent_declared_range": "~0.1.12",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/express/node_modules/path-to-regexp/package.json",
+        "actual_resolved_version": "0.1.13",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/express/node_modules/path-to-regexp",
+        "package_lock_version": "0.1.13",
+        "lockfile_matches_runtime": true
+      },
+      {
+        "parent": "@nestjs/platform-express",
+        "parent_version": "10.4.22",
+        "child": "multer",
+        "parent_declared_range": "2.0.2",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/multer/package.json",
+        "actual_resolved_version": "2.0.2",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/@nestjs/platform-express/node_modules/multer",
+        "package_lock_version": null,
+        "lockfile_matches_runtime": null
+      },
+      {
+        "parent": "@nestjs/config",
+        "parent_version": "4.0.4",
+        "child": "lodash",
+        "parent_declared_range": "4.18.1",
+        "actual_resolved_package_json_path": "/workspace/backend/node_modules/lodash/package.json",
+        "actual_resolved_version": "4.18.1",
+        "semver_satisfies_parent_range": true,
+        "package_lock_node_path": "node_modules/@nestjs/config/node_modules/lodash",
+        "package_lock_version": null,
+        "lockfile_matches_runtime": null
+      }
+    ],
+    "semver_out_of_range_production_edges": 0,
+    "lockfile_runtime_version_mismatches": 0,
+    "semver_out_of_range_edges": [],
+    "lockfile_runtime_mismatches": []
+  },
+  "path_to_regexp_resolution": {
+    "@nestjs/core": {
+      "parent_declared": "3.3.0",
+      "lockfile_child": null,
+      "runtime_child": "3.3.0",
+      "semver_valid": true,
+      "lockfile_matches_runtime": null
+    },
+    "@nestjs/swagger": {
+      "parent_declared": "3.3.0",
+      "lockfile_child": null,
+      "runtime_child": "3.3.0",
+      "semver_valid": true,
+      "lockfile_matches_runtime": null
+    },
+    "express": {
+      "parent_declared": "~0.1.12",
+      "lockfile_child": "0.1.13",
+      "runtime_child": "0.1.13",
+      "semver_valid": true,
+      "lockfile_matches_runtime": true
+    }
+  },
+  "dispositions": {
+    "serve_static": "REMOVED_UNUSED_PACKAGE_REPLACED_WITH_NESTEXPRESS_STATIC",
+    "multer": "BLOCKED_REQUIRES_SEPARATELY_SCOPED_PARENT_FRAMEWORK_UPGRADE (@nestjs/platform-express@11.2.1+ native multer 2.2.0)",
+    "lodash": "BLOCKED_REQUIRES_SEPARATELY_SCOPED_PARENT_UPGRADE (@nestjs/swagger exact lodash 4.17.21; no Nest10-compatible patched release)",
+    "js_yaml": "BLOCKED_REQUIRES_SEPARATELY_SCOPED_PARENT_UPGRADE (@nestjs/swagger exact js-yaml 4.1.0; no Nest10-compatible patched release)"
+  },
+  "lockfile_determinism": {
+    "lockfile_sha_a": "56c680d7d4125abf4b0f0d3edb3a7811d76c38658f4733a4902153b06ee5bd6b",
+    "lockfile_sha_b": "56c680d7d4125abf4b0f0d3edb3a7811d76c38658f4733a4902153b06ee5bd6b",
+    "installed_tree_digest_a": "f34b866d92a1cd91426cb2d5846cccfcb90b88d81661d875c609d8b2879f17e3",
+    "installed_tree_digest_b": "f34b866d92a1cd91426cb2d5846cccfcb90b88d81661d875c609d8b2879f17e3",
+    "package_lock_reproducible": true
+  },
+  "npm_graph_health": {
+    "npm_ci_exit_code": 0,
+    "npm_ls_exit_code": 0,
+    "npm_ls_invalid_dependencies": 0,
+    "npm_ls_extraneous_dependencies": 0,
+    "package_lock_sha": "56c680d7d4125abf4b0f0d3edb3a7811d76c38658f4733a4902153b06ee5bd6b",
+    "installed_tree_digest": "f34b866d92a1cd91426cb2d5846cccfcb90b88d81661d875c609d8b2879f17e3"
+  },
+  "final_audits": {
+    "backend": {
+      "critical": 0,
+      "high": 4,
+      "moderate": 12,
+      "low": 0,
+      "exit_code": 1
+    },
+    "frontend": {
+      "critical": 0,
+      "high": 0,
+      "moderate": 0,
+      "low": 0,
+      "exit_code": 0
+    }
+  },
+  "advisory_provenance": {
+    "high_critical_advisory_identity_valid": false,
+    "normalized_high_critical": [
+      {
+        "package": "@nestjs/platform-express",
+        "severity": "HIGH",
+        "ghsa_or_npm_advisory_id": [],
+        "vulnerable_range": "<=11.1.14 || 12.0.0-alpha.0 - 12.0.0-alpha.2",
+        "fix_available": {
+          "name": "@nestjs/platform-express",
+          "version": "11.2.1",
+          "isSemVerMajor": true
+        },
+        "dependency_path": [
+          "@nestjs/core",
+          "@nestjs/testing"
+        ],
+        "surface": "backend"
+      },
+      {
+        "package": "js-yaml",
+        "severity": "HIGH",
+        "ghsa_or_npm_advisory_id": [
+          "1112715",
+          "GHSA-mh29-5h37-fv8m",
+          "1121860",
+          "GHSA-h67p-54hq-rp68",
+          "1123911",
+          "GHSA-52cp-r559-cp3m",
+          "1138115",
+          "GHSA-5p4m-2wfm-xmqj"
+        ],
+        "vulnerable_range": "4.0.0 - 4.3.0",
+        "fix_available": {
+          "name": "@nestjs/swagger",
+          "version": "11.4.6",
+          "isSemVerMajor": true
+        },
+        "dependency_path": [
+          "@nestjs/swagger"
+        ],
+        "surface": "backend"
+      },
+      {
+        "package": "lodash",
+        "severity": "HIGH",
+        "ghsa_or_npm_advisory_id": [
+          "1115806",
+          "GHSA-r5fr-rjxr-66jc",
+          "1115810",
+          "GHSA-f23m-r3pf-42rh",
+          "1120370",
+          "GHSA-xxjr-mmjv-4gpg"
+        ],
+        "vulnerable_range": "<=4.17.23",
+        "fix_available": {
+          "name": "@nestjs/swagger",
+          "version": "11.4.6",
+          "isSemVerMajor": true
+        },
+        "dependency_path": [
+          "@nestjs/swagger"
+        ],
+        "surface": "backend"
+      },
+      {
+        "package": "multer",
+        "severity": "HIGH",
+        "ghsa_or_npm_advisory_id": [
+          "1113635",
+          "GHSA-xf7r-hgr6-v32p",
+          "1113636",
+          "GHSA-v52c-386h-88mc",
+          "1113996",
+          "GHSA-5528-5vmv-3xc2",
+          "1121089",
+          "GHSA-72gw-mp4g-v24j",
+          "1121091",
+          "GHSA-3p4h-7m6x-2hcm"
+        ],
+        "vulnerable_range": "<=2.1.1",
+        "fix_available": {
+          "name": "@nestjs/platform-express",
+          "version": "11.2.1",
+          "isSemVerMajor": true
+        },
+        "dependency_path": [
+          "@nestjs/platform-express"
+        ],
+        "surface": "backend"
+      }
+    ],
+    "pre_r3b1r3_source": "docs/audits/ci-recovery/data/ci-r3b1r31-pre-backend-audit.json"
+  },
+  "tests": {
+    "backend_build": {
+      "command": "npm run build",
+      "cwd": "/workspace/backend",
+      "exit_code": 0,
+      "stdout_tail": "\n> synqdrive-backend@0.1.0 prebuild\n> rimraf dist\n\n\n> synqdrive-backend@0.1.0 build\n> nest build\n\n",
+      "stderr_tail": ""
+    },
+    "frontend_build": {
+      "command": "npm run build",
+      "cwd": "/workspace/frontend",
+      "exit_code": 0,
+      "stdout_tail": "\n> frontend@0.0.0 build\n> tsc -b && vite build\n\nvite v7.3.6 building client environment for production...\ntransforming...\n\u2713 3784 modules transformed.\nrendering chunks...\ncomputing gzip size...\n../backend/public/index.html                                   0.76 kB \u2502 gzip:     0.49 kB\n../backend/public/assets/oil-x31U_wFP.svg                      4.59 kB \u2502 gzip:     1.89 kB\n../backend/public/assets/synqdrive-logo-new-CvROelsW.png      43.02 kB\n../backend/public/assets/synqdrive-login-YhOKy6pP.mp4        315.29 kB\n../backend/public/assets/index-7zlUFke3.css                  513.19 kB \u2502 gzip:    63.92 kB\n../backend/public/assets/LiquidGlassLensCore-B4rOnam8.js      50.83 kB \u2502 gzip:    17.32 kB\n../backend/public/assets/index-BGTS54OA.js                14,814.09 kB \u2502 gzip: 4,079.71 kB\n\u2713 built in 13.97s\n",
+      "stderr_tail": "[plugin vite:reporter] \n(!) /workspace/frontend/src/lib/tasks-pagination.ts is dynamically imported by /workspace/frontend/src/lib/api.ts, /workspace/frontend/src/lib/api.ts, /workspace/frontend/src/lib/api.ts, /workspace/frontend/src/lib/api.ts but also statically imported by /workspace/frontend/src/lib/tasks/hooks/useTaskList.ts, /workspace/frontend/src/operator/context/OperatorDataContext.tsx, /workspace/frontend/src/operator/views/OperatorTasksView.tsx, /workspace/frontend/src/rental/components/HealthErrorsView.tsx, /workspace/frontend/src/rental/components/TopBar.tsx, /workspace/frontend/src/rental/components/service-center/useServiceCenterData.ts, dynamic import will not move module into another chunk.\n\n[plugin vite:reporter] \n(!) /workspace/frontend/src/lib/document-upload-duplicate.ts is dynamically imported by /workspace/frontend/src/lib/api.ts, /workspace/frontend/src/lib/api.ts but also statically imported by /workspace/frontend/src/rental/components/documents/DocumentUploadDuplicatePanel.tsx, /workspace/frontend/src/rental/hooks/useDocumentIntakeFlow.ts, dynamic import will not move module into another chunk.\n\n[plugin vite:reporter] \n(!) /workspace/frontend/src/lib/document-upload-rate-limit.ts is dynamically imported by /workspace/frontend/src/lib/api.ts, /workspace/frontend/src/lib/api.ts but also statically imported by /workspace/frontend/src/rental/hooks/useDocumentIntakeFlow.ts, dynamic import will not move module into another chunk.\n\n[plugin vite:reporter] \n(!) /workspace/frontend/src/lib/document-upload-identification.ts is dynamically imported by /workspace/frontend/src/lib/api.ts, /workspace/frontend/src/lib/api.ts but also statically imported by /workspace/frontend/src/rental/hooks/useDocumentIntakeFlow.ts, dynamic import will not move module into another chunk.\n\n\n(!) Some chunks are larger than 1500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n"
+    },
+    "prisma_validate": {
+      "command": "npm run prisma:validate",
+      "cwd": "/workspace/backend",
+      "exit_code": 0,
+      "stdout_tail": "\n> synqdrive-backend@0.1.0 prisma:validate\n> DATABASE_URL=${DATABASE_URL:-postgresql://synqdrive:synqdrive@localhost:5432/synqdrive} prisma validate\n\nPrisma schema loaded from prisma/schema.prisma\nThe schema at prisma/schema.prisma is valid \ud83d\ude80\n",
+      "stderr_tail": "\nPrisma schema warning:\n- The `onDelete` referential action of a relation should not be set to `SetNull` when a referenced field is required. We recommend either to choose another referential action, or to make the referenced fields optional. Read more at https://pris.ly/d/postgres-set-null \n"
+    },
+    "test_legal_documents": {
+      "command": "npm run test:legal-documents",
+      "cwd": "/workspace/backend",
+      "exit_code": 0,
+      "stdout_tail": "\n> synqdrive-backend@0.1.0 test:legal-documents\n> jest --testPathPattern='legal-document|legal-documents|booking-document-(bundle|completeness|generation|phase|pointer|task)|booking-pickup-gate|rental-contract-legal|document-storage\\.(contract|config)' --testPathIgnorePatterns='postgres\\.invariants'\n\n[Nest] 2125280  - 08/17/2026, 12:39:44 AM     LOG [BookingDocumentGenerationDispatcherService] Enqueued booking document job type=INITIAL_BUNDLE booking=bk-1 jobId=job-1\n[Nest] 2125280  - 08/17/2026, 12:39:44 AM   DEBUG [BookingDocumentGenerationProcessorService] Skipping terminal job job-1 status=SUCCEEDED\n[Nest] 2125280  - 08/17/2026, 12:39:44 AM    WARN [BookingDocumentGenerationProcessorService] Booking document generation retryable failure jobId=job-1 attempt=1/5 code=BOOKING_DOC_GEN_EXECUTION_FAILED\n[Nest] 2125280  - 08/17/2026, 12:39:44 AM    WARN [BookingDocumentGenerationRecoveryScheduler] Recovered stale processing jobId=job-stale booking=bk-1\n[Nest] 2125273  - 08/17/2026, 12:39:44 AM   DEBUG [TasksService] task.completed\n[Nest] 2125273  - 08/17/2026, 12:39:44 AM   DEBUG [TasksService] task.completed\n[Nest] 2125274  - 08/17/2026, 12:39:44 AM    WARN [LegalDocumentIntegrityPersistenceService] [dry-run] Unexpected storage object org=org-1 key=organizations/org-1/legal/TERMS_AND_CONDITIONS/2026/08/4f66ee0a-877b-4b25-80b3-541dff28b778-agb.pdf\n[Nest] 2125274  - 08/17/2026, 12:39:44 AM    WARN [LegalDocumentIntegrityPersistenceService] [dry-run] Unexpected storage object org=org-1 key=organizations/org-1/legal/TERMS_AND_CONDITIONS/2026/08/0d7d2792-053e-4803-b401-6f93cb992ad3-agb.pdf\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM    WARN [PermissionsGuard] PermissionsGuard: user user-1 missing legal-documents.read in org org-a\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM    WARN [PermissionsGuard] PermissionsGuard: user user-1 missing legal-documents.write in org org-a\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM    WARN [PermissionsGuard] PermissionsGuard: user user-1 missing legal-documents.manage in org org-a\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM    WARN [OrgScopingGuard] OrgScopingGuard: user user-1 tried to access org org-other but JWT claims org org-a\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM     LOG [LegalDocumentRetentionService] Legal document retention manual complete \u2014 dryRun=false affected=0 failed=0\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM     LOG [LegalDocumentRetentionService] Legal document retention manual complete \u2014 dryRun=false affected=0 failed=1\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM     LOG [LegalDocumentRetentionService] Legal document retention manual complete \u2014 dryRun=true affected=0 failed=0\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM     LOG [LegalDocumentRetentionService] Legal document retention manual complete \u2014 dryRun=true affected=1 failed=0\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM     LOG [LegalDocumentRetentionService] Legal document retention manual complete \u2014 dryRun=false affected=0 failed=0\n[Nest] 2125274  - 08/17/2026, 12:39:45 AM     LOG [LegalDocumentRetentionService] Legal document retention manual complete \u2014 dryRun=false affected=0 failed=0\n[Nest] 2125273  - 08/17/2026, 12:39:45 AM    WARN [LegalDocumentDevelopmentMalwareScannerAdapter] LEGAL DOCUMENT MALWARE SCANNER: development adapter active \u2014 not for production use\n",
+      "stderr_tail": ":44 AM   ERROR [BookingDocumentGenerationProcessorService] Booking document generation failed final jobId=job-1 code=BOOKING_DOC_GEN_EXECUTION_FAILED still failing\nPASS src/modules/documents/booking-document-generation/booking-document-generation.service.spec.ts\nPASS src/modules/outbound-email/booking-legal-document-email.service.spec.ts\nPASS src/modules/documents/legal-documents.permissions.characterization.spec.ts\nPASS src/modules/bookings/booking-pickup-gate/booking-pickup-gate.integration.spec.ts (16.025 s)\n[Nest] 2125280  - 08/17/2026, 12:39:44 AM   ERROR [BookingDocumentBundleMonitoringService] ALERT: Booking bundle pointer mapping missing \u2014 org=org-1 booking=bk-1 documentType=NOT_A_REAL_TYPE\n[Nest] 2125280  - 08/17/2026, 12:39:44 AM   ERROR [BookingDocumentBundleMonitoringService] ALERT: Booking bundle legal resolver conflict \u2014 org=org-1 booking=bk-1 conflicts=[{\"documentType\":\"TERMS_AND_CONDITIONS\",\"code\":\"OVERLAPPING_SCOPE_SAME_PRIORITY\",\"message\":\"Scope conflict between a and b\"}]\nPASS src/modules/documents/booking-document-bundle-legal-pointer.spec.ts\nPASS src/modules/documents/legal-documents.controller.spec.ts\nPASS src/modules/documents/booking-document-task.sync.spec.ts\nPASS src/modules/documents/notifications/legal-document-operational-notification.service.spec.ts\n[Nest] 2125274  - 08/17/2026, 12:39:44 AM   ERROR [LegalDocumentIntegrityAlertService] ALERT: Legal document storage integrity \u2014 org=org-1 doc=doc-1 status=CHECKSUM_MISMATCH key=organizations/org-1/legal/TERMS_AND_CONDITIONS/2026/08/4f66ee0a-877b-4b25-80b3-541dff28b778-agb.pdf source=reconciliation detail=Storage metadata hash does not match database checksum\n[Nest] 2125274  - 08/17/2026, 12:39:44 AM   ERROR [LegalDocumentIntegrityAlertService] ALERT: Legal document storage integrity \u2014 org=org-1 doc=doc-1 status=MISSING_OBJECT key=organizations/org-1/legal/TERMS_AND_CONDITIONS/2026/07/missing.pdf source=reconciliation detail=Object not found in storage\nPASS src/modules/documents/integrity/legal-document-storage-reconciliation.service.spec.ts\nPASS src/modules/documents/legal-documents-tenant.spec.ts\nPASS src/modules/documents/legal-documents-scan-gating.spec.ts\nPASS src/modules/documents/legal-document-delivery-evidence.integration.spec.ts\nPASS src/modules/documents/legal-document-usage.service.spec.ts\nPASS src/modules/documents/legal-documents.permissions.enforcement.spec.ts\nPASS src/modules/documents/rental-contract-legal-snapshot.service.spec.ts\nPASS src/modules/documents/legal-document-delivery-evidence.service.spec.ts\nPASS src/modules/documents/legal-document-permission.defaults.spec.ts\nPASS src/modules/documents/retention/legal-document-retention.service.spec.ts\nPASS src/modules/documents/legal-document-events.service.spec.ts\nPASS src/modules/documents/storage/document-storage.contract.spec.ts\nPASS src/modules/documents/legal-document-four-eyes.service.spec.ts\n[Nest] 2125273  - 08/17/2026, 12:39:45 AM   ERROR [LegalDocumentMalwareScannerHealthService] ALERT: Legal document malware scanner unavailable for 2 consecutive checks \u2014 provider=test scannerId=test-scanner detail=down\nPASS src/modules/documents/legal-document-malware-scan.service.spec.ts\nPASS src/modules/documents/notifications/legal-document-operational-notification.matrix.spec.ts\nPASS src/modules/documents/dto/legal-document-api.dto.spec.ts\nPASS src/modules/documents/legal-document-pdf-validation.service.spec.ts\nPASS src/modules/documents/legal-documents-api.errors.spec.ts\nPASS src/modules/documents/legal-document-resolver.engine.spec.ts\nPASS src/modules/documents/integrity/legal-document-checksum-verification.service.spec.ts\nPASS src/modules/documents/booking-document-completeness.engine.spec.ts\nPASS src/modules/documents/legal-document-scope.validation.spec.ts\nPASS src/modules/documents/legal-document-type.compat.spec.ts\nPASS src/modules/documents/legal-document-lifecycle.transitions.spec.ts\nPASS src/modules/documents/booking-document-bundle-pointer.mapping.spec.ts\nPASS src/modules/documents/legal-document-api.mapper.spec.ts\nPASS src/modules/documents/legal-documents.util.spec.ts\nPASS src/modules/documents/booking-document-phase.util.spec.ts\nPASS src/modules/documents/legal-document-scope.conflicts.spec.ts\nPASS src/modules/documents/storage/document-storage.config-validator.spec.ts\nPASS src/modules/documents/integrity/legal-document-integrity-resolver.spec.ts\nPASS src/modules/documents/malware-scanner/legal-document-malware-scanner.config-validator.spec.ts\nPASS src/modules/documents/legal-document-resolver.context.spec.ts\nPASS src/modules/documents/legal-document-scope.legacy.spec.ts\nPASS src/modules/documents/legal-document-events.constants.spec.ts\n\nTest Suites: 46 passed, 46 total\nTests:       361 passed, 361 total\nSnapshots:   0 total\nTime:        17.714 s\nRan all test suites matching /legal-document|legal-documents|booking-document-(bundle|completeness|generation|phase|pointer|task)|booking-pickup-gate|rental-contract-legal|document-storage\\.(contract|config)/i.\n"
+    },
+    "test_legal_documents_security": {
+      "command": "npm run test:legal-documents:security",
+      "cwd": "/workspace/backend",
+      "exit_code": 0,
+      "stdout_tail": "\n> synqdrive-backend@0.1.0 test:legal-documents:security\n> jest legal-documents-security-negative\n\n",
+      "stderr_tail": "PASS src/modules/documents/legal-documents-security-negative.spec.ts (10.994 s)\n  Legal documents \u2014 security negative tests\n    tenant isolation\n      \u2713 rejects manipulated organizationId on getDetail (structured 404) (3 ms)\n      \u2713 rejects foreign documentId on lifecycle mutation (7 ms)\n      \u2713 rejects foreign bookingId on delivery evidence list (1 ms)\n      \u2713 rejects audit access for foreign-tenant document\n    upload validation & storage safety\n      \u2713 rejects forged MIME type when ingestion detects non-PDF content (1 ms)\n      \u2713 rejects path traversal in original filename via storage adapter (6 ms)\n    four-eyes principle\n      \u2713 blocks uploader from approving own document when four-eyes is enabled (1 ms)\n      \u2713 blocks uploader from activating own document when four-eyes is enabled (1 ms)\n    lifecycle & status integrity\n      \u2713 rejects illegal status transition DRAFT \u2192 ACTIVE (1 ms)\n      \u2713 rejects activation of revoked document\n      \u2713 rejects direct archive from ACTIVE (must supersede or revoke first) (1 ms)\n      \u2713 rejects manipulated client schedule timestamp (invalid validFrom) (1 ms)\n    scan gating\n      \u2713 rejects activation with unknown scan status\n    integrity & download authorization\n      \u2713 blocks download for foreign-tenant document (1 ms)\n      \u2713 blocks download when integrity status is blocking\n      \u2713 blocks download on hash mismatch when verify-on-download is enabled (1 ms)\n      \u2713 blocks download when storage object is missing (10 ms)\n    delivery evidence idempotency\n      \u2713 returns existing row on duplicate requestId without second insert (1 ms)\n      \u2713 rejects evidence mutation for foreign-tenant evidence id (1 ms)\n    resolver conflict\n      \u2713 surfaces scope conflict when two equal-priority ACTIVE candidates match (1 ms)\n    pickup gate cross-tenant\n      \u2713 blocks pickup when booking belongs to another organization (1 ms)\n    parallel activation conflict\n      \u2713 returns ACTIVE_CONFLICT when two versions activate concurrently (1 ms)\n\nTest Suites: 1 passed, 1 total\nTests:       22 passed, 22 total\nSnapshots:   0 total\nTime:        11.157 s\nRan all test suites matching /legal-documents-security-negative/i.\n"
+    },
+    "audit_dependencies": {
+      "command": "bash /workspace/scripts/audits/audit-dependencies.sh",
+      "cwd": "/workspace",
+      "exit_code": 1,
+      "stdout_tail": "epends on vulnerable versions of body-parser\n  Depends on vulnerable versions of express\n  Depends on vulnerable versions of multer\n  node_modules/@nestjs/platform-express\n    @nestjs/testing  <=11.0.0-next.4\n    Depends on vulnerable versions of @nestjs/core\n    Depends on vulnerable versions of @nestjs/platform-express\n    node_modules/@nestjs/testing\n  @nestjs/schedule  <=4.1.2\n  Depends on vulnerable versions of @nestjs/core\n  Depends on vulnerable versions of uuid\n  node_modules/@nestjs/schedule\n  @nestjs/swagger  <=11.2.5 || >=12.0.0-alpha.0\n  Depends on vulnerable versions of @nestjs/core\n  Depends on vulnerable versions of js-yaml\n  Depends on vulnerable versions of lodash\n  node_modules/@nestjs/swagger\n\nbody-parser  <=1.20.5 || 2.0.0-beta.1 - 2.0.2\nSeverity: moderate\nbody-parser vulnerable to denial of service when invalid limit value silently disables size enforcement - https://github.com/advisories/GHSA-v422-hmwv-36x6\nDepends on vulnerable versions of qs\nfix available via `npm audit fix --force`\nWill install @nestjs/platform-express@11.2.1, which is a breaking change\nnode_modules/body-parser\n\nfile-type  13.0.0 - 21.3.1\nSeverity: moderate\nfile-type affected by infinite loop in ASF parser on malformed input with zero-size sub-header - https://github.com/advisories/GHSA-5v7r-6r5c-r473\nfile-type: ZIP Decompression Bomb DoS via [Content_Types].xml entry - https://github.com/advisories/GHSA-j47w-4g3g-c36v\nfix available via `npm audit fix --force`\nWill install file-type@22.0.2, which is a breaking change\nnode_modules/@nestjs/common/node_modules/file-type\nnode_modules/file-type\n  @nestjs/common  10.4.16 - 10.4.22 || 11.0.16 - 11.1.16 || 12.0.0-alpha.0 - 12.0.0-alpha.2\n  Depends on vulnerable versions of file-type\n  node_modules/@nestjs/common\n\njs-yaml  4.0.0 - 4.3.0\nSeverity: high\njs-yaml has prototype pollution in merge (<<) - https://github.com/advisories/GHSA-mh29-5h37-fv8m\nJS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases - https://github.com/advisories/GHSA-h67p-54hq-rp68\njs-yaml: YAML merge-key chains can force quadratic CPU consumption - https://github.com/advisories/GHSA-52cp-r559-cp3m\nJS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) \u2014 CVE-2026-59870 fix not backported - https://github.com/advisories/GHSA-5p4m-2wfm-xmqj\nfix available via `npm audit fix --force`\nWill install @nestjs/swagger@11.4.6, which is a breaking change\nnode_modules/@nestjs/swagger/node_modules/js-yaml\n\nlodash  <=4.17.23\nSeverity: high\nlodash vulnerable to Code Injection via `_.template` imports key names - https://github.com/advisories/GHSA-r5fr-rjxr-66jc\nlodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit` - https://github.com/advisories/GHSA-f23m-r3pf-42rh\nLodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions - https://github.com/advisories/GHSA-xxjr-mmjv-4gpg\nfix available via `npm audit fix --force`\nWill install @nestjs/swagger@11.4.6, which is a breaking change\nnode_modules/@nestjs/swagger/node_modules/lodash\n\nmulter  <=2.1.1\nSeverity: high\nMulter vulnerable to Denial of Service via incomplete cleanup - https://github.com/advisories/GHSA-xf7r-hgr6-v32p\nMulter vulnerable to Denial of Service via resource exhaustion - https://github.com/advisories/GHSA-v52c-386h-88mc\nMulter Vulnerable to Denial of Service via Uncontrolled Recursion - https://github.com/advisories/GHSA-5528-5vmv-3xc2\nMulter vulnerable to Denial of Service via deeply nested field names - https://github.com/advisories/GHSA-72gw-mp4g-v24j\nMulter vulnerable to Denial of Service via incomplete cleanup of aborted uploads - https://github.com/advisories/GHSA-3p4h-7m6x-2hcm\nfix available via `npm audit fix --force`\nWill install @nestjs/platform-express@11.2.1, which is a breaking change\nnode_modules/multer\n\nqs  6.11.1 - 6.15.1\nSeverity: moderate\nqs has a remotely triggerable DoS: qs.stringify crashes with TypeError on null/undefined entries in comma-format arrays when encodeValuesOnly is set - https://github.com/advisories/GHSA-q8mj-m7cp-5q26\nfix available via `npm audit fix --force`\nWill install @nestjs/platform-express@11.2.1, which is a breaking change\nnode_modules/qs\n  express  4.21.0 - 4.22.1 || 5.0.0-alpha.1 - 5.0.1\n  Depends on vulnerable versions of qs\n  node_modules/express\n\nuuid  <11.1.1\nSeverity: moderate\nuuid: Missing buffer bounds check in v3/v5/v6 when buf is provided - https://github.com/advisories/GHSA-w5hq-g745-h8pq\nfix available via `npm audit fix --force`\nWill install uuid@14.0.1, which is a breaking change\nnode_modules/@nestjs/schedule/node_modules/uuid\nnode_modules/uuid\n\n16 vulnerabilities (12 moderate, 4 high)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues (including breaking changes), run:\n  npm audit fix --force\nRunning dependency audit (frontend)...\nfound 0 vulnerabilities\nBackend audit exit code: 1\nFrontend audit exit code: 0\nDependency audit failed (high/critical findings present).\n",
+      "stderr_tail": ""
+    },
+    "audit_exec_regression": {
+      "command": "bash /workspace/scripts/audits/test-audit-dependencies-exec.sh",
+      "cwd": "/workspace",
+      "exit_code": 0,
+      "stdout_tail": "PASS backend_fail_frontend_pass\nPASS backend_pass_frontend_fail\nPASS backend_fail_frontend_fail\nPASS backend_pass_frontend_pass\nDEPENDENCY_AUDIT_BOTH_SURFACES_ALWAYS_EXECUTED=true\n",
+      "stderr_tail": ""
+    }
+  },
+  "immutability": {
+    "schema_sha_before": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+    "schema_sha_after": "6818b91b2486b83a97351b86f1f25b75271b07a490ad7711618928f078906c17",
+    "migration_tree_sha_before": "868dcbb8cef8078cbc16d70c939751b470f45bb01fa420f023119d45259beee6",
+    "migration_tree_sha_after": "868dcbb8cef8078cbc16d70c939751b470f45bb01fa420f023119d45259beee6",
+    "prisma_client_version": "^5.20.0",
+    "prisma_cli_version": "^5.20.0",
+    "migration_tree_changed": false,
+    "schema_prisma_changed": false,
+    "prisma_toolchain_changed": false
+  },
+  "database_reconciliation_acceptance_preserved": true,
+  "strict_gates": {
+    "semver_out_of_range_production_edges": 0,
+    "lockfile_runtime_version_mismatches": 0,
+    "unresolved_high_critical": 4,
+    "runtime_compatibility_failures": 1
+  },
+  "status_matrix": {
+    "DEPENDENCY_GRAPH_AUTHORITY": "REQUIRES_SEPARATELY_SCOPED_PARENT_FRAMEWORK_UPGRADE",
+    "SECURITY_DEPENDENCY_GATE": "HIGH_CRITICAL_REMAINING_UNDER_STRICT_CONTRACT",
+    "DATABASE_RECONCILIATION_ACCEPTANCE": "PRESERVED_ACCEPTED_FINAL",
+    "PR1054_MERGE_READINESS": "BLOCKED",
+    "R3B1S_READINESS": "NOT_READY"
+  },
+  "github_checks": {
+    "available": true,
+    "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+    "checks": [
+      {
+        "name": "CI gate (all critical jobs)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95253033554
+      },
+      {
+        "name": "CI gate (all critical jobs)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 95252855377
+      },
+      {
+        "name": "Production build",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365699
+      },
+      {
+        "name": "Lint",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365646
+      },
+      {
+        "name": "Frontend component tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365539
+      },
+      {
+        "name": "Backend unit tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365526
+      },
+      {
+        "name": "Security / dependency scan",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365522
+      },
+      {
+        "name": "Backend security tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365519
+      },
+      {
+        "name": "Typecheck",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365514
+      },
+      {
+        "name": "Playwright E2E (Vehicle Detail)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365512
+      },
+      {
+        "name": "Accessibility (axe)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252365504
+      },
+      {
+        "name": "Security / dependency scan",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "failure",
+        "run_id": 95252359244
+      },
+      {
+        "name": "Playwright E2E",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359193
+      },
+      {
+        "name": "Production build",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359174
+      },
+      {
+        "name": "Typecheck",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359170
+      },
+      {
+        "name": "Accessibility (axe)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359168
+      },
+      {
+        "name": "Backend unit tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359156
+      },
+      {
+        "name": "Prisma validate",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359139
+      },
+      {
+        "name": "Frontend component tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359123
+      },
+      {
+        "name": "Migration tests (PostgreSQL)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359120
+      },
+      {
+        "name": "Backend integration tests",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359098
+      },
+      {
+        "name": "Lint",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252359038
+      },
+      {
+        "name": "Install (lockfile)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252244617
+      },
+      {
+        "name": "Install (lockfile)",
+        "head_sha": "edf5856151509f3ae5dcd667a076224cef3ae782",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 95252244386
+      }
+    ],
+    "required_checks_failed": 1,
+    "required_checks_pending": 0,
+    "failed_required": [
+      "Security / dependency scan"
+    ],
+    "missing_required": []
+  },
+  "next_required_phase": "NESTJS_11_FRAMEWORK_UPGRADE_OR_SWAGGER_PARENT_PATCH",
+  "production_mutations": 0
+}

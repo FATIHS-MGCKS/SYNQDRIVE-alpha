@@ -879,7 +879,7 @@ export async function openVehicleDetailRental(
       if (theme) localStorage.setItem('synqdrive-theme-preference', theme);
       sessionStorage.setItem('synqdrive_rental_fleet_tab', 'status');
     },
-    { token: 'vehicle-detail-e2e-token', user, locale: options?.locale ?? 'de', theme: options?.theme },
+    { token: 'vehicle-detail-e2e-token', user, locale: options?.locale ?? 'en', theme: options?.theme },
   );
   await installVehicleDetailMocks(page);
   await page.goto('/rental', { waitUntil: 'load' });
@@ -909,7 +909,7 @@ export async function openVehicleFromFleet(page: Page, plate: string) {
   await expect(row.first()).toBeVisible({ timeout: 20_000 });
   await row.first().getByRole('button', { name: 'Open vehicle details' }).click();
   await expect(page.getByRole('heading', { name: /VW Golf/ })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toBeVisible();
+  await expect(page.locator('#vehicle-detail-tab-overview')).toBeVisible({ timeout: 20_000 });
 }
 
 export async function openVehicleBySearch(page: Page, query: string) {

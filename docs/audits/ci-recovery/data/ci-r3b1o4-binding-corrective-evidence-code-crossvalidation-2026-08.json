@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.4-binding-corrective",
+  "producers": [
+    {
+      "artifact": "ci-r3b1o4-corrective-final-m252-exact-parity-2026-08.json",
+      "module": "ci_r3b1o4_m252_exact_parity",
+      "function": "run_m252_exact_parity",
+      "pre_run_sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+      "post_run_sha256": "ed742b67c53408cfcde7e874435df15816686c6c4ea4e5a1db5a1169001ea768",
+      "hash_stable": true
+    },
+    {
+      "artifact": "ci-r3b1o4-corrective-full-catalog-delta-authority-2026-08.json",
+      "module": "ci_r3b1o4_full_catalog_delta",
+      "function": "build_full_catalog_delta_authority",
+      "pre_run_sha256": null,
+      "post_run_sha256": null,
+      "hash_stable": true
+    },
+    {
+      "artifact": "ci-r3b1o4-corrective-t2-stale-index-drop-safety-2026-08.json",
+      "module": "ci_r3b1o4_t2_stale_index_safety",
+      "function": "evaluate_t2_stale_index_drop_safety",
+      "pre_run_sha256": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d",
+      "post_run_sha256": "c0d22aeeb7da0b99c4d714aa915b2b25ab3f4a76cefa6004e2a702d4d0e5eb5d",
+      "hash_stable": true
+    },
+    {
+      "artifact": "ci-r3b1o4-corrective-second-deploy-idempotency-2026-08.json",
+      "module": "ci_r3b1o4_final_twin",
+      "function": "run_tail_reconciliation_strategy",
+      "pre_run_sha256": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b",
+      "post_run_sha256": "e8d09e9a00881c88e72b8e6494fa5d05e2b123ce92de414e299d239e8416de9b",
+      "hash_stable": true
+    },
+    {
+      "artifact": "ci-r3b1o4-corrective-golden-tests-2026-08.json",
+      "module": "ci_r3b1o4_golden_tests",
+      "function": "run_golden_tests",
+      "pre_run_sha256": "c144b3044d6fa9ba9b7e2c6ffb84c2b9c6c9c2ad2eb0068ba0c04817e1b493e5",
+      "post_run_sha256": "c144b3044d6fa9ba9b7e2c6ffb84c2b9c6c9c2ad2eb0068ba0c04817e1b493e5",
+      "hash_stable": true
+    }
+  ],
+  "claimed_properties": [
+    "columns",
+    "primary_key",
+    "unique_index.keys",
+    "unique_index.include_columns",
+    "unique_index.collation",
+    "unique_index.opclass",
+    "unique_index.sort_direction",
+    "unique_index.nulls_ordering",
+    "composite_index.keys",
+    "composite_index.include_columns",
+    "foreign_keys"
+  ],
+  "implemented_reader_properties": [
+    "columns",
+    "primary_key",
+    "unique_index.keys",
+    "unique_index.include_columns",
+    "unique_index.collation",
+    "unique_index.opclass",
+    "unique_index.sort_direction",
+    "unique_index.nulls_ordering",
+    "composite_index.keys",
+    "composite_index.include_columns",
+    "foreign_keys"
+  ],
+  "implemented_comparator_properties": [
+    "columns",
+    "primary_key",
+    "unique_index.keys",
+    "unique_index.include_columns",
+    "unique_index.collation",
+    "unique_index.opclass",
+    "unique_index.sort_direction",
+    "unique_index.nulls_ordering",
+    "composite_index.keys",
+    "composite_index.include_columns",
+    "foreign_keys"
+  ],
+  "covered_test_properties": [
+    "m252_wrong_include",
+    "m252_wrong_collation",
+    "m252_wrong_opclass",
+    "m252_wrong_sort_direction",
+    "m252_wrong_null_ordering"
+  ],
+  "missing_reader_properties": [],
+  "missing_comparator_properties": [],
+  "required_missing_test_coverage": [],
+  "producer_hash_mismatches": 0,
+  "test_definition_mismatches": 0,
+  "evidence_code_mismatch_count": 0,
+  "pass": true
+}

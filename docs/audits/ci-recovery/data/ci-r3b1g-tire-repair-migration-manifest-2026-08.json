@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1G",
+  "migration": "20260716182730_ci_r3b_tire_setup_status_predecessor",
+  "path": "backend/prisma/migrations/20260716182730_ci_r3b_tire_setup_status_predecessor/migration.sql",
+  "sha256": "55838c640e292a17a8409a5c49df035173b8668a00b4c08b91f3cde0eda25fca",
+  "statement_count": 1,
+  "IMPLEMENTATION_AUTHORITY_MANIFEST_SHA256": "bd0abb7828d577d1ed358631ec8052cf12db06da31422517ba191f93695db7c5",
+  "HEAD_SHA": "795962d438457e05b5c55c0a7724b2c4b6f45305",
+  "pass": true
+}

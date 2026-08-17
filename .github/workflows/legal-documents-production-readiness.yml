@@ -185,7 +185,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate && npx prisma migrate deploy
+      - run: npm ci && npx prisma generate && PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
         working-directory: backend
         env:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
@@ -284,10 +284,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: bash scripts/audits/audit-dependencies.sh
+      - name: Baseline-aware dependency audit (PR base vs head)
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.sha }}
+        run: bash scripts/audits/audit-dependencies.sh
 
   ci-gate:
     name: CI gate (all critical jobs)

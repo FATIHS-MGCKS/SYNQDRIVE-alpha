@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "phase": "CI-R3B1O.3-corrective",
+  "baseline": {
+    "CORRECTIVE_WORKTREE_STRICT_EMPTY": true,
+    "PRE_CORRECTIVE_SHA": "942ecc04bdb66b4530e158cd5a92b1797a7522cc",
+    "R3B1O2_REMOTE_HEAD": "819d67307fb7405a0bcf62a6ea75dbb829dbd2f0",
+    "MAIN_HEAD": "721ad893d15cfa46786a112860548ce12a2be71d"
+  }
+}
