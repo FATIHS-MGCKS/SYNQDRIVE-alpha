@@ -1,0 +1,1 @@
+{"metadata":{"vulnerabilities":{"high":1,"critical":0}},"vulnerabilities":{"lodash":{"name":"lodash","severity":"high","isDirect":false,"via":[{"source":1115806,"name":"lodash","url":"https://github.com/advisories/GHSA-xxjr-mmjv-4gpg","severity":"high","range":"<=4.17.23"}],"range":"<=4.17.23","nodes":["node_modules/lodash"]}}}

@@ -1,0 +1,1 @@
+{"metadata":{"vulnerabilities":{"high":1,"critical":0}},"vulnerabilities":{"multer":{"name":"multer","severity":"high","isDirect":true,"via":[{"source":1113635,"name":"multer","url":"https://github.com/advisories/GHSA-xf7r-hgr6-v32p","severity":"high","range":"<=2.1.1"}],"range":"<=2.1.1","nodes":["node_modules/multer"]}}}

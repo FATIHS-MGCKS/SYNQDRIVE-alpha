@@ -5,7 +5,9 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from '@shared/interceptors/audit.interceptor';
 import { MasterAdminPrivilegedAuditInterceptor } from '@shared/interceptors/master-admin-privileged-audit.interceptor';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { BullModule } from '@nestjs/bullmq';
+import { join } from 'path';
 import Redis from 'ioredis';
 
 import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, twilioConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, billingEmailConfig, billingReconciliationConfig, billingStripeSyncConfig, taskAutomationOutboxConfig, taskAutomationWorkflowRuntimeConfig, workflowShadowConfig, workflowRuntimeRolloutConfig, deviceConnectionWebhookInboxConfig, connectivityRecoveryConfig, drivingIntelligenceV2Config, stationsV2Config, batteryHealthV2Config, batteryV2RetentionConfig, voiceRetentionConfig, documentRetentionConfig, legalDocumentRetentionConfig, iamConfig, iamDataRetentionConfig } from '@config/index';
@@ -166,6 +168,11 @@ export class AppModule {
             limit: 200,     // max 200 requests per window
           },
         ]),
+
+        ServeStaticModule.forRoot({
+          rootPath: join(process.cwd(), 'public'),
+          exclude: ['/api/(.*)'],
+        }),
 
         // Global BullMQ root — always registered so @InjectQueue resolves across
         // the dependency graph. defaultJobOptions enforce bounded Redis memory

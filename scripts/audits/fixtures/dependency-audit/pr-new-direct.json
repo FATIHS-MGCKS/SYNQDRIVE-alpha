@@ -1,0 +1,1 @@
+{"metadata":{"vulnerabilities":{"high":1,"critical":0}},"vulnerabilities":{"directpkg":{"name":"directpkg","severity":"high","isDirect":true,"via":[{"source":7777777,"name":"directpkg","url":"https://github.com/advisories/GHSA-direct-test","severity":"high","range":"<2.0.0"}],"range":"<2.0.0","nodes":["node_modules/directpkg"]}}}
