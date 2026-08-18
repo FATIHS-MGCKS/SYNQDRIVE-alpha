@@ -17,10 +17,16 @@ Master Admin uses a config-driven sidebar (`frontend/src/master/navigation/`) al
 
 | Component | Role |
 |-----------|------|
+| `MasterAdminShell` | Root shell + `<main id="master-main">` |
+| `PageContainer` | Per-view max-width (`standard` / `wide` / `full`) |
+| `MasterPageHeader` | Canonical page header + optional tabs |
+| `MasterGlobalChrome` | TopBar row above page content |
 | `Sidebar.tsx` | Product nav + control footer |
 | `MasterAccountSheet.tsx` | Account / theme / logout sheet |
 | `useMasterNavBadges.ts` | Operational badges from existing APIs |
 | `App.tsx` | View state + `pushState` / `popstate` |
+
+See also: `architecture/MASTER_ADMIN_PAGE_FRAMEWORK_2026-08-18.md`
 
 ## Groups (8)
 

@@ -17,9 +17,10 @@ const shellContentPadding: Record<AppShellVariant, string> = {
   master: 'px-4 sm:px-6 lg:px-8 pt-3 lg:pt-4 pb-6',
 };
 
-const shellMaxWidth: Record<AppShellVariant, string> = {
+const shellMaxWidth: Record<AppShellVariant, string | null> = {
   rental: 'max-w-[1440px]',
-  master: 'max-w-[1400px]',
+  /** Master max-width is owned by PageContainer — avoid double constraint */
+  master: null,
 };
 
 /**
@@ -49,7 +50,8 @@ export function AppShell({
           <div
             className={cn(
               shellMaxWidth[variant],
-              'mx-auto w-full min-w-0',
+              'w-full min-w-0',
+              shellMaxWidth[variant] && 'mx-auto',
               variant === 'rental' && 'text-[13px]',
             )}
           >

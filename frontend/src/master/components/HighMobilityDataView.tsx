@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
 import {
   Radio, Search, RefreshCw, Plus, Trash2, CheckCircle2, XCircle,
   Clock, AlertTriangle, ChevronDown, ChevronUp, Loader2, Shield,
@@ -1262,13 +1263,15 @@ export function HighMobilityDataView({ initialTab = 'vehicles' }: HighMobilityDa
     setTab('vehicles');
   };
 
-  const tabBg = 'sq-tab-bar';
-  const tabActive = TAB_ACTIVE;
-  const tabInactive = TAB_IDLE;
+  const hmTabs: MasterPageTab<'vehicles' | 'eligibility' | 'streaming'>[] = [
+    { id: 'vehicles', label: 'Vehicle List' },
+    { id: 'eligibility', label: 'Eligibility Check' },
+    { id: 'streaming', label: 'MQTT Diagnostics', icon: <Signal className="w-3 h-3" /> },
+  ];
 
   return (
-    <div className="flex flex-col h-full min-h-0 px-4 sm:px-6 py-5 space-y-5">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="High Mobility"
         icon={<Radio className="w-4 h-4" />}
         status={
@@ -1277,6 +1280,11 @@ export function HighMobilityDataView({ initialTab = 'vehicles' }: HighMobilityDa
             <StatusChip tone="info">HM Telemetry-APP</StatusChip>
           </>
         }
+        tabs={hmTabs}
+        activeTabId={tab}
+        onTabChange={setTab}
+        tabsAriaLabel="High Mobility"
+        tabsTestIdPrefix="hm-data"
       />
 
       {/* Domain rules notice */}
@@ -1290,35 +1298,9 @@ export function HighMobilityDataView({ initialTab = 'vehicles' }: HighMobilityDa
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className={`inline-flex items-center gap-1 p-1 rounded-lg border self-start ${tabBg}`}>
-        <button
-          onClick={() => setTab('vehicles')}
-          className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'vehicles' ? tabActive : tabInactive}`}
-        >
-          Vehicle List
-        </button>
-        <button
-          onClick={() => setTab('eligibility')}
-          className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'eligibility' ? tabActive : tabInactive}`}
-        >
-          Eligibility Check
-        </button>
-        <button
-          onClick={() => setTab('streaming')}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'streaming' ? tabActive : tabInactive}`}
-        >
-          <Signal className="w-3 h-3" />
-          MQTT Diagnostics
-        </button>
-      </div>
-
-      {/* Tab content */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {tab === 'vehicles' && <VehicleListTab />}
-        {tab === 'eligibility' && <EligibilityTab onAddToList={openAddFromEligibility} />}
-        {tab === 'streaming' && <DualAppStreamingTab />}
-      </div>
+      {tab === 'vehicles' && <VehicleListTab />}
+      {tab === 'eligibility' && <EligibilityTab onAddToList={openAddFromEligibility} />}
+      {tab === 'streaming' && <DualAppStreamingTab />}
 
       {/* Add modal from eligibility redirect */}
       {showAdd && (
@@ -1333,6 +1315,6 @@ export function HighMobilityDataView({ initialTab = 'vehicles' }: HighMobilityDa
           }}
         />
       )}
-    </div>
+    </>
   );
 }

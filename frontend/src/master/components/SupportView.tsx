@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Headphones } from 'lucide-react';
-import { PageHeader } from '../../components/patterns/page-header';
+import { MasterPageHeader } from '../shell';
 import { Sheet, SheetContent } from '../../components/ui/sheet';
 import { useSupportPolling } from '../../components/support/useSupportPolling';
 import { api, type SupportTicket, type SupportTicketStats } from '../../lib/api';
@@ -216,7 +216,7 @@ export function SupportView({ organizations = [], onNavigateToOrg }: SupportView
 
   return (
     <div className={sop.shell}>
-      <PageHeader
+      <MasterPageHeader
         title="Support Operations"
         icon={<Headphones className="h-4 w-4 text-[color:var(--brand)]" />}
       />

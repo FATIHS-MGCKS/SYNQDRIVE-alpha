@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
 import {
   LayoutDashboard, Building2, Users, FileText, ScrollText, HeartPulse, Shield,
   Search, Plus, RefreshCw, Settings2, CheckCircle, XCircle, AlertTriangle,
@@ -92,29 +93,23 @@ function Badge({ label, color }: { label: string; color: string }) {
 export function InsurancesAdminView() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
+  const insuranceTabs: MasterPageTab<TabId>[] = TABS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    icon: <t.icon className="w-4 h-4" />,
+  }));
+
   return (
-    <div className="space-y-6 pb-8">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Insurance — Admin"
         icon={<Shield className="w-4 h-4" />}
+        tabs={insuranceTabs}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        tabsAriaLabel="Insurance Admin"
+        tabsTestIdPrefix="insurance-admin"
       />
-
-      <div className={TAB_BAR}>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-              activeTab === t.id
-                ? 'surface-premium text-foreground shadow-sm ring-1 ring-border'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'partners' && <PartnersTab />}
@@ -123,7 +118,7 @@ export function InsurancesAdminView() {
       {activeTab === 'inquiry-templates' && <InquiryTemplatesTab />}
       {activeTab === 'inquiries' && <InquiriesTab />}
       {activeTab === 'health' && <HealthTab />}
-    </div>
+    </>
   );
 }
 

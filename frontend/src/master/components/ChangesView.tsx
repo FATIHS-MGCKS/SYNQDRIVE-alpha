@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
+import { MasterPageHeader } from '../shell';
 
 export interface ChangesViewProps {
   isDarkMode: boolean;
@@ -34,6 +35,23 @@ export interface ChangelogEntry {
 const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Vehicle Intelligence', 'Automation'] as const;
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
+  {
+    id: 'master-admin-page-framework-ui3-2026-08-18',
+    version: '4.9.906',
+    title: 'Master Admin — Kanonisches Page Framework (UI-3)',
+    summary: [
+      'Neues Modul `frontend/src/master/shell/`: MasterAdminShell, PageContainer, MasterPageHeader, MasterPageTabs, MasterPageSection, MasterTableShell, MasterPageStates, Tokens.',
+      'App.tsx: alle Views in PageContainer (standard/wide/full); globaler RightSidebar-Mount entfernt; `<main id="master-main">` Landmark.',
+      'Alle Master-Admin-Views auf MasterPageHeader migriert; Tabs konsolidiert (Billing, Org Detail, Vehicles, Parts, Insurance, HM, Voice, Logbook, Settings).',
+      'Settings Monitoring-Tab entfernt → Redirect `platform-health`; HM nested scroll entfernt; Shell max-width nach PageContainer verschoben.',
+    ],
+    reason: 'Phase UI-3: gemeinsame Layout-Grundlage für alle Master-Admin-Pages ohne fachliche Einzelpage-Redesigns.',
+    previousBehavior: 'Views mit eigenen max-w, space-y, sq-tab-bar Pills, globalem RightSidebar, Settings embedded SystemMonitoringView, HM inner scroll.',
+    details: 'docs/ui/master-admin-page-framework-post-remediation.md; architecture/MASTER_ADMIN_PAGE_FRAMEWORK_2026-08-18.md; frontend/src/master/shell/*; frontend/src/styles/theme.css master page tokens.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:00:00.000Z',
+  },
   {
     id: 'master-admin-canonical-navigation-shell-2026-08-18',
     version: '4.9.905',
@@ -26683,22 +26701,17 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
   };
 
   return (
-    <div className="space-y-4 pb-6">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/30 bg-indigo-500/15">
-          <FileText className="h-5 w-5 text-indigo-400" />
-        </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Changes</h1>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
-              <Code2 className="h-3 w-3" />
-              SynqDrive Code
-            </span>
-          </div>
-          <p className={`mt-1 text-base font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>Internal changelog and change journal</p>
-        </div>
-      </div>
+    <>
+      <MasterPageHeader
+        title="Changes"
+        description="Internal changelog and change journal"
+        status={
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
+            <Code2 className="h-3 w-3" />
+            SynqDrive Code
+          </span>
+        }
+      />
 
       <div className={`${card} p-4`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
@@ -26815,6 +26828,6 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
           })}
         </div>
       )}
-    </div>
+    </>
   );
 }

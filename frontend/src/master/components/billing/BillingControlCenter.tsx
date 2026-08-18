@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PageHeader } from '../../../components/patterns/page-header';
+import { MasterPageHeader } from '../../shell';
 import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import { hasMasterBillingAccess } from '../../../lib/auth';
@@ -153,8 +153,8 @@ export function BillingControlCenter({
   const showCoreError = Boolean(error) && needsCoreData && !loading;
 
   return (
-    <div className="space-y-5 max-w-[1600px] mx-auto" data-testid="master-billing-control-center">
-      <PageHeader
+    <div data-testid="master-billing-control-center">
+      <MasterPageHeader
         title="Master-Abrechnung"
         actions={
           <div className="flex flex-wrap items-center gap-2">

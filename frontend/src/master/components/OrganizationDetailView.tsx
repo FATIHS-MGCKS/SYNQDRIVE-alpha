@@ -1,6 +1,7 @@
-import { ArrowLeft, Building2, Users, Car, Link2, CreditCard, Package, CheckCircle, XCircle, AlertTriangle, Clock, Edit2, Trash2, Plus, MoreHorizontal, Wifi, WifiOff, RefreshCw, Zap, Download } from 'lucide-react';
+import { Building2, Users, Car, Link2, CreditCard, Package, CheckCircle, XCircle, AlertTriangle, Clock, Edit2, Trash2, Plus, MoreHorizontal, Wifi, WifiOff, RefreshCw, Zap, Download } from 'lucide-react';
 import { useState } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader, HealthStatusChip, StatusDot, fleetVehicleStatusTone, platformRoleTone, userAccountStatusTone, onlineSignalTone } from '../../components/patterns';
+import { DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader, HealthStatusChip, StatusDot, fleetVehicleStatusTone, platformRoleTone, userAccountStatusTone, onlineSignalTone } from '../../components/patterns';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
 import { Button } from '../../components/ui/button';
 import type { Organization, OrgProduct, OrgIntegration, PlatformUser, RegisteredVehicle, ProductId, SubscriptionPlan } from '../data/platform-data';
 
@@ -26,6 +27,15 @@ interface OrganizationDetailViewProps {
 
 type OrgTab = 'overview' | 'users' | 'vehicles' | 'integrations' | 'billing' | 'products';
 
+const ORG_TABS: MasterPageTab<OrgTab>[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'users', label: 'Users' },
+  { id: 'vehicles', label: 'Vehicles' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'billing', label: 'Billing' },
+  { id: 'products', label: 'Products' },
+];
+
 export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onUpdateOrg, onOpenBillingCenter }: OrganizationDetailViewProps) {
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
 
@@ -47,9 +57,9 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
   };
 
   return (
-    <div className="space-y-4 pb-6">
-      <PageHeader
-        variant="full"
+    <>
+      <MasterPageHeader
+        variant="context"
         title={org.company_name}
         eyebrow="Organization"
         description={`${org.business_type} · ${org.city}, ${org.country} · Since ${org.created_at}`}
@@ -60,19 +70,13 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
             <StatusChip tone={org.status === 'Active' ? 'success' : org.status === 'Suspended' ? 'critical' : 'watch'}>{org.status}</StatusChip>
           </>
         }
-        actions={
-          <button onClick={onBack} className="p-3 rounded-2xl border transition-all duration-200 hover:shadow-md surface-premium border-border text-muted-foreground hover:bg-muted/50">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-        }
+        back={{ onBack, label: 'Zurück zu Organisationen' }}
+        tabs={ORG_TABS}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        tabsAriaLabel="Organisation"
+        tabsTestIdPrefix="org-detail"
       />
-
-      {/* Tabs */}
-      <div className={`flex gap-1 p-1.5 rounded-2xl overflow-x-auto w-fit bg-muted`}>
-        {([['overview', 'Overview'], ['users', 'Users'], ['vehicles', 'Vehicles'], ['integrations', 'Integrations'], ['billing', 'Billing'], ['products', 'Products']] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setActiveTab(id)} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === id ? ('surface-premium text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}>{label}</button>
-        ))}
-      </div>
 
       {/* === OVERVIEW === */}
       {activeTab === 'overview' && (
@@ -271,6 +275,6 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

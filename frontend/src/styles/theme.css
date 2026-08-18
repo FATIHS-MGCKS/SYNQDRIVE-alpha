@@ -49,6 +49,15 @@
   --space-xs:  4px;
   --space-sm:  8px;
   --space-md:  12px;
+
+  /* ── Master Admin page framework (UI-3) ── */
+  --master-shell-max-standard: 1400px;
+  --master-shell-max-wide: 1600px;
+  --master-page-stack: 1.25rem;
+  --master-section-gap: 1.5rem;
+  --master-header-tabs-gap: 0.75rem;
+  --master-card-gap: 0.75rem;
+  --master-card-gap-lg: 1rem;
   --space-lg:  16px;
   --space-xl:  24px;
   --space-2xl: 32px;
@@ -1768,6 +1777,27 @@
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
   color: color-mix(in srgb, var(--muted-foreground) 75%, transparent);
+}
+
+/* ── Master Admin page framework spacing ── */
+.master-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--master-page-stack);
+}
+.master-section-gap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--master-section-gap);
+}
+.master-header-tabs-gap {
+  margin-top: var(--master-header-tabs-gap);
+}
+.master-card-gap {
+  gap: var(--master-card-gap);
+}
+.master-card-gap-lg {
+  gap: var(--master-card-gap-lg);
 }
 
 /* ── Live-light accent ── */

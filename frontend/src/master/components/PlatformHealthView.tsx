@@ -17,12 +17,12 @@ import {
   DataTable,
   ErrorState,
   MetricCard,
-  PageHeader,
   SectionHeader,
   StatusChip,
   monitoringSystemHealthTone,
   workerMonitoringTone,
 } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import type { DataTableColumn } from '../../components/patterns';
 import { api } from '../../lib/api';
 
@@ -89,9 +89,7 @@ export function PlatformHealthView({ onViewChange }: PlatformHealthViewProps) {
 
   if (error) {
     return (
-      <div className="p-6">
-        <ErrorState title="Platform Health" error={error} onRetry={() => void load()} />
-      </div>
+      <ErrorState title="Platform Health" error={error} onRetry={() => void load()} />
     );
   }
 
@@ -103,9 +101,9 @@ export function PlatformHealthView({ onViewChange }: PlatformHealthViewProps) {
   const obs = data?.observability;
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px]">
-      <PageHeader
-        variant="full"
+    <>
+      <MasterPageHeader
+        variant="context"
         title="Platform Health"
         description="Infrastruktur, Worker, Queues und Integrationen — aggregiert für Master Admin"
         status={
@@ -285,6 +283,6 @@ export function PlatformHealthView({ onViewChange }: PlatformHealthViewProps) {
           Nach SSH-Tunnel: Browser → http://localhost:3000 (Grafana SynqDrive Ops Dashboard)
         </p>
       </DataCard>
-    </div>
+    </>
   );
 }

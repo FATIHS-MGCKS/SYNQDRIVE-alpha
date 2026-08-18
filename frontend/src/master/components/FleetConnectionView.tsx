@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import {
   Radio, Car, Signal, SignalZero, Clock, Wifi, Search, ChevronDown,
   AlertCircle, Globe, Zap, Building2, Activity, CheckCircle2, XCircle,
@@ -219,8 +220,8 @@ export function FleetConnectionView() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Fleet Connection & Diagnostics"
         icon={<Radio className="w-4 h-4" />}
       />
@@ -626,6 +627,6 @@ export function FleetConnectionView() {
           onClose={() => setQueryConsoleVehicle(null)}
         />
       )}
-    </div>
+    </>
   );
 }

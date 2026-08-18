@@ -6,7 +6,10 @@ import {
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import {
-  PageHeader,
+  MasterPageHeader,
+  MasterPageSection,
+} from '../shell';
+import {
   MetricCard,
   DataCard,
   StatusChip,
@@ -141,18 +144,15 @@ export function MasterDashboardView({ onViewChange }: MasterDashboardViewProps) 
 
   if (loading) {
     return (
-      <div className="space-y-5 pb-4">
-        <div className="mb-5 space-y-2 animate-pulse">
-          <div className="h-6 w-48 rounded-lg bg-muted" />
-          <div className="h-4 w-64 rounded-lg bg-muted" />
-        </div>
+      <>
+        <MasterPageHeader title="Plattform-Übersicht" />
         <SkeletonMetricGrid count={4} />
         <SkeletonMetricGrid count={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" />
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="master-card-gap grid grid-cols-1 lg:grid-cols-2">
           <SkeletonCard className="h-[340px]" />
           <SkeletonCard className="h-[340px]" />
         </div>
-      </div>
+      </>
     );
   }
 
@@ -200,20 +200,17 @@ export function MasterDashboardView({ onViewChange }: MasterDashboardViewProps) 
   ];
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-5 pb-4">
-      <PageHeader
-        title="Platform Overview"
+    <>
+      <MasterPageHeader
+        title="Plattform-Übersicht"
         status={
-          <StatusChip
-            tone={hasCritical ? 'critical' : 'success'}
-            dot
-          >
-            {hasCritical ? 'Issues Detected' : 'System Normal'}
+          <StatusChip tone={hasCritical ? 'critical' : 'success'} dot>
+            {hasCritical ? 'Probleme erkannt' : 'System normal'}
           </StatusChip>
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="master-card-gap grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((kpi) => (
           <MetricCard
             key={kpi.label}
@@ -345,7 +342,7 @@ export function MasterDashboardView({ onViewChange }: MasterDashboardViewProps) 
       </div>
 
       <NewestSupportWidget />
-    </div>
+    </>
   );
 }
 

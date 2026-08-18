@@ -1,8 +1,17 @@
-import { Settings, Globe, Save, CreditCard, AlertTriangle, Activity, Mail } from 'lucide-react';
+import { Settings, Globe, Save, CreditCard, AlertTriangle, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { SystemMonitoringView } from './SystemMonitoringView';
 import { PlatformEmailSettingsPanel } from './PlatformEmailSettingsPanel';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
+import { Button } from '../../components/ui/button';
+
+type SettingsTab = 'general' | 'email' | 'integrations';
+
+const SETTINGS_TABS: MasterPageTab<SettingsTab>[] = [
+  { id: 'general', label: 'General', icon: <Settings className="w-4 h-4" /> },
+  { id: 'email', label: 'E-Mail', icon: <Mail className="w-4 h-4" /> },
+  { id: 'integrations', label: 'Integrations', icon: <Globe className="w-4 h-4" /> },
+];
 
 interface PlatformSettingsViewProps {
   isDarkMode: boolean;
@@ -13,18 +22,20 @@ interface PlatformSettingsViewProps {
   onPrune?: () => Promise<void>;
 }
 
-export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabChange, dimoConnected, onDimoToggle, onPrune }: PlatformSettingsViewProps) {
+export function PlatformSettingsView({
+  isDarkMode,
+  activeTab = 'general',
+  onTabChange,
+  dimoConnected,
+  onDimoToggle,
+}: PlatformSettingsViewProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [dimoApiKey, setDimoApiKey] = useState('dimo_test_a8f2b3c4d5e6f7g8');
   const [dimoEnv, setDimoEnv] = useState<'Production' | 'Sandbox'>('Sandbox');
   const [dimoTesting, setDimoTesting] = useState(false);
 
-  const tabs = [
-    { id: 'general', label: 'General', icon: Settings },
-    { id: 'email', label: 'E-Mail', icon: Mail },
-    { id: 'integrations', label: 'Integrations', icon: Globe },
-    { id: 'monitoring', label: 'API & Worker Monitoring', icon: Activity },
-  ];
+  const resolvedTab: SettingsTab =
+    activeTab === 'email' || activeTab === 'integrations' ? activeTab : 'general';
 
   const cardClass = `rounded-3xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
   const inputClass = `w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none ${isDarkMode ? 'bg-background border-neutral-700 text-gray-200 focus:border-brand/50 placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-700 focus:border-brand placeholder:text-gray-400'}`;
@@ -34,28 +45,26 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
     setDimoTesting(true);
     setTimeout(() => {
       setDimoTesting(false);
-      if (!dimoConnected) { onDimoToggle(); }
+      if (!dimoConnected) {
+        onDimoToggle();
+      }
       toast.success('DIMO connection successful! Vehicles loaded.');
     }, 1500);
   };
 
   return (
-    <div className="space-y-8 pb-8">
-      <div>
-        <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Settings</h1>
-        <p className={`text-base mt-2 font-medium ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Configure your SynqDrive platform</p>
-      </div>
+    <>
+      <MasterPageHeader
+        title="Settings"
+        description="Configure your SynqDrive platform"
+        tabs={SETTINGS_TABS}
+        activeTabId={resolvedTab}
+        onTabChange={(tab) => onTabChange?.(tab)}
+        tabsAriaLabel="Einstellungen"
+        tabsTestIdPrefix="platform-settings"
+      />
 
-      <div className={`flex gap-1 p-1.5 rounded-2xl overflow-x-auto w-fit ${isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => onTabChange?.(tab.id)} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? (isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm') : (isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}>
-            <tab.icon className="w-4 h-4" />{tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* GENERAL */}
-      {activeTab === 'general' && (
+      {resolvedTab === 'general' && (
         <div className={`${cardClass} p-8`}>
           <h2 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Company Information</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -67,16 +76,17 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
             <div><label className={labelClass}>Support Contact</label><input type="text" defaultValue="support@synqdrive.io" className={inputClass} /></div>
           </div>
           <div className="mt-8 flex justify-end">
-            <button onClick={() => toast.success('Settings saved successfully')} className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all"><Save className="w-4 h-4" />Save Changes</button>
+            <Button type="button" onClick={() => toast.success('Settings saved successfully')}>
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </Button>
           </div>
-
         </div>
       )}
 
-      {activeTab === 'email' && <PlatformEmailSettingsPanel isDarkMode={isDarkMode} />}
+      {resolvedTab === 'email' && <PlatformEmailSettingsPanel isDarkMode={isDarkMode} />}
 
-      {/* INTEGRATIONS (Stripe — platform config is env-driven, not toggled here) */}
-      {activeTab === 'integrations' && (
+      {resolvedTab === 'integrations' && (
         <div className={`${cardClass} p-8`}>
           <div className="flex items-start gap-4 mb-6">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
@@ -104,11 +114,6 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
           </div>
         </div>
       )}
-
-      {/* API & Worker Monitoring */}
-      {activeTab === 'monitoring' && (
-        <SystemMonitoringView />
-      )}
-    </div>
+    </>
   );
 }

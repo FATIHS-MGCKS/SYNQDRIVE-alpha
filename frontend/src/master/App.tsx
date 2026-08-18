@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Sidebar, type MasterView } from './components/Sidebar';
-import { TopBar } from './components/TopBar';
-import { RightSidebar } from './components/RightSidebar';
+import { MasterGlobalChrome } from './components/MasterGlobalChrome';
 import { MasterDashboardView } from './components/MasterDashboardView';
 import { OrganizationsView } from './components/OrganizationsView';
 import { OrganizationDetailView } from './components/OrganizationDetailView';
@@ -31,7 +30,7 @@ import type { MasterNavLocationState } from './navigation/master-nav.types';
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
-import { AppShell } from '../components/shell';
+import { MasterAdminShell, PageContainer } from './shell';
 import { MasterMfaGate } from './components/MasterMfaGate';
 import { MfaStepUpDialog } from '../components/mfa/MfaStepUpDialog';
 
@@ -326,6 +325,12 @@ export default function App() {
     },
     [navigateMaster],
   );
+
+  useEffect(() => {
+    if (currentView === 'settings' && settingsTab === 'monitoring') {
+      handleMasterNavigate('platform-health', { replace: true });
+    }
+  }, [currentView, settingsTab, handleMasterNavigate]);
 
   const reloadFromApi = async () => {
     try {
@@ -674,8 +679,7 @@ export default function App() {
   const getOrgVehicles = (orgId: string) => registeredVehicles.filter(v => v.organizationId === orgId);
 
   return (
-    <AppShell
-      variant="master"
+    <MasterAdminShell
       sidebar={(
       <Sidebar
         isDarkMode={isDarkMode}
@@ -687,186 +691,205 @@ export default function App() {
         onNavigate={handleMasterNavigate}
       />
       )}
-      rightPanel={(
-      <RightSidebar isDarkMode={isDarkMode} onViewChange={(view) => { handleMasterNavigate(view as MasterView); }} />
+      overlays={(
+        <>
+          <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
+          <MfaStepUpDialog
+            open={stepUpOpen}
+            action={stepUpAction}
+            onClose={() => setStepUpOpen(false)}
+            onSuccess={() => toast.success('2FA bestätigt — Aktion erneut ausführen.')}
+          />
+        </>
       )}
     >
-      <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
-      <MfaStepUpDialog
-        open={stepUpOpen}
-        action={stepUpAction}
-        onClose={() => setStepUpOpen(false)}
-        onSuccess={() => toast.success('2FA bestätigt — Aktion erneut ausführen.')}
-      />
-
       <MasterMfaGate>
-            <TopBar onOpenSettings={() => handleMasterNavigate('settings', { settingsTab: 'general' })} />
+        <MasterGlobalChrome onOpenSettings={() => handleMasterNavigate('settings', { settingsTab: 'general' })} />
 
-            {/* DASHBOARD */}
-            {currentView === 'dashboard' && (
-              <MasterDashboardView isDarkMode={isDarkMode} onViewChange={(view) => { handleMasterNavigate(view as MasterView); }} />
-            )}
+        {currentView === 'dashboard' && (
+          <PageContainer variant="wide">
+            <MasterDashboardView isDarkMode={isDarkMode} onViewChange={(view) => { handleMasterNavigate(view as MasterView); }} />
+          </PageContainer>
+        )}
 
-            {/* ORGANIZATIONS */}
-            {currentView === 'organizations' && !selectedOrg && (
-              <OrganizationsView
-                isDarkMode={isDarkMode}
-                organizations={organizations}
-                onSelectOrg={(org) => {
+        {currentView === 'organizations' && !selectedOrg && (
+          <PageContainer variant="standard">
+            <OrganizationsView
+              isDarkMode={isDarkMode}
+              organizations={organizations}
+              onSelectOrg={(org) => {
+                setSelectedOrg(org);
+                pushMasterNavState({ view: 'organizations', orgId: org.id });
+              }}
+              onAddOrg={handleAddOrg}
+              onUpdateOrg={handleUpdateOrg}
+              onDeleteOrg={handleDeleteOrg}
+            />
+          </PageContainer>
+        )}
+        {currentView === 'organizations' && selectedOrg && (
+          <PageContainer variant="standard">
+            <OrganizationDetailView
+              org={selectedOrg}
+              orgUsers={getOrgUsers(selectedOrg.id)}
+              orgVehicles={getOrgVehicles(selectedOrg.id)}
+              onBack={() => {
+                setSelectedOrg(null);
+                pushMasterNavState({ view: 'organizations' });
+              }}
+              onUpdateOrg={handleUpdateOrg}
+              onOpenBillingCenter={(orgId) => {
+                setBillingFocusOrgId(orgId);
+                navigateMaster('billing');
+                const nextSearch = `?view=billing&masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
+                window.history.pushState(null, '', `${window.location.pathname}${nextSearch}`);
+              }}
+            />
+          </PageContainer>
+        )}
+
+        {currentView === 'users' && (
+          <PageContainer variant="standard">
+            <PlatformUsersView
+              isDarkMode={isDarkMode}
+              users={users}
+              organizations={organizations}
+              onAddUser={handleAddUser}
+              onUpdateUser={handleUpdateUser}
+              onDeleteUser={handleDeleteUser}
+            />
+          </PageContainer>
+        )}
+
+        {currentView === 'vehicles' && (
+          <PageContainer variant="standard">
+            <PlatformVehiclesView
+              isDarkMode={isDarkMode}
+              registeredVehicles={registeredVehicles}
+              dimoVehicles={dimoVehicles}
+              organizations={organizations}
+              dimoConnected={dimoConnected}
+              onRegisterVehicle={handleRegisterVehicle}
+              onUpdateVehicle={handleUpdateVehicle}
+              onDeregisterVehicle={handleDeregisterVehicle}
+              onSyncFromDimo={handleSyncFromDimo}
+              onRefreshSnapshot={handleRefreshSnapshot}
+              loading={dataLoading}
+            />
+          </PageContainer>
+        )}
+
+        {currentView === 'billing' && (
+          <PageContainer variant="wide">
+            <BillingControlCenter
+              isDarkMode={isDarkMode}
+              initialOrgId={billingFocusOrgId}
+              onInitialOrgConsumed={() => setBillingFocusOrgId(null)}
+            />
+          </PageContainer>
+        )}
+
+        {currentView === 'activity-log' && (
+          <PageContainer variant="standard">
+            <ActivityLogView isDarkMode={isDarkMode} />
+          </PageContainer>
+        )}
+
+        {currentView === 'platform-health' && (
+          <PageContainer variant="standard">
+            <PlatformHealthView
+              isDarkMode={isDarkMode}
+              onViewChange={(view, tab) => {
+                handleMasterNavigate(view as MasterView, { settingsTab: tab });
+              }}
+            />
+          </PageContainer>
+        )}
+
+        {currentView === 'support' && (
+          <PageContainer variant="full">
+            <SupportView
+              organizations={organizations.map((o) => ({ id: o.id, name: o.company_name }))}
+              onNavigateToOrg={(orgId) => {
+                const org = organizations.find((o) => o.id === orgId);
+                if (org) {
                   setSelectedOrg(org);
-                  pushMasterNavState({ view: 'organizations', orgId: org.id });
-                }}
-                onAddOrg={handleAddOrg}
-                onUpdateOrg={handleUpdateOrg}
-                onDeleteOrg={handleDeleteOrg}
-              />
-            )}
-            {currentView === 'organizations' && selectedOrg && (
-              <OrganizationDetailView
-                org={selectedOrg}
-                orgUsers={getOrgUsers(selectedOrg.id)}
-                orgVehicles={getOrgVehicles(selectedOrg.id)}
-                onBack={() => {
-                  setSelectedOrg(null);
-                  pushMasterNavState({ view: 'organizations' });
-                }}
-                onUpdateOrg={handleUpdateOrg}
-                onOpenBillingCenter={(orgId) => {
-                  setBillingFocusOrgId(orgId);
-                  navigateMaster('billing');
-                  const nextSearch = `?view=billing&masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
-                  window.history.pushState(null, '', `${window.location.pathname}${nextSearch}`);
-                }}
-              />
-            )}
+                  pushMasterNavState({ view: 'organizations', orgId });
+                }
+              }}
+            />
+          </PageContainer>
+        )}
 
-            {/* USERS */}
-            {currentView === 'users' && (
-              <PlatformUsersView
-                isDarkMode={isDarkMode}
-                users={users}
-                organizations={organizations}
-                onAddUser={handleAddUser}
-                onUpdateUser={handleUpdateUser}
-                onDeleteUser={handleDeleteUser}
-              />
-            )}
+        {currentView === 'settings' && (
+          <PageContainer variant="standard">
+            <PlatformSettingsView
+              isDarkMode={isDarkMode}
+              activeTab={settingsTab}
+              onTabChange={setSettingsTab}
+              dimoConnected={dimoConnected}
+              onDimoToggle={handleDimoToggle}
+            />
+          </PageContainer>
+        )}
 
-            {/* VEHICLES */}
-            {currentView === 'vehicles' && (
-              <PlatformVehiclesView
-                isDarkMode={isDarkMode}
-                registeredVehicles={registeredVehicles}
-                dimoVehicles={dimoVehicles}
-                organizations={organizations}
-                dimoConnected={dimoConnected}
-                onRegisterVehicle={handleRegisterVehicle}
-                onUpdateVehicle={handleUpdateVehicle}
-                onDeregisterVehicle={handleDeregisterVehicle}
-                onSyncFromDimo={handleSyncFromDimo}
-                onRefreshSnapshot={handleRefreshSnapshot}
-                loading={dataLoading}
-              />
-            )}
+        {currentView === 'prospects' && (
+          <PageContainer variant="standard">
+            <ProspectsView />
+          </PageContainer>
+        )}
 
-            {/* BILLING */}
-            {currentView === 'billing' && (
-              <BillingControlCenter
-                isDarkMode={isDarkMode}
-                initialOrgId={billingFocusOrgId}
-                onInitialOrgConsumed={() => setBillingFocusOrgId(null)}
-              />
-            )}
+        {currentView === 'fleet-connection' && (
+          <PageContainer variant="standard">
+            <FleetConnectionView />
+          </PageContainer>
+        )}
 
-            {/* ACTIVITY LOG */}
-            {currentView === 'activity-log' && (
-              <ActivityLogView isDarkMode={isDarkMode} />
-            )}
+        {currentView === 'parts-accessories' && (
+          <PageContainer variant="standard">
+            <PartsAccessoriesAdminView />
+          </PageContainer>
+        )}
 
-            {/* PLATFORM HEALTH */}
-            {currentView === 'platform-health' && (
-              <PlatformHealthView
-                isDarkMode={isDarkMode}
-                onViewChange={(view, tab) => {
-                  handleMasterNavigate(view as MasterView, { settingsTab: tab });
-                }}
-              />
-            )}
+        {currentView === 'insurances' && (
+          <PageContainer variant="standard">
+            <InsurancesAdminView />
+          </PageContainer>
+        )}
 
-            {/* SUPPORT */}
-            {currentView === 'support' && (
-              <SupportView
-                organizations={organizations.map((o) => ({ id: o.id, name: o.company_name }))}
-                onNavigateToOrg={(orgId) => {
-                  const org = organizations.find((o) => o.id === orgId);
-                  if (org) {
-                    setSelectedOrg(org);
-                    pushMasterNavState({ view: 'organizations', orgId });
-                  }
-                }}
-              />
-            )}
+        {currentView === 'voice-assistant' && (
+          <PageContainer variant="wide">
+            <VoiceAssistantAdminView />
+          </PageContainer>
+        )}
 
-            {/* SETTINGS */}
-            {currentView === 'settings' && (
-              <PlatformSettingsView
-                isDarkMode={isDarkMode}
-                activeTab={settingsTab}
-                onTabChange={setSettingsTab}
-                dimoConnected={dimoConnected}
-                onDimoToggle={handleDimoToggle}
-              />
-            )}
+        {currentView === 'architektur' && (
+          <PageContainer variant="standard">
+            <ArchitekturView
+              isDarkMode={isDarkMode}
+              initialCategory={archCategory as 'overview' | 'signals' | 'workers' | 'health' | 'trips' | 'connectivity' | 'frontend' | 'modules' | 'integrations' | undefined}
+            />
+          </PageContainer>
+        )}
 
-            {/* PROSPECTS */}
-            {currentView === 'prospects' && (
-              <ProspectsView />
-            )}
+        {currentView === 'changes' && (
+          <PageContainer variant="standard">
+            <ChangesView isDarkMode={isDarkMode} />
+          </PageContainer>
+        )}
 
-            {/* FLEET CONNECTION */}
-            {currentView === 'fleet-connection' && (
-              <FleetConnectionView />
-            )}
+        {currentView === 'vehicle-logbook' && (
+          <PageContainer variant="standard">
+            <VehicleLogbookView isDarkMode={isDarkMode} />
+          </PageContainer>
+        )}
 
-            {/* PARTS & ACCESSORIES */}
-            {currentView === 'parts-accessories' && (
-              <PartsAccessoriesAdminView />
-            )}
-
-            {/* INSURANCES */}
-            {currentView === 'insurances' && (
-              <InsurancesAdminView />
-            )}
-
-            {/* VOICE ASSISTANT */}
-            {currentView === 'voice-assistant' && (
-              <VoiceAssistantAdminView />
-            )}
-
-            {/* ARCHITEKTUR */}
-            {currentView === 'architektur' && (
-              <ArchitekturView
-                isDarkMode={isDarkMode}
-                initialCategory={archCategory as 'overview' | 'signals' | 'workers' | 'health' | 'trips' | 'connectivity' | 'frontend' | 'modules' | 'integrations' | undefined}
-              />
-            )}
-
-            {/* CHANGES */}
-            {currentView === 'changes' && (
-              <ChangesView isDarkMode={isDarkMode} />
-            )}
-
-            {/* VEHICLE LOGBOOK */}
-            {currentView === 'vehicle-logbook' && (
-              <VehicleLogbookView isDarkMode={isDarkMode} />
-            )}
-
-            {currentView === 'high-mobility' && (
-              <HighMobilityDataView initialTab={hmTab} />
-            )}
-
+        {currentView === 'high-mobility' && (
+          <PageContainer variant="standard">
+            <HighMobilityDataView initialTab={hmTab} />
+          </PageContainer>
+        )}
       </MasterMfaGate>
-
-    </AppShell>
+    </MasterAdminShell>
   );
 }

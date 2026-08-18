@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  PageHeader,
   DataCard,
   MetricCard,
   StatusChip,
@@ -27,6 +26,7 @@ import {
   SkeletonRows,
   activityActionTone,
 } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import { Button } from '../../components/ui/button';
 import { api } from '../../lib/api';
 
@@ -195,8 +195,8 @@ export function ActivityLogView(_props: ActivityLogViewProps) {
   const emptySearch = !loading && !error && rows.length > 0 && filteredRows.length === 0;
 
   return (
-    <div className="space-y-5 pb-8">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Activity Log"
         icon={<Activity className="w-4 h-4" />}
         actions={
@@ -405,6 +405,6 @@ export function ActivityLogView(_props: ActivityLogViewProps) {
           </div>
         </DataCard>
       )}
-    </div>
+    </>
   );
 }

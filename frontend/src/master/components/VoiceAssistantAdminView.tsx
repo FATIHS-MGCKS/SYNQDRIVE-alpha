@@ -11,20 +11,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  chromeTabBarClass,
-  chromeTabTriggerClass,
-  CHROME_TAB_BAR_SCROLL_CLASS,
-} from '../../components/patterns/chrome-tab-bar';
-import {
   DataTable,
   DetailDrawer,
   EmptyState,
   ErrorState,
   MetricCard,
-  PageHeader,
   StatusChip,
   type DataTableColumn,
 } from '../../components/patterns';
+import { MasterPageHeader, MasterPageTabs } from '../shell';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
 import { isMasterAdmin } from '../../lib/auth';
@@ -83,31 +78,16 @@ function SectionTabBar({
   onSectionChange: (section: VoiceControlPlaneSection) => void;
 }) {
   return (
-    <div
-      className={chromeTabBarClass('p-1')}
-      role="tablist"
-      aria-label="Voice AI Control Plane"
-      data-testid="voice-control-plane-tabbar"
-    >
-      <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
-        {VOICE_CONTROL_PLANE_SECTIONS.map((section) => {
-          const isActive = activeSection === section.id;
-          return (
-            <button
-              key={section.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              data-testid={`voice-control-plane-section-${section.id}`}
-              onClick={() => onSectionChange(section.id)}
-              className={chromeTabTriggerClass(isActive, 'max-sm:px-3')}
-            >
-              <span className="truncate">{section.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <MasterPageTabs
+      tabs={VOICE_CONTROL_PLANE_SECTIONS.map((section) => ({
+        id: section.id,
+        label: section.label,
+      }))}
+      activeId={activeSection}
+      onChange={onSectionChange}
+      ariaLabel="Voice AI Control Plane"
+      testIdPrefix="voice-control-plane-section"
+    />
   );
 }
 
@@ -434,8 +414,8 @@ export function VoiceAssistantAdminView() {
   }
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 p-1" data-testid="voice-control-plane">
-      <PageHeader
+    <div data-testid="voice-control-plane">
+      <MasterPageHeader
         title="Voice AI Control Plane"
         actions={
           <Button type="button" size="sm" variant="outline" onClick={() => void loadCore()} disabled={loading}>

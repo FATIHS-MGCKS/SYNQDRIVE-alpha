@@ -5,7 +5,6 @@ import { generateId } from '../data/platform-data';
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import {
-  PageHeader,
   DataCard,
   DataTable,
   MetricCard,
@@ -16,6 +15,7 @@ import {
   ConfirmDialog,
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 
 interface PlatformUsersViewProps {
   isDarkMode: boolean;
@@ -210,8 +210,8 @@ export function PlatformUsersView({ users, organizations, onAddUser, onUpdateUse
   );
 
   return (
-    <div className="space-y-5 pb-6">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Users"
         icon={<Users className="h-4 w-4" />}
         actions={
@@ -449,6 +449,6 @@ export function PlatformUsersView({ users, organizations, onAddUser, onUpdateUse
           setDeleteConfirm(null);
         }}
       />
-    </div>
+    </>
   );
 }

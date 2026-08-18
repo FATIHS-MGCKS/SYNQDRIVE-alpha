@@ -6,7 +6,6 @@ import { ExteriorImagesEditor } from './ExteriorImagesEditor';
 import { api } from '@/lib/api';
 import type { HmVehicleStatusDto, HmVehicleDto } from '@/lib/api';
 import {
-  PageHeader,
   MetricCard,
   DataCard,
   DataTable,
@@ -22,6 +21,7 @@ import {
   hmClearanceTone,
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
 
 const STATUS_ICONS: Record<string, typeof CheckCircle> = {
   Available: CheckCircle,
@@ -237,8 +237,33 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
     },
   ];
 
+  const vehicleTabs: MasterPageTab<'registered' | 'unregistered' | 'hm-telemetry'>[] = [
+    { id: 'registered', label: 'Registered Vehicles' },
+    {
+      id: 'unregistered',
+      label: 'DIMO',
+      badge:
+        effectiveDimoVehicles.length > 0 ? (
+          <StatusChip tone="info" className="!text-[10px] !py-0.5">
+            {effectiveDimoVehicles.length}
+          </StatusChip>
+        ) : undefined,
+    },
+    {
+      id: 'hm-telemetry',
+      label: 'HM Telemetry',
+      icon: <Radio className="h-3.5 w-3.5" />,
+      badge:
+        hmTelemetryCandidates.length > 0 ? (
+          <StatusChip tone="watch" className="!text-[10px] !py-0.5">
+            {hmTelemetryCandidates.length}
+          </StatusChip>
+        ) : undefined,
+    },
+  ];
+
   return (
-    <div className="space-y-4 pb-6 relative">
+    <div className="relative">
       {loading && (
         <div className="absolute inset-0 bg-white/50 dark:bg-neutral-950/50 z-10 flex items-center justify-center rounded-2xl">
           <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -247,33 +272,15 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
           </div>
         </div>
       )}
-      <PageHeader
+      <MasterPageHeader
         title="Vehicles"
         icon={<Car className="h-4 w-4" />}
+        tabs={vehicleTabs}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        tabsAriaLabel="Fahrzeuge"
+        tabsTestIdPrefix="platform-vehicles"
       />
-
-      <div className="sq-tab-bar flex w-fit gap-1 rounded-lg p-1.5 bg-muted">
-        <button onClick={() => setActiveTab('registered')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'registered' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-          Registered Vehicles
-        </button>
-        <button onClick={() => setActiveTab('unregistered')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'unregistered' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-          DIMO
-          {effectiveDimoVehicles.length > 0 && (
-            <StatusChip tone="info" className="!text-[10px] !py-0.5">
-              {effectiveDimoVehicles.length}
-            </StatusChip>
-          )}
-        </button>
-        <button onClick={() => setActiveTab('hm-telemetry')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'hm-telemetry' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-          <Radio className="h-3.5 w-3.5" />
-          HM Telemetry
-          {hmTelemetryCandidates.length > 0 && (
-            <StatusChip tone="watch" className="!text-[10px] !py-0.5">
-              {hmTelemetryCandidates.length}
-            </StatusChip>
-          )}
-        </button>
-      </div>
 
       {/* Summary */}
       {activeTab === 'registered' && (

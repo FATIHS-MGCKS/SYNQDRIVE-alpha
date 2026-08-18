@@ -5,7 +5,8 @@ import {
   Upload, Globe, Phone, Clock, Languages, User, Mail, ImageIcon,
 } from 'lucide-react';
 import type { Organization, OrgStatus, SubscriptionPlan } from '../data/platform-data';
-import { PageHeader, DataTable, StatusChip, AppDialog, ConfirmDialog } from '../../components/patterns';
+import { DataTable, StatusChip, AppDialog, ConfirmDialog } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import type { DataTableColumn } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 
@@ -261,8 +262,8 @@ export function OrganizationsView({
   ], []);
 
   return (
-    <div className="space-y-4 pb-6 animate-fade-up">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Organizations"
         actions={(
           <button
@@ -632,6 +633,6 @@ export function OrganizationsView({
           setDeleteConfirm(null);
         }}
       />
-    </div>
+    </>
   );
 }
