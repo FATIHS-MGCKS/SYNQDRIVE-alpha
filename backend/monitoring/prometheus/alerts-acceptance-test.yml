@@ -6,7 +6,7 @@ groups:
     rules:
       - alert: SynqDriveAlertmanagerAcceptanceTest
         expr: vector(1)
-        for: 15s
+        for: 0m
         labels:
           severity: warning
           component: observability
@@ -19,7 +19,7 @@ groups:
         expr: |
           label_replace(vector(1), "shard", "a", "", "")
           or label_replace(vector(1), "shard", "b", "", "")
-        for: 15s
+        for: 0m
         labels:
           severity: warning
           component: observability

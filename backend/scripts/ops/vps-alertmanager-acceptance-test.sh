@@ -67,20 +67,20 @@ curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null 2>&1 || docker restar
 sleep 5
 
 wait_for "prometheus firing SynqDriveAlertmanagerAcceptanceTest" \
-  "curl -sf 'http://127.0.0.1:9090/api/v1/alerts' | python3 -c \"import sys,json; d=json.load(sys.stdin); print(any(a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceTest' and a.get('state')=='firing' for a in d.get('data',{}).get('alerts',[])))\"" \
+  "curl -sf 'http://127.0.0.1:9090/api/v1/alerts' | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceTest' and a.get('state')=='firing' for a in d.get('data',{}).get('alerts',[])) else 1)\"" \
   45
 
 wait_for "alertmanager received acceptance alert" \
-  "curl -sf http://127.0.0.1:9093/api/v2/alerts | python3 -c \"import sys,json; d=json.load(sys.stdin); print(any(a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceTest' for a in d))\"" \
+  "curl -sf http://127.0.0.1:9093/api/v2/alerts | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if any(a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceTest' for a in d) else 1)\"" \
   45
 
 wait_for "grouping alert visible in alertmanager" \
-  "curl -sf http://127.0.0.1:9093/api/v2/alerts | python3 -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for a in d if a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceGrouping')>=2)\"" \
+  "curl -sf http://127.0.0.1:9093/api/v2/alerts | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if sum(1 for a in d if a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceGrouping')>=2 else 1)\"" \
   45
 
 # Delivery evidence: notification log in alertmanager container
-sleep 15
-if docker logs "$AM_CONTAINER" 2>&1 | tail -80 | grep -qiE 'notify|email|sent'; then
+sleep 35
+if docker logs "$AM_CONTAINER" 2>&1 | tail -120 | grep -qiE 'notify|notification|email|sent success|Notify'; then
   pass "receiver delivery attempt logged by alertmanager"
 else
   fail "no delivery evidence in alertmanager logs"
