@@ -5,6 +5,10 @@
 #   - Docker
 #   - /opt/synqdrive/shared/alertmanager/alertmanager.env (from alertmanager.env.example)
 #
+# Requires at least one delivery channel:
+#   - ALERTMANAGER_SLACK_WEBHOOK_URL, or
+#   - ALERTMANAGER_SMTP_* + ALERTMANAGER_EMAIL_WARNING
+#
 # Run on VPS:
 #   bash /opt/synqdrive/current/backend/scripts/ops/vps-setup-alertmanager.sh
 set -euo pipefail
@@ -32,21 +36,45 @@ set -a
 source "$AM_ENV"
 set +a
 
-: "${ALERTMANAGER_SLACK_WEBHOOK_URL:?ALERTMANAGER_SLACK_WEBHOOK_URL required in $AM_ENV}"
-: "${ALERTMANAGER_SLACK_CHANNEL_WARNING:=#synqdrive-alerts}"
-: "${ALERTMANAGER_SLACK_CHANNEL_CRITICAL:=#synqdrive-critical}"
-: "${ALERTMANAGER_SMTP_HOST:=localhost}"
+: "${ALERTMANAGER_SMTP_HOST:=smtp.resend.com}"
 : "${ALERTMANAGER_SMTP_PORT:=587}"
 : "${ALERTMANAGER_SMTP_FROM:=alerts@synqdrive.eu}"
-: "${ALERTMANAGER_SMTP_USER:=}"
+: "${ALERTMANAGER_SMTP_USER:=resend}"
 : "${ALERTMANAGER_SMTP_PASSWORD:=}"
 : "${ALERTMANAGER_EMAIL_WARNING:=}"
 : "${ALERTMANAGER_EMAIL_CRITICAL:=}"
 : "${ALERTMANAGER_EMAIL_ESCALATION:=}"
+: "${ALERTMANAGER_SLACK_CHANNEL_WARNING:=#synqdrive-alerts}"
+: "${ALERTMANAGER_SLACK_CHANNEL_CRITICAL:=#synqdrive-critical}"
+: "${ALERTMANAGER_SLACK_WEBHOOK_URL:=}"
 
-mkdir -p "$AM_DIR/templates"
-cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
-cp "$SRC_AM/templates/"*.tmpl "$AM_DIR/templates/"
+if [[ -z "${ALERTMANAGER_SLACK_WEBHOOK_URL}" && -z "${ALERTMANAGER_SMTP_PASSWORD}" ]]; then
+  echo "ERROR: configure ALERTMANAGER_SLACK_WEBHOOK_URL or ALERTMANAGER_SMTP_PASSWORD in $AM_ENV" >&2
+  exit 1
+fi
+
+if [[ -z "${ALERTMANAGER_SLACK_WEBHOOK_URL}" && -z "${ALERTMANAGER_EMAIL_WARNING}" ]]; then
+  echo "ERROR: email mode requires ALERTMANAGER_EMAIL_WARNING in $AM_ENV" >&2
+  exit 1
+fi
+
+if [[ -z "${ALERTMANAGER_EMAIL_CRITICAL}" ]]; then
+  ALERTMANAGER_EMAIL_CRITICAL="${ALERTMANAGER_EMAIL_WARNING}"
+fi
+if [[ -z "${ALERTMANAGER_EMAIL_ESCALATION}" ]]; then
+  ALERTMANAGER_EMAIL_ESCALATION="${ALERTMANAGER_EMAIL_CRITICAL}"
+fi
+
+mkdir -p "$AM_DIR/templates" "$AM_DIR/data"
+chmod 700 "$AM_DIR/data"
+
+cp "$SRC_AM/templates/"*.tmpl "$AM_DIR/templates/" 2>/dev/null || true
+
+if [[ -n "${ALERTMANAGER_SLACK_WEBHOOK_URL}" ]]; then
+  cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
+else
+  cp "$SRC_AM/alertmanager.email.yml.example" "$AM_DIR/alertmanager.yml.template"
+fi
 
 export ALERTMANAGER_SLACK_WEBHOOK_URL
 export ALERTMANAGER_SLACK_CHANNEL_WARNING
@@ -68,6 +96,16 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "==> Validating Alertmanager config (amtool)"
+if ! docker run --rm \
+  -v "$AM_DIR/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
+  -v "$AM_DIR/templates:/etc/alertmanager/templates:ro" \
+  "$AM_IMAGE" \
+  amtool check-config /etc/alertmanager/alertmanager.yml; then
+  echo "ERROR: Alertmanager config validation failed — refusing to deploy invalid config" >&2
+  exit 1
+fi
+
 docker rm -f "$CONTAINER" 2>/dev/null || true
 
 docker run -d \
@@ -76,21 +114,30 @@ docker run -d \
   --network host \
   -v "$AM_DIR/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
   -v "$AM_DIR/templates:/etc/alertmanager/templates:ro" \
+  -v "$AM_DIR/data:/alertmanager" \
   "$AM_IMAGE" \
   --config.file=/etc/alertmanager/alertmanager.yml \
+  --storage.path=/alertmanager \
   --web.listen-address=127.0.0.1:9093 \
   --web.external-url=http://127.0.0.1:9093/ \
   --cluster.listen-address=
 
 echo "Alertmanager container started: $CONTAINER"
 echo "UI (VPS localhost only): http://127.0.0.1:9093"
-echo "Silences: http://127.0.0.1:9093/#/silences"
 
 sleep 3
 
 if curl -sf "http://127.0.0.1:9093/-/healthy" >/dev/null; then
-  echo "Alertmanager health: OK"
+  echo "Alertmanager /-/healthy: OK"
 else
-  echo "WARN: Alertmanager /-/healthy check failed — inspect: docker logs $CONTAINER" >&2
+  echo "ERROR: Alertmanager /-/healthy check failed — inspect: docker logs $CONTAINER" >&2
+  docker logs "$CONTAINER" 2>&1 | tail -20
+  exit 1
+fi
+
+if curl -sf "http://127.0.0.1:9093/-/ready" >/dev/null; then
+  echo "Alertmanager /-/ready: OK"
+else
+  echo "ERROR: Alertmanager /-/ready check failed" >&2
   exit 1
 fi

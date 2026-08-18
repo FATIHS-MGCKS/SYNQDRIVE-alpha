@@ -1,0 +1,29 @@
+# Temporary Alertmanager acceptance rules — install only via vps-alertmanager-acceptance-test.sh
+# Do NOT leave enabled in production after acceptance.
+
+groups:
+  - name: synqdrive_alertmanager_acceptance
+    rules:
+      - alert: SynqDriveAlertmanagerAcceptanceTest
+        expr: vector(1)
+        for: 15s
+        labels:
+          severity: warning
+          component: observability
+          cluster: synqdrive-prod
+        annotations:
+          summary: Synthetic Alertmanager acceptance test (single)
+          description: Controlled acceptance alert — remove alerts-acceptance-test.yml after verification.
+
+      - alert: SynqDriveAlertmanagerAcceptanceGrouping
+        expr: |
+          label_replace(vector(1), "shard", "a", "", "")
+          or label_replace(vector(1), "shard", "b", "", "")
+        for: 15s
+        labels:
+          severity: warning
+          component: observability
+          cluster: synqdrive-prod
+        annotations:
+          summary: Synthetic Alertmanager grouping acceptance test
+          description: Two series grouped by alertname — controlled acceptance only.
