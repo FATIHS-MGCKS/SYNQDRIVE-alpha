@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-production-certification-ui-acceptance-2026-08-18',
+    version: '4.9.916',
+    title: 'Master Admin — Final UI Production Certification (UI-ACCEPTANCE)',
+    summary: [
+      'Acceptance-Pass über gesamte Master-Admin-Control-Plane: Route-Matrix, Workflows A–F, 10-Sekunden-Tests, SoT-Zertifizierung, Security/DSGVO/A11y/Responsive/Performance.',
+      'Entscheidung: PRODUCTION READY WITH CONDITIONS (keine P0/P1 UI-Blocker in Hub-Kern).',
+      'Evidenz: 91 Vitest grün, Production Build grün, Live-Route-Gate `/master` → `/login`, Artifacts in `/opt/cursor/artifacts/`.',
+      'Bedingungen: Deploy Convergence-Branch + 1× authentifizierter Staging-Smoke.',
+      'Dokument: `docs/ui/master-admin-final-ui-production-certification.md`.',
+    ],
+    reason: 'Finale Production-Abnahme nach UI-1…UI-FINAL Remediation.',
+    previousBehavior: 'Keine formale Go/No-Go-Zertifizierung über alle Hub-Domänen hinweg.',
+    details:
+      'docs/ui/master-admin-final-ui-production-certification.md; architecture/MASTER_ADMIN_PRODUCTION_CERTIFICATION_2026-08-18.md. Keine Code-Änderungen außer Dokumentation.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T13:20:00.000Z',
+  },
+  {
     id: 'master-admin-final-consistency-ui-final-2026-08-18',
     version: '4.9.915',
     title: 'Master Admin — Final Cross-Page Consistency (UI-FINAL)',
