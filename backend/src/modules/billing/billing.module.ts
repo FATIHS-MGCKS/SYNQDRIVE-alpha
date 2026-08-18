@@ -37,6 +37,7 @@ import {
   SubscriptionResolverService,
 } from './resolvers';
 import { BillingLegacyBackfillService } from './migration/billing-legacy-backfill.service';
+import { BillingSandboxCanonicalizationService } from './migration/billing-sandbox-canonicalization.service';
 import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
 import { BillingQuantityService } from './billing-quantity.service';
 import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.integration';
@@ -112,6 +113,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingEventPublisher,
     BillingStripeSyncListenerService,
     BillingLegacyBackfillService,
+    BillingSandboxCanonicalizationService,
     SubscriptionPricePreviewService,
     BillingQuantityService,
     BillingQuantityVehicleIntegration,
@@ -181,6 +183,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingEventPublisher,
     BillingStripeSyncListenerService,
     BillingLegacyBackfillService,
+    BillingSandboxCanonicalizationService,
     SubscriptionPricePreviewService,
     BillingQuantityService,
     BillingQuantityVehicleIntegration,

@@ -336,4 +336,29 @@ describe('BillingReconciliationService', () => {
 
     expect(drifts).toHaveLength(1);
   });
+
+  it('dry run performs detection without persisting run or drift records', async () => {
+    stripeMock.subscriptions.retrieve.mockResolvedValue({
+      ...matchedStripeSubscription,
+      items: {
+        data: [{ ...matchedStripeSubscription.items.data[0], quantity: 9 }],
+      },
+    });
+
+    const beforeRuns = runs.length;
+    const beforeDrifts = drifts.length;
+
+    const result = await service.runBatch({
+      organizationId: orgId,
+      batchSize: 10,
+      dryRun: true,
+    });
+
+    expect(result.dryRun).toBe(true);
+    expect(result.runId).toBeNull();
+    expect(result.driftCount).toBe(1);
+    expect(result.drifts[0]?.driftType).toBe(BillingReconciliationDriftType.QUANTITY_MISMATCH);
+    expect(runs).toHaveLength(beforeRuns);
+    expect(drifts).toHaveLength(beforeDrifts);
+  });
 });

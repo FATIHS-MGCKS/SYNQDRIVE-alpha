@@ -46,10 +46,12 @@ export interface RunBillingReconciliationBatchInput {
   batchSize?: number;
   cursor?: string | null;
   actorUserId?: string | null;
+  dryRun?: boolean;
 }
 
 export interface BillingReconciliationBatchResult {
-  runId: string;
+  runId: string | null;
+  dryRun: boolean;
   status: BillingReconciliationRunStatus;
   scanned: number;
   driftCount: number;
@@ -83,11 +85,13 @@ export class BillingReconciliationService {
   async runBatch(
     input: RunBillingReconciliationBatchInput = {},
   ): Promise<BillingReconciliationBatchResult> {
+    const dryRun = input.dryRun === true;
     const stripeMode = this.requireRuntimeStripeMode();
     const batchSize = input.batchSize ?? BILLING_RECONCILIATION_DEFAULT_BATCH_SIZE;
 
-    const run =
-      input.runId != null
+    const run = dryRun
+      ? null
+      : input.runId != null
         ? await this.requireRun(input.runId)
         : await this.prisma.billingReconciliationRun.create({
             data: {
@@ -100,26 +104,28 @@ export class BillingReconciliationService {
             },
           });
 
-    if (run.status === BillingReconciliationRunStatus.COMPLETED) {
+    if (run && run.status === BillingReconciliationRunStatus.COMPLETED) {
       throw new BadRequestException({
         code: BillingReconciliationErrorCode.RUN_NOT_FOUND,
         message: 'Reconciliation run already completed',
       });
     }
 
-    await this.prisma.billingReconciliationRun.update({
-      where: { id: run.id },
-      data: {
-        status: BillingReconciliationRunStatus.RUNNING,
-        startedAt: run.startedAt ?? new Date(),
-      },
-    });
+    if (run) {
+      await this.prisma.billingReconciliationRun.update({
+        where: { id: run.id },
+        data: {
+          status: BillingReconciliationRunStatus.RUNNING,
+          startedAt: run.startedAt ?? new Date(),
+        },
+      });
+    }
 
     const subscriptions = await this.prisma.billingSubscription.findMany({
       where: {
         ...(input.organizationId ? { organizationId: input.organizationId } : {}),
-        ...(input.cursor || run.cursor
-          ? { id: { gt: input.cursor ?? run.cursor ?? undefined } }
+        ...(input.cursor || run?.cursor
+          ? { id: { gt: input.cursor ?? run?.cursor ?? undefined } }
           : {}),
       },
       orderBy: { id: 'asc' },
@@ -167,7 +173,9 @@ export class BillingReconciliationService {
               !row.organizationId || row.organizationId === subscription.organizationId,
           ),
         });
-        const rows = await this.persistFindings(run.id, findings);
+        const rows = dryRun
+          ? this.mapFindingsForResponse(findings)
+          : await this.persistFindings(run!.id, findings);
         scanned += 1;
         driftCount += rows.length;
         persistedDrifts.push(...rows);
@@ -189,8 +197,39 @@ export class BillingReconciliationService {
           ? BillingReconciliationRunStatus.RUNNING
           : BillingReconciliationRunStatus.COMPLETED;
 
+    if (dryRun) {
+      if (input.actorUserId) {
+        await this.audit.log({
+          organizationId: input.organizationId ?? null,
+          actorUserId: input.actorUserId,
+          action: 'BILLING_RECONCILIATION_DRY_RUN',
+          entityType: 'BillingReconciliationRun',
+          entityId: 'dry-run',
+          after: {
+            scanned,
+            driftCount,
+            errorCount,
+            status,
+            cursor: hasMore ? lastCursor : null,
+          },
+        });
+      }
+
+      return {
+        runId: null,
+        dryRun: true,
+        status,
+        scanned,
+        driftCount,
+        errorCount,
+        cursor: hasMore ? lastCursor : null,
+        hasMore,
+        drifts: persistedDrifts,
+      };
+    }
+
     const updatedRun = await this.prisma.billingReconciliationRun.update({
-      where: { id: run.id },
+      where: { id: run!.id },
       data: {
         status,
         cursor: hasMore ? lastCursor : null,
@@ -208,7 +247,7 @@ export class BillingReconciliationService {
         actorUserId: input.actorUserId,
         action: 'BILLING_RECONCILIATION_BATCH_RUN',
         entityType: 'BillingReconciliationRun',
-        entityId: run.id,
+        entityId: run!.id,
         after: {
           scanned,
           driftCount,
@@ -220,7 +259,8 @@ export class BillingReconciliationService {
     }
 
     return {
-      runId: run.id,
+      runId: run!.id,
+      dryRun: false,
       status: updatedRun.status,
       scanned,
       driftCount,
@@ -252,7 +292,7 @@ export class BillingReconciliationService {
         cursor,
         actorUserId: null,
       });
-      runId = batch.runId;
+      runId = batch.runId ?? undefined;
       scanned += batch.scanned;
       driftCount += batch.driftCount;
       errorCount += batch.errorCount;
@@ -593,6 +633,20 @@ export class BillingReconciliationService {
     };
 
     return detectBillingReconciliationDrift(compareInput);
+  }
+
+  private mapFindingsForResponse(
+    findings: BillingReconciliationDriftFinding[],
+  ): BillingReconciliationBatchResult['drifts'] {
+    return findings.map((finding) => ({
+      id: finding.idempotencyKey ?? `dry-run:${finding.driftType}`,
+      driftType: finding.driftType,
+      severity: finding.severity,
+      localValue: finding.localValue,
+      stripeValue: finding.stripeValue,
+      suggestedAction: finding.suggestedAction,
+      autoFixable: finding.autoFixable,
+    }));
   }
 
   private async persistFindings(

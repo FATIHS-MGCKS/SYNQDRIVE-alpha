@@ -265,6 +265,10 @@ export class RunBillingReconciliationDto {
   @IsInt()
   @Min(1)
   batchSize?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
 }
 
 export class AuditLogQueryDto {

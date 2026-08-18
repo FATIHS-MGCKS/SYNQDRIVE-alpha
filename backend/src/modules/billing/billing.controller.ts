@@ -1197,6 +1197,8 @@ export class BillingController {
 
       batchSize: body.batchSize,
 
+      dryRun: body.dryRun,
+
       actorUserId: req?.user?.id,
 
     });
