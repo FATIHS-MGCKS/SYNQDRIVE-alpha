@@ -6,6 +6,7 @@ import {
 } from './notification-event-registry.definitions';
 import type {
   NotificationActionTargetContext,
+  NotificationAttentionScope,
   NotificationEventTypeDefinition,
   RegistryCandidateBuildInput,
 } from './notification-event-registry.types';
@@ -79,6 +80,34 @@ export function requireEventTypeDefinition(eventType: string): NotificationEvent
 
 export function listShadowModeEventTypes(): string[] {
   return NOTIFICATION_EVENT_REGISTRY.filter((d) => d.shadowModeEnabled).map((d) => d.eventType);
+}
+
+export function getNotificationAttentionScope(eventType: string): NotificationAttentionScope | undefined {
+  return getEventTypeDefinition(eventType)?.attentionScope;
+}
+
+export function requireNotificationAttentionScope(eventType: string): NotificationAttentionScope {
+  const scope = getNotificationAttentionScope(eventType);
+  if (!scope) {
+    throw new NotificationEventRegistryError(`Unregistered notification eventType: ${eventType}`);
+  }
+  return scope;
+}
+
+export function getNotificationEventTypesByAttentionScope(
+  scope: NotificationAttentionScope,
+): string[] {
+  return NOTIFICATION_EVENT_REGISTRY.filter((d) => d.attentionScope === scope).map((d) => d.eventType);
+}
+
+export function getNotificationDefinitionsByAttentionScope(
+  scope: NotificationAttentionScope,
+): readonly NotificationEventTypeDefinition[] {
+  return NOTIFICATION_EVENT_REGISTRY.filter((d) => d.attentionScope === scope);
+}
+
+export function isNotificationAttentionScope(value: string): value is NotificationAttentionScope {
+  return value === 'OPERATIONS' || value === 'FLEET_READINESS';
 }
 
 export function buildRegistryFingerprint(

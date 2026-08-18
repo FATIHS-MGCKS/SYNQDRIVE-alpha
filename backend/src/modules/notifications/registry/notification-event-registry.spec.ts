@@ -2,13 +2,19 @@ import { NotificationEntityType, NotificationEventKind, NotificationSeverity } f
 import {
   buildCandidateFromRegistry,
   buildRegistryFingerprint,
+  getNotificationAttentionScope,
+  getNotificationDefinitionsByAttentionScope,
+  getNotificationEventTypesByAttentionScope,
+  isNotificationAttentionScope,
   NOTIFICATION_EVENT_REGISTRY,
   NotificationEventRegistryError,
+  requireNotificationAttentionScope,
   resolveEventSlug,
 } from './notification-event-registry';
 import {
   NOTIFICATION_EVENT_TYPE_DEFINITIONS,
 } from './notification-event-registry.definitions';
+import { NOTIFICATION_ATTENTION_SCOPES } from './notification-event-registry.types';
 import {
   NotificationRegistryValidationError,
   validateRegistryBuildInput,
@@ -150,5 +156,143 @@ describe('NotificationEventRegistry', () => {
       templateParams: { bookingRef: 'B-1', label: 'Test' },
     });
     expect(() => validateRegistryCandidate(candidate)).toThrow(NotificationRegistryValidationError);
+  });
+
+  describe('attentionScope', () => {
+    const FLEET_READINESS_EVENT_TYPES = [
+      'ACTIVE_DTC',
+      'AUTHORIZATION_REQUIRED',
+      'BATTERY_CRITICAL',
+      'BLOCKED_VEHICLE',
+      'BOKRAFT_OVERDUE',
+      'BRAKE_CRITICAL',
+      'COMPLIANCE_EXPIRED',
+      'CONNECTIVITY_STATE_UNKNOWN',
+      'DATA_COVERAGE_INSUFFICIENT',
+      'DATA_SOURCE_DISCONNECTED',
+      'DEVICE_BINDING_CHANGED',
+      'DEVICE_RECONNECTED',
+      'DEVICE_UNPLUGGED',
+      'HM_SERVICE_NO_TRACKING',
+      'MAINTENANCE_REQUIRED',
+      'SERVICE_OVERDUE',
+      'SERVICE_WINDOW',
+      'TECHNICAL_OBSERVATION_ACTIVE',
+      'TELEMETRY_OFFLINE',
+      'TELEMETRY_SOFT_OFFLINE',
+      'TIRE_CRITICAL',
+      'TUV_OVERDUE',
+      'VEHICLE_NOT_READY',
+    ] as const;
+
+    it('assigns a valid attentionScope to every registered event type', () => {
+      for (const def of NOTIFICATION_EVENT_REGISTRY) {
+        expect(NOTIFICATION_ATTENTION_SCOPES).toContain(def.attentionScope);
+      }
+    });
+
+    it('assigns exactly one attentionScope per event type', () => {
+      const scopesByEventType = new Map(
+        NOTIFICATION_EVENT_REGISTRY.map((def) => [def.eventType, def.attentionScope]),
+      );
+      expect(scopesByEventType.size).toBe(NOTIFICATION_EVENT_REGISTRY.length);
+      for (const def of NOTIFICATION_EVENT_REGISTRY) {
+        expect(scopesByEventType.get(def.eventType)).toBe(def.attentionScope);
+      }
+    });
+
+    it('partitions all registered events into OPERATIONS and FLEET_READINESS', () => {
+      const operations = getNotificationEventTypesByAttentionScope('OPERATIONS');
+      const fleet = getNotificationEventTypesByAttentionScope('FLEET_READINESS');
+      expect(operations.length + fleet.length).toBe(NOTIFICATION_EVENT_REGISTRY.length);
+      expect(new Set([...operations, ...fleet]).size).toBe(NOTIFICATION_EVENT_REGISTRY.length);
+    });
+
+    it('returns only FLEET_READINESS event types for fleet lookup', () => {
+      const fleet = getNotificationEventTypesByAttentionScope('FLEET_READINESS').sort();
+      expect(fleet).toEqual([...FLEET_READINESS_EVENT_TYPES].sort());
+      for (const eventType of fleet) {
+        expect(requireNotificationAttentionScope(eventType)).toBe('FLEET_READINESS');
+      }
+    });
+
+    it('returns the OPERATIONS complement for operations lookup', () => {
+      const operations = new Set(getNotificationEventTypesByAttentionScope('OPERATIONS'));
+      for (const eventType of FLEET_READINESS_EVENT_TYPES) {
+        expect(operations.has(eventType)).toBe(false);
+      }
+      for (const def of NOTIFICATION_EVENT_REGISTRY) {
+        if (!FLEET_READINESS_EVENT_TYPES.includes(def.eventType as (typeof FLEET_READINESS_EVENT_TYPES)[number])) {
+          expect(operations.has(def.eventType)).toBe(true);
+        }
+      }
+    });
+
+    it('exposes definition lookup by attention scope', () => {
+      const fleetDefs = getNotificationDefinitionsByAttentionScope('FLEET_READINESS');
+      expect(fleetDefs.every((def) => def.attentionScope === 'FLEET_READINESS')).toBe(true);
+      expect(fleetDefs.map((def) => def.eventType).sort()).toEqual(
+        [...FLEET_READINESS_EVENT_TYPES].sort(),
+      );
+    });
+
+    it('looks up attention scope for a single event type', () => {
+      expect(getNotificationAttentionScope('VEHICLE_NOT_READY')).toBe('FLEET_READINESS');
+      expect(getNotificationAttentionScope('LOW_UTILIZATION')).toBe('OPERATIONS');
+      expect(getNotificationAttentionScope('NOT_A_REAL_EVENT')).toBeUndefined();
+      expect(() => requireNotificationAttentionScope('NOT_A_REAL_EVENT')).toThrow(
+        NotificationEventRegistryError,
+      );
+    });
+
+    it('validates attention scope literals', () => {
+      expect(isNotificationAttentionScope('OPERATIONS')).toBe(true);
+      expect(isNotificationAttentionScope('FLEET_READINESS')).toBe(true);
+      expect(isNotificationAttentionScope('UNKNOWN')).toBe(false);
+    });
+
+    it('keeps registry bootstrap deterministic across repeated lookups', () => {
+      const first = getNotificationEventTypesByAttentionScope('FLEET_READINESS');
+      const second = getNotificationEventTypesByAttentionScope('FLEET_READINESS');
+      expect(first).toEqual(second);
+    });
+
+    it('does not change fingerprint-relevant registry fields when attentionScope is present', () => {
+      const beforeLike = buildRegistryFingerprint('org-1', 'VEHICLE_NOT_READY', 'veh-1');
+      const afterLike = buildRegistryFingerprint('org-1', 'VEHICLE_NOT_READY', 'veh-1');
+      expect(beforeLike.canonical).toBe(afterLike.canonical);
+
+      const def = NOTIFICATION_EVENT_REGISTRY.find((d) => d.eventType === 'VEHICLE_NOT_READY');
+      expect(def?.attentionScope).toBe('FLEET_READINESS');
+      expect(def?.domain).toBe('OPERATIONS');
+      expect(def?.conditionCode).toBe('vehicle_not_ready');
+      expect(def?.fingerprintVersion).toBe(1);
+      expect(def?.sourceType).toBe('OPERATIONAL_ISSUE');
+    });
+
+    it('covers explicit boundary cases', () => {
+      expect(requireNotificationAttentionScope('VEHICLE_NOT_READY')).toBe('FLEET_READINESS');
+      expect(requireNotificationAttentionScope('BLOCKED_VEHICLE')).toBe('FLEET_READINESS');
+      expect(requireNotificationAttentionScope('ACTIVE_DTC')).toBe('FLEET_READINESS');
+      expect(requireNotificationAttentionScope('LOW_UTILIZATION')).toBe('OPERATIONS');
+      expect(requireNotificationAttentionScope('SERVICE_BEFORE_BOOKING')).toBe('OPERATIONS');
+      expect(requireNotificationAttentionScope('INTEGRATION_DISCONNECTED')).toBe('OPERATIONS');
+    });
+
+    it('does not include attentionScope in candidate or fingerprint output', () => {
+      const candidate = buildCandidateFromRegistry({
+        organizationId: 'org-1',
+        eventType: 'BLOCKED_VEHICLE',
+        entityId: 'veh-1',
+        sourceRef: 'ref',
+        occurredAt: new Date(),
+        templateParams: { label: 'WOB L 7503' },
+      });
+      expect(candidate).not.toHaveProperty('attentionScope');
+      const fingerprint = buildRegistryFingerprint('org-1', candidate.eventType, candidate.entityId);
+      expect(fingerprint.canonical).toContain('BLOCKED_VEHICLE');
+      expect(fingerprint.canonical).not.toContain('FLEET_READINESS');
+      expect(fingerprint.canonical).not.toContain('attentionScope');
+    });
   });
 });

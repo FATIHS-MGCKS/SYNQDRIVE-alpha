@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-attention-scope-p11-2026-08-18',
+    version: '4.9.919',
+    title: 'Notification Registry — attentionScope Routing Foundation (P1.1)',
+    summary: [
+      'Kanonischer `NotificationAttentionScope` (`OPERATIONS` | `FLEET_READINESS`) in der Event Registry — Pflichtfeld pro Event Type.',
+      'Registry-Lookup-APIs: `getNotificationEventTypesByAttentionScope`, `getNotificationDefinitionsByAttentionScope`, `getNotificationAttentionScope`.',
+      '65 registrierte Event Types: 23 FLEET_READINESS, 42 OPERATIONS — keine Fingerprint-/Domain-/Lifecycle-Änderung.',
+      'Audit: `docs/audits/fleet-readiness-notification-parity-2026-08.md` — YELLOW, NOT READY FOR PHASE 2 UI cutover.',
+      'Kein Dashboard-/API-Cutover in diesem Schritt.',
+    ],
+    reason:
+      'Saubere kanonische Trennung zwischen Operations- und Fleet-Readiness-Attention-Areas als Routing-Grundlage für zukünftiges Dashboard-Splitting.',
+    previousBehavior:
+      'Keine maschinenlesbare Attention-Scope-Klassifikation; Dashboard zeigte alle Notifications in einer Operations-Box.',
+    details:
+      'notification-event-registry.types.ts, notification-event-registry.ts, notification-event-registry.definitions.ts, legal-document-notification-event.definitions.ts, notification-event-registry.spec.ts, docs/notification-engine-event-registry.md.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-08-18T23:30:00.000Z',
+  },
+  {
     id: 'master-admin-stripe-sandbox-canonicalization-2026-08-18',
     version: '4.9.918',
     title: 'Master Admin — Stripe Sandbox Canonicalization (MA-BILL-P0-001)',
