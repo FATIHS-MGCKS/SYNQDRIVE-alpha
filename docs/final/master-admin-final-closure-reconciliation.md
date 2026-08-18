@@ -21,9 +21,9 @@
 | **Active UI P1** | **0** (`UI-DASH-RENDER-P1-001` **CLOSED** 2026-08-18) |
 | **Active P2** | **~17** (kanonisch dedupliziert; `CP-P2-05` unter Accepted Risk, nicht mitgezählt) |
 | **Active P3** | **~12** (kanonisch dedupliziert; v. a. `CP-P3-04`…`CP-P3-09`, E2E, Hygiene) |
-| **Closed** | **~97** Finding-Instanzen → **~64 kanonische IDs** |
+| **Closed** | **~98** Finding-Instanzen → **~65 kanonische IDs** |
 | **Partially Closed** | **6** |
-| **Open** | **7** |
+| **Open** | **6** |
 | **Accepted Risk** | **6** (inkl. `MA-CH-P0-002` — orig. P0, kanonisch ACCEPTED RISK) |
 | **Blocking Before Production** | **3** (A1, A3, A4 aktiv; A2 + A5 geschlossen) |
 | **Technical FAIL Gates** | **0** (kein Gate vollständig FAIL; Sandbox-Betrieb bewusst) |
@@ -147,7 +147,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 | **MA-BILL-P0-001** | — | 2B / Go-Live | P0 | P0 | Billing | TRIALING orphan | Stripe-Reconcile Runbook | Kein Nachweis Reconcile ausgeführt | **OPEN** |
 | **MA-CH-P0-002** | — | Go-Live Post-Ops | **P0** (historisch) | — (kanonisch n/a) | ClickHouse | Historischer Part-Verlust 202607 | Re-Ingest oder DROP + Dokumentation | Bekannt dokumentiert; kein Forward-Impact | **ACCEPTED RISK** |
 | **MA-BKP-P0-002** | — | Go-Live | P0 | P0 | DR | GPG public-key encryption | Live verified 2026-08-18 | **CLOSED** |
-| **MA-BKP-P1-001** | — | 2C.5 | P1 | P1 | DR | Offsite nicht konfiguriert | `vps-sync-offsite-backups.sh` + rclone | Scripts in Repo; Prod offsite nicht verifiziert | **OPEN** |
+| **MA-BKP-P1-001** | — | 2C.5 | P1 | P1 | DR | Offsite nicht konfiguriert | Pipeline + guards + monitoring in Repo; Prod offsite fehlt | Integration selftest ✅; Prod offsite ❌; Escrow pending | **PARTIALLY CLOSED** |
 | **MA-REDIS-P1-001** | — | Go-Live Deploy | P1 | P1 | Worker | Failed BullMQ jobs | Drain-Skript | 30+2 failed jobs dokumentiert; kein Drain-Nachweis | **OPEN** |
 | **MA-CH-P1-002** | R-P2-1 | 2D.3 | P1 | P1 | ClickHouse | Checksum/schema drift | Re-Baseline Entscheidung | `schemaDrift` sichtbar; keine Re-Baseline | **OPEN** |
 | **TB-2** | P1-6 | 2E.1 | P1 | P1 | Tenant/HM | HM register ohne Ownership | Ownership guard | Nur relevant wenn HM produktiv | **OPEN** (conditional) |
