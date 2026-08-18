@@ -60,10 +60,7 @@ docker run -d \
   --name "$CONTAINER" \
   --restart unless-stopped \
   --network host \
-  -v "$PROM_DIR/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
-  -v "$PROM_DIR/alerts.yml:/etc/prometheus/alerts.yml:ro" \
-  -v "$PROM_DIR/alerts-infra.yml:/etc/prometheus/alerts-infra.yml:ro" \
-  -v "$PROM_DIR/secrets:/etc/prometheus/secrets:ro" \
+  -v "$PROM_DIR:/etc/prometheus:ro" \
   "$PROM_IMAGE" \
   --config.file=/etc/prometheus/prometheus.yml \
   --web.enable-lifecycle \

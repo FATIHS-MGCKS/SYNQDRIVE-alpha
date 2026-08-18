@@ -1,0 +1,116 @@
+# SynqDrive Alertmanager — production email-only template (Resend SMTP)
+# Used when ALERTMANAGER_SLACK_WEBHOOK_URL is unset.
+# Render via vps-setup-alertmanager.sh
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: '${ALERTMANAGER_SMTP_HOST}:${ALERTMANAGER_SMTP_PORT}'
+  smtp_from: '${ALERTMANAGER_SMTP_FROM}'
+  smtp_auth_username: '${ALERTMANAGER_SMTP_USER}'
+  smtp_auth_password: '${ALERTMANAGER_SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+time_intervals:
+  - name: synqdrive-maintenance
+    time_intervals:
+      - weekdays: ['sunday']
+        times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        location: 'Europe/Berlin'
+      - weekdays: ['monday:friday']
+        times:
+          - start_time: '01:00'
+            end_time: '01:30'
+        location: 'Europe/Berlin'
+
+route:
+  receiver: synqdrive-warning
+  group_by: ['alertname', 'severity', 'component', 'cluster']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    - receiver: synqdrive-null
+      matchers:
+        - severity = info
+      continue: false
+
+    - receiver: synqdrive-null
+      matchers:
+        - severity =~ "warning|info"
+      mute_time_intervals:
+        - synqdrive-maintenance
+      continue: false
+
+    - receiver: synqdrive-critical
+      matchers:
+        - severity = critical
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true
+
+    - receiver: synqdrive-escalation
+      matchers:
+        - severity = critical
+      group_wait: 10s
+      repeat_interval: 2h
+      continue: false
+
+    - receiver: synqdrive-warning
+      matchers:
+        - severity = warning
+      group_wait: 1m
+      repeat_interval: 6h
+      continue: false
+
+inhibit_rules:
+  - source_matchers:
+      - alertname = SynqDriveBackendDown
+    target_matchers:
+      - severity =~ "warning|info"
+    equal: ['cluster']
+
+  - source_matchers:
+      - alertname = PostgreSQLUnavailable
+    target_matchers:
+      - component =~ "bullmq|clickhouse"
+    equal: ['cluster']
+
+  - source_matchers:
+      - alertname = RedisUnavailable
+    target_matchers:
+      - component = bullmq
+    equal: ['cluster']
+
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['alertname', 'component', 'cluster']
+
+receivers:
+  - name: synqdrive-null
+
+  - name: synqdrive-warning
+    email_configs:
+      - to: '${ALERTMANAGER_EMAIL_WARNING}'
+        send_resolved: true
+        html: '{{ template "synqdrive.email.html" . }}'
+
+  - name: synqdrive-critical
+    email_configs:
+      - to: '${ALERTMANAGER_EMAIL_CRITICAL}'
+        send_resolved: true
+        html: '{{ template "synqdrive.email.html" . }}'
+
+  - name: synqdrive-escalation
+    email_configs:
+      - to: '${ALERTMANAGER_EMAIL_ESCALATION}'
+        send_resolved: true
+        html: '{{ template "synqdrive.email.html" . }}'
