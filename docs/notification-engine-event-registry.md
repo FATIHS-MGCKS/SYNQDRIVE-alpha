@@ -139,7 +139,7 @@ Vollständige Matrix: Code (`notification-event-registry.definitions.ts`, `legal
 
 ## Registrierte Event-Typen
 
-> **Hinweis:** Die vollständige, aktuelle Liste (65 Event Types inkl. Legal-Dokument-Events und Connectivity-Typen) liegt im Code. Diese Tabelle ist eine Kurzreferenz — bei Abweichungen gilt der Code.
+> **Hinweis:** Die vollständige, aktuelle Liste (**66** Event Types: **23** `FLEET_READINESS`, **43** `OPERATIONS` — inkl. 20 Legal-Dokument-Events und Connectivity-Typen) liegt im Code. Diese Tabelle ist eine Kurzreferenz — bei Abweichungen gilt der Code.
 
 | Slug | eventType | Domain | attentionScope | Kind | Shadow |
 |------|-----------|--------|----------------|------|--------|
