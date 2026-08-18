@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { ConfirmDialog } from '../../../components/patterns';
-import { Button } from '../../../components/ui/button';
 
 export type PrivilegeActionCategory = 'sensitive' | 'high-risk' | 'destructive';
 
