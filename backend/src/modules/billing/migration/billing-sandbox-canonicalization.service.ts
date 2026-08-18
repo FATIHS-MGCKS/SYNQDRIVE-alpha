@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import {
+  BillingCatalogStatus,
   BillingPriceVersionStatus,
   BillingStripeMode,
   BillingStatus,
@@ -87,10 +88,10 @@ export class BillingSandboxCanonicalizationService {
     if (!input.skipCatalogSync) {
       const publishedVersions = await this.prisma.billingPriceVersion.findMany({
         where: {
-          status: BillingPriceVersionStatus.PUBLISHED,
+          status: BillingPriceVersionStatus.ACTIVE,
           priceBook: {
             billingProduct: {
-              isActive: true,
+              status: BillingCatalogStatus.ACTIVE,
             },
           },
         },
@@ -357,7 +358,7 @@ export class BillingSandboxCanonicalizationService {
         where: { subscriptionId: subscription.id },
         data: { stripeMode: runtimeStripeMode },
       }),
-      this.prisma.billingSubscriptionDiscount.updateMany({
+      this.prisma.billingDiscount.updateMany({
         where: { subscriptionId: subscription.id },
         data: { stripeMode: runtimeStripeMode },
       }),
