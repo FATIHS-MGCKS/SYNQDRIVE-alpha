@@ -32,7 +32,7 @@ export const MASTER_NAV_ITEMS: MasterNavItemConfig[] = [
   { id: 'parts-accessories', labelKey: 'master.nav.partsAccessories', icon: Package, permissions: ['MASTER_ADMIN'] },
   { id: 'insurances', labelKey: 'master.nav.insurances', icon: Shield, permissions: ['MASTER_ADMIN'] },
   { id: 'voice-assistant', labelKey: 'master.nav.voiceAssistant', icon: Phone, permissions: ['MASTER_ADMIN'] },
-  { id: 'platform-health', labelKey: 'master.nav.platformHealth', icon: HeartPulse, permissions: ['MASTER_ADMIN'], badge: 'platform-critical', mobilePrimary: true },
+  { id: 'platform-ops', labelKey: 'master.nav.platformOps', icon: HeartPulse, permissions: ['MASTER_ADMIN'], badge: 'platform-critical', mobilePrimary: true },
   { id: 'support', labelKey: 'master.nav.support', icon: Headphones, permissions: ['MASTER_ADMIN'], badge: 'support-count', mobilePrimary: true },
   { id: 'activity-log', labelKey: 'master.nav.activityLog', icon: History, permissions: ['MASTER_ADMIN'] },
   { id: 'architektur', labelKey: 'master.nav.architecture', icon: Code2, permissions: ['MASTER_ADMIN'] },
@@ -50,7 +50,7 @@ export const MASTER_NAV_GROUPS: MasterNavGroupConfig[] = [
   { id: 'commerce', labelKey: 'master.nav.group.commerce', collapsible: false, defaultExpanded: true, items: ['billing'] },
   { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['high-mobility'] },
   { id: 'partners', labelKey: 'master.nav.group.partners', collapsible: true, defaultExpanded: true, items: ['parts-accessories', 'insurances', 'voice-assistant'] },
-  { id: 'operations', labelKey: 'master.nav.group.operations', collapsible: true, defaultExpanded: true, items: ['platform-health', 'support', 'activity-log'] },
+  { id: 'operations', labelKey: 'master.nav.group.operations', collapsible: true, defaultExpanded: true, items: ['platform-ops', 'support', 'activity-log'] },
   { id: 'engineering', labelKey: 'master.nav.group.engineering', collapsible: true, defaultExpanded: false, items: ['architektur', 'changes'] },
 ];
 

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-platform-ops-ui83-2026-08-18',
+    version: '4.9.912',
+    title: 'Master Admin — Plattform & Betrieb (UI-8.3)',
+    summary: [
+      'Backend: `PlatformOpsService` + `/admin/ops/*` (Overview, Incidents, Services, Queues, Workers, Schedulers, Infrastructure, Alerts, Resilience, Tools).',
+      'Frontend: `master/platform-ops/PlatformOpsHub` mit 7 Tabs; ersetzt `PlatformHealthView` Routing.',
+      'Alertmanager read-only; Prometheus Host-Metriken; keine zweite Health-Wahrheit im Client.',
+      'Redirects: `platform-health` → `platform-ops`; Settings Monitoring → Diagnostik.',
+      'Acceptance: `docs/ui/master-admin-platform-operations-post-remediation.md`.',
+    ],
+    reason: 'Platform Operations war fragmentiert (Health-Loop, verwaistes Monitoring, kein AM) — Audit UI-8 P0.',
+    previousBehavior: '`platform-health` Root + Settings Monitoring Redirect-Loop; Backup-Drilldown → Architektur.',
+    details:
+      'backend/src/modules/platform-admin/platform-ops*.ts; frontend/src/master/platform-ops/*; App.tsx, master-nav, MasterDashboardView drilldowns; architecture/MASTER_ADMIN_PLATFORM_OPS_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T00:00:00.000Z',
+  },
+  {
     id: 'master-admin-connected-vehicles-dimo-ui73-2026-08-18',
     version: '4.9.911',
     title: 'Master Admin — Verbundene Fahrzeuge / DIMO (UI-7.3)',

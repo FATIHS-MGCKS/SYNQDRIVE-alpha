@@ -249,7 +249,7 @@ export function Sidebar({
         {!billingOnly && (
           <button
             type="button"
-            onClick={() => go('platform-health')}
+            onClick={() => go('platform-ops')}
             className={cn(
               'w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[40px] rounded-lg text-left text-[12px] font-medium transition-colors hover:bg-accent/50',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

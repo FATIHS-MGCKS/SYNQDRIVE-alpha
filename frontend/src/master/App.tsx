@@ -19,7 +19,8 @@ import { ArchitekturView } from './components/ArchitekturView';
 import { ChangesView } from './components/ChangesView';
 import VehicleLogbookView from './components/VehicleLogbookView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
-import { PlatformHealthView } from './components/PlatformHealthView';
+import { PlatformOpsHub } from './platform-ops/PlatformOpsHub';
+import { migratePlatformHealthParams, syncPlatformOpsUrl } from './platform-ops/platform-ops-url';
 import {
   normalizeMasterNavLocation,
   pushMasterNavState,
@@ -176,7 +177,13 @@ export default function App() {
   );
 
   useEffect(() => {
-    const normalized = normalizeMasterNavLocation(window.location.search);
+    const migrated = migratePlatformHealthParams(window.location.search);
+    if (migrated !== window.location.search) {
+      window.history.replaceState(null, '', `${window.location.pathname}${migrated}`);
+    }
+    const normalized = normalizeMasterNavLocation(
+      migrated !== window.location.search ? migrated : window.location.search,
+    );
     setCurrentView(normalized.view);
     if (normalized.settingsTab) setSettingsTab(normalized.settingsTab);
     setArchCategory(parseArchCategory(normalized.archCategory));
@@ -224,7 +231,8 @@ export default function App() {
 
   useEffect(() => {
     if (currentView === 'settings' && settingsTab === 'monitoring') {
-      handleMasterNavigate('platform-health', { replace: true });
+      handleMasterNavigate('platform-ops', { replace: true });
+      syncPlatformOpsUrl({ section: 'diagnostics', diagnosticsTab: 'alerts' }, { replace: true });
     }
   }, [currentView, settingsTab, handleMasterNavigate]);
 
@@ -435,7 +443,7 @@ export default function App() {
                 setDetailOrgId(orgId);
                 pushMasterNavState({ view: 'organizations', orgId });
               }}
-              onOpenPlatformHealth={() => handleMasterNavigate('platform-health')}
+              onOpenPlatformHealth={() => handleMasterNavigate('platform-ops')}
             />
           </PageContainer>
         )}
@@ -456,12 +464,20 @@ export default function App() {
           </PageContainer>
         )}
 
-        {currentView === 'platform-health' && (
-          <PageContainer variant="standard">
-            <PlatformHealthView
-              isDarkMode={isDarkMode}
-              onViewChange={(view, tab) => {
-                handleMasterNavigate(view as MasterView, { settingsTab: tab });
+        {currentView === 'platform-ops' && (
+          <PageContainer variant="wide">
+            <PlatformOpsHub
+              onNavigateView={(view, params) => {
+                handleMasterNavigate(view as MasterView);
+                if (params) {
+                  const q = new URLSearchParams(window.location.search);
+                  for (const [k, v] of Object.entries(params)) q.set(k, v);
+                  window.history.replaceState(null, '', `${window.location.pathname}?${q.toString()}`);
+                }
+              }}
+              onOpenOrganization={(orgId) => {
+                setDetailOrgId(orgId);
+                pushMasterNavState({ view: 'organizations', orgId });
               }}
             />
           </PageContainer>
@@ -505,7 +521,7 @@ export default function App() {
                 setDetailOrgId(orgId);
                 pushMasterNavState({ view: 'organizations', orgId });
               }}
-              onOpenPlatformHealth={() => handleMasterNavigate('platform-health')}
+              onOpenPlatformHealth={() => handleMasterNavigate('platform-ops')}
             />
           </PageContainer>
         )}

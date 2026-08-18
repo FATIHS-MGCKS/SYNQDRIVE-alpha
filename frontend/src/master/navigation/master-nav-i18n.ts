@@ -19,6 +19,7 @@ const DE: Record<string, string> = {
   'master.nav.partsAccessories': 'Ersatzteile & Zubehör',
   'master.nav.insurances': 'Versicherungen',
   'master.nav.voiceAssistant': 'Sprachassistent',
+  'master.nav.platformOps': 'Plattform & Betrieb',
   'master.nav.platformHealth': 'Plattformstatus',
   'master.nav.support': 'Support',
   'master.nav.activityLog': 'Aktivitätsprotokoll',

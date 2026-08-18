@@ -16,6 +16,7 @@ import {
   PlatformDashboardService,
   PlatformResilienceStatusService,
 } from './platform-dashboard.service';
+import { PlatformOpsService } from './platform-ops.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import { DimoAuthService } from '../dimo/dimo-auth.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -52,6 +53,7 @@ export class PlatformAdminController {
     private readonly batteryCapabilityRefresh: BatteryCapabilityRefreshService,
     private readonly batteryCapabilityRepository: BatteryCapabilityPreflightRepository,
     private readonly batteryShadowValidation: BatteryShadowValidationService,
+    private readonly platformOpsService: PlatformOpsService,
   ) {}
 
   @Get('changelogs')
@@ -106,6 +108,82 @@ export class PlatformAdminController {
   @Get('ops/resilience-status')
   async getResilienceStatus() {
     return this.platformResilienceStatus.getResilienceStatus();
+  }
+
+  @Get('ops/overview')
+  async getOpsOverview() {
+    return this.platformOpsService.getOverview();
+  }
+
+  @Get('ops/incidents')
+  async getOpsIncidents(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.platformOpsService.getIncidents(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 25,
+    );
+  }
+
+  @Get('ops/incidents/:id')
+  async getOpsIncident(@Param('id') id: string) {
+    const incident = await this.platformOpsService.getIncidentById(id);
+    if (!incident) {
+      throw new BadRequestException('Incident not found');
+    }
+    return incident;
+  }
+
+  @Get('ops/services')
+  async getOpsServices() {
+    return this.platformOpsService.getServices();
+  }
+
+  @Get('ops/services/:serviceId')
+  async getOpsServiceDetail(@Param('serviceId') serviceId: string) {
+    const detail = await this.platformOpsService.getServiceDetail(serviceId);
+    if (!detail) {
+      throw new BadRequestException('Service not found');
+    }
+    return detail;
+  }
+
+  @Get('ops/queues')
+  async getOpsQueues() {
+    return this.platformOpsService.getQueues();
+  }
+
+  @Get('ops/workers')
+  async getOpsWorkers() {
+    return this.platformOpsService.getWorkers();
+  }
+
+  @Get('ops/schedulers')
+  async getOpsSchedulers() {
+    return this.platformOpsService.getSchedulers();
+  }
+
+  @Get('ops/infrastructure-summary')
+  async getOpsInfrastructureSummary() {
+    return this.platformOpsService.getInfrastructure();
+  }
+
+  @Get('ops/alertmanager-summary')
+  async getOpsAlertmanagerSummary() {
+    return this.platformOpsService.getAlerts().then((a) => a.alertmanager);
+  }
+
+  @Get('ops/alerts')
+  async getOpsAlerts() {
+    return this.platformOpsService.getAlerts();
+  }
+
+  @Get('ops/resilience')
+  async getOpsResilience() {
+    return this.platformOpsService.getResilience();
+  }
+
+  @Get('ops/tools')
+  async getOpsTools() {
+    return this.platformOpsService.getTools();
   }
 
   @Get('connectivity/platform-summary')

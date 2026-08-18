@@ -471,7 +471,13 @@ function TokenAuthHealthPanel({ tokenHealth,
 
 // ─── Main Monitoring View ──────────────────────────────────────────
 
-export function SystemMonitoringView() {
+export function SystemMonitoringView({
+  embedded = false,
+  initialFocus,
+}: {
+  embedded?: boolean;
+  initialFocus?: 'poll-logs' | 'tokens';
+} = {}) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);
   const [workers, setWorkers] = useState<any[]>([]);
@@ -579,6 +585,7 @@ export function SystemMonitoringView() {
 
   return (
     <>
+      {!embedded && (
       <MasterPageHeader
         title="System Monitoring"
         icon={<Activity className="w-4 h-4" />}
@@ -605,6 +612,7 @@ export function SystemMonitoringView() {
           </div>
         }
       />
+      )}
 
       {loading && !summary ? (
         <div className={`${CARD} p-12 flex items-center justify-center`}>

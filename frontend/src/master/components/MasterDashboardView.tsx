@@ -56,17 +56,39 @@ function navigate(
   params?: Record<string, string>,
 ) {
   if (!onViewChange) return;
-  if (view === 'billing' && params) {
+  const resolvedView = view === 'platform-health' ? 'platform-ops' : view;
+
+  if (resolvedView === 'billing' && params) {
     const q = new URLSearchParams(params);
     window.history.replaceState(null, '', `/master?${new URLSearchParams({ view: 'billing', ...Object.fromEntries(q) }).toString()}`);
   }
-  if (view === 'platform-health' && params?.opsTab) {
-    window.history.replaceState(null, '', `/master?${new URLSearchParams({ view: 'platform-health', opsTab: params.opsTab }).toString()}`);
+
+  if (resolvedView === 'platform-ops') {
+    const q = new URLSearchParams({ view: 'platform-ops' });
+    if (params?.platformOps) {
+      q.set('platformOps', params.platformOps);
+    } else if (params?.opsTab === 'workers') {
+      q.set('platformOps', 'processing');
+      q.set('platformOpsTab', 'workers');
+    } else {
+      q.set('platformOps', 'overview');
+    }
+    if (params?.platformOpsTab) q.set('platformOpsTab', params.platformOpsTab);
+    if (params?.incidentId) q.set('incidentId', params.incidentId);
+    if (params?.serviceId) q.set('serviceId', params.serviceId);
+    if (params && !params.platformOps && !params.opsTab) {
+      for (const [k, v] of Object.entries(params)) {
+        if (['platformOps', 'platformOpsTab', 'incidentId', 'serviceId'].includes(k)) q.set(k, v);
+      }
+    }
+    window.history.replaceState(null, '', `/master?${q.toString()}`);
   }
-  if (view === 'organizations' && params?.orgId) {
+
+  if (resolvedView === 'organizations' && params?.orgId) {
     window.history.replaceState(null, '', `/master?${new URLSearchParams({ view: 'organizations', orgId: params.orgId }).toString()}`);
   }
-  onViewChange(view);
+
+  onViewChange(resolvedView);
 }
 
 function StatusHero({
@@ -153,9 +175,9 @@ function StatusHero({
             onClick={() => {
               if (key === 'billing') onNavigate('billing');
               else if (key === 'dimo') onNavigate('fleet-connection');
-              else if (key === 'worker' || key === 'runtime') onNavigate('platform-health');
+              else if (key === 'worker' || key === 'runtime') onNavigate('platform-ops', { platformOps: 'processing' });
               else if (key === 'support') onNavigate('support');
-              else if (key === 'backup') onNavigate('architektur');
+              else if (key === 'backup') onNavigate('platform-ops', { platformOps: 'resilience' });
             }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/60 px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted/60"
           >
@@ -226,7 +248,7 @@ function IncidentList({
         <button
           type="button"
           className="mt-2 text-xs font-semibold text-[color:var(--brand)] hover:underline"
-          onClick={() => onNavigate('platform-health')}
+          onClick={() => onNavigate('platform-ops', { platformOps: 'incidents' })}
         >
           Alle anzeigen ({incidents.length})
         </button>
@@ -240,7 +262,7 @@ function PlatformStatusCompact({
   onNavigate,
 }: {
   data: MasterDashboardOperationalDto;
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, params?: Record<string, string>) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const readiness = data.platformHealth?.readiness as
@@ -333,7 +355,7 @@ function PlatformStatusCompact({
         <button
           type="button"
           className="text-xs font-semibold text-[color:var(--brand)] hover:underline"
-          onClick={() => onNavigate('platform-health')}
+          onClick={() => onNavigate('platform-ops', { platformOps: 'overview' })}
         >
           Details <ArrowUpRight className="inline h-3 w-3" />
         </button>
@@ -476,7 +498,7 @@ function DomainSummaries({
         title="Worker & Queues"
         description="Abweichungen priorisiert"
         actions={
-          <button type="button" className="text-xs text-[color:var(--brand)] hover:underline" onClick={() => onNavigate('platform-health', { opsTab: 'workers' })}>
+          <button type="button" className="text-xs text-[color:var(--brand)] hover:underline" onClick={() => onNavigate('platform-ops', { platformOps: 'processing', platformOpsTab: 'workers' })}>
             Öffnen
           </button>
         }
@@ -516,7 +538,7 @@ function SupportSection({
   onNavigate,
 }: {
   support: NonNullable<MasterDashboardOperationalDto['support']>;
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, params?: Record<string, string>) => void;
 }) {
   return (
     <MasterPageSection
@@ -554,7 +576,7 @@ function ActivitySection({
   onNavigate,
 }: {
   activity: MasterDashboardOperationalDto['activity'];
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, params?: Record<string, string>) => void;
 }) {
   return (
     <MasterPageSection
@@ -664,7 +686,7 @@ export function MasterDashboardView({ onViewChange }: MasterDashboardViewProps) 
             <button
               type="button"
               className="sq-btn-secondary rounded-xl px-4 py-2 text-sm"
-              onClick={() => go('platform-health')}
+              onClick={() => go('platform-ops')}
             >
               <Server className="inline h-4 w-4 mr-1.5" aria-hidden />
               Plattformstatus

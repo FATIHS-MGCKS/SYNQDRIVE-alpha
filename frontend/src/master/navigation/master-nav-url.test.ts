@@ -19,9 +19,14 @@ describe('master-nav-url', () => {
     expect(loc.archCategory).toBe('health');
   });
 
-  it('redirects settings monitoring tab to platform-health', () => {
+  it('redirects settings monitoring tab to platform-ops', () => {
     const loc = normalizeMasterNavLocation('?view=settings&settingsTab=monitoring');
-    expect(loc.view).toBe('platform-health');
+    expect(loc.view).toBe('platform-ops');
+  });
+
+  it('redirects legacy platform-health to platform-ops', () => {
+    const loc = normalizeMasterNavLocation('?view=platform-health');
+    expect(loc.view).toBe('platform-ops');
   });
 
   it('builds canonical view search string', () => {

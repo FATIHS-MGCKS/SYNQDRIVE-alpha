@@ -3507,6 +3507,26 @@ export const api = {
       queues: () => get<any[]>('/admin/monitoring/queues'),
     },
     platformHealth: () => get<any>('/admin/platform-health'),
+    platformOps: {
+      overview: () => get<import('../master/platform-ops/types').PlatformOpsOverviewDto>('/admin/ops/overview'),
+      incidents: (params?: { page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.page != null) q.set('page', String(params.page));
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<{ incidents: import('../master/platform-ops/types').PlatformOpsIncidentDto[]; meta: { total: number; page: number; limit: number; totalPages: number }; generatedAt: string; isStale: boolean }>(`/admin/ops/incidents${suffix}`);
+      },
+      incident: (id: string) => get<import('../master/platform-ops/types').PlatformOpsIncidentDto>(`/admin/ops/incidents/${id}`),
+      services: () => get<{ groups: Record<string, import('../master/platform-ops/types').PlatformOpsServiceSummaryDto[]>; generatedAt: string; isStale: boolean; moduleErrors: Record<string, string> }>('/admin/ops/services'),
+      service: (serviceId: string) => get<import('../master/platform-ops/types').PlatformOpsServiceDetailDto>(`/admin/ops/services/${serviceId}`),
+      queues: () => get<any>('/admin/ops/queues'),
+      workers: () => get<any>('/admin/ops/workers'),
+      schedulers: () => get<any>('/admin/ops/schedulers'),
+      infrastructure: () => get<any>('/admin/ops/infrastructure-summary'),
+      alerts: () => get<any>('/admin/ops/alerts'),
+      resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
+      tools: () => get<any>('/admin/ops/tools'),
+    },
     email: {
       getSettings: () => get<PlatformEmailSettingsAdminDto>('/admin/email/settings'),
       updateSettings: (payload: {

@@ -9,6 +9,7 @@ export type MasterView =
   | 'prospects'
   | 'billing'
   | 'activity-log'
+  | 'platform-ops'
   | 'platform-health'
   | 'support'
   | 'settings'

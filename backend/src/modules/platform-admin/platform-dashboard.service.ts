@@ -240,7 +240,8 @@ export function buildDashboardIncidents(input: {
       lastSeen: alert.lastSeen,
       organizationIds: [],
       organizationNames: [],
-      drilldownView: 'platform-health',
+      drilldownView: 'platform-ops',
+      drilldownParams: { platformOps: 'diagnostics', platformOpsTab: 'alerts' },
     });
   }
 
@@ -315,8 +316,8 @@ export function buildDashboardIncidents(input: {
       lastSeen: new Date().toISOString(),
       organizationIds: [],
       organizationNames: [],
-      drilldownView: 'platform-health',
-      drilldownParams: { opsTab: 'workers' },
+      drilldownView: 'platform-ops',
+      drilldownParams: { platformOps: 'processing', platformOpsTab: 'queues' },
     });
   }
 
@@ -330,7 +331,8 @@ export function buildDashboardIncidents(input: {
       lastSeen: new Date().toISOString(),
       organizationIds: [],
       organizationNames: [],
-      drilldownView: 'architektur',
+      drilldownView: 'platform-ops',
+      drilldownParams: { platformOps: 'resilience' },
     });
   } else if (input.resilience.overall === 'warning') {
     push({
@@ -342,7 +344,8 @@ export function buildDashboardIncidents(input: {
       lastSeen: new Date().toISOString(),
       organizationIds: [],
       organizationNames: [],
-      drilldownView: 'architektur',
+      drilldownView: 'platform-ops',
+      drilldownParams: { platformOps: 'resilience' },
     });
   }
 

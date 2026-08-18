@@ -7,6 +7,9 @@ import {
   PlatformDashboardService,
   PlatformResilienceStatusService,
 } from './platform-dashboard.service';
+import { PlatformOpsAlertmanagerService } from './platform-ops-alertmanager.service';
+import { PlatformOpsInfrastructureService } from './platform-ops-infrastructure.service';
+import { PlatformOpsService } from './platform-ops.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { HealthModule } from '../health/health.module';
@@ -22,6 +25,9 @@ import { SupportModule } from '../support/support.module';
     PlatformResilienceStatusService,
     PlatformConnectivitySummaryService,
     PlatformDashboardService,
+    PlatformOpsService,
+    PlatformOpsAlertmanagerService,
+    PlatformOpsInfrastructureService,
   ],
   exports: [PlatformAdminService, PlatformDashboardService, PlatformConnectivitySummaryService],
 })
