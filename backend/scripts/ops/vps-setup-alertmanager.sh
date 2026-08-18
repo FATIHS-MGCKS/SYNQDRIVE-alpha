@@ -125,6 +125,7 @@ docker run -d \
   --storage.path=/alertmanager \
   --web.listen-address=127.0.0.1:9093 \
   --web.external-url=http://127.0.0.1:9093/ \
+  --log.level=info \
   --cluster.listen-address=
 
 echo "Alertmanager container started: $CONTAINER"

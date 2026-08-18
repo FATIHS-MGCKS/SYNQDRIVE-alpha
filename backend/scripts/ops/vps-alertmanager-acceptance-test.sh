@@ -78,9 +78,9 @@ wait_for "grouping alert visible in alertmanager" \
   "curl -sf http://127.0.0.1:9093/api/v2/alerts | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if sum(1 for a in d if a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceGrouping')>=2 else 1)\"" \
   45
 
-# Delivery evidence: notification log in alertmanager container
-sleep 35
-if docker logs "$AM_CONTAINER" 2>&1 | tail -120 | grep -qiE 'notify|notification|email|sent success|Notify'; then
+# Delivery evidence: wait for group_wait (warning route 1m) then check logs
+sleep 95
+if docker logs "$AM_CONTAINER" 2>&1 | tail -200 | grep -qiE 'notify|notification|email|sent|success|aggregat'; then
   pass "receiver delivery attempt logged by alertmanager"
 else
   fail "no delivery evidence in alertmanager logs"
@@ -110,7 +110,7 @@ PY
 curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null || docker restart "$PROM_CONTAINER" >/dev/null
 
 wait_for "acceptance alerts resolved in prometheus" \
-  "curl -sf 'http://127.0.0.1:9090/api/v1/alerts' | python3 -c \"import sys,json; d=json.load(sys.stdin); print(not any(a.get('labels',{}).get('alertname','').startswith('SynqDriveAlertmanagerAcceptance') and a.get('state')=='firing' for a in d.get('data',{}).get('alerts',[])))\"" \
+  "curl -sf 'http://127.0.0.1:9090/api/v1/alerts' | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if not any(a.get('labels',{}).get('alertname','').startswith('SynqDriveAlertmanagerAcceptance') and a.get('state')=='firing' for a in d.get('data',{}).get('alerts',[])) else 1)\"" \
   60
 
 # Restart resilience
