@@ -58,7 +58,15 @@ export interface NotificationEventTypeDefinition {
   allowedSeverityEscalations: readonly NotificationSeverity[];
   titleKey: string;
   bodyKey: string;
+  /** Optional compact label for grouped summaries / badges. */
+  shortLabelKey?: string;
+  /** SUCCESS-severity title override (e.g. recovery states). */
+  recoveryTitleKey?: string;
+  /** SUCCESS-severity body override (e.g. recovery states). */
+  recoveryBodyKey?: string;
   requiredTemplateParams: readonly string[];
+  /** Whitelist of keys permitted in templateParams — auto-inferred at registry bootstrap when omitted. */
+  allowedTemplateParams?: readonly string[];
   actionType: NotificationActionType;
   actionTargetBuilder: NotificationActionTargetBuilder;
   sourceType: NotificationSourceType;

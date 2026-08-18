@@ -14,6 +14,7 @@ import {
   validateRegistryBuildInput,
   validateRegistryCandidate,
 } from './notification-event-registry.validator';
+import { NotificationTemplateParamsValidationError } from '../notification-template-params.validator';
 
 describe('NotificationEventRegistry', () => {
   it('registers all event types completely', () => {
@@ -84,6 +85,52 @@ describe('NotificationEventRegistry', () => {
     const stateDef = NOTIFICATION_EVENT_REGISTRY.find((d) => d.eventType === 'PICKUP_OVERDUE');
     expect(eventDef?.eventKind).toBe(NotificationEventKind.EVENT);
     expect(stateDef?.eventKind).toBe(NotificationEventKind.STATE);
+  });
+
+  it('rejects candidate with non-registry bodyKey', () => {
+    const candidate = buildCandidateFromRegistry({
+      organizationId: 'org-1',
+      eventType: 'STATION_SHORTAGE',
+      entityId: 'station-1',
+      sourceRef: 'run-1',
+      occurredAt: new Date(),
+      templateParams: { stationName: 'Main', available: 1, totalVehicles: 3 },
+    });
+    candidate.bodyKey = 'notification.body.customText';
+    expect(() => validateRegistryCandidate(candidate)).toThrow(NotificationRegistryValidationError);
+  });
+
+  it('applies recovery template keys for SUCCESS severity', () => {
+    const candidate = buildCandidateFromRegistry({
+      organizationId: 'org-1',
+      eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
+      entityId: 'veh-1',
+      sourceRef: 'ref-1',
+      occurredAt: new Date(),
+      severity: NotificationSeverity.SUCCESS,
+      templateParams: { label: 'WOB L 7503' },
+      actionTargetContext: { vehicleId: 'veh-1', module: 'health' },
+    });
+    expect(candidate.titleKey).toBe('notification.title.drivingAssessmentRecovering');
+    expect(candidate.bodyKey).toBe('notification.body.drivingAssessmentRecovering');
+  });
+
+  it('rejects disallowed template param keys', () => {
+    const candidate = buildCandidateFromRegistry({
+      organizationId: 'org-1',
+      eventType: 'STATION_SHORTAGE',
+      entityId: 'station-1',
+      sourceRef: 'run-1',
+      occurredAt: new Date(),
+      templateParams: {
+        stationName: 'Main',
+        available: 1,
+        totalVehicles: 3,
+        customerEmail: 'secret@example.com',
+        unknownField: 'value',
+      },
+    });
+    expect(() => validateRegistryCandidate(candidate)).toThrow(NotificationTemplateParamsValidationError);
   });
 
   it('rejects candidate missing required template params', () => {

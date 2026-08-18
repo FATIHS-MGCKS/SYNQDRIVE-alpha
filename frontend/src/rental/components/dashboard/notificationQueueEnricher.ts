@@ -176,7 +176,12 @@ export function notificationCtaLabelKey(actionType: NotificationActionType): Tra
 export function createNotificationTranslator(locale: Locale | string) {
   const dict = locale === 'de' ? de : en;
   return (key: TranslationKey, vars?: Record<string, string | number>): string => {
-    let text = dict[key] ?? en[key] ?? key;
+    let text = dict[key] ?? en[key];
+    if (!text) {
+      text = key.startsWith('notification.')
+        ? (dict['notification.keyMissing'] ?? en['notification.keyMissing'] ?? key)
+        : key;
+    }
     if (vars) {
       for (const [name, value] of Object.entries(vars)) {
         text = text.replace(`{${name}}`, String(value));
