@@ -29,7 +29,7 @@ const DE: Record<string, string> = {
   'master.nav.systemStatus': 'Systemstatus',
   'master.nav.systemStatusOperational': 'Betriebsbereit',
   'master.nav.systemStatusDegraded': 'Eingeschränkt',
-  'master.nav.settings': 'Einstellungen',
+  'master.nav.platformIntegrations': 'Integrationen & Plattform',
   'master.nav.account': 'Konto',
   'master.nav.logout': 'Abmelden',
   'master.nav.collapseSidebar': 'Sidebar einklappen',

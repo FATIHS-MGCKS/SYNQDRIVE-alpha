@@ -3533,7 +3533,40 @@ export const api = {
         defaultFromEmail: string;
         defaultFromName: string;
         defaultReplyToEmail?: string | null;
+        reason?: string;
       }) => put<PlatformEmailSettingsAdminDto>('/admin/email/settings', payload),
+      sendTest: (payload: { toEmail: string; reason: string }) =>
+        post<{
+          success: boolean;
+          status: string;
+          provider: string;
+          providerMessageId: string | null;
+          correlationId: string | null;
+          sentAt: string;
+          errorMessage: string | null;
+        }>('/admin/email/test', payload),
+    },
+    platformIntegrations: {
+      directory: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationsDirectoryDto>(
+          '/admin/platform-integrations/directory',
+        ),
+      attentionSummary: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationsAttentionSummaryDto>(
+          '/admin/platform-integrations/attention-summary',
+        ),
+      webhooks: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationWebhooksDto>(
+          '/admin/platform-integrations/webhooks',
+        ),
+      flags: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationsFlagsDto>(
+          '/admin/platform-integrations/flags',
+        ),
+      detail: (integrationId: string) =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationDetailDto>(
+          `/admin/platform-integrations/${integrationId}`,
+        ),
     },
     changelogs: (module?: string) =>
       get<any[]>('/admin/changelogs' + (module ? `?module=${module}` : '')),

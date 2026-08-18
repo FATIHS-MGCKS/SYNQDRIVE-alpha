@@ -17,6 +17,7 @@ export interface MasterNavBadgeState {
   billingAnomaly: boolean;
   mfaRequired: boolean;
   securityAttention: number;
+  integrationAttention: number;
 }
 
 export type MasterNavBadges = Partial<Record<MasterNavBadgeType, string | number | boolean>>;
@@ -30,8 +31,10 @@ function deriveBadges(state: MasterNavBadgeState): MasterNavBadges {
   if (state.openSupportTickets > 0) {
     badges['support-count'] = state.openSupportTickets > 9 ? '9+' : state.openSupportTickets;
   }
+  if (state.integrationAttention > 0) {
+    badges['integration-attention'] = state.integrationAttention > 9 ? '9+' : state.integrationAttention;
+  }
   if (!state.dimoConnected) {
-    badges['integration-outage'] = true;
     badges['connectivity-warning'] = true;
   }
   if (state.billingAnomaly) {
@@ -55,6 +58,7 @@ export function useMasterNavBadges(): MasterNavBadges {
     dimoConnected: true,
     billingAnomaly: false,
     mfaRequired: false,
+    integrationAttention: 0,
     securityAttention: 0,
   });
 
@@ -63,10 +67,11 @@ export function useMasterNavBadges(): MasterNavBadges {
 
     const load = async () => {
       try {
-        const [operational, mfaStatus, attention] = await Promise.all([
+        const [operational, mfaStatus, securityAttention, integrationAttention] = await Promise.all([
           fetchOperationalDashboard().catch(() => null),
           api.account.mfa.status().catch(() => null),
           api.admin.securityAccess.attentionSummary().catch(() => null),
+          api.admin.platformIntegrations.attentionSummary().catch(() => null),
         ]);
 
         if (!mounted) return;
@@ -76,7 +81,8 @@ export function useMasterNavBadges(): MasterNavBadges {
         setBadgeState({
           ...opsState,
           mfaRequired: Boolean(mfaStatus?.enrollmentRequired && !mfaStatus?.enrolled),
-          securityAttention: attention?.total ?? 0,
+          securityAttention: securityAttention?.total ?? 0,
+          integrationAttention: integrationAttention?.total ?? 0,
         });
       } catch {
         if (mounted) {
@@ -93,6 +99,7 @@ export function useMasterNavBadges(): MasterNavBadges {
         ...operationalToNavBadgeState(data),
         mfaRequired: prev.mfaRequired,
         securityAttention: prev.securityAttention,
+        integrationAttention: prev.integrationAttention,
       }));
     });
     const interval = setInterval(() => void load(), OPERATIONAL_REFRESH_MS);

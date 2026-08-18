@@ -2,7 +2,8 @@ import type { MasterNavLocationState, MasterView } from './master-nav.types';
 
 const CANONICAL_VIEWS: MasterView[] = [
   'dashboard', 'organizations', 'security-access', 'users', 'vehicles', 'prospects', 'billing',
-  'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'fleet-connection',
+  'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'platform-integrations',
+  'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
   'architektur', 'changes', 'vehicle-logbook',
 ];
@@ -60,6 +61,10 @@ export function normalizeMasterNavLocation(search: string): MasterNavLocationSta
   if (view === 'activity-log') {
     view = 'security-access';
     if (!params.get('securityAccess')) params.set('securityAccess', 'audit');
+  }
+  if (view === 'settings') {
+    view = 'platform-integrations';
+    settingsTab = undefined;
   }
 
   if (!ALL_MASTER_VIEWS.includes(view)) {

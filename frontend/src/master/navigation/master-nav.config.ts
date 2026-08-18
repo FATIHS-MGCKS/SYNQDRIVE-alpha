@@ -5,7 +5,7 @@ import {
   Car,
   BookOpen,
   CreditCard,
-  Network,
+  Plug,
   Radio,
   Package,
   Shield,
@@ -26,7 +26,7 @@ export const MASTER_NAV_ITEMS: MasterNavItemConfig[] = [
   { id: 'vehicles', labelKey: 'master.nav.vehicles', icon: Car, permissions: ['MASTER_ADMIN'], badge: 'connectivity-warning', mobilePrimary: true },
   { id: 'vehicle-logbook', labelKey: 'master.nav.vehicleLogbook', icon: BookOpen, permissions: ['MASTER_ADMIN'] },
   { id: 'billing', labelKey: 'master.nav.billing', icon: CreditCard, permissions: ['MASTER_ADMIN', 'master-billing'], badge: 'billing-anomaly' },
-  { id: 'fleet-connection', labelKey: 'master.nav.vehicleConnectivity', icon: Network, permissions: ['MASTER_ADMIN'], badge: 'integration-outage' },
+  { id: 'platform-integrations', labelKey: 'master.nav.platformIntegrations', icon: Plug, permissions: ['MASTER_ADMIN'], badge: 'integration-attention', mobilePrimary: true },
   { id: 'high-mobility', labelKey: 'master.nav.highMobility', icon: Radio, permissions: ['MASTER_ADMIN'], badge: 'integration-outage' },
   { id: 'parts-accessories', labelKey: 'master.nav.partsAccessories', icon: Package, permissions: ['MASTER_ADMIN'] },
   { id: 'insurances', labelKey: 'master.nav.insurances', icon: Shield, permissions: ['MASTER_ADMIN'] },
@@ -46,7 +46,7 @@ export const MASTER_NAV_GROUPS: MasterNavGroupConfig[] = [
   { id: 'tenants', labelKey: 'master.nav.group.tenants', collapsible: false, defaultExpanded: true, items: ['organizations', 'prospects', 'security-access'] },
   { id: 'fleet', labelKey: 'master.nav.group.fleet', collapsible: false, defaultExpanded: true, items: ['vehicles', 'vehicle-logbook'] },
   { id: 'commerce', labelKey: 'master.nav.group.commerce', collapsible: false, defaultExpanded: true, items: ['billing'] },
-  { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['high-mobility'] },
+  { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['platform-integrations', 'high-mobility'] },
   { id: 'partners', labelKey: 'master.nav.group.partners', collapsible: true, defaultExpanded: true, items: ['parts-accessories', 'insurances', 'voice-assistant'] },
   { id: 'operations', labelKey: 'master.nav.group.operations', collapsible: true, defaultExpanded: true, items: ['platform-ops', 'support'] },
   { id: 'engineering', labelKey: 'master.nav.group.engineering', collapsible: true, defaultExpanded: false, items: ['architektur', 'changes'] },
@@ -60,6 +60,6 @@ export function getGroupIdForView(view: string): string | null {
   for (const group of MASTER_NAV_GROUPS) {
     if (group.items.includes(view as never)) return group.id;
   }
-  if (view === 'settings') return null;
+  if (view === 'settings') return 'platform-integrations';
   return null;
 }

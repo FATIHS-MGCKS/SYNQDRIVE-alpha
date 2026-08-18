@@ -285,16 +285,16 @@ export function Sidebar({
 
         <button
           type="button"
-          onClick={() => go('settings', { settingsTab: 'general' })}
+          onClick={() => go('platform-integrations')}
           className={cn(
-            navItemClass(currentView === 'settings', collapsed),
+            navItemClass(currentView === 'platform-integrations', collapsed),
             collapsed && 'relative group',
           )}
-          aria-current={currentView === 'settings' ? 'page' : undefined}
+          aria-current={currentView === 'platform-integrations' ? 'page' : undefined}
         >
           <Settings className="w-[14px] h-[14px] shrink-0" />
-          {!collapsed && <span>{tMasterNav('master.nav.settings')}</span>}
-          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.settings')} />}
+          {!collapsed && <span>{tMasterNav('master.nav.platformIntegrations')}</span>}
+          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.platformIntegrations')} />}
         </button>
 
         <button
@@ -366,7 +366,7 @@ export function Sidebar({
       <MasterAccountSheet
         open={accountOpen}
         onOpenChange={setAccountOpen}
-        onOpenSettings={() => go('settings', { settingsTab: 'general' })}
+        onOpenSettings={() => go('platform-integrations')}
         onOpenOwnSecurity={onOpenOwnSecurity}
       />
 

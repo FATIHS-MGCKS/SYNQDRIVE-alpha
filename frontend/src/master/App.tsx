@@ -8,7 +8,8 @@ import { OrganizationDetailView } from './components/OrganizationDetailView';
 import { ConnectedVehiclesHub } from './connected-vehicles/ConnectedVehiclesHub';
 import { BillingControlCenter } from './components/billing/BillingControlCenter';
 import { SupportView } from './components/SupportView';
-import { PlatformSettingsView } from './components/PlatformSettingsView';
+import { PlatformIntegrationsHub } from './platform-integrations/PlatformIntegrationsHub';
+import { migratePlatformIntegrationsParams } from './platform-integrations/platform-integrations-url';
 import { ProspectsView } from './components/ProspectsView';
 import { PartsAccessoriesAdminView } from './components/PartsAccessoriesAdminView';
 import { InsurancesAdminView } from './components/InsurancesAdminView';
@@ -133,15 +134,12 @@ export default function App() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [orgRes, usersRes, statsRes] = await Promise.all([
+        const [orgRes, usersRes] = await Promise.all([
           api.organizations.list().catch(() => ({ data: [], meta: { total: 0 } })),
           api.users.listAll().catch(() => []),
-          api.dimo.stats().catch(() => ({ connected: 0, total: 0 })),
         ]);
         setOrganizations((orgRes.data || []).map(mapApiOrg));
         setUsers(Array.isArray(usersRes) ? usersRes.map(mapApiUser) : []);
-        const stats = statsRes as { connected?: number; total?: number };
-        setDimoConnected((stats.total ?? 0) > 0 || (stats.connected ?? 0) > 0);
       } catch (e) {
         console.error('Failed to load data:', e);
       }
@@ -149,8 +147,6 @@ export default function App() {
     load();
   }, []);
 
-  // Connection states (DIMO from API)
-  const [dimoConnected, setDimoConnected] = useState(false);
 
   const [detailOrgId, setDetailOrgId] = useState<string | null>(initialNav.orgId ?? null);
 
@@ -179,6 +175,7 @@ export default function App() {
   useEffect(() => {
     let migrated = migratePlatformHealthParams(window.location.search);
     migrated = migrateSecurityAccessParams(migrated);
+    migrated = migratePlatformIntegrationsParams(migrated);
     if (migrated !== window.location.search) {
       window.history.replaceState(null, '', `${window.location.pathname}${migrated}`);
     }
@@ -345,10 +342,6 @@ export default function App() {
     }
   };
 
-  // ============ CONNECTIONS ============
-  const handleDimoToggle = () => {
-    setDimoConnected(prev => !prev);
-  };
 
   const selectedOrgId = detailOrgId;
 
@@ -492,14 +485,17 @@ export default function App() {
           </PageContainer>
         )}
 
-        {currentView === 'settings' && (
-          <PageContainer variant="standard">
-            <PlatformSettingsView
-              isDarkMode={isDarkMode}
-              activeTab={settingsTab}
-              onTabChange={setSettingsTab}
-              dimoConnected={dimoConnected}
-              onDimoToggle={handleDimoToggle}
+        {currentView === 'platform-integrations' && (
+          <PageContainer variant="wide">
+            <PlatformIntegrationsHub
+              onNavigateView={(view, params) => {
+                handleMasterNavigate(view as MasterView);
+                if (params) {
+                  const q = new URLSearchParams(window.location.search);
+                  for (const [k, v] of Object.entries(params)) q.set(k, v);
+                  window.history.replaceState(null, '', `${window.location.pathname}?${q.toString()}`);
+                }
+              }}
             />
           </PageContainer>
         )}
