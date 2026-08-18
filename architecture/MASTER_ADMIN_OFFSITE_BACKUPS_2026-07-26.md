@@ -4,16 +4,20 @@
 
 ## Summary
 
-Production-relevant backups must not exist only on the VPS. Phase 2C.5 adds a **central offsite orchestrator** that syncs encrypted tier artifacts to remote object storage with versioning, retention, integrity checks, and failure notifications.
+Production-relevant backups must not exist only on the VPS. Phase 2C.5 adds a **central offsite orchestrator** that syncs encrypted tier artifacts to remote object storage with versioning, retention, integrity checks, failure notifications, and resilience status export.
+
+Remote path layout: `{OFFSITE_PATH_PREFIX}/{tier}/` (default `production/postgresql/`, etc.).
+
+**Status (2026-08-18):** Pipeline hardened in `offsite-backup-lib.sh` v2c5.2; production offsite storage and operator escrow still pending — see `docs/final/master-admin-offsite-backup-closure.md`.
 
 ## Tiers synced
 
 | Tier | Local path | Remote subpath | Offsite retention |
 |------|------------|----------------|-------------------|
-| PostgreSQL | `backups/postgresql/daily/` | `postgresql/` | 90d, min 2 |
-| ClickHouse | `backups/clickhouse/daily/` | `clickhouse/` | 30d, min 2 |
-| Redis | `backups/redis/daily/` | `redis/` | 30d, min 2 |
-| Environment | `backups/env/daily/` | `env/` | 90d, min 2 |
+| PostgreSQL | `backups/postgresql/daily/` | `production/postgresql/` | 90d, min 2 |
+| ClickHouse | `backups/clickhouse/daily/` | `production/clickhouse/` | 30d, min 2 |
+| Redis | `backups/redis/daily/` | `production/redis/` | 30d, min 2 |
+| Environment | `backups/env/daily/` | `production/env/` | 90d, min 2 |
 
 Only `*.gpg` artifacts with valid SHA-256 sidecars are uploaded when `OFFSITE_REQUIRE_ENCRYPTION=true`.
 
@@ -23,6 +27,9 @@ Only `*.gpg` artifacts with valid SHA-256 sidecars are uploaded when `OFFSITE_RE
 - `vps-sync-offsite-backups.sh` — nightly orchestrator (default 05:15 UTC)
 - `vps-backup-env-snapshot.sh` — encrypted `backend.env` + `frontend.env` tarball
 - `vps-verify-offsite-backups.sh` — local checksum + remote size audit
+- `vps-write-resilience-status.sh` — `resilience-status.json` for Master Admin APIs
+- `vps-setup-offsite-backup.sh` — rclone install + cron
+- `vps-offsite-restore-drill.sh` — isolated offsite download + decrypt validation
 - `vps-install-offsite-backup-cron.sh` — cron installer
 
 ## Schedule (UTC)

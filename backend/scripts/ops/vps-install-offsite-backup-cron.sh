@@ -23,7 +23,8 @@ cat > "${CRON_FILE}" <<EOF
 # SynqDrive offsite backup sync (Phase 2C.5)
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-${CRON_SCHEDULE} root ${ENV_SCRIPT} && ${SYNC_SCRIPT} >> ${LOG_FILE} 2>&1
+RCLONE_CONFIG=/opt/synqdrive/shared/secrets/rclone.conf
+${CRON_SCHEDULE} root ${ENV_SCRIPT} && ${SYNC_SCRIPT} && ${SYNQDRIVE_ROOT}/backend/scripts/ops/vps-write-resilience-status.sh >> ${LOG_FILE} 2>&1
 ${VERIFY_SCHEDULE} root ${VERIFY_SCRIPT} >> ${LOG_FILE} 2>&1
 EOF
 

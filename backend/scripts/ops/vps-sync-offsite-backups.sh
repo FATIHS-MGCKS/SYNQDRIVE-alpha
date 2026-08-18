@@ -100,6 +100,8 @@ if [[ "${DRY_RUN}" == "true" || "${VERIFY_ONLY}" == "true" ]]; then
   exit 0
 fi
 
+export OFFSITE_SYNC_COUNT="${SYNCED}"
 offsite_write_last_success
+offsite_write_resilience_json
 offsite_notify_success
 offsite_log "offsite sync SUCCESS synced=${SYNCED} skipped=${SKIPPED}"
