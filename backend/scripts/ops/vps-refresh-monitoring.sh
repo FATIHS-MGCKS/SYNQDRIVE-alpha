@@ -91,8 +91,7 @@ refresh_alertmanager() {
     return 0
   fi
 
-  mkdir -p "$AM_DIR/templates"
-  cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
+  mkdir -p "$AM_DIR/templates" "$AM_DIR/data"
   cp "$SRC_AM/templates/"*.tmpl "$AM_DIR/templates/" 2>/dev/null || true
 
   if [[ -f "$AM_DIR/alertmanager.env" ]]; then
@@ -103,16 +102,26 @@ refresh_alertmanager() {
     export ALERTMANAGER_SLACK_WEBHOOK_URL="${ALERTMANAGER_SLACK_WEBHOOK_URL:-}"
     export ALERTMANAGER_SLACK_CHANNEL_WARNING="${ALERTMANAGER_SLACK_CHANNEL_WARNING:-#synqdrive-alerts}"
     export ALERTMANAGER_SLACK_CHANNEL_CRITICAL="${ALERTMANAGER_SLACK_CHANNEL_CRITICAL:-#synqdrive-critical}"
-    export ALERTMANAGER_SMTP_HOST="${ALERTMANAGER_SMTP_HOST:-localhost}"
+    export ALERTMANAGER_SMTP_HOST="${ALERTMANAGER_SMTP_HOST:-smtp.resend.com}"
     export ALERTMANAGER_SMTP_PORT="${ALERTMANAGER_SMTP_PORT:-587}"
     export ALERTMANAGER_SMTP_FROM="${ALERTMANAGER_SMTP_FROM:-alerts@synqdrive.eu}"
-    export ALERTMANAGER_SMTP_USER="${ALERTMANAGER_SMTP_USER:-}"
+    export ALERTMANAGER_SMTP_USER="${ALERTMANAGER_SMTP_USER:-resend}"
     export ALERTMANAGER_SMTP_PASSWORD="${ALERTMANAGER_SMTP_PASSWORD:-}"
     export ALERTMANAGER_EMAIL_WARNING="${ALERTMANAGER_EMAIL_WARNING:-}"
     export ALERTMANAGER_EMAIL_CRITICAL="${ALERTMANAGER_EMAIL_CRITICAL:-}"
     export ALERTMANAGER_EMAIL_ESCALATION="${ALERTMANAGER_EMAIL_ESCALATION:-}"
+
+    if [[ -n "${ALERTMANAGER_SLACK_WEBHOOK_URL}" ]]; then
+      cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
+    else
+      cp "$SRC_AM/alertmanager.email.yml.example" "$AM_DIR/alertmanager.yml.template"
+    fi
+
     envsubst < "$AM_DIR/alertmanager.yml.template" > "$AM_DIR/alertmanager.yml"
     chmod 600 "$AM_DIR/alertmanager.yml"
+    chown 65534:65534 "$AM_DIR/alertmanager.yml" 2>/dev/null || chmod 640 "$AM_DIR/alertmanager.yml"
+  else
+    cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
   fi
 
   if docker_container_running "$AM_CONTAINER"; then
