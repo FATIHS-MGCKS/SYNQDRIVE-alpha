@@ -124,8 +124,8 @@ pass "restart resilience"
 # Fail-closed validation (invalid config must not deploy)
 INVALID="$(mktemp)"
 echo 'route: { receiver: missing }' > "$INVALID"
-if docker run --rm -v "$INVALID:/etc/alertmanager/alertmanager.yml:ro" prom/alertmanager:v0.27.0 \
-  amtool check-config /etc/alertmanager/alertmanager.yml 2>/dev/null; then
+if docker run --rm --entrypoint amtool -v "$INVALID:/etc/alertmanager/alertmanager.yml:ro" prom/alertmanager:v0.27.0 \
+  check-config /etc/alertmanager/alertmanager.yml 2>/dev/null; then
   rm -f "$INVALID"
   fail "invalid config was accepted by amtool"
 fi
