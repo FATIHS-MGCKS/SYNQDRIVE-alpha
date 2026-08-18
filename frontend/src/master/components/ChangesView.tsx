@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-organizations-implementation-ui53-2026-08-18',
+    version: '4.9.909',
+    title: 'Master Admin — Kanonisches Organization Management (UI-5.3)',
+    summary: [
+      'Neues aggregiertes DTO `GET /admin/organizations/operational` mit serverseitigen Filtern, Attention-Modell, Billing- und Connectivity-Signalen.',
+      '`OrganizationsView` nach Blueprint: DE-UI, 8 kanonische Spalten (ohne MRR/Plan), Mobile Cards, URL-Filter-State, Server-Pagination.',
+      '`OrganizationDetailView` mit 7 Tabs (Übersicht, Benutzer, Fahrzeuge, Abrechnung, Integrationen, Aktivität, Einstellungen), `orgTab` URL, frischer Operational-Fetch.',
+      'Entfernt: Mock Integration/Product-Toggles, Products-Tab, List-Delete, Client-Filter auf 100 Orgs, MRR/Plan-Spalten.',
+      'Danger Zone mit Typed-Name + Pflicht-Reason für Org-Löschung; Billing aus `GET /admin/billing/organizations`.',
+    ],
+    reason:
+      'Organizations war keine enterprise-taugliche Tenant Control Plane — zweite Billing-Wahrheit, fehlende Attention, Mock-Aktionen.',
+    previousBehavior:
+      'EN-Liste mit MRR/Plan, Client-Filter limit 100, Detail aus List-Snapshot, 6 Tabs inkl. Mock Products/Integrations, Delete ohne Reason.',
+    details:
+      'Backend: organizations-operational.service.ts, organization-attention.util.ts, connectivity-summary pro Org. Frontend: master/organizations/* module. Docs: master-admin-organizations-post-remediation.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:50:00.000Z',
+  },
+  {
     id: 'master-admin-dashboard-implementation-ui44-2026-08-18',
     version: '4.9.908',
     title: 'Master Admin — Kanonische Plattform-Übersicht (UI-4.3/4.4)',

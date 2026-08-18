@@ -87,6 +87,11 @@ export function buildMasterNavSearch(state: MasterNavLocationState, preserveBill
   if (state.orgId && (state.view === 'organizations' || state.view === 'billing')) {
     params.set('orgId', state.orgId);
   }
+  if (state.view === 'organizations') {
+    const current = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const orgTab = current?.get('orgTab');
+    if (orgTab) params.set('orgTab', orgTab);
+  }
   if (state.view === 'architektur' && state.archCategory) {
     params.set('archCategory', state.archCategory);
   }

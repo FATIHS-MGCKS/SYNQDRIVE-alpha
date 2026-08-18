@@ -257,26 +257,28 @@ export default function App() {
   // Connection states (DIMO from API)
   const [dimoConnected, setDimoConnected] = useState(false);
 
-  // Organization detail
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [detailOrgId, setDetailOrgId] = useState<string | null>(initialNav.orgId ?? null);
 
   const navigateMaster = useCallback(
     (view: MasterView, opts?: { settingsTab?: string; orgId?: string | null; replace?: boolean; keepOrg?: boolean }) => {
       const next: MasterNavLocationState = {
         view,
         settingsTab: opts?.settingsTab ?? (view === 'settings' ? settingsTab : undefined),
-        orgId: opts?.orgId ?? (opts?.keepOrg && selectedOrg ? selectedOrg.id : undefined),
+        orgId: opts?.orgId ?? (opts?.keepOrg ? detailOrgId ?? undefined : undefined),
         archCategory: view === 'architektur' ? archCategory : undefined,
         hmTab: view === 'high-mobility' ? hmTab : undefined,
       };
       if (!opts?.keepOrg && view !== 'organizations') {
-        setSelectedOrg(null);
+        setDetailOrgId(null);
+      }
+      if (opts?.orgId !== undefined) {
+        setDetailOrgId(opts.orgId);
       }
       setCurrentView(view);
       if (opts?.settingsTab) setSettingsTab(opts.settingsTab);
       pushMasterNavState(next, opts?.replace);
     },
-    [archCategory, hmTab, selectedOrg, settingsTab],
+    [archCategory, hmTab, detailOrgId, settingsTab],
   );
 
   useEffect(() => {
@@ -295,8 +297,9 @@ export default function App() {
       if (loc.settingsTab) setSettingsTab(loc.settingsTab);
       setArchCategory(parseArchCategory(loc.archCategory));
       setHmTab(parseHmTab(loc.hmTab));
+      setDetailOrgId(loc.orgId ?? null);
       if (loc.view !== 'organizations' || !loc.orgId) {
-        setSelectedOrg(null);
+        if (loc.view !== 'organizations') setDetailOrgId(null);
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -305,11 +308,10 @@ export default function App() {
 
   useEffect(() => {
     const orgId = new URLSearchParams(window.location.search).get('orgId');
-    if (currentView === 'organizations' && orgId && organizations.length > 0) {
-      const org = organizations.find((o) => o.id === orgId);
-      if (org) setSelectedOrg(org);
+    if (currentView === 'organizations') {
+      setDetailOrgId(orgId);
     }
-  }, [currentView, organizations]);
+  }, [currentView]);
 
   const handleToggleSidebarCollapse = useCallback(() => {
     setIsSidebarCollapsed((prev) => {
@@ -348,59 +350,60 @@ export default function App() {
   };
 
   // ============ ORGANIZATION CRUD ============
-  const handleAddOrg = async (org: Organization, adminData?: { name: string; email: string; password: string } | null) => {
+  const handleAddOrg = async (
+    payload: {
+      companyName: string;
+      shortCode?: string;
+      businessType: string;
+      city?: string;
+      country?: string;
+      email?: string;
+      status?: string;
+    },
+    adminData?: { name: string; email: string; password: string } | null,
+  ) => {
     try {
-      const businessTypeEnum = BUSINESS_TYPE_LABEL_TO_ENUM[org.business_type] ?? org.business_type;
-      const statusEnum = STATUS_LABEL_TO_ENUM[org.status] ?? org.status;
-
       const createdOrg = await api.organizations.create({
-        companyName: org.company_name,
-        businessType: businessTypeEnum,
-        email: org.contactEmail,
-        city: org.city,
-        country: org.country,
-        status: statusEnum,
+        companyName: payload.companyName,
+        shortCode: payload.shortCode,
+        businessType: payload.businessType,
+        email: payload.email,
+        city: payload.city,
+        country: payload.country,
+        status: payload.status ?? 'PENDING',
       });
 
       if (adminData && createdOrg?.id) {
         await api.organizations.createAdmin(createdOrg.id, adminData);
-        toast.success(`Organization "${org.company_name}" and Org Admin "${adminData.name}" created`);
+        toast.success(`Organisation „${payload.companyName}" und Admin erstellt`);
       } else {
-        toast.success(`Organization "${org.company_name}" created`);
+        toast.success(`Organisation „${payload.companyName}" erstellt`);
       }
       await reloadFromApi();
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to create organization');
+      toast.error(e?.message || 'Organisation konnte nicht erstellt werden');
       throw e;
     }
   };
-  const handleUpdateOrg = async (org: Organization) => {
+  const handleUpdateOrg = async (orgId: string, data: Record<string, unknown>) => {
     try {
-      const businessTypeEnum = BUSINESS_TYPE_LABEL_TO_ENUM[org.business_type] ?? org.business_type;
-      const statusEnum = STATUS_LABEL_TO_ENUM[org.status] ?? org.status;
-      await api.organizations.update(org.id, {
-        companyName: org.company_name,
-        businessType: businessTypeEnum,
-        city: org.city,
-        country: org.country,
-        email: org.contactEmail,
-        status: statusEnum,
-      });
-      if (selectedOrg?.id === org.id) setSelectedOrg(org);
-      toast.success(`Organization "${org.company_name}" updated`);
+      await api.organizations.update(orgId, data);
+      toast.success('Organisation aktualisiert');
       await reloadFromApi();
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to update organization');
+      toast.error(e?.message || 'Organisation konnte nicht aktualisiert werden');
+      throw e;
     }
   };
-  const handleDeleteOrg = async (id: string) => {
-    const org = organizations.find(o => o.id === id);
+  const handleDeleteOrg = async (id: string, reason: string) => {
     try {
-      await api.organizations.delete(id);
-      toast.success(`Organization "${org?.company_name}" deleted`);
+      await api.organizations.delete(id, reason);
+      toast.success('Organisation gelöscht');
+      setDetailOrgId(null);
       await reloadFromApi();
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete organization');
+      toast.error(e?.message || 'Organisation konnte nicht gelöscht werden');
+      throw e;
     }
   };
 
@@ -677,6 +680,7 @@ export default function App() {
   // Helper: get org users/vehicles
   const getOrgUsers = (orgId: string) => users.filter(u => u.organizationId === orgId);
   const getOrgVehicles = (orgId: string) => registeredVehicles.filter(v => v.organizationId === orgId);
+  const selectedOrgId = detailOrgId;
 
   return (
     <MasterAdminShell
@@ -685,7 +689,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         currentView={currentView}
         settingsTab={settingsTab}
-        selectedOrgId={selectedOrg?.id ?? null}
+        selectedOrgId={detailOrgId}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebarCollapse}
         onNavigate={handleMasterNavigate}
@@ -712,37 +716,38 @@ export default function App() {
           </PageContainer>
         )}
 
-        {currentView === 'organizations' && !selectedOrg && (
+        {currentView === 'organizations' && !selectedOrgId && (
           <PageContainer variant="standard">
             <OrganizationsView
-              isDarkMode={isDarkMode}
-              organizations={organizations}
-              onSelectOrg={(org) => {
-                setSelectedOrg(org);
-                pushMasterNavState({ view: 'organizations', orgId: org.id });
+              onSelectOrg={(orgId) => {
+                pushMasterNavState({ view: 'organizations', orgId });
               }}
               onAddOrg={handleAddOrg}
-              onUpdateOrg={handleUpdateOrg}
-              onDeleteOrg={handleDeleteOrg}
             />
           </PageContainer>
         )}
-        {currentView === 'organizations' && selectedOrg && (
+        {currentView === 'organizations' && selectedOrgId && (
           <PageContainer variant="standard">
             <OrganizationDetailView
-              org={selectedOrg}
-              orgUsers={getOrgUsers(selectedOrg.id)}
-              orgVehicles={getOrgVehicles(selectedOrg.id)}
+              orgId={selectedOrgId}
               onBack={() => {
-                setSelectedOrg(null);
                 pushMasterNavState({ view: 'organizations' });
               }}
               onUpdateOrg={handleUpdateOrg}
+              onDeleteOrg={handleDeleteOrg}
               onOpenBillingCenter={(orgId) => {
                 setBillingFocusOrgId(orgId);
                 navigateMaster('billing');
                 const nextSearch = `?view=billing&masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
                 window.history.pushState(null, '', `${window.location.pathname}${nextSearch}`);
+              }}
+              onNavigateToVehicle={(vehicleId) => {
+                pushMasterNavState({ view: 'vehicles' });
+                window.history.replaceState(
+                  null,
+                  '',
+                  `${window.location.pathname}?view=vehicles&vehicleId=${encodeURIComponent(vehicleId)}`,
+                );
               }}
             />
           </PageContainer>
@@ -811,11 +816,8 @@ export default function App() {
             <SupportView
               organizations={organizations.map((o) => ({ id: o.id, name: o.company_name }))}
               onNavigateToOrg={(orgId) => {
-                const org = organizations.find((o) => o.id === orgId);
-                if (org) {
-                  setSelectedOrg(org);
-                  pushMasterNavState({ view: 'organizations', orgId });
-                }
+                setDetailOrgId(orgId);
+                pushMasterNavState({ view: 'organizations', orgId });
               }}
             />
           </PageContainer>

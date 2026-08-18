@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
   GoneException,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -64,7 +65,10 @@ export class UsersController {
   @Get('admin/users')
   @UseGuards(RolesGuard)
   @Roles('MASTER_ADMIN')
-  async adminFindAll() {
+  async adminFindAll(@Query('organizationId') organizationId?: string) {
+    if (organizationId) {
+      return this.usersService.findByOrganization(organizationId);
+    }
     return this.usersService.findAll();
   }
 

@@ -1,7 +1,28 @@
 # Master Admin Organization Management Blueprint
 
 **Date:** 2026-08-18  
-**Phase:** UI-5.2 (specification — not implemented)
+**Phase:** UI-5.3 (implemented)
+
+## Implemented surfaces
+
+| Surface | API |
+|---------|-----|
+| Organizations List | `GET /admin/organizations/operational` |
+| Organization Detail | `GET /admin/organizations/:id/operational` |
+| Org Connectivity | `GET /admin/organizations/:id/connectivity-summary` |
+| Users (scoped) | `GET /admin/users?organizationId=` |
+| Activity (scoped) | `GET /admin/activity-log?organizationId=` |
+| Billing summary | `GET /admin/billing/organizations` (canonical) |
+
+## Frontend module
+
+`frontend/src/master/organizations/` — types, utils, hooks  
+Views: `OrganizationsView.tsx`, `OrganizationDetailView.tsx`, `OrganizationCreateWizard.tsx`
+
+## Acceptance
+
+- `docs/ui/master-admin-organizations-post-remediation.md` — 10-second test PASS (~88/100)
+- Unit tests: `organization-attention.util.spec.ts`, `master-organizations.test.ts`
 
 ## Role
 

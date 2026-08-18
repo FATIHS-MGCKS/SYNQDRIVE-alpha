@@ -3518,12 +3518,13 @@ export const api = {
     changelogs: (module?: string) =>
       get<any[]>('/admin/changelogs' + (module ? `?module=${module}` : '')),
     createChangelog: (data: any) => post<any>('/admin/changelogs', data),
-    activityLog: (params?: { page?: number; limit?: number; entity?: string; action?: string }) => {
+    activityLog: (params?: { page?: number; limit?: number; entity?: string; action?: string; organizationId?: string }) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
       if (params?.limit != null) q.set('limit', String(params.limit));
       if (params?.entity) q.set('entity', params.entity);
       if (params?.action) q.set('action', params.action);
+      if (params?.organizationId) q.set('organizationId', params.organizationId);
       const suffix = q.toString() ? '?' + q.toString() : '';
       return get<{ data: any[]; meta: any }>('/admin/activity-log' + suffix);
     },
@@ -3538,12 +3539,32 @@ export const api = {
   organizations: {
     list: (params?: { page?: number; limit?: number }) =>
       get<{ data: any[]; meta: { total: number } }>('/admin/organizations' + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 100}` : '?limit=100')),
+    listOperational: (params?: Record<string, string | number | undefined>) => {
+      const q = new URLSearchParams();
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          if (v !== undefined && v !== '' && v !== 'all') q.set(k, String(v));
+        }
+      }
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/admin/organizations/operational${suffix}`,
+      );
+    },
+    getOperational: (id: string) => get<any>(`/admin/organizations/${id}/operational`),
+    getConnectivitySummary: (id: string) => get<any>(`/admin/organizations/${id}/connectivity-summary`),
     get: (id: string) => get<any>(`/admin/organizations/${id}`),
     create: (data: any) => post<any>('/admin/organizations', data),
     createAdmin: (orgId: string, adminData: { name: string; email: string; password: string }) =>
       post<any>(`/admin/organizations/${orgId}/admin`, adminData),
     update: (id: string, data: any) => patch<any>(`/admin/organizations/${id}`, data),
-    delete: (id: string) => del<void>(`/admin/organizations/${id}`),
+    delete: (id: string, reason: string) =>
+      request<void>(`/admin/organizations/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      }),
+    setPaymentsEnabled: (id: string, enabled: boolean) =>
+      patch<any>(`/admin/organizations/${id}/payments-enabled`, { enabled }),
     stats: (id: string) => get<any>(`/admin/organizations/${id}/stats`),
 
     // ─── Tenant-scoped own-organization profile (Settings → Company Profile) ───
@@ -3585,7 +3606,8 @@ export const api = {
     },
   },
   users: {
-    listAll: () => get<any[]>('/admin/users'),
+    listAll: (organizationId?: string) =>
+      get<any[]>(`/admin/users${organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ''}`),
     get: (id: string) => get<any>(`/admin/users/${id}`),
     create: (data: any) => post<any>('/admin/users', data),
     update: (id: string, data: any) => patch<any>(`/admin/users/${id}`, data),

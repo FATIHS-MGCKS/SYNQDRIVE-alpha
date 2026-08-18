@@ -10,6 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
+import { OrganizationsOperationalService } from './organizations-operational.service';
+import type { OrganizationOperationalQueryDto } from './organizations-operational.types';
 import { PaymentsAccessService } from '@modules/payments/payments-access.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
@@ -24,8 +26,24 @@ import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 export class OrganizationsController {
   constructor(
     private readonly organizationsService: OrganizationsService,
+    private readonly organizationsOperational: OrganizationsOperationalService,
     private readonly paymentsAccessService: PaymentsAccessService,
   ) {}
+
+  @Get('operational')
+  async findAllOperational(@Query() query: OrganizationOperationalQueryDto) {
+    return this.organizationsOperational.findAllOperational(query);
+  }
+
+  @Get(':id/connectivity-summary')
+  async getConnectivitySummary(@Param('id') id: string) {
+    return this.organizationsOperational.getOrganizationConnectivitySummary(id);
+  }
+
+  @Get(':id/operational')
+  async getOperationalDetail(@Param('id') id: string) {
+    return this.organizationsOperational.getOperationalDetail(id);
+  }
 
   @Get()
   async findAll(

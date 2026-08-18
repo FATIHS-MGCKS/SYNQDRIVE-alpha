@@ -1,280 +1,663 @@
-import { Building2, Users, Car, Link2, CreditCard, Package, CheckCircle, XCircle, AlertTriangle, Clock, Edit2, Trash2, Plus, MoreHorizontal, Wifi, WifiOff, RefreshCw, Zap, Download } from 'lucide-react';
-import { useState } from 'react';
-import { DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader, HealthStatusChip, StatusDot, fleetVehicleStatusTone, platformRoleTone, userAccountStatusTone, onlineSignalTone } from '../../components/patterns';
-import { MasterPageHeader, type MasterPageTab } from '../shell';
+import {
+  Building2, CreditCard, ExternalLink, AlertTriangle, RefreshCw,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  DataTable, StatusChip, ConfirmDialog, EmptyState, MetricCard, SectionHeader,
+  HealthStatusChip, StatusDot, fleetVehicleStatusTone, onlineSignalTone,
+} from '../../components/patterns';
+import type { DataTableColumn } from '../../components/patterns';
+import {
+  MasterPageHeader, MasterLoadingState, MasterErrorState, MasterPageSection,
+} from '../shell';
 import { Button } from '../../components/ui/button';
-import type { Organization, OrgProduct, OrgIntegration, PlatformUser, RegisteredVehicle, ProductId, SubscriptionPlan } from '../data/platform-data';
-
-/* ── Design-system token helpers ── */
-const CARD = 'surface-premium overflow-hidden';
-const INPUT =
-  'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
-const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
-const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
-const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
-const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
-const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
-
+import { api } from '../../lib/api';
+import { useOrganizationDetail } from '../organizations/useOrganizationsOperational';
+import {
+  ORG_DETAIL_TABS,
+  type BillingOrganizationRow,
+  type OrgActivityRow,
+  type OrgDetailTab,
+  type OrgUserRow,
+  type OrgVehicleRow,
+} from '../organizations/types';
+import {
+  attentionDrilldownTab,
+  attentionReasonLabel,
+  attentionSeverityTone,
+  billingHealthLabel,
+  billingHealthTone,
+  connectivityHealthLabel,
+  connectivityHealthTone,
+  formatDateDe,
+  formatRelativeDe,
+  maskId,
+  orgStatusTone,
+  readOrgTabFromUrl,
+  subscriptionStatusTone,
+  writeOrgTabToUrl,
+} from '../organizations/org.utils';
+import type { OrganizationOperationalDetailDto } from '../organizations/types';
 
 interface OrganizationDetailViewProps {
-  org: Organization;
-  orgUsers: PlatformUser[];
-  orgVehicles: RegisteredVehicle[];
+  orgId: string;
   onBack: () => void;
-  onUpdateOrg: (org: Organization) => void;
   onOpenBillingCenter?: (orgId: string) => void;
+  onNavigateToVehicle?: (vehicleId: string) => void;
+  onDeleteOrg: (orgId: string, reason: string) => Promise<void>;
+  onUpdateOrg: (orgId: string, data: Record<string, unknown>) => Promise<void>;
 }
 
-type OrgTab = 'overview' | 'users' | 'vehicles' | 'integrations' | 'billing' | 'products';
+function IssuesSection({
+  detail,
+  onTab,
+}: {
+  detail: OrganizationOperationalDetailDto;
+  onTab: (tab: OrgDetailTab) => void;
+}) {
+  if (detail.attention.reasons.length === 0) return null;
+  const reasons = detail.attention.reasons.slice(0, 5);
+  return (
+    <MasterPageSection title="Handlungsbedarf" className="border-[color:var(--status-watch)]/30">
+      <ul className="space-y-2">
+        {reasons.map((code) => (
+          <li key={code} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <StatusChip
+                tone={code.includes('CRITICAL') || code === 'RECONCILIATION_DRIFT' ? 'critical' : 'warning'}
+                className="!text-xs shrink-0"
+              >
+                {code.includes('CRITICAL') || code === 'RECONCILIATION_DRIFT' ? 'Kritisch' : 'Warnung'}
+              </StatusChip>
+              <span className="text-sm truncate">{attentionReasonLabel(code)}</span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onTab(attentionDrilldownTab(code) as OrgDetailTab)}
+            >
+              Öffnen
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </MasterPageSection>
+  );
+}
 
-const ORG_TABS: MasterPageTab<OrgTab>[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'users', label: 'Users' },
-  { id: 'vehicles', label: 'Vehicles' },
-  { id: 'integrations', label: 'Integrations' },
-  { id: 'billing', label: 'Billing' },
-  { id: 'products', label: 'Products' },
-];
+function OverviewTab({
+  detail,
+  onTab,
+}: {
+  detail: OrganizationOperationalDetailDto;
+  onTab: (tab: OrgDetailTab) => void;
+}) {
+  const conn = detail.connectivity;
+  return (
+    <div className="space-y-4">
+      <IssuesSection detail={detail} onTab={onTab} />
 
-export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onUpdateOrg, onOpenBillingCenter }: OrganizationDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<OrgTab>('overview');
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatusChip tone={orgStatusTone(detail.orgStatus)} dot className="justify-center py-3">
+          Organisation: {detail.orgStatusLabel}
+        </StatusChip>
+        <StatusChip tone={billingHealthTone(detail.billingHealth)} dot className="justify-center py-3">
+          Abrechnung: {billingHealthLabel(detail.billingHealth)}
+        </StatusChip>
+        <StatusChip tone={connectivityHealthTone(detail.connectivityHealth)} dot className="justify-center py-3">
+          Konnektivität: {connectivityHealthLabel(detail.connectivityHealth)}
+        </StatusChip>
+        <StatusChip
+          tone={
+            detail.integrations.some((i) => i.status === 'ERROR')
+              ? 'critical'
+              : detail.integrations.some((i) => i.status === 'ACTIVE')
+                ? 'success'
+                : 'neutral'
+          }
+          dot
+          className="justify-center py-3"
+        >
+          Integrationen:{' '}
+          {detail.integrations.some((i) => i.status === 'ERROR')
+            ? 'Fehler'
+            : detail.integrations.filter((i) => i.status === 'ACTIVE').length > 0
+              ? 'OK'
+              : '—'}
+        </StatusChip>
+      </div>
 
-  const toggleProduct = (productId: ProductId) => {
-    const updated = { ...org, products: org.products.map(p => p.id === productId ? { ...p, status: p.status === 'Active' ? 'Inactive' as const : 'Active' as const } : p) };
-    onUpdateOrg(updated);
-  };
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button type="button" onClick={() => onTab('users')} className="text-left">
+          <MetricCard label="Aktive Nutzer" value={String(detail.activeMembershipCount)} />
+        </button>
+        <button type="button" onClick={() => onTab('vehicles')} className="text-left">
+          <MetricCard
+            label="Fahrzeuge"
+            value={`${detail.connectedVehicleCount} / ${detail.billableVehicleCount}`}
+          />
+        </button>
+        <button type="button" onClick={() => onTab('billing')} className="text-left">
+          <MetricCard label="Tarif" value={detail.tariffLabel ?? '—'} />
+        </button>
+        <button type="button" onClick={() => onTab('billing')} className="text-left">
+          <MetricCard
+            label="Nächste Abbuchung"
+            value={detail.nextChargeAt ? formatDateDe(detail.nextChargeAt) : '—'}
+          />
+        </button>
+      </div>
 
-  const toggleIntegration = (intId: string) => {
-    const updated = {
-      ...org,
-      integrations: org.integrations.map(i =>
-        i.id === intId
-          ? { ...i, status: i.status === 'Connected' ? 'Disconnected' as const : 'Connected' as const, lastSync: i.status === 'Connected' ? i.lastSync : 'Just now', syncStatus: 'Synced' as const, apiKey: i.status === 'Connected' ? '' : `${i.id}_key_••••••••` }
-          : i
+      {detail.integrations.length > 0 && (
+        <MasterPageSection title="Integrationen">
+          <div className="flex flex-wrap gap-2 text-sm">
+            {detail.integrations.slice(0, 4).map((i) => (
+              <span key={i.slug} className="rounded-lg border border-border px-3 py-1.5">
+                {i.name} · {i.statusLabel}
+              </span>
+            ))}
+            {detail.integrations.length > 4 && (
+              <Button type="button" variant="link" size="sm" onClick={() => onTab('integrations')}>
+                Alle Integrationen
+              </Button>
+            )}
+          </div>
+        </MasterPageSection>
+      )}
+
+      <details className="rounded-xl border border-border p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-muted-foreground">
+          Technische Details
+        </summary>
+        <dl className="mt-3 space-y-2 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Organisations-ID</dt>
+            <dd className="font-mono text-xs">{detail.id}</dd>
+          </div>
+          {detail.shortCode && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Kürzel</dt>
+              <dd>{detail.shortCode}</dd>
+            </div>
+          )}
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Erstellt</dt>
+            <dd>{formatDateDe(detail.createdAt)}</dd>
+          </div>
+          {conn && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">DIMO-Fahrzeuge</dt>
+              <dd>{conn.dimoLinkedVehicles}</dd>
+            </div>
+          )}
+        </dl>
+      </details>
+    </div>
+  );
+}
+
+export function OrganizationDetailView({
+  orgId,
+  onBack,
+  onOpenBillingCenter,
+  onNavigateToVehicle,
+  onDeleteOrg,
+  onUpdateOrg,
+}: OrganizationDetailViewProps) {
+  const { detail, loading, error, refresh } = useOrganizationDetail(orgId);
+  const [activeTab, setActiveTab] = useState<OrgDetailTab>(() =>
+    (readOrgTabFromUrl() as OrgDetailTab) || 'overview',
+  );
+
+  const [users, setUsers] = useState<OrgUserRow[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  const [vehicles, setVehicles] = useState<OrgVehicleRow[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [vehiclesError, setVehiclesError] = useState<string | null>(null);
+
+  const [billing, setBilling] = useState<BillingOrganizationRow | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
+  const [activity, setActivity] = useState<OrgActivityRow[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [activityMode, setActivityMode] = useState<'operational' | 'audit'>('operational');
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const [settingsName, setSettingsName] = useState('');
+  const [settingsCity, setSettingsCity] = useState('');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  const changeTab = useCallback((tab: OrgDetailTab) => {
+    setActiveTab(tab);
+    writeOrgTabToUrl(tab);
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => setActiveTab((readOrgTabFromUrl() as OrgDetailTab) || 'overview');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    if (detail) {
+      setSettingsName(detail.companyName);
+      setSettingsCity(detail.city);
+    }
+  }, [detail]);
+
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    setUsersLoading(true);
+    setUsersError(null);
+    api.users
+      .listAll(orgId)
+      .then((res) => setUsers(Array.isArray(res) ? res : []))
+      .catch((e) => setUsersError(e?.message ?? 'Benutzer konnten nicht geladen werden'))
+      .finally(() => setUsersLoading(false));
+  }, [activeTab, orgId]);
+
+  useEffect(() => {
+    if (activeTab !== 'vehicles') return;
+    setVehiclesLoading(true);
+    setVehiclesError(null);
+    api.vehicles
+      .listByOrg(orgId, { limit: 100 })
+      .then((res: { data?: OrgVehicleRow[] }) => setVehicles(res.data ?? []))
+      .catch((e: unknown) =>
+        setVehiclesError(e instanceof Error ? e.message : 'Fahrzeuge konnten nicht geladen werden'),
+      )
+      .finally(() => setVehiclesLoading(false));
+  }, [activeTab, orgId]);
+
+  useEffect(() => {
+    if (activeTab !== 'billing') return;
+    setBillingLoading(true);
+    setBillingError(null);
+    api.billing
+      .organizations()
+      .then((rows: BillingOrganizationRow[]) => {
+        const row = rows.find((r) => r.organization.id === orgId) ?? null;
+        setBilling(row);
+      })
+      .catch((e) => setBillingError(e?.message ?? 'Abrechnungsdaten konnten nicht geladen werden'))
+      .finally(() => setBillingLoading(false));
+  }, [activeTab, orgId]);
+
+  useEffect(() => {
+    if (activeTab !== 'activity') return;
+    setActivityLoading(true);
+    setActivityError(null);
+    const entity = activityMode === 'audit' ? 'ADMIN_OPERATION' : undefined;
+    api.admin
+      .activityLog({ organizationId: orgId, limit: 50, entity })
+      .then((res) => setActivity(res.data ?? []))
+      .catch((e) => setActivityError(e?.message ?? 'Aktivität konnte nicht geladen werden'))
+      .finally(() => setActivityLoading(false));
+  }, [activeTab, orgId, activityMode]);
+
+  const userColumns: DataTableColumn<OrgUserRow>[] = [
+    {
+      key: 'user',
+      header: 'Nutzer',
+      cell: (u) => (
+        <div>
+          <p className="text-sm font-semibold">{u.name}</p>
+          <p className="text-xs text-muted-foreground">{u.email}</p>
+        </div>
       ),
-    };
-    onUpdateOrg(updated);
-  };
+    },
+    { key: 'role', header: 'Rolle', cell: (u) => <StatusChip className="!text-xs">{u.role}</StatusChip> },
+    { key: 'status', header: 'Status', cell: (u) => <StatusChip className="!text-xs">{u.status}</StatusChip> },
+    {
+      key: 'last',
+      header: 'Zuletzt aktiv',
+      cell: (u) => (
+        <span className="text-sm text-muted-foreground">
+          {u.lastLoginAt ? formatRelativeDe(u.lastLoginAt) : u.last_login ?? '—'}
+        </span>
+      ),
+    },
+  ];
+
+  const vehicleColumns: DataTableColumn<OrgVehicleRow>[] = [
+    {
+      key: 'vehicle',
+      header: 'Fahrzeug',
+      cell: (v) => (
+        <div>
+          <p className="text-sm font-semibold">{v.vehicleName ?? v.name}</p>
+          <p className="text-xs font-mono text-muted-foreground">{v.licensePlate ?? v.vin}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'signal',
+      header: 'Konnektivität',
+      cell: (v) => {
+        const os = v.onlineStatus ?? 'OFFLINE';
+        return (
+          <div className="flex items-center gap-1.5">
+            <StatusDot tone={onlineSignalTone(os)} />
+            <span className="text-xs">{os}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Betrieb',
+      cell: (v) =>
+        v.status ? (
+          <StatusChip tone={fleetVehicleStatusTone(v.status)} className="!text-xs">{v.status}</StatusChip>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      key: 'health',
+      header: 'Gesundheit',
+      cell: (v) =>
+        v.health ? <HealthStatusChip state={v.health} label={v.health} className="!text-xs" /> : '—',
+    },
+  ];
+
+  if (loading && !detail) {
+    return <MasterLoadingState variant="card" count={3} />;
+  }
+  if (error && !detail) {
+    return <MasterErrorState title="Organisation" error={error} onRetry={() => void refresh()} />;
+  }
+  if (!detail) return null;
+
+  const tabs = ORG_DETAIL_TABS;
 
   return (
     <>
       <MasterPageHeader
         variant="context"
-        title={org.company_name}
-        eyebrow="Organization"
-        description={`${org.business_type} · ${org.city}, ${org.country} · Since ${org.created_at}`}
+        title={detail.companyName}
+        description={`${detail.businessTypeLabel} · ${detail.city}, ${detail.country} · Kunde seit ${formatDateDe(detail.createdAt)}`}
         icon={<Building2 className="w-4 h-4" />}
-        status={
-          <>
-            <StatusChip tone="info">{org.plan}</StatusChip>
-            <StatusChip tone={org.status === 'Active' ? 'success' : org.status === 'Suspended' ? 'critical' : 'watch'}>{org.status}</StatusChip>
-          </>
-        }
         back={{ onBack, label: 'Zurück zu Organisationen' }}
-        tabs={ORG_TABS}
+        status={(
+          <>
+            <StatusChip tone={orgStatusTone(detail.orgStatus)}>{detail.orgStatusLabel}</StatusChip>
+            <StatusChip tone={subscriptionStatusTone(detail.subscriptionStatus)}>
+              {detail.subscriptionStatusLabel}
+            </StatusChip>
+            {detail.attention.severity !== 'none' && (
+              <StatusChip tone={attentionSeverityTone(detail.attention.severity)}>
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                {detail.attention.reasonCount}
+              </StatusChip>
+            )}
+          </>
+        )}
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            {onOpenBillingCenter && (
+              <Button type="button" size="sm" onClick={() => onOpenBillingCenter(orgId)}>
+                Abrechnung öffnen
+              </Button>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={() => void refresh()} aria-label="Aktualisieren">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+        tabs={tabs}
         activeTabId={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(id) => changeTab(id as OrgDetailTab)}
         tabsAriaLabel="Organisation"
         tabsTestIdPrefix="org-detail"
       />
 
-      {/* === OVERVIEW === */}
-      {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className={`${CARD} p-8`}>
-            <h3 className={`text-base font-bold mb-4 text-foreground`}>Organization Details</h3>
-            <div className="space-y-4">
-              {[['Company', org.company_name], ['Short Code', (org as any).short_code || '—'], ['Business Type', org.business_type], ['City', org.city], ['Country', org.country], ['Email', org.contactEmail], ['Created', org.created_at], ['Last Active', org.lastActive]].map(([label, value]) => (
-                <div key={label} className="flex justify-between items-center py-1">
-                  <span className={`text-sm font-medium text-muted-foreground`}>{label}</span>
-                  <span className={`text-sm font-bold text-foreground`}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className={`${CARD} p-8`}>
-            <h3 className={`text-base font-bold mb-4 text-foreground`}>Quick Stats</h3>
-            <div className="grid grid-cols-2 gap-5">
-              {[
-                { label: 'Fleet Size', value: org.fleet_size.toString(), icon: Car, color: 'text-status-info', bg: 'sq-tone-brand' },
-                { label: 'Users', value: org.users.toString(), icon: Users, color: 'text-purple-500', bg: 'sq-tone-ai' },
-                { label: 'MRR', value: `€${org.mrr.toLocaleString()}`, icon: CreditCard, color: 'text-emerald-500', bg: 'sq-tone-success' },
-                { label: 'Products', value: org.products.filter(p => p.status === 'Active').length.toString(), icon: Package, color: 'text-status-info', bg: 'sq-tone-info' },
-              ].map(stat => (
-                <div key={stat.label} className={`p-5 rounded-2xl border flex flex-col items-center justify-center text-center bg-muted/50 border-border`}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${stat.bg}`}>
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                  </div>
-                  <p className={`text-2xl font-extrabold text-foreground`}>{stat.value}</p>
-                  <p className={`text-xs font-bold mt-1 uppercase tracking-wider text-muted-foreground`}>{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {activeTab === 'overview' && <OverviewTab detail={detail} onTab={changeTab} />}
 
-      {/* === USERS === */}
       {activeTab === 'users' && (
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="px-5 py-3 flex items-center justify-between border-b border-gray-100">
-            <span className={`text-sm font-medium text-muted-foreground`}>{orgUsers.length} users</span>
-          </div>
-          <table className="w-full">
-            <thead><tr className={`border-b border-border`}>
-              <th className={`text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>User</th>
-              <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Role</th>
-              <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
-              <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Last Login</th>
-            </tr></thead>
-            <tbody>
-              {orgUsers.map(u => (
-                <tr key={u.id} className={`border-b last:border-b-0 border-border hover:bg-muted/50`}>
-                  <td className="px-6 py-3"><div className="flex items-center gap-3"><div className="sq-tone-brand flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold text-[color:var(--brand)]">{u.avatar}</div><div><p className={`text-sm font-semibold text-foreground`}>{u.name}</p><p className={`text-xs text-muted-foreground`}>{u.email}</p></div></div></td>
-                  <td className="px-4 py-3"><StatusChip tone={platformRoleTone(u.role)} className="!text-xs">{u.role}</StatusChip></td>
-                  <td className="px-4 py-3"><StatusChip tone={userAccountStatusTone(u.status)} className="!text-xs">{u.status}</StatusChip></td>
-                  <td className={`px-4 py-3 text-sm text-muted-foreground`}>{u.last_login}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <MasterPageSection>
+          {usersLoading && <MasterLoadingState variant="rows" count={4} />}
+          {usersError && <MasterErrorState title="Benutzer" error={usersError} />}
+          {!usersLoading && !usersError && (
+            <DataTable columns={userColumns} rows={users} getRowKey={(u) => u.id} dense empty="Keine Benutzer" />
+          )}
+        </MasterPageSection>
       )}
 
-      {/* === VEHICLES === */}
       {activeTab === 'vehicles' && (
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="px-5 py-3 flex items-center justify-between border-b border-gray-100">
-            <span className={`text-sm font-medium text-muted-foreground`}>{orgVehicles.length} vehicles</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead><tr className={`border-b border-border`}>
-                <th className={`text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Vehicle</th>
-                <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
-                <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Health</th>
-                <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Station</th>
-                <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Signal</th>
-              </tr></thead>
-              <tbody>
-                {orgVehicles.map(v => (
-                  <tr key={v.id} className={`border-b last:border-b-0 border-border hover:bg-muted/50`}>
-                    <td className="px-6 py-3"><p className={`text-sm font-semibold text-foreground`}>{v.vehicleName}</p><p className={`text-xs font-mono text-muted-foreground`}>{v.vin}</p></td>
-                    <td className="px-4 py-3"><StatusChip tone={fleetVehicleStatusTone(v.status)} className="!text-xs">{v.status}</StatusChip></td>
-                    <td className="px-4 py-3"><HealthStatusChip state={v.health} label={v.health} className="!text-xs" /></td>
-                    <td className={`px-4 py-3 text-sm text-muted-foreground`}>{v.station}</td>
-                    <td className="px-4 py-3">{(() => {
-                      const os = v.onlineStatus ?? (v.online ? 'ONLINE' : 'OFFLINE');
-                      return (
-                        <div className="flex items-center gap-1.5">
-                          <StatusDot tone={onlineSignalTone(os)} />
-                          <span className={`text-xs text-muted-foreground`}>{v.lastSignal}</span>
-                        </div>
-                      );
-                    })()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <MasterPageSection>
+          {detail.connectivity && (
+            <p className="text-sm text-muted-foreground mb-3">
+              {detail.billableVehicleCount} Fahrzeuge · {detail.connectedVehicleCount} verbunden · Live{' '}
+              {detail.connectivity.freshness.live} · Standby {detail.connectivity.freshness.standby} · Offline{' '}
+              {detail.connectivity.freshness.offline + detail.connectivity.freshness.no_signal}
+            </p>
+          )}
+          {vehiclesLoading && <MasterLoadingState variant="table" />}
+          {vehiclesError && <MasterErrorState title="Fahrzeuge" error={vehiclesError} />}
+          {!vehiclesLoading && !vehiclesError && (
+            <DataTable
+              columns={vehicleColumns}
+              rows={vehicles}
+              getRowKey={(v) => v.id}
+              dense
+              empty="Keine Fahrzeuge"
+              onRowClick={onNavigateToVehicle ? (v) => onNavigateToVehicle(v.id) : undefined}
+            />
+          )}
+        </MasterPageSection>
       )}
 
-      {/* === INTEGRATIONS === */}
+      {activeTab === 'billing' && (
+        <MasterPageSection title="Abrechnung">
+          {billingLoading && <MasterLoadingState variant="card" />}
+          {billingError && <MasterErrorState title="Abrechnung" error={billingError} />}
+          {!billingLoading && !billingError && billing && (
+            <div className="space-y-4 surface-premium p-5 rounded-xl">
+              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                <div><span className="text-muted-foreground">Tarif</span><p className="font-semibold">{billing.tariffLabel ?? '—'}</p></div>
+                <div><span className="text-muted-foreground">Abo-Status</span><p className="font-semibold">{billing.subscription?.status ?? 'NONE'}</p></div>
+                <div><span className="text-muted-foreground">Zahlungsmethode</span><p className="font-semibold">{billing.paymentMethodStatus}</p></div>
+                <div><span className="text-muted-foreground">Stripe-Sync</span><p className="font-semibold">{billing.syncStatus}</p></div>
+                <div><span className="text-muted-foreground">Offener Betrag</span><p className="font-semibold">€{(billing.openAmountCents / 100).toFixed(2)}</p></div>
+                <div><span className="text-muted-foreground">Fahrzeuge</span><p className="font-semibold">{billing.connectedVehicleCount}/{billing.billableVehicleCount}</p></div>
+              </div>
+              {billing.warnings.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {billing.warnings.map((w) => (
+                    <StatusChip key={w} tone="warning" className="!text-xs">{attentionReasonLabel(w)}</StatusChip>
+                  ))}
+                </div>
+              )}
+              <details>
+                <summary className="text-xs text-muted-foreground cursor-pointer">Stripe-Referenzen</summary>
+                <p className="text-xs font-mono mt-2">Customer: {maskId(billing.subscription?.stripeCustomerId)}</p>
+                <p className="text-xs font-mono">Subscription: {maskId(billing.subscription?.stripeSubscriptionId)}</p>
+              </details>
+              {onOpenBillingCenter && (
+                <Button type="button" onClick={() => onOpenBillingCenter(orgId)} className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  Abrechnung im Control Center öffnen
+                </Button>
+              )}
+            </div>
+          )}
+          {!billingLoading && !billingError && !billing && (
+            <EmptyState title="Keine Abrechnungsdaten" description="Für diese Organisation liegen keine Billing-Daten vor." />
+          )}
+        </MasterPageSection>
+      )}
+
       {activeTab === 'integrations' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {org.integrations.map(integration => (
-            <div key={integration.id} className={`${CARD} p-4`}>
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${integration.status === 'Connected' ? 'sq-tone-positive' : 'bg-muted'}`}>
-                    {integration.status === 'Connected' ? <Wifi className="h-5 w-5 text-[color:var(--status-positive)]" /> : <WifiOff className="h-5 w-5 text-muted-foreground" />}
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-semibold text-foreground`}>{integration.name}</h3>
-                    <StatusChip tone={integration.status === 'Connected' ? 'success' : 'neutral'} className="!text-xs">{integration.status}</StatusChip>
-                  </div>
+          {detail.integrations.length === 0 ? (
+            <EmptyState title="Keine Integrationen" description="Für diese Organisation sind keine Integrationen registriert." />
+          ) : (
+            detail.integrations.map((i) => (
+              <div key={i.slug} className="surface-premium rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">{i.name}</h3>
+                  <StatusChip
+                    tone={i.status === 'ERROR' ? 'critical' : i.status === 'ACTIVE' ? 'success' : 'neutral'}
+                    className="!text-xs"
+                  >
+                    {i.statusLabel}
+                  </StatusChip>
                 </div>
-              </div>
-              <div className="space-y-2.5 mb-5">
-                <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>API Key</span><span className={`text-sm font-mono text-foreground`}>{integration.apiKey || '—'}</span></div>
-                <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>Last Sync</span><span className={`text-sm text-foreground`}>{integration.lastSync}</span></div>
-                <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>Sync Status</span><StatusChip tone={integration.syncStatus === 'Synced' ? 'success' : integration.syncStatus === 'Failed' ? 'critical' : 'neutral'} className="!text-xs">{integration.syncStatus}</StatusChip></div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => toggleIntegration(integration.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${integration.status === 'Connected' ? 'sq-press text-[color:var(--status-critical)]' : 'sq-cta'}`}
-                >
-                  {integration.status === 'Connected' ? 'Disconnect' : 'Connect'}
-                </button>
-                {integration.status === 'Connected' && (
-                  <button className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all border-border`}>
-                    <RefreshCw className="w-4 h-4" /> Test
-                  </button>
+                <p className="text-sm text-muted-foreground">
+                  Letzte Synchronisation: {i.lastSyncAt ? formatRelativeDe(i.lastSyncAt) : '—'}
+                </p>
+                {i.errorMessage && (
+                  <p className="text-sm text-[color:var(--status-critical)]">{i.errorMessage}</p>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* === BILLING === */}
-      {activeTab === 'billing' && (
-        <div className={`${CARD} p-6 space-y-4`}>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl sq-tone-info shrink-0">
-              <CreditCard className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-foreground">Billing Control Center</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[52ch]">
-                Abrechnung, Subscriptions, Rechnungen und Zahlungsmethoden werden zentral im
-                Billing Control Center verwaltet — nicht über lokale Demo-Daten in dieser Ansicht.
-              </p>
-            </div>
-          </div>
-          {onOpenBillingCenter ? (
-            <Button type="button" size="sm" onClick={() => onOpenBillingCenter(org.id)}>
-              Billing für diese Organisation öffnen
-            </Button>
-          ) : (
-            <EmptyState
-              compact
-              title="Billing Control Center"
-              description="Öffne Billing in der Sidebar für die kanonische Master-Admin-Abrechnungsansicht."
-            />
+            ))
           )}
         </div>
       )}
 
-      {/* === PRODUCTS === */}
-      {activeTab === 'products' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {org.products.map(product => (
-            <div key={product.id} className={`${CARD} p-4 ${product.status === 'Active' ? 'ring-2 ring-[color:var(--status-positive)]/20' : ''}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${product.status === 'Active' ? 'sq-tone-positive' : 'bg-muted'}`}>
-                  <Package className={`h-6 w-6 ${product.status === 'Active' ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'}`} />
-                </div>
-                <StatusChip tone={product.status === 'Active' ? 'success' : 'neutral'} className="!text-xs">{product.status}</StatusChip>
-              </div>
-              <h3 className={`text-lg font-semibold mb-1 text-foreground`}>{product.name}</h3>
-              <p className={`text-xs mb-5 text-muted-foreground`}>
-                {product.id === 'rental' ? 'Vehicle rental operations & booking management' : product.id === 'fleet' ? 'Fleet analytics, monitoring & maintenance' : 'Taxi dispatch, routing & driver management'}
-              </p>
-              <button
-                type="button"
-                onClick={() => toggleProduct(product.id)}
-                className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${product.status === 'Active' ? 'sq-press text-[color:var(--status-critical)]' : 'sq-cta'}`}
-              >
-                {product.status === 'Active' ? <><XCircle className="w-4 h-4" /> Disable Product</> : <><CheckCircle className="w-4 h-4" /> Enable Product</>}
-              </button>
+      {activeTab === 'activity' && (
+        <MasterPageSection>
+          <div className="flex gap-2 mb-3">
+            <Button
+              type="button"
+              size="sm"
+              variant={activityMode === 'operational' ? 'default' : 'outline'}
+              onClick={() => setActivityMode('operational')}
+            >
+              Aktivität
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activityMode === 'audit' ? 'default' : 'outline'}
+              onClick={() => setActivityMode('audit')}
+            >
+              Master-Audit
+            </Button>
+          </div>
+          {activityLoading && <MasterLoadingState variant="rows" count={5} />}
+          {activityError && <MasterErrorState title="Aktivität" error={activityError} />}
+          {!activityLoading && !activityError && (
+            <div className="space-y-2">
+              {activity.length === 0 ? (
+                <EmptyState compact title="Keine Einträge" />
+              ) : (
+                activity.map((row) => (
+                  <div key={row.id} className="rounded-lg border border-border px-3 py-2 text-sm">
+                    <div className="flex justify-between gap-2">
+                      <span className="font-medium">{row.action}</span>
+                      <span className="text-muted-foreground text-xs">{formatRelativeDe(row.createdAt)}</span>
+                    </div>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      {row.userName ?? 'System'} · {row.entity}
+                      {row.description ? ` · ${row.description}` : ''}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
-          ))}
+          )}
+        </MasterPageSection>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="space-y-6 max-w-xl">
+          <MasterPageSection title="Metadaten">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-semibold">Firmenname</label>
+                <input
+                  className="w-full mt-1 px-3 py-2 rounded-lg border border-border bg-muted text-sm"
+                  value={settingsName}
+                  onChange={(e) => setSettingsName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold">Stadt</label>
+                <input
+                  className="w-full mt-1 px-3 py-2 rounded-lg border border-border bg-muted text-sm"
+                  value={settingsCity}
+                  onChange={(e) => setSettingsCity(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                disabled={settingsSaving}
+                onClick={async () => {
+                  setSettingsSaving(true);
+                  try {
+                    await onUpdateOrg(orgId, { companyName: settingsName, city: settingsCity });
+                    await refresh();
+                  } finally {
+                    setSettingsSaving(false);
+                  }
+                }}
+              >
+                Speichern
+              </Button>
+            </div>
+          </MasterPageSection>
+
+          <section className="rounded-xl border border-[color:var(--status-critical)]/40 p-5 space-y-3">
+            <SectionHeader title="Gefahrenzone" />
+            <p className="text-sm text-muted-foreground">
+              Entfernt den Mandanten und alle zugehörigen Daten. Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <Button type="button" variant="destructive" onClick={() => setDeleteOpen(true)}>
+              Organisation löschen…
+            </Button>
+          </section>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Organisation löschen"
+        description={`Geben Sie den Namen „${detail.companyName}" und eine Begründung ein.`}
+        confirmLabel="Endgültig löschen"
+        cancelLabel="Abbrechen"
+        tone="critical"
+        loading={deleting}
+        onConfirm={async () => {
+          if (deleteConfirmName !== detail.companyName || !deleteReason.trim()) return;
+          setDeleting(true);
+          try {
+            await onDeleteOrg(orgId, deleteReason.trim());
+            setDeleteOpen(false);
+            onBack();
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      >
+        <div className="space-y-3 mt-2">
+          <input
+            className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm"
+            placeholder={detail.companyName}
+            value={deleteConfirmName}
+            onChange={(e) => setDeleteConfirmName(e.target.value)}
+            aria-label="Organisationsname bestätigen"
+          />
+          <textarea
+            className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm min-h-[80px]"
+            placeholder="Begründung (Pflicht)"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            aria-label="Begründung"
+          />
+        </div>
+      </ConfirmDialog>
     </>
   );
 }
