@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-platform-integrations-ui103-2026-08-18',
+    version: '4.9.914',
+    title: 'Master Admin — Integrationen & Plattform (UI-10.3)',
+    summary: [
+      'Backend: `PlatformIntegrationsService` + `/admin/platform-integrations/*` (Directory, Attention, Webhooks, Flags, Detail) mit vier kanonischen Status-Dimensionen.',
+      'Frontend: `master/platform-integrations/PlatformIntegrationsHub` mit 5 Tabs (Übersicht, Integrationen, Webhooks, Plattform-Einstellungen, Änderungsprotokoll).',
+      'Navigation: Sidebar `platform-integrations` ersetzt `settings`; Badge `integration-attention` aus Attention-Summary.',
+      'Legacy-Redirects: `?view=settings` / `settingsTab=email` → Hub-Tabs; Mock General Settings entfernt.',
+      'E-Mail: Plattform-Absender mit Dirty-State, Change Preview, Step-up Save und sicherer Test-Aktion.',
+      'Acceptance: `docs/ui/master-admin-integrations-system-config-post-remediation.md`.',
+    ],
+    reason: 'Globale Integrationen und Systemkonfiguration waren über 8+ Views fragmentiert — Blueprint UI-10.2.',
+    previousBehavior: 'Settings mit Mock General Tab; DIMO/Stripe/E-Mail/Voice ohne Single Pane of Glass; `integration-outage` nur DIMO-Boolean.',
+    details:
+      'backend platform-integrations.*; frontend/src/master/platform-integrations/*; api.ts admin.platformIntegrations; master-nav; App.tsx; Sidebar; architecture/MASTER_ADMIN_PLATFORM_INTEGRATIONS_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T12:00:00.000Z',
+  },
+  {
     id: 'master-admin-security-governance-ui93-2026-08-18',
     version: '4.9.913',
     title: 'Master Admin — Identität & Zugriff (UI-9.3)',
