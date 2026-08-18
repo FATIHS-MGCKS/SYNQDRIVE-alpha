@@ -13,7 +13,8 @@ export interface MasterNavBadgeState {
   platformHealthy: boolean;
   platformCritical: boolean;
   openSupportTickets: number;
-  dimoConnected: boolean;
+  vehicleAttention: number;
+  hmIntegrationAttention: boolean;
   billingAnomaly: boolean;
   mfaRequired: boolean;
   securityAttention: number;
@@ -34,8 +35,11 @@ function deriveBadges(state: MasterNavBadgeState): MasterNavBadges {
   if (state.integrationAttention > 0) {
     badges['integration-attention'] = state.integrationAttention > 9 ? '9+' : state.integrationAttention;
   }
-  if (!state.dimoConnected) {
-    badges['connectivity-warning'] = true;
+  if (state.vehicleAttention > 0) {
+    badges['connectivity-warning'] = state.vehicleAttention > 9 ? '9+' : state.vehicleAttention;
+  }
+  if (state.hmIntegrationAttention) {
+    badges['integration-outage'] = true;
   }
   if (state.billingAnomaly) {
     badges['billing-anomaly'] = true;
@@ -55,7 +59,8 @@ export function useMasterNavBadges(): MasterNavBadges {
     platformHealthy: true,
     platformCritical: false,
     openSupportTickets: 0,
-    dimoConnected: true,
+    vehicleAttention: 0,
+    hmIntegrationAttention: false,
     billingAnomaly: false,
     mfaRequired: false,
     integrationAttention: 0,
@@ -67,19 +72,35 @@ export function useMasterNavBadges(): MasterNavBadges {
 
     const load = async () => {
       try {
-        const [operational, mfaStatus, securityAttention, integrationAttention] = await Promise.all([
-          fetchOperationalDashboard().catch(() => null),
-          api.account.mfa.status().catch(() => null),
-          api.admin.securityAccess.attentionSummary().catch(() => null),
-          api.admin.platformIntegrations.attentionSummary().catch(() => null),
-        ]);
+        const [operational, mfaStatus, securityAttention, integrationAttention, vehiclesOverview, integrationsDirectory] =
+          await Promise.all([
+            fetchOperationalDashboard().catch(() => null),
+            api.account.mfa.status().catch(() => null),
+            api.admin.securityAccess.attentionSummary().catch(() => null),
+            api.admin.platformIntegrations.attentionSummary().catch(() => null),
+            api.vehicles.operationalOverview().catch(() => null),
+            api.admin.platformIntegrations.directory().catch(() => null),
+          ]);
 
         if (!mounted) return;
 
         const opsState = operationalToNavBadgeState(operational);
+        const hmEntry = integrationsDirectory?.entries?.find(
+          (e: { id: string }) => e.id === 'high-mobility',
+        );
 
         setBadgeState({
-          ...opsState,
+          platformHealthy: opsState.platformHealthy,
+          platformCritical: opsState.platformCritical,
+          openSupportTickets: opsState.openSupportTickets,
+          billingAnomaly: opsState.billingAnomaly,
+          vehicleAttention: vehiclesOverview?.counts?.withAttention ?? 0,
+          hmIntegrationAttention: Boolean(
+            hmEntry &&
+              (hmEntry.attentionCodes.length > 0 ||
+                hmEntry.runtimeHealth === 'degraded' ||
+                hmEntry.runtimeHealth === 'error'),
+          ),
           mfaRequired: Boolean(mfaStatus?.enrollmentRequired && !mfaStatus?.enrolled),
           securityAttention: securityAttention?.total ?? 0,
           integrationAttention: integrationAttention?.total ?? 0,
@@ -95,12 +116,20 @@ export function useMasterNavBadges(): MasterNavBadges {
     const unsub = subscribeOperationalDashboard(() => {
       const { data } = getCachedOperationalDashboard();
       if (!mounted || !data) return;
-      setBadgeState((prev) => ({
-        ...operationalToNavBadgeState(data),
-        mfaRequired: prev.mfaRequired,
-        securityAttention: prev.securityAttention,
-        integrationAttention: prev.integrationAttention,
-      }));
+      setBadgeState((prev) => {
+        const ops = operationalToNavBadgeState(data);
+        return {
+          platformHealthy: ops.platformHealthy,
+          platformCritical: ops.platformCritical,
+          openSupportTickets: ops.openSupportTickets,
+          billingAnomaly: ops.billingAnomaly,
+          vehicleAttention: prev.vehicleAttention,
+          hmIntegrationAttention: prev.hmIntegrationAttention,
+          mfaRequired: prev.mfaRequired,
+          securityAttention: prev.securityAttention,
+          integrationAttention: prev.integrationAttention,
+        };
+      });
     });
     const interval = setInterval(() => void load(), OPERATIONAL_REFRESH_MS);
     return () => {

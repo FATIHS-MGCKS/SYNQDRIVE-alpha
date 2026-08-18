@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-final-consistency-ui-final-2026-08-18',
+    version: '4.9.915',
+    title: 'Master Admin — Final Cross-Page Consistency (UI-FINAL)',
+    summary: [
+      'Drilldowns: `master-drilldown.ts` mit Legacy-Alias-Map + `pushState`; Dashboard/Backend auf kanonische Slugs (`vehicles`, `security-access`, `platform-ops`).',
+      'Navigation: Vehicle-Attention-Badge aus operational overview; HM `integration-outage` aus Integrations-Directory.',
+      'TopBar: dekorative Suche/⌘K/Notifications entfernt; Integrationen-Shortcut + Theme + Logout.',
+      'A11y: Skip-Link in `MasterAdminShell`; Billing-only Deep-Link-Guard.',
+      'Formatter: `formatRelativeDe` zentral in `components/patterns/format-utils.ts`.',
+      'Cleanup: 6 Orphan-Views gelöscht; `IntegrationStatusChips` → `StatusChip`.',
+      'Acceptance: `docs/ui/master-admin-final-consistency-post-remediation.md`.',
+    ],
+    reason: 'Final Cross-Page Audit (UI-FINAL) — Convergence Pass ohne neue Features.',
+    previousBehavior: 'Legacy Drilldown-Slugs, DIMO-Boolean-Badge, `replaceState`, tote Views, drei `formatRelativeDe`-Implementierungen.',
+    details:
+      'frontend/src/master/navigation/master-drilldown.ts; useMasterNavBadges; TopBar; platform-dashboard.service; patterns/format-utils; IntegrationStatusChips; architecture/MASTER_ADMIN_CROSS_PAGE_CONVERGENCE_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T13:10:00.000Z',
+  },
+  {
     id: 'master-admin-platform-integrations-ui103-2026-08-18',
     version: '4.9.914',
     title: 'Master Admin — Integrationen & Plattform (UI-10.3)',

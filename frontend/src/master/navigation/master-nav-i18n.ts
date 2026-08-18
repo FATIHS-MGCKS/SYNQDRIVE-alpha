@@ -42,6 +42,11 @@ const DE: Record<string, string> = {
   'master.account.profile': 'Profil',
   'master.account.mfa': 'Zwei-Faktor-Authentifizierung',
   'master.account.theme': 'Darstellung',
+  'master.topBar.welcome': 'Willkommen im Master Admin',
+  'master.topBar.welcomeNamed': 'Willkommen, {{name}}',
+  'master.topBar.themeLight': 'Helles Design aktivieren',
+  'master.topBar.themeDark': 'Dunkles Design aktivieren',
+  'master.topBar.logout': 'Abmelden',
 };
 
 export function tMasterNav(key: string): string {

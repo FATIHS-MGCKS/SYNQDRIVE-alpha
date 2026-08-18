@@ -637,22 +637,29 @@ export class PlatformDashboardService {
           log.action === 'PRUNE',
       )
       .slice(0, 8)
-      .map((log) => ({
-        id: log.id,
-        action: log.action,
-        entity: log.entity,
-        entityId: log.entityId,
-        description: log.description,
-        organizationId: log.organizationId,
-        organizationName: log.organization?.companyName ?? null,
-        createdAt: log.createdAt.toISOString(),
-        drilldownView:
-          log.entity === 'ORGANIZATION'
-            ? 'organizations'
-            : log.entity === 'SUBSCRIPTION'
-              ? 'billing'
-              : 'activity-log',
-      }));
+      .map((log) => {
+        let drilldownView = 'security-access';
+        let drilldownParams: Record<string, string> = { securityAccess: 'audit', auditId: log.id };
+        if (log.entity === 'ORGANIZATION' && log.organizationId) {
+          drilldownView = 'organizations';
+          drilldownParams = { orgId: log.organizationId };
+        } else if (log.entity === 'SUBSCRIPTION') {
+          drilldownView = 'billing';
+          drilldownParams = { masterBilling: 'subscriptions' };
+        }
+        return {
+          id: log.id,
+          action: log.action,
+          entity: log.entity,
+          entityId: log.entityId,
+          description: log.description,
+          organizationId: log.organizationId,
+          organizationName: log.organization?.companyName ?? null,
+          createdAt: log.createdAt.toISOString(),
+          drilldownView,
+          drilldownParams,
+        };
+      });
   }
 
   private async loadBusinessContext(): Promise<

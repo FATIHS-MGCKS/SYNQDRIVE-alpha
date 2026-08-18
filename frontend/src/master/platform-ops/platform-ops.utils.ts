@@ -34,16 +34,7 @@ export function platformOpsStateTone(state: PlatformOpsState): StatusTone {
   }
 }
 
-export function formatRelativeDe(iso: string | null): string {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 0) return 'gerade eben';
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return `vor ${sec} Sek.`;
-  if (sec < 3600) return `vor ${Math.floor(sec / 60)} Min.`;
-  if (sec < 86400) return `vor ${Math.floor(sec / 3600)} Std.`;
-  return `vor ${Math.floor(sec / 86400)} Tg.`;
-}
+export { formatRelativeDe } from '../../components/patterns/format-utils';
 
 export const PLATFORM_OPS_SECTIONS = [
   { id: 'overview', label: 'Übersicht' },

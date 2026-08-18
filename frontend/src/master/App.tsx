@@ -27,6 +27,8 @@ import {
   pushMasterNavState,
   readInitialMasterNavLocation,
 } from './navigation/master-nav-url';
+import { isBillingOnlyMasterUser } from './navigation/master-nav-permissions';
+import { applyMasterDrilldownUrl } from './navigation/master-drilldown';
 import type { MasterNavLocationState } from './navigation/master-nav.types';
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser } from './data/platform-data';
@@ -234,6 +236,14 @@ export default function App() {
     }
   }, [currentView, settingsTab, handleMasterNavigate]);
 
+  useEffect(() => {
+    if (!isBillingOnlyMasterUser()) return;
+    const allowed = new Set<MasterView>(['dashboard', 'billing']);
+    if (!allowed.has(currentView)) {
+      handleMasterNavigate('dashboard', { replace: true });
+    }
+  }, [currentView, handleMasterNavigate]);
+
   const reloadFromApi = async () => {
     try {
       const [orgRes, usersRes] = await Promise.all([
@@ -375,11 +385,11 @@ export default function App() {
       )}
     >
       <MasterMfaGate>
-        <MasterGlobalChrome onOpenSettings={() => handleMasterNavigate('settings', { settingsTab: 'general' })} />
+        <MasterGlobalChrome onOpenSettings={() => handleMasterNavigate('platform-integrations')} />
 
         {currentView === 'dashboard' && (
           <PageContainer variant="wide">
-            <MasterDashboardView isDarkMode={isDarkMode} onViewChange={(view) => { handleMasterNavigate(view as MasterView); }} />
+            <MasterDashboardView onViewChange={(view) => { handleMasterNavigate(view); }} />
           </PageContainer>
         )}
 
@@ -447,9 +457,12 @@ export default function App() {
         {currentView === 'billing' && (
           <PageContainer variant="wide">
             <BillingControlCenter
-              isDarkMode={isDarkMode}
               initialOrgId={billingFocusOrgId}
               onInitialOrgConsumed={() => setBillingFocusOrgId(null)}
+              onOpenOrganization={(orgId) => {
+                setDetailOrgId(orgId);
+                pushMasterNavState({ view: 'organizations', orgId });
+              }}
             />
           </PageContainer>
         )}
@@ -458,12 +471,8 @@ export default function App() {
           <PageContainer variant="wide">
             <PlatformOpsHub
               onNavigateView={(view, params) => {
-                handleMasterNavigate(view as MasterView);
-                if (params) {
-                  const q = new URLSearchParams(window.location.search);
-                  for (const [k, v] of Object.entries(params)) q.set(k, v);
-                  window.history.replaceState(null, '', `${window.location.pathname}?${q.toString()}`);
-                }
+                const resolved = applyMasterDrilldownUrl(view, params);
+                handleMasterNavigate(resolved);
               }}
               onOpenOrganization={(orgId) => {
                 setDetailOrgId(orgId);
@@ -489,12 +498,8 @@ export default function App() {
           <PageContainer variant="wide">
             <PlatformIntegrationsHub
               onNavigateView={(view, params) => {
-                handleMasterNavigate(view as MasterView);
-                if (params) {
-                  const q = new URLSearchParams(window.location.search);
-                  for (const [k, v] of Object.entries(params)) q.set(k, v);
-                  window.history.replaceState(null, '', `${window.location.pathname}?${q.toString()}`);
-                }
+                const resolved = applyMasterDrilldownUrl(view, params);
+                handleMasterNavigate(resolved);
               }}
             />
           </PageContainer>
@@ -503,19 +508,6 @@ export default function App() {
         {currentView === 'prospects' && (
           <PageContainer variant="standard">
             <ProspectsView />
-          </PageContainer>
-        )}
-
-        {currentView === 'fleet-connection' && (
-          <PageContainer variant="wide">
-            <ConnectedVehiclesHub
-              organizations={organizations}
-              onOpenOrganization={(orgId) => {
-                setDetailOrgId(orgId);
-                pushMasterNavState({ view: 'organizations', orgId });
-              }}
-              onOpenPlatformHealth={() => handleMasterNavigate('platform-ops')}
-            />
           </PageContainer>
         )}
 

@@ -8,6 +8,8 @@ import type {
   PlatformIntegrationsSection,
 } from './types';
 
+export { formatRelativeDe } from '../../components/patterns/format-utils';
+
 export const PLATFORM_INTEGRATIONS_REFRESH_MS = 60_000;
 
 export const PLATFORM_INTEGRATIONS_SECTIONS: Array<{ id: PlatformIntegrationsSection; label: string }> = [
@@ -17,18 +19,6 @@ export const PLATFORM_INTEGRATIONS_SECTIONS: Array<{ id: PlatformIntegrationsSec
   { id: 'settings', label: 'Plattform-Einstellungen' },
   { id: 'changelog', label: 'Änderungsprotokoll' },
 ];
-
-export function formatRelativeDe(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'gerade eben';
-  if (mins < 60) return `vor ${mins} Min.`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `vor ${hours} Std.`;
-  const days = Math.floor(hours / 24);
-  return `vor ${days} Tag${days === 1 ? '' : 'en'}`;
-}
 
 export function configurationLabel(state: IntegrationConfigurationState): string {
   return state === 'complete' ? 'Vollständig' : 'Unvollständig';

@@ -17,8 +17,8 @@ import { SystemMonitoringView } from '../../components/SystemMonitoringView';
 
 const DIAG_TABS = [
   { id: 'alerts', label: 'Alarme' },
-  { id: 'poll-logs', label: 'Poll Logs' },
-  { id: 'token-health', label: 'Token Health' },
+  { id: 'poll-logs', label: 'Abfrage-Protokolle' },
+  { id: 'token-health', label: 'Token-Status' },
   { id: 'tools', label: 'Tools' },
 ] as const;
 

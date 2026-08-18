@@ -10,11 +10,17 @@ export function isMasterNavItemActive(itemId: MasterView, ctx: MasterNavActiveCo
   if (itemId === 'organizations') {
     return ctx.view === 'organizations';
   }
-  if (itemId === 'settings') {
-    return ctx.view === 'settings';
+  if (itemId === 'platform-integrations') {
+    return ctx.view === 'platform-integrations' || ctx.view === 'settings';
   }
   if (itemId === 'security-access') {
     return ctx.view === 'security-access' || ctx.view === 'users' || ctx.view === 'activity-log';
+  }
+  if (itemId === 'vehicles') {
+    return ctx.view === 'vehicles' || ctx.view === 'fleet-connection';
+  }
+  if (itemId === 'platform-ops') {
+    return ctx.view === 'platform-ops' || ctx.view === 'platform-health';
   }
   return ctx.view === itemId;
 }

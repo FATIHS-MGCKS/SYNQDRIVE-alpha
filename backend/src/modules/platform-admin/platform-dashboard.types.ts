@@ -93,6 +93,7 @@ export interface DashboardActivityHighlightDto {
   organizationName: string | null;
   createdAt: string;
   drilldownView: string | null;
+  drilldownParams?: Record<string, string>;
 }
 
 export interface DashboardBusinessContextDto {

@@ -37,6 +37,8 @@ import {
   overallStatusLabel,
   overallStatusTone,
 } from '../dashboard/dashboard.utils';
+import { applyMasterDrilldownUrl } from '../navigation/master-drilldown';
+import type { MasterView } from '../navigation/master-nav.types';
 import { useMasterDashboardOperational } from '../dashboard/useMasterDashboardOperational';
 import type {
   DashboardDomainStatusDto,
@@ -46,8 +48,7 @@ import type {
 } from '../dashboard/types';
 
 interface MasterDashboardViewProps {
-  isDarkMode: boolean;
-  onViewChange?: (view: string, settingsTab?: string) => void;
+  onViewChange?: (view: MasterView, settingsTab?: string) => void;
 }
 
 function navigate(
@@ -56,38 +57,7 @@ function navigate(
   params?: Record<string, string>,
 ) {
   if (!onViewChange) return;
-  const resolvedView = view === 'platform-health' ? 'platform-ops' : view;
-
-  if (resolvedView === 'billing' && params) {
-    const q = new URLSearchParams(params);
-    window.history.replaceState(null, '', `/master?${new URLSearchParams({ view: 'billing', ...Object.fromEntries(q) }).toString()}`);
-  }
-
-  if (resolvedView === 'platform-ops') {
-    const q = new URLSearchParams({ view: 'platform-ops' });
-    if (params?.platformOps) {
-      q.set('platformOps', params.platformOps);
-    } else if (params?.opsTab === 'workers') {
-      q.set('platformOps', 'processing');
-      q.set('platformOpsTab', 'workers');
-    } else {
-      q.set('platformOps', 'overview');
-    }
-    if (params?.platformOpsTab) q.set('platformOpsTab', params.platformOpsTab);
-    if (params?.incidentId) q.set('incidentId', params.incidentId);
-    if (params?.serviceId) q.set('serviceId', params.serviceId);
-    if (params && !params.platformOps && !params.opsTab) {
-      for (const [k, v] of Object.entries(params)) {
-        if (['platformOps', 'platformOpsTab', 'incidentId', 'serviceId'].includes(k)) q.set(k, v);
-      }
-    }
-    window.history.replaceState(null, '', `/master?${q.toString()}`);
-  }
-
-  if (resolvedView === 'organizations' && params?.orgId) {
-    window.history.replaceState(null, '', `/master?${new URLSearchParams({ view: 'organizations', orgId: params.orgId }).toString()}`);
-  }
-
+  const resolvedView = applyMasterDrilldownUrl(view, params);
   onViewChange(resolvedView);
 }
 
@@ -174,7 +144,7 @@ function StatusHero({
             role="listitem"
             onClick={() => {
               if (key === 'billing') onNavigate('billing');
-              else if (key === 'dimo') onNavigate('fleet-connection');
+              else if (key === 'dimo') onNavigate('vehicles', { cvSection: 'overview' });
               else if (key === 'worker' || key === 'runtime') onNavigate('platform-ops', { platformOps: 'processing' });
               else if (key === 'support') onNavigate('support');
               else if (key === 'backup') onNavigate('platform-ops', { platformOps: 'resilience' });
@@ -471,7 +441,7 @@ function DomainSummaries({
         title="Fahrzeug-Konnektivität"
         description="Telemetrie vs. Plattform"
         actions={
-          <button type="button" className="text-xs text-[color:var(--brand)] hover:underline" onClick={() => onNavigate('fleet-connection')}>
+          <button type="button" className="text-xs text-[color:var(--brand)] hover:underline" onClick={() => onNavigate('vehicles', { cvSection: 'overview' })}>
             Öffnen
           </button>
         }
@@ -582,7 +552,7 @@ function ActivitySection({
     <MasterPageSection
       title="Plattform-Aktivität"
       actions={
-        <button type="button" className="text-xs font-semibold text-[color:var(--brand)]" onClick={() => onNavigate('activity-log')}>
+        <button type="button" className="text-xs font-semibold text-[color:var(--brand)]" onClick={() => onNavigate('security-access', { securityAccess: 'audit' })}>
           Alle anzeigen
         </button>
       }
@@ -596,7 +566,7 @@ function ActivitySection({
               <button
                 type="button"
                 className="w-full flex gap-3 rounded-xl border border-border bg-muted/20 p-3 text-left hover:bg-muted/40"
-                onClick={() => item.drilldownView && onNavigate(item.drilldownView)}
+                onClick={() => item.drilldownView && onNavigate(item.drilldownView, item.drilldownParams)}
               >
                 <Activity className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
                 <div className="min-w-0">

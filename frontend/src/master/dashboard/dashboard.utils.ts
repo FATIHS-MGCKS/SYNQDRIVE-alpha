@@ -28,17 +28,7 @@ export function domainLevelTone(level: DashboardDomainStatusLevel): StatusTone {
   return 'neutral';
 }
 
-export function formatRelativeDe(iso: string): string {
-  const d = new Date(iso);
-  const diffMs = Date.now() - d.getTime();
-  const min = Math.floor(diffMs / 60000);
-  if (min < 1) return 'gerade eben';
-  if (min < 60) return `vor ${min} Min.`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `vor ${h} Std.`;
-  const days = Math.floor(h / 24);
-  return `vor ${days} Tg.`;
-}
+export { formatRelativeDe } from '../../components/patterns/format-utils';
 
 export function formatDurationSince(iso: string): string {
   const start = new Date(iso).getTime();

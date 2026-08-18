@@ -4,7 +4,7 @@ export interface MasterGlobalChromeProps {
   onOpenSettings?: () => void;
 }
 
-/** Global chrome row above page content (welcome, theme, settings). */
+/** Global chrome row above page content (welcome, theme, integrations shortcut). */
 export function MasterGlobalChrome({ onOpenSettings }: MasterGlobalChromeProps) {
-  return <TopBar onOpenSettings={onOpenSettings} />;
+  return <TopBar onNavigate={onOpenSettings ? () => onOpenSettings() : undefined} />;
 }

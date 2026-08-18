@@ -1,4 +1,4 @@
-import { LogOut, PanelLeftClose, PanelLeftOpen, Settings, Menu, X, ChevronRight } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeftOpen, Plug, Menu, X, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   navItemClass,
@@ -292,7 +292,7 @@ export function Sidebar({
           )}
           aria-current={currentView === 'platform-integrations' ? 'page' : undefined}
         >
-          <Settings className="w-[14px] h-[14px] shrink-0" />
+          <Plug className="w-[14px] h-[14px] shrink-0" />
           {!collapsed && <span>{tMasterNav('master.nav.platformIntegrations')}</span>}
           {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.platformIntegrations')} />}
         </button>
