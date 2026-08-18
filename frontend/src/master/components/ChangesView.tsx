@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-stripe-sandbox-canonicalization-2026-08-18',
+    version: '4.9.918',
+    title: 'Master Admin — Stripe Sandbox Canonicalization (MA-BILL-P0-001)',
+    summary: [
+      'Operator decision: Stripe stays TEST/Sandbox; live cutover `STRIPE-LIVE-CUTOVER-DEFERRED`.',
+      'Reconciliation dry-run API; sandbox canonicalization + catalog bootstrap + billing webhook ensure ops scripts.',
+      'Fixed `billing_validate_subscription_item` trigger (`product_role` ambiguity); remediated F.S Mobility TEST subscription sync.',
+      'S1–S10 sandbox gates PASS; reconciliation dry-run 0 drifts post-remediation.',
+      'Closure: `docs/final/master-admin-stripe-sandbox-canonicalization-closure.md`.',
+    ],
+    reason:
+      'Production billing ran TEST mode with critical drifts (LIVE stripe_mode metadata, missing webhook secret, zero catalog mappings, TRIALING without Stripe subscription).',
+    previousBehavior:
+      'MA-BILL-P0-001 OPEN as production blocker; no reconciliation dry-run; no TEST billing webhook; 0 catalog mappings.',
+    details:
+      'backend billing-reconciliation dryRun; BillingSandboxCanonicalizationService; bootstrap-sandbox-billing-catalog; ensure-stripe-billing-webhook; migration 20260818223000.',
+    affectsArchitecture: true,
+    module: 'Master Admin / Billing',
+    createdAt: '2026-08-18T22:45:00.000Z',
+  },
+  {
     id: 'master-admin-alertmanager-production-closure-2026-08-18',
     version: '4.9.917',
     title: 'Master Admin — Alertmanager Production Closure (MA-OBS-P1-001)',

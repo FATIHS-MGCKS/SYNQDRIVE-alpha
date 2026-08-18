@@ -15,7 +15,7 @@
 
 | Metrik | Wert |
 |--------|------|
-| **Active P0** | **1** (`MA-BILL-P0-001`) — `ACCEPTED RISK` ausgeschlossen |
+| **Active P0** | **0** (`MA-BILL-P0-001` closed for sandbox mode) |
 | **Active P1** | **5** (`MA-BKP-P1-001`, `MA-REDIS-P1-001`, `MA-CH-P1-002`, `TB-2`, `TB-3` — letztere nur wenn HM produktiv) |
 | **Active UI P0** | **0** |
 | **Active UI P1** | **0** (`UI-DASH-RENDER-P1-001` **CLOSED** 2026-08-18) |
@@ -25,7 +25,7 @@
 | **Partially Closed** | **6** |
 | **Open** | **7** |
 | **Accepted Risk** | **6** (inkl. `MA-CH-P0-002` — orig. P0, kanonisch ACCEPTED RISK) |
-| **Blocking Before Production** | **2** (A1, A3 aktiv; A2 + A4 + A5 geschlossen) |
+| **Blocking Before Production** | **1** (A3 aktiv; A1 + A2 + A4 + A5 geschlossen/deferred) |
 | **Technical FAIL Gates** | **0** (kein Gate vollständig FAIL; Sandbox-Betrieb bewusst) |
 | **UI FAIL Gates** | **0** |
 | **Final Decision** | **NOT PRODUCTION READY** |
@@ -42,13 +42,13 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 
 **Superseded:** Ursprüngliche standalone Audit-Artefakte (VPS Read-only Audit, dedizierte Findings-JSON, P0 Validation, Remediation Order Review, Post-Canonicalization Report) existieren **nicht als eigenständige Dateien** im Repo; Inhalt ist in `docs/final/master-admin-go-live-certification.md`, `docs/final/master-admin-re-audit-2026-07-26.md` und den Remediation-Phasendokumenten konsolidiert. Phase-spezifische UI-Finding-IDs (z. B. `UI-4-P0-1`) sind durch Hub-Post-Remediation und `CP-*`-IDs superseded, sofern dieselbe Root Cause.
 
-**Production-Blocker (aktiv — §11 A1, A3):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A3) Offsite-Backups `MA-BKP-P1-001`. **A2 (`MA-BKP-P0-002`) + A4 (`MA-OBS-P1-001`) + A5 geschlossen** — siehe `docs/final/master-admin-backup-gpg-encryption-closure.md`, `docs/final/master-admin-alertmanager-production-closure.md` und Smoke/Deploy Closure-Docs 2026-08-18.
+**Production-Blocker (aktiv — §11 A3):** (A3) Offsite-Backups `MA-BKP-P1-001`. **A1 (`MA-BILL-P0-001`) geschlossen für Sandbox-Betrieb** — siehe `docs/final/master-admin-stripe-sandbox-canonicalization-closure.md`; Live-Cutover `STRIPE-LIVE-CUTOVER-DEFERRED`. **A2 (`MA-BKP-P0-002`) + A4 (`MA-OBS-P1-001`) + A5 geschlossen** — siehe `docs/final/master-admin-backup-gpg-encryption-closure.md`, `docs/final/master-admin-alertmanager-production-closure.md` und Smoke/Deploy Closure-Docs 2026-08-18.
 
 **Nicht blockierend:** Failed BullMQ-Jobs `MA-REDIS-P1-001`, In-Memory-Filter Scale `CP-P2-05` (Accepted Risk), Partner-View-Heterogenität `CP-P2-06`, Playwright-E2E `CP-P3-08`.
 
 **Accepted Risk (nicht in Active P0/P1):** Historischer CH-Datenverlust `MA-CH-P0-002` (orig. P0) — siehe §8.
 
-**Finale Entscheidung:** **NOT PRODUCTION READY** — zwei aktive Production-Blocker (§11 A1, A3). A2 (Backup-GPG), A4 (Alertmanager) und A5 (UI) geschlossen.
+**Finale Entscheidung:** **NOT PRODUCTION READY** — ein aktiver Production-Blocker (§11 A3 Offsite). A1 (Billing Sandbox) geschlossen/deferred; A2 (Backup-GPG), A4 (Alertmanager) und A5 (UI) geschlossen.
 
 ---
 
@@ -144,7 +144,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 | **MA-BILL-P0-003** | — | 2B.3 | P0 | P0 | Billing | Webhook livemode mismatch | `stripe-webhook-security.util` | Code + Go-Live Cert | **PARTIALLY CLOSED** (Live webhook secret TBD) |
 | **MA-BKP-P0-001** | — | 2C | P0 | P0 | DR | Keine Backups | CH/PG backup scripts + cron | Restore-Drill erfolgreich (Go-Live Cert) | **PARTIALLY CLOSED** (Verschlüsselung offen) |
 | **MA-OBS-P1-001** | — | 2F.2 | P1 | P1 | Observability | Keine Alert-Zustellung | Alertmanager stack + acceptance | Container healthy; Resend delivery verified 2026-08-18 | **CLOSED** |
-| **MA-BILL-P0-001** | — | 2B / Go-Live | P0 | P0 | Billing | TRIALING orphan | Stripe-Reconcile Runbook | Kein Nachweis Reconcile ausgeführt | **OPEN** |
+| **MA-BILL-P0-001** | — | 2B / Go-Live | P0 | P0 | Billing | Sandbox canonicalization | S1–S10 PASS; reconcile dry-run 0 drifts | Sandbox closure 2026-08-18 | **CLOSED (sandbox mode)** |
 | **MA-CH-P0-002** | — | Go-Live Post-Ops | **P0** (historisch) | — (kanonisch n/a) | ClickHouse | Historischer Part-Verlust 202607 | Re-Ingest oder DROP + Dokumentation | Bekannt dokumentiert; kein Forward-Impact | **ACCEPTED RISK** |
 | **MA-BKP-P0-002** | — | Go-Live | P0 | P0 | DR | GPG public-key encryption | Live verified 2026-08-18 | **CLOSED** |
 | **MA-BKP-P1-001** | — | 2C.5 | P1 | P1 | DR | Offsite nicht konfiguriert | `vps-sync-offsite-backups.sh` + rclone | Scripts in Repo; Prod offsite nicht verifiziert | **OPEN** |
@@ -272,7 +272,7 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 | Gate | Ergebnis | Evidenz | Bedingungen / Lücken |
 |------|----------|---------|----------------------|
 | **Security** | **PASS WITH CONDITIONS** | Swagger SPA-gated (live probe 2026-08-18); Audit append-only deployt; MFA/Step-up in Code; RBAC-TB-1 closed | `IAM_MFA_MASTER_ADMIN_ENABLED=true` Prod-Flag nicht in dieser Session verifiziert |
-| **Billing / Stripe** | **PASS WITH CONDITIONS** | `StripeEnvironmentModule`; webhook livemode check; Sandbox locked logged | Live keys + `MA-BILL-P0-001` Reconcile vor echtem Go-Live |
+| **Billing / Stripe** | **PASS (sandbox)** | TEST runtime locked; billing webhook configured; catalog mapped; reconcile dry-run 0 drifts | Live cutover `STRIPE-LIVE-CUTOVER-DEFERRED` |
 | **Disaster Recovery** | **PASS WITH CONDITIONS** | Backup scripts + Restore-Drill; GPG encryption **CLOSED** (`MA-BKP-P0-002`) | `MA-BKP-P1-001` offen — kein Offsite nachgewiesen |
 | **ClickHouse** | **PASS WITH CONDITIONS** | Migration 007 live; Topology P0=0; PG canonical | `MA-CH-P0-002` = Accepted Risk (§8); `MA-CH-P1-002` drift offen; Acceptance-Script Exit-0 nicht archiviert |
 | **Tenant / DIMO** | **PASS WITH CONDITIONS** | Partial UNIQUE; 23 cross-tenant tests; RBAC-TB-1 closed | TB-2/TB-3 wenn HM produktiv |
@@ -308,11 +308,19 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 
 ## 11. A — BLOCKING BEFORE PRODUCTION
 
-**Status: 2 aktive Blocker (A1, A3).** A2 + A4 + A5 geschlossen. Solange mindestens einer von A1, A3 offen ist, gilt **NOT PRODUCTION READY** (§15).
+**Status: 1 aktiver Blocker (A3).** A1 geschlossen (Sandbox) / Live-Cutover deferred. A2 + A4 + A5 geschlossen.
 
-Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
+### A1 — `MA-BILL-P0-001` + Stripe Live Cutover — **CLOSED (sandbox) / DEFERRED (live)**
 
-### A1 — `MA-BILL-P0-001` + Stripe Live Cutover (`MA-BILL-P0-002/003` condition)
+| Feld | Wert |
+|------|------|
+| **Severity** | P0 (historisch) → **CLOSED FOR CURRENT SANDBOX OPERATING MODE** |
+| **Sandbox closure** | `docs/final/master-admin-stripe-sandbox-canonicalization-closure.md` — S1–S10 PASS |
+| **Live cutover** | `STRIPE-LIVE-CUTOVER-DEFERRED` — **DEFERRED BY OPERATOR** |
+| **Acceptance (sandbox)** | Reconciliation dry-run 0 drifts; TEST webhook; RENTAL/FLEET catalog mappings; F.S Mobility Stripe TEST subscription synced |
+| **Future gate** | G1–G10 in `docs/final/master-admin-stripe-live-readiness-preflight.md` |
+
+### A1 (legacy notes — superseded for sandbox blocker status)
 
 | Feld | Wert |
 |------|------|
@@ -443,11 +451,17 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
 | Kontext | Entscheidung | Begründung |
 |---------|--------------|------------|
-| **Technische Plattform** | ☑ **NOT PRODUCTION READY** | A1, A3 aktiv (Billing-Reconcile/Live, Offsite) |
-| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A1, A3 aktiv; A2 + A4 + A5 geschlossen |
-| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 2 aktive Blocker (A1, A3); A2 + A4 + A5 geschlossen |
+| **Technische Plattform** | ☑ **NOT PRODUCTION READY** | A3 aktiv (Offsite); A1 Sandbox geschlossen / Live deferred |
+| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A3 aktiv; A1 Sandbox geschlossen; A2 + A4 + A5 geschlossen |
+| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 1 aktiver Blocker (A3); A1 Sandbox geschlossen / Live deferred |
 
-### Pflicht vor Freigabe (schließt A1, A3)
+### DEFERRED GO-LIVE CONDITIONS
+
+| ID | Status | Reason |
+|----|--------|--------|
+| `STRIPE-LIVE-CUTOVER-DEFERRED` | **DEFERRED BY OPERATOR** | Full SynqDrive software not yet approved for real payment operations; G1–G10 checklist in preflight doc |
+
+### Pflicht vor Freigabe (schließt A3; A1 Live separat)
 
 1. **A3** — Offsite-Backups (`MA-BKP-P1-001`)
 2. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)

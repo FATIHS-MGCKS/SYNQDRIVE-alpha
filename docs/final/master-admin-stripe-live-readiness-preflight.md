@@ -6,11 +6,18 @@
 | **Modus** | Read-only Preflight — **keine Stripe-/DB-Mutationen** |
 | **Datum (UTC)** | 2026-08-18 |
 | **Production Release** | `20260818205259_v4994` (`929a16cf`) |
-| **Preflight-Status** | **MA-BILL-P0-001 bleibt OPEN** |
+| **Preflight-Status** | **Superseded by sandbox closure** — see `docs/final/master-admin-stripe-sandbox-canonicalization-closure.md` |
+| **Operator Decision** | **Stripe Live cutover intentionally deferred** until full SynqDrive software go-live readiness |
 
 ---
 
-## 1. Executive Summary
+## Operator Decision (2026-08-18)
+
+`Stripe Live Cutover intentionally deferred until full SynqDrive software go-live readiness.`
+
+The state `NOT READY FOR LIVE CUTOVER` is **not** a current production defect while sandbox operation is deliberate. It remains the **future go-live gate** (G1–G10). Sandbox acceptance S1–S10 passed in `docs/final/master-admin-stripe-sandbox-canonicalization-closure.md`.
+
+**MA-BILL-P0-001:** **CLOSED FOR CURRENT SANDBOX OPERATING MODE** (not “Stripe Live production-ready”).
 
 SynqDrive Production läuft **bewusst im Stripe-TEST-Modus** (`runtime=TEST`, `STRIPE_ALLOW_TEST_IN_PRODUCTION=true`, `STRIPE_ENVIRONMENT=test`). Die technische Billing-Remediation (Environment Guards, Webhook-Livemode-Checks, Reconciliation Engine, Catalog-Schema) ist im Code vorhanden und deployt — **ein kontrollierter Live-Cutover ist jedoch nicht möglich**.
 
