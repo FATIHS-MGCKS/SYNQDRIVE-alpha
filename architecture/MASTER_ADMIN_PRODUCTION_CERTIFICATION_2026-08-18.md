@@ -9,7 +9,7 @@
 ## Conditions
 
 1. ~~Deploy convergence branch to production.~~ **Done** — see `docs/final/master-admin-a1-ui-production-deploy-closure.md` (2026-08-18).
-2. One authenticated staging smoke pass (workflows A–F, browser back). **PARTIALLY CLOSED** — see `docs/final/master-admin-authenticated-staging-smoke-closure.md` (no staging host; no MASTER_ADMIN creds; unauth gate + API 401 only).
+2. One authenticated staging smoke pass (workflows A–F, browser back). **PARTIALLY CLOSED** — production read-only approved; **no canonical path to provision additional temporary `MASTER_ADMIN`** (`SMOKE-PROV-001`); see `docs/final/master-admin-authenticated-staging-smoke-closure.md` §2.
 3. Accept partner-view visual heterogeneity and scale filter debt as post-release items.
 
 ## Evidence
