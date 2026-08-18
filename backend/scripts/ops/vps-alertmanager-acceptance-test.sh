@@ -79,7 +79,7 @@ wait_for "grouping alert visible in alertmanager" \
   45
 
 # Delivery evidence: wait for group_wait then verify via Resend API (no secrets logged)
-sleep 95
+sleep 45
 BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 RESEND_KEY="$(grep '^RESEND_API_KEY=' "$BACKEND_ENV" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
 if [[ -n "$RESEND_KEY" ]] && curl -sf -H "Authorization: Bearer ${RESEND_KEY}" "https://api.resend.com/emails?limit=20" \
