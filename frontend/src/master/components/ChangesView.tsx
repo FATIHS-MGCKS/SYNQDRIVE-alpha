@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-alertmanager-production-closure-2026-08-18',
+    version: '4.9.917',
+    title: 'Master Admin — Alertmanager Production Closure (MA-OBS-P1-001)',
+    summary: [
+      'Production Blocker A4 geschlossen: Alertmanager-Container `synqdrive-alertmanager` auf VPS mit localhost-only `:9093`, Persistence und fail-closed `amtool` validation.',
+      'Email-only Receiver via Resend SMTP (wenn kein Slack-Webhook); `vps-setup-alertmanager.sh` + `vps-alertmanager-acceptance-test.sh` für synthetischen End-to-End-Nachweis.',
+      'Acceptance 2026-08-18: firing → Alertmanager → Resend delivery → silence → resolve → restart resilience.',
+      'Prometheus `activeAlertmanagers` bestätigt; synthetische Testregeln nach Acceptance entfernt.',
+      'Dokument: `docs/final/master-admin-alertmanager-production-closure.md`.',
+    ],
+    reason: 'Alertmanager-Runtime fehlte trotz vorhandener Repo-Config — kein nachweisbarer Alerting-Pfad auf Production.',
+    previousBehavior: 'Prometheus alert rules aktiv; `127.0.0.1:9093` nicht erreichbar; `alertmanager.env` fehlte.',
+    details:
+      'backend/scripts/ops/vps-setup-alertmanager.sh; vps-alertmanager-acceptance-test.sh; alertmanager.email.yml.example; alerts-acceptance-test.yml; architecture/MASTER_ADMIN_ALERTMANAGER_2026-07-26.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T20:30:00.000Z',
+  },
+  {
     id: 'master-admin-production-certification-ui-acceptance-2026-08-18',
     version: '4.9.916',
     title: 'Master Admin — Final UI Production Certification (UI-ACCEPTANCE)',
