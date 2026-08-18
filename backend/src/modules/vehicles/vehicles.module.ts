@@ -27,7 +27,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
     DataAuthorizationsModule,
     TasksModule,
     forwardRef(() => BillingModule),
-    PlatformAdminModule,
+    forwardRef(() => PlatformAdminModule),
   ],
   controllers: [VehiclesController],
   providers: [
