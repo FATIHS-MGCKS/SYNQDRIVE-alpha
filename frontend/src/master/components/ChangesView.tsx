@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-offsite-backup-partial-closure-2026-08-18',
+    version: '4.9.917',
+    title: 'Master Admin — Offsite backup pipeline hardening (MA-BKP-P1-001 partial)',
+    summary: [
+      'offsite-backup-lib v2c5.2: production/ path prefix, plaintext upload guards, remote download helper, prometheus offsite metrics, resilience-status.json writer.',
+      'New ops scripts: vps-setup-offsite-backup.sh, vps-write-resilience-status.sh, vps-offsite-restore-drill.sh, vps-export-backup-recovery-escrow.sh.',
+      'Integration selftests for upload/verify/failure semantics; DR runbook docs/ops/disaster-recovery-offsite-restore.md.',
+      'Production: encrypted local backups verified; offsite storage + operator escrow still pending — PARTIALLY CLOSED.',
+      'Closure: docs/final/master-admin-offsite-backup-closure.md',
+    ],
+    reason: 'Close MA-BKP-P1-001 requires independent offsite storage and confirmed recovery key escrow outside production.',
+    previousBehavior: 'Offsite orchestrator in repo but not deployed; no production path prefix; no fail-closed plaintext guard; no offsite prom metrics.',
+    details:
+      'backend/scripts/ops/lib/offsite-backup-lib.sh, vps-sync-offsite-backups.sh, offsite-backup.integration-selftest.sh, docs/ops/*, docs/final/master-admin-offsite-backup-closure.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T19:30:00.000Z',
+  },
+  {
     id: 'master-admin-production-certification-ui-acceptance-2026-08-18',
     version: '4.9.916',
     title: 'Master Admin — Final UI Production Certification (UI-ACCEPTANCE)',
