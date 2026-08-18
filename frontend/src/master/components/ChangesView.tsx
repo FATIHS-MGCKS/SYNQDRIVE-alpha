@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-dashboard-implementation-ui44-2026-08-18',
+    version: '4.9.908',
+    title: 'Master Admin — Kanonische Plattform-Übersicht (UI-4.3/4.4)',
+    summary: [
+      'Neues aggregiertes Ops-DTO `GET /admin/dashboard/operational` plus `ops/resilience-status` und `connectivity/platform-summary`.',
+      '`MasterDashboardView` vollständig nach Blueprint: Status Hero, Incidents, Platform Status, Org Attention, Domain Summaries, Support, Activity, Business Context (collapsed).',
+      'Entfernt: 9-KPI Vanity-Grid, irreführende Connected Vehicles, lokale Alert-Health-Ableitung, separates Dashboard-MRR.',
+      'Shared `operational-cache` für Dashboard und Nav-Badges; Telemetrie via `telemetry-freshness.resolver`; Backup `unknown` ohne Observer.',
+      'Tests: Backend 9 Unit, Frontend 18 Vitest-Szenarien. Acceptance: `docs/ui/master-admin-dashboard-post-remediation.md`.',
+    ],
+    reason: 'Production-ready Control Plane Overview — eine Wahrheit, keine Fake-KPIs, operative Klarheit in ≤10 Sekunden.',
+    previousBehavior: 'Growth-KPI-Dashboard mit falsch-positivem Header-Status und ohne kanonische Health/Billing/Queue/Backup-Signale.',
+    details: 'docs/ui/master-admin-dashboard-post-remediation.md; architecture/MASTER_ADMIN_DASHBOARD_BLUEPRINT_2026-08-18.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:20:00.000Z',
+  },
+  {
     id: 'master-admin-dashboard-blueprint-ui42-2026-08-18',
     version: '4.9.907',
     title: 'Master Admin — Kanonisches Dashboard Blueprint (UI-4.2)',

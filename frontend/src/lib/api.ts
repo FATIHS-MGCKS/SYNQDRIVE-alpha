@@ -3477,6 +3477,10 @@ export const api = {
   },
   admin: {
     dashboard: () => get<any>('/admin/dashboard'),
+    dashboardOperational: () => get<import('../master/dashboard/types').MasterDashboardOperationalDto>('/admin/dashboard/operational'),
+    resilienceStatus: () => get<import('../master/dashboard/types').ResilienceStatusDto>('/admin/ops/resilience-status'),
+    connectivityPlatformSummary: () =>
+      get<import('../master/dashboard/types').ConnectivityPlatformSummaryDto>('/admin/connectivity/platform-summary'),
     orgStats: () => get<any>('/admin/stats/organizations'),
     revenueStats: () => get<any>('/admin/stats/revenue'),
     prune: () => post<{ message: string }>('/admin/prune', {}),

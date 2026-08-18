@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../../lib/api';
 import type { MasterNavBadgeType } from './master-nav.types';
+import {
+  fetchOperationalDashboard,
+  getCachedOperationalDashboard,
+  subscribeOperationalDashboard,
+  OPERATIONAL_REFRESH_MS,
+} from '../dashboard/operational-cache';
+import { operationalToNavBadgeState } from '../dashboard/useMasterDashboardOperational';
 
 export interface MasterNavBadgeState {
   platformHealthy: boolean;
@@ -51,24 +58,17 @@ export function useMasterNavBadges(): MasterNavBadges {
 
     const load = async () => {
       try {
-        const [dashboard, dimoStats, mfaStatus] = await Promise.all([
-          api.admin.dashboard().catch(() => null),
-          api.dimo.stats().catch(() => ({ connected: 0, total: 0 })),
+        const [operational, mfaStatus] = await Promise.all([
+          fetchOperationalDashboard().catch(() => null),
           api.account.mfa.status().catch(() => null),
         ]);
 
         if (!mounted) return;
 
-        const dimo = dimoStats as { connected?: number; total?: number };
-        const hasDimoFleet = (dimo.total ?? 0) > 0;
-        const dimoConnected = !hasDimoFleet || (dimo.connected ?? 0) > 0;
+        const opsState = operationalToNavBadgeState(operational);
 
         setBadgeState({
-          platformHealthy: dashboard != null,
-          platformCritical: false,
-          openSupportTickets: Number(dashboard?.openSupportTickets ?? 0),
-          dimoConnected,
-          billingAnomaly: false,
+          ...opsState,
           mfaRequired: Boolean(mfaStatus?.enrollmentRequired && !mfaStatus?.enrolled),
         });
       } catch {
@@ -79,9 +79,18 @@ export function useMasterNavBadges(): MasterNavBadges {
     };
 
     void load();
-    const interval = setInterval(() => void load(), 60_000);
+    const unsub = subscribeOperationalDashboard(() => {
+      const { data } = getCachedOperationalDashboard();
+      if (!mounted || !data) return;
+      setBadgeState((prev) => ({
+        ...operationalToNavBadgeState(data),
+        mfaRequired: prev.mfaRequired,
+      }));
+    });
+    const interval = setInterval(() => void load(), OPERATIONAL_REFRESH_MS);
     return () => {
       mounted = false;
+      unsub();
       clearInterval(interval);
     };
   }, []);

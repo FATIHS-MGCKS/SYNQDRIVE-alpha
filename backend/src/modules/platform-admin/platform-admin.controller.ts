@@ -11,6 +11,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PlatformAdminService } from './platform-admin.service';
+import {
+  PlatformConnectivitySummaryService,
+  PlatformDashboardService,
+  PlatformResilienceStatusService,
+} from './platform-dashboard.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import { DimoAuthService } from '../dimo/dimo-auth.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -36,6 +41,9 @@ import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 export class PlatformAdminController {
   constructor(
     private readonly platformAdminService: PlatformAdminService,
+    private readonly platformDashboardService: PlatformDashboardService,
+    private readonly platformResilienceStatus: PlatformResilienceStatusService,
+    private readonly platformConnectivitySummary: PlatformConnectivitySummaryService,
     private readonly logbookService: VehicleLogbookService,
     private readonly dimoAuthService: DimoAuthService,
     private readonly prisma: PrismaService,
@@ -88,6 +96,21 @@ export class PlatformAdminController {
   @Get('dashboard')
   async getDashboard() {
     return this.platformAdminService.getDashboardStats();
+  }
+
+  @Get('dashboard/operational')
+  async getDashboardOperational() {
+    return this.platformDashboardService.getOperationalDashboard();
+  }
+
+  @Get('ops/resilience-status')
+  async getResilienceStatus() {
+    return this.platformResilienceStatus.getResilienceStatus();
+  }
+
+  @Get('connectivity/platform-summary')
+  async getConnectivityPlatformSummary() {
+    return this.platformConnectivitySummary.getPlatformSummary();
   }
 
   @Get('stats/organizations')
