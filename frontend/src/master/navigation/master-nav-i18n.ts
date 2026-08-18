@@ -11,7 +11,7 @@ const DE: Record<string, string> = {
   'master.nav.organizations': 'Organisationen',
   'master.nav.prospects': 'Interessenten',
   'master.nav.users': 'Benutzer',
-  'master.nav.vehicles': 'Fahrzeuge',
+  'master.nav.vehicles': 'Verbundene Fahrzeuge',
   'master.nav.vehicleLogbook': 'Fahrzeug-Logbuch',
   'master.nav.billing': 'Abrechnung & Verträge',
   'master.nav.vehicleConnectivity': 'Fahrzeug-Konnektivität',

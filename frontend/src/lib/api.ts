@@ -3683,6 +3683,28 @@ export const api = {
     listAll: (params?: { page?: number; limit?: number }) =>
       get<{ data: any[] }>('/admin/vehicles' + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
     get: (id: string) => get<any>(`/admin/vehicles/${id}`),
+    operationalOverview: () => get<any>('/admin/vehicles/operational/overview'),
+    operationalAttentionQueue: (limit = 8) =>
+      get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),
+    operationalList: (params?: Record<string, string | number | undefined>) => {
+      const search = new URLSearchParams();
+      for (const [key, val] of Object.entries(params ?? {})) {
+        if (val !== undefined && val !== '' && val !== 'all') search.set(key, String(val));
+      }
+      const qs = search.toString();
+      return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/admin/vehicles/operational${qs ? `?${qs}` : ''}`,
+      );
+    },
+    operationalDetail: (vehicleId: string) => get<any>(`/admin/vehicles/${vehicleId}/operational`),
+    operationalUnregisteredDetail: (dimoVehicleId: string) =>
+      get<any>(`/admin/vehicles/unregistered/${dimoVehicleId}/operational`),
+    operationalDiagnostics: (vehicleId: string, organizationId: string) =>
+      get<any>(`/admin/vehicles/${vehicleId}/operational/diagnostics?organizationId=${encodeURIComponent(organizationId)}`),
+    importPreflight: (organizationId: string, dimoVehicleId: string) =>
+      get<any>(
+        `/admin/vehicles/import-preflight?organizationId=${encodeURIComponent(organizationId)}&dimoVehicleId=${encodeURIComponent(dimoVehicleId)}`,
+      ),
     listByOrg: (orgId: string, params?: { page?: number; limit?: number }) =>
       get<{ data: any[]; meta?: { total: number } }>(`/organizations/${orgId}/vehicles` + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
     getByOrg: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}`),

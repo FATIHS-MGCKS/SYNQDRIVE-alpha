@@ -46,6 +46,10 @@ export function normalizeMasterNavLocation(search: string): MasterNavLocationSta
     view = 'platform-health';
     settingsTab = undefined;
   }
+  if (view === 'fleet-connection') {
+    view = 'vehicles';
+    if (!params.get('cvSection')) params.set('cvSection', 'overview');
+  }
 
   if (!ALL_MASTER_VIEWS.includes(view)) {
     view = 'dashboard';

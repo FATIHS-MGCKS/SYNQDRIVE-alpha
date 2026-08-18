@@ -48,7 +48,7 @@ export const MASTER_NAV_GROUPS: MasterNavGroupConfig[] = [
   { id: 'tenants', labelKey: 'master.nav.group.tenants', collapsible: false, defaultExpanded: true, items: ['organizations', 'prospects', 'users'] },
   { id: 'fleet', labelKey: 'master.nav.group.fleet', collapsible: false, defaultExpanded: true, items: ['vehicles', 'vehicle-logbook'] },
   { id: 'commerce', labelKey: 'master.nav.group.commerce', collapsible: false, defaultExpanded: true, items: ['billing'] },
-  { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['fleet-connection', 'high-mobility'] },
+  { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['high-mobility'] },
   { id: 'partners', labelKey: 'master.nav.group.partners', collapsible: true, defaultExpanded: true, items: ['parts-accessories', 'insurances', 'voice-assistant'] },
   { id: 'operations', labelKey: 'master.nav.group.operations', collapsible: true, defaultExpanded: true, items: ['platform-health', 'support', 'activity-log'] },
   { id: 'engineering', labelKey: 'master.nav.group.engineering', collapsible: true, defaultExpanded: false, items: ['architektur', 'changes'] },

@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-connected-vehicles-dimo-ui73-2026-08-18',
+    version: '4.9.911',
+    title: 'Master Admin — Verbundene Fahrzeuge / DIMO (UI-7.3)',
+    summary: [
+      'Backend: `VehiclesOperationalService`, `vehicle-attention.util`, APIs list/overview/detail/attention-queue/import-preflight/diagnostics.',
+      'Frontend: `master/connected-vehicles/*` Hub (Übersicht, Fahrzeuge, Import) ersetzt `PlatformVehiclesView` in App.',
+      'Kein Bulk-Load `listAll(200)` mehr; serverseitige Pagination, kanonische Telemetrie/Connectivity/Attention-Chips.',
+      'Fleet Connection Sidebar entfernt; Legacy-URL redirect → `vehicles` + `cvSection`.',
+      'Acceptance: `docs/ui/master-admin-connected-vehicles-dimo-post-remediation.md`.',
+    ],
+    reason:
+      'Connected Vehicles war fragmentiert mit lokaler Telemetrie-Ableitung und zweiter Wahrheit — Audit P0.',
+    previousBehavior:
+      'PlatformVehiclesView mit clientseitigem Filter, onlineStatus/timeAgo, parallele fleet-connection Page, getrennte DIMO-Tabelle.',
+    details:
+      'Blueprint UI-7.2 umgesetzt. Reassignment bewusst ausgelassen (kein Backend). Enriched filter cap 500 dokumentiert.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T05:35:00.000Z',
+  },
+  {
     id: 'master-admin-billing-implementation-ui63-2026-08-18',
     version: '4.9.910',
     title: 'Master Admin — Kanonisches Billing (UI-6.3)',

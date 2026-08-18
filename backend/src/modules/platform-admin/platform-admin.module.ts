@@ -23,6 +23,6 @@ import { SupportModule } from '../support/support.module';
     PlatformConnectivitySummaryService,
     PlatformDashboardService,
   ],
-  exports: [PlatformAdminService, PlatformDashboardService],
+  exports: [PlatformAdminService, PlatformDashboardService, PlatformConnectivitySummaryService],
 })
 export class PlatformAdminModule {}
