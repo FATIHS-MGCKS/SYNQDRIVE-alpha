@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
+import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { PlatformAdminController } from './platform-admin.controller';
+import { SecurityGovernanceController } from './security-governance.controller';
+import { SecurityGovernanceService } from './security-governance.service';
 import { PlatformAdminService } from './platform-admin.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import {
@@ -17,9 +20,10 @@ import { BillingModule } from '../billing/billing.module';
 import { SupportModule } from '../support/support.module';
 
 @Module({
-  imports: [DimoModule, VehicleIntelligenceModule, HealthModule, BillingModule, SupportModule],
-  controllers: [PlatformAdminController],
+  imports: [DimoModule, VehicleIntelligenceModule, HealthModule, BillingModule, SupportModule, IamMfaModule],
+  controllers: [PlatformAdminController, SecurityGovernanceController],
   providers: [
+    SecurityGovernanceService,
     PlatformAdminService,
     VehicleLogbookService,
     PlatformResilienceStatusService,

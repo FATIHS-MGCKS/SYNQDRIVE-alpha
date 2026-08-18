@@ -8,9 +8,10 @@ interface MasterAccountSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenSettings: () => void;
+  onOpenOwnSecurity?: () => void;
 }
 
-export function MasterAccountSheet({ open, onOpenChange, onOpenSettings }: MasterAccountSheetProps) {
+export function MasterAccountSheet({ open, onOpenChange, onOpenSettings, onOpenOwnSecurity }: MasterAccountSheetProps) {
   const { preference, cycleThemePreference } = useAppTheme();
   const user = getStoredUser();
 
@@ -53,13 +54,21 @@ export function MasterAccountSheet({ open, onOpenChange, onOpenSettings }: Maste
             {tMasterNav('master.nav.settings')}
           </button>
 
-          <div className="flex items-center justify-between rounded-lg px-3 py-2.5 min-h-[44px]">
-            <span className="flex items-center gap-2.5 text-[12px] font-medium text-foreground">
-              <Shield className="w-4 h-4 text-muted-foreground" />
-              {tMasterNav('master.account.mfa')}
-            </span>
-            <span className="text-[10px] text-muted-foreground">via Einstellungen</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              if (onOpenOwnSecurity) {
+                onOpenOwnSecurity();
+              } else {
+                onOpenSettings();
+              }
+            }}
+            className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[12px] font-medium text-foreground hover:bg-muted transition-colors min-h-[44px]"
+          >
+            <Shield className="w-4 h-4 text-muted-foreground" />
+            {tMasterNav('master.account.mfa')}
+          </button>
 
           <div className="flex items-center justify-between rounded-lg px-3 py-2.5 min-h-[44px]">
             <span className="text-[12px] font-medium text-foreground">{tMasterNav('master.account.theme')}</span>

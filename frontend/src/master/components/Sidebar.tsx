@@ -27,11 +27,12 @@ interface SidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onNavigate?: (view: MasterView, options?: { settingsTab?: string; replace?: boolean }) => void;
+  onOpenOwnSecurity?: () => void;
 }
 
 function NavBadge({ type, value }: { type: MasterNavBadgeType; value?: string | number | boolean }) {
   if (!value) return null;
-  if (type === 'support-count') {
+  if (type === 'support-count' || type === 'security-attention') {
     return (
       <span className="ml-auto min-w-[18px] rounded-full bg-[color:var(--brand)] px-1 text-center text-[9px] font-bold leading-[18px] text-white tabular-nums">
         {value}
@@ -54,6 +55,7 @@ export function Sidebar({
   isCollapsed = false,
   onToggleCollapse,
   onNavigate,
+  onOpenOwnSecurity,
 }: SidebarProps) {
   const mobileNavId = useId();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -361,7 +363,12 @@ export function Sidebar({
 
   return (
     <>
-      <MasterAccountSheet open={accountOpen} onOpenChange={setAccountOpen} onOpenSettings={() => go('settings', { settingsTab: 'general' })} />
+      <MasterAccountSheet
+        open={accountOpen}
+        onOpenChange={setAccountOpen}
+        onOpenSettings={() => go('settings', { settingsTab: 'general' })}
+        onOpenOwnSecurity={onOpenOwnSecurity}
+      />
 
       {/* Mobile header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b bg-sidebar border-sidebar-border pt-[env(safe-area-inset-top,0px)]">

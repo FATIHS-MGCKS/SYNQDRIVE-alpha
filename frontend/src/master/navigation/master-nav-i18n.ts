@@ -10,6 +10,7 @@ const DE: Record<string, string> = {
   'master.nav.dashboard': 'Dashboard',
   'master.nav.organizations': 'Organisationen',
   'master.nav.prospects': 'Interessenten',
+  'master.nav.securityAccess': 'Identität & Zugriff',
   'master.nav.users': 'Benutzer',
   'master.nav.vehicles': 'Verbundene Fahrzeuge',
   'master.nav.vehicleLogbook': 'Fahrzeug-Logbuch',

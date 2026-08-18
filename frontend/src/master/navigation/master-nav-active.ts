@@ -13,6 +13,9 @@ export function isMasterNavItemActive(itemId: MasterView, ctx: MasterNavActiveCo
   if (itemId === 'settings') {
     return ctx.view === 'settings';
   }
+  if (itemId === 'security-access') {
+    return ctx.view === 'security-access' || ctx.view === 'users' || ctx.view === 'activity-log';
+  }
   return ctx.view === itemId;
 }
 

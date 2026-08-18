@@ -3538,15 +3538,125 @@ export const api = {
     changelogs: (module?: string) =>
       get<any[]>('/admin/changelogs' + (module ? `?module=${module}` : '')),
     createChangelog: (data: any) => post<any>('/admin/changelogs', data),
-    activityLog: (params?: { page?: number; limit?: number; entity?: string; action?: string; organizationId?: string }) => {
+    activityLog: (params?: {
+      page?: number;
+      limit?: number;
+      entity?: string;
+      action?: string;
+      organizationId?: string;
+      auditDomain?: string;
+      securityOnly?: boolean;
+      from?: string;
+      to?: string;
+      actorUserId?: string;
+      search?: string;
+    }) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
       if (params?.limit != null) q.set('limit', String(params.limit));
       if (params?.entity) q.set('entity', params.entity);
       if (params?.action) q.set('action', params.action);
       if (params?.organizationId) q.set('organizationId', params.organizationId);
+      if (params?.auditDomain) q.set('auditDomain', params.auditDomain);
+      if (params?.securityOnly) q.set('securityOnly', 'true');
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.actorUserId) q.set('actorUserId', params.actorUserId);
+      if (params?.search) q.set('search', params.search);
       const suffix = q.toString() ? '?' + q.toString() : '';
       return get<{ data: any[]; meta: any }>('/admin/activity-log' + suffix);
+    },
+    activityLogDetail: (id: string) =>
+      get<import('../master/security-access/types').AuditLogDetailDto>(`/admin/activity-log/${id}`),
+    activityLogExport: (params: {
+      format?: 'json' | 'csv';
+      organizationId?: string;
+      entity?: string;
+      action?: string;
+      level?: string;
+      auditDomain?: string;
+      from?: string;
+      to?: string;
+      limit?: number;
+    }) => {
+      const q = new URLSearchParams();
+      if (params.format) q.set('format', params.format);
+      if (params.organizationId) q.set('organizationId', params.organizationId);
+      if (params.entity) q.set('entity', params.entity);
+      if (params.action) q.set('action', params.action);
+      if (params.level) q.set('level', params.level);
+      if (params.auditDomain) q.set('auditDomain', params.auditDomain);
+      if (params.from) q.set('from', params.from);
+      if (params.to) q.set('to', params.to);
+      if (params.limit != null) q.set('limit', String(params.limit));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return fetch(`/api/v1/admin/activity-log/export${suffix}`, {
+        headers: {
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+      });
+    },
+    securityAccess: {
+      attentionSummary: () =>
+        get<import('../master/security-access/types').SecurityAttentionSummaryDto>(
+          '/admin/security/attention-summary',
+        ),
+      listUsers: (params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        platformRole?: string;
+        mfaState?: string;
+        attention?: string;
+        organizationId?: string;
+      }) => {
+        const q = new URLSearchParams();
+        if (params?.page != null) q.set('page', String(params.page));
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.search) q.set('search', params.search);
+        if (params?.platformRole) q.set('platformRole', params.platformRole);
+        if (params?.mfaState) q.set('mfaState', params.mfaState);
+        if (params?.attention) q.set('attention', params.attention);
+        if (params?.organizationId) q.set('organizationId', params.organizationId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('../master/security-access/types').PaginatedResponse<
+          import('../master/security-access/types').GovernanceUserListItemDto
+        >>(`/admin/security/users${suffix}`);
+      },
+      getUser: (userId: string) =>
+        get<import('../master/security-access/types').GovernanceUserDetailDto>(`/admin/security/users/${userId}`),
+      listUserSessions: (userId: string) =>
+        get<import('../master/security-access/types').GovernanceUserSessionDto[]>(
+          `/admin/security/users/${userId}/sessions`,
+        ),
+      revokeSession: (userId: string, sessionId: string) =>
+        post<{ revoked: boolean }>(`/admin/security/users/${userId}/sessions/${sessionId}/revoke`, {}),
+      revokeAllSessions: (userId: string) =>
+        post<{ revoked: boolean }>(`/admin/security/users/${userId}/sessions/revoke-all`, {}),
+      resetUserMfa: (userId: string, body: { reason: string; idempotencyKey?: string }) =>
+        post<{ ok: boolean }>(`/admin/security/users/${userId}/mfa/reset`, body),
+      listPlatformRoles: () =>
+        get<import('../master/security-access/types').PlatformRoleSummaryDto[]>(
+          '/admin/security/platform-roles',
+        ),
+      listOrgRoles: (params?: { page?: number; limit?: number; organizationId?: string; search?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.page != null) q.set('page', String(params.page));
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.organizationId) q.set('organizationId', params.organizationId);
+        if (params?.search) q.set('search', params.search);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('../master/security-access/types').PaginatedResponse<
+          import('../master/security-access/types').OrgRoleSummaryDto
+        >>(`/admin/security/org-roles${suffix}`);
+      },
+      getRole: (roleId: string, scope: 'platform' | 'organization', organizationId?: string) => {
+        const q = new URLSearchParams({ scope });
+        if (organizationId) q.set('organizationId', organizationId);
+        return get<import('../master/security-access/types').GovernanceRoleDetailDto>(
+          `/admin/security/roles/${roleId}?${q.toString()}`,
+        );
+      },
     },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),
@@ -3631,7 +3741,11 @@ export const api = {
     get: (id: string) => get<any>(`/admin/users/${id}`),
     create: (data: any) => post<any>('/admin/users', data),
     update: (id: string, data: any) => patch<any>(`/admin/users/${id}`, data),
-    delete: (id: string) => del<void>(`/admin/users/${id}`),
+    delete: (id: string, reason?: string) =>
+      request<void>(`/admin/users/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify(reason ? { reason } : {}),
+      }),
     changePassword: (id: string, password: string) => post<{ message: string }>(`/admin/users/${id}/change-password`, { password }),
     listByOrg: (orgId: string) => get<OrgUserDto[]>(`/organizations/${orgId}/users`),
     getByOrg: (orgId: string, id: string) => get<OrgUserDto>(`/organizations/${orgId}/users/${id}`),

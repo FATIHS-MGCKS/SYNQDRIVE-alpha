@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 export type MasterView =
   | 'dashboard'
   | 'organizations'
+  | 'security-access'
   | 'users'
   | 'vehicles'
   | 'prospects'
@@ -36,7 +37,8 @@ export type MasterNavBadgeType =
   | 'billing-anomaly'
   | 'integration-outage'
   | 'connectivity-warning'
-  | 'mfa-required';
+  | 'mfa-required'
+  | 'security-attention';
 
 export type MasterNavPermission = 'MASTER_ADMIN' | 'master-billing';
 

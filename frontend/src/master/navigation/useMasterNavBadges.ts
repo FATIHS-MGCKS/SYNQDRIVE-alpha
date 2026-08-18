@@ -16,6 +16,7 @@ export interface MasterNavBadgeState {
   dimoConnected: boolean;
   billingAnomaly: boolean;
   mfaRequired: boolean;
+  securityAttention: number;
 }
 
 export type MasterNavBadges = Partial<Record<MasterNavBadgeType, string | number | boolean>>;
@@ -39,6 +40,9 @@ function deriveBadges(state: MasterNavBadgeState): MasterNavBadges {
   if (state.mfaRequired) {
     badges['mfa-required'] = true;
   }
+  if (state.securityAttention > 0) {
+    badges['security-attention'] = state.securityAttention > 9 ? '9+' : state.securityAttention;
+  }
 
   return badges;
 }
@@ -51,6 +55,7 @@ export function useMasterNavBadges(): MasterNavBadges {
     dimoConnected: true,
     billingAnomaly: false,
     mfaRequired: false,
+    securityAttention: 0,
   });
 
   useEffect(() => {
@@ -58,9 +63,10 @@ export function useMasterNavBadges(): MasterNavBadges {
 
     const load = async () => {
       try {
-        const [operational, mfaStatus] = await Promise.all([
+        const [operational, mfaStatus, attention] = await Promise.all([
           fetchOperationalDashboard().catch(() => null),
           api.account.mfa.status().catch(() => null),
+          api.admin.securityAccess.attentionSummary().catch(() => null),
         ]);
 
         if (!mounted) return;
@@ -70,6 +76,7 @@ export function useMasterNavBadges(): MasterNavBadges {
         setBadgeState({
           ...opsState,
           mfaRequired: Boolean(mfaStatus?.enrollmentRequired && !mfaStatus?.enrolled),
+          securityAttention: attention?.total ?? 0,
         });
       } catch {
         if (mounted) {
@@ -85,6 +92,7 @@ export function useMasterNavBadges(): MasterNavBadges {
       setBadgeState((prev) => ({
         ...operationalToNavBadgeState(data),
         mfaRequired: prev.mfaRequired,
+        securityAttention: prev.securityAttention,
       }));
     });
     const interval = setInterval(() => void load(), OPERATIONAL_REFRESH_MS);

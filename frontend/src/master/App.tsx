@@ -5,10 +5,8 @@ import { MasterGlobalChrome } from './components/MasterGlobalChrome';
 import { MasterDashboardView } from './components/MasterDashboardView';
 import { OrganizationsView } from './components/OrganizationsView';
 import { OrganizationDetailView } from './components/OrganizationDetailView';
-import { PlatformUsersView } from './components/PlatformUsersView';
 import { ConnectedVehiclesHub } from './connected-vehicles/ConnectedVehiclesHub';
 import { BillingControlCenter } from './components/billing/BillingControlCenter';
-import { ActivityLogView } from './components/ActivityLogView';
 import { SupportView } from './components/SupportView';
 import { PlatformSettingsView } from './components/PlatformSettingsView';
 import { ProspectsView } from './components/ProspectsView';
@@ -21,6 +19,8 @@ import VehicleLogbookView from './components/VehicleLogbookView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
 import { PlatformOpsHub } from './platform-ops/PlatformOpsHub';
 import { migratePlatformHealthParams, syncPlatformOpsUrl } from './platform-ops/platform-ops-url';
+import { SecurityAccessHub } from './security-access/SecurityAccessHub';
+import { migrateSecurityAccessParams, syncSecurityAccessUrl } from './security-access/security-access-url';
 import {
   normalizeMasterNavLocation,
   pushMasterNavState,
@@ -177,7 +177,8 @@ export default function App() {
   );
 
   useEffect(() => {
-    const migrated = migratePlatformHealthParams(window.location.search);
+    let migrated = migratePlatformHealthParams(window.location.search);
+    migrated = migrateSecurityAccessParams(migrated);
     if (migrated !== window.location.search) {
       window.history.replaceState(null, '', `${window.location.pathname}${migrated}`);
     }
@@ -362,6 +363,10 @@ export default function App() {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebarCollapse}
         onNavigate={handleMasterNavigate}
+        onOpenOwnSecurity={() => {
+          handleMasterNavigate('security-access');
+          syncSecurityAccessUrl({ section: 'own-security', ownSecurityTab: 'mfa' });
+        }}
       />
       )}
       overlays={(
@@ -422,15 +427,13 @@ export default function App() {
           </PageContainer>
         )}
 
-        {currentView === 'users' && (
-          <PageContainer variant="standard">
-            <PlatformUsersView
-              isDarkMode={isDarkMode}
-              users={users}
-              organizations={organizations}
-              onAddUser={handleAddUser}
-              onUpdateUser={handleUpdateUser}
-              onDeleteUser={handleDeleteUser}
+        {currentView === 'security-access' && (
+          <PageContainer variant="wide">
+            <SecurityAccessHub
+              onOpenOrganization={(orgId) => {
+                setDetailOrgId(orgId);
+                pushMasterNavState({ view: 'organizations', orgId });
+              }}
             />
           </PageContainer>
         )}
@@ -455,12 +458,6 @@ export default function App() {
               initialOrgId={billingFocusOrgId}
               onInitialOrgConsumed={() => setBillingFocusOrgId(null)}
             />
-          </PageContainer>
-        )}
-
-        {currentView === 'activity-log' && (
-          <PageContainer variant="standard">
-            <ActivityLogView isDarkMode={isDarkMode} />
           </PageContainer>
         )}
 

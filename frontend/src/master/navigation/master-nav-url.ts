@@ -1,7 +1,7 @@
 import type { MasterNavLocationState, MasterView } from './master-nav.types';
 
 const CANONICAL_VIEWS: MasterView[] = [
-  'dashboard', 'organizations', 'users', 'vehicles', 'prospects', 'billing',
+  'dashboard', 'organizations', 'security-access', 'users', 'vehicles', 'prospects', 'billing',
   'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
   'architektur', 'changes', 'vehicle-logbook',
@@ -52,6 +52,14 @@ export function normalizeMasterNavLocation(search: string): MasterNavLocationSta
   if (view === 'fleet-connection') {
     view = 'vehicles';
     if (!params.get('cvSection')) params.set('cvSection', 'overview');
+  }
+  if (view === 'users') {
+    view = 'security-access';
+    if (!params.get('securityAccess')) params.set('securityAccess', 'users');
+  }
+  if (view === 'activity-log') {
+    view = 'security-access';
+    if (!params.get('securityAccess')) params.set('securityAccess', 'audit');
   }
 
   if (!ALL_MASTER_VIEWS.includes(view)) {

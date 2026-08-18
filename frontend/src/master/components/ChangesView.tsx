@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-security-governance-ui93-2026-08-18',
+    version: '4.9.913',
+    title: 'Master Admin — Identität & Zugriff (UI-9.3)',
+    summary: [
+      'Backend: `SecurityGovernanceController` + erweitertes Activity-Log (Detail, Export, securityOnly).',
+      'Frontend: `master/security-access/SecurityAccessHub` mit 7 Tabs (Übersicht, Benutzer, Plattform-Admins, Rollen, Audit, Sicherheitsereignisse, Eigene Sicherheit).',
+      'Navigation: Sidebar `security-access` ersetzt `users` + `activity-log`; Badge `security-attention`.',
+      'Legacy-Redirects: `?view=users` / `?view=activity-log` → Hub-Tabs.',
+      'Settings Integrations: Fake DIMO/Stripe Credentials entfernt.',
+    ],
+    reason: 'IAM, MFA, Audit und User-CRUD waren fragmentiert — Blueprint UI-9.2.',
+    previousBehavior: 'Separate Users- und Activity-Log-Views; MFA-Link in Settings; Mock-API-Keys in Integrations.',
+    details:
+      'backend security-governance.*; frontend/src/master/security-access/*; api.ts admin.securityAccess; master-nav; App.tsx; MasterAccountSheet; architecture/MASTER_ADMIN_SECURITY_GOVERNANCE_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T00:00:00.000Z',
+  },
+  {
     id: 'master-admin-platform-ops-ui83-2026-08-18',
     version: '4.9.912',
     title: 'Master Admin — Plattform & Betrieb (UI-8.3)',
