@@ -40,6 +40,7 @@ redis_backup_defaults() {
   REDIS_BACKUP_S3_URI="${REDIS_BACKUP_S3_URI:-}"
 
   REDIS_BACKUP_GPG_RECIPIENT="${REDIS_BACKUP_GPG_RECIPIENT:-}"
+  REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT="${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT:-}"
   REDIS_BACKUP_GPG_PASSPHRASE_FILE="${REDIS_BACKUP_GPG_PASSPHRASE_FILE:-}"
 
   REDIS_BACKUP_PERSISTENCE_CONF="${REDIS_BACKUP_PERSISTENCE_CONF:-/opt/synqdrive/shared/redis/synqdrive-persistence.conf}"
@@ -111,8 +112,21 @@ redis_backup_check_disk() {
   fi
 }
 
+redis_backup_bind_gpg_context() {
+  # shellcheck source=lib/gpg-backup-lib.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gpg-backup-lib.sh"
+  gpg_backup_resolve_context \
+    REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT \
+    REDIS_BACKUP_GPG_RECIPIENT \
+    REDIS_BACKUP_GPG_PASSPHRASE_FILE
+}
+
 redis_backup_encryption_enabled() {
-  [[ -n "${REDIS_BACKUP_GPG_RECIPIENT}" || -f "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" ]]
+  redis_backup_bind_gpg_context
+  gpg_backup_encryption_enabled \
+    "${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+    "${REDIS_BACKUP_GPG_RECIPIENT}" \
+    "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}"
 }
 
 # Connectivity only — usable by read-only tooling that must not depend on the
@@ -133,9 +147,16 @@ redis_backup_validate_config() {
   fi
   if ! redis_backup_encryption_enabled; then
     if [[ "${REDIS_BACKUP_ALLOW_UNENCRYPTED}" != "true" ]]; then
-      redis_backup_die "encryption required — set REDIS_BACKUP_GPG_RECIPIENT or REDIS_BACKUP_GPG_PASSPHRASE_FILE"
+      redis_backup_die "encryption required — set REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT or REDIS_BACKUP_GPG_PASSPHRASE_FILE"
     fi
     redis_backup_log "WARN: unencrypted archives allowed (dev only)"
+  else
+    redis_backup_bind_gpg_context
+    if [[ -z "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" || ! -f "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" ]]; then
+      gpg_backup_verify_recipient_keyring \
+        "${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+        "${REDIS_BACKUP_GPG_RECIPIENT}"
+    fi
   fi
   case "${REDIS_BACKUP_OFFSITE_MODE}" in
     none) ;;
@@ -213,16 +234,29 @@ redis_backup_verify_artifact() {
   fi
 
   if [[ "${artifact}" == *.gpg ]]; then
-    temp_rdb="$(mktemp "${REDIS_BACKUP_STAGING_DIR}/verify.XXXXXX.rdb")"
-    if [[ -n "${REDIS_BACKUP_GPG_RECIPIENT}" ]]; then
-      gpg --batch --yes --decrypt --output "${temp_rdb}" "${artifact}"
-    elif [[ -f "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" ]]; then
-      gpg --batch --yes --passphrase-file "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" \
-        --decrypt --output "${temp_rdb}" "${artifact}"
-    else
+    redis_backup_bind_gpg_context
+    if gpg_backup_has_secret_key \
+      "${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+      "${REDIS_BACKUP_GPG_RECIPIENT}" \
+      "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}"; then
+      temp_rdb="$(mktemp "${REDIS_BACKUP_STAGING_DIR}/verify.XXXXXX.rdb")"
+      gpg_backup_decrypt_file \
+        "${artifact}" "${temp_rdb}" \
+        "${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+        "${REDIS_BACKUP_GPG_RECIPIENT}" \
+        "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" || {
+        [[ -n "${temp_rdb}" ]] && rm -f "${temp_rdb}"
+        return 1
+      }
+      verify_rdb="${temp_rdb}"
+    elif ! gpg_backup_verify_encrypted_packets \
+      "${artifact}" \
+      "${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+      "${REDIS_BACKUP_GPG_RECIPIENT}"; then
       return 1
+    else
+      return 0
     fi
-    verify_rdb="${temp_rdb}"
   fi
 
   if ! redis_backup_verify_rdb "${verify_rdb}"; then
@@ -254,17 +288,12 @@ redis_backup_count_valid_archives() {
 redis_backup_encrypt_file() {
   local plain="$1"
   local encrypted="$2"
-  if [[ -n "${REDIS_BACKUP_GPG_RECIPIENT}" ]]; then
-    gpg --batch --yes --trust-model always \
-      --encrypt --recipient "${REDIS_BACKUP_GPG_RECIPIENT}" \
-      --output "${encrypted}" "${plain}"
-  elif [[ -f "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" ]]; then
-    gpg --batch --yes --symmetric --cipher-algo AES256 \
-      --passphrase-file "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}" \
-      --output "${encrypted}" "${plain}"
-  else
-    cp "${plain}" "${encrypted}"
-  fi
+  redis_backup_bind_gpg_context
+  gpg_backup_encrypt_file \
+    "${plain}" "${encrypted}" \
+    "${REDIS_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+    "${REDIS_BACKUP_GPG_RECIPIENT}" \
+    "${REDIS_BACKUP_GPG_PASSPHRASE_FILE}"
 }
 
 redis_backup_promote_artifact() {

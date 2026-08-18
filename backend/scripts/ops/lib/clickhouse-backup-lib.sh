@@ -45,6 +45,7 @@ ch_backup_defaults() {
   CH_BACKUP_S3_URI="${CH_BACKUP_S3_URI:-}"
 
   CH_BACKUP_GPG_RECIPIENT="${CH_BACKUP_GPG_RECIPIENT:-}"
+  CH_BACKUP_GPG_RECIPIENT_FINGERPRINT="${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT:-}"
   CH_BACKUP_GPG_PASSPHRASE_FILE="${CH_BACKUP_GPG_PASSPHRASE_FILE:-}"
 
   CH_BACKUP_RESTORE_TEST_DB="${CH_BACKUP_RESTORE_TEST_DB:-synqdrive_restore_test}"
@@ -107,8 +108,21 @@ ch_backup_check_disk() {
   fi
 }
 
+ch_backup_bind_gpg_context() {
+  # shellcheck source=lib/gpg-backup-lib.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gpg-backup-lib.sh"
+  gpg_backup_resolve_context \
+    CH_BACKUP_GPG_RECIPIENT_FINGERPRINT \
+    CH_BACKUP_GPG_RECIPIENT \
+    CH_BACKUP_GPG_PASSPHRASE_FILE
+}
+
 ch_backup_encryption_enabled() {
-  [[ -n "${CH_BACKUP_GPG_RECIPIENT}" || -f "${CH_BACKUP_GPG_PASSPHRASE_FILE}" ]]
+  ch_backup_bind_gpg_context
+  gpg_backup_encryption_enabled \
+    "${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+    "${CH_BACKUP_GPG_RECIPIENT}" \
+    "${CH_BACKUP_GPG_PASSPHRASE_FILE}"
 }
 
 ch_backup_validate_config() {
@@ -123,9 +137,16 @@ ch_backup_validate_config() {
   fi
   if ! ch_backup_encryption_enabled; then
     if [[ "${CH_BACKUP_ALLOW_UNENCRYPTED}" != "true" ]]; then
-      ch_backup_die "encryption required — set CH_BACKUP_GPG_RECIPIENT or CH_BACKUP_GPG_PASSPHRASE_FILE"
+      ch_backup_die "encryption required — set CH_BACKUP_GPG_RECIPIENT_FINGERPRINT or CH_BACKUP_GPG_PASSPHRASE_FILE"
     fi
     ch_backup_log "WARN: unencrypted archives allowed (dev only)"
+  else
+    ch_backup_bind_gpg_context
+    if [[ -z "${CH_BACKUP_GPG_PASSPHRASE_FILE}" || ! -f "${CH_BACKUP_GPG_PASSPHRASE_FILE}" ]]; then
+      gpg_backup_verify_recipient_keyring \
+        "${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+        "${CH_BACKUP_GPG_RECIPIENT}"
+    fi
   fi
   case "${CH_BACKUP_OFFSITE_MODE}" in
     none) ;;
@@ -231,17 +252,29 @@ ch_backup_verify_artifact() {
   fi
 
   if [[ "${artifact}" == *.gpg ]]; then
-    temp_zip="$(mktemp "${CH_BACKUP_STAGING_DIR}/verify.XXXXXX.zip")"
-    if [[ -n "${CH_BACKUP_GPG_RECIPIENT}" ]]; then
-      gpg --batch --yes --decrypt --output "${temp_zip}" "${artifact}"
-    elif [[ -f "${CH_BACKUP_GPG_PASSPHRASE_FILE}" ]]; then
-      gpg --batch --yes --passphrase-file "${CH_BACKUP_GPG_PASSPHRASE_FILE}" \
-        --decrypt --output "${temp_zip}" "${artifact}"
-    else
-      ch_backup_log "verify fail: cannot decrypt ${artifact}"
+    ch_backup_bind_gpg_context
+    if gpg_backup_has_secret_key \
+      "${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+      "${CH_BACKUP_GPG_RECIPIENT}" \
+      "${CH_BACKUP_GPG_PASSPHRASE_FILE}"; then
+      temp_zip="$(mktemp "${CH_BACKUP_STAGING_DIR}/verify.XXXXXX.zip")"
+      gpg_backup_decrypt_file \
+        "${artifact}" "${temp_zip}" \
+        "${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+        "${CH_BACKUP_GPG_RECIPIENT}" \
+        "${CH_BACKUP_GPG_PASSPHRASE_FILE}" || {
+        [[ -n "${temp_zip}" ]] && rm -f "${temp_zip}"
+        ch_backup_log "verify fail: decrypt ${artifact}"
+        return 1
+      }
+      verify_zip="${temp_zip}"
+    elif ! gpg_backup_verify_encrypted_packets \
+      "${artifact}" \
+      "${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+      "${CH_BACKUP_GPG_RECIPIENT}"; then
+      ch_backup_log "verify fail: gpg packet check ${artifact}"
       return 1
     fi
-    verify_zip="${temp_zip}"
   fi
 
   if [[ "${verify_zip}" == *.zip ]]; then
@@ -275,17 +308,12 @@ ch_backup_count_valid_archives() {
 ch_backup_encrypt_file() {
   local plain="$1"
   local encrypted="$2"
-  if [[ -n "${CH_BACKUP_GPG_RECIPIENT}" ]]; then
-    gpg --batch --yes --trust-model always \
-      --encrypt --recipient "${CH_BACKUP_GPG_RECIPIENT}" \
-      --output "${encrypted}" "${plain}"
-  elif [[ -f "${CH_BACKUP_GPG_PASSPHRASE_FILE}" ]]; then
-    gpg --batch --yes --symmetric --cipher-algo AES256 \
-      --passphrase-file "${CH_BACKUP_GPG_PASSPHRASE_FILE}" \
-      --output "${encrypted}" "${plain}"
-  else
-    cp "${plain}" "${encrypted}"
-  fi
+  ch_backup_bind_gpg_context
+  gpg_backup_encrypt_file \
+    "${plain}" "${encrypted}" \
+    "${CH_BACKUP_GPG_RECIPIENT_FINGERPRINT}" \
+    "${CH_BACKUP_GPG_RECIPIENT}" \
+    "${CH_BACKUP_GPG_PASSPHRASE_FILE}"
 }
 
 ch_backup_promote_artifact() {

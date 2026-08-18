@@ -9,6 +9,7 @@ SYNQDRIVE_ROOT="${SYNQDRIVE_ROOT:-/opt/synqdrive/current}"
 BACKUP_SCRIPT="${SYNQDRIVE_ROOT}/backend/scripts/ops/vps-backup-redis.sh"
 LOG_FILE="/var/log/synqdrive-redis-backup.log"
 CRON_SCHEDULE="${REDIS_BACKUP_CRON_SCHEDULE:-0 4 * * *}"
+GPG_HOME="${GPG_BACKUP_HOME:-/opt/synqdrive/shared/gpg-backup}"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "ERROR: run as root" >&2
@@ -25,6 +26,7 @@ cat > "${CRON_FILE}" <<EOF
 # SynqDrive Redis RDB backup (Phase 2C.4) — BullMQ buffer only
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+GNUPGHOME=${GPG_HOME}
 ${CRON_SCHEDULE} root ${BACKUP_SCRIPT} >> ${LOG_FILE} 2>&1
 EOF
 
