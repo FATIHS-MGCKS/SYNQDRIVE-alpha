@@ -58,7 +58,7 @@ export class PlatformEmailController {
   ) {
     const defaults = await this.platformEmail.getResolvedDefaults();
     const provider = this.emailProviders.resolve();
-    const result = await provider.send({
+    const result = await provider.sendEmail({
       fromEmail: defaults.defaultFromEmail,
       fromName: defaults.defaultFromName,
       replyToEmail: defaults.defaultReplyToEmail,

@@ -145,7 +145,7 @@ export class OrganizationsOperationalService {
             status: true,
             lastSyncAt: true,
             errorMessage: true,
-            integration: { select: { name: true, slug: true } },
+            integration: { select: { name: true, type: true } },
           },
         },
       },
@@ -170,7 +170,7 @@ export class OrganizationsOperationalService {
 
     const integrations = org.orgIntegrations.map((i) => ({
       name: i.integration.name,
-      slug: i.integration.slug,
+      slug: i.integration.type,
       status: i.status,
       statusLabel: this.integrationStatusLabel(i.status),
       lastSyncAt: i.lastSyncAt?.toISOString() ?? null,
@@ -321,12 +321,19 @@ export class OrganizationsOperationalService {
       memberships: { id: string }[];
       orgIntegrations: { status: IntegrationStatus }[];
     },
-    billing: Awaited<ReturnType<OrganizationsOperationalService['loadBillingByOrgIds']>> extends Map<
-      string,
-      infer V
-    >
-      ? V
-      : never,
+    billing:
+      | {
+          subscriptionStatus: string;
+          warnings: string[];
+          syncStatus: 'NONE' | 'SYNCED' | 'PARTIAL' | 'MISSING';
+          paymentMethodStatus: string;
+          connectedVehicleCount: number;
+          billableVehicleCount: number;
+          tariffLabel: string | null;
+          nextChargeAt: string | null;
+          openAmountCents: number;
+        }
+      | undefined,
     hasDrift: boolean,
     connectivity?: OrganizationConnectivitySummaryDto,
   ): OrganizationOperationalRowDto {
