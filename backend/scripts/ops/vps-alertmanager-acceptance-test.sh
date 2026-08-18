@@ -78,12 +78,17 @@ wait_for "grouping alert visible in alertmanager" \
   "curl -sf http://127.0.0.1:9093/api/v2/alerts | python3 -c \"import sys,json; d=json.load(sys.stdin); sys.exit(0 if sum(1 for a in d if a.get('labels',{}).get('alertname')=='SynqDriveAlertmanagerAcceptanceGrouping')>=2 else 1)\"" \
   45
 
-# Delivery evidence: wait for group_wait (warning route 1m) then check logs
+# Delivery evidence: wait for group_wait then verify via Resend API (no secrets logged)
 sleep 95
-if docker logs "$AM_CONTAINER" 2>&1 | tail -200 | grep -qiE 'notify|notification|email|sent|success|aggregat'; then
+BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
+RESEND_KEY="$(grep '^RESEND_API_KEY=' "$BACKEND_ENV" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
+if [[ -n "$RESEND_KEY" ]] && curl -sf -H "Authorization: Bearer ${RESEND_KEY}" "https://api.resend.com/emails?limit=20" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if any('SynqDriveAlertmanagerAcceptance' in (e.get('subject') or '') for e in d.get('data',[])) else 1)"; then
+  pass "receiver delivery verified via Resend API (acceptance alert)"
+elif docker logs "$AM_CONTAINER" 2>&1 | tail -200 | grep -qiE 'notify|notification|email|sent|aggregat'; then
   pass "receiver delivery attempt logged by alertmanager"
 else
-  fail "no delivery evidence in alertmanager logs"
+  fail "no delivery evidence (Resend API + alertmanager logs)"
 fi
 
 # Silence test
