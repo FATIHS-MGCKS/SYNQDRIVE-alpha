@@ -79,7 +79,7 @@ wait_for "grouping alert visible in alertmanager" \
   45
 
 # Delivery evidence: wait for group_wait then verify via Resend API (no secrets logged)
-sleep 45
+sleep 60
 BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 RESEND_KEY="$(grep '^RESEND_API_KEY=' "$BACKEND_ENV" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
 if [[ -n "$RESEND_KEY" ]] && curl -sf -H "Authorization: Bearer ${RESEND_KEY}" "https://api.resend.com/emails?limit=20" \
@@ -129,8 +129,9 @@ pass "restart resilience"
 # Fail-closed validation (invalid config must not deploy)
 INVALID="$(mktemp)"
 echo 'route: { receiver: missing }' > "$INVALID"
+chmod 644 "$INVALID"
 if docker run --rm --entrypoint amtool -v "$INVALID:/etc/alertmanager/alertmanager.yml:ro" prom/alertmanager:v0.27.0 \
-  check-config /etc/alertmanager/alertmanager.yml 2>/dev/null; then
+  check-config /etc/alertmanager/alertmanager.yml >/dev/null 2>&1; then
   rm -f "$INVALID"
   fail "invalid config was accepted by amtool"
 fi
