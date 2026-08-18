@@ -48,7 +48,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 
 **Accepted Risk (nicht in Active P0/P1):** Historischer CH-Datenverlust `MA-CH-P0-002` (orig. P0) — siehe §8.
 
-**Finale Entscheidung:** **NOT PRODUCTION READY** — vier aktive Production-Blocker (§11 A1–A4). Remediation- und Hub-Arbeit inkl. UI-Live-Abnahme (A5) ist abgeschlossen; die Plattform ist **bis zur Schließung von A1–A4** nicht produktionsfreigegeben. Nach Blocker-Schließung: erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3-Restarbeiten).
+**Finale Entscheidung:** **NOT PRODUCTION READY** — drei aktive Production-Blocker (§11 A1, A3, A4). A2 (Backup-GPG) und A5 (UI) geschlossen.
 
 ---
 
