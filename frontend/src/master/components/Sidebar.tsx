@@ -1,329 +1,432 @@
-import {
-  LayoutDashboard, Building2, Users, Car, Target,
-  Activity, CreditCard, Headphones,
-  Radio, Package, Shield,
-  Settings, BarChart3, Globe,
-  Code2, FileText, Phone, Mail,
-  ChevronRight, Menu, X, Plus, UserPlus,
-  MapPin, Gauge, BookOpen, ShieldCheck
-} from 'lucide-react';
-import { useState } from 'react';
+import { LogOut, PanelLeftClose, PanelLeftOpen, Settings, Menu, X, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   navItemClass,
-  navSectionLabelClass,
   navSectionHeaderClass,
+  navSectionLabelClass,
+  CollapsedNavTooltip,
 } from '../../components/shell';
 import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
+import { clearAuth, getStoredUser } from '../../lib/auth';
+import { cn } from '../../components/ui/utils';
+import { MASTER_NAV_GROUPS, MASTER_MOBILE_PRIMARY_VIEWS, MASTER_NAV_ITEM_BY_ID } from '../navigation/master-nav.config';
+import { isMasterNavGroupActive, isMasterNavItemActive } from '../navigation/master-nav-active';
+import { canAccessMasterNavItem, isBillingOnlyMasterUser } from '../navigation/master-nav-permissions';
+import { tMasterNav } from '../navigation/master-nav-i18n';
+import { useMasterNavBadges, useMasterPlatformStatusLabel } from '../navigation/useMasterNavBadges';
+import type { MasterNavBadgeType, MasterView } from '../navigation/master-nav.types';
+import { MasterAccountSheet } from './MasterAccountSheet';
 
-export type MasterView =
-  | 'dashboard'
-  | 'organizations'
-  | 'users'
-  | 'vehicles'
-  | 'prospects'
-  | 'billing'
-  | 'activity-log'
-  | 'platform-health'
-  | 'support'
-  | 'settings'
-  | 'fleet-connection'
-  | 'parts-accessories'
-  | 'insurances'
-  | 'voice-assistant'
-  | 'high-mobility'
-  | 'hm-compatibility'
-  | 'architektur'
-  | 'changes'
-  | 'health-tracking'
-  | 'trip-detection-logic'
-  | 'performance-logic'
-  | 'vehicle-logbook';
+export type { MasterView } from '../navigation/master-nav.types';
 
 interface SidebarProps {
   isDarkMode: boolean;
   currentView?: MasterView;
-  onViewChange?: (view: MasterView) => void;
   settingsTab?: string;
-  onSettingsTabChange?: (tab: string) => void;
+  selectedOrgId?: string | null;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  onNavigate?: (view: MasterView, options?: { settingsTab?: string; replace?: boolean }) => void;
 }
 
-export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, onSettingsTabChange }: SidebarProps) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+function NavBadge({ type, value }: { type: MasterNavBadgeType; value?: string | number | boolean }) {
+  if (!value) return null;
+  if (type === 'support-count') {
+    return (
+      <span className="ml-auto min-w-[18px] rounded-full bg-[color:var(--brand)] px-1 text-center text-[9px] font-bold leading-[18px] text-white tabular-nums">
+        {value}
+      </span>
+    );
+  }
+  const tone =
+    type === 'platform-critical' || type === 'integration-outage'
+      ? 'sq-dot-critical'
+      : type === 'mfa-required' || type === 'billing-anomaly' || type === 'connectivity-warning'
+        ? 'sq-dot-watch'
+        : 'sq-dot-info';
+  return <span className={cn('ml-auto sq-dot shrink-0', tone)} aria-hidden />;
+}
+
+export function Sidebar({
+  currentView = 'dashboard',
+  settingsTab = 'general',
+  selectedOrgId = null,
+  isCollapsed = false,
+  onToggleCollapse,
+  onNavigate,
+}: SidebarProps) {
+  const mobileNavId = useId();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const g of MASTER_NAV_GROUPS) {
+      init[g.id] = g.defaultExpanded;
+    }
+    return init;
+  });
+  const badges = useMasterNavBadges();
+  const platformLabel = useMasterPlatformStatusLabel(badges);
+  const user = getStoredUser();
+  const billingOnly = isBillingOnlyMasterUser();
+  const firstMobileFocusRef = useRef<HTMLButtonElement>(null);
 
-  const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
-
-  const go = (view: MasterView) => {
-    onViewChange?.(view);
-    setMobileOpen(false);
-  };
-
-  const goSettings = (tab: string) => {
-    onSettingsTabChange?.(tab);
-    onViewChange?.('settings');
-    setMobileOpen(false);
-  };
-
-  const active = (view: MasterView) => currentView === view;
-  const activeSettings = (tab: string) => currentView === 'settings' && settingsTab === tab;
-
-  const itemCls = (on: boolean) => navItemClass(on);
-
-  const icon = 'w-[14px] h-[14px] shrink-0';
-
-  const sectionLabel = (text: string) => (
-    <div className={`${navSectionLabelClass} mt-5 mb-1 px-2.5`}>{text}</div>
+  const activeCtx = useMemo(
+    () => ({ view: currentView, settingsTab, selectedOrgId }),
+    [currentView, settingsTab, selectedOrgId],
   );
 
-  const collapsibleHeader = (key: string, label: string) => {
-    const isOpen = expanded[key];
+  const visibleGroups = useMemo(() => {
+    return MASTER_NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((id) => {
+        const item = MASTER_NAV_ITEM_BY_ID[id];
+        return item && canAccessMasterNavItem(item);
+      }),
+    })).filter((g) => g.items.length > 0);
+  }, []);
+
+  useEffect(() => {
+    const activeGroupId = visibleGroups.find((g) => isMasterNavGroupActive(g.items, activeCtx))?.id;
+    if (!activeGroupId) return;
+    setExpanded((prev) => ({ ...prev, [activeGroupId]: true }));
+  }, [activeCtx, visibleGroups]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 1024) setMobileOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      requestAnimationFrame(() => firstMobileFocusRef.current?.focus());
+    }
+  }, [mobileOpen]);
+
+  const go = useCallback(
+    (view: MasterView, opts?: { settingsTab?: string }) => {
+      onNavigate?.(view, opts);
+      setMobileOpen(false);
+    },
+    [onNavigate],
+  );
+
+  const toggleGroup = (groupId: string) => {
+    setExpanded((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
+  const renderNavButton = (
+    itemId: MasterView,
+    opts?: { collapsed?: boolean; compact?: boolean; buttonRef?: React.Ref<HTMLButtonElement> },
+  ) => {
+    const item = MASTER_NAV_ITEM_BY_ID[itemId];
+    if (!item || !canAccessMasterNavItem(item)) return null;
+    const active = isMasterNavItemActive(itemId, activeCtx);
+    const Icon = item.icon;
+    const badgeVal = item.badge ? badges[item.badge] : undefined;
+    const label = tMasterNav(item.labelKey);
+
     return (
-    <button
-      onClick={() => toggle(key)}
-      className={navSectionHeaderClass(!!isOpen, false)}
-    >
-      <span className={navSectionLabelClass}>{label}</span>
-      <ChevronRight className={`w-3 h-3 transition-transform duration-200 text-muted-foreground/60 ${isOpen ? 'rotate-90' : ''}`} />
-    </button>
+      <button
+        key={itemId}
+        ref={opts?.buttonRef}
+        type="button"
+        onClick={() => go(itemId)}
+        className={navItemClass(active, Boolean(opts?.collapsed))}
+        aria-current={active ? 'page' : undefined}
+        aria-label={opts?.collapsed ? label : undefined}
+      >
+        <span className="relative shrink-0">
+          <Icon className="w-[14px] h-[14px]" />
+          {opts?.collapsed && item.badge && badgeVal && (
+            <span className="absolute -right-1 -top-1 flex">
+              {item.badge === 'support-count' && typeof badgeVal === 'number' ? (
+                <span className="min-w-[14px] rounded-full bg-[color:var(--brand)] px-0.5 text-[8px] font-bold leading-[14px] text-white">
+                  {badgeVal}
+                </span>
+              ) : (
+                <span className="sq-dot sq-dot-critical h-1.5 w-1.5" />
+              )}
+            </span>
+          )}
+        </span>
+        {!opts?.collapsed && (
+          <>
+            <span className="truncate">{label}</span>
+            {item.badge && <NavBadge type={item.badge} value={badgeVal} />}
+          </>
+        )}
+        {opts?.collapsed && <CollapsedNavTooltip label={label} />}
+      </button>
     );
   };
 
-  const NavContent = () => (
-    <>
-      {/* ── OVERVIEW ── */}
-      {sectionLabel('Overview')}
-      <nav className="space-y-0.5 mb-1">
-        <button onClick={() => go('dashboard')} className={itemCls(active('dashboard'))}>
-          <LayoutDashboard className={icon} /><span>Dashboard</span>
+  const renderGroups = (mode: 'expanded' | 'collapsed' | 'mobile') => {
+    const collapsed = mode === 'collapsed';
+    const isMobile = mode === 'mobile';
+
+    const primaryItems = isMobile
+      ? MASTER_MOBILE_PRIMARY_VIEWS.filter((id) => {
+          const item = MASTER_NAV_ITEM_BY_ID[id];
+          return item && canAccessMasterNavItem(item);
+        })
+      : [];
+
+    return (
+      <>
+        {isMobile && primaryItems.length > 0 && (
+          <div className="mb-3">
+            <div className={cn(navSectionLabelClass, 'mt-0 mb-1.5 px-2.5')}>{tMasterNav('master.nav.primarySection')}</div>
+            <nav className="space-y-0.5" aria-label={tMasterNav('master.nav.primarySection')}>
+              {primaryItems.map((id, idx) =>
+                renderNavButton(id, { buttonRef: idx === 0 ? firstMobileFocusRef : undefined }),
+              )}
+            </nav>
+            <div className="my-3 h-px bg-border" />
+          </div>
+        )}
+
+        {visibleGroups.map((group) => {
+          if (billingOnly && group.id !== 'overview' && group.id !== 'commerce') return null;
+
+          const isOpen = group.collapsible ? expanded[group.id] : true;
+          const groupActive = isMasterNavGroupActive(group.items, activeCtx);
+          const showHeader = group.collapsible && !collapsed;
+
+          return (
+            <div key={group.id} className={collapsed ? 'w-full flex flex-col items-center' : 'mb-1'}>
+              {showHeader && (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className={navSectionHeaderClass(isOpen, groupActive)}
+                  aria-expanded={isOpen}
+                >
+                  <span className={navSectionLabelClass}>{tMasterNav(group.labelKey)}</span>
+                  <ChevronRight className={cn('w-3 h-3 shrink-0 text-muted-foreground/60 transition-transform duration-200', isOpen && 'rotate-90')} />
+                </button>
+              )}
+              {!group.collapsible && !collapsed && group.items.length > 1 && (
+                <div className={cn(navSectionLabelClass, 'mt-5 mb-1 px-2.5')}>{tMasterNav(group.labelKey)}</div>
+              )}
+              {!group.collapsible && !collapsed && group.items.length === 1 && group.id !== 'overview' && (
+                <div className={cn(navSectionLabelClass, 'mt-5 mb-1 px-2.5')}>{tMasterNav(group.labelKey)}</div>
+              )}
+              {collapsed && group.id !== 'overview' && <div className="w-4 h-px my-1.5 bg-border" />}
+              {(isOpen || collapsed || !group.collapsible) && (
+                <nav
+                  className={cn('space-y-0.5', collapsed ? 'w-full flex flex-col items-center' : 'mb-1')}
+                  aria-label={tMasterNav(group.labelKey)}
+                >
+                  {group.items.map((id) => renderNavButton(id, { collapsed }))}
+                </nav>
+              )}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+
+  const renderFooter = (mode: 'expanded' | 'collapsed' | 'mobile') => {
+    const collapsed = mode === 'collapsed';
+    const showCollapse = mode === 'expanded' || mode === 'collapsed';
+
+    return (
+      <div className="sq-sidebar-footer shrink-0 px-3 py-3 space-y-1 border-t border-sidebar-border">
+        {!billingOnly && (
+          <button
+            type="button"
+            onClick={() => go('platform-health')}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[40px] rounded-lg text-left text-[12px] font-medium transition-colors hover:bg-accent/50',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            )}
+          >
+            <span
+              className={cn('sq-dot shrink-0', platformLabel === 'degraded' ? 'sq-dot-critical' : 'sq-dot-success')}
+              aria-hidden
+            />
+            {!collapsed && (
+              <span className="truncate text-muted-foreground">
+                {tMasterNav('master.nav.systemStatus')}:{' '}
+                <span className="text-foreground font-semibold">
+                  {platformLabel === 'degraded'
+                    ? tMasterNav('master.nav.systemStatusDegraded')
+                    : tMasterNav('master.nav.systemStatusOperational')}
+                </span>
+              </span>
+            )}
+            {collapsed && (
+              <CollapsedNavTooltip
+                label={`${tMasterNav('master.nav.systemStatus')}: ${
+                  platformLabel === 'degraded'
+                    ? tMasterNav('master.nav.systemStatusDegraded')
+                    : tMasterNav('master.nav.systemStatusOperational')
+                }`}
+              />
+            )}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => go('settings', { settingsTab: 'general' })}
+          className={cn(
+            navItemClass(currentView === 'settings', collapsed),
+            collapsed && 'relative group',
+          )}
+          aria-current={currentView === 'settings' ? 'page' : undefined}
+        >
+          <Settings className="w-[14px] h-[14px] shrink-0" />
+          {!collapsed && <span>{tMasterNav('master.nav.settings')}</span>}
+          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.settings')} />}
         </button>
-      </nav>
 
-      {/* ── MANAGEMENT ── */}
-      {sectionLabel('Management')}
-      <nav className="space-y-0.5 mb-1">
-        <button onClick={() => go('organizations')} className={itemCls(active('organizations'))}>
-          <Building2 className={icon} /><span>Organizations</span>
+        <button
+          type="button"
+          onClick={() => setAccountOpen(true)}
+          className={cn(
+            'w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[40px] rounded-lg transition-colors hover:bg-accent/50',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            collapsed && 'justify-center relative group',
+          )}
+        >
+          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-[11px] font-bold text-foreground">
+            {(user?.name || 'MA').slice(0, 2).toUpperCase()}
+            {badges['mfa-required'] && (
+              <span className="absolute -right-0.5 -top-0.5 sq-dot sq-dot-watch h-2 w-2" aria-hidden />
+            )}
+          </span>
+          {!collapsed && (
+            <span className="min-w-0 flex-1 truncate text-left">
+              <span className="block text-[12px] font-semibold text-foreground truncate">{user?.name || tMasterNav('master.nav.account')}</span>
+              <span className="block text-[10px] text-muted-foreground truncate">{user?.email}</span>
+            </span>
+          )}
+          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.account')} />}
         </button>
-        <button onClick={() => go('users')} className={itemCls(active('users'))}>
-          <Users className={icon} /><span>Users</span>
+
+        <button
+          type="button"
+          onClick={() => {
+            clearAuth();
+            window.location.href = '/login';
+          }}
+          className={cn(navItemClass(false, collapsed), collapsed && 'relative group')}
+        >
+          <LogOut className="w-[14px] h-[14px] shrink-0" />
+          {!collapsed && <span>{tMasterNav('master.nav.logout')}</span>}
+          {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.logout')} />}
         </button>
-        <button onClick={() => go('vehicles')} className={itemCls(active('vehicles'))}>
-          <Car className={icon} /><span>Vehicles</span>
-        </button>
-        <button onClick={() => go('prospects')} className={itemCls(active('prospects'))}>
-          <Target className={icon} /><span>Prospects</span>
-        </button>
-      </nav>
 
-      {/* ── OPERATIONS (collapsible) ── */}
-      {collapsibleHeader('operations', 'Operations')}
-      {expanded.operations && (
-        <nav className="space-y-0.5 mb-1">
-          <button onClick={() => go('activity-log')} className={itemCls(active('activity-log'))}>
-            <Activity className={icon} /><span>Activity Log</span>
+        {showCollapse && onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className={cn(
+              'sq-sidebar-footer__toggle mt-1',
+              collapsed && 'sq-sidebar-footer__toggle--icon-only relative group',
+            )}
+            aria-label={collapsed ? tMasterNav('master.nav.expandSidebar') : tMasterNav('master.nav.collapseSidebar')}
+          >
+            <span className="sq-sidebar-footer__icon">
+              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </span>
+            {!collapsed && <span className="sq-sidebar-footer__label">{tMasterNav('master.nav.collapseSidebar')}</span>}
+            {collapsed && <CollapsedNavTooltip label={tMasterNav('master.nav.expandSidebar')} />}
           </button>
-          <button onClick={() => go('platform-health')} className={itemCls(active('platform-health'))}>
-            <Gauge className={icon} /><span>Platform Health</span>
-          </button>
-          <button onClick={() => go('billing')} className={itemCls(active('billing'))}>
-            <CreditCard className={icon} /><span>Abrechnung</span>
-          </button>
-          <button onClick={() => go('support')} className={itemCls(active('support'))}>
-            <Headphones className={icon} /><span>Support Center</span>
-          </button>
-        </nav>
-      )}
-
-      {/* ── INTEGRATIONS (collapsible) ── */}
-      {collapsibleHeader('integrations', 'Integrations')}
-      {expanded.integrations && (
-        <nav className="space-y-0.5 mb-1">
-          <button onClick={() => go('fleet-connection')} className={itemCls(active('fleet-connection'))}>
-            <Radio className={icon} /><span>Fleet Connection</span>
-          </button>
-          <button onClick={() => go('parts-accessories')} className={itemCls(active('parts-accessories'))}>
-            <Package className={icon} /><span>Parts & Accessories</span>
-          </button>
-          <button onClick={() => go('insurances')} className={itemCls(active('insurances'))}>
-            <Shield className={icon} /><span>Insurances</span>
-          </button>
-          <button onClick={() => go('voice-assistant')} className={itemCls(active('voice-assistant'))}>
-            <Phone className={icon} /><span>Voice Assistant</span>
-          </button>
-          <button onClick={() => go('high-mobility')} className={itemCls(active('high-mobility'))}>
-            <Radio className={icon} /><span>High Mobility</span>
-          </button>
-          <button onClick={() => go('hm-compatibility')} className={itemCls(active('hm-compatibility'))}>
-            <ShieldCheck className={icon} /><span>HM Compatibility Check</span>
-          </button>
-        </nav>
-      )}
-
-      {/* ── CONFIGURATION (collapsible) ── */}
-      {collapsibleHeader('configuration', 'Configuration')}
-      {expanded.configuration && (
-        <nav className="space-y-0.5 mb-1">
-          <button onClick={() => goSettings('general')} className={itemCls(activeSettings('general'))}>
-            <Settings className={icon} /><span>General</span>
-          </button>
-          <button onClick={() => goSettings('email')} className={itemCls(activeSettings('email'))}>
-            <Mail className={icon} /><span>E-Mail</span>
-          </button>
-          <button onClick={() => goSettings('integrations')} className={itemCls(activeSettings('integrations'))}>
-            <Globe className={icon} /><span>Integrations</span>
-          </button>
-          <button onClick={() => goSettings('monitoring')} className={itemCls(activeSettings('monitoring'))}>
-            <BarChart3 className={icon} /><span>Monitoring</span>
-          </button>
-        </nav>
-      )}
-
-      {/* ── SYNQDRIVE CODE (collapsible) ── */}
-      {collapsibleHeader('synqdrive-code', 'SynqDrive Code')}
-      {expanded['synqdrive-code'] && (
-        <nav className="space-y-0.5 mb-1">
-          <button onClick={() => go('architektur')} className={itemCls(active('architektur'))}>
-            <Code2 className={icon} /><span>Architektur</span>
-          </button>
-          <button onClick={() => go('changes')} className={itemCls(active('changes'))}>
-            <FileText className={icon} /><span>Changes</span>
-          </button>
-          <button onClick={() => go('health-tracking')} className={itemCls(active('health-tracking'))}>
-            <Activity className={icon} /><span>Health Tracking</span>
-          </button>
-          <button onClick={() => go('trip-detection-logic')} className={itemCls(active('trip-detection-logic'))}>
-            <MapPin className={icon} /><span>Trip Detection Logic</span>
-          </button>
-          <button onClick={() => go('performance-logic')} className={itemCls(active('performance-logic'))}>
-            <Gauge className={icon} /><span>Performance Logic</span>
-          </button>
-          <button onClick={() => go('vehicle-logbook')} className={itemCls(active('vehicle-logbook'))}>
-            <BookOpen className={icon} /><span>Vehicle Logbook</span>
-          </button>
-        </nav>
-      )}
-
-      {/* ── DIVIDER ── */}
-      <div className="my-5 h-px bg-border" />
-
-      {/* ── QUICK ACTIONS ── */}
-      <div className="pb-3">
-        <div className="sq-section-label mb-2.5 px-1 text-center">
-          Quick Actions
-        </div>
-        <div className="grid grid-cols-2 gap-1">
-          <QuickAction
-            label="New Org"
-            Icon={Plus}
-            variant="brand"
-            onClick={() => go('organizations')}
-          />
-          <QuickAction
-            label="Invite User"
-            Icon={UserPlus}
-            variant="success"
-            onClick={() => go('users')}
-          />
-          <QuickAction
-            label="Support"
-            Icon={Headphones}
-            variant="neutral"
-            onClick={() => go('support')}
-          />
-          <QuickAction
-            label="Activity"
-            Icon={Activity}
-            variant="neutral"
-            onClick={() => go('activity-log')}
-          />
-        </div>
+        )}
       </div>
-    </>
+    );
+  };
+
+  const brandChip = (
+    <span className="sq-chip sq-chip-neutral !text-[10px] !font-bold uppercase tracking-[0.16em]">
+      {tMasterNav('master.nav.roleChip')}
+    </span>
   );
 
   return (
     <>
-      {/* ── MOBILE TOP BAR ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b bg-sidebar border-sidebar-border">
+      <MasterAccountSheet open={accountOpen} onOpenChange={setAccountOpen} onOpenSettings={() => go('settings', { settingsTab: 'general' })} />
+
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b bg-sidebar border-sidebar-border pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center justify-between h-14 px-4">
           <button
-            onClick={() => setMobileOpen(o => !o)}
-            className="p-2 rounded-md transition-colors hover:bg-accent text-muted-foreground"
+            type="button"
+            onClick={() => setMobileOpen((o) => !o)}
+            className="p-2 -ml-2 rounded-md transition-colors hover:bg-accent text-muted-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-expanded={mobileOpen}
+            aria-controls={mobileNavId}
+            aria-label={mobileOpen ? tMasterNav('master.nav.mobileMenuClose') : tMasterNav('master.nav.mobileMenu')}
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <SynqDriveBrandLogo className="h-4 w-auto object-contain" />
-          <div className="w-9" />
+          <div className="w-11" />
         </div>
 
-        <div className={`overflow-hidden transition-all duration-300 ${
-          mobileOpen ? 'max-h-[calc(100vh-3.5rem)] opacity-100' : 'max-h-0 opacity-0'
-        }`}>
+        <div
+          id={mobileNavId}
+          className={cn(
+            'overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none',
+            mobileOpen ? 'max-h-[min(calc(100dvh-3.5rem),calc(100vh-3.5rem))] opacity-100' : 'max-h-0 opacity-0',
+          )}
+        >
           <div
-            className="px-3 pb-6 overflow-y-auto border-t border-sidebar-border"
-            style={{ maxHeight: 'calc(100vh - 3.5rem)' }}
+            className="flex flex-col px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] overflow-y-auto border-t border-sidebar-border"
+            style={{ maxHeight: 'min(calc(100dvh - 3.5rem), calc(100vh - 3.5rem))' }}
           >
-            <NavContent />
+            <div className="flex-1 py-3">{renderGroups('mobile')}</div>
+            {renderFooter('mobile')}
           </div>
         </div>
       </div>
 
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 overlay-scrim"
+          className="lg:hidden fixed inset-0 z-40 overlay-scrim motion-reduce:backdrop-blur-none"
+          style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
           onClick={() => setMobileOpen(false)}
-          style={{ top: '3.5rem' }}
+          aria-hidden
         />
       )}
 
-      {/* ── DESKTOP SIDEBAR ── */}
-      <div className="hidden lg:flex w-[260px] h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border">
-        {/* Logo */}
-        <div className="px-4 py-3 flex flex-col items-center gap-1.5 border-b border-sidebar-border">
-          <SynqDriveBrandLogo className="h-7 w-auto object-contain" />
-          <span className="sq-chip sq-chip-critical !text-[10px] !font-bold uppercase tracking-[0.16em]">
-            Master Admin
-          </span>
+      {/* Desktop sidebar */}
+      <div
+        className={cn(
+          'hidden lg:flex h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border transition-all duration-300 ease-in-out motion-reduce:transition-none',
+          isCollapsed ? 'w-[52px]' : 'w-[260px]',
+        )}
+      >
+        <div className={cn('border-b border-sidebar-border shrink-0 flex flex-col items-center gap-1.5', isCollapsed ? 'px-2 py-3' : 'px-4 py-3')}>
+          <SynqDriveBrandLogo className={cn('w-auto object-contain', isCollapsed ? 'h-5' : 'h-7')} />
+          {!isCollapsed && brandChip}
         </div>
 
-        {/* Scrollable nav */}
         <div
-          className="flex-1 overflow-y-auto px-4 py-4"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: isDarkMode ? 'rgba(100,116,139,0.25) transparent' : 'rgba(156,163,175,0.3) transparent' }}
+          className={cn('flex-1 overflow-y-auto py-4', isCollapsed ? 'px-1.5 flex flex-col items-center' : 'px-4')}
+          style={{ scrollbarWidth: 'thin' }}
         >
-          <NavContent />
+          {renderGroups(isCollapsed ? 'collapsed' : 'expanded')}
         </div>
+
+        {renderFooter(isCollapsed ? 'collapsed' : 'expanded')}
       </div>
     </>
-  );
-}
-
-/* ── Quick Action Button ──
-   Token-based tones (brand / success / neutral) — theme-aware in light +
-   dark with no hardcoded indigo/emerald/gray. */
-
-type QAVariant = 'brand' | 'success' | 'neutral';
-
-function QuickAction({
-  label, Icon, variant, onClick,
-}: {
-  label: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  variant: QAVariant;
-  onClick: () => void;
-}) {
-  const base = 'flex h-[30px] items-center justify-center gap-1.5 px-1.5 rounded-md text-[11px] font-semibold transition-all duration-150 active:scale-[0.97]';
-
-  const colors: Record<QAVariant, string> = {
-    brand: 'sq-tone-brand hover:opacity-90',
-    success: 'sq-tone-success hover:opacity-90',
-    neutral: 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
-  };
-
-  return (
-    <button onClick={onClick} className={`${base} ${colors[variant]}`}>
-      <Icon className="w-3.5 h-3.5 shrink-0" />
-      <span>{label}</span>
-    </button>
   );
 }

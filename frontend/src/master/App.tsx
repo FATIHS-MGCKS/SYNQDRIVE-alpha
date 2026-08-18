@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
-import { Sidebar } from './components/Sidebar';
-import type { MasterView } from './components/Sidebar';
+import { Sidebar, type MasterView } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { RightSidebar } from './components/RightSidebar';
 import { MasterDashboardView } from './components/MasterDashboardView';
@@ -20,13 +19,15 @@ import { InsurancesAdminView } from './components/InsurancesAdminView';
 import { VoiceAssistantAdminView } from './components/VoiceAssistantAdminView';
 import { ArchitekturView } from './components/ArchitekturView';
 import { ChangesView } from './components/ChangesView';
-import { HealthTrackingView } from './components/HealthTrackingView';
-import { TripDetectionLogicView } from './components/TripDetectionLogicView';
-import { PerformanceLogicView } from './components/PerformanceLogicView';
 import VehicleLogbookView from './components/VehicleLogbookView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
-import { HighMobilityCompatibilityView } from './components/HighMobilityCompatibilityView';
 import { PlatformHealthView } from './components/PlatformHealthView';
+import {
+  normalizeMasterNavLocation,
+  pushMasterNavState,
+  readInitialMasterNavLocation,
+} from './navigation/master-nav-url';
+import type { MasterNavLocationState } from './navigation/master-nav.types';
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
@@ -175,25 +176,36 @@ const STATUS_LABEL_TO_ENUM: Record<string, string> = {
   Active: 'ACTIVE', Trial: 'PENDING', Suspended: 'SUSPENDED', Churned: 'ARCHIVED',
 };
 
-const MASTER_VIEWS: MasterView[] = [
-  'dashboard', 'organizations', 'users', 'vehicles', 'prospects', 'billing',
-  'activity-log', 'platform-health', 'support', 'settings', 'fleet-connection',
-  'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility', 'hm-compatibility',
-  'architektur', 'changes', 'health-tracking', 'trip-detection-logic', 'performance-logic',
-  'vehicle-logbook',
-];
+const SIDEBAR_COLLAPSED_KEY = 'synqdrive-master-sidebar-collapsed';
 
-function readInitialMasterView(): MasterView {
-  if (typeof window === 'undefined') return 'dashboard';
-  const view = new URLSearchParams(window.location.search).get('masterView');
-  return MASTER_VIEWS.includes(view as MasterView) ? (view as MasterView) : 'dashboard';
+const ARCH_CATEGORIES = new Set([
+  'overview', 'signals', 'workers', 'health', 'trips', 'connectivity', 'frontend', 'modules', 'integrations',
+]);
+
+function readSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+}
+
+function parseArchCategory(value: string | null | undefined): string | undefined {
+  if (!value || !ARCH_CATEGORIES.has(value)) return undefined;
+  return value;
+}
+
+function parseHmTab(value: string | null | undefined): 'vehicles' | 'eligibility' | 'streaming' | undefined {
+  if (value === 'vehicles' || value === 'eligibility' || value === 'streaming') return value;
+  return undefined;
 }
 
 export default function App() {
   const { isDarkMode } = useAppTheme();
-  const [currentView, setCurrentView] = useState<MasterView>(readInitialMasterView);
-  const [settingsTab, setSettingsTab] = useState<string>('general');
+  const initialNav = readInitialMasterNavLocation();
+  const [currentView, setCurrentView] = useState<MasterView>(initialNav.view);
+  const [settingsTab, setSettingsTab] = useState<string>(initialNav.settingsTab ?? 'general');
+  const [archCategory, setArchCategory] = useState<string | undefined>(parseArchCategory(initialNav.archCategory));
+  const [hmTab, setHmTab] = useState<'vehicles' | 'eligibility' | 'streaming' | undefined>(parseHmTab(initialNav.hmTab));
   const [billingFocusOrgId, setBillingFocusOrgId] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readSidebarCollapsed);
 
   // Centralized data state - empty by default, loaded from API
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -248,6 +260,72 @@ export default function App() {
 
   // Organization detail
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+  const navigateMaster = useCallback(
+    (view: MasterView, opts?: { settingsTab?: string; orgId?: string | null; replace?: boolean; keepOrg?: boolean }) => {
+      const next: MasterNavLocationState = {
+        view,
+        settingsTab: opts?.settingsTab ?? (view === 'settings' ? settingsTab : undefined),
+        orgId: opts?.orgId ?? (opts?.keepOrg && selectedOrg ? selectedOrg.id : undefined),
+        archCategory: view === 'architektur' ? archCategory : undefined,
+        hmTab: view === 'high-mobility' ? hmTab : undefined,
+      };
+      if (!opts?.keepOrg && view !== 'organizations') {
+        setSelectedOrg(null);
+      }
+      setCurrentView(view);
+      if (opts?.settingsTab) setSettingsTab(opts.settingsTab);
+      pushMasterNavState(next, opts?.replace);
+    },
+    [archCategory, hmTab, selectedOrg, settingsTab],
+  );
+
+  useEffect(() => {
+    const normalized = normalizeMasterNavLocation(window.location.search);
+    setCurrentView(normalized.view);
+    if (normalized.settingsTab) setSettingsTab(normalized.settingsTab);
+    setArchCategory(parseArchCategory(normalized.archCategory));
+    setHmTab(parseHmTab(normalized.hmTab));
+    pushMasterNavState(normalized, true);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const loc = normalizeMasterNavLocation(window.location.search);
+      setCurrentView(loc.view);
+      if (loc.settingsTab) setSettingsTab(loc.settingsTab);
+      setArchCategory(parseArchCategory(loc.archCategory));
+      setHmTab(parseHmTab(loc.hmTab));
+      if (loc.view !== 'organizations' || !loc.orgId) {
+        setSelectedOrg(null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    const orgId = new URLSearchParams(window.location.search).get('orgId');
+    if (currentView === 'organizations' && orgId && organizations.length > 0) {
+      const org = organizations.find((o) => o.id === orgId);
+      if (org) setSelectedOrg(org);
+    }
+  }, [currentView, organizations]);
+
+  const handleToggleSidebarCollapse = useCallback(() => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      return next;
+    });
+  }, []);
+
+  const handleMasterNavigate = useCallback(
+    (view: MasterView, opts?: { settingsTab?: string; replace?: boolean }) => {
+      navigateMaster(view, { settingsTab: opts?.settingsTab, replace: opts?.replace, keepOrg: false });
+    },
+    [navigateMaster],
+  );
 
   const reloadFromApi = async () => {
     try {
@@ -602,13 +680,15 @@ export default function App() {
       <Sidebar
         isDarkMode={isDarkMode}
         currentView={currentView}
-        onViewChange={(view) => { setCurrentView(view); setSelectedOrg(null); }}
         settingsTab={settingsTab}
-        onSettingsTabChange={setSettingsTab}
+        selectedOrgId={selectedOrg?.id ?? null}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
+        onNavigate={handleMasterNavigate}
       />
       )}
       rightPanel={(
-      <RightSidebar isDarkMode={isDarkMode} onViewChange={(view) => { setCurrentView(view as MasterView); }} />
+      <RightSidebar isDarkMode={isDarkMode} onViewChange={(view) => { handleMasterNavigate(view as MasterView); }} />
       )}
     >
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
@@ -620,11 +700,11 @@ export default function App() {
       />
 
       <MasterMfaGate>
-            <TopBar />
+            <TopBar onOpenSettings={() => handleMasterNavigate('settings', { settingsTab: 'general' })} />
 
             {/* DASHBOARD */}
             {currentView === 'dashboard' && (
-              <MasterDashboardView isDarkMode={isDarkMode} onViewChange={(view) => { setCurrentView(view as MasterView); setSelectedOrg(null); }} />
+              <MasterDashboardView isDarkMode={isDarkMode} onViewChange={(view) => { handleMasterNavigate(view as MasterView); }} />
             )}
 
             {/* ORGANIZATIONS */}
@@ -632,7 +712,10 @@ export default function App() {
               <OrganizationsView
                 isDarkMode={isDarkMode}
                 organizations={organizations}
-                onSelectOrg={setSelectedOrg}
+                onSelectOrg={(org) => {
+                  setSelectedOrg(org);
+                  pushMasterNavState({ view: 'organizations', orgId: org.id });
+                }}
                 onAddOrg={handleAddOrg}
                 onUpdateOrg={handleUpdateOrg}
                 onDeleteOrg={handleDeleteOrg}
@@ -643,12 +726,15 @@ export default function App() {
                 org={selectedOrg}
                 orgUsers={getOrgUsers(selectedOrg.id)}
                 orgVehicles={getOrgVehicles(selectedOrg.id)}
-                onBack={() => setSelectedOrg(null)}
+                onBack={() => {
+                  setSelectedOrg(null);
+                  pushMasterNavState({ view: 'organizations' });
+                }}
                 onUpdateOrg={handleUpdateOrg}
                 onOpenBillingCenter={(orgId) => {
                   setBillingFocusOrgId(orgId);
-                  setCurrentView('billing');
-                  const nextSearch = `?masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
+                  navigateMaster('billing');
+                  const nextSearch = `?view=billing&masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
                   window.history.pushState(null, '', `${window.location.pathname}${nextSearch}`);
                 }}
               />
@@ -702,9 +788,7 @@ export default function App() {
               <PlatformHealthView
                 isDarkMode={isDarkMode}
                 onViewChange={(view, tab) => {
-                  setCurrentView(view as MasterView);
-                  if (tab) setSettingsTab(tab);
-                  setSelectedOrg(null);
+                  handleMasterNavigate(view as MasterView, { settingsTab: tab });
                 }}
               />
             )}
@@ -717,7 +801,7 @@ export default function App() {
                   const org = organizations.find((o) => o.id === orgId);
                   if (org) {
                     setSelectedOrg(org);
-                    setCurrentView('organizations');
+                    pushMasterNavState({ view: 'organizations', orgId });
                   }
                 }}
               />
@@ -761,27 +845,15 @@ export default function App() {
 
             {/* ARCHITEKTUR */}
             {currentView === 'architektur' && (
-              <ArchitekturView isDarkMode={isDarkMode} />
+              <ArchitekturView
+                isDarkMode={isDarkMode}
+                initialCategory={archCategory as 'overview' | 'signals' | 'workers' | 'health' | 'trips' | 'connectivity' | 'frontend' | 'modules' | 'integrations' | undefined}
+              />
             )}
 
             {/* CHANGES */}
             {currentView === 'changes' && (
               <ChangesView isDarkMode={isDarkMode} />
-            )}
-
-            {/* HEALTH TRACKING */}
-            {currentView === 'health-tracking' && (
-              <HealthTrackingView isDarkMode={isDarkMode} />
-            )}
-
-            {/* TRIP DETECTION LOGIC */}
-            {currentView === 'trip-detection-logic' && (
-              <TripDetectionLogicView isDarkMode={isDarkMode} />
-            )}
-
-            {/* PERFORMANCE LOGIC */}
-            {currentView === 'performance-logic' && (
-              <PerformanceLogicView isDarkMode={isDarkMode} />
             )}
 
             {/* VEHICLE LOGBOOK */}
@@ -790,11 +862,7 @@ export default function App() {
             )}
 
             {currentView === 'high-mobility' && (
-              <HighMobilityDataView />
-            )}
-
-            {currentView === 'hm-compatibility' && (
-              <HighMobilityCompatibilityView isDarkMode={isDarkMode} />
+              <HighMobilityDataView initialTab={hmTab} />
             )}
 
       </MasterMfaGate>

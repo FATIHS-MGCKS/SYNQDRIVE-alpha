@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-canonical-navigation-shell-2026-08-18',
+    version: '4.9.905',
+    title: 'Master Admin — Kanonische Navigation & Sidebar-Shell',
+    summary: [
+      'Sidebar auf 16 Produktnav-Items + Control-Footer refactored (Blueprint UI-1.3).',
+      'Navigation Registry (`master/navigation/*`), URL-Sync (`?view=`), Legacy-Redirects, Collapsed Rail, Mobile Drawer mit Primary Pins.',
+      'Permission-aware Nav (Billing-only Rail), operative Badges via `api.admin.dashboard` / DIMO stats / MFA status.',
+      'Quick Actions und Configuration-Gruppe entfernt; Settings/Account/Logout in Footer.',
+    ],
+    reason: 'Production-ready Control-Plane-Navigation gemäß IA/Sidebar-Audits und kanonischem Blueprint.',
+    previousBehavior: '25 Sidebar-Items, 80% in default-collapsed Groups, keine URL-Sync, keine Collapsed Rail, Quick Actions ohne Create-Flow, totale TopBar-Settings.',
+    details: 'frontend/src/master/navigation/*, Sidebar.tsx, MasterAccountSheet.tsx, App.tsx URL sync, nav-utils focus-visible, TopBar settings wired.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T03:00:00.000Z',
+  },
+  {
     id: 'evaluations-e9d-forecast-runtime-deferred-2026-08-17',
     version: '4.9.904',
     title: 'V4.9.904 — Evaluations E9A.1/E9D-DEFER: measured Production certification + runtime deferral',

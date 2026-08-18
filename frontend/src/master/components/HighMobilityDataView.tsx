@@ -1245,11 +1245,12 @@ function StreamingTab() {
 
 // ── Main View ───────────────────────────────────────────────────────────────
 
-interface Props {
+interface HighMobilityDataViewProps {
+  initialTab?: 'vehicles' | 'eligibility' | 'streaming';
 }
 
-export function HighMobilityDataView() {
-  const [tab, setTab] = useState<'vehicles' | 'eligibility' | 'streaming'>('vehicles');
+export function HighMobilityDataView({ initialTab = 'vehicles' }: HighMobilityDataViewProps) {
+  const [tab, setTab] = useState<'vehicles' | 'eligibility' | 'streaming'>(initialTab);
   const [addVin, setAddVin] = useState('');
   const [addBrand, setAddBrand] = useState('');
   const [showAdd, setShowAdd] = useState(false);

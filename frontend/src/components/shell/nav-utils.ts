@@ -8,14 +8,16 @@ export const navSectionLabelClass =
 export function navItemClass(active: boolean, collapsed = false): string {
   if (collapsed) {
     return cn(
-      'w-8 h-8 flex items-center justify-center rounded-md transition-all duration-200 ease-out relative group',
+      'w-9 h-9 flex items-center justify-center rounded-md transition-all duration-200 ease-out relative group',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
       active
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)] active'
         : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
     );
   }
   return cn(
-    'sq-nav-rail w-full flex items-center gap-2.5 px-2.5 py-[8px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-semibold tracking-[-0.003em] group',
+    'sq-nav-rail w-full flex items-center gap-2.5 px-2.5 py-[8px] min-h-[36px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-semibold tracking-[-0.003em] group',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
     active
       ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active ring-1 ring-[color:var(--brand-soft)] shadow-[var(--shadow-1)]'
       : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-[1px]',
@@ -35,7 +37,8 @@ export function subNavItemClass(active: boolean): string {
 /** Collapsible section header button in the sidebar. */
 export function navSectionHeaderClass(isOpen: boolean, isActive: boolean): string {
   return cn(
-    'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer group transition-all duration-150',
+    'w-full flex items-center justify-between px-2.5 py-1.5 min-h-[36px] rounded-lg cursor-pointer group transition-all duration-150',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
     isActive
       ? 'bg-[color:var(--brand-soft)]/70 text-[color:var(--brand-ink)]'
       : isOpen

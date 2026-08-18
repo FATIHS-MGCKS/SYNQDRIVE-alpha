@@ -20,6 +20,7 @@ interface TopBarProps {
   /** @deprecated theme is global via AppThemeProvider */
   isDarkMode?: boolean;
   setIsDarkMode?: (value: boolean) => void;
+  onOpenSettings?: () => void;
 }
 
 function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
@@ -30,7 +31,7 @@ function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
   );
 }
 
-export function TopBar(_props: TopBarProps) {
+export function TopBar({ onOpenSettings }: TopBarProps) {
   const { preference, cycleThemePreference } = useAppTheme();
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(languages[1]);
@@ -72,7 +73,13 @@ export function TopBar(_props: TopBarProps) {
         <OperatorEntryButton />
         <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
 
-        <button className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground">
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground disabled:opacity-40"
+          disabled={!onOpenSettings}
+          aria-label="Einstellungen"
+        >
           <Settings className="w-4 h-4" />
         </button>
 
