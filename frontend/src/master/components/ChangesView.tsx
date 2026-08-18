@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-dashboard-blueprint-ui42-2026-08-18',
+    version: '4.9.907',
+    title: 'Master Admin — Kanonisches Dashboard Blueprint (UI-4.2)',
+    summary: [
+      'Spezifikation `docs/ui/master-admin-canonical-dashboard-blueprint.md`: Control-Plane-Overview mit Status Hero, Active Incidents, kompaktem Platform Status, Domain Summaries (Billing, Connectivity, Queues, Resilience).',
+      'Above-the-fold: Plattformzustand, Problemzahl, betroffene Orgs, Domain-Chips — keine Vanity-KPIs.',
+      'Datenvertrag: kanonische APIs (`platform-health`, `billing/overview`); neue Endpoints `dashboard/operational`, `ops/resilience-status`, `connectivity/platform-summary` als Backend-Prerequisites.',
+      'Remove/Merge-Matrix: 9-KPI-Grid, irreführende Connected Vehicles, Dashboard-MRR, Alerts-Card → Incident-Liste; Business Context collapsed.',
+    ],
+    reason: 'Phase UI-4.2: verbindliche IA und visuelle Hierarchie vor Dashboard-Implementierung (Basis: Deep Audit UI-4.1).',
+    previousBehavior: 'Plattform-Übersicht mit Growth-KPIs, synthetischen Alerts ohne Drilldown, kein kanonisches Health/Billing auf dem Dashboard.',
+    details: 'docs/ui/master-admin-canonical-dashboard-blueprint.md; architecture/MASTER_ADMIN_DASHBOARD_BLUEPRINT_2026-08-18.md — keine Implementierung.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:15:00.000Z',
+  },
+  {
     id: 'master-admin-page-framework-ui3-2026-08-18',
     version: '4.9.906',
     title: 'Master Admin — Kanonisches Page Framework (UI-3)',
