@@ -17,7 +17,8 @@ export const MASTER_ADMIN_SMOKE_READONLY_CHECKS: MasterAdminSmokeReadonlyCheck[]
   { id: 'D-ops-incidents', workflow: 'D', method: 'GET', path: '/api/v1/admin/ops/incidents' },
   { id: 'E-security-attention', workflow: 'E', method: 'GET', path: '/api/v1/admin/security/attention-summary' },
   { id: 'E-security-users', workflow: 'E', method: 'GET', path: '/api/v1/admin/security/users' },
-  { id: 'F-integrations', workflow: 'F', method: 'GET', path: '/api/v1/admin/platform-integrations/overview' },
+  { id: 'F-integrations-directory', workflow: 'F', method: 'GET', path: '/api/v1/admin/platform-integrations/directory' },
+  { id: 'F-integrations-attention', workflow: 'F', method: 'GET', path: '/api/v1/admin/platform-integrations/attention-summary' },
 ];
 
 export interface MasterAdminSmokeLoginResult {
