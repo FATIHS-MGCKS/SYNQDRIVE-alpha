@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
+import { AuthApiModule } from '@modules/auth/auth.module';
 import { PlatformAdminController } from './platform-admin.controller';
 import { SecurityGovernanceController } from './security-governance.controller';
 import { SecurityGovernanceService } from './security-governance.service';
@@ -26,6 +27,7 @@ import { PlatformIntegrationsService } from './platform-integrations.service';
 
 @Module({
   imports: [
+    AuthApiModule,
     DimoModule,
     VehicleIntelligenceModule,
     HealthModule,
