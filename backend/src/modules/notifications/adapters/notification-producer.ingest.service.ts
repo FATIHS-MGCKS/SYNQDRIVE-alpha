@@ -16,6 +16,7 @@ import {
 } from './rental-health-notification.projector';
 import {
   SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES,
+  legacyServiceOverdueFingerprint,
   serviceComplianceSourceFingerprint,
 } from './service-compliance-notification.projector';
 import type {
@@ -49,6 +50,8 @@ const DEFERRABLE_HEALTH_SEVERITIES = new Set<NotificationSeverity>([
   NotificationSeverity.WARNING,
   NotificationSeverity.CRITICAL,
 ]);
+
+const SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
 
 const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
   Math.max(
@@ -492,21 +495,13 @@ export class NotificationProducerIngestService {
 
     await this.ingestServiceComplianceSources(organizationId, runId, sources);
 
-    const activeNotifications = await this.repository.listNotifications({
+    await this.reconcileLegacyServiceOverdueFingerprints(organizationId, runId, sources);
+
+    const activeNotifications = await this.listAllActiveServiceComplianceNotifications(
       organizationId,
-      status: ACTIVE_NOTIFICATION_STATUSES,
-      entityType: NotificationEntityType.VEHICLE,
-      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
-    });
+    );
 
     for (const notification of activeNotifications) {
-      if (
-        !SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES.includes(
-          notification.eventType as (typeof SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES)[number],
-        )
-      ) {
-        continue;
-      }
       if (activeFingerprints.has(notification.fingerprint)) continue;
 
       const withinClearGrace =
@@ -594,6 +589,64 @@ export class NotificationProducerIngestService {
 
   stationShortageFingerprint(organizationId: string, stationId: string): string {
     return buildRegistryFingerprint(organizationId, 'STATION_SHORTAGE', stationId).canonical;
+  }
+
+  private async listAllActiveServiceComplianceNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [...SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES],
+        limit: SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE,
+        offset,
+      });
+      results.push(...page);
+      if (page.length < SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE) break;
+      offset += SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE;
+    }
+
+    return results;
+  }
+
+  /**
+   * Idempotent reconciliation for pre-P2.1 SERVICE_OVERDUE rows using legacy `overdue` fingerprint.
+   * When canonical `service_overdue` is active, resolve any parallel legacy row for the same vehicle.
+   */
+  private async reconcileLegacyServiceOverdueFingerprints(
+    organizationId: string,
+    runId: string,
+    sources: ServiceComplianceAdapterSource[],
+  ): Promise<void> {
+    const canonicalActiveVehicleIds = new Set(
+      sources
+        .filter((s) => s.eventType === 'SERVICE_OVERDUE' && !s.cleared)
+        .map((s) => s.vehicleId),
+    );
+
+    for (const vehicleId of canonicalActiveVehicleIds) {
+      const legacyFp = legacyServiceOverdueFingerprint(organizationId, vehicleId);
+      const legacyActive = await this.repository.findAnyActiveByFingerprint(
+        organizationId,
+        legacyFp,
+      );
+      if (!legacyActive) continue;
+
+      try {
+        await this.core.resolveNotificationByFingerprint({
+          organizationId,
+          fingerprint: legacyFp,
+        });
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Legacy SERVICE_OVERDUE reconcile failed for ${vehicleId}: ${(err as Error).message}`,
+        );
+      }
+    }
   }
 
   private adapterContext(organizationId: string, sourceRef: string, runId?: string) {

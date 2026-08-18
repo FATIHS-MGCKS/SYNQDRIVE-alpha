@@ -1,13 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
-import { projectVehicleHealthWarnings } from '@modules/notifications/adapters/rental-health-notification.projector';
-import { projectServiceComplianceWarnings } from '@modules/notifications/adapters/service-compliance-notification.projector';
-import { RentalHealthService } from '@modules/rental-health/rental-health.service';
-import { ServiceComplianceService } from '@modules/vehicle-intelligence/service-compliance/service-compliance.service';
-import { DtcService } from '@modules/vehicle-intelligence/dtc/dtc.service';
-import { TireHealthAlertService } from '@modules/vehicle-intelligence/tires/tire-health-alert.service';
-import { BrakeHealthAlertService } from '@modules/vehicle-intelligence/brakes/brake-health-alert.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
@@ -74,11 +67,6 @@ export class BusinessInsightsService {
     pickupOverdue: PickupOverdueDetector,
     drivingAssessmentDeviceQuality: DrivingAssessmentDeviceQualityDetector,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
-    @Optional() private readonly rentalHealth?: RentalHealthService,
-    @Optional() private readonly dtcService?: DtcService,
-    @Optional() private readonly tireHealthAlerts?: TireHealthAlertService,
-    @Optional() private readonly brakeHealthAlerts?: BrakeHealthAlertService,
-    @Optional() private readonly serviceCompliance?: ServiceComplianceService,
     @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {
     this.detectors = [
@@ -241,14 +229,6 @@ export class BusinessInsightsService {
       } catch (excludeErr: any) {
         this.logger.warn(
           `Notification V2 excluded resolve failed for org ${organizationId}: ${excludeErr?.message ?? excludeErr}`,
-        );
-      }
-
-      try {
-        await this.syncVehicleHealthNotifications(organizationId, run.id);
-      } catch (healthIngestErr: any) {
-        this.logger.warn(
-          `Notification V2 vehicle health sync failed for org ${organizationId}: ${healthIngestErr?.message ?? healthIngestErr}`,
         );
       }
 
@@ -426,116 +406,5 @@ export class BusinessInsightsService {
       );
     }
     return policy.enabledTypes.includes(detector.type);
-  }
-
-  /**
-   * Batch-sync Rental Health V1 module warnings into V2 notifications (DTC per code,
-   * battery/tires/brakes per vehicle). Runs after each insights evaluation pass.
-   */
-  private async syncVehicleHealthNotifications(
-    organizationId: string,
-    runId: string,
-  ): Promise<void> {
-    if (!this.notificationIngest || !this.rentalHealth || !this.dtcService) return;
-
-    const vehicles = await this.prisma.vehicle.findMany({
-      where: { organizationId },
-      select: {
-        id: true,
-        licensePlate: true,
-        make: true,
-        model: true,
-        homeStationId: true,
-        mileageKm: true,
-        lastServiceDate: true,
-        lastServiceOdometerKm: true,
-        serviceIntervalManufacturerKm: true,
-        serviceIntervalManufacturerMonths: true,
-        lastTuvDate: true,
-        nextTuvDate: true,
-        lastBokraftDate: true,
-        nextBokraftDate: true,
-      },
-    });
-
-    const BATCH = 10;
-    const allHealthSources = [];
-    const allComplianceSources = [];
-
-    for (let i = 0; i < vehicles.length; i += BATCH) {
-      const slice = vehicles.slice(i, i + BATCH);
-      const batchResults = await Promise.all(
-        slice.map(async (vehicle) => {
-          const label =
-            vehicle.licensePlate?.trim() ||
-            `${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim() ||
-            vehicle.id;
-          try {
-            const [health, activeDtcs, complianceEval] = await Promise.all([
-              this.rentalHealth!.getVehicleHealth(organizationId, vehicle.id),
-              this.dtcService!.findActive(vehicle.id),
-              this.serviceCompliance
-                ? this.serviceCompliance.evaluateCompliance(vehicle.id, {
-                    lastTuvDate: vehicle.lastTuvDate,
-                    nextTuvDate: vehicle.nextTuvDate,
-                    lastBokraftDate: vehicle.lastBokraftDate,
-                    nextBokraftDate: vehicle.nextBokraftDate,
-                  })
-                : Promise.resolve(null),
-            ]);
-            const rentalSources = projectVehicleHealthWarnings(
-              vehicle.id,
-              label,
-              health,
-              activeDtcs,
-            );
-            const tireSources = this.tireHealthAlerts
-              ? await this.tireHealthAlerts.listOpenAlertNotificationSources({
-                  organizationId,
-                  vehicleId: vehicle.id,
-                  label,
-                })
-              : [];
-            const brakeSources = this.brakeHealthAlerts
-              ? await this.brakeHealthAlerts.listOpenAlertNotificationSources({
-                  organizationId,
-                  vehicleId: vehicle.id,
-                  label,
-                })
-              : [];
-            const complianceSources =
-              complianceEval != null
-                ? projectServiceComplianceWarnings(vehicle, complianceEval)
-                : [];
-            return {
-              health: [...rentalSources, ...tireSources, ...brakeSources],
-              compliance: complianceSources,
-            };
-          } catch (err) {
-            this.logger.warn(
-              `Vehicle health notification projection failed for ${vehicle.id}: ${(err as Error).message}`,
-            );
-            return { health: [], compliance: [] };
-          }
-        }),
-      );
-      for (const result of batchResults) {
-        allHealthSources.push(...result.health);
-        allComplianceSources.push(...result.compliance);
-      }
-    }
-
-    await this.notificationIngest.syncVehicleHealthWarnings(
-      organizationId,
-      runId,
-      allHealthSources,
-    );
-    if (this.serviceCompliance) {
-      await this.notificationIngest.syncServiceComplianceWarnings(
-        organizationId,
-        runId,
-        allComplianceSources,
-      );
-    }
   }
 }

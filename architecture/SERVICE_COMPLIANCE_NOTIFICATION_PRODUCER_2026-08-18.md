@@ -1,20 +1,23 @@
 # Service/Compliance Notification V2 Producer (P2.1)
 
 **Date:** 2026-08-18  
-**Status:** Implemented — live producer, no UI cutover
+**Status:** Hardening pass — live producer, overdue-only semantics, BI-independent trigger. **YELLOW / NOT READY FOR UI CUTOVER**
 
 ## Problem
 
-Rental-blocking TÜV, BOKraft, and HM service overdue states were computed canonically in `ServiceComplianceService` and reflected in `rental-health` `blocking_reasons`, but V2 notifications were only reachable via DashboardInsight backfill — no live ingest.
+Rental-blocking TÜV, BOKraft, and HM service overdue states are computed canonically in `ServiceComplianceService` and reflected in `rental-health` `blocking_reasons`, but V2 notifications were initially wired through `BusinessInsightsService.runForOrganization()` — which exits early when `policy.enabled === false`.
 
-## Architecture
+## Architecture (post-hardening)
 
 ```
-ServiceComplianceService.evaluateCompliance()
+NotificationEvaluationService.executeRun()     ← canonical runtime trigger
+  (scheduled / debounced / boot via BusinessInsightsScheduler)
         ↓
-buildComplianceInsightCandidates()   ← single shared signal builder
+VehicleHealthNotificationSyncService.syncForOrganization()
         ↓
-projectServiceComplianceWarnings()
+ServiceComplianceService.evaluateCompliance()  (per vehicle)
+        ↓
+projectServiceComplianceOverdueNotifications()   ← true overdue only
         ↓
 ServiceComplianceNotificationAdapter (shadowModeOnly: false)
         ↓
@@ -23,31 +26,62 @@ NotificationProducerIngestService.syncServiceComplianceWarnings()
 NotificationCoreService → OPEN / REOPEN / RESOLVE
 ```
 
-**Not:** DashboardInsight → Notification (legacy insight path remains for display/tasks only).
+**Not:** `Business Insights enabled → vehicle health notifications`  
+**Not:** DashboardInsight → Notification (insight path remains for display/tasks only)
 
-## Events
+`BusinessInsightsService` may still run detectors and publish DashboardInsights when policy is enabled; it no longer owns fleet-readiness notification sync.
 
-| eventType | conditionCode | Blocking when |
-|-----------|---------------|---------------|
-| TUV_OVERDUE | tuv_overdue | overdue (CRITICAL) |
-| BOKRAFT_OVERDUE | bokraft_overdue | overdue (CRITICAL) |
-| SERVICE_OVERDUE | service_overdue | HM tracked + CRITICAL severity |
+## Events (P2.1 scope — overdue only)
 
-Warning window (due soon) emits WARNING severity — does not block rental.
+| eventType | conditionCode | Emitted when |
+|-----------|---------------|--------------|
+| TUV_OVERDUE | tuv_overdue | `tuvBokraft.tuvOverdue === true` |
+| BOKRAFT_OVERDUE | bokraft_overdue | `tuvBokraft.bokraftOverdue === true` |
+| SERVICE_OVERDUE | service_overdue | HM tracked + `nextService.severity === 'CRITICAL'` (and TÜV/BOKraft not already overdue) |
 
-## Trigger
+**Excluded from P2.1:** warning/due-soon windows (`WARNING` severity, imminent TÜV/BOKraft). Those remain in Business Insights / operational tasks — not projected as `*_OVERDUE` V2 events.
 
-`BusinessInsightsService.syncVehicleHealthNotifications()` — after each BI evaluation pass, batch per org fleet.
+## Canonical trigger
+
+| Layer | Component |
+|-------|-----------|
+| Scheduler | `BusinessInsightsScheduler` (cron + boot stagger) |
+| Queue | `NOTIFICATION_EVALUATION` BullMQ queue |
+| Runtime | `NotificationEvaluationService.executeRun()` |
+| Producer | `VehicleHealthNotificationSyncService` |
+
+Fleet-readiness sync runs on **every** evaluation pass, regardless of tenant insight policy.
+
+## Rental-blocking source of truth
+
+Single shared policy: `evaluateServiceComplianceRentalBlocking()` in  
+`service-compliance-rental-blocking.policy.ts`
+
+Used by:
+- `RentalHealthService.collectBlockingReasons()`
+- `projectServiceComplianceOverdueNotifications()` (`blocksRental` metadata)
+
+**Note:** `NextServiceComplianceDto.blocksRental` remains `false` even on CRITICAL — historical API contract for HM service module display. Rental blocking uses the shared policy above, not that DTO field.
 
 ## Lifecycle
 
-Fleet sweep resolve mirrors `syncVehicleHealthWarnings` — stale OPEN rows cleared via SUCCESS ingest after `VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS` (default 6h).
+Fleet sweep uses **eventType-filtered pagination** (`TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE`, page size 500) — not the generic vehicle-health sweep limit.
 
-## Coexistence
+Stale OPEN rows cleared via SUCCESS ingest after `VEHICLE_HEALTH_NOTIFICATION_CLEAR_GRACE_MS` (default 6h).
 
-- `ComplianceOperationalDetector` + DashboardInsight unchanged (display/tasks)
-- `insight-candidate.mapper` SERVICE_OVERDUE conditionCode aligned to `service_overdue`
-- Legacy backfill rows with `overdue` fingerprint: monitor; separate migration if needed
+Full OPEN → idempotent repeat → RESOLVE → REOPEN proven for all three event types in `service-compliance-notification.spec.ts`.
+
+## Legacy `overdue` fingerprint
+
+Pre-P2.1 `insight-candidate.mapper` mapped `SERVICE_OVERDUE` → conditionCode `overdue`. DashboardInsight backfill could therefore persist V2 rows:
+
+`orgId|SERVICE_OVERDUE|VEHICLE|vehicleId|overdue|v1`
+
+Live P2.1 producer uses `service_overdue`. Reconciliation in `reconcileLegacyServiceOverdueFingerprints()` resolves active legacy rows by fingerprint when canonical `service_overdue` is active for the same vehicle (idempotent, tenant-scoped).
+
+## Known technical debt (P2.1)
+
+Per vehicle, sync still calls both `RentalHealthService.getVehicleHealth()` and `ServiceComplianceService.evaluateCompliance()` — duplicate snapshots of compliance state. Follow-up: single evaluation snapshot → rental-health projection + notification projection.
 
 ## Out of scope (P2.1)
 
@@ -55,4 +89,4 @@ SERVICE_WINDOW, HM_SERVICE_NO_TRACKING open path, vehicle_alerts, BLOCKED_VEHICL
 
 ## Audit
 
-`docs/audits/fleet-readiness-notification-parity-2026-08.md` — overall YELLOW, NOT READY FOR UI CUTOVER.
+`docs/audits/fleet-readiness-notification-parity-2026-08.md` — overall **YELLOW**, **NOT READY FOR UI CUTOVER**, **READY FOR P2.2** after hardening gates.

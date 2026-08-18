@@ -101,6 +101,7 @@ export interface ListNotificationsFilter {
   entityType?: NotificationEntityType;
   entityId?: string;
   fingerprint?: string;
+  eventTypes?: string[];
   limit?: number;
   offset?: number;
 }
@@ -291,6 +292,7 @@ export class NotificationRepository {
       ...(filter.entityType ? { entityType: filter.entityType } : {}),
       ...(filter.entityId ? { entityId: filter.entityId } : {}),
       ...(filter.fingerprint ? { fingerprint: filter.fingerprint } : {}),
+      ...(filter.eventTypes?.length ? { eventType: { in: filter.eventTypes } } : {}),
     };
 
     return this.prisma.notification.findMany({

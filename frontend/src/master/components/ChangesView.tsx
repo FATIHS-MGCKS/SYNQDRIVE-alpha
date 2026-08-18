@@ -40,18 +40,18 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.920',
     title: 'Service/Compliance Notification V2 Producer (P2.1)',
     summary: [
-      'Live V2 Producer für `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` aus kanonischem `ServiceComplianceService.evaluateCompliance()`.',
-      '`ServiceComplianceNotificationAdapter` + `projectServiceComplianceWarnings` — keine parallele Compliance-Policy; shared `buildComplianceInsightCandidates`.',
-      'OPEN / REOPEN / RESOLVE via `syncServiceComplianceWarnings` + Fleet-Sweep (6h Grace) nach BI-Evaluation.',
-      'Fingerprint: Registry `tuv_overdue`, `bokraft_overdue`, `service_overdue` (v1). `insight-candidate.mapper` SERVICE_OVERDUE auf `service_overdue` vereinheitlicht.',
-      'Audit: YELLOW — NOT READY FOR UI CUTOVER (andere P0-Gaps offen).',
+      'P2.1 Hardening: Live V2 Producer für `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` — nur echte Overdue-Zustände (kein due-soon als *_OVERDUE).',
+      '`VehicleHealthNotificationSyncService` — kanonischer Fleet-Readiness-Sync, unabhängig von Business-Insights `policy.enabled`. Trigger: `NotificationEvaluationService`.',
+      'Shared Blocking-Policy: `evaluateServiceComplianceRentalBlocking` für RentalHealth + Notification-Metadaten.',
+      'Legacy `overdue`-Fingerprint-Reconciliation für pre-P2.1 Backfill-Rows; eventType-filtered Sweep-Pagination.',
+      'Audit: YELLOW — NOT READY FOR UI CUTOVER; READY FOR P2.2.',
     ],
     reason:
-      'Schließt P0 Producer-Lücke: Rental-blocking Compliance-Zustände materialisieren zuverlässig als V2 Notifications — unabhängig von DashboardInsight.',
+      'Correctness/Architecture-Hardening: Notification-Correctness darf nicht von BI-Policy abhängen; due-soon darf nicht als OVERDUE materialisiert werden.',
     previousBehavior:
-      'Compliance-Notifications nur über DashboardInsight/Backfill; BI sync rief keinen Live-Ingest für TÜV/BOKraft/Service auf.',
+      'Sync hing an `BusinessInsightsService.runForOrganization()` (früher Exit bei disabled policy); Projector emittierte auch WARNING/due-soon als *_OVERDUE.',
     details:
-      'service-compliance-notification.projector.ts, service-compliance-notification.adapter.ts, notification-producer.ingest.service.ts, business-insights.service.ts, insight-candidate.mapper.ts, service-compliance-notification.spec.ts.',
+      'vehicle-health-notification-sync.service.ts, service-compliance-rental-blocking.policy.ts, service-compliance-notification.projector.ts, notification-evaluation.service.ts, notification-producer.ingest.service.ts, service-compliance-notification.spec.ts.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-08-18T23:30:00.000Z',

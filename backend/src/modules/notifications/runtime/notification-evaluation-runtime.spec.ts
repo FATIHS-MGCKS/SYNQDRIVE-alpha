@@ -114,6 +114,7 @@ describe('NotificationEvaluationService — concurrency & recovery', () => {
       lockService,
       observability,
       insightsService as any,
+      undefined,
     );
   });
 

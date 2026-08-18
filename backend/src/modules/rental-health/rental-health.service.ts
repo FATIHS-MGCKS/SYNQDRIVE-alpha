@@ -17,6 +17,7 @@ import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/service-compliance/service-compliance.types';
 import { ServiceComplianceService } from '../vehicle-intelligence/service-compliance/service-compliance.service';
+import { evaluateServiceComplianceRentalBlocking } from '../vehicle-intelligence/service-compliance/service-compliance-rental-blocking.policy';
 import {
   dtcBandToHealthState,
   isSafetyCriticalDtcBand,
@@ -718,21 +719,31 @@ export class RentalHealthService {
   ): string[] {
     const reasons: string[] = [];
 
-    if (complianceEval?.tuvBokraft.tuvOverdue) {
-      const days = complianceEval.tuvBokraft.tuvRemainingDays;
-      reasons.push(
-        days != null
-          ? `TÜV abgelaufen seit ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`
-          : 'TÜV abgelaufen',
-      );
-    }
-    if (complianceEval?.tuvBokraft.bokraftOverdue) {
-      const days = complianceEval.tuvBokraft.bokraftRemainingDays;
-      reasons.push(
-        days != null
-          ? `BOKraft abgelaufen seit ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`
-          : 'BOKraft abgelaufen',
-      );
+    if (complianceEval) {
+      const complianceBlocking = evaluateServiceComplianceRentalBlocking(complianceEval);
+
+      if (complianceBlocking.tuvOverdue) {
+        const days = complianceEval.tuvBokraft.tuvRemainingDays;
+        reasons.push(
+          days != null
+            ? `TÜV abgelaufen seit ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`
+            : 'TÜV abgelaufen',
+        );
+      }
+      if (complianceBlocking.bokraftOverdue) {
+        const days = complianceEval.tuvBokraft.bokraftRemainingDays;
+        reasons.push(
+          days != null
+            ? `BOKraft abgelaufen seit ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`
+            : 'BOKraft abgelaufen',
+        );
+      }
+      if (
+        complianceBlocking.serviceOverdueBlocksRental &&
+        modules.service_compliance.state === 'critical'
+      ) {
+        reasons.push(`Service: ${modules.service_compliance.reason}`);
+      }
     }
 
     const rentalBlockingObservation = openComplaints.find((c) => c.blocksRental === true);
@@ -742,14 +753,6 @@ export class RentalHealthService {
 
     if (rentalBlockingDamages.length > 0) {
       reasons.push('Schaden blockiert Vermietung');
-    }
-
-    if (
-      modules.service_compliance.state === 'critical' &&
-      !complianceEval?.tuvBokraft.tuvOverdue &&
-      !complianceEval?.tuvBokraft.bokraftOverdue
-    ) {
-      reasons.push(`Service: ${modules.service_compliance.reason}`);
     }
 
     if (hmAi?.limpModeActive === true) {

@@ -14,7 +14,9 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
-  projectServiceComplianceWarnings,
+  projectServiceComplianceOverdueNotifications,
+  legacyServiceOverdueFingerprint,
+  LEGACY_SERVICE_OVERDUE_CONDITION_CODE,
   serviceComplianceSourceFingerprint,
 } from './service-compliance-notification.projector';
 import type { ServiceComplianceEvaluation } from '@modules/vehicle-intelligence/service-compliance/service-compliance.types';
@@ -121,13 +123,20 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       organizationId: string;
       status?: NotificationStatus[];
       entityType?: string;
+      eventTypes?: string[];
+      limit?: number;
+      offset?: number;
     }) => {
-      return [...notifications.values()].filter((n) => {
+      const matches = [...notifications.values()].filter((n) => {
         if (n.organizationId !== filter.organizationId) return false;
         if (filter.status?.length && !filter.status.includes(n.status)) return false;
         if (filter.entityType && n.entityType !== filter.entityType) return false;
+        if (filter.eventTypes?.length && !filter.eventTypes.includes(n.eventType)) return false;
         return true;
       });
+      const offset = filter.offset ?? 0;
+      const limit = filter.limit ?? matches.length;
+      return matches.slice(offset, offset + limit);
     }),
     runTransaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     createNotification: jest.fn(async (data: any) => {
@@ -261,6 +270,28 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     return eval_;
   }
 
+  function tuvDueSoonEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = goodEvaluation();
+    eval_.tuvBokraft = {
+      ...eval_.tuvBokraft,
+      tuvValidTill: '2026-09-01T00:00:00.000Z',
+      tuvRemainingDays: 14,
+      tuvOverdue: false,
+    };
+    return eval_;
+  }
+
+  function bokraftDueSoonEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = goodEvaluation();
+    eval_.tuvBokraft = {
+      ...eval_.tuvBokraft,
+      bokraftValidTill: '2026-09-01T00:00:00.000Z',
+      bokraftRemainingDays: 20,
+      bokraftOverdue: false,
+    };
+    return eval_;
+  }
+
   function serviceDueSoonEvaluation(): ServiceComplianceEvaluation {
     const eval_ = goodEvaluation();
     eval_.nextService = {
@@ -274,9 +305,43 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     return eval_;
   }
 
-  describe('projector fingerprints', () => {
+  async function runFullLifecycle(
+    sourcesFactory: () => ReturnType<typeof projectServiceComplianceOverdueNotifications>,
+    expectedEventType: string,
+  ) {
+    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', []);
+    expect(openNotifications()).toHaveLength(0);
+
+    const overdueSources = sourcesFactory();
+    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', overdueSources);
+    expect(openNotifications()).toHaveLength(1);
+    const first = openNotifications()[0];
+    expect(first.eventType).toBe(expectedEventType);
+
+    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-3', overdueSources);
+    expect(openNotifications()).toHaveLength(1);
+    expect(openNotifications()[0].id).toBe(first.id);
+    expect(openNotifications()[0].occurrenceCount).toBeGreaterThanOrEqual(2);
+
+    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-4', []);
+    expect(notifications.get(first.id)?.status).toBe(NotificationStatus.RESOLVED);
+
+    const resolvedRow = notifications.get(first.id);
+    if (resolvedRow) {
+      resolvedRow.resolvedAt = new Date(Date.now() - 20 * 60_000);
+      notifications.set(first.id, resolvedRow);
+    }
+
+    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-5', overdueSources);
+    const reopened = openNotifications();
+    expect(reopened).toHaveLength(1);
+    expect(reopened[0].id).toBe(first.id);
+    expect(reopened[0].status).toBe(NotificationStatus.OPEN);
+  }
+
+  describe('overdue-only projector semantics', () => {
     it('uses registry condition codes for all three event types', () => {
-      const tuv = projectServiceComplianceWarnings(baseVehicle, tuvOverdueEvaluation());
+      const tuv = projectServiceComplianceOverdueNotifications(baseVehicle, tuvOverdueEvaluation());
       expect(tuv).toHaveLength(1);
       expect(tuv[0].eventType).toBe('TUV_OVERDUE');
       expect(tuv[0].severity).toBe('critical');
@@ -289,7 +354,10 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     });
 
     it('SERVICE_OVERDUE uses service_overdue not legacy overdue', () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, serviceOverdueEvaluation());
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
       expect(sources[0].eventType).toBe('SERVICE_OVERDUE');
       const fp = serviceComplianceSourceFingerprint(ORG_A, sources[0]);
       expect(fp).toContain('service_overdue');
@@ -297,120 +365,178 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     });
 
     it('valid compliance produces no notification sources', () => {
-      expect(projectServiceComplianceWarnings(baseVehicle, goodEvaluation())).toHaveLength(0);
+      expect(projectServiceComplianceOverdueNotifications(baseVehicle, goodEvaluation())).toHaveLength(0);
+    });
+
+    it('TÜV due soon → no TUV_OVERDUE', () => {
+      expect(
+        projectServiceComplianceOverdueNotifications(baseVehicle, tuvDueSoonEvaluation()),
+      ).toHaveLength(0);
+    });
+
+    it('BOKraft due soon → no BOKRAFT_OVERDUE', () => {
+      expect(
+        projectServiceComplianceOverdueNotifications(baseVehicle, bokraftDueSoonEvaluation()),
+      ).toHaveLength(0);
+    });
+
+    it('service due soon → no SERVICE_OVERDUE', () => {
+      expect(
+        projectServiceComplianceOverdueNotifications(baseVehicle, serviceDueSoonEvaluation()),
+      ).toHaveLength(0);
     });
   });
 
   describe('TUV_OVERDUE lifecycle', () => {
-    it('valid → no OPEN; overdue → OPEN; repeat → idempotent; recovery → RESOLVE; re-overdue → REOPEN', async () => {
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', []);
-      expect(openNotifications()).toHaveLength(0);
-
-      const overdueSources = projectServiceComplianceWarnings(baseVehicle, tuvOverdueEvaluation());
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', overdueSources);
-      expect(openNotifications()).toHaveLength(1);
-      const first = openNotifications()[0];
-      expect(first.eventType).toBe('TUV_OVERDUE');
-      expect(first.severity).toBe(NotificationSeverity.CRITICAL);
-      expect(first.entityType).toBe(NotificationEntityType.VEHICLE);
-      expect(first.actionTarget).toMatchObject({ vehicleId: VEH_A, module: 'service' });
-
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-3', overdueSources);
-      expect(openNotifications()).toHaveLength(1);
-      expect(openNotifications()[0].id).toBe(first.id);
-      expect(openNotifications()[0].occurrenceCount).toBeGreaterThanOrEqual(2);
-
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-4', []);
-      expect(notifications.get(first.id)?.status).toBe(NotificationStatus.RESOLVED);
-
-      const resolvedRow = notifications.get(first.id);
-      if (resolvedRow) {
-        resolvedRow.resolvedAt = new Date(Date.now() - 20 * 60_000);
-        notifications.set(first.id, resolvedRow);
-      }
-
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-5', overdueSources);
-      const reopened = openNotifications();
-      expect(reopened).toHaveLength(1);
-      expect(reopened[0].id).toBe(first.id);
-      expect(reopened[0].status).toBe(NotificationStatus.OPEN);
-    });
-  });
-
-  describe('BOKRAFT_OVERDUE lifecycle', () => {
-    it('overdue → OPEN CRITICAL; recovery → RESOLVE', async () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, bokraftOverdueEvaluation());
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', sources);
-      const open = openNotifications();
-      expect(open).toHaveLength(1);
-      expect(open[0].eventType).toBe('BOKRAFT_OVERDUE');
-      expect(open[0].severity).toBe(NotificationSeverity.CRITICAL);
-
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', []);
-      expect(notifications.get(open[0].id)?.status).toBe(NotificationStatus.RESOLVED);
-    });
-  });
-
-  describe('SERVICE_OVERDUE lifecycle', () => {
-    it('overdue critical → OPEN CRITICAL; recovery → RESOLVE', async () => {
-      const overdue = projectServiceComplianceWarnings(baseVehicle, serviceOverdueEvaluation());
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', overdue);
-      const critical = openNotifications()[0];
-      expect(critical.eventType).toBe('SERVICE_OVERDUE');
-      expect(critical.severity).toBe(NotificationSeverity.CRITICAL);
-
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', []);
-      expect(notifications.get(critical.id)?.status).toBe(NotificationStatus.RESOLVED);
-    });
-
-    it('due soon → OPEN WARNING with registry fingerprint', async () => {
-      const dueSoon = projectServiceComplianceWarnings(baseVehicle, serviceDueSoonEvaluation());
-      expect(dueSoon).toHaveLength(1);
-      expect(dueSoon[0].severity).toBe('warning');
-
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-3', dueSoon);
-      const warning = openNotifications()[0];
-      expect(warning.severity).toBe(NotificationSeverity.WARNING);
-      expect(warning.fingerprint).toBe(
-        ingest.serviceComplianceFingerprint(ORG_A, {
-          eventType: 'SERVICE_OVERDUE',
-          vehicleId: VEH_A,
-        }),
+    it('valid → none; overdue → OPEN; repeat → idempotent; recovery → RESOLVE; re-overdue → REOPEN', async () => {
+      await runFullLifecycle(
+        () => projectServiceComplianceOverdueNotifications(baseVehicle, tuvOverdueEvaluation()),
+        'TUV_OVERDUE',
       );
     });
   });
 
-  describe('blocking parity', () => {
+  describe('BOKRAFT_OVERDUE lifecycle', () => {
+    it('valid → none; overdue → OPEN; repeat → idempotent; recovery → RESOLVE; re-overdue → REOPEN', async () => {
+      await runFullLifecycle(
+        () => projectServiceComplianceOverdueNotifications(baseVehicle, bokraftOverdueEvaluation()),
+        'BOKRAFT_OVERDUE',
+      );
+    });
+  });
+
+  describe('SERVICE_OVERDUE lifecycle', () => {
+    it('valid → none; overdue → OPEN; repeat → idempotent; recovery → RESOLVE; re-overdue → REOPEN', async () => {
+      await runFullLifecycle(
+        () => projectServiceComplianceOverdueNotifications(baseVehicle, serviceOverdueEvaluation()),
+        'SERVICE_OVERDUE',
+      );
+    });
+
+    it('due soon ingest → no SERVICE_OVERDUE notification row', async () => {
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', []);
+      expect(openNotifications()).toHaveLength(0);
+    });
+  });
+
+  describe('blocking parity (projector metadata)', () => {
     it('TÜV overdue source blocks rental and opens TUV_OVERDUE', () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, tuvOverdueEvaluation());
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvOverdueEvaluation(),
+      );
       expect(sources[0].blocksRental).toBe(true);
       expect(sources[0].eventType).toBe('TUV_OVERDUE');
     });
 
     it('BOKraft overdue source blocks rental and opens BOKRAFT_OVERDUE', () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, bokraftOverdueEvaluation());
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        bokraftOverdueEvaluation(),
+      );
       expect(sources[0].blocksRental).toBe(true);
       expect(sources[0].eventType).toBe('BOKRAFT_OVERDUE');
     });
 
     it('HM service critical blocks rental and opens SERVICE_OVERDUE', () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, serviceOverdueEvaluation());
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
       expect(sources[0].blocksRental).toBe(true);
       expect(sources[0].eventType).toBe('SERVICE_OVERDUE');
     });
+  });
 
-    it('service due-soon warning does not block rental', () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, serviceDueSoonEvaluation());
-      expect(sources[0].blocksRental).toBe(false);
-      expect(sources[0].severity).toBe('warning');
+  describe('legacy SERVICE_OVERDUE fingerprint reconciliation', () => {
+    it('pre-P2.1 mapper used overdue conditionCode — legacy fingerprint is distinct', () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      expect(legacyFp).toContain(`|${LEGACY_SERVICE_OVERDUE_CONDITION_CODE}|`);
+      const canonicalFp = serviceComplianceSourceFingerprint(ORG_A, {
+        eventType: 'SERVICE_OVERDUE',
+        vehicleId: VEH_A,
+      });
+      expect(legacyFp).not.toBe(canonicalFp);
+    });
+
+    it('canonical SERVICE_OVERDUE ingest resolves parallel legacy overdue row', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-1';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', overdue);
+
+      const open = openNotifications();
+      const canonical = open.find((n) => n.fingerprint === serviceComplianceSourceFingerprint(ORG_A, {
+        eventType: 'SERVICE_OVERDUE',
+        vehicleId: VEH_A,
+      }));
+      expect(canonical).toBeDefined();
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
+      expect(open.filter((n) => n.eventType === 'SERVICE_OVERDUE')).toHaveLength(1);
+    });
+  });
+
+  describe('sweep completeness', () => {
+    it('paginated eventType-filtered sweep resolves all active compliance notifications', async () => {
+      const vehicleB = { ...baseVehicle, id: VEH_B, licensePlate: PLATE_B };
+      const sourcesA = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvOverdueEvaluation(),
+      );
+      const sourcesB = projectServiceComplianceOverdueNotifications(
+        vehicleB,
+        bokraftOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
+      expect(openNotifications()).toHaveLength(2);
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', []);
+      expect(openNotifications()).toHaveLength(0);
+
+      const listCalls = (repository.listNotifications as jest.Mock).mock.calls;
+      const sweepCalls = listCalls.filter(
+        (call) => call[0]?.eventTypes?.includes('TUV_OVERDUE'),
+      );
+      expect(sweepCalls.length).toBeGreaterThan(0);
+      expect(sweepCalls[0][0].eventTypes).toEqual(
+        expect.arrayContaining(['TUV_OVERDUE', 'BOKRAFT_OVERDUE', 'SERVICE_OVERDUE']),
+      );
     });
   });
 
   describe('multi-tenant / vehicle isolation', () => {
     it('same condition on two vehicles → separate notifications', async () => {
       const vehicleB = { ...baseVehicle, id: VEH_B, licensePlate: PLATE_B };
-      const sourcesA = projectServiceComplianceWarnings(baseVehicle, tuvOverdueEvaluation());
-      const sourcesB = projectServiceComplianceWarnings(vehicleB, tuvOverdueEvaluation());
+      const sourcesA = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvOverdueEvaluation(),
+      );
+      const sourcesB = projectServiceComplianceOverdueNotifications(
+        vehicleB,
+        tuvOverdueEvaluation(),
+      );
 
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
       const open = openNotifications();
@@ -419,7 +545,10 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     });
 
     it('same vehicleId in different orgs → no tenant leakage', async () => {
-      const sources = projectServiceComplianceWarnings(baseVehicle, tuvOverdueEvaluation());
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvOverdueEvaluation(),
+      );
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', sources);
       await ingest.syncServiceComplianceWarnings(ORG_B, 'run-1', sources);
 
@@ -430,8 +559,14 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
 
     it('resolve vehicle A does not affect vehicle B', async () => {
       const vehicleB = { ...baseVehicle, id: VEH_B, licensePlate: PLATE_B };
-      const sourcesA = projectServiceComplianceWarnings(baseVehicle, tuvOverdueEvaluation());
-      const sourcesB = projectServiceComplianceWarnings(vehicleB, tuvOverdueEvaluation());
+      const sourcesA = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvOverdueEvaluation(),
+      );
+      const sourcesB = projectServiceComplianceOverdueNotifications(
+        vehicleB,
+        tuvOverdueEvaluation(),
+      );
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
 
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', sourcesB);

@@ -8,6 +8,7 @@ import { RedisService } from '@shared/redis/redis.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { BusinessInsightsService } from '@modules/business-insights/business-insights.service';
+import { VehicleHealthNotificationSyncService } from '../adapters/vehicle-health-notification-sync.service';
 import { RedisDistributedLockService } from '@shared/redis/redis-distributed-lock.service';
 import {
   buildNotificationEvaluationJobId,
@@ -40,6 +41,8 @@ export class NotificationEvaluationService {
     private readonly observability: NotificationEvaluationObservabilityService,
     @Inject(forwardRef(() => BusinessInsightsService))
     private readonly insightsService: BusinessInsightsService,
+    @Optional()
+    private readonly fleetReadinessSync?: VehicleHealthNotificationSyncService,
     @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {}
 
@@ -115,6 +118,8 @@ export class NotificationEvaluationService {
         },
         () => this.insightsService.runForOrganization(job.organizationId, triggerType),
       );
+
+      await this.syncFleetReadinessNotifications(job.organizationId, job.runId);
 
       stats.candidateCount = insightsResult.published;
 
@@ -344,6 +349,25 @@ export class NotificationEvaluationService {
     if (timer) {
       clearInterval(timer);
       this.heartbeatTimers.delete(lockKey);
+    }
+  }
+
+  /**
+   * Canonical fleet-readiness notification producer — independent of Business Insights policy.
+   * Runs on every evaluation pass (scheduled, debounced, boot) via NotificationEvaluationService.
+   */
+  private async syncFleetReadinessNotifications(
+    organizationId: string,
+    runId: string,
+  ): Promise<void> {
+    if (!this.fleetReadinessSync) return;
+
+    try {
+      await this.fleetReadinessSync.syncForOrganization(organizationId, runId);
+    } catch (err) {
+      this.logger.warn(
+        `Fleet readiness notification sync failed for org ${organizationId}: ${(err as Error).message}`,
+      );
     }
   }
 }

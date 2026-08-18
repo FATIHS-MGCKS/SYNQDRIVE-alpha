@@ -4,6 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
+import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
+import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
 import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
@@ -14,6 +16,7 @@ import { StationShortageNotificationAdapter } from './adapters/station-shortage-
 import { LowUtilizationNotificationAdapter } from './adapters/low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './adapters/vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './adapters/service-compliance-notification.adapter';
+import { VehicleHealthNotificationSyncService } from './adapters/vehicle-health-notification-sync.service';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
 import { NotificationEngineConfig } from './notification-engine.config';
@@ -66,6 +69,8 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     ),
     forwardRef(() => BusinessInsightsModule),
     forwardRef(() => WorkflowsModule),
+    forwardRef(() => RentalHealthModule),
+    forwardRef(() => VehicleIntelligenceModule),
   ],
   controllers: [NotificationsController],
   providers: [
@@ -104,6 +109,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     LowUtilizationNotificationAdapter,
     VehicleHealthNotificationAdapter,
     ServiceComplianceNotificationAdapter,
+    VehicleHealthNotificationSyncService,
     NotificationProducerRouter,
     NotificationProducerIngestService,
     NotificationEvaluationObservabilityService,
@@ -139,6 +145,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     LowUtilizationNotificationAdapter,
     VehicleHealthNotificationAdapter,
     ServiceComplianceNotificationAdapter,
+    VehicleHealthNotificationSyncService,
   ],
 })
 export class NotificationsModule {}
