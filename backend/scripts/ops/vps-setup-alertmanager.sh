@@ -67,6 +67,7 @@ fi
 
 mkdir -p "$AM_DIR/templates" "$AM_DIR/data"
 chmod 700 "$AM_DIR/data"
+chown -R 65534:65534 "$AM_DIR/data" 2>/dev/null || chmod 777 "$AM_DIR/data"
 
 cp "$SRC_AM/templates/"*.tmpl "$AM_DIR/templates/" 2>/dev/null || true
 
