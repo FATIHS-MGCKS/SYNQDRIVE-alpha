@@ -109,8 +109,8 @@ p.write_text("\n".join(text) + "\n")
 PY
 curl -sf -X POST http://127.0.0.1:9090/-/reload >/dev/null || docker restart "$PROM_CONTAINER" >/dev/null
 
-wait_for "acceptance alert resolved in prometheus" \
-  "! curl -sf 'http://127.0.0.1:9090/api/v1/alerts' | python3 -c \"import sys,json; d=json.load(sys.stdin); print(any(a.get('labels',{}).get('alertname','').startswith('SynqDriveAlertmanagerAcceptance') and a.get('state')=='firing' for a in d.get('data',{}).get('alerts',[])))\"" \
+wait_for "acceptance alerts resolved in prometheus" \
+  "curl -sf 'http://127.0.0.1:9090/api/v1/alerts' | python3 -c \"import sys,json; d=json.load(sys.stdin); print(not any(a.get('labels',{}).get('alertname','').startswith('SynqDriveAlertmanagerAcceptance') and a.get('state')=='firing' for a in d.get('data',{}).get('alerts',[])))\"" \
   60
 
 # Restart resilience
