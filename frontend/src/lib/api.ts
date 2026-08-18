@@ -5284,6 +5284,39 @@ export const api = {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),
     revenueStats: () => get<any>('/admin/billing/revenue-stats'),
     overview: () => get<any>('/admin/billing/overview'),
+    overviewOperational: () => get<any>('/admin/billing/overview/operational'),
+    subscriptionsOperational: (params?: Record<string, string | number | undefined>) => {
+      const q = params
+        ? '?' +
+          new URLSearchParams(
+            Object.fromEntries(
+              Object.entries(params)
+                .filter(([, v]) => v !== undefined && v !== '')
+                .map(([k, v]) => [k, String(v)]),
+            ),
+          ).toString()
+        : '';
+      return get<any>(`/admin/billing/subscriptions/operational${q}`);
+    },
+    subscriptionOperationalDetail: (organizationId: string) =>
+      get<any>(`/admin/billing/subscriptions/operational/${encodeURIComponent(organizationId)}`),
+    attentionQueue: (params?: Record<string, string | number | undefined>) => {
+      const q = params
+        ? '?' +
+          new URLSearchParams(
+            Object.fromEntries(
+              Object.entries(params)
+                .filter(([, v]) => v !== undefined && v !== '')
+                .map(([k, v]) => [k, String(v)]),
+            ),
+          ).toString()
+        : '';
+      return get<any>(`/admin/billing/attention-queue${q}`);
+    },
+    adminReconciliationDriftsOperational: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/reconciliation/drifts/operational${q}`);
+    },
     organizations: () => get<any[]>('/admin/billing/organizations'),
     adminInvoices: (params?: Record<string, string>) => {
       const q = params ? '?' + new URLSearchParams(params).toString() : '';

@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'master-admin-billing-implementation-ui63-2026-08-18',
+    version: '4.9.910',
+    title: 'Master Admin — Kanonisches Billing (UI-6.3)',
+    summary: [
+      'Backend: `BillingSubscriptionsOperationalService`, `billing-attention.util`, APIs overview/subscriptions/attention/drifts operational.',
+      'Frontend: `master/billing/*` — Overview, Subscription List/Detail, zentrale Status-Chips, kanonische Navigation (6 Bereiche).',
+      'Entfernt: Billing Top-Tabs Payment Methods/Attempts/Refunds; `organizations`/`system-sync` als Billing-Root.',
+      'Reconciliation: angereicherte Drifts mit Org-Name und Lokal/Stripe-Werten; Mobile Cards.',
+      'Acceptance: `docs/ui/master-admin-billing-post-remediation.md`.',
+    ],
+    reason:
+      'Billing Control Center war keine production-ready Ops-Fläche — zweite Wahrheit, Drawer-only Detail, Client-Attention.',
+    previousBehavior:
+      'Voll-Load organizations, Prisma-Status in Liste, 6 Legacy-Tabs inkl. invoices-payments/system-sync, MRR ohne incomplete-Banner.',
+    details:
+      'architecture/MASTER_ADMIN_BILLING_BLUEPRINT_2026-08-18.md (UI-6.3 implemented). Operational list pagination follow-up für Scale.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T05:05:00.000Z',
+  },
+  {
     id: 'master-admin-organizations-implementation-ui53-2026-08-18',
     version: '4.9.909',
     title: 'Master Admin — Kanonisches Organization Management (UI-5.3)',

@@ -738,7 +738,7 @@ export default function App() {
               onOpenBillingCenter={(orgId) => {
                 setBillingFocusOrgId(orgId);
                 navigateMaster('billing');
-                const nextSearch = `?view=billing&masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
+                const nextSearch = `?view=billing&masterBilling=subscriptions&subscriptionId=${encodeURIComponent(orgId)}`;
                 window.history.pushState(null, '', `${window.location.pathname}${nextSearch}`);
               }}
               onNavigateToVehicle={(vehicleId) => {

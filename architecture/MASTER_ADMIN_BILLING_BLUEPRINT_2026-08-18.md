@@ -1,7 +1,7 @@
 # Master Admin Billing Blueprint
 
 **Date:** 2026-08-18  
-**Phase:** UI-6.2 (specification — not implemented)
+**Phase:** UI-6.3 (implemented)
 
 ## Role
 
@@ -28,33 +28,32 @@ Answers: *Is platform billing healthy — and which contract needs attention now
 
 ## Attention model
 
-Server-computed `BillingAttentionSummary` from canonical signals — presentation only, no new billing truth.
+Server-computed `BillingAttentionSummary` via `billing-attention.util.ts` — presentation only.
 
-Codes include: `PAST_DUE`, `PAYMENT_FAILED`, `RECONCILIATION_DRIFT`, `TRIAL_EXPIRING`, `STRIPE_MAPPING_MISSING`, etc.
-
-## Canonical APIs (existing + proposed)
+## Canonical APIs (implemented)
 
 | Domain | API |
 |--------|-----|
-| Overview | `GET /admin/billing/overview` |
-| Subscriptions list | `GET /admin/billing/subscriptions` (**proposed** operational) |
-| Subscription detail | `GET …/subscription/contract`, `overview`, `history` |
-| Mutations | `MasterSubscriptionController` (`POST/PATCH …/subscription/*`) |
+| Overview ops | `GET /admin/billing/overview/operational` |
+| Subscriptions list | `GET /admin/billing/subscriptions/operational` |
+| Subscription detail | `GET /admin/billing/subscriptions/operational/:organizationId` |
+| Attention queue | `GET /admin/billing/attention-queue` |
+| Mutations | `MasterSubscriptionController` |
 | Invoices | `GET /admin/billing/invoices` |
-| Reconciliation | `GET/POST /admin/billing/reconciliation/*` |
-| Pricing | `GET/POST /admin/billing/pricebooks/*`, catalog-products |
+| Reconciliation | `GET /admin/billing/reconciliation/drifts/operational` |
+| Pricing | `GET/POST /admin/billing/pricebooks/*` |
 
-## IA changes (summary)
+## Frontend module
 
-- MERGE `system-sync` + reconciliation → **Abgleich**
-- MOVE payment attempts/refunds/credit notes → invoice detail
-- REMOVE payment-methods top tab, client org full-load, Prisma status in UI
-- RENAME `organizations` → `subscriptions`
+`frontend/src/master/billing/` — types, hooks, status chips, overview/subscriptions/detail views.
 
-## Spec
+## Spec & reports
 
-`docs/ui/master-admin-canonical-billing-blueprint.md`
+- Blueprint: `docs/ui/master-admin-canonical-billing-blueprint.md`
+- Audit: `docs/ui/master-admin-billing-deep-audit.md`
+- Post-remediation: `docs/ui/master-admin-billing-post-remediation.md`
 
-## Audit basis
+## Known follow-ups
 
-`docs/ui/master-admin-billing-deep-audit.md` (UI-6.1, ~49/100)
+- True DB-level pagination for operational subscription filters at scale
+- Unified privileged-action reason dialog across all mutations

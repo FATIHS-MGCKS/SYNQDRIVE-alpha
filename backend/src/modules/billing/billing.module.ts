@@ -71,6 +71,7 @@ import { StripePaymentLedgerService } from './stripe-payment-ledger.service';
 import { BillingPaymentLedgerService } from './billing-payment-ledger.service';
 import { BillingManualPaymentService } from './billing-manual-payment.service';
 import { BillingReconciliationService } from './billing-reconciliation.service';
+import { BillingSubscriptionsOperationalService } from './billing-subscriptions-operational.service';
 import { BillingMonitoringService } from './billing-monitoring.service';
 import { StripeWebhookProcessorService } from './stripe-webhook.processor';
 
@@ -141,6 +142,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingPaymentLedgerService,
     BillingManualPaymentService,
     BillingReconciliationService,
+    BillingSubscriptionsOperationalService,
     BillingMonitoringService,
     StripePaymentLedgerService,
     StripeWebhookProcessorService,
@@ -209,6 +211,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingPaymentLedgerService,
     BillingManualPaymentService,
     BillingReconciliationService,
+    BillingSubscriptionsOperationalService,
     BillingMonitoringService,
     StripePaymentLedgerService,
     StripeWebhookProcessorService,
