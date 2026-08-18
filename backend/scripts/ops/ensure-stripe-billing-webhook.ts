@@ -16,11 +16,15 @@ const ENV_PATH = process.env.SYNQDRIVE_BACKEND_ENV_PATH ?? '/opt/synqdrive/share
 
 function loadEnvFile(filePath: string) {
   if (!fs.existsSync(filePath)) return;
-  for (const line of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && !process.env[m[1]]) {
-      process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+  try {
+    for (const line of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) {
+        process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+      }
     }
+  } catch {
+    // Release .env may be root-only when invoked via non-root SSH user.
   }
 }
 
@@ -41,8 +45,8 @@ function upsertEnvVar(filePath: string, key: string, value: string) {
 }
 
 async function main() {
-  loadEnvFile(path.resolve(__dirname, '..', '..', '.env'));
   loadEnvFile(ENV_PATH);
+  loadEnvFile(path.resolve(__dirname, '..', '..', '.env'));
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey?.startsWith('sk_test_')) {
