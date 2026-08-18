@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import {
   fetchOperationalDashboard,
-  getCachedOperationalDashboard,
+  getOperationalDashboardSnapshot,
   invalidateOperationalDashboard,
   OPERATIONAL_REFRESH_MS,
+  OPERATIONAL_STALE_MS,
   subscribeOperationalDashboard,
 } from './operational-cache';
 import type { MasterDashboardOperationalDto } from './types';
@@ -17,14 +18,17 @@ export interface UseMasterDashboardOperationalResult {
 }
 
 export function useMasterDashboardOperational(): UseMasterDashboardOperationalResult {
-  const snapshot = useSyncExternalStore(
+  const storeSnapshot = useSyncExternalStore(
     subscribeOperationalDashboard,
-    () => getCachedOperationalDashboard(),
-    () => getCachedOperationalDashboard(),
+    getOperationalDashboardSnapshot,
+    getOperationalDashboardSnapshot,
   );
 
-  const [loading, setLoading] = useState(!snapshot.data);
+  const [loading, setLoading] = useState(!storeSnapshot.data);
   const [error, setError] = useState<string | null>(null);
+
+  const isStale =
+    storeSnapshot.data != null && Date.now() - storeSnapshot.fetchedAt > OPERATIONAL_STALE_MS;
 
   const load = useCallback(async (force = false) => {
     setLoading(true);
@@ -50,10 +54,10 @@ export function useMasterDashboardOperational(): UseMasterDashboardOperationalRe
   }, [load]);
 
   return {
-    data: snapshot.data,
-    loading: loading && !snapshot.data,
+    data: storeSnapshot.data,
+    loading: loading && !storeSnapshot.data,
     error,
-    isStale: snapshot.isStale,
+    isStale,
     refresh,
   };
 }
