@@ -30,7 +30,8 @@ import {
   Globe,
 } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, ErrorState, StatusChip, StatusDot, SectionHeader, DetailDrawer, tokenAuthStatusTone, workerMonitoringTone, monitoringSystemHealthTone, pollLogStatusTone } from '../../components/patterns';
+import { DataTable, MetricCard, DataCard, EmptyState, ErrorState, StatusChip, StatusDot, SectionHeader, DetailDrawer, tokenAuthStatusTone, workerMonitoringTone, monitoringSystemHealthTone, pollLogStatusTone } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import type { DataTableColumn } from '../../components/patterns';
 import { api } from '../../lib/api';
 
@@ -470,7 +471,13 @@ function TokenAuthHealthPanel({ tokenHealth,
 
 // ─── Main Monitoring View ──────────────────────────────────────────
 
-export function SystemMonitoringView() {
+export function SystemMonitoringView({
+  embedded = false,
+  initialFocus,
+}: {
+  embedded?: boolean;
+  initialFocus?: 'poll-logs' | 'tokens';
+} = {}) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);
   const [workers, setWorkers] = useState<any[]>([]);
@@ -577,8 +584,9 @@ export function SystemMonitoringView() {
   const healthTone = monitoringSystemHealthTone(health);
 
   return (
-    <div className="space-y-4 pb-6">
-      <PageHeader
+    <>
+      {!embedded && (
+      <MasterPageHeader
         title="System Monitoring"
         icon={<Activity className="w-4 h-4" />}
         status={<StatusChip tone={healthTone}>{health}</StatusChip>}
@@ -604,6 +612,7 @@ export function SystemMonitoringView() {
           </div>
         }
       />
+      )}
 
       {loading && !summary ? (
         <div className={`${CARD} p-12 flex items-center justify-center`}>
@@ -942,6 +951,6 @@ export function SystemMonitoringView() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

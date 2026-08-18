@@ -1,7 +1,6 @@
 import { Building2, Search, Plus, Upload, Sparkles, MapPin, Table2, Map, X, ExternalLink, Phone, Mail, Globe, ChevronRight, User, Send, CheckCircle, AlertTriangle, FileText, ArrowRight, Users, ArrowUpDown } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import {
-  PageHeader,
   MetricCard,
   DataCard,
   EmptyState,
@@ -13,6 +12,7 @@ import {
   prospectStatusTone,
   prospectPriorityTone,
 } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import { toast } from 'sonner';
 
 /* ── Design-system token helpers ── */
@@ -191,8 +191,8 @@ export function ProspectsView() {
   const thClass = `text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none text-muted-foreground hover:text-foreground`;
 
   return (
-    <div className="space-y-4 pb-6">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Prospects"
         icon={<Building2 className="w-4 h-4" />}
         actions={
@@ -591,6 +591,6 @@ export function ProspectsView() {
               </>
             )}
       </FormDialog>
-    </div>
+    </>
   );
 }

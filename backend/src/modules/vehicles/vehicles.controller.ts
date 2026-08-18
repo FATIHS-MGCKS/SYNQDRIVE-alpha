@@ -34,6 +34,8 @@ import {
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
 import { VehicleDetailObservabilityService } from './observability/vehicle-detail-observability.service';
+import { VehiclesOperationalService } from './vehicles-operational.service';
+import type { VehiclesOperationalQueryDto } from './vehicles-operational.types';
 
 interface VehicleStatusAuthRequest {
   user?: { id?: string };
@@ -67,6 +69,7 @@ export class VehiclesController {
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
+    private readonly vehiclesOperational: VehiclesOperationalService,
     @Optional() private readonly vehicleDetailObservability?: VehicleDetailObservabilityService,
   ) {}
 
@@ -76,6 +79,55 @@ export class VehiclesController {
   @Roles('MASTER_ADMIN')
   async findAllPlatform(@Query() query: PaginationParams) {
     return this.vehiclesService.findAllPlatform(query);
+  }
+
+  @Get('admin/vehicles/operational/overview')
+  @Roles('MASTER_ADMIN')
+  async vehiclesOperationalOverview() {
+    return this.vehiclesOperational.getOverview();
+  }
+
+  @Get('admin/vehicles/operational/attention-queue')
+  @Roles('MASTER_ADMIN')
+  async vehiclesAttentionQueue(@Query('limit') limit?: string) {
+    const parsed = limit ? Number.parseInt(limit, 10) : 8;
+    return this.vehiclesOperational.getAttentionQueue(Number.isFinite(parsed) ? parsed : 8);
+  }
+
+  @Get('admin/vehicles/operational')
+  @Roles('MASTER_ADMIN')
+  async findAllVehiclesOperational(@Query() query: VehiclesOperationalQueryDto) {
+    return this.vehiclesOperational.findAllOperational(query);
+  }
+
+  @Get('admin/vehicles/import-preflight')
+  @Roles('MASTER_ADMIN')
+  async vehiclesImportPreflight(
+    @Query('organizationId') organizationId: string,
+    @Query('dimoVehicleId') dimoVehicleId: string,
+  ) {
+    return this.vehiclesOperational.importPreflight(organizationId, dimoVehicleId);
+  }
+
+  @Get('admin/vehicles/unregistered/:dimoVehicleId/operational')
+  @Roles('MASTER_ADMIN')
+  async getUnregisteredVehicleOperational(@Param('dimoVehicleId') dimoVehicleId: string) {
+    return this.vehiclesOperational.getUnregisteredDetail(dimoVehicleId);
+  }
+
+  @Get('admin/vehicles/:vehicleId/operational')
+  @Roles('MASTER_ADMIN')
+  async getVehicleOperational(@Param('vehicleId') vehicleId: string) {
+    return this.vehiclesOperational.getOperationalDetail(vehicleId);
+  }
+
+  @Get('admin/vehicles/:vehicleId/operational/diagnostics')
+  @Roles('MASTER_ADMIN')
+  async getVehicleOperationalDiagnostics(
+    @Param('vehicleId') vehicleId: string,
+    @Query('organizationId') organizationId: string,
+  ) {
+    return this.vehiclesOperational.getDiagnostics(vehicleId, organizationId);
   }
 
   @Get('admin/vehicles/:vehicleId')

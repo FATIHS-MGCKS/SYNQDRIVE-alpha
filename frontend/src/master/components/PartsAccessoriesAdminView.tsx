@@ -28,7 +28,8 @@ import {
   Eye,
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
 import { api } from '../../lib/api';
 import type {
   PartsProviderSummary,
@@ -78,34 +79,30 @@ function formatDate(iso: string | null): string {
 export function PartsAccessoriesAdminView() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
+  const partsTabs: MasterPageTab<TabId>[] = TABS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    icon: <t.icon className="w-4 h-4" />,
+  }));
+
   return (
-    <div className="space-y-6 pb-8">
-      <PageHeader
+    <>
+      <MasterPageHeader
         title="Parts & Accessories — Admin"
         icon={<Truck className="w-4 h-4" />}
+        tabs={partsTabs}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        tabsAriaLabel="Parts & Accessories"
+        tabsTestIdPrefix="parts-admin"
       />
-
-      <div className={TAB_BAR}>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-              activeTab === t.id ? TAB_ACTIVE : TAB_IDLE
-            }`}
-          >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'providers' && <ProvidersTab />}
       {activeTab === 'disclosures' && <DisclosuresTab />}
       {activeTab === 'authlog' && <AuthLogTab />}
       {activeTab === 'health' && <HealthTab />}
-    </div>
+    </>
   );
 }
 

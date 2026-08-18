@@ -60,6 +60,8 @@ import { BillingPaymentLedgerService } from './billing-payment-ledger.service';
 import { BillingManualPaymentService } from './billing-manual-payment.service';
 
 import { BillingReconciliationService } from './billing-reconciliation.service';
+import { BillingSubscriptionsOperationalService } from './billing-subscriptions-operational.service';
+import { BillingSubscriptionsOperationalQueryDto } from './dto/billing-subscriptions-operational.dto';
 
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -178,6 +180,8 @@ export class BillingController {
     private readonly manualPaymentService: BillingManualPaymentService,
 
     private readonly reconciliationService: BillingReconciliationService,
+
+    private readonly operationalSubscriptionsService: BillingSubscriptionsOperationalService,
 
     private readonly prisma: PrismaService,
 
@@ -832,6 +836,86 @@ export class BillingController {
   async getAdminOverview() {
 
     return this.adminService.getOverview();
+
+  }
+
+
+
+  @Get('admin/billing/overview/operational')
+
+  @Roles('MASTER_ADMIN')
+
+  async getAdminOverviewOperational() {
+
+    return this.operationalSubscriptionsService.getOverviewOperational();
+
+  }
+
+
+
+  @Get('admin/billing/subscriptions/operational')
+
+  @Roles('MASTER_ADMIN')
+
+  async listOperationalSubscriptions(@Query() query: BillingSubscriptionsOperationalQueryDto) {
+
+    return this.operationalSubscriptionsService.findAllOperational(query);
+
+  }
+
+
+
+  @Get('admin/billing/subscriptions/operational/:organizationId')
+
+  @Roles('MASTER_ADMIN')
+
+  async getOperationalSubscriptionDetail(@Param('organizationId') organizationId: string) {
+
+    return this.operationalSubscriptionsService.getOperationalDetail(organizationId);
+
+  }
+
+
+
+  @Get('admin/billing/attention-queue')
+
+  @Roles('MASTER_ADMIN')
+
+  async listBillingAttentionQueue(@Query() query: BillingSubscriptionsOperationalQueryDto) {
+
+    return this.operationalSubscriptionsService.findAllOperational({
+
+      ...query,
+
+      attention: query.attention ?? 'yes',
+
+      sort: query.sort ?? 'attention',
+
+    });
+
+  }
+
+
+
+  @Get('admin/billing/reconciliation/drifts/operational')
+
+  @Roles('MASTER_ADMIN')
+
+  async listOperationalReconciliationDrifts(
+
+    @Query('organizationId') organizationId?: string,
+
+    @Query('severity') severity?: string,
+
+  ) {
+
+    return this.operationalSubscriptionsService.findEnrichedDrifts({
+
+      organizationId,
+
+      severity,
+
+    });
 
   }
 

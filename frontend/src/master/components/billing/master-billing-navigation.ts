@@ -1,24 +1,20 @@
 export type MasterBillingSection =
   | 'overview'
-  | 'organizations'
+  | 'subscriptions'
+  | 'invoices'
   | 'pricing'
-  | 'invoices-payments'
-  | 'system-sync'
+  | 'reconciliation'
   | 'audit';
 
-export type MasterBillingInvoicesPaymentsTab =
-  | 'invoices'
-  | 'payment-methods'
-  | 'payment-attempts'
-  | 'refunds'
-  | 'credit-notes';
+/** @deprecated Legacy section ids — mapped to canonical sections */
+export type MasterBillingLegacySection =
+  | 'organizations'
+  | 'invoices-payments'
+  | 'system-sync';
 
-export type MasterBillingSystemSyncTab =
-  | 'stripe-api'
-  | 'webhooks'
-  | 'reconciliation'
-  | 'resend'
-  | 'outbox';
+export type MasterBillingInvoicesTab = 'invoices';
+
+export type MasterBillingReconciliationTab = 'drifts' | 'platform-sync' | 'webhooks';
 
 export type MasterBillingAuditTab =
   | 'contracts'
@@ -36,35 +32,25 @@ export type MasterBillingPricingTab =
 export const MASTER_BILLING_SECTION_PARAM = 'masterBilling';
 export const MASTER_BILLING_SUB_TAB_PARAM = 'masterBillingTab';
 export const MASTER_BILLING_ORG_PARAM = 'orgId';
+export const MASTER_BILLING_SUBSCRIPTION_PARAM = 'subscriptionId';
 
 export const MASTER_BILLING_SECTIONS: Array<{ id: MasterBillingSection; label: string }> = [
   { id: 'overview', label: 'Übersicht' },
-  { id: 'organizations', label: 'Unternehmen & Verträge' },
+  { id: 'subscriptions', label: 'Verträge' },
+  { id: 'invoices', label: 'Rechnungen' },
   { id: 'pricing', label: 'Tarife & Preise' },
-  { id: 'invoices-payments', label: 'Rechnungen & Zahlungen' },
-  { id: 'system-sync', label: 'System & Synchronisation' },
+  { id: 'reconciliation', label: 'Abgleich' },
   { id: 'audit', label: 'Audit' },
 ];
 
-export const MASTER_BILLING_INVOICES_PAYMENTS_TABS: Array<{
-  id: MasterBillingInvoicesPaymentsTab;
+export const MASTER_BILLING_RECONCILIATION_TABS: Array<{
+  id: MasterBillingReconciliationTab;
   label: string;
 }> = [
-  { id: 'invoices', label: 'Rechnungen' },
-  { id: 'payment-methods', label: 'Zahlungsmethoden' },
-  { id: 'payment-attempts', label: 'Zahlungsversuche' },
-  { id: 'refunds', label: 'Refunds' },
-  { id: 'credit-notes', label: 'Credit Notes' },
+  { id: 'drifts', label: 'Abweichungen' },
+  { id: 'platform-sync', label: 'Plattform-Sync' },
+  { id: 'webhooks', label: 'Webhooks' },
 ];
-
-export const MASTER_BILLING_SYSTEM_SYNC_TABS: Array<{ id: MasterBillingSystemSyncTab; label: string }> =
-  [
-    { id: 'stripe-api', label: 'Stripe API' },
-    { id: 'webhooks', label: 'Webhooks' },
-    { id: 'reconciliation', label: 'Reconciliation' },
-    { id: 'resend', label: 'Resend' },
-    { id: 'outbox', label: 'Outbox' },
-  ];
 
 export const MASTER_BILLING_AUDIT_TABS: Array<{ id: MasterBillingAuditTab; label: string }> = [
   { id: 'contracts', label: 'Verträge' },
@@ -83,11 +69,28 @@ export const MASTER_BILLING_PRICING_TABS: Array<{ id: MasterBillingPricingTab; l
 
 const SECTION_IDS = new Set(MASTER_BILLING_SECTIONS.map((section) => section.id));
 
-export function parseMasterBillingSection(value: string | null | undefined): MasterBillingSection {
-  if (value && SECTION_IDS.has(value as MasterBillingSection)) {
+const LEGACY_SECTION_MAP: Record<string, MasterBillingSection> = {
+  organizations: 'subscriptions',
+  'invoices-payments': 'invoices',
+  'system-sync': 'reconciliation',
+};
+
+const LEGACY_SUB_TAB_MAP: Record<string, string> = {
+  'stripe-api': 'platform-sync',
+  reconciliation: 'drifts',
+  'stripe-map': 'stripe',
+};
+
+export function normalizeMasterBillingSection(value: string | null | undefined): MasterBillingSection {
+  if (!value) return 'overview';
+  if (SECTION_IDS.has(value as MasterBillingSection)) {
     return value as MasterBillingSection;
   }
-  return 'overview';
+  return LEGACY_SECTION_MAP[value] ?? 'overview';
+}
+
+export function parseMasterBillingSection(value: string | null | undefined): MasterBillingSection {
+  return normalizeMasterBillingSection(value);
 }
 
 export function parseMasterBillingSubTab<T extends string>(
@@ -95,8 +98,9 @@ export function parseMasterBillingSubTab<T extends string>(
   allowed: readonly T[],
   fallback: T,
 ): T {
-  if (value && allowed.includes(value as T)) {
-    return value as T;
+  const normalized = value ? (LEGACY_SUB_TAB_MAP[value] ?? value) : value;
+  if (normalized && allowed.includes(normalized as T)) {
+    return normalized as T;
   }
   return fallback;
 }
@@ -105,14 +109,21 @@ export interface MasterBillingLocationState {
   section: MasterBillingSection;
   subTab: string | null;
   orgId: string | null;
+  subscriptionId: string | null;
 }
 
 export function readMasterBillingLocation(search = ''): MasterBillingLocationState {
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const rawSection = params.get(MASTER_BILLING_SECTION_PARAM);
+  const rawSubTab = params.get(MASTER_BILLING_SUB_TAB_PARAM);
+  const legacyOrgId = params.get(MASTER_BILLING_ORG_PARAM);
+  const subscriptionId = params.get(MASTER_BILLING_SUBSCRIPTION_PARAM) ?? legacyOrgId;
+
   return {
-    section: parseMasterBillingSection(params.get(MASTER_BILLING_SECTION_PARAM)),
-    subTab: params.get(MASTER_BILLING_SUB_TAB_PARAM),
-    orgId: params.get(MASTER_BILLING_ORG_PARAM),
+    section: normalizeMasterBillingSection(rawSection),
+    subTab: rawSubTab ? (LEGACY_SUB_TAB_MAP[rawSubTab] ?? rawSubTab) : null,
+    orgId: legacyOrgId,
+    subscriptionId,
   };
 }
 
@@ -132,9 +143,17 @@ export function buildMasterBillingSearch(
     params.set(MASTER_BILLING_SUB_TAB_PARAM, input.subTab);
   }
 
+  if (input.subscriptionId === null) {
+    params.delete(MASTER_BILLING_SUBSCRIPTION_PARAM);
+    params.delete(MASTER_BILLING_ORG_PARAM);
+  } else if (input.subscriptionId) {
+    params.set(MASTER_BILLING_SUBSCRIPTION_PARAM, input.subscriptionId);
+    params.delete(MASTER_BILLING_ORG_PARAM);
+  }
+
   if (input.orgId === null) {
     params.delete(MASTER_BILLING_ORG_PARAM);
-  } else if (input.orgId) {
+  } else if (input.orgId && !input.subscriptionId) {
     params.set(MASTER_BILLING_ORG_PARAM, input.orgId);
   }
 
@@ -144,10 +163,10 @@ export function buildMasterBillingSearch(
 
 export function defaultSubTabForSection(section: MasterBillingSection): string | null {
   switch (section) {
-    case 'invoices-payments':
+    case 'invoices':
       return 'invoices';
-    case 'system-sync':
-      return 'stripe-api';
+    case 'reconciliation':
+      return 'drifts';
     case 'audit':
       return 'contracts';
     case 'pricing':
@@ -157,6 +176,11 @@ export function defaultSubTabForSection(section: MasterBillingSection): string |
   }
 }
 
+export function sectionNeedsOperationalData(section: MasterBillingSection): boolean {
+  return section === 'overview' || section === 'subscriptions';
+}
+
+/** @deprecated use sectionNeedsOperationalData */
 export function sectionNeedsCoreData(section: MasterBillingSection): boolean {
-  return section === 'overview' || section === 'organizations' || section === 'invoices-payments';
+  return sectionNeedsOperationalData(section);
 }

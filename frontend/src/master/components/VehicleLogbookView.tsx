@@ -5,6 +5,8 @@ import {
   Battery, Car, Gauge, Fuel, Thermometer, Radio, Wrench, Layers, Navigation,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { MasterPageHeader, type MasterPageTab } from '../shell';
+import { Button } from '../../components/ui/button';
 
 interface Props { isDarkMode: boolean }
 
@@ -96,17 +98,17 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
   // ── Vehicle List ──────────────────────────────────────────────────────
   if (!selectedId) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className={`w-6 h-6 ${d ? 'text-status-info' : 'text-status-info'}`} />
-            <div>
-              <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Vehicle Logbook</h1>
-              <p className={`text-xs ${text3}`}>Per-vehicle telemetry debug &amp; signal trace console</p>
-            </div>
-          </div>
-          <button onClick={fetchVehicles} className={`p-2 rounded-lg ${d ? 'hover:surface-premium' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2}`} /></button>
-        </div>
+      <>
+        <MasterPageHeader
+          title="Vehicle Logbook"
+          description="Per-vehicle telemetry debug & signal trace console"
+          icon={<BookOpen className="w-6 h-6 text-status-info" />}
+          actions={
+            <Button type="button" variant="ghost" size="icon" onClick={fetchVehicles} aria-label="Refresh">
+              <RefreshCw className={`w-4 h-4 ${text2}`} />
+            </Button>
+          }
+        />
 
         <div className="relative">
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${text3}`} />
@@ -159,40 +161,35 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
             {filtered.length === 0 && <p className={`text-center py-8 ${text3}`}>No vehicles found</p>}
           </div>
         )}
-      </div>
+    </>
     );
   }
 
   // ── Detail View ───────────────────────────────────────────────────────
   const ov = detail?.overview;
+  const logbookTabs: MasterPageTab<Tab>[] = TABS.map((t) => ({
+    id: t.key,
+    label: t.label,
+    icon: <t.icon className="w-3.5 h-3.5" />,
+  }));
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => setSelectedId(null)} className={`p-1.5 rounded-lg ${d ? 'hover:surface-premium' : 'hover:bg-gray-100'}`}>
-          <ChevronRight className={`w-4 h-4 rotate-180 ${text2}`} />
-        </button>
-        <BookOpen className={`w-5 h-5 ${d ? 'text-status-info' : 'text-status-info'}`} />
-        <div className="flex-1">
-          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{ov?.licensePlate || 'Loading…'}</h1>
-          <p className={`text-xs ${text3}`}>{[ov?.make, ov?.model, ov?.year].filter(Boolean).join(' ')}{ov?.vin ? ` · ${ov.vin}` : ''}</p>
-        </div>
-        <button onClick={() => fetchDetail(selectedId)} className={`p-2 rounded-lg ${d ? 'hover:surface-premium' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2} ${detailLoading ? 'animate-spin' : ''}`} /></button>
-      </div>
-
-      {/* Tabs */}
-      <div className={`flex gap-1 p-1 rounded-xl ${d ? 'surface-premium' : 'bg-gray-100'} overflow-x-auto`}>
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = activeTab === t.key;
-          return (
-            <button key={t.key} onClick={() => setActiveTab(t.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${active ? (d ? 'bg-status-info-soft text-status-info' : 'surface-premium text-brand shadow-sm') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}>
-              <Icon className="w-3.5 h-3.5" />{t.label}
-            </button>
-          );
-        })}
-      </div>
+    <>
+      <MasterPageHeader
+        variant="context"
+        title={ov?.licensePlate || 'Loading…'}
+        description={`${[ov?.make, ov?.model, ov?.year].filter(Boolean).join(' ')}${ov?.vin ? ` · ${ov.vin}` : ''}`}
+        back={{ onBack: () => setSelectedId(null), label: 'Zurück zur Liste' }}
+        tabs={logbookTabs}
+        activeTabId={activeTab}
+        onTabChange={setActiveTab}
+        tabsAriaLabel="Vehicle Logbook"
+        actions={
+          <Button type="button" variant="ghost" size="icon" onClick={() => fetchDetail(selectedId)} aria-label="Refresh">
+            <RefreshCw className={`w-4 h-4 ${text2} ${detailLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        }
+      />
 
       {detailLoading && !detail && <div className={`text-center py-12 ${text2}`}><RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />Loading logbook data…</div>}
 
@@ -208,7 +205,7 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
           {activeTab === 'raw' && <RawTab d={d} detail={detail} card={card} text1={text1} text2={text2} text3={text3} />}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

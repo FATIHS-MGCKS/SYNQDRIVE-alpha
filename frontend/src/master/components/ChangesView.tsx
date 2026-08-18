@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
+import { MasterPageHeader } from '../shell';
 
 export interface ChangesViewProps {
   isDarkMode: boolean;
@@ -34,6 +35,236 @@ export interface ChangelogEntry {
 const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Vehicle Intelligence', 'Automation'] as const;
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
+  {
+    id: 'master-admin-production-certification-ui-acceptance-2026-08-18',
+    version: '4.9.916',
+    title: 'Master Admin — Final UI Production Certification (UI-ACCEPTANCE)',
+    summary: [
+      'Acceptance-Pass über gesamte Master-Admin-Control-Plane: Route-Matrix, Workflows A–F, 10-Sekunden-Tests, SoT-Zertifizierung, Security/DSGVO/A11y/Responsive/Performance.',
+      'Entscheidung: PRODUCTION READY WITH CONDITIONS (keine P0/P1 UI-Blocker in Hub-Kern).',
+      'Evidenz: 91 Vitest grün, Production Build grün, Live-Route-Gate `/master` → `/login`, Artifacts in `/opt/cursor/artifacts/`.',
+      'Bedingungen: Deploy Convergence-Branch + 1× authentifizierter Staging-Smoke.',
+      'Dokument: `docs/ui/master-admin-final-ui-production-certification.md`.',
+    ],
+    reason: 'Finale Production-Abnahme nach UI-1…UI-FINAL Remediation.',
+    previousBehavior: 'Keine formale Go/No-Go-Zertifizierung über alle Hub-Domänen hinweg.',
+    details:
+      'docs/ui/master-admin-final-ui-production-certification.md; architecture/MASTER_ADMIN_PRODUCTION_CERTIFICATION_2026-08-18.md. Keine Code-Änderungen außer Dokumentation.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T13:20:00.000Z',
+  },
+  {
+    id: 'master-admin-final-consistency-ui-final-2026-08-18',
+    version: '4.9.915',
+    title: 'Master Admin — Final Cross-Page Consistency (UI-FINAL)',
+    summary: [
+      'Drilldowns: `master-drilldown.ts` mit Legacy-Alias-Map + `pushState`; Dashboard/Backend auf kanonische Slugs (`vehicles`, `security-access`, `platform-ops`).',
+      'Navigation: Vehicle-Attention-Badge aus operational overview; HM `integration-outage` aus Integrations-Directory.',
+      'TopBar: dekorative Suche/⌘K/Notifications entfernt; Integrationen-Shortcut + Theme + Logout.',
+      'A11y: Skip-Link in `MasterAdminShell`; Billing-only Deep-Link-Guard.',
+      'Formatter: `formatRelativeDe` zentral in `components/patterns/format-utils.ts`.',
+      'Cleanup: 6 Orphan-Views gelöscht; `IntegrationStatusChips` → `StatusChip`.',
+      'Acceptance: `docs/ui/master-admin-final-consistency-post-remediation.md`.',
+    ],
+    reason: 'Final Cross-Page Audit (UI-FINAL) — Convergence Pass ohne neue Features.',
+    previousBehavior: 'Legacy Drilldown-Slugs, DIMO-Boolean-Badge, `replaceState`, tote Views, drei `formatRelativeDe`-Implementierungen.',
+    details:
+      'frontend/src/master/navigation/master-drilldown.ts; useMasterNavBadges; TopBar; platform-dashboard.service; patterns/format-utils; IntegrationStatusChips; architecture/MASTER_ADMIN_CROSS_PAGE_CONVERGENCE_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T13:10:00.000Z',
+  },
+  {
+    id: 'master-admin-platform-integrations-ui103-2026-08-18',
+    version: '4.9.914',
+    title: 'Master Admin — Integrationen & Plattform (UI-10.3)',
+    summary: [
+      'Backend: `PlatformIntegrationsService` + `/admin/platform-integrations/*` (Directory, Attention, Webhooks, Flags, Detail) mit vier kanonischen Status-Dimensionen.',
+      'Frontend: `master/platform-integrations/PlatformIntegrationsHub` mit 5 Tabs (Übersicht, Integrationen, Webhooks, Plattform-Einstellungen, Änderungsprotokoll).',
+      'Navigation: Sidebar `platform-integrations` ersetzt `settings`; Badge `integration-attention` aus Attention-Summary.',
+      'Legacy-Redirects: `?view=settings` / `settingsTab=email` → Hub-Tabs; Mock General Settings entfernt.',
+      'E-Mail: Plattform-Absender mit Dirty-State, Change Preview, Step-up Save und sicherer Test-Aktion.',
+      'Acceptance: `docs/ui/master-admin-integrations-system-config-post-remediation.md`.',
+    ],
+    reason: 'Globale Integrationen und Systemkonfiguration waren über 8+ Views fragmentiert — Blueprint UI-10.2.',
+    previousBehavior: 'Settings mit Mock General Tab; DIMO/Stripe/E-Mail/Voice ohne Single Pane of Glass; `integration-outage` nur DIMO-Boolean.',
+    details:
+      'backend platform-integrations.*; frontend/src/master/platform-integrations/*; api.ts admin.platformIntegrations; master-nav; App.tsx; Sidebar; architecture/MASTER_ADMIN_PLATFORM_INTEGRATIONS_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T12:00:00.000Z',
+  },
+  {
+    id: 'master-admin-security-governance-ui93-2026-08-18',
+    version: '4.9.913',
+    title: 'Master Admin — Identität & Zugriff (UI-9.3)',
+    summary: [
+      'Backend: `SecurityGovernanceController` + erweitertes Activity-Log (Detail, Export, securityOnly).',
+      'Frontend: `master/security-access/SecurityAccessHub` mit 7 Tabs (Übersicht, Benutzer, Plattform-Admins, Rollen, Audit, Sicherheitsereignisse, Eigene Sicherheit).',
+      'Navigation: Sidebar `security-access` ersetzt `users` + `activity-log`; Badge `security-attention`.',
+      'Legacy-Redirects: `?view=users` / `?view=activity-log` → Hub-Tabs.',
+      'Settings Integrations: Fake DIMO/Stripe Credentials entfernt.',
+    ],
+    reason: 'IAM, MFA, Audit und User-CRUD waren fragmentiert — Blueprint UI-9.2.',
+    previousBehavior: 'Separate Users- und Activity-Log-Views; MFA-Link in Settings; Mock-API-Keys in Integrations.',
+    details:
+      'backend security-governance.*; frontend/src/master/security-access/*; api.ts admin.securityAccess; master-nav; App.tsx; MasterAccountSheet; architecture/MASTER_ADMIN_SECURITY_GOVERNANCE_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T00:00:00.000Z',
+  },
+  {
+    id: 'master-admin-platform-ops-ui83-2026-08-18',
+    version: '4.9.912',
+    title: 'Master Admin — Plattform & Betrieb (UI-8.3)',
+    summary: [
+      'Backend: `PlatformOpsService` + `/admin/ops/*` (Overview, Incidents, Services, Queues, Workers, Schedulers, Infrastructure, Alerts, Resilience, Tools).',
+      'Frontend: `master/platform-ops/PlatformOpsHub` mit 7 Tabs; ersetzt `PlatformHealthView` Routing.',
+      'Alertmanager read-only; Prometheus Host-Metriken; keine zweite Health-Wahrheit im Client.',
+      'Redirects: `platform-health` → `platform-ops`; Settings Monitoring → Diagnostik.',
+      'Acceptance: `docs/ui/master-admin-platform-operations-post-remediation.md`.',
+    ],
+    reason: 'Platform Operations war fragmentiert (Health-Loop, verwaistes Monitoring, kein AM) — Audit UI-8 P0.',
+    previousBehavior: '`platform-health` Root + Settings Monitoring Redirect-Loop; Backup-Drilldown → Architektur.',
+    details:
+      'backend/src/modules/platform-admin/platform-ops*.ts; frontend/src/master/platform-ops/*; App.tsx, master-nav, MasterDashboardView drilldowns; architecture/MASTER_ADMIN_PLATFORM_OPS_2026-08-18.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T00:00:00.000Z',
+  },
+  {
+    id: 'master-admin-connected-vehicles-dimo-ui73-2026-08-18',
+    version: '4.9.911',
+    title: 'Master Admin — Verbundene Fahrzeuge / DIMO (UI-7.3)',
+    summary: [
+      'Backend: `VehiclesOperationalService`, `vehicle-attention.util`, APIs list/overview/detail/attention-queue/import-preflight/diagnostics.',
+      'Frontend: `master/connected-vehicles/*` Hub (Übersicht, Fahrzeuge, Import) ersetzt `PlatformVehiclesView` in App.',
+      'Kein Bulk-Load `listAll(200)` mehr; serverseitige Pagination, kanonische Telemetrie/Connectivity/Attention-Chips.',
+      'Fleet Connection Sidebar entfernt; Legacy-URL redirect → `vehicles` + `cvSection`.',
+      'Acceptance: `docs/ui/master-admin-connected-vehicles-dimo-post-remediation.md`.',
+    ],
+    reason:
+      'Connected Vehicles war fragmentiert mit lokaler Telemetrie-Ableitung und zweiter Wahrheit — Audit P0.',
+    previousBehavior:
+      'PlatformVehiclesView mit clientseitigem Filter, onlineStatus/timeAgo, parallele fleet-connection Page, getrennte DIMO-Tabelle.',
+    details:
+      'Blueprint UI-7.2 umgesetzt. Reassignment bewusst ausgelassen (kein Backend). Enriched filter cap 500 dokumentiert.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T05:35:00.000Z',
+  },
+  {
+    id: 'master-admin-billing-implementation-ui63-2026-08-18',
+    version: '4.9.910',
+    title: 'Master Admin — Kanonisches Billing (UI-6.3)',
+    summary: [
+      'Backend: `BillingSubscriptionsOperationalService`, `billing-attention.util`, APIs overview/subscriptions/attention/drifts operational.',
+      'Frontend: `master/billing/*` — Overview, Subscription List/Detail, zentrale Status-Chips, kanonische Navigation (6 Bereiche).',
+      'Entfernt: Billing Top-Tabs Payment Methods/Attempts/Refunds; `organizations`/`system-sync` als Billing-Root.',
+      'Reconciliation: angereicherte Drifts mit Org-Name und Lokal/Stripe-Werten; Mobile Cards.',
+      'Acceptance: `docs/ui/master-admin-billing-post-remediation.md`.',
+    ],
+    reason:
+      'Billing Control Center war keine production-ready Ops-Fläche — zweite Wahrheit, Drawer-only Detail, Client-Attention.',
+    previousBehavior:
+      'Voll-Load organizations, Prisma-Status in Liste, 6 Legacy-Tabs inkl. invoices-payments/system-sync, MRR ohne incomplete-Banner.',
+    details:
+      'architecture/MASTER_ADMIN_BILLING_BLUEPRINT_2026-08-18.md (UI-6.3 implemented). Operational list pagination follow-up für Scale.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T05:05:00.000Z',
+  },
+  {
+    id: 'master-admin-organizations-implementation-ui53-2026-08-18',
+    version: '4.9.909',
+    title: 'Master Admin — Kanonisches Organization Management (UI-5.3)',
+    summary: [
+      'Neues aggregiertes DTO `GET /admin/organizations/operational` mit serverseitigen Filtern, Attention-Modell, Billing- und Connectivity-Signalen.',
+      '`OrganizationsView` nach Blueprint: DE-UI, 8 kanonische Spalten (ohne MRR/Plan), Mobile Cards, URL-Filter-State, Server-Pagination.',
+      '`OrganizationDetailView` mit 7 Tabs (Übersicht, Benutzer, Fahrzeuge, Abrechnung, Integrationen, Aktivität, Einstellungen), `orgTab` URL, frischer Operational-Fetch.',
+      'Entfernt: Mock Integration/Product-Toggles, Products-Tab, List-Delete, Client-Filter auf 100 Orgs, MRR/Plan-Spalten.',
+      'Danger Zone mit Typed-Name + Pflicht-Reason für Org-Löschung; Billing aus `GET /admin/billing/organizations`.',
+    ],
+    reason:
+      'Organizations war keine enterprise-taugliche Tenant Control Plane — zweite Billing-Wahrheit, fehlende Attention, Mock-Aktionen.',
+    previousBehavior:
+      'EN-Liste mit MRR/Plan, Client-Filter limit 100, Detail aus List-Snapshot, 6 Tabs inkl. Mock Products/Integrations, Delete ohne Reason.',
+    details:
+      'Backend: organizations-operational.service.ts, organization-attention.util.ts, connectivity-summary pro Org. Frontend: master/organizations/* module. Docs: master-admin-organizations-post-remediation.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:50:00.000Z',
+  },
+  {
+    id: 'master-admin-dashboard-implementation-ui44-2026-08-18',
+    version: '4.9.908',
+    title: 'Master Admin — Kanonische Plattform-Übersicht (UI-4.3/4.4)',
+    summary: [
+      'Neues aggregiertes Ops-DTO `GET /admin/dashboard/operational` plus `ops/resilience-status` und `connectivity/platform-summary`.',
+      '`MasterDashboardView` vollständig nach Blueprint: Status Hero, Incidents, Platform Status, Org Attention, Domain Summaries, Support, Activity, Business Context (collapsed).',
+      'Entfernt: 9-KPI Vanity-Grid, irreführende Connected Vehicles, lokale Alert-Health-Ableitung, separates Dashboard-MRR.',
+      'Shared `operational-cache` für Dashboard und Nav-Badges; Telemetrie via `telemetry-freshness.resolver`; Backup `unknown` ohne Observer.',
+      'Tests: Backend 9 Unit, Frontend 18 Vitest-Szenarien. Acceptance: `docs/ui/master-admin-dashboard-post-remediation.md`.',
+    ],
+    reason: 'Production-ready Control Plane Overview — eine Wahrheit, keine Fake-KPIs, operative Klarheit in ≤10 Sekunden.',
+    previousBehavior: 'Growth-KPI-Dashboard mit falsch-positivem Header-Status und ohne kanonische Health/Billing/Queue/Backup-Signale.',
+    details: 'docs/ui/master-admin-dashboard-post-remediation.md; architecture/MASTER_ADMIN_DASHBOARD_BLUEPRINT_2026-08-18.md',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:20:00.000Z',
+  },
+  {
+    id: 'master-admin-dashboard-blueprint-ui42-2026-08-18',
+    version: '4.9.907',
+    title: 'Master Admin — Kanonisches Dashboard Blueprint (UI-4.2)',
+    summary: [
+      'Spezifikation `docs/ui/master-admin-canonical-dashboard-blueprint.md`: Control-Plane-Overview mit Status Hero, Active Incidents, kompaktem Platform Status, Domain Summaries (Billing, Connectivity, Queues, Resilience).',
+      'Above-the-fold: Plattformzustand, Problemzahl, betroffene Orgs, Domain-Chips — keine Vanity-KPIs.',
+      'Datenvertrag: kanonische APIs (`platform-health`, `billing/overview`); neue Endpoints `dashboard/operational`, `ops/resilience-status`, `connectivity/platform-summary` als Backend-Prerequisites.',
+      'Remove/Merge-Matrix: 9-KPI-Grid, irreführende Connected Vehicles, Dashboard-MRR, Alerts-Card → Incident-Liste; Business Context collapsed.',
+    ],
+    reason: 'Phase UI-4.2: verbindliche IA und visuelle Hierarchie vor Dashboard-Implementierung (Basis: Deep Audit UI-4.1).',
+    previousBehavior: 'Plattform-Übersicht mit Growth-KPIs, synthetischen Alerts ohne Drilldown, kein kanonisches Health/Billing auf dem Dashboard.',
+    details: 'docs/ui/master-admin-canonical-dashboard-blueprint.md; architecture/MASTER_ADMIN_DASHBOARD_BLUEPRINT_2026-08-18.md — keine Implementierung.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:15:00.000Z',
+  },
+  {
+    id: 'master-admin-page-framework-ui3-2026-08-18',
+    version: '4.9.906',
+    title: 'Master Admin — Kanonisches Page Framework (UI-3)',
+    summary: [
+      'Neues Modul `frontend/src/master/shell/`: MasterAdminShell, PageContainer, MasterPageHeader, MasterPageTabs, MasterPageSection, MasterTableShell, MasterPageStates, Tokens.',
+      'App.tsx: alle Views in PageContainer (standard/wide/full); globaler RightSidebar-Mount entfernt; `<main id="master-main">` Landmark.',
+      'Alle Master-Admin-Views auf MasterPageHeader migriert; Tabs konsolidiert (Billing, Org Detail, Vehicles, Parts, Insurance, HM, Voice, Logbook, Settings).',
+      'Settings Monitoring-Tab entfernt → Redirect `platform-health`; HM nested scroll entfernt; Shell max-width nach PageContainer verschoben.',
+    ],
+    reason: 'Phase UI-3: gemeinsame Layout-Grundlage für alle Master-Admin-Pages ohne fachliche Einzelpage-Redesigns.',
+    previousBehavior: 'Views mit eigenen max-w, space-y, sq-tab-bar Pills, globalem RightSidebar, Settings embedded SystemMonitoringView, HM inner scroll.',
+    details: 'docs/ui/master-admin-page-framework-post-remediation.md; architecture/MASTER_ADMIN_PAGE_FRAMEWORK_2026-08-18.md; frontend/src/master/shell/*; frontend/src/styles/theme.css master page tokens.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T04:00:00.000Z',
+  },
+  {
+    id: 'master-admin-canonical-navigation-shell-2026-08-18',
+    version: '4.9.905',
+    title: 'Master Admin — Kanonische Navigation & Sidebar-Shell',
+    summary: [
+      'Sidebar auf 16 Produktnav-Items + Control-Footer refactored (Blueprint UI-1.3).',
+      'Navigation Registry (`master/navigation/*`), URL-Sync (`?view=`), Legacy-Redirects, Collapsed Rail, Mobile Drawer mit Primary Pins.',
+      'Permission-aware Nav (Billing-only Rail), operative Badges via `api.admin.dashboard` / DIMO stats / MFA status.',
+      'Quick Actions und Configuration-Gruppe entfernt; Settings/Account/Logout in Footer.',
+    ],
+    reason: 'Production-ready Control-Plane-Navigation gemäß IA/Sidebar-Audits und kanonischem Blueprint.',
+    previousBehavior: '25 Sidebar-Items, 80% in default-collapsed Groups, keine URL-Sync, keine Collapsed Rail, Quick Actions ohne Create-Flow, totale TopBar-Settings.',
+    details: 'frontend/src/master/navigation/*, Sidebar.tsx, MasterAccountSheet.tsx, App.tsx URL sync, nav-utils focus-visible, TopBar settings wired.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-18T03:00:00.000Z',
+  },
   {
     id: 'evaluations-e9d-forecast-runtime-deferred-2026-08-17',
     version: '4.9.904',
@@ -26666,22 +26897,17 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
   };
 
   return (
-    <div className="space-y-4 pb-6">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/30 bg-indigo-500/15">
-          <FileText className="h-5 w-5 text-indigo-400" />
-        </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Changes</h1>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
-              <Code2 className="h-3 w-3" />
-              SynqDrive Code
-            </span>
-          </div>
-          <p className={`mt-1 text-base font-medium ${d ? 'text-gray-400' : 'text-gray-500'}`}>Internal changelog and change journal</p>
-        </div>
-      </div>
+    <>
+      <MasterPageHeader
+        title="Changes"
+        description="Internal changelog and change journal"
+        status={
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
+            <Code2 className="h-3 w-3" />
+            SynqDrive Code
+          </span>
+        }
+      />
 
       <div className={`${card} p-4`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
@@ -26798,6 +27024,6 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
           })}
         </div>
       )}
-    </div>
+    </>
   );
 }

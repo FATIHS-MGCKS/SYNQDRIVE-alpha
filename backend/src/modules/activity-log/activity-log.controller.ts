@@ -42,9 +42,26 @@ export class ActivityLogController {
   @Get('admin/activity-log')
   @Roles('MASTER_ADMIN')
   async findAll(
-    @Query() query: PaginationParams & { entity?: string; action?: string },
+    @Query()
+    query: PaginationParams & {
+      entity?: string;
+      action?: string;
+      organizationId?: string;
+      auditDomain?: string;
+      securityOnly?: string;
+      from?: string;
+      to?: string;
+      actorUserId?: string;
+      search?: string;
+    },
   ) {
     return this.activityLogService.findAll(query);
+  }
+
+  @Get('admin/activity-log/:id')
+  @Roles('MASTER_ADMIN')
+  async findOne(@Param('id') id: string) {
+    return this.activityLogService.findOneDetail(id);
   }
 
   @Get('admin/activity-log/export')

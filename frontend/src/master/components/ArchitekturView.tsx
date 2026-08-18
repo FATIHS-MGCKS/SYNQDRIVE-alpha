@@ -41,15 +41,17 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import {
-  PageHeader,
   StatusChip,
   StatusDot,
+  SectionHeader,
 } from '../../components/patterns';
+import { MasterPageHeader } from '../shell';
 import { navItemClass } from '../../components/shell';
 
 interface ArchitekturViewProps {
   /** @deprecated Theme is token-driven via CSS variables — prop kept for App.tsx compat. */
   isDarkMode?: boolean;
+  initialCategory?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1731,9 +1733,9 @@ function IntegrationsSection() {
 /*  Main export                                                        */
 /* ------------------------------------------------------------------ */
 
-export function ArchitekturView(_props: ArchitekturViewProps) {
-  void _props;
-  const [active, setActive] = useState<CategoryId>('overview');
+export function ArchitekturView({ initialCategory }: ArchitekturViewProps) {
+  const validCategory = CATEGORIES.some((c) => c.id === initialCategory) ? (initialCategory as CategoryId) : 'overview';
+  const [active, setActive] = useState<CategoryId>(validCategory);
   const activeCat = CATEGORIES.find((c) => c.id === active)!;
 
   const renderContent = () => {
@@ -1751,7 +1753,12 @@ export function ArchitekturView(_props: ArchitekturViewProps) {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 lg:flex-row">
+    <>
+      <MasterPageHeader
+        title="Architektur"
+        description="SynqDrive system architecture documentation"
+      />
+      <div className="flex h-full flex-col gap-6 lg:flex-row">
       <nav className="surface-premium sticky top-4 w-full shrink-0 self-start p-2 lg:w-56">
         <div className="px-3 pb-3 pt-2">
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Architecture</span>
@@ -1776,12 +1783,10 @@ export function ArchitekturView(_props: ArchitekturViewProps) {
       </nav>
 
       <div className="min-w-0 flex-1">
-        <PageHeader
-          title={activeCat.label}
-          className="mb-5"
-        />
+        <SectionHeader title={activeCat.label} className="mb-5" />
         {renderContent()}
       </div>
     </div>
+    </>
   );
 }

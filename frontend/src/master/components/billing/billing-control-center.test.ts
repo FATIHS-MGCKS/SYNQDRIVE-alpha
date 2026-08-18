@@ -19,6 +19,9 @@ vi.mock('../../../lib/api', async (importOriginal) => {
       billing: {
         ...actual.api.billing,
         overview: vi.fn(),
+        overviewOperational: vi.fn(),
+        attentionQueue: vi.fn(),
+        subscriptionsOperational: vi.fn(),
         organizations: vi.fn(),
         pricebooks: vi.fn(),
         adminInvoices: vi.fn(),
@@ -57,6 +60,34 @@ describe('Master billing navigation', () => {
       reconciliationDrifts: 0,
       failedEmailDeliveries: 0,
       pricingConfigured: true,
+    });
+    vi.mocked(api.billing.overviewOperational).mockResolvedValue({
+      billingHealth: 'healthy',
+      billingHealthLabel: 'Billing gesund',
+      activeSubscriptions: 2,
+      trialingSubscriptions: 1,
+      pastDueSubscriptions: 0,
+      openReconciliationDrifts: 0,
+      failedPayments: 0,
+      trialsExpiringCount: 0,
+      webhookFailures: 0,
+      missingPaymentMethods: 0,
+      openInvoices: 0,
+      reconciliationLastRunAt: null,
+      lastSuccessfulWebhookAt: null,
+      loadedAt: new Date().toISOString(),
+      mrr: null,
+      arr: null,
+      mrrIncomplete: true,
+      mrrIncompleteReason: 'PER_ORG_PRICE_NOT_ASSIGNED',
+    });
+    vi.mocked(api.billing.attentionQueue).mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 25, totalPages: 0 },
+    });
+    vi.mocked(api.billing.subscriptionsOperational).mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 25, totalPages: 0 },
     });
     vi.mocked(api.billing.organizations).mockResolvedValue([]);
     vi.mocked(api.billing.pricebooks).mockResolvedValue([]);
@@ -114,10 +145,10 @@ describe('Master billing navigation', () => {
     });
 
     await waitForHook(() =>
-      Boolean(document.querySelector('[data-testid="master-billing-section-pricing"][aria-selected="true"]')),
+      Boolean(document.querySelector('[data-testid="master-billing-section-tab-pricing"][aria-selected="true"]')),
     );
 
-    expect(document.querySelector('[data-testid="master-billing-section-pricing"]')?.getAttribute('aria-selected')).toBe(
+    expect(document.querySelector('[data-testid="master-billing-section-tab-pricing"]')?.getAttribute('aria-selected')).toBe(
       'true',
     );
 
@@ -141,7 +172,7 @@ describe('Master billing navigation', () => {
     );
 
     const auditTab = document.querySelector(
-      '[data-testid="master-billing-section-audit"]',
+      '[data-testid="master-billing-section-tab-audit"]',
     ) as HTMLButtonElement;
 
     await act(async () => {
@@ -173,12 +204,12 @@ describe('Master billing navigation', () => {
     );
 
     await act(async () => {
-      (document.querySelector('[data-testid="master-billing-section-pricing"]') as HTMLButtonElement).click();
+      (document.querySelector('[data-testid="master-billing-section-tab-pricing"]') as HTMLButtonElement).click();
     });
     await waitForHook(() => window.location.search.includes('masterBilling=pricing'));
 
     await act(async () => {
-      (document.querySelector('[data-testid="master-billing-section-audit"]') as HTMLButtonElement).click();
+      (document.querySelector('[data-testid="master-billing-section-tab-audit"]') as HTMLButtonElement).click();
     });
     await waitForHook(() => window.location.search.includes('masterBilling=audit'));
 
@@ -189,7 +220,7 @@ describe('Master billing navigation', () => {
     await waitForHook(
       () =>
         document
-          .querySelector('[data-testid="master-billing-section-pricing"]')
+          .querySelector('[data-testid="master-billing-section-tab-pricing"]')
           ?.getAttribute('aria-selected') === 'true',
     );
 
@@ -199,7 +230,7 @@ describe('Master billing navigation', () => {
     await waitForHook(() => window.location.search.includes('masterBilling=audit'));
     await waitForHook(
       () =>
-        document.querySelector('[data-testid="master-billing-section-audit"]')?.getAttribute('aria-selected') ===
+        document.querySelector('[data-testid="master-billing-section-tab-audit"]')?.getAttribute('aria-selected') ===
         'true',
     );
 

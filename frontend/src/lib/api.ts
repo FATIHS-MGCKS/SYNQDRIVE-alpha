@@ -3477,6 +3477,10 @@ export const api = {
   },
   admin: {
     dashboard: () => get<any>('/admin/dashboard'),
+    dashboardOperational: () => get<import('../master/dashboard/types').MasterDashboardOperationalDto>('/admin/dashboard/operational'),
+    resilienceStatus: () => get<import('../master/dashboard/types').ResilienceStatusDto>('/admin/ops/resilience-status'),
+    connectivityPlatformSummary: () =>
+      get<import('../master/dashboard/types').ConnectivityPlatformSummaryDto>('/admin/connectivity/platform-summary'),
     orgStats: () => get<any>('/admin/stats/organizations'),
     revenueStats: () => get<any>('/admin/stats/revenue'),
     prune: () => post<{ message: string }>('/admin/prune', {}),
@@ -3503,25 +3507,189 @@ export const api = {
       queues: () => get<any[]>('/admin/monitoring/queues'),
     },
     platformHealth: () => get<any>('/admin/platform-health'),
+    platformOps: {
+      overview: () => get<import('../master/platform-ops/types').PlatformOpsOverviewDto>('/admin/ops/overview'),
+      incidents: (params?: { page?: number; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.page != null) q.set('page', String(params.page));
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<{ incidents: import('../master/platform-ops/types').PlatformOpsIncidentDto[]; meta: { total: number; page: number; limit: number; totalPages: number }; generatedAt: string; isStale: boolean }>(`/admin/ops/incidents${suffix}`);
+      },
+      incident: (id: string) => get<import('../master/platform-ops/types').PlatformOpsIncidentDto>(`/admin/ops/incidents/${id}`),
+      services: () => get<{ groups: Record<string, import('../master/platform-ops/types').PlatformOpsServiceSummaryDto[]>; generatedAt: string; isStale: boolean; moduleErrors: Record<string, string> }>('/admin/ops/services'),
+      service: (serviceId: string) => get<import('../master/platform-ops/types').PlatformOpsServiceDetailDto>(`/admin/ops/services/${serviceId}`),
+      queues: () => get<any>('/admin/ops/queues'),
+      workers: () => get<any>('/admin/ops/workers'),
+      schedulers: () => get<any>('/admin/ops/schedulers'),
+      infrastructure: () => get<any>('/admin/ops/infrastructure-summary'),
+      alerts: () => get<any>('/admin/ops/alerts'),
+      resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
+      tools: () => get<any>('/admin/ops/tools'),
+    },
     email: {
       getSettings: () => get<PlatformEmailSettingsAdminDto>('/admin/email/settings'),
       updateSettings: (payload: {
         defaultFromEmail: string;
         defaultFromName: string;
         defaultReplyToEmail?: string | null;
+        reason?: string;
       }) => put<PlatformEmailSettingsAdminDto>('/admin/email/settings', payload),
+      sendTest: (payload: { toEmail: string; reason: string }) =>
+        post<{
+          success: boolean;
+          status: string;
+          provider: string;
+          providerMessageId: string | null;
+          correlationId: string | null;
+          sentAt: string;
+          errorMessage: string | null;
+        }>('/admin/email/test', payload),
+    },
+    platformIntegrations: {
+      directory: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationsDirectoryDto>(
+          '/admin/platform-integrations/directory',
+        ),
+      attentionSummary: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationsAttentionSummaryDto>(
+          '/admin/platform-integrations/attention-summary',
+        ),
+      webhooks: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationWebhooksDto>(
+          '/admin/platform-integrations/webhooks',
+        ),
+      flags: () =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationsFlagsDto>(
+          '/admin/platform-integrations/flags',
+        ),
+      detail: (integrationId: string) =>
+        get<import('../master/platform-integrations/types').PlatformIntegrationDetailDto>(
+          `/admin/platform-integrations/${integrationId}`,
+        ),
     },
     changelogs: (module?: string) =>
       get<any[]>('/admin/changelogs' + (module ? `?module=${module}` : '')),
     createChangelog: (data: any) => post<any>('/admin/changelogs', data),
-    activityLog: (params?: { page?: number; limit?: number; entity?: string; action?: string }) => {
+    activityLog: (params?: {
+      page?: number;
+      limit?: number;
+      entity?: string;
+      action?: string;
+      organizationId?: string;
+      auditDomain?: string;
+      securityOnly?: boolean;
+      from?: string;
+      to?: string;
+      actorUserId?: string;
+      search?: string;
+    }) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
       if (params?.limit != null) q.set('limit', String(params.limit));
       if (params?.entity) q.set('entity', params.entity);
       if (params?.action) q.set('action', params.action);
+      if (params?.organizationId) q.set('organizationId', params.organizationId);
+      if (params?.auditDomain) q.set('auditDomain', params.auditDomain);
+      if (params?.securityOnly) q.set('securityOnly', 'true');
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.actorUserId) q.set('actorUserId', params.actorUserId);
+      if (params?.search) q.set('search', params.search);
       const suffix = q.toString() ? '?' + q.toString() : '';
       return get<{ data: any[]; meta: any }>('/admin/activity-log' + suffix);
+    },
+    activityLogDetail: (id: string) =>
+      get<import('../master/security-access/types').AuditLogDetailDto>(`/admin/activity-log/${id}`),
+    activityLogExport: (params: {
+      format?: 'json' | 'csv';
+      organizationId?: string;
+      entity?: string;
+      action?: string;
+      level?: string;
+      auditDomain?: string;
+      from?: string;
+      to?: string;
+      limit?: number;
+    }) => {
+      const q = new URLSearchParams();
+      if (params.format) q.set('format', params.format);
+      if (params.organizationId) q.set('organizationId', params.organizationId);
+      if (params.entity) q.set('entity', params.entity);
+      if (params.action) q.set('action', params.action);
+      if (params.level) q.set('level', params.level);
+      if (params.auditDomain) q.set('auditDomain', params.auditDomain);
+      if (params.from) q.set('from', params.from);
+      if (params.to) q.set('to', params.to);
+      if (params.limit != null) q.set('limit', String(params.limit));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return fetch(`/api/v1/admin/activity-log/export${suffix}`, {
+        headers: {
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
+      });
+    },
+    securityAccess: {
+      attentionSummary: () =>
+        get<import('../master/security-access/types').SecurityAttentionSummaryDto>(
+          '/admin/security/attention-summary',
+        ),
+      listUsers: (params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        platformRole?: string;
+        mfaState?: string;
+        attention?: string;
+        organizationId?: string;
+      }) => {
+        const q = new URLSearchParams();
+        if (params?.page != null) q.set('page', String(params.page));
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.search) q.set('search', params.search);
+        if (params?.platformRole) q.set('platformRole', params.platformRole);
+        if (params?.mfaState) q.set('mfaState', params.mfaState);
+        if (params?.attention) q.set('attention', params.attention);
+        if (params?.organizationId) q.set('organizationId', params.organizationId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('../master/security-access/types').PaginatedResponse<
+          import('../master/security-access/types').GovernanceUserListItemDto
+        >>(`/admin/security/users${suffix}`);
+      },
+      getUser: (userId: string) =>
+        get<import('../master/security-access/types').GovernanceUserDetailDto>(`/admin/security/users/${userId}`),
+      listUserSessions: (userId: string) =>
+        get<import('../master/security-access/types').GovernanceUserSessionDto[]>(
+          `/admin/security/users/${userId}/sessions`,
+        ),
+      revokeSession: (userId: string, sessionId: string) =>
+        post<{ revoked: boolean }>(`/admin/security/users/${userId}/sessions/${sessionId}/revoke`, {}),
+      revokeAllSessions: (userId: string) =>
+        post<{ revoked: boolean }>(`/admin/security/users/${userId}/sessions/revoke-all`, {}),
+      resetUserMfa: (userId: string, body: { reason: string; idempotencyKey?: string }) =>
+        post<{ ok: boolean }>(`/admin/security/users/${userId}/mfa/reset`, body),
+      listPlatformRoles: () =>
+        get<import('../master/security-access/types').PlatformRoleSummaryDto[]>(
+          '/admin/security/platform-roles',
+        ),
+      listOrgRoles: (params?: { page?: number; limit?: number; organizationId?: string; search?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.page != null) q.set('page', String(params.page));
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.organizationId) q.set('organizationId', params.organizationId);
+        if (params?.search) q.set('search', params.search);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('../master/security-access/types').PaginatedResponse<
+          import('../master/security-access/types').OrgRoleSummaryDto
+        >>(`/admin/security/org-roles${suffix}`);
+      },
+      getRole: (roleId: string, scope: 'platform' | 'organization', organizationId?: string) => {
+        const q = new URLSearchParams({ scope });
+        if (organizationId) q.set('organizationId', organizationId);
+        return get<import('../master/security-access/types').GovernanceRoleDetailDto>(
+          `/admin/security/roles/${roleId}?${q.toString()}`,
+        );
+      },
     },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),
@@ -3534,12 +3702,32 @@ export const api = {
   organizations: {
     list: (params?: { page?: number; limit?: number }) =>
       get<{ data: any[]; meta: { total: number } }>('/admin/organizations' + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 100}` : '?limit=100')),
+    listOperational: (params?: Record<string, string | number | undefined>) => {
+      const q = new URLSearchParams();
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          if (v !== undefined && v !== '' && v !== 'all') q.set(k, String(v));
+        }
+      }
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/admin/organizations/operational${suffix}`,
+      );
+    },
+    getOperational: (id: string) => get<any>(`/admin/organizations/${id}/operational`),
+    getConnectivitySummary: (id: string) => get<any>(`/admin/organizations/${id}/connectivity-summary`),
     get: (id: string) => get<any>(`/admin/organizations/${id}`),
     create: (data: any) => post<any>('/admin/organizations', data),
     createAdmin: (orgId: string, adminData: { name: string; email: string; password: string }) =>
       post<any>(`/admin/organizations/${orgId}/admin`, adminData),
     update: (id: string, data: any) => patch<any>(`/admin/organizations/${id}`, data),
-    delete: (id: string) => del<void>(`/admin/organizations/${id}`),
+    delete: (id: string, reason: string) =>
+      request<void>(`/admin/organizations/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      }),
+    setPaymentsEnabled: (id: string, enabled: boolean) =>
+      patch<any>(`/admin/organizations/${id}/payments-enabled`, { enabled }),
     stats: (id: string) => get<any>(`/admin/organizations/${id}/stats`),
 
     // ─── Tenant-scoped own-organization profile (Settings → Company Profile) ───
@@ -3581,11 +3769,16 @@ export const api = {
     },
   },
   users: {
-    listAll: () => get<any[]>('/admin/users'),
+    listAll: (organizationId?: string) =>
+      get<any[]>(`/admin/users${organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : ''}`),
     get: (id: string) => get<any>(`/admin/users/${id}`),
     create: (data: any) => post<any>('/admin/users', data),
     update: (id: string, data: any) => patch<any>(`/admin/users/${id}`, data),
-    delete: (id: string) => del<void>(`/admin/users/${id}`),
+    delete: (id: string, reason?: string) =>
+      request<void>(`/admin/users/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify(reason ? { reason } : {}),
+      }),
     changePassword: (id: string, password: string) => post<{ message: string }>(`/admin/users/${id}/change-password`, { password }),
     listByOrg: (orgId: string) => get<OrgUserDto[]>(`/organizations/${orgId}/users`),
     getByOrg: (orgId: string, id: string) => get<OrgUserDto>(`/organizations/${orgId}/users/${id}`),
@@ -3657,6 +3850,28 @@ export const api = {
     listAll: (params?: { page?: number; limit?: number }) =>
       get<{ data: any[] }>('/admin/vehicles' + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
     get: (id: string) => get<any>(`/admin/vehicles/${id}`),
+    operationalOverview: () => get<any>('/admin/vehicles/operational/overview'),
+    operationalAttentionQueue: (limit = 8) =>
+      get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),
+    operationalList: (params?: Record<string, string | number | undefined>) => {
+      const search = new URLSearchParams();
+      for (const [key, val] of Object.entries(params ?? {})) {
+        if (val !== undefined && val !== '' && val !== 'all') search.set(key, String(val));
+      }
+      const qs = search.toString();
+      return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/admin/vehicles/operational${qs ? `?${qs}` : ''}`,
+      );
+    },
+    operationalDetail: (vehicleId: string) => get<any>(`/admin/vehicles/${vehicleId}/operational`),
+    operationalUnregisteredDetail: (dimoVehicleId: string) =>
+      get<any>(`/admin/vehicles/unregistered/${dimoVehicleId}/operational`),
+    operationalDiagnostics: (vehicleId: string, organizationId: string) =>
+      get<any>(`/admin/vehicles/${vehicleId}/operational/diagnostics?organizationId=${encodeURIComponent(organizationId)}`),
+    importPreflight: (organizationId: string, dimoVehicleId: string) =>
+      get<any>(
+        `/admin/vehicles/import-preflight?organizationId=${encodeURIComponent(organizationId)}&dimoVehicleId=${encodeURIComponent(dimoVehicleId)}`,
+      ),
     listByOrg: (orgId: string, params?: { page?: number; limit?: number }) =>
       get<{ data: any[]; meta?: { total: number } }>(`/organizations/${orgId}/vehicles` + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
     getByOrg: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}`),
@@ -5258,6 +5473,39 @@ export const api = {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),
     revenueStats: () => get<any>('/admin/billing/revenue-stats'),
     overview: () => get<any>('/admin/billing/overview'),
+    overviewOperational: () => get<any>('/admin/billing/overview/operational'),
+    subscriptionsOperational: (params?: Record<string, string | number | undefined>) => {
+      const q = params
+        ? '?' +
+          new URLSearchParams(
+            Object.fromEntries(
+              Object.entries(params)
+                .filter(([, v]) => v !== undefined && v !== '')
+                .map(([k, v]) => [k, String(v)]),
+            ),
+          ).toString()
+        : '';
+      return get<any>(`/admin/billing/subscriptions/operational${q}`);
+    },
+    subscriptionOperationalDetail: (organizationId: string) =>
+      get<any>(`/admin/billing/subscriptions/operational/${encodeURIComponent(organizationId)}`),
+    attentionQueue: (params?: Record<string, string | number | undefined>) => {
+      const q = params
+        ? '?' +
+          new URLSearchParams(
+            Object.fromEntries(
+              Object.entries(params)
+                .filter(([, v]) => v !== undefined && v !== '')
+                .map(([k, v]) => [k, String(v)]),
+            ),
+          ).toString()
+        : '';
+      return get<any>(`/admin/billing/attention-queue${q}`);
+    },
+    adminReconciliationDriftsOperational: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/reconciliation/drifts/operational${q}`);
+    },
     organizations: () => get<any[]>('/admin/billing/organizations'),
     adminInvoices: (params?: Record<string, string>) => {
       const q = params ? '?' + new URLSearchParams(params).toString() : '';

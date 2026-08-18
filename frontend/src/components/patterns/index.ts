@@ -49,6 +49,8 @@ export type { PageHeaderProps, PageHeaderVariant, SectionHeaderProps } from './p
 export { DataCard, MetricCard } from './data-card';
 export type { DataCardProps, DataCardSurface, MetricCardProps, MetricTrend } from './data-card';
 
+export { formatRelativeDe, formatDateTimeDe } from './format-utils';
+
 export { EmptyState, ErrorState, SkeletonRows, SkeletonMetricGrid, SkeletonCard } from './states';
 export type {
   EmptyStateProps,
