@@ -15,17 +15,18 @@
 
 | Metrik | Wert |
 |--------|------|
-| **Active P0** | **3** (`MA-BILL-P0-001`, `MA-BKP-P0-002`, `MA-CH-P0-002` historisch) |
+| **Active P0** | **2** (`MA-BILL-P0-001`, `MA-BKP-P0-002`) — `ACCEPTED RISK` ausgeschlossen |
 | **Active P1** | **6** (`MA-BKP-P1-001`, `MA-REDIS-P1-001`, `MA-OBS-P1-001`, `MA-CH-P1-002`, `TB-2`, `TB-3` — letztere nur wenn HM produktiv) |
-| **Active P2** | **~18** (kanonisch dedupliziert; v. a. `CP-P2-05`…`CP-P2-08`, Scale/Partner) |
+| **Active P2** | **~17** (kanonisch dedupliziert; `CP-P2-05` unter Accepted Risk, nicht mitgezählt) |
 | **Active P3** | **~12** (kanonisch dedupliziert; v. a. `CP-P3-04`…`CP-P3-09`, E2E, Hygiene) |
 | **Closed** | **~95** Finding-Instanzen → **~62 kanonische IDs** |
 | **Partially Closed** | **8** |
 | **Open** | **9** |
-| **Accepted Risk** | **6** |
+| **Accepted Risk** | **6** (inkl. `MA-CH-P0-002` — orig. P0, kanonisch ACCEPTED RISK) |
+| **Blocking Before Production** | **5** (A1–A5 aktiv) |
 | **Technical FAIL Gates** | **0** (kein Gate vollständig FAIL; Sandbox-Betrieb bewusst) |
 | **UI FAIL Gates** | **0** |
-| **Final Decision** | **PRODUCTION READY WITH CONDITIONS** |
+| **Final Decision** | **NOT PRODUCTION READY** |
 
 ---
 
@@ -39,11 +40,13 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 
 **Superseded:** Ursprüngliche standalone Audit-Artefakte (VPS Read-only Audit, dedizierte Findings-JSON, P0 Validation, Remediation Order Review, Post-Canonicalization Report) existieren **nicht als eigenständige Dateien** im Repo; Inhalt ist in `docs/final/master-admin-go-live-certification.md`, `docs/final/master-admin-re-audit-2026-07-26.md` und den Remediation-Phasendokumenten konsolidiert. Phase-spezifische UI-Finding-IDs (z. B. `UI-4-P0-1`) sind durch Hub-Post-Remediation und `CP-*`-IDs superseded, sofern dieselbe Root Cause.
 
-**Production-Blocker (nur echte Go-Live-Blocker):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001` vor echtem Zahlungsbetrieb; (A2) Backup-Verschlüsselung `MA-BKP-P0-002` — Crons scheitern bewusst ohne GPG; (A3) Alertmanager-Runtime `MA-OBS-P1-001` — kritische Infra-Alerts nicht zustellbar; (A4) Offsite-Backups `MA-BKP-P1-001` — Datenverlust bei Total-VPS-Ausfall; (A5) UI-Convergence-Deploy + 1× authentifizierter Staging-Smoke.
+**Production-Blocker (aktiv — §11 A1–A5):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A2) Backup-Verschlüsselung `MA-BKP-P0-002`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`; (A5) UI-Convergence-Deploy + authentifizierter Staging-Smoke.
 
-**Nicht blockierend:** Historischer CH-Datenverlust `MA-CH-P0-002`, Failed BullMQ-Jobs `MA-REDIS-P1-001`, In-Memory-Filter Scale `CP-P2-05`, Partner-View-Heterogenität `CP-P2-06`, Playwright-E2E `CP-P3-08`.
+**Nicht blockierend:** Failed BullMQ-Jobs `MA-REDIS-P1-001`, In-Memory-Filter Scale `CP-P2-05` (Accepted Risk), Partner-View-Heterogenität `CP-P2-06`, Playwright-E2E `CP-P3-08`.
 
-**Finale Entscheidung:** **PRODUCTION READY WITH CONDITIONS** — Plattform ist für den **aktuellen Sandbox-Betrieb** und die Master-Admin-Control-Plane **freigabefähig**, sofern die dokumentierten Bedingungen (Stripe-Live-Cutover, DR-Vollständigkeit, Alertmanager, UI-Deploy+Smoke) vor echtem Billing-Go-Live und breitem Rollout erfüllt werden.
+**Accepted Risk (nicht in Active P0/P1):** Historischer CH-Datenverlust `MA-CH-P0-002` (orig. P0) — siehe §8.
+
+**Finale Entscheidung:** **NOT PRODUCTION READY** — fünf aktive Production-Blocker (§11). Remediation- und Hub-Arbeit ist weitgehend abgeschlossen; die Plattform ist **bis zur Schließung von A1–A5** nicht produktionsfreigegeben. Nach Blocker-Schließung: erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3-Restarbeiten).
 
 ---
 
@@ -140,7 +143,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 | **MA-BKP-P0-001** | — | 2C | P0 | P0 | DR | Keine Backups | CH/PG backup scripts + cron | Restore-Drill erfolgreich (Go-Live Cert) | **PARTIALLY CLOSED** (Verschlüsselung offen) |
 | **MA-OBS-P1-001** | — | 2F.2 | P1 | P1 | Observability | Keine Alert-Zustellung | Alertmanager stack in Repo | Config sync ✅; Container ❌ (`alertmanager.env` fehlt) | **PARTIALLY CLOSED** |
 | **MA-BILL-P0-001** | — | 2B / Go-Live | P0 | P0 | Billing | TRIALING orphan | Stripe-Reconcile Runbook | Kein Nachweis Reconcile ausgeführt | **OPEN** |
-| **MA-CH-P0-002** | — | Go-Live Post-Ops | P0 | P0 | ClickHouse | Historischer Part-Verlust 202607 | Re-Ingest oder DROP + Dokumentation | Bekannt dokumentiert; kein Forward-Impact | **ACCEPTED RISK** |
+| **MA-CH-P0-002** | — | Go-Live Post-Ops | **P0** (historisch) | — (kanonisch n/a) | ClickHouse | Historischer Part-Verlust 202607 | Re-Ingest oder DROP + Dokumentation | Bekannt dokumentiert; kein Forward-Impact | **ACCEPTED RISK** |
 | **MA-BKP-P0-002** | — | Go-Live | P0 | P0 | DR | GPG-Entscheidung offen | `CH_BACKUP_GPG_PASSPHRASE_FILE` setzen | Crons scheitern bewusst ohne Keys | **OPEN** |
 | **MA-BKP-P1-001** | — | 2C.5 | P1 | P1 | DR | Offsite nicht konfiguriert | `vps-sync-offsite-backups.sh` + rclone | Scripts in Repo; Prod offsite nicht verifiziert | **OPEN** |
 | **MA-REDIS-P1-001** | — | Go-Live Deploy | P1 | P1 | Worker | Failed BullMQ jobs | Drain-Skript | 30+2 failed jobs dokumentiert; kein Drain-Nachweis | **OPEN** |
@@ -254,14 +257,14 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 
 ## 8. Accepted Risks
 
-| ID | Risiko | Begründung |
-|----|--------|------------|
-| **MA-CH-P0-002** | Historischer Telemetry-Part-Verlust Jul 2026 | Abgeschlossenes Zeitfenster; kein laufender Betrieb betroffen |
-| **CP-P2-05** | In-Memory-Filter >500 Orgs | Aktuelle Fleet-Größe tragbar; Backend-Pagination Post-Release |
-| **UI-SOT-P2** | Client-abgeleitete Nav-Badges | Server-Felder als Input; keine zweite Business-State-Machine |
-| **UI-BUNDLE-P3** | 14.7MB JS Bundle | Admin-Oberfläche; Code-Splitting Post-Release |
-| **CP-P2-06** (teilweise) | Partner-Views visuell heterogen | Funktional OK; kein Hub-Workflow blockiert |
-| **UI-A11Y-P3** (teilweise) | Kein formales SR-Audit | Skip link, focus rings, StatusChip labels vorhanden |
+| ID | Orig. Sev. | Risiko | Begründung |
+|----|----------|--------|------------|
+| **MA-CH-P0-002** | P0 (historisch) | Historischer Telemetry-Part-Verlust Jul 2026 | Abgeschlossenes Zeitfenster; kein laufender Betrieb betroffen; zählt **nicht** in Active P0 |
+| **CP-P2-05** | P2 | In-Memory-Filter >500 Orgs | Aktuelle Fleet-Größe tragbar; Backend-Pagination Post-Release |
+| **UI-SOT-P2** | P2 | Client-abgeleitete Nav-Badges | Server-Felder als Input; keine zweite Business-State-Machine |
+| **UI-BUNDLE-P3** | P3 | 14.7MB JS Bundle | Admin-Oberfläche; Code-Splitting Post-Release |
+| **CP-P2-06** (teilweise) | P2 | Partner-Views visuell heterogen | Funktional OK; kein Hub-Workflow blockiert |
+| **UI-A11Y-P3** (teilweise) | P3 | Kein formales SR-Audit | Skip link, focus rings, StatusChip labels vorhanden |
 
 ---
 
@@ -272,7 +275,7 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 | **Security** | **PASS WITH CONDITIONS** | Swagger SPA-gated (live probe 2026-08-18); Audit append-only deployt; MFA/Step-up in Code; RBAC-TB-1 closed | `IAM_MFA_MASTER_ADMIN_ENABLED=true` Prod-Flag nicht in dieser Session verifiziert |
 | **Billing / Stripe** | **PASS WITH CONDITIONS** | `StripeEnvironmentModule`; webhook livemode check; Sandbox locked logged | Live keys + `MA-BILL-P0-001` Reconcile vor echtem Go-Live |
 | **Disaster Recovery** | **PASS WITH CONDITIONS** | Backup scripts + Restore-Drill (Go-Live Cert); offsite scripts in Repo | `MA-BKP-P0-002`, `MA-BKP-P1-001` offen — kein verschlüsseltes Offsite nachgewiesen |
-| **ClickHouse** | **PASS WITH CONDITIONS** | Migration 007 live; Topology P0=0; PG canonical | `MA-CH-P0-002` historisch; `MA-CH-P1-002` drift; Acceptance-Script Exit-0 nicht archiviert |
+| **ClickHouse** | **PASS WITH CONDITIONS** | Migration 007 live; Topology P0=0; PG canonical | `MA-CH-P0-002` = Accepted Risk (§8); `MA-CH-P1-002` drift offen; Acceptance-Script Exit-0 nicht archiviert |
 | **Tenant / DIMO** | **PASS WITH CONDITIONS** | Partial UNIQUE; 23 cross-tenant tests; RBAC-TB-1 closed | TB-2/TB-3 wenn HM produktiv |
 | **Observability** | **PASS WITH CONDITIONS** | Prometheus rules + `alerts-infra.yml` in Repo; `/metrics` 401 | **Alertmanager container not running** — `MA-OBS-P1-001` |
 
@@ -305,6 +308,8 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 ---
 
 ## 11. A — BLOCKING BEFORE PRODUCTION
+
+**Status: 5 aktive Blocker (A1–A5).** Solange mindestens einer offen ist, gilt **NOT PRODUCTION READY** (§15).
 
 Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
@@ -424,34 +429,48 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
 ### Abgeleitet aus aktuellem Systemzustand (2026-08-18)
 
-# PRODUCTION READY WITH CONDITIONS
+### Entscheidungslogik
+
+| Zustand | Entscheidung |
+|---------|--------------|
+| Mindestens ein aktiver Production-Blocker (§11) | **NOT PRODUCTION READY** |
+| Keine Blocker, aber dokumentierte nicht-blockierende Bedingungen | **PRODUCTION READY WITH CONDITIONS** |
+| Keine blockierenden Bedingungen | **PRODUCTION READY** |
+
+### Aktuelle Bewertung
+
+# NOT PRODUCTION READY
 
 | Kontext | Entscheidung | Begründung |
 |---------|--------------|------------|
-| **Technische Plattform (Sandbox-Betrieb)** | ☑ PRWC | P0/P1-Stack deployt; Swagger gated; Tenant/DIMO hardened; bewusster Stripe TEST |
-| **Technische Plattform (Live-Billing-Go-Live)** | ☐ Not Ready ohne A1–A4 | Reconcile + Live Stripe + DR + Alerting |
-| **Master-Admin UI (Hub-Kern)** | ☑ PRWC | 0 active UI P0/P1; 91 tests; build green; Convergence deploy + smoke offen |
-| **Gesamt Master-Admin Programm** | ☑ **PRODUCTION READY WITH CONDITIONS** | |
+| **Technische Plattform** | ☑ **NOT PRODUCTION READY** | A1–A4 aktiv (Billing-Reconcile/Live, Backup-GPG, Offsite, Alertmanager) |
+| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A5 aktiv (Convergence-Deploy + auth Staging-Smoke) |
+| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 5 aktive Blocker; Hub-P0/P1-UI = 0, aber Blocker-Gates unerfüllt |
 
-### Bedingungen (alle vor breitem Rollout / Live-Billing)
+### Pflicht vor Freigabe (schließt A1–A5)
 
-1. **Deploy** Convergence-Branch auf Production (`UI-DEPLOY-GAP`)
-2. **Staging smoke** — 1× authentifizierter Durchlauf Workflows A–F (`UI-STAGING-SMOKE`)
-3. **Backup-Verschlüsselung** entscheiden und aktivieren (`MA-BKP-P0-002`)
-4. **Offsite-Backups** konfigurieren und verifizieren (`MA-BKP-P1-001`)
-5. **Alertmanager** starten (`MA-OBS-P1-001`)
-6. **Vor Live-Billing:** Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
+1. **A5** — Convergence-Branch deployen (`UI-DEPLOY-GAP`) + Staging-Smoke Workflows A–F (`UI-STAGING-SMOKE`)
+2. **A2** — Backup-Verschlüsselung (`MA-BKP-P0-002`)
+3. **A3** — Offsite-Backups (`MA-BKP-P1-001`)
+4. **A4** — Alertmanager starten (`MA-OBS-P1-001`)
+5. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
+
+**Erwartung nach Schließung aller Blocker:** erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3, z. B. `MA-REDIS-P1-001`, `CP-P2-06`, E2E).
 
 ### Was nicht mehr gilt
 
-- **NOT PRODUCTION READY** aus Re-Audit 2026-07-26 (pre-deploy) — **superseded** durch erfolgreichen Deploy + Go-Live Cert
+- **NOT PRODUCTION READY** aus Re-Audit 2026-07-26 (Grund: Remediation nicht deployt) — **superseded**; aktueller Blocker-Grund sind offene A1–A5, nicht fehlender Code-Merge
+- **PRODUCTION READY WITH CONDITIONS** aus Go-Live Cert 2026-07-26 — **nicht mehr gültig** ohne erneute Blocker-Prüfung; aktueller Zustand überschreibt
 - Einzelne UI-Phase-P0-Findings — **superseded** durch Hub-Remediation (alle CLOSED)
 
 ---
 
 ## Anhang: Zähl-Methodik
 
-- **Active P0/P1/P2/P3** zählen nur kanonische IDs in Status OPEN oder PARTIALLY CLOSED mit P0/P1-Schwere, plus ACCEPTED RISK separat.
+- **Active P0/P1/P2/P3** zählen nur kanonische IDs in Status `OPEN` oder `PARTIALLY CLOSED` mit entsprechender Schwere.
+- **`ACCEPTED RISK` ist aus Active P0/P1/P2 ausgeschlossen** — historische Severity (z. B. `MA-CH-P0-002` orig. P0) bleibt als Referenz in Matrix §3 und §8 erhalten.
+- **Accepted Risk** zählt separat (§8); kein Doppelzählen mit Active oder Open.
+- **Final Decision:** aktive §11-Blocker → `NOT PRODUCTION READY`; keine Blocker + Restbedingungen → `PRODUCTION READY WITH CONDITIONS`; sonst `PRODUCTION READY`.
 - **Closed** zählt kanonische IDs mit CLOSED-Status (nicht historische Phase-Duplikate).
 - Keine neuen Findings ohne Evidenz hinzugefügt.
 - Runtime-Probes dieser Session ergänzen, ersetzen nicht, die Go-Live-Cert-Probes vom 2026-07-26.
