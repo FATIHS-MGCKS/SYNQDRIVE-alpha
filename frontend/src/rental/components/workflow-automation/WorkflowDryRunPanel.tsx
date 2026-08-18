@@ -9,14 +9,17 @@ export function WorkflowDryRunPanel({
   plan,
   loading,
   error,
-  requestId,
+  sequence,
+  activeSequence,
 }: {
   plan: WorkflowExecutionPlanDto | null;
   loading: boolean;
   error: string | null;
-  requestId: string | null;
+  sequence: number;
+  activeSequence: number;
 }) {
   const { t } = useLanguage();
+  const isStale = sequence > 0 && sequence !== activeSequence;
 
   if (loading) {
     return (
@@ -51,7 +54,7 @@ export function WorkflowDryRunPanel({
     );
   }
 
-  if (!plan) return null;
+  if (!plan || isStale) return null;
 
   const allActions = [...plan.plannedActions, ...plan.skippedActions].sort(
     (a, b) => a.index - b.index,

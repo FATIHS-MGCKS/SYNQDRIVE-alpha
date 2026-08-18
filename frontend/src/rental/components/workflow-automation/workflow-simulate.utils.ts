@@ -67,6 +67,26 @@ export function formatRunCorrelation(run: WorkflowRunDto): string {
   return run.idempotencyKey?.slice(0, 24) || run.id.slice(0, 12);
 }
 
+const PII_PATTERN = /(\+?\d[\d\s\-()]{7,}\d)|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+
+export function sanitizeClientErrorMessage(message: string | null | undefined): string | null {
+  if (!message?.trim()) return null;
+  return message.replace(PII_PATTERN, '[REDACTED]').slice(0, 240);
+}
+
+export function formatDiffValue(value: unknown): string {
+  const sanitized = sanitizeClientPreviewValue(value);
+  if (sanitized == null) return '—';
+  if (typeof sanitized === 'string' || typeof sanitized === 'number' || typeof sanitized === 'boolean') {
+    return String(sanitized);
+  }
+  try {
+    return JSON.stringify(sanitized);
+  } catch {
+    return String(sanitized);
+  }
+}
+
 export function summarizeProviderStatus(action: WorkflowActionRunDto): string | null {
   const output = action.output;
   if (!output || typeof output !== 'object') return null;

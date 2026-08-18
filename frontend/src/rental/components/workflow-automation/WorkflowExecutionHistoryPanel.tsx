@@ -7,6 +7,7 @@ import { workflowLastRunOutcomeLabel, workflowLastRunTone } from './workflow-run
 import {
   deriveRunHistoryFlags,
   formatRunCorrelation,
+  sanitizeClientErrorMessage,
   summarizeProviderStatus,
 } from './workflow-simulate.utils';
 
@@ -149,7 +150,9 @@ export function WorkflowExecutionHistoryPanel({
                               </p>
                             )}
                             {action.errorMessage && (
-                              <p className="mt-0.5 text-status-critical">{action.errorMessage}</p>
+                              <p className="mt-0.5 text-status-critical">
+                                {sanitizeClientErrorMessage(action.errorMessage)}
+                              </p>
                             )}
                           </li>
                         );

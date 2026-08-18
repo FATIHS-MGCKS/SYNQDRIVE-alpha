@@ -4,7 +4,9 @@ import { resolve } from 'node:path';
 import type { WorkflowRunDto } from '../../../lib/api';
 import {
   deriveRunHistoryFlags,
+  formatDiffValue,
   formatRunCorrelation,
+  sanitizeClientErrorMessage,
   sanitizeClientPreviewValue,
   shouldAcceptSimulationResponse,
 } from './workflow-simulate.utils';
@@ -94,6 +96,23 @@ describe('workflow-simulate.utils', () => {
       idempotencyKey: 'manual.test:wf-1:1234567890',
     } as WorkflowRunDto)).toBe('manual.test:wf-1:1234567');
   });
+
+  it('redacts email and phone fragments from client error messages', () => {
+    const sanitized = sanitizeClientErrorMessage(
+      'Delivery failed for user@example.com at +491701234567',
+    );
+    expect(sanitized).not.toContain('user@example.com');
+    expect(sanitized).toContain('[REDACTED]');
+  });
+
+  it('sanitizes diff values before display', () => {
+    const formatted = formatDiffValue({
+      trigger: 'booking.returned',
+      apiKey: 'secret',
+    });
+    expect(formatted).toContain('booking.returned');
+    expect(formatted).not.toContain('secret');
+  });
 });
 
 describe('workflow simulation race handling', () => {
@@ -125,6 +144,8 @@ describe('workflow simulate UI accessibility', () => {
 
     expect(dryRunSource).toContain('aria-live="polite"');
     expect(dryRunSource).toContain('role="status"');
+    expect(dryRunSource).toContain('workflowAutomation.simulate.noExecution');
+    expect(dryRunSource).toContain('activeSequence');
     expect(historySource).toContain('aria-live="polite"');
     expect(historySource).toContain('aria-expanded');
     expect(historySource).toContain('min-h-11');
@@ -134,5 +155,31 @@ describe('workflow simulate UI accessibility', () => {
     const historySource = readFileSync(resolve(__dirname, 'WorkflowExecutionHistoryPanel.tsx'), 'utf8');
     expect(historySource).toContain('canViewAudit');
     expect(historySource).toContain('workflowAutomation.history.auditDenied');
+    expect(historySource).not.toContain('inputPayload');
+  });
+});
+
+describe('workflow simulate panels contract', () => {
+  it('renders revision diff kinds for trigger, scope, actions, and policy', () => {
+    const diffSource = readFileSync(resolve(__dirname, 'WorkflowRevisionDiffPanel.tsx'), 'utf8');
+    expect(diffSource).toContain('trigger_changed');
+    expect(diffSource).toContain('action_added');
+    expect(diffSource).toContain('policy_changed');
+    expect(diffSource).toContain('formatDiffValue');
+  });
+
+  it('uses AbortController and sequence guards in simulation hook', () => {
+    const hookSource = readFileSync(resolve(__dirname, 'useWorkflowSimulation.ts'), 'utf8');
+    expect(hookSource).toContain('AbortController');
+    expect(hookSource).toContain('shouldAcceptSimulationResponse');
+    expect(hookSource).toContain('activeSequence');
+    expect(hookSource).not.toMatch(/console\.(log|debug|info)/);
+  });
+
+  it('loads execution history snapshot in config drawer', () => {
+    const drawerSource = readFileSync(resolve(__dirname, 'WorkflowConfigDrawer.tsx'), 'utf8');
+    expect(drawerSource).toContain('listRuns');
+    expect(drawerSource).toContain('WorkflowExecutionHistoryPanel');
+    expect(drawerSource).toContain('runsLoading');
   });
 });

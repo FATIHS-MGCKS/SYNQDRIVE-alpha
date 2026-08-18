@@ -13,6 +13,7 @@ const INITIAL: WorkflowSimulationState = {
   error: null,
   requestId: null,
   sequence: 0,
+  activeSequence: 0,
 };
 
 export function useWorkflowSimulation(orgId: string | null, workflowId: string | null) {
@@ -55,6 +56,8 @@ export function useWorkflowSimulation(orgId: string | null, workflowId: string |
         ...current,
         loading: true,
         error: null,
+        plan: null,
+        activeSequence: nextSequence,
       }));
 
       try {
@@ -79,6 +82,7 @@ export function useWorkflowSimulation(orgId: string | null, workflowId: string |
           error: null,
           requestId: plan.requestId,
           sequence: nextSequence,
+          activeSequence: nextSequence,
         });
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
@@ -89,6 +93,7 @@ export function useWorkflowSimulation(orgId: string | null, workflowId: string |
           error: parseApiError(error),
           requestId: null,
           sequence: nextSequence,
+          activeSequence: nextSequence,
         });
       }
     },
