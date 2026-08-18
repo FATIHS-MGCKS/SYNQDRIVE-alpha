@@ -48,6 +48,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'station-shortage',
     eventType: 'STATION_SHORTAGE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.OPERATIONS,
     defaultEntityType: NotificationEntityType.STATION,
     conditionCode: 'shortage',
@@ -73,6 +74,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'overdue-pickup',
     eventType: 'PICKUP_OVERDUE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'pickup_overdue',
@@ -97,6 +99,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'overdue-return',
     eventType: 'RETURN_OVERDUE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'return_overdue',
@@ -121,6 +124,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'blocked-vehicle',
     eventType: 'BLOCKED_VEHICLE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.OPERATIONS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'blocked_vehicle',
@@ -145,6 +149,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'vehicle-not-ready',
     eventType: 'VEHICLE_NOT_READY',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.OPERATIONS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'vehicle_not_ready',
@@ -169,6 +174,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'maintenance-required',
     eventType: 'MAINTENANCE_REQUIRED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.OPERATIONS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'maintenance_required',
@@ -193,6 +199,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'active-dtc',
     eventType: 'ACTIVE_DTC',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'active_dtc',
@@ -217,6 +224,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'battery-health-warning',
     eventType: 'BATTERY_CRITICAL',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'battery_critical',
@@ -241,6 +249,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'tire-health-warning',
     eventType: 'TIRE_CRITICAL',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'tires_critical',
@@ -265,6 +274,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'brake-health-warning',
     eventType: 'BRAKE_CRITICAL',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'brakes_critical',
@@ -289,6 +299,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'compliance-expired',
     eventType: 'COMPLIANCE_EXPIRED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'compliance_expired',
@@ -313,6 +324,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'service-overdue',
     eventType: 'SERVICE_OVERDUE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'service_overdue',
@@ -337,6 +349,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'tight-handover',
     eventType: 'TIGHT_HANDOVER',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'tight_handover',
@@ -361,6 +374,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'return-needs-inspection',
     eventType: 'RETURN_NEEDS_INSPECTION',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'return_inspection',
@@ -385,6 +399,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'low-utilization',
     eventType: 'LOW_UTILIZATION',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.OPERATIONS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'low_utilization',
@@ -409,6 +424,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'service-window',
     eventType: 'SERVICE_WINDOW',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'service_window',
@@ -433,6 +449,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'service-before-booking',
     eventType: 'SERVICE_BEFORE_BOOKING',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'service_before_booking',
@@ -457,6 +474,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'tuv-overdue',
     eventType: 'TUV_OVERDUE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'tuv_overdue',
@@ -481,6 +499,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'bokraft-overdue',
     eventType: 'BOKRAFT_OVERDUE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'bokraft_overdue',
@@ -505,6 +524,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'hm-service-no-tracking',
     eventType: 'HM_SERVICE_NO_TRACKING',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'hm_no_tracking',
@@ -529,6 +549,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'technical-observation-open',
     eventType: 'TECHNICAL_OBSERVATION_ACTIVE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.VEHICLE_HEALTH,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'technical_observation_active',
@@ -553,6 +574,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'driving-assessment-limited',
     eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DRIVING_ANALYSIS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'driving_assessment_device_quality',
@@ -577,6 +599,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'trip-analysis-completed',
     eventType: 'TRIP_ANALYSIS_COMPLETED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DRIVING_ANALYSIS,
     defaultEntityType: NotificationEntityType.TRIP,
     conditionCode: 'trip_analysis_completed',
@@ -602,6 +625,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'misuse-detected',
     eventType: 'MISUSE_DETECTED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DRIVING_ANALYSIS,
     defaultEntityType: NotificationEntityType.TRIP,
     conditionCode: 'misuse_detected',
@@ -626,6 +650,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'possible-impact',
     eventType: 'POSSIBLE_IMPACT',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DRIVING_ANALYSIS,
     defaultEntityType: NotificationEntityType.TRIP,
     conditionCode: 'possible_impact',
@@ -650,6 +675,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'data-quality-limited',
     eventType: 'DATA_QUALITY_LIMITED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DRIVING_ANALYSIS,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'data_quality_limited',
@@ -674,6 +700,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'booking-created',
     eventType: 'BOOKING_CREATED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.BOOKINGS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'booking_created',
@@ -699,6 +726,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'booking-updated',
     eventType: 'BOOKING_UPDATED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.BOOKINGS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'booking_updated',
@@ -724,6 +752,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'pickup-due',
     eventType: 'PICKUP_DUE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'pickup_due',
@@ -749,6 +778,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'return-due',
     eventType: 'RETURN_DUE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'return_due',
@@ -774,6 +804,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'handover-incomplete',
     eventType: 'HANDOVER_INCOMPLETE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.HANDOVERS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'handover_incomplete',
@@ -798,6 +829,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'required-document-missing',
     eventType: 'REQUIRED_DOCUMENT_MISSING',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DOCUMENTS,
     defaultEntityType: NotificationEntityType.ORGANIZATION,
     conditionCode: 'required_document_missing',
@@ -823,6 +855,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'payment-failed',
     eventType: 'PAYMENT_FAILED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.BILLING,
     defaultEntityType: NotificationEntityType.INVOICE,
     conditionCode: 'payment_failed',
@@ -847,6 +880,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'invoice-overdue',
     eventType: 'INVOICE_OVERDUE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.BILLING,
     defaultEntityType: NotificationEntityType.INVOICE,
     conditionCode: 'invoice_overdue',
@@ -871,6 +905,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'deposit-problem',
     eventType: 'DEPOSIT_PROBLEM',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.BILLING,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode: 'deposit_problem',
@@ -895,6 +930,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'integration-disconnected',
     eventType: 'INTEGRATION_DISCONNECTED',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.ORGANIZATION,
     conditionCode: 'integration_disconnected',
@@ -919,6 +955,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'telemetry-offline',
     eventType: 'TELEMETRY_OFFLINE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'telemetry_offline',
@@ -943,6 +980,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'device-unplugged',
     eventType: 'DEVICE_UNPLUGGED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'device_unplugged',
@@ -967,6 +1005,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'device-reconnected',
     eventType: 'DEVICE_RECONNECTED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'device_reconnected',
@@ -992,6 +1031,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'telemetry-soft-offline',
     eventType: 'TELEMETRY_SOFT_OFFLINE',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'telemetry_soft_offline',
@@ -1016,6 +1056,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'authorization-required',
     eventType: 'AUTHORIZATION_REQUIRED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SECURITY,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'authorization_required',
@@ -1040,6 +1081,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'data-source-disconnected',
     eventType: 'DATA_SOURCE_DISCONNECTED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'data_source_disconnected',
@@ -1064,6 +1106,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'data-coverage-insufficient',
     eventType: 'DATA_COVERAGE_INSUFFICIENT',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'data_coverage_insufficient',
@@ -1088,6 +1131,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'device-binding-changed',
     eventType: 'DEVICE_BINDING_CHANGED',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'device_binding_changed',
@@ -1113,6 +1157,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'connectivity-state-unknown',
     eventType: 'CONNECTIVITY_STATE_UNKNOWN',
+    attentionScope: 'FLEET_READINESS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.VEHICLE,
     conditionCode: 'connectivity_state_unknown',
@@ -1137,6 +1182,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
   {
     slug: 'webhook-failure',
     eventType: 'WEBHOOK_FAILURE',
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.ORGANIZATION,
     conditionCode: 'webhook_failure',

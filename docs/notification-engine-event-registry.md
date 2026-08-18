@@ -1,39 +1,40 @@
-# Notification Engine — Event-Type Registry (V4.9.353)
+# Notification Engine — Event-Type Registry (V4.9.919)
 
-> **Status:** Zentrale Producer Registry (Prompt 8) — Konfiguration + Adapter-Verträge, **keine** vollständige Producer-Migration.  
-> **Code:** `backend/src/modules/notifications/registry/`
+> **Status:** Zentrale Producer Registry — Konfiguration + Adapter-Verträge + kanonisches `attentionScope` Routing (P1.1).  
+> **Code:** `backend/src/modules/notifications/registry/`  
+> **Audit:** `docs/audits/fleet-readiness-notification-parity-2026-08.md`
 
 ## Architektur
 
 ```mermaid
-flowchart LR
+flowchart TD
   subgraph detectors [Detectors — unchanged owners]
     BI[business-insights]
     VI[vehicle-intelligence]
-    BK[bookings]
-    BL[billing]
+    RH[rental-health]
+    DIMO[dimo / connectivity]
   end
 
   subgraph registry [Event Registry]
     DEF[NOTIFICATION_EVENT_TYPE_DEFINITIONS]
+    AS[attentionScope]
     VAL[validateRegistryCandidate]
     FP[buildRegistryFingerprint]
-  end
-
-  subgraph adapters [Adapters — translate only]
-    DA[DrivingAssessmentNotificationAdapter]
-    TO[TechnicalObservationNotificationAdapter]
-    RT[NotificationProducerRouter]
   end
 
   subgraph core [Core Engine — NOTIFICATIONS_V2]
     CS[NotificationCoreService]
   end
 
-  detectors -.->|future| adapters
-  adapters --> DEF
+  subgraph dashboard [Dashboard — projection only]
+    OPS[OPERATIONS attention]
+    FR[FLEET_READINESS attention]
+  end
+
+  detectors --> DEF
+  DEF --> AS
   DEF --> VAL --> CS
-  RT --> CS
+  AS -.->|lookup API| dashboard
 ```
 
 **Regeln:**
@@ -42,6 +43,46 @@ flowchart LR
 - Fingerprints werden **nur** über `buildRegistryFingerprint()` / Registry-Definition erzeugt.
 - Adapter kennen **keine** lokalisierten Volltexte — nur `titleKey` / `bodyKey` aus der Registry.
 - Detectoren bleiben Owner der fachlichen Erkennung.
+- `attentionScope` ist **reine Routing-Klassifikation** — kein Persistence-/Fingerprint-Feld.
+
+---
+
+## `attentionScope` vs `domain`
+
+| Aspekt | `domain` | `attentionScope` |
+|--------|----------|-------------------|
+| Zweck | Fachliche Notification-Domäne (Filter, Counts, Preferences-Kontext) | Attention space (Operations vs Fleet Readiness) |
+| Werte | `OPERATIONS`, `VEHICLE_HEALTH`, `HANDOVERS`, `BOOKINGS`, `BILLING`, `DOCUMENTS`, `DRIVING_ANALYSIS`, `SYSTEM`, `SECURITY` | `OPERATIONS`, `FLEET_READINESS` |
+| Persistenz | In Notification-Record (`domain`) | **Nicht** persistiert — Registry-Lookup zur Laufzeit |
+| Fingerprint | Nein | **Nein** |
+| User Preference | Indirekt über `preferenceCategory` | **Nein** |
+| Pflichtfeld | Ja | Ja (Compile/Test-Enforcement) |
+
+**Architekturregel:** Keine dritte Wahrheit. Rental Health bleibt Source of Truth für Fahrzeugzustand; Notification V2 für Lifecycle; `attentionScope` nur für Attention-Routing-Projektion. Dashboard, Mobile, Inbox und Agents sind Projektionen.
+
+**Beispiel:** `VEHICLE_NOT_READY` hat `domain: OPERATIONS` (historisch korrekt) aber `attentionScope: FLEET_READINESS` (Fleet-Readiness-Attention-Space).
+
+### Lookup-API
+
+```typescript
+getNotificationEventTypesByAttentionScope('FLEET_READINESS')
+getNotificationDefinitionsByAttentionScope('OPERATIONS')
+getNotificationAttentionScope('ACTIVE_DTC') // → 'FLEET_READINESS'
+requireNotificationAttentionScope(eventType)
+isNotificationAttentionScope(value)
+```
+
+**Regel für neue Event Types:** Jede neue `NotificationEventTypeDefinition` **muss** explizit `attentionScope` setzen — kein Default-Fallback. TypeScript `satisfies` + Registry-Tests erzwingen Vollständigkeit.
+
+### Aktuelle Verteilung (Code-Stand)
+
+| attentionScope | Anzahl |
+|----------------|--------|
+| `FLEET_READINESS` | 23 |
+| `OPERATIONS` | 43 |
+| **Gesamt** | **66** |
+
+Vollständige Matrix: Code (`notification-event-registry.definitions.ts`, `legal-document-notification-event.definitions.ts`) oder Audit-Dokument §3.
 
 ---
 
@@ -62,6 +103,7 @@ flowchart LR
 |------|--------------|
 | `slug` | Kebab-case Dokumentations-/Routing-ID (eindeutig) |
 | `eventType` | Uppercase kanonischer Code (eindeutig, Fingerprint-Bestandteil) |
+| `attentionScope` | `OPERATIONS` \| `FLEET_READINESS` — Attention routing (Pflicht, nicht persistiert) |
 | `domain` | `NotificationDomain` |
 | `defaultEntityType` | Standard-Entität |
 | `conditionCode` | Stabile Bedingung innerhalb der Entität |
@@ -97,38 +139,26 @@ flowchart LR
 
 ## Registrierte Event-Typen
 
-| Slug | eventType | Domain | Kind | Default Severity | conditionCode | Shadow |
-|------|-----------|--------|------|------------------|---------------|--------|
-| station-shortage | STATION_SHORTAGE | OPERATIONS | STATE | WARNING | shortage | |
-| overdue-pickup | PICKUP_OVERDUE | HANDOVERS | STATE | WARNING | pickup_overdue | |
-| overdue-return | RETURN_OVERDUE | HANDOVERS | STATE | WARNING | return_overdue | |
-| blocked-vehicle | BLOCKED_VEHICLE | OPERATIONS | STATE | WARNING | blocked_vehicle | |
-| vehicle-not-ready | VEHICLE_NOT_READY | OPERATIONS | STATE | WARNING | vehicle_not_ready | |
-| maintenance-required | MAINTENANCE_REQUIRED | OPERATIONS | STATE | WARNING | maintenance_required | |
-| active-dtc | ACTIVE_DTC | VEHICLE_HEALTH | STATE | WARNING | active_dtc | |
-| battery-health-warning | BATTERY_CRITICAL | VEHICLE_HEALTH | STATE | CRITICAL | battery_critical | |
-| tire-health-warning | TIRE_CRITICAL | VEHICLE_HEALTH | STATE | CRITICAL | tires_critical | |
-| brake-health-warning | BRAKE_CRITICAL | VEHICLE_HEALTH | STATE | CRITICAL | brakes_critical | |
-| compliance-expired | COMPLIANCE_EXPIRED | VEHICLE_HEALTH | STATE | WARNING | compliance_expired | |
-| service-overdue | SERVICE_OVERDUE | VEHICLE_HEALTH | STATE | WARNING | service_overdue | |
-| technical-observation-open | TECHNICAL_OBSERVATION_ACTIVE | VEHICLE_HEALTH | STATE | WARNING | technical_observation_active | **yes** |
-| driving-assessment-limited | DRIVING_ASSESSMENT_DEVICE_QUALITY | DRIVING_ANALYSIS | STATE | WARNING | driving_assessment_device_quality | **yes** |
-| trip-analysis-completed | TRIP_ANALYSIS_COMPLETED | DRIVING_ANALYSIS | EVENT | INFO | trip_analysis_completed | |
-| misuse-detected | MISUSE_DETECTED | DRIVING_ANALYSIS | STATE | WARNING | misuse_detected | |
-| possible-impact | POSSIBLE_IMPACT | DRIVING_ANALYSIS | STATE | WARNING | possible_impact | |
-| data-quality-limited | DATA_QUALITY_LIMITED | DRIVING_ANALYSIS | STATE | INFO | data_quality_limited | |
-| booking-created | BOOKING_CREATED | BOOKINGS | EVENT | INFO | booking_created | |
-| booking-updated | BOOKING_UPDATED | BOOKINGS | EVENT | INFO | booking_updated | |
-| pickup-due | PICKUP_DUE | HANDOVERS | EVENT | INFO | pickup_due | |
-| return-due | RETURN_DUE | HANDOVERS | EVENT | INFO | return_due | |
-| handover-incomplete | HANDOVER_INCOMPLETE | HANDOVERS | STATE | WARNING | handover_incomplete | |
-| required-document-missing | REQUIRED_DOCUMENT_MISSING | DOCUMENTS | STATE | WARNING | required_document_missing | |
-| payment-failed | PAYMENT_FAILED | BILLING | STATE | CRITICAL | payment_failed | |
-| invoice-overdue | INVOICE_OVERDUE | BILLING | STATE | WARNING | invoice_overdue | |
-| deposit-problem | DEPOSIT_PROBLEM | BILLING | STATE | WARNING | deposit_problem | |
-| integration-disconnected | INTEGRATION_DISCONNECTED | SYSTEM | STATE | CRITICAL | integration_disconnected | |
-| telemetry-offline | TELEMETRY_OFFLINE | SYSTEM | STATE | WARNING | telemetry_offline | |
-| webhook-failure | WEBHOOK_FAILURE | SYSTEM | EVENT | WARNING | webhook_failure | |
+> **Hinweis:** Die vollständige, aktuelle Liste (**66** Event Types: **23** `FLEET_READINESS`, **43** `OPERATIONS` — inkl. 20 Legal-Dokument-Events und Connectivity-Typen) liegt im Code. Diese Tabelle ist eine Kurzreferenz — bei Abweichungen gilt der Code.
+
+| Slug | eventType | Domain | attentionScope | Kind | Shadow |
+|------|-----------|--------|----------------|------|--------|
+| blocked-vehicle | BLOCKED_VEHICLE | OPERATIONS | FLEET_READINESS | STATE | |
+| vehicle-not-ready | VEHICLE_NOT_READY | OPERATIONS | FLEET_READINESS | STATE | |
+| active-dtc | ACTIVE_DTC | VEHICLE_HEALTH | FLEET_READINESS | STATE | |
+| battery-health-warning | BATTERY_CRITICAL | VEHICLE_HEALTH | FLEET_READINESS | STATE | |
+| tire-health-warning | TIRE_CRITICAL | VEHICLE_HEALTH | FLEET_READINESS | STATE | |
+| brake-health-warning | BRAKE_CRITICAL | VEHICLE_HEALTH | FLEET_READINESS | STATE | |
+| technical-observation-open | TECHNICAL_OBSERVATION_ACTIVE | VEHICLE_HEALTH | FLEET_READINESS | STATE | **yes** |
+| telemetry-offline | TELEMETRY_OFFLINE | SYSTEM | FLEET_READINESS | STATE | |
+| station-shortage | STATION_SHORTAGE | OPERATIONS | OPERATIONS | STATE | **yes** |
+| low-utilization | LOW_UTILIZATION | OPERATIONS | OPERATIONS | STATE | |
+| driving-assessment-limited | DRIVING_ASSESSMENT_DEVICE_QUALITY | DRIVING_ANALYSIS | OPERATIONS | STATE | **yes** |
+| possible-impact | POSSIBLE_IMPACT | DRIVING_ANALYSIS | OPERATIONS | STATE | |
+| integration-disconnected | INTEGRATION_DISCONNECTED | SYSTEM | OPERATIONS | STATE | |
+| booking-created | BOOKING_CREATED | BOOKINGS | OPERATIONS | EVENT | |
+
+Weitere Typen (Handovers, Billing, Legal, Connectivity, …): siehe Registry-Code und Audit §3.
 
 ---
 
@@ -138,7 +168,7 @@ flowchart LR
 organizationId | eventType | entityType | entityId | conditionCode | v{fingerprintVersion}
 ```
 
-- **Keine** Severity, UI-Texte oder `sourceType` im Fingerprint.
+- **Keine** Severity, UI-Texte, `sourceType` oder `attentionScope` im Fingerprint.
 - Gleiche Entität + anderer `conditionCode` → **anderer** Fingerprint.
 - Gleiche Ursache, andere `sourceType` → **gleicher** Fingerprint.
 - API: `buildRegistryFingerprint(orgId, eventType, entityId)`.
@@ -198,6 +228,7 @@ Adapter mit `shadowModeOnly: true` schreiben nur wenn:
 
 ## Verwandte Docs
 
+- `docs/audits/fleet-readiness-notification-parity-2026-08.md`
 - `docs/notification-engine-domain-contract.md`
 - `docs/notification-engine-core.md`
 - `docs/notification-engine-migration-plan.md`

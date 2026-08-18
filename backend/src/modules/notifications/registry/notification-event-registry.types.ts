@@ -39,6 +39,18 @@ export type NotificationActionTargetBuilder = (
 export type NotificationEventSlug = string;
 
 /**
+ * Canonical attention routing — not a domain, preference category, fingerprint field, or UI component.
+ * Declares which attention space should primarily surface this notification.
+ * Dashboard, mobile, inbox, and agents are projections only.
+ */
+export type NotificationAttentionScope = 'OPERATIONS' | 'FLEET_READINESS';
+
+export const NOTIFICATION_ATTENTION_SCOPES = [
+  'OPERATIONS',
+  'FLEET_READINESS',
+] as const satisfies readonly NotificationAttentionScope[];
+
+/**
  * Canonical event-type configuration — single source of truth per `eventType`.
  * Producers must not invent fingerprints or template keys outside this registry.
  */
@@ -47,6 +59,8 @@ export interface NotificationEventTypeDefinition {
   slug: NotificationEventSlug;
   /** Unique uppercase canonical code — DB + fingerprint identity. */
   eventType: string;
+  /** Primary attention space for routing projections (not UI-specific). */
+  attentionScope: NotificationAttentionScope;
   domain: NotificationDomain;
   defaultEntityType: NotificationEntityType;
   /** Stable condition code within entity scope (fingerprint component). */

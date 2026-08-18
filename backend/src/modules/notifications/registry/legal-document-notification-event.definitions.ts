@@ -7,7 +7,10 @@ import {
   NotificationSeverity,
   NotificationSourceType,
 } from '../notification.enums';
-import type { NotificationEventTypeDefinition } from './notification-event-registry.types';
+import type {
+  NotificationAttentionScope,
+  NotificationEventTypeDefinition,
+} from './notification-event-registry.types';
 import {
   bookingTarget,
   legalDocumentsSettingsTarget,
@@ -37,6 +40,7 @@ function legalOrgStateDef(
   return {
     slug,
     eventType,
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DOCUMENTS,
     defaultEntityType: NotificationEntityType.ORGANIZATION,
     conditionCode,
@@ -72,6 +76,7 @@ function legalBookingStateDef(
   return {
     slug,
     eventType,
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.DOCUMENTS,
     defaultEntityType: NotificationEntityType.BOOKING,
     conditionCode,
@@ -103,6 +108,7 @@ function legalTechDef(
   return {
     slug,
     eventType,
+    attentionScope: 'OPERATIONS',
     domain: NotificationDomain.SYSTEM,
     defaultEntityType: NotificationEntityType.ORGANIZATION,
     conditionCode,
