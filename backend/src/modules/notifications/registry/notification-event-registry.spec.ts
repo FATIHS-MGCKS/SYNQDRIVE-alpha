@@ -8,6 +8,7 @@ import {
   isNotificationAttentionScope,
   NOTIFICATION_EVENT_REGISTRY,
   NotificationEventRegistryError,
+  requireEventTypeDefinition,
   requireNotificationAttentionScope,
   resolveEventSlug,
 } from './notification-event-registry';
@@ -257,17 +258,72 @@ describe('NotificationEventRegistry', () => {
       expect(first).toEqual(second);
     });
 
-    it('does not change fingerprint-relevant registry fields when attentionScope is present', () => {
-      const beforeLike = buildRegistryFingerprint('org-1', 'VEHICLE_NOT_READY', 'veh-1');
-      const afterLike = buildRegistryFingerprint('org-1', 'VEHICLE_NOT_READY', 'veh-1');
-      expect(beforeLike.canonical).toBe(afterLike.canonical);
+    const GOLDEN_FINGERPRINT_ORG_ID = 'org-golden';
+    const GOLDEN_VEHICLE_ENTITY_ID = 'veh-golden-1';
+    const GOLDEN_ORG_ENTITY_ID = 'org-golden';
 
-      const def = NOTIFICATION_EVENT_REGISTRY.find((d) => d.eventType === 'VEHICLE_NOT_READY');
-      expect(def?.attentionScope).toBe('FLEET_READINESS');
-      expect(def?.domain).toBe('OPERATIONS');
-      expect(def?.conditionCode).toBe('vehicle_not_ready');
-      expect(def?.fingerprintVersion).toBe(1);
-      expect(def?.sourceType).toBe('OPERATIONAL_ISSUE');
+    const FINGERPRINT_GOLDEN_BASELINES: ReadonlyArray<{
+      eventType: string;
+      entityId: string;
+      canonical: string;
+      attentionScope: 'OPERATIONS' | 'FLEET_READINESS';
+    }> = [
+      {
+        eventType: 'VEHICLE_NOT_READY',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|VEHICLE_NOT_READY|VEHICLE|veh-golden-1|vehicle_not_ready|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'BLOCKED_VEHICLE',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|BLOCKED_VEHICLE|VEHICLE|veh-golden-1|blocked_vehicle|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'ACTIVE_DTC',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|ACTIVE_DTC|VEHICLE|veh-golden-1|active_dtc|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'TELEMETRY_OFFLINE',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|TELEMETRY_OFFLINE|VEHICLE|veh-golden-1|telemetry_offline|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'LOW_UTILIZATION',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|LOW_UTILIZATION|VEHICLE|veh-golden-1|low_utilization|v1',
+        attentionScope: 'OPERATIONS',
+      },
+      {
+        eventType: 'INTEGRATION_DISCONNECTED',
+        entityId: GOLDEN_ORG_ENTITY_ID,
+        canonical:
+          'org-golden|INTEGRATION_DISCONNECTED|ORGANIZATION|org-golden|integration_disconnected|v1',
+        attentionScope: 'OPERATIONS',
+      },
+    ];
+
+    it('matches stable golden fingerprint baselines and excludes attentionScope from canonical output', () => {
+      for (const baseline of FINGERPRINT_GOLDEN_BASELINES) {
+        const def = requireEventTypeDefinition(baseline.eventType);
+        expect(def.attentionScope).toBe(baseline.attentionScope);
+
+        const fingerprint = buildRegistryFingerprint(
+          GOLDEN_FINGERPRINT_ORG_ID,
+          baseline.eventType,
+          baseline.entityId,
+          def.defaultEntityType,
+        );
+
+        expect(fingerprint.canonical).toBe(baseline.canonical);
+        expect(fingerprint.canonical).not.toContain('FLEET_READINESS');
+        expect(fingerprint.canonical).not.toContain('OPERATIONS');
+        expect(fingerprint.canonical).not.toContain('attentionScope');
+      }
     });
 
     it('covers explicit boundary cases', () => {
@@ -279,7 +335,7 @@ describe('NotificationEventRegistry', () => {
       expect(requireNotificationAttentionScope('INTEGRATION_DISCONNECTED')).toBe('OPERATIONS');
     });
 
-    it('does not include attentionScope in candidate or fingerprint output', () => {
+    it('does not include attentionScope in candidate output', () => {
       const candidate = buildCandidateFromRegistry({
         organizationId: 'org-1',
         eventType: 'BLOCKED_VEHICLE',
@@ -289,10 +345,6 @@ describe('NotificationEventRegistry', () => {
         templateParams: { label: 'WOB L 7503' },
       });
       expect(candidate).not.toHaveProperty('attentionScope');
-      const fingerprint = buildRegistryFingerprint('org-1', candidate.eventType, candidate.entityId);
-      expect(fingerprint.canonical).toContain('BLOCKED_VEHICLE');
-      expect(fingerprint.canonical).not.toContain('FLEET_READINESS');
-      expect(fingerprint.canonical).not.toContain('attentionScope');
     });
   });
 });

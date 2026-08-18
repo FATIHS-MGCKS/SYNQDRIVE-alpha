@@ -7,7 +7,7 @@
 
 Introduced canonical `NotificationAttentionScope` on every registered notification event type:
 
-- `OPERATIONS` — general operational attention space (default dashboard box today)
+- `OPERATIONS` — general operational attention space
 - `FLEET_READINESS` — vehicle technical/readiness/connectivity attention space
 
 ## Architecture
@@ -27,14 +27,14 @@ Rental Health (vehicle state) → Notification Engine V2 (lifecycle) → attenti
 | `notification-event-registry.types.ts` | `NotificationAttentionScope` type + required field |
 | `notification-event-registry.ts` | Lookup helpers |
 | `notification-event-registry.definitions.ts` | Scope on all 46 core events |
-| `legal-document-notification-event.definitions.ts` | Scope on 19 legal events (all OPERATIONS) |
+| `legal-document-notification-event.definitions.ts` | Scope on 20 legal events (all OPERATIONS) |
 | `notification-event-registry.spec.ts` | Partition + fingerprint isolation tests |
 
 ## Counts (code-derived)
 
-- Total: 65 event types
+- Total: 66 event types
 - FLEET_READINESS: 23
-- OPERATIONS: 42
+- OPERATIONS: 43
 
 ## Audit
 

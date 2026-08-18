@@ -51,16 +51,16 @@ flowchart TD
 
 | Aspekt | `domain` | `attentionScope` |
 |--------|----------|-------------------|
-| Zweck | Fachliche Notification-Domäne (Filter, Counts, Preferences-Kontext) | Dashboard-Attention-Space (Operations vs Fleet Readiness) |
+| Zweck | Fachliche Notification-Domäne (Filter, Counts, Preferences-Kontext) | Attention space (Operations vs Fleet Readiness) |
 | Werte | `OPERATIONS`, `VEHICLE_HEALTH`, `HANDOVERS`, `BOOKINGS`, `BILLING`, `DOCUMENTS`, `DRIVING_ANALYSIS`, `SYSTEM`, `SECURITY` | `OPERATIONS`, `FLEET_READINESS` |
 | Persistenz | In Notification-Record (`domain`) | **Nicht** persistiert — Registry-Lookup zur Laufzeit |
 | Fingerprint | Nein | **Nein** |
 | User Preference | Indirekt über `preferenceCategory` | **Nein** |
 | Pflichtfeld | Ja | Ja (Compile/Test-Enforcement) |
 
-**Architekturregel:** Keine dritte Wahrheit. Rental Health bleibt Source of Truth für Fahrzeugzustand; Notification V2 für Lifecycle; `attentionScope` nur für Dashboard-Routing-Projektion.
+**Architekturregel:** Keine dritte Wahrheit. Rental Health bleibt Source of Truth für Fahrzeugzustand; Notification V2 für Lifecycle; `attentionScope` nur für Attention-Routing-Projektion. Dashboard, Mobile, Inbox und Agents sind Projektionen.
 
-**Beispiel:** `VEHICLE_NOT_READY` hat `domain: OPERATIONS` (historisch korrekt) aber `attentionScope: FLEET_READINESS` (Dashboard-Zielbereich).
+**Beispiel:** `VEHICLE_NOT_READY` hat `domain: OPERATIONS` (historisch korrekt) aber `attentionScope: FLEET_READINESS` (Fleet-Readiness-Attention-Space).
 
 ### Lookup-API
 
@@ -79,8 +79,8 @@ isNotificationAttentionScope(value)
 | attentionScope | Anzahl |
 |----------------|--------|
 | `FLEET_READINESS` | 23 |
-| `OPERATIONS` | 42 |
-| **Gesamt** | **65** |
+| `OPERATIONS` | 43 |
+| **Gesamt** | **66** |
 
 Vollständige Matrix: Code (`notification-event-registry.definitions.ts`, `legal-document-notification-event.definitions.ts`) oder Audit-Dokument §3.
 
@@ -103,7 +103,7 @@ Vollständige Matrix: Code (`notification-event-registry.definitions.ts`, `legal
 |------|--------------|
 | `slug` | Kebab-case Dokumentations-/Routing-ID (eindeutig) |
 | `eventType` | Uppercase kanonischer Code (eindeutig, Fingerprint-Bestandteil) |
-| `attentionScope` | `OPERATIONS` \| `FLEET_READINESS` — Dashboard-Routing (Pflicht, nicht persistiert) |
+| `attentionScope` | `OPERATIONS` \| `FLEET_READINESS` — Attention routing (Pflicht, nicht persistiert) |
 | `domain` | `NotificationDomain` |
 | `defaultEntityType` | Standard-Entität |
 | `conditionCode` | Stabile Bedingung innerhalb der Entität |

@@ -42,12 +42,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Kanonischer `NotificationAttentionScope` (`OPERATIONS` | `FLEET_READINESS`) in der Event Registry — Pflichtfeld pro Event Type.',
       'Registry-Lookup-APIs: `getNotificationEventTypesByAttentionScope`, `getNotificationDefinitionsByAttentionScope`, `getNotificationAttentionScope`.',
-      '65 registrierte Event Types: 23 FLEET_READINESS, 42 OPERATIONS — keine Fingerprint-/Domain-/Lifecycle-Änderung.',
+      '66 registrierte Event Types: 23 FLEET_READINESS, 43 OPERATIONS — keine Fingerprint-/Domain-/Lifecycle-Änderung.',
       'Audit: `docs/audits/fleet-readiness-notification-parity-2026-08.md` — YELLOW, NOT READY FOR PHASE 2 UI cutover.',
       'Kein Dashboard-/API-Cutover in diesem Schritt.',
     ],
     reason:
-      'Saubere kanonische Trennung zwischen Operations- und Fleet-Readiness-Attention-Areas als Routing-Grundlage für zukünftiges Dashboard-Splitting.',
+      'Saubere kanonische Trennung zwischen Operations- und Fleet-Readiness-Attention-Spaces als Routing-Grundlage für zukünftiges UI-Splitting.',
     previousBehavior:
       'Keine maschinenlesbare Attention-Scope-Klassifikation; Dashboard zeigte alle Notifications in einer Operations-Box.',
     details:

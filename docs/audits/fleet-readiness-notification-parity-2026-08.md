@@ -42,8 +42,8 @@ Vehicle telemetry / health domains / operational state
 |-------|------|-----------------|
 | Rental Health | Vehicle module states, `rental_blocked`, `blocking_reasons`, `rental_readiness` | `RentalHealthService.getVehicleHealth()` |
 | Notification Engine V2 | Persistent notification lifecycle (OPEN/RESOLVE/REOPEN) | `NotificationCoreService` + Prisma |
-| Event Registry `attentionScope` | Dashboard attention routing classification | `notification-event-registry.*` |
-| Dashboard UI | Projection only — **no cutover in P1.1** | Frontend Action Queue (unchanged) |
+| Event Registry `attentionScope` | Attention routing classification (UI-neutral) | `notification-event-registry.*` |
+| UI surfaces (dashboard, mobile, inbox, agents) | Projection only — **no cutover in P1.1** | Frontend Action Queue (unchanged) |
 
 **Rules enforced in P1.1:**
 - No new notification table / alert persistence
@@ -54,59 +54,86 @@ Vehicle telemetry / health domains / operational state
 
 ## 3. Attention Scope Matrix
 
-**Total registered event types:** 65  
+**Total registered event types:** 66  
 **FLEET_READINESS:** 23  
-**OPERATIONS:** 42
+**OPERATIONS:** 43
 
-Full matrix is derived from code (`NOTIFICATION_EVENT_TYPE_DEFINITIONS` + `LEGAL_DOCUMENT_NOTIFICATION_EVENT_DEFINITIONS`). Lookup API:
-
-- `getNotificationEventTypesByAttentionScope(scope)`
-- `getNotificationDefinitionsByAttentionScope(scope)`
-- `getNotificationAttentionScope(eventType)`
-
-### FLEET_READINESS (23)
+Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotificationDefinitionsByAttentionScope(scope)`, `getNotificationAttentionScope(eventType)`.
 
 | eventType | domain | entityType | producerModule | attentionScope | rationale |
 |-----------|--------|------------|----------------|----------------|-----------|
-| BLOCKED_VEHICLE | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate rental-blocking state |
-| VEHICLE_NOT_READY | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate readiness-not-ready state |
-| MAINTENANCE_REQUIRED | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Maintenance blocks deployment readiness |
 | ACTIVE_DTC | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | Active fault code on vehicle |
-| BATTERY_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Battery health blocks/warns readiness |
-| TIRE_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Tire safety/readiness |
+| AUTHORIZATION_REQUIRED | SECURITY | VEHICLE | dimo | FLEET_READINESS | Per-vehicle authorization required for data access |
+| BATTERY_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Battery health affects vehicle readiness |
+| BLOCKED_VEHICLE | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate rental-blocking state |
+| BOKRAFT_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | BOKraft overdue blocks rental |
+| BOOKING_CREATED | BOOKINGS | BOOKING | bookings | OPERATIONS | Booking workflow event |
+| BOOKING_UPDATED | BOOKINGS | BOOKING | bookings | OPERATIONS | Booking workflow event |
 | BRAKE_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Brake safety/readiness |
-| COMPLIANCE_EXPIRED | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Regulatory compliance expired |
+| COMPLIANCE_EXPIRED | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Regulatory compliance expired on vehicle |
+| CONNECTIVITY_STATE_UNKNOWN | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle connectivity unevaluable |
+| DATA_COVERAGE_INSUFFICIENT | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Insufficient signal coverage for vehicle evaluation |
+| DATA_QUALITY_LIMITED | DRIVING_ANALYSIS | VEHICLE | vehicle-intelligence | OPERATIONS | Driving analysis data quality info |
+| DATA_SOURCE_DISCONNECTED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle data source disconnected |
+| DEPOSIT_PROBLEM | BILLING | BOOKING | billing | OPERATIONS | Billing deposit issue |
+| DEVICE_BINDING_CHANGED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle device binding change |
+| DEVICE_RECONNECTED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle connectivity recovery event |
+| DEVICE_UNPLUGGED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Device unplugged — vehicle data gap |
+| DRIVING_ASSESSMENT_DEVICE_QUALITY | DRIVING_ANALYSIS | VEHICLE | vehicle-intelligence | OPERATIONS | Driving analysis device quality (not readiness) |
+| HANDOVER_INCOMPLETE | HANDOVERS | BOOKING | bookings | OPERATIONS | Incomplete handover workflow |
+| HM_SERVICE_NO_TRACKING | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | HM service tracking gap affects evaluability |
+| INTEGRATION_DISCONNECTED | SYSTEM | ORGANIZATION | integrations | OPERATIONS | Org-wide integration failure |
+| INVOICE_OVERDUE | BILLING | INVOICE | billing | OPERATIONS | Billing invoice overdue |
+| LEGAL_ACTIVATION_SCHEDULED | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_APPROVAL_PENDING | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_BUNDLE_INCOMPLETE | DOCUMENTS | BOOKING | documents | OPERATIONS | Legal document booking workflow issue |
+| LEGAL_DOCUMENT_DELIVERY_FAILED | DOCUMENTS | BOOKING | documents | OPERATIONS | Legal document booking workflow issue |
+| LEGAL_DOCUMENT_EXPIRING_SOON | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_INTEGRITY_CHECK_FAILED | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_PICKUP_BLOCKED_MISSING_PROOF | DOCUMENTS | BOOKING | documents | OPERATIONS | Legal document booking workflow issue |
+| LEGAL_REQUIRED_DOCUMENT_MISSING | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_REQUIRED_JURISDICTION_MISSING | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_REQUIRED_LANGUAGE_MISSING | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_SCAN_FAILED | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Legal document org compliance issue |
+| LEGAL_TECH_HASH_MISMATCH | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_MALWARE_SCANNER_UNAVAILABLE | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_MULTIPLE_ACTIVE_VERSIONS | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_OBJECT_STORAGE_UNAVAILABLE | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_QUEUE_JOB_DEAD | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_RECONCILIATION_FAILED | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_RESOLVER_CONFLICT_UNRESOLVABLE | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_STORAGE_OBJECT_MISSING | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LEGAL_TECH_UNMAPPED_DOCUMENT_TYPE | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
+| LOW_UTILIZATION | OPERATIONS | VEHICLE | business-insights | OPERATIONS | Fleet utilization operations (not readiness) |
+| MAINTENANCE_REQUIRED | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Maintenance blocks deployment readiness |
+| MISUSE_DETECTED | DRIVING_ANALYSIS | TRIP | vehicle-intelligence | OPERATIONS | Driving analysis misuse detection |
+| PAYMENT_FAILED | BILLING | INVOICE | billing | OPERATIONS | Billing payment failure |
+| PICKUP_DUE | HANDOVERS | BOOKING | bookings | OPERATIONS | Handover pickup due |
+| PICKUP_OVERDUE | HANDOVERS | BOOKING | business-insights | OPERATIONS | Handover pickup overdue |
+| POSSIBLE_IMPACT | DRIVING_ANALYSIS | TRIP | vehicle-intelligence | OPERATIONS | Driving analysis impact suspicion (not confirmed technical) |
+| REQUIRED_DOCUMENT_MISSING | DOCUMENTS | ORGANIZATION | documents | OPERATIONS | Required vehicle/booking document missing |
+| RETURN_DUE | HANDOVERS | BOOKING | bookings | OPERATIONS | Handover return due |
+| RETURN_NEEDS_INSPECTION | HANDOVERS | BOOKING | business-insights | OPERATIONS | Return inspection workflow |
+| RETURN_OVERDUE | HANDOVERS | BOOKING | business-insights | OPERATIONS | Handover return overdue |
+| SERVICE_BEFORE_BOOKING | HANDOVERS | VEHICLE | business-insights | OPERATIONS | Booking impact — service scheduling operations |
 | SERVICE_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Service overdue affects readiness |
 | SERVICE_WINDOW | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Upcoming service window on vehicle |
-| TUV_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | TÜV overdue blocks rental |
-| BOKRAFT_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | BOKraft overdue blocks rental |
-| HM_SERVICE_NO_TRACKING | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | HM service tracking gap affects evaluability |
-| TECHNICAL_OBSERVATION_ACTIVE | VEHICLE_HEALTH | VEHICLE | vehicle-complaints | FLEET_READINESS | Active technical observation |
+| STATION_SHORTAGE | OPERATIONS | STATION | business-insights | OPERATIONS | Station capacity / availability operations |
+| TECHNICAL_OBSERVATION_ACTIVE | VEHICLE_HEALTH | VEHICLE | vehicle-complaints | FLEET_READINESS | Active technical observation on vehicle |
 | TELEMETRY_OFFLINE | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle telemetry offline — cannot evaluate state |
 | TELEMETRY_SOFT_OFFLINE | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Degraded telemetry — evaluability at risk |
-| DEVICE_UNPLUGGED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Device unplugged — data gap |
-| DEVICE_RECONNECTED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle connectivity recovery (evaluability restored) |
-| AUTHORIZATION_REQUIRED | SECURITY | VEHICLE | dimo | FLEET_READINESS | Per-vehicle auth required for data access |
-| DATA_SOURCE_DISCONNECTED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Vehicle data source disconnected |
-| DATA_COVERAGE_INSUFFICIENT | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Insufficient signal coverage for evaluation |
-| DEVICE_BINDING_CHANGED | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Device binding change on vehicle |
-| CONNECTIVITY_STATE_UNKNOWN | SYSTEM | VEHICLE | dimo | FLEET_READINESS | Connectivity unevaluable for vehicle |
-
-### OPERATIONS (42) — summary by category
-
-| Category | eventTypes |
-|----------|------------|
-| Station / fleet ops | STATION_SHORTAGE, LOW_UTILIZATION |
-| Handovers / bookings | PICKUP_OVERDUE, RETURN_OVERDUE, TIGHT_HANDOVER, RETURN_NEEDS_INSPECTION, SERVICE_BEFORE_BOOKING, BOOKING_CREATED, BOOKING_UPDATED, PICKUP_DUE, RETURN_DUE, HANDOVER_INCOMPLETE |
-| Driving analysis | DRIVING_ASSESSMENT_DEVICE_QUALITY, TRIP_ANALYSIS_COMPLETED, MISUSE_DETECTED, POSSIBLE_IMPACT, DATA_QUALITY_LIMITED |
-| Documents | REQUIRED_DOCUMENT_MISSING, LEGAL_* (19 types) |
-| Billing | PAYMENT_FAILED, INVOICE_OVERDUE, DEPOSIT_PROBLEM |
-| Org-wide system | INTEGRATION_DISCONNECTED, WEBHOOK_FAILURE |
+| TIGHT_HANDOVER | HANDOVERS | BOOKING | business-insights | OPERATIONS | Booking handover timing operations |
+| TIRE_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Tire safety/readiness |
+| TRIP_ANALYSIS_COMPLETED | DRIVING_ANALYSIS | TRIP | vehicle-intelligence | OPERATIONS | Driving analysis trip event |
+| TUV_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | TÜV overdue blocks rental |
+| VEHICLE_NOT_READY | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate vehicle readiness-not-ready state |
+| WEBHOOK_FAILURE | SYSTEM | ORGANIZATION | webhooks | OPERATIONS | Org-wide webhook failure |
 
 **Explicit boundary cases (verified in tests):**
 - `VEHICLE_NOT_READY` / `BLOCKED_VEHICLE` → FLEET_READINESS despite `domain: OPERATIONS`
 - `LOW_UTILIZATION` / `SERVICE_BEFORE_BOOKING` → OPERATIONS despite `entityType: VEHICLE`
 - `INTEGRATION_DISCONNECTED` → OPERATIONS (org-wide integration failure)
+
 
 ---
 
