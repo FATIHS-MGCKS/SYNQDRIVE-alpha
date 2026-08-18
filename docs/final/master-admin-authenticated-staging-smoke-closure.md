@@ -24,7 +24,9 @@
 | **Frontend Asset (live)** | `index-Dn0wo6ra.js` |
 | **MASTER_ADMIN Smoke Account** | Temporär provisioniert, authentifiziert, bereinigt |
 | **Authentifizierte Workflows A–F** | **PASS** (read-only) |
+| **Default Dashboard View** | **PASS** (post-fix `28138344` — see `docs/final/master-admin-dashboard-render-production-closure.md`) |
 | **SMOKE-PROV-001** | **CLOSED** |
+| **UI-DASH-RENDER-P1-001** | **CLOSED** |
 | **Final Status** | **CLOSED** |
 
 ---
@@ -106,7 +108,7 @@ Automatisierte Tests: `npm test -- master-admin-smoke-lifecycle` — **10/10 PAS
 | **E Security** | PASS | PASS | PASS | PASS | **PASS** |
 | **F Integrations** | PASS | PASS | PASS | PASS | **PASS** |
 
-**Hinweis:** Default-View `?view=dashboard` zeigte in Browser-Automation einen React-Render-Fehler; Sidebar-Navigation über **Organisationen** und alle übrigen Hubs funktionierte. API `GET /api/v1/admin/dashboard/operational` lieferte **200** mit vollständigem Payload — kein API-Blocker.
+**Hinweis:** Default-View `?view=dashboard` zeigte initial einen React-Render-Fehler (UI-DASH-RENDER-P1-001). **Behoben und verifiziert** in `docs/final/master-admin-dashboard-render-production-closure.md` (`28138344`).
 
 Keine produktiven Mutationen ausgeführt.
 

@@ -17,6 +17,8 @@
 |--------|------|
 | **Active P0** | **2** (`MA-BILL-P0-001`, `MA-BKP-P0-002`) — `ACCEPTED RISK` ausgeschlossen |
 | **Active P1** | **6** (`MA-BKP-P1-001`, `MA-REDIS-P1-001`, `MA-OBS-P1-001`, `MA-CH-P1-002`, `TB-2`, `TB-3` — letztere nur wenn HM produktiv) |
+| **Active UI P0** | **0** |
+| **Active UI P1** | **0** (`UI-DASH-RENDER-P1-001` **CLOSED** 2026-08-18) |
 | **Active P2** | **~17** (kanonisch dedupliziert; `CP-P2-05` unter Accepted Risk, nicht mitgezählt) |
 | **Active P3** | **~12** (kanonisch dedupliziert; v. a. `CP-P3-04`…`CP-P3-09`, E2E, Hygiene) |
 | **Closed** | **~97** Finding-Instanzen → **~64 kanonische IDs** |
@@ -36,11 +38,11 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 
 **Was vollständig abgeschlossen ist:** Security-Hardening (Swagger-Gate, Audit append-only, MFA/Step-up, RBAC-TB-1), Billing-Guards (Stripe env separation + webhook livemode), ClickHouse-Tenant-Migration 007, DIMO partial UNIQUE, Platform-Ops/Security/Integrations/Vehicles/Billing/Orgs Hub-UIs mit operational APIs als Source of Truth, Legacy-URL-Migration, Orphan-View-Entfernung, 91/91 Master-Unit-Tests grün.
 
-**Was nur teilweise abgeschlossen ist:** Backup-Kette (Restore-Drill ✅, Verschlüsselung/Offsite ❌), Observability (Prometheus-Config ✅, Alertmanager-Runtime ❌), Billing (Sandbox bewusst — Live-Cutover offen), UI-Live-Abnahme (Auth-Gate verifiziert, authentifizierte Workflows A–F nur per Code/Tests), Convergence-Branch noch nicht auf `main`/Production.
+**Was nur teilweise abgeschlossen ist:** Backup-Kette (Restore-Drill ✅, Verschlüsselung/Offsite ❌), Observability (Prometheus-Config ✅, Alertmanager-Runtime ❌), Billing (Sandbox bewusst — Live-Cutover offen). UI-Live-Abnahme inkl. Default-Dashboard (`UI-DASH-RENDER-P1-001`) und authentifizierter Smoke A–F (**CLOSED** 2026-08-18).
 
 **Superseded:** Ursprüngliche standalone Audit-Artefakte (VPS Read-only Audit, dedizierte Findings-JSON, P0 Validation, Remediation Order Review, Post-Canonicalization Report) existieren **nicht als eigenständige Dateien** im Repo; Inhalt ist in `docs/final/master-admin-go-live-certification.md`, `docs/final/master-admin-re-audit-2026-07-26.md` und den Remediation-Phasendokumenten konsolidiert. Phase-spezifische UI-Finding-IDs (z. B. `UI-4-P0-1`) sind durch Hub-Post-Remediation und `CP-*`-IDs superseded, sofern dieselbe Root Cause.
 
-**Production-Blocker (aktiv — §11 A1–A4):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A2) Backup-Verschlüsselung `MA-BKP-P0-002`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`. **A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE) geschlossen** — siehe `docs/final/master-admin-a1-ui-production-deploy-closure.md` und `docs/final/master-admin-authenticated-staging-smoke-closure.md`.
+**Production-Blocker (aktiv — §11 A1–A4):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A2) Backup-Verschlüsselung `MA-BKP-P0-002`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`. **A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE + UI-DASH-RENDER-P1-001 + SMOKE-PROV-001) geschlossen** — siehe Closure-Docs 2026-08-18.
 
 **Nicht blockierend:** Failed BullMQ-Jobs `MA-REDIS-P1-001`, In-Memory-Filter Scale `CP-P2-05` (Accepted Risk), Partner-View-Heterogenität `CP-P2-06`, Playwright-E2E `CP-P3-08`.
 
@@ -185,9 +187,10 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 | **UI-SOT-P2** | Certification §9 | Acceptance | P2 | P2 | SoT | Nav badge client derivation | Dokumentiert PARTIAL | **ACCEPTED RISK** |
 | **UI-BUNDLE-P3** | Certification §14 | Acceptance | P3 | P3 | Performance | ~14.7MB bundle | Build output | **ACCEPTED RISK** |
 | **UI-A11Y-P3** | Certification §12 | Acceptance | P3 | P3 | A11y | Full SR audit fehlt | Nicht durchgeführt | **OPEN** |
-| **UI-STAGING-SMOKE** | Certification | Acceptance | — | P1 (gate) | Release | 1× auth smoke A–F | Live verifiziert 2026-08-18 | **CLOSED** |
-| **UI-DEPLOY-GAP** | Certification | Acceptance | — | P1 (gate) | Release | Merge + deploy convergence | Prod asset `index-Dn0wo6ra.js` | **CLOSED** |
+| **UI-STAGING-SMOKE** | Certification | Acceptance | — | P1 (gate) | Release | 1× auth smoke A–F + default dashboard | Live verifiziert 2026-08-18 | **CLOSED** |
+| **UI-DEPLOY-GAP** | Certification | Acceptance | — | P1 (gate) | Release | Merge + deploy convergence | Prod asset `index-DB0NbaUr.js` (post dashboard fix) | **CLOSED** |
 | **SMOKE-PROV-001** | Smoke lifecycle | Acceptance | P0 (gate) | P0 | Ops CLI | `master-admin-smoke-lifecycle` | VPS setup/smoke/cleanup | **CLOSED** |
+| **UI-DASH-RENDER-P1-001** | UI Dashboard | Acceptance | P1 | P1 | Render | Stable useSyncExternalStore snapshot | Live verified 2026-08-18 (`28138344`) | **CLOSED** |
 
 ### 3.3 Superseded (nicht doppelt zählen)
 
@@ -212,7 +215,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 `MA-NET-P1-001/002`, `MA-AUD-P1-001`, `COMP-2`, `COMP-3`, `RBAC-TB-1`, `MA-CH-P0-001`, `MA-CH-P1-001`, `MA-DIMO-P0-001`, `MA-TOPO-P0-001`, `P1-1`, `P1-3`
 
 **UI Hub-Kern (Post-Remediation + Acceptance):**  
-Alle UI-3…UI-10 P0/P1 Hub-Findings; `CP-P2-01`…`04`, `07`, `09`…`12`; `CP-P3-01`…`03`, `07`
+Alle UI-3…UI-10 P0/P1 Hub-Findings; `CP-P2-01`…`04`, `07`, `09`…`12`; `CP-P3-01`…`03`, `07`; Release Gates `UI-STAGING-SMOKE`, `UI-DEPLOY-GAP`, `SMOKE-PROV-001`, `UI-DASH-RENDER-P1-001`
 
 **Evidenz-Minimum erfüllt:** Code Change + (Test | Runtime | Acceptance) für jedes CLOSED P0/P1 oben.
 
@@ -287,8 +290,8 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 | Gate | Ergebnis | Evidenz | Bedingungen |
 |------|----------|---------|-------------|
 | **Navigation** | **PASS** | Canonical 16-item sidebar; legacy redirects; badges wired | — |
-| **App Shell** | **PASS** | MasterAdminShell, PageContainer, skip link | Deploy gap für neueste Convergence |
-| **Dashboard** | **PASS** | Operational dashboard; 10s test PASS | Staging smoke empfohlen |
+| **App Shell** | **PASS** | MasterAdminShell, PageContainer, skip link | — |
+| **Dashboard** | **PASS** | Operational dashboard; auth smoke `?view=dashboard` live 2026-08-18 | `UI-DASH-RENDER-P1-001` **CLOSED** |
 | **Organizations** | **PASS** | operational API; attention SoT | Scale P2 accepted |
 | **Billing** | **PASS** | BCC operational; subscription clarity 85/100 | Resend/Outbox P2 open |
 | **Vehicles / DIMO** | **PASS** | Connected Vehicles Hub | — |
@@ -297,9 +300,9 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 | **Audit** | **PASS** | Export gated; scrubbing; drawer | — |
 | **Integrations** | **PASS** | platform-integrations directory | Webhook drawer P3 |
 | **System Configuration** | **PASS WITH CONDITIONS** | Integrations hub replaces mock settings | Feature flags still ENV-only (P2) |
-| **Mobile** | **PASS WITH CONDITIONS** | Login 375px no overflow (live); hub remediation scores | Hub mobile nicht auth-live getestet |
+| **Mobile** | **PASS** | Login 375px no overflow; dashboard mobile 414×896 auth-live | — |
 | **Accessibility** | **PASS WITH CONDITIONS** | Skip link, focus rings, reduced motion | Formal SR audit P3 open |
-| **Cross-Page Workflows** | **PASS WITH CONDITIONS** | Code + 91 unit tests; workflows A–F PASS* | *Live auth smoke ausstehend |
+| **Cross-Page Workflows** | **PASS** | Code + unit tests; workflows A–F + dashboard drilldowns auth-live | — |
 | **Source-of-Truth Integrity** | **PASS WITH CONDITIONS** | Hub domains PASS; 86/100 score | Nav badge derivation P2 accepted |
 
 **UI FAIL Gates: 0**
@@ -356,16 +359,17 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 | **Acceptance** | Container healthy; Test-Alert zugestellt |
 | **Abhängigkeiten** | Slack/Email webhook credentials |
 
-### A5 — `UI-DEPLOY-GAP` + `UI-STAGING-SMOKE` — **CLOSED**
+### A5 — `UI-DEPLOY-GAP` + `UI-STAGING-SMOKE` + `UI-DASH-RENDER-P1-001` — **CLOSED**
 
 | Feld | Wert |
 |------|------|
 | **Severity** | Release Gate |
 | **Status** | **CLOSED** (2026-08-18) |
-| **UI-DEPLOY-GAP Evidenz** | `docs/final/master-admin-a1-ui-production-deploy-closure.md` — Release `20260818142436_v4994`, Asset `index-Dn0wo6ra.js` |
-| **UI-STAGING-SMOKE Evidenz** | `docs/final/master-admin-authenticated-staging-smoke-closure.md` — authentifizierter Production read-only Smoke A–F |
+| **UI-DEPLOY-GAP Evidenz** | `docs/final/master-admin-a1-ui-production-deploy-closure.md` — Release `20260818182759_v4994`, Asset `index-DB0NbaUr.js` |
+| **UI-STAGING-SMOKE Evidenz** | `docs/final/master-admin-authenticated-staging-smoke-closure.md` — authentifizierter Production read-only Smoke A–F + default dashboard |
+| **UI-DASH-RENDER-P1-001 Evidenz** | `docs/final/master-admin-dashboard-render-production-closure.md` — Fix `28138344`; kein White Screen / React #185 |
 | **Provisioning** | Ops CLI `master-admin-smoke-lifecycle` — `SMOKE-PROV-001` **CLOSED** |
-| **Acceptance** | Setup → Login → A–F → Mobile → Cleanup → Gate disabled |
+| **Acceptance** | Setup → Login → `?view=dashboard` → A–F → Drilldowns → Mobile → Cleanup → Gate disabled |
 
 ---
 
@@ -453,7 +457,7 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 3. **A4** — Alertmanager starten (`MA-OBS-P1-001`)
 4. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
 
-**A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE + SMOKE-PROV-001): CLOSED** — siehe Closure-Docs 2026-08-18.
+**A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE + UI-DASH-RENDER-P1-001 + SMOKE-PROV-001): CLOSED** — siehe Closure-Docs 2026-08-18.
 
 **Erwartung nach Schließung aller Blocker:** erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3, z. B. `MA-REDIS-P1-001`, `CP-P2-06`, E2E).
 

@@ -77,33 +77,46 @@ No new business logic. Existing operational API DTO reused as source of truth.
 
 | Feld | Wert |
 |------|------|
-| **Pre-fix Production SHA** | `8bec2c03` (docs) / frontend `index-Dn0wo6ra.js` |
-| **Fix commit** | _(filled after deploy)_ |
-| **Post-fix Production SHA** | _(filled after deploy)_ |
-| **Rollback target** | Previous release `20260818164953_v4994` |
+| **Pre-fix Production SHA** | `8bec2c03` / frontend `index-Dn0wo6ra.js` |
+| **Fix commit** | `28138344` |
+| **Post-fix Production SHA** | `28138344` |
+| **Production Release** | `20260818182759_v4994` |
+| **Frontend Asset (post-fix)** | `index-DB0NbaUr.js` |
+| **Rollback target** | Release `20260818164953_v4994` / `index-Dn0wo6ra.js` |
 
 ---
 
 ## Authenticated Production Verification
 
-_(filled after deploy + smoke lifecycle run)_
-
 | Check | Ergebnis |
 |-------|----------|
-| `/master?view=dashboard` renders | |
-| No white screen | |
-| No React render error | |
-| API `GET /admin/dashboard/operational` 200 | |
-| Sidebar + header visible | |
-| Mobile dashboard | |
-| Smoke cleanup + gate disabled | |
+| `/master?view=dashboard` renders | **PASS** |
+| No white screen | **PASS** |
+| No React render error (#185) | **PASS** (CSP warnings only) |
+| API `GET /admin/dashboard/operational` 200 | **PASS** (pre-fix evidence retained) |
+| Sidebar + header visible | **PASS** |
+| Platform state visible | **PASS** |
+| Dashboard ↔ Organizations navigation | **PASS** |
+| Drilldowns: Organizations, Billing, Vehicles, Operations | **PASS** (read-only) |
+| Mobile dashboard (414×896) | **PASS** |
+| Smoke cleanup + gate disabled | **PASS** (`verification.ok: true`, gate `false`) |
+
+### Walkthrough artifacts
+
+| Artifact | Beschreibung |
+|----------|--------------|
+| `dashboard_fix_verified_desktop.png` | Desktop dashboard nach Fix — Sidebar, Header, Platform State sichtbar |
+| `dashboard_fix_verified_mobile.png` | Mobile dashboard (414×896) |
+| `dashboard_render_fix_production_verification.mp4` | End-to-end: Login → Dashboard → Drilldowns → Mobile → Cleanup |
+
+Console: keine React #185; nur CSP-Warnungen. Network: `GET /api/v1/admin/dashboard/operational` → 200.
 
 ---
 
 ## Reconciliation impact
 
 - `UI-DASH-RENDER-P1-001` → **CLOSED**
-- `UI-STAGING-SMOKE` remains **CLOSED** after dashboard verification (default view requirement satisfied)
+- `UI-STAGING-SMOKE` → **CLOSED** (default dashboard view now verified)
 
 ---
 
