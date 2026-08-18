@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdatePlatformEmailSettingsDto {
   @IsEmail()
@@ -13,4 +13,10 @@ export class UpdatePlatformEmailSettingsDto {
   @IsEmail()
   @MaxLength(320)
   defaultReplyToEmail?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  @MaxLength(500)
+  reason?: string;
 }

@@ -18,12 +18,28 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
 import { HealthModule } from '../health/health.module';
 import { BillingModule } from '../billing/billing.module';
 import { SupportModule } from '../support/support.module';
+import { OutboundEmailModule } from '../outbound-email/outbound-email.module';
+import { VoiceAssistantModule } from '../voice-assistant/voice-assistant.module';
+import { HighMobilityModule } from '../high-mobility/high-mobility.module';
+import { PlatformIntegrationsController } from './platform-integrations.controller';
+import { PlatformIntegrationsService } from './platform-integrations.service';
 
 @Module({
-  imports: [DimoModule, VehicleIntelligenceModule, HealthModule, BillingModule, SupportModule, IamMfaModule],
-  controllers: [PlatformAdminController, SecurityGovernanceController],
+  imports: [
+    DimoModule,
+    VehicleIntelligenceModule,
+    HealthModule,
+    BillingModule,
+    SupportModule,
+    IamMfaModule,
+    OutboundEmailModule,
+    VoiceAssistantModule,
+    HighMobilityModule,
+  ],
+  controllers: [PlatformAdminController, SecurityGovernanceController, PlatformIntegrationsController],
   providers: [
     SecurityGovernanceService,
+    PlatformIntegrationsService,
     PlatformAdminService,
     VehicleLogbookService,
     PlatformResilienceStatusService,

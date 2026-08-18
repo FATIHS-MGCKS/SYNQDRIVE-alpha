@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
@@ -6,9 +6,13 @@ import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { PlatformEmailSettingsService } from './platform-email-settings.service';
 import { UpdatePlatformEmailSettingsDto } from './dto/update-platform-email-settings.dto';
+import { SendPlatformTestEmailDto } from './dto/send-platform-test-email.dto';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { EmailProviderRegistry } from './providers/email-provider.registry';
+import { StepUpGuard } from '@shared/auth/step-up.guard';
+import { RequireStepUp } from '@shared/decorators/require-step-up.decorator';
 
 @Controller('admin/email')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -18,6 +22,7 @@ export class PlatformEmailController {
   constructor(
     private readonly platformEmail: PlatformEmailSettingsService,
     private readonly audit: AuditService,
+    private readonly emailProviders: EmailProviderRegistry,
   ) {}
 
   @Get('settings')
@@ -31,14 +36,55 @@ export class PlatformEmailController {
     @CurrentUser('id') userId: string | undefined,
     @Req() req: unknown,
   ) {
-    const result = await this.platformEmail.updateAdminSettings(body, userId ?? null);
+    const { reason, ...settings } = body;
+    const result = await this.platformEmail.updateAdminSettings(settings, userId ?? null);
     void this.audit.record({
       ...AuditService.contextFromRequest(req),
       action: ActivityAction.UPDATE,
       entity: ActivityEntity.ADMIN_OPERATION,
       description: `Master admin updated platform default email sender to ${result.effectiveFromEmail}`,
-      changeSummary: `Platform sender: ${result.effectiveFromName} <${result.effectiveFromEmail}>`,
+      changeSummary: `Platform sender: ${result.effectiveFromName} <${result.effectiveFromEmail}>${reason ? ` — Grund: ${reason}` : ''}`,
     });
     return result;
+  }
+
+  @Post('test')
+  @UseGuards(StepUpGuard)
+  @RequireStepUp(STEP_UP_ACTION.MASTER_PLATFORM_SETTINGS)
+  async sendTest(
+    @Body() body: SendPlatformTestEmailDto,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: unknown,
+  ) {
+    const defaults = await this.platformEmail.getResolvedDefaults();
+    const provider = this.emailProviders.resolve();
+    const result = await provider.send({
+      fromEmail: defaults.defaultFromEmail,
+      fromName: defaults.defaultFromName,
+      replyToEmail: defaults.defaultReplyToEmail,
+      toEmail: body.toEmail.trim().toLowerCase(),
+      subject: 'SynqDrive Plattform — Test-E-Mail',
+      bodyText: 'Dies ist eine kontrollierte Test-E-Mail vom SynqDrive Master Admin.',
+      bodyHtml: '<p>Dies ist eine kontrollierte <strong>Test-E-Mail</strong> vom SynqDrive Master Admin.</p>',
+      idempotencyKey: `platform-test-${userId ?? 'unknown'}-${Date.now()}`,
+    });
+
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.CREATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Platform test email to ${body.toEmail}`,
+      changeSummary: `Test email status: ${result.status} — Grund: ${body.reason}`,
+    });
+
+    return {
+      success: result.status === 'SENT' || result.status === 'SENT_SIMULATED',
+      status: result.status,
+      provider: result.provider,
+      providerMessageId: result.providerMessageId,
+      correlationId: result.providerMessageId,
+      sentAt: new Date().toISOString(),
+      errorMessage: result.errorMessage ?? null,
+    };
   }
 }

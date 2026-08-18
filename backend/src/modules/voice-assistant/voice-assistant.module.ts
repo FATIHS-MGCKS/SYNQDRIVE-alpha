@@ -75,6 +75,7 @@ import { VoiceSecretsStartupService } from './security/voice-secrets-startup.ser
   ],
   exports: [
     VoiceAssistantService,
+    VoiceControlPlaneAdminService,
     ElevenLabsProviderAdapter,
     VoiceSubscriptionRepository,
     VoiceProviderAccountRepository,
