@@ -296,8 +296,67 @@ Read-only Konsumation über bestehende Architektur:
 |--------|----------|------------|
 | Email geht an Plattform-Absender statt dedizierte Ops-Inbox | Low | `ALERTMANAGER_EMAIL_*` auf Ops-Adresse umstellen |
 | Kein Slack-Paging | Low | Optional `ALERTMANAGER_SLACK_WEBHOOK_URL` in `alertmanager.env` |
-| Branch noch nicht auf `main` deployt | Medium | Merge + `cloud-agent-deploy.sh` für Release-Tree-Sync |
 | Node/Blackbox exporter scrape gaps | Low | Monitoring selftests periodisch |
+
+---
+
+## 21. Release Convergence (2026-08-18)
+
+### Precheck (pre-merge)
+
+| Feld | Wert |
+|------|------|
+| **PR** | [#1064](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1064) — OPEN, MERGEABLE |
+| **PR branch SHA** | `3b53c540db5de6ce0c97241cb56d3739db8038f2` |
+| **main SHA (pre-merge)** | `292a30492ffc742d147ed38facb059d78b2ff89c` |
+| **Production release (rollback target)** | `20260818190536_v4994` |
+| **Alertmanager runtime** | healthy + ready (`127.0.0.1:9093`) |
+| **Prometheus → AM** | `activeAlertmanagers` → `127.0.0.1:9093` |
+| **alertmanager.env** | EXISTS (chmod 600) |
+| **Container image** | `prom/alertmanager:v0.27.0` |
+
+### Merge
+
+| Feld | Wert |
+|------|------|
+| **PR #1064** | Merged to `main` (2026-08-18T20:44Z) |
+| **Merge commit SHA** | `62d4fc5cd591b74665e6836d205c2b8646a60cfb` |
+
+### Standard deploy
+
+| Feld | Wert |
+|------|------|
+| **Deploy 1** | `20260818204443_v4994` (`62d4fc5`) — `cloud-agent-deploy.sh` |
+| **Deploy 1 issue** | `vps-refresh-monitoring.sh` rendered Slack template with empty webhook → AM crash loop |
+| **Hotfix** | `vps-setup-alertmanager.sh` on VPS (immediate recovery) + `929a16cf` fix in `vps-refresh-monitoring.sh` |
+| **Deploy 2** | `20260818205259_v4994` (`929a16cf`) — canonical deploy + monitoring refresh **OK** |
+
+### Post-deploy health (final)
+
+| Check | Result |
+|-------|--------|
+| Alertmanager container | **PASS** — `synqdrive-alertmanager` Up |
+| `/-/healthy` | **200** |
+| `/-/ready` | **200** |
+| Prometheus `activeAlertmanagers` | **PASS** — 1 target (`127.0.0.1:9093`) |
+| Persistence | **PASS** — `/opt/synqdrive/shared/alertmanager/data` |
+| Public `:9093` | **PASS** — bind `127.0.0.1` only |
+| Config errors | **PASS** — `amtool` SUCCESS on refresh |
+| Notification errors | **PASS** — no error lines in recent AM logs |
+| `alerts-acceptance-test.yml` in `prometheus.yml` | **0 refs** (repo file present for scripted acceptance only) |
+
+### Repo / runtime convergence
+
+```
+PR #1064 (62d4fc5)
+  → main (+ hotfix 929a16cf)
+  → Production release 20260818205259_v4994 (929a16cf)
+  → /opt/synqdrive/current → canonical scripts + monitoring configs from GitHub main
+```
+
+Runtime-only files (expected, not in Git): `alertmanager.env`, rendered `alertmanager.yml`, `data/` silences state.
+
+**No synthetic alert re-fired** — prior acceptance evidence remains valid; deploy did not invalidate documented acceptance.
 
 ---
 
