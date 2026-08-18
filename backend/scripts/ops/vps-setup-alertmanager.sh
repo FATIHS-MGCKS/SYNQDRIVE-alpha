@@ -98,10 +98,11 @@ fi
 
 echo "==> Validating Alertmanager config (amtool)"
 if ! docker run --rm \
+  --entrypoint amtool \
   -v "$AM_DIR/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
   -v "$AM_DIR/templates:/etc/alertmanager/templates:ro" \
   "$AM_IMAGE" \
-  amtool check-config /etc/alertmanager/alertmanager.yml; then
+  check-config /etc/alertmanager/alertmanager.yml; then
   echo "ERROR: Alertmanager config validation failed — refusing to deploy invalid config" >&2
   exit 1
 fi
