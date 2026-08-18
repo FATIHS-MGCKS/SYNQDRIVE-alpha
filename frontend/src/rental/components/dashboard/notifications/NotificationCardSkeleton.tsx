@@ -1,8 +1,18 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 
-export function NotificationCardSkeleton({ rows = 3 }: { rows?: number }) {
+export function NotificationCardSkeleton({
+  rows = 3,
+  ariaLabel,
+}: {
+  rows?: number;
+  ariaLabel?: string;
+}) {
+  const { t } = useLanguage();
+  const label = ariaLabel ?? t('notification.loading');
+
   return (
-    <div className="space-y-2 px-2 py-2" aria-busy aria-label="Loading notifications">
+    <div className="space-y-2 px-2 py-2" aria-busy aria-label={label}>
       {Array.from({ length: rows }).map((_, index) => (
         <div
           key={index}

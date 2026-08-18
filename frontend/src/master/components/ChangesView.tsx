@@ -36,6 +36,65 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-dashboard-p2-2-1-2026-08-19',
+    version: '4.9.920',
+    title: 'Rental i18n — P2.2.1 Dashboard Copy Extraction',
+    summary: [
+      'Rental Dashboard builders, runtime slice mappers, notification copy helpers, and dashboard React panels migrated off `de ? DE : EN` toggles.',
+      'New helper `dashboard-i18n.ts` (`dt`, `dashboardFormattingLocale`) for non-React dashboard code.',
+      '~60 new canonical keys in `frontend/src/i18n/translations/en.ts` + `de.ts` under `dashboard.*`, `notification.*`, `vehicle.status.*`.',
+      'Reused existing keys where semantically identical (`notification.cta.*`, `common.close`, `dashboard.slice.*`, etc.).',
+      'Dashboard tests updated; `npm test -- --run src/rental/components/dashboard/` green (325 passed).',
+    ],
+    reason: 'Dashboard still carried hundreds of inline bilingual strings parallel to the P1.2 canonical i18n runtime.',
+    previousBehavior: 'Dashboard builders and panels used `de ? "German" : "English"` and `de-DE`/`en-US` locale toggles.',
+    details:
+      'frontend/src/rental/components/dashboard/dashboard-i18n.ts; dashboard/**/*; frontend/src/i18n/translations/{en,de}.ts; architecture/I18N_DASHBOARD_P2_2_1_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-19T23:59:00.000Z',
+  },
+  {
+    id: 'i18n-hardcoded-copy-p2-1-2026-08-19',
+    version: '4.9.919',
+    title: 'Platform i18n — P2.1 Hardcoded Copy Inventory + Login/Shell Extraction',
+    summary: [
+      'Repository-wide hardcoded-copy scanner + `hardcoded-copy-inventory.json` baseline (3339 unique findings).',
+      'Login fully migrated to canonical `t()` keys (`login.*`, `twoFactor.*`, `auth.error.*`); `login-copy.ts` removed.',
+      'Shared `LanguageSelector`, `VerificationDonePage`, and default `AppErrorBoundary` shell copy localized.',
+      'Auth errors mapped from known backend messages via `auth-error-i18n.ts`.',
+      'Coverage baseline v2: owned-count floors preserved; canonical key growth allowed (+49 keys).',
+      'Enforce-clean guardrails for Login/LanguageSelector/VerificationDone/App shell in `npm run i18n:check`.',
+    ],
+    reason: 'P1.2 runtime existed but Login and shell still used parallel copy shims and hardcoded strings.',
+    previousBehavior: 'Login used `login-copy.ts` (DE/EN only); MFA dialog hardcoded German; scanner absent.',
+    details:
+      'frontend/scripts/i18n-hardcoded-scan.mjs; frontend/src/i18n/{auth-error-i18n,hardcoded-copy-inventory}.json; pages/LoginPage.tsx; architecture/I18N_HARDCODED_COPY_P2_1_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-08-19T23:25:00.000Z',
+  },
+  {
+    id: 'i18n-translation-registry-p1-2-2026-08-19',
+    version: '4.9.918',
+    title: 'Platform i18n — Translation Registry & Dictionary Contracts (P1.2)',
+    summary: [
+      'Entfernt `...en`-Spread-Vererbung aus fr/nl/es/it/pl/cs — partielle Locale-Dictionaries enthalten nur explizit owned Keys.',
+      'Canonical Registry (`translation-registry.ts`) + Dictionary-Typen (`CompleteTranslationDictionary` / `PartialTranslationDictionary`).',
+      'Runtime `translateKey()` liefert `source: locale | fallback-en | missing-key`; DEV-Warnung dedupliziert pro locale+key.',
+      'Turkish (`tr`): leeres typed Dictionary, status FALLBACK ONLY; Italian behält 493 owned Keys.',
+      'Shared `LanguageSelector` für Login + Rental TopBar; Coverage-Baseline + `npm run i18n:check` STRUCTURAL + COVERAGE.',
+      'Legal: `legal-documents-registry.ts` — nur DE/EN legally-reviewed; andere Locales runtime-fallback.',
+    ],
+    reason: 'Partielle Locale-Dictionaries mit `...en` maskierten fehlende Übersetzungen und erzeugten falsche Vollständigkeit.',
+    previousBehavior: 'fr/nl/es/it/pl/cs spreadeten `en`; Coverage nicht messbar; Turkish ohne Dictionary-Datei.',
+    details:
+      'frontend/src/i18n/{dictionary-types,translation-registry,translation-coverage,legal-documents-registry,components/LanguageSelector}.ts(x); translations/*.ts; scripts/i18n-check.mjs; architecture/I18N_TRANSLATION_REGISTRY_P1_2_2026-08-19.md; docs/audits/i18n-production-hardening-baseline-2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-08-19T23:10:00.000Z',
+  },
+  {
     id: 'master-admin-alertmanager-production-closure-2026-08-18',
     version: '4.9.917',
     title: 'Master Admin — Alertmanager Production Closure (MA-OBS-P1-001)',

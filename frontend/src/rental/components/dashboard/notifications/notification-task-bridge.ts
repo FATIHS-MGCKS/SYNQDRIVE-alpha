@@ -1,3 +1,4 @@
+import { dt } from '../dashboard-i18n';
 import type { ActionQueueItem, ActionQueueModuleTarget } from '../dashboardTypes';
 import type { RentalHealthModule, RentalHealthState, Vendor } from '../../../../lib/api';
 import type { HealthActionModule, HealthTaskPrefill } from '../../../lib/health-task-bridge.utils';
@@ -139,7 +140,7 @@ export function resolveNotificationPrimaryCtaLabel(
     return t(key);
   }
   if (item.vehicleId || item.cta === 'open-vehicle') {
-    return de ? 'Zum Fahrzeug' : 'Open vehicle';
+    return dt(locale, 'dashboard.cta.toVehicle');
   }
   if (item.cta === 'open-booking') return t('notification.cta.openBooking');
   return t('notification.cta.openRental');

@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from '../dashboard-i18n';
 import type { VehicleData } from '../../../data/vehicles';
 import {
   VEHICLE_DATA_QUALITY_STATE,
@@ -85,7 +86,7 @@ export function buildNextBookingInfoReason(
 ): RuntimeReason {
   const de = locale === 'de';
   const pickup = nextBooking.pickupAt
-    ? new Date(nextBooking.pickupAt).toLocaleString(de ? 'de-DE' : 'en-US', {
+    ? new Date(nextBooking.pickupAt).toLocaleString(dashboardFormattingLocale(locale), {
         day: '2-digit',
         month: '2-digit',
         hour: '2-digit',
@@ -96,9 +97,9 @@ export function buildNextBookingInfoReason(
   return createRuntimeReason({
     category: 'handover',
     severity: 'info',
-    title: de ? 'Nächste Buchung' : 'Next booking',
+    title: dt(locale, 'dashboard.readiness.nextBooking'),
     description: pickup
-      ? `${nextBooking.customerName ?? (de ? 'Kunde' : 'Customer')} · ${pickup}`
+      ? `${nextBooking.customerName ?? dt(locale, 'dashboard.label.customer')} · ${pickup}`
       : nextBooking.customerName ?? undefined,
     source: RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE,
     blocking: false,

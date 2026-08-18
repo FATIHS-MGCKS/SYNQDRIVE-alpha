@@ -1,3 +1,4 @@
+import { dt } from '../dashboard-i18n';
 import type { VehicleHealthResponse } from '../../../../lib/api';
 import type {
   DashboardInsight,
@@ -511,7 +512,7 @@ function addTelemetryReason(input: {
       createRuntimeReason({
         category: 'telemetry',
         severity: 'warning',
-        title: de ? 'Signal verzögert' : 'Signal delayed',
+        title: dt(input.locale, 'dashboard.runtime.signalDelayed'),
         description: de
           ? 'Der letzte Telemetrie-Snapshot liegt mehr als 24 Stunden zurück.'
           : 'The latest telemetry snapshot is older than 24 hours.',
@@ -553,7 +554,7 @@ function addBookingReasons(input: {
       createRuntimeReason({
         category: 'handover',
         severity: 'critical',
-        title: de ? 'Rückgabe überfällig' : 'Return overdue',
+        title: dt(input.locale, 'dashboard.runtime.returnOverdue'),
         source: 'booking-runtime:return-overdue',
         blocking: false,
       }),
@@ -564,7 +565,7 @@ function addBookingReasons(input: {
       createRuntimeReason({
         category: 'handover',
         severity: 'warning',
-        title: de ? 'Rückgabe bald fällig' : 'Return due soon',
+        title: dt(input.locale, 'dashboard.runtime.returnDueSoon'),
         source: 'booking-runtime:return-due-soon',
         blocking: false,
       }),
@@ -575,7 +576,7 @@ function addBookingReasons(input: {
       createRuntimeReason({
         category: 'handover',
         severity: 'warning',
-        title: de ? 'Übergabe bald fällig' : 'Pickup due soon',
+        title: dt(input.locale, 'dashboard.runtime.pickupDueSoon'),
         source: 'booking-runtime:pickup-due-soon',
         blocking: false,
       }),
@@ -644,7 +645,7 @@ function addOperationalDiagnosticReasons(input: {
       createRuntimeReason({
         category: 'data_quality',
         severity: 'warning',
-        title: de ? 'Operativer Payload widersprüchlich' : 'Operational payload inconsistent',
+        title: dt(input.locale, 'dashboard.runtime.payloadInconsistent'),
         description: de
           ? 'Backend-Status und Buchungskontext widersprechen sich — Status fail-closed auf UNKNOWN.'
           : 'Backend status and booking context conflict — status fail-closed to UNKNOWN.',
@@ -661,7 +662,7 @@ function addOperationalDiagnosticReasons(input: {
       createRuntimeReason({
         category: 'data_quality',
         severity: 'warning',
-        title: de ? 'Operativer Status unbekannt' : 'Operational status unknown',
+        title: dt(input.locale, 'dashboard.runtime.statusUnknown'),
         source: 'vehicle-runtime:operational-unknown',
         blocking: false,
         preventsReady: true,
@@ -679,7 +680,7 @@ function addOperationalDiagnosticReasons(input: {
       createRuntimeReason({
         category: 'data_quality',
         severity: 'warning',
-        title: de ? 'Rohstatus weicht ab' : 'Raw status differs',
+        title: dt(input.locale, 'dashboard.runtime.rawStatusDiffers'),
         description: `rawVehicleStatus=${input.block.rawVehicleStatus}`,
         source: 'vehicle-runtime:raw-status-diagnostic',
         blocking: false,
@@ -694,7 +695,7 @@ function addOperationalDiagnosticReasons(input: {
       createRuntimeReason({
         category: 'data_quality',
         severity: 'warning',
-        title: de ? 'Operative Datenqualität eingeschränkt' : 'Operational data quality degraded',
+        title: dt(input.locale, 'dashboard.runtime.dataQualityDegraded'),
         description: input.block.dataQualityReasons.join(' · ') || undefined,
         source: 'vehicle-runtime:backend-data-quality-degraded',
         blocking: false,
@@ -709,7 +710,7 @@ function buildReadyReasons(locale: string): RuntimeReason[] {
     createRuntimeReason({
       category: 'rental',
       severity: 'info',
-      title: locale === 'de' ? 'Bereit' : 'Ready',
+      title: dt(locale, 'dashboard.label.ready'),
       source: 'vehicle-runtime',
       blocking: false,
     }),
@@ -891,7 +892,7 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
         createRuntimeReason({
           category: 'cleaning',
           severity: 'warning',
-          title: locale === 'de' ? 'Reinigung erforderlich' : 'Cleaning required',
+          title: dt(input.locale, 'dashboard.runtime.cleaningRequired'),
           source: 'vehicle-cleaning-status',
           blocking: false,
           preventsReady: true,

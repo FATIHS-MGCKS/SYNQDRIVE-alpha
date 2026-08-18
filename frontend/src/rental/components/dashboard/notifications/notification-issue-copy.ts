@@ -1,3 +1,4 @@
+import { dt } from '../dashboard-i18n';
 import type { TranslationKey } from '../../../i18n/translations/en';
 import { sanitizeTemplateValue } from '../../../lib/notifications/template-placeholder';
 import type { ActionQueueItem } from '../dashboardTypes';
@@ -76,17 +77,14 @@ function issueHeadline(item: ActionQueueItem, locale: string): string {
   const stripped = stripEntityLabelFromTitle(item.title, label);
   if (stripped && stripped !== label) return stripped;
   if (eventType === 'ACTIVE_DTC' && params.code) {
-    return locale === 'de' ? `Fehlercode ${params.code}` : `Fault code ${params.code}`;
+    return dt(locale, 'notification.issue.activeDtc', { code: params.code });
   }
   return stripped || item.title;
 }
 
 function issueDetail(item: ActionQueueItem, locale: string): string {
   if (item.id === 'derived-vehicles-without-tariff' || item.issueType === 'vehicles_without_tariff') {
-    const de = locale === 'de';
-    const intro = de
-      ? 'Diese Fahrzeuge sind nicht buchbar, bis eine aktive Tarifgruppe zugewiesen ist.'
-      : 'These vehicles cannot be booked until an active tariff group is assigned.';
+    const intro = dt(locale, 'notification.issue.vehiclesWithoutTariff');
     const vehicles = item.affectedVehicles ?? [];
     if (vehicles.length === 0) return intro;
     return intro;
@@ -101,9 +99,7 @@ function issueDetail(item: ActionQueueItem, locale: string): string {
 
   const eventType = (item.issueType ?? '').toUpperCase();
   if (eventType === 'ACTIVE_DTC' && params?.code) {
-    return locale === 'de'
-      ? `Aktive Fehlermeldung (${params.code})`
-      : `Active fault (${params.code})`;
+    return dt(locale, 'notification.issue.activeDtcDetail', { code: params.code });
   }
 
   return '';

@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';
@@ -52,7 +53,7 @@ export function deriveOperationalInsights(input: {
   unassignedTariffVehicleCount?: number;
   unassignedTariffVehicles?: Array<{ id: string; label: string }>;
 }): DerivedOperationalInsight[] {
-  const de = input.locale === 'de';
+  const locale = input.locale;
   const items: DerivedOperationalInsight[] = [];
   const now = Date.now();
 
@@ -65,12 +66,10 @@ export function deriveOperationalInsights(input: {
       source: 'derived-operations',
       severity: 'critical',
       category: 'operations',
-      title: de
-        ? `${input.unassignedTariffVehicleCount} Fahrzeug(e) ohne Tarif`
-        : `${input.unassignedTariffVehicleCount} vehicle(s) without tariff`,
-      reason: de
-        ? 'Diese Fahrzeuge sind nicht buchbar, bis eine aktive Tarifgruppe zugewiesen ist.'
-        : 'These vehicles cannot be booked until an active tariff group is assigned.',
+      title: dt(locale, 'dashboard.insight.vehiclesWithoutTariff', {
+        count: input.unassignedTariffVehicleCount ?? 0,
+      }),
+      reason: dt(locale, 'notification.issue.vehiclesWithoutTariff'),
       timeSortMs: now,
       cta: 'open-price-tariffs',
       isOverdue: false,
@@ -104,10 +103,11 @@ export function deriveOperationalInsights(input: {
       source: 'derived-operations',
       severity: offlineCount > 0 || affectedTelemetryTotal > liveishCount * 2 ? 'warning' : 'attention',
       category: 'operations',
-      title: de ? 'Viele Fahrzeuge mit Soft-Offline/Offline-Signal' : 'Many vehicles with soft-offline/offline signal',
-      reason: de
-        ? `${affectedTelemetryTotal} von ${input.telemetry.totalInScope} Fahrzeugen sind Soft Offline oder Offline`
-        : `${affectedTelemetryTotal} of ${input.telemetry.totalInScope} vehicles are soft offline or offline`,
+      title: dt(locale, 'dashboard.insight.manySoftOffline'),
+      reason: dt(locale, 'dashboard.insight.telemetrySoftOfflineReason', {
+        affected: affectedTelemetryTotal,
+        total: input.telemetry.totalInScope,
+      }),
       timeSortMs: now,
       cta: 'open-rental',
       isOverdue: false,
@@ -123,10 +123,8 @@ export function deriveOperationalInsights(input: {
       source: 'derived-operations',
       severity: 'critical',
       category: 'handover',
-      title: de ? `Offene Handovers blockieren Betrieb` : `Open handovers blocking operations`,
-      reason: de
-        ? `${overdueHandovers} überfällige Übergaben im Scope`
-        : `${overdueHandovers} overdue handovers in scope`,
+      title: dt(locale, 'dashboard.insight.handoverBacklogTitle'),
+      reason: dt(locale, 'dashboard.insight.handoverBacklogReason', { count: overdueHandovers }),
       timeSortMs: now,
       cta: 'open-rental',
       isOverdue: true,

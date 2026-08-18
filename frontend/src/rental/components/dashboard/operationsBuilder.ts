@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from './dashboard-i18n';
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
@@ -34,7 +35,7 @@ function endOfDay(d: Date): Date {
 function formatTimeLabel(ms: number, locale: string): string {
   const de = locale === 'de';
   const d = new Date(ms);
-  const intl = de ? 'de-DE' : 'en-US';
+  const intl = dashboardFormattingLocale(locale);
   return d.toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -84,31 +85,31 @@ function deriveRisks(
       ...runtimeState.warningReasons,
     ][0];
     if (runtimeState.isMaintenance) {
-      risks.push(reason?.title ?? (de ? 'Fahrzeug in Wartung' : 'Vehicle in maintenance'));
+      risks.push(reason?.title ?? (dt(locale, 'dashboard.operations.vehicleMaintenance')));
     } else if (!runtimeState.isReadyToRent) {
-      risks.push(reason?.title ?? (de ? 'Fahrzeug nicht bereit' : 'Vehicle not ready'));
+      risks.push(reason?.title ?? (dt(locale, 'dashboard.operations.vehicleNotReady')));
     }
   } else if (ctx.isPickup && vehicle && selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
-    risks.push(de ? 'Fahrzeug in Wartung' : 'Vehicle in maintenance');
+    risks.push(dt(locale, 'dashboard.operations.vehicleMaintenance'));
   } else if (
     ctx.isPickup &&
     vehicle &&
     !selectIsCurrentlyAvailable(vehicle) &&
     !selectIsInPickupReservationWindow(vehicle)
   ) {
-    risks.push(de ? 'Fahrzeug nicht bereit' : 'Vehicle not ready');
+    risks.push(dt(locale, 'dashboard.operations.vehicleNotReady'));
   }
 
   if (ctx.vehicleBlocked) {
-    risks.push(de ? 'Buchungskonflikt' : 'Booking conflict');
+    risks.push(dt(locale, 'dashboard.operations.bookingConflict'));
   }
 
   if (ctx.isReturn && ctx.isOverdue) {
-    risks.push(de ? 'Rückgabe überfällig' : 'Return overdue');
+    risks.push(dt(locale, 'dashboard.operations.returnOverdue'));
   }
 
   if (ctx.needsCleaning) {
-    risks.push(de ? 'Reinigung ausstehend' : 'Cleaning required');
+    risks.push(dt(locale, 'dashboard.operations.cleaningRequired'));
   }
 
   const fuel = vehicle ? canonicalFuel(vehicle) : null;
@@ -125,9 +126,9 @@ function deriveRisks(
   }
 
   if (healthAlert?.severity === 'critical') {
-    risks.push(de ? 'Kritischer Health-Alert' : 'Critical health alert');
+    risks.push(dt(locale, 'dashboard.operations.criticalHealth'));
   } else if (healthAlert?.severity === 'warning') {
-    risks.push(de ? 'Health-Warnung' : 'Health warning');
+    risks.push(dt(locale, 'dashboard.operations.healthWarning'));
   }
 
   return risks;
@@ -318,10 +319,10 @@ function buildReturnTimelineItem(
   );
 
   if (r.hasError) {
-    risks.push(input.locale === 'de' ? 'Rückgabe-Problem' : 'Return issue');
+    risks.push(dt(input.locale, 'dashboard.operations.returnIssue'));
   }
   if (r.kmExceeded) {
-    risks.push(input.locale === 'de' ? 'KM-Limit überschritten' : 'KM limit exceeded');
+    risks.push(dt(input.locale, 'dashboard.operations.kmLimitExceeded'));
   }
 
   return {
@@ -364,11 +365,11 @@ function buildMaintenanceItems(
         lane: 'now',
         status: 'blocked',
         timeMs: now,
-        timeLabel: de ? 'Jetzt' : 'Now',
+        timeLabel: dt(locale, 'dashboard.operations.now'),
         vehicleLabel: state.license || state.displayName,
         vehicleId: state.vehicleId,
         station: state.stationLabel || v?.station || undefined,
-        risks: [reason?.title ?? (de ? 'Wartung blockiert Vermietung' : 'Maintenance blocks rental')],
+        risks: [reason?.title ?? (dt(locale, 'dashboard.operations.maintenanceBlocks'))],
         tone: 'watch',
         cta: 'open-vehicle',
         completed: false,
@@ -386,11 +387,11 @@ function buildMaintenanceItems(
       lane: 'now',
       status: 'blocked',
       timeMs: now,
-      timeLabel: de ? 'Jetzt' : 'Now',
+      timeLabel: dt(locale, 'dashboard.operations.now'),
       vehicleLabel: v.license || v.model,
       vehicleId: v.id,
       station: v.station || undefined,
-      risks: [de ? 'Wartung blockiert Vermietung' : 'Maintenance blocks rental'],
+      risks: [dt(locale, 'dashboard.operations.maintenanceBlocks')],
       tone: 'watch',
       cta: 'open-vehicle',
       completed: false,
@@ -507,43 +508,41 @@ export const TIMELINE_LANE_ORDER: OperationTimelineLane[] = [
 
 export function laneLabel(lane: OperationTimelineLane, locale: string): string {
   const de = locale === 'de';
-  if (lane === 'now') return de ? 'Jetzt' : 'Now';
-  if (lane === 'next60') return de ? 'Nächste 60 Min.' : 'Next 60 minutes';
-  if (lane === 'later-today') return de ? 'Später heute' : 'Later today';
-  return de ? 'Morgen / +24h' : 'Tomorrow / next 24h';
+  if (lane === 'now') return dt(locale, 'dashboard.operations.now');
+  if (lane === 'next60') return dt(locale, 'dashboard.operations.next60');
+  if (lane === 'later-today') return dt(locale, 'dashboard.operations.laterToday');
+  return dt(locale, 'dashboard.operations.tomorrow24h');
 }
 
 export function typeLabel(type: OperationEventType, locale: string): string {
-  const de = locale === 'de';
-  const map: Record<OperationEventType, [string, string]> = {
-    pickup: ['Pickup', 'Abholung'],
-    return: ['Return', 'Rückgabe'],
-    handover: ['Handover', 'Übergabe'],
-    cleaning: ['Cleaning', 'Reinigung'],
-    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
-    'booking-conflict': ['Conflict', 'Konflikt'],
+  const map: Record<OperationEventType, Parameters<typeof dt>[1]> = {
+    pickup: 'dashboard.operations.type.pickup',
+    return: 'dashboard.operations.type.return',
+    handover: 'dashboard.operations.type.handover',
+    cleaning: 'dashboard.operations.type.cleaning',
+    maintenance: 'dashboard.operations.type.maintenance',
+    'booking-conflict': 'dashboard.operations.type.bookingConflict',
   };
-  return de ? map[type][1] : map[type][0];
+  return dt(locale, map[type]);
 }
 
 export function statusLabel(status: OperationEventStatus, locale: string): string {
-  const de = locale === 'de';
-  const map: Record<OperationEventStatus, [string, string]> = {
-    'due-soon': ['Due soon', 'Bald fällig'],
-    overdue: ['Overdue', 'Überfällig'],
-    completed: ['Completed', 'Erledigt'],
-    pending: ['Pending', 'Ausstehend'],
-    blocked: ['Blocked', 'Blockiert'],
-    'in-progress': ['In progress', 'Läuft'],
+  const map: Record<OperationEventStatus, Parameters<typeof dt>[1]> = {
+    'due-soon': 'dashboard.operations.status.dueSoon',
+    overdue: 'dashboard.operations.status.overdue',
+    completed: 'dashboard.operations.status.completed',
+    pending: 'dashboard.operations.status.pending',
+    blocked: 'dashboard.operations.status.blocked',
+    'in-progress': 'dashboard.operations.status.inProgress',
   };
-  return de ? map[status][1] : map[status][0];
+  return dt(locale, map[status]);
 }
 
 export function ctaLabel(cta: OperationCta, locale: string): string {
   const de = locale === 'de';
-  if (cta === 'start-pickup') return de ? 'Abholung starten' : 'Start pickup';
-  if (cta === 'start-return') return de ? 'Rückgabe starten' : 'Start return';
-  if (cta === 'open-booking') return de ? 'Buchung öffnen' : 'Open booking';
-  if (cta === 'open-vehicle') return de ? 'Fahrzeug öffnen' : 'Open vehicle';
-  return de ? 'Vermietung öffnen' : 'Open rental';
+  if (cta === 'start-pickup') return dt(locale, 'dashboard.cta.startPickup');
+  if (cta === 'start-return') return dt(locale, 'dashboard.cta.startReturn');
+  if (cta === 'open-booking') return dt(locale, 'notification.cta.openBooking');
+  if (cta === 'open-vehicle') return dt(locale, 'notification.cta.openVehicle');
+  return dt(locale, 'notification.cta.openRental');
 }

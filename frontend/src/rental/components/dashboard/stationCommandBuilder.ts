@@ -13,6 +13,7 @@ import type {
 } from './dashboardTypes';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
 import type { VehicleRuntimeState } from './runtime';
+import { dt } from './dashboard-i18n';
 import {
   selectIsCurrentlyAvailable,
   selectIsCurrentlyRented,
@@ -191,7 +192,6 @@ export function buildFallbackStationSummary(input: {
   vehicleStates?: VehicleRuntimeState[];
   locale: string;
 }): StationHealthSummary {
-  const de = input.locale === 'de';
   const atStation = input.fleetVehicles.filter((v) => vehicleAtStation(v, input.stationId));
   const stationStates = input.vehicleStates?.filter(
     (state) => state.stationId === input.stationId || state.stationLabel === input.stationName,
@@ -199,7 +199,7 @@ export function buildFallbackStationSummary(input: {
   const useRuntime = stationStates.length > 0;
   return {
     stationId: input.stationId,
-    stationName: input.stationName ?? (de ? 'Unbekannte Station' : 'Unknown station'),
+    stationName: input.stationName ?? dt(input.locale, 'dashboard.station.unknown'),
     vehicleCount: useRuntime ? stationStates.length : atStation.length,
     availableCount: useRuntime
       ? stationStates.filter((state) => state.operationalStatus === 'available').length

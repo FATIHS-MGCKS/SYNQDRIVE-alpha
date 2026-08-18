@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
@@ -30,7 +31,7 @@ export function FocusDataFreshnessBanner({ vm }: { vm: DashboardViewModel }) {
       <Icon name="signal" className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--status-watch)]" />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-foreground">
-          {de ? 'Datenaktualität' : 'Data freshness'}
+          {dt(locale, 'dashboard.dataTrust.freshness')}
         </p>
         <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
           {dataFreshnessWarningMessage(input, vm.locale)}
@@ -42,7 +43,7 @@ export function FocusDataFreshnessBanner({ vm }: { vm: DashboardViewModel }) {
         disabled={vm.isRefreshing}
         className="sq-btn sq-btn-secondary min-h-10 shrink-0 text-[12px]"
       >
-        {de ? 'Aktualisieren' : 'Refresh'}
+        {dt(locale, 'dashboard.dataTrust.refresh')}
       </button>
     </div>
   );
@@ -134,10 +135,10 @@ export function FocusHandoverPanels({
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <FocusPanel
-        title={de ? 'Überfällige Returns' : 'Overdue returns'}
+        title={dt(locale, 'dashboard.focus.overdueReturns')}
         count={overdueReturns.length}
         tone="critical"
-        emptyLabel={de ? 'Keine überfälligen Rückgaben' : 'No overdue returns'}
+        emptyLabel={dt(locale, 'dashboard.focus.noOverdueReturns')}
       >
         {overdueReturns.map((r) => (
           <HandoverRow
@@ -152,10 +153,10 @@ export function FocusHandoverPanels({
       </FocusPanel>
 
       <FocusPanel
-        title={de ? 'Fällige Pickups (<60 Min)' : 'Due pickups (<60 min)'}
+        title={dt(locale, 'dashboard.focus.duePickups')}
         count={duePickups.length}
         tone="watch"
-        emptyLabel={de ? 'Keine Pickups in der nächsten Stunde' : 'No pickups in the next hour'}
+        emptyLabel={dt(locale, 'dashboard.focus.noDuePickups')}
       >
         {duePickups.map((p) => (
           <HandoverRow
@@ -186,14 +187,14 @@ export function FocusNotReadyVehicles({
     <section className={panelShellClass('secondary')}>
       <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3.5">
         <h2 className="text-[15px] font-semibold text-foreground">
-          {de ? 'Fahrzeuge nicht bereit' : 'Vehicles not ready'}
+          {dt(locale, 'dashboard.focus.vehiclesNotReady')}
         </h2>
         <StatusChip tone={items.length > 0 ? 'watch' : 'success'}>{items.length}</StatusChip>
       </div>
       <div className={cn(PANEL_BODY_CLASS)}>
         {items.length === 0 ? (
           <p className="py-4 text-center text-[12px] text-muted-foreground">
-            {de ? 'Alle relevanten Fahrzeuge sind bereit' : 'All relevant vehicles are ready'}
+            {dt(locale, 'dashboard.focus.allVehiclesReady')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -206,7 +207,7 @@ export function FocusNotReadyVehicles({
             ))}
             {items.length > 12 ? (
               <p className="text-center text-[11px] text-muted-foreground">
-                +{items.length - 12} {de ? 'weitere' : 'more'}
+                +{items.length - 12} {dt(locale, 'dashboard.count.more')}
               </p>
             ) : null}
           </ul>

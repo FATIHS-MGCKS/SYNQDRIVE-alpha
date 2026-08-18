@@ -9,6 +9,7 @@ import {
   isTelemetryOfflineAttentionItem,
   shouldShowObdUnpluggedBadge,
 } from '../../lib/obd-plug-status';
+import { dt } from './dashboard-i18n';
 
 function normalizeText(value: string | undefined | null): string {
   return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -31,18 +32,18 @@ export function attentionCategoryEyebrow(
     module?: ActionQueueModuleTarget;
     groupType?: ActionQueueItem['groupType'];
   },
-  de: boolean,
+  locale: string,
 ): string {
-  if (input.module === 'service_compliance') return de ? 'Service' : 'Service';
-  if (input.groupType === 'customer-docs') return de ? 'Dokumente' : 'Documents';
-  if (input.category === 'handover' || input.category === 'booking') return de ? 'Buchung' : 'Booking';
-  if (input.category === 'operations') return de ? 'Betrieb' : 'Operations';
-  if (input.category === 'task') return de ? 'Aufgabe' : 'Task';
-  if (input.category === 'health') return de ? 'Gesundheit' : 'Health';
-  if (input.category === 'vehicle') return de ? 'Telemetrie' : 'Telemetry';
-  if (input.category === 'notification') return de ? 'Hinweise' : 'Notifications';
-  if (input.category === 'financial') return de ? 'Finanzen' : 'Finance';
-  return de ? 'Betrieb' : 'Operations';
+  if (input.module === 'service_compliance') return dt(locale, 'dashboard.label.service');
+  if (input.groupType === 'customer-docs') return dt(locale, 'dashboard.label.documents');
+  if (input.category === 'handover' || input.category === 'booking') return dt(locale, 'dashboard.label.booking');
+  if (input.category === 'operations') return dt(locale, 'dashboard.label.operations');
+  if (input.category === 'task') return dt(locale, 'dashboard.label.task');
+  if (input.category === 'health') return dt(locale, 'dashboard.label.health');
+  if (input.category === 'vehicle') return dt(locale, 'dashboard.label.telemetry');
+  if (input.category === 'notification') return dt(locale, 'dashboard.notifications');
+  if (input.category === 'financial') return dt(locale, 'dashboard.label.finance');
+  return dt(locale, 'dashboard.label.operations');
 }
 
 export interface AttentionRowCopy {
@@ -139,8 +140,8 @@ export function composeAttentionGroupCopy(group: ActionQueueGroupItem): Attentio
   });
 }
 
-export function attentionExpandLabel(total: number, de: boolean, isExpanded: boolean): string {
-  if (isExpanded) return de ? 'Weniger anzeigen' : 'Show less';
-  if (de) return total === 1 ? 'Alle 1 anzeigen' : `Alle ${total} anzeigen`;
-  return total === 1 ? 'Show 1' : `Show all ${total}`;
+export function attentionExpandLabel(total: number, locale: string, isExpanded: boolean): string {
+  if (isExpanded) return dt(locale, 'dashboard.attention.showLess');
+  if (total === 1) return dt(locale, 'dashboard.attention.showAllOne');
+  return dt(locale, 'dashboard.attention.showAllMany', { count: total });
 }

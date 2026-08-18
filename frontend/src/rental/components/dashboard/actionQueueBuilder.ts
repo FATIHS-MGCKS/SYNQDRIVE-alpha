@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import type {
   DashboardInsight,
   InsightSeverity,
@@ -181,18 +182,17 @@ export function formatActionTimeLabel(
   const now = Date.now();
   const diff = ms - now;
   const absMin = Math.round(Math.abs(diff) / 60_000);
-  const de = locale === 'de';
 
-  if (Math.abs(diff) < 60_000) return de ? 'jetzt' : 'now';
+  if (Math.abs(diff) < 60_000) return dt(locale, 'dashboard.time.now');
   if (diff < 0) {
-    if (absMin < 60) return de ? `vor ${absMin} Min.` : `${absMin}m ago`;
+    if (absMin < 60) return dt(locale, 'dashboard.time.agoMinutes', { count: absMin });
     const h = Math.floor(absMin / 60);
-    return de ? `vor ${h} Std.` : `${h}h ago`;
+    return dt(locale, 'dashboard.time.agoHours', { count: h });
   }
-  if (absMin < 60) return de ? `in ${absMin} Min.` : `in ${absMin}m`;
+  if (absMin < 60) return dt(locale, 'dashboard.time.inMinutes', { count: absMin });
   const h = Math.floor(absMin / 60);
-  if (h < 24) return de ? `in ${h} Std.` : `in ${h}h`;
-  return de ? 'heute' : 'today';
+  if (h < 24) return dt(locale, 'dashboard.time.inHours', { count: h });
+  return dt(locale, 'dashboard.time.today');
 }
 
 function computePriority(
@@ -791,18 +791,13 @@ export function buildActionQueueEmptySummary(input: {
   upcomingHandovers: number;
   syncStatusLabel: string;
 }): ActionQueueEmptySummary {
-  const de = input.locale === 'de';
   return {
     readyCount: input.readyToRentCount,
     upcomingHandovers: input.upcomingHandovers,
     syncLabel: input.syncStatusLabel,
-    title: de ? 'Keine dringenden Aktionen' : 'No urgent actions',
-    subtitle: de ? 'Der Betrieb wirkt stabil.' : 'Operations look stable.',
-    readyLabel: de
-      ? `${input.readyToRentCount} Fahrzeuge bereit`
-      : `${input.readyToRentCount} vehicles ready`,
-    handoverLabel: de
-      ? `${input.upcomingHandovers} anstehende Übergaben`
-      : `${input.upcomingHandovers} upcoming handovers`,
+    title: dt(input.locale, 'dashboard.actionQueue.noUrgent'),
+    subtitle: dt(input.locale, 'dashboard.actionQueue.stable'),
+    readyLabel: dt(input.locale, 'dashboard.actionQueue.readyLabel', { count: input.readyToRentCount }),
+    handoverLabel: dt(input.locale, 'dashboard.actionQueue.handoverLabel', { count: input.upcomingHandovers }),
   };
 }

@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -167,7 +168,7 @@ export function ActiveRentalDrawerRowCard({
                   onClose();
                 }}
               >
-                {de ? 'Zur Buchung' : 'To booking'}
+                {dt(locale, 'dashboard.cta.toBooking')}
               </DrawerRowActionButton>
             ) : null}
             {canOpenVehicle ? (
@@ -178,7 +179,7 @@ export function ActiveRentalDrawerRowCard({
                   onClose();
                 }}
               >
-                {de ? 'Zum Fahrzeug' : 'To vehicle'}
+                {dt(locale, 'dashboard.cta.toVehicle')}
               </DrawerRowActionButton>
             ) : null}
           </div>

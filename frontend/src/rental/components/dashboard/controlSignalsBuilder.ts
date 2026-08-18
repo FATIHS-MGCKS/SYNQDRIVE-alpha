@@ -14,6 +14,7 @@ import type {
   TodayBookingApiRow,
   StationDataFreshness,
 } from './dashboardTypes';
+import { dt } from './dashboard-i18n';
 import { formatLastSyncLabel, isVehicleReadyToRent } from './dashboardUtils';
 import type {
   DashboardRuntimeModel,
@@ -138,15 +139,14 @@ export function computeVehicleTelemetryFreshness(input: {
 }
 
 function statusLabel(status: FleetReadinessStatus, locale: string): string {
-  const de = locale === 'de';
-  const map: Record<FleetReadinessStatus, [string, string]> = {
-    strong: ['Strong', 'Stark'],
-    stable: ['Stable', 'Stabil'],
-    'needs-attention': ['Needs attention', 'Braucht Aufmerksamkeit'],
-    critical: ['Critical', 'Kritisch'],
-    'not-enough-data': ['Not enough data', 'Zu wenig Daten'],
+  const map: Record<FleetReadinessStatus, Parameters<typeof dt>[1]> = {
+    strong: 'dashboard.readiness.strong',
+    stable: 'dashboard.readiness.stable',
+    'needs-attention': 'dashboard.readiness.needsAttention',
+    critical: 'dashboard.readiness.critical',
+    'not-enough-data': 'dashboard.readiness.notEnoughData',
   };
-  return de ? map[status][1] : map[status][0];
+  return dt(locale, map[status]);
 }
 
 function isBlockedVehicle(
@@ -301,12 +301,11 @@ export function stationDataFreshnessLabel(
   freshness: StationDataFreshness,
   locale: string,
 ): string {
-  const de = locale === 'de';
-  if (freshness === 'live') return de ? 'Live' : 'Live';
-  if (freshness === 'partial') return de ? 'Teilweise' : 'Partial';
-  if (freshness === 'stale') return de ? 'Signal verzögert' : 'Signal delayed';
-  if (freshness === 'offline') return de ? 'Offline' : 'Offline';
-  return de ? 'Keine Fahrzeuge' : 'No vehicles';
+  if (freshness === 'live') return dt(locale, 'dashboard.label.live');
+  if (freshness === 'partial') return dt(locale, 'dashboard.label.partial');
+  if (freshness === 'stale') return dt(locale, 'dashboard.freshness.signalDelayed');
+  if (freshness === 'offline') return dt(locale, 'dashboard.label.offline');
+  return dt(locale, 'dashboard.freshness.noVehicles');
 }
 
 export function stationDataFreshnessTone(
@@ -463,11 +462,10 @@ export function buildEnhancedStationHealth(input: {
 }
 
 export function syncStatusDisplay(status: DataSyncStatus, locale: string): string {
-  const de = locale === 'de';
-  if (status === 'live') return de ? 'Live' : 'Live';
-  if (status === 'partial') return de ? 'Teilweise' : 'Partial';
-  if (status === 'stale') return de ? 'Signal verzögert' : 'Signal delayed';
-  return de ? 'Offline' : 'Offline';
+  if (status === 'live') return dt(locale, 'dashboard.label.live');
+  if (status === 'partial') return dt(locale, 'dashboard.label.partial');
+  if (status === 'stale') return dt(locale, 'dashboard.freshness.signalDelayed');
+  return dt(locale, 'dashboard.label.offline');
 }
 
 export function readinessStatusTone(

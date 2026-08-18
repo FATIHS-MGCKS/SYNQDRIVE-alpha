@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import {
   dedupeDisplayReasons,
   formatRuntimeReasonLabel,
@@ -56,15 +57,15 @@ function telemetryLabel(state: VehicleRuntimeState, locale: string): string | nu
   const de = isDe(locale);
   switch (state.telemetryState) {
     case 'live':
-      return de ? 'Live' : 'Live';
+      return dt(locale, 'dashboard.label.live');
     case 'standby':
-      return de ? 'Standby' : 'Standby';
+      return dt(locale, 'dashboard.label.standby');
     case 'soft_offline':
-      return de ? 'Soft Offline' : 'Soft offline';
+      return dt(locale, 'dashboard.label.softOffline');
     case 'offline':
-      return de ? 'Offline' : 'Offline';
+      return dt(locale, 'dashboard.label.offline');
     case 'unknown':
-      return de ? 'Kein Signal' : 'No signal';
+      return dt(locale, 'dashboard.label.noSignal');
     default:
       return null;
   }
@@ -94,14 +95,14 @@ export function buildReadyToRentDrawerGroups(slice: DashboardSlice, locale: stri
   if (ready) {
     result.push({
       ...ready,
-      title: de ? 'Bereit' : 'Ready',
+      title: dt(locale, 'dashboard.label.ready'),
       count: ready.rows.length,
     });
   }
   if (notReady) {
     result.push({
       ...notReady,
-      title: de ? 'Nicht bereit' : 'Not Ready',
+      title: dt(locale, 'dashboard.label.notReady'),
       count: notReady.rows.length,
     });
   }
@@ -319,7 +320,7 @@ export function resolveHandoverReadinessBadge(
   fallbackLabel?: string,
 ): HandoverReadinessBadge | null {
   const de = isDe(locale);
-  const label = fallbackLabel ?? (de ? 'Reserviert' : 'Reserved');
+  const label = fallbackLabel ?? (dt(locale, 'dashboard.reserved'));
 
   const fleetDisplay = vehicle
     ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health ?? null, locale })

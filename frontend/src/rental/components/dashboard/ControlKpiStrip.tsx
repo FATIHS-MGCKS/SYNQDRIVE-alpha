@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -6,8 +7,8 @@ import {
   DASHBOARD_KPI_NUMBER_CLASS,
   DASHBOARD_KPI_TITLE_CLASS,
 } from './dashboardShell';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import {
   getKpiCardSurfaceClass,
@@ -88,11 +89,11 @@ function kpiCardClass(
 }
 
 function readyKpiLabels(locale?: string) {
-  const de = locale === 'de';
+  
   return {
-    vehiclesReady: de ? 'Fahrzeuge bereit' : 'vehicles ready',
-    available: de ? 'Verfügbar' : 'Available',
-    notReady: de ? 'Nicht bereit' : 'Not ready',
+    vehiclesReady: dt(locale, 'dashboard.control.vehiclesReady'),
+    available: dt(locale, 'dashboard.available'),
+    notReady: dt(locale, 'dashboard.control.notReady'),
   };
 }
 

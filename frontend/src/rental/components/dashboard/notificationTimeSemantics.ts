@@ -1,4 +1,5 @@
-import type { Locale } from '../../i18n/LanguageContext';
+import { dt, dashboardFormattingLocale } from './dashboard-i18n';
+import type { Locale } from '../../../i18n/LanguageContext';
 import type { NotificationLifecycleStatus, NotificationQueueModel } from './notificationQueueModel';
 
 export interface NotificationTimeContext {
@@ -36,7 +37,7 @@ export function computeNotificationSortMs(model: Pick<
 
 function formatClockTime(iso: string, locale: string): string {
   const date = new Date(iso);
-  return date.toLocaleTimeString(locale === 'de' ? 'de-DE' : 'en-US', {
+  return date.toLocaleTimeString(dashboardFormattingLocale(locale), {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -44,22 +45,22 @@ function formatClockTime(iso: string, locale: string): string {
 
 function formatShortDate(iso: string, locale: string): string {
   const date = new Date(iso);
-  return date.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+  return date.toLocaleDateString(dashboardFormattingLocale(locale), {
     day: '2-digit',
     month: '2-digit',
   });
 }
 
-function formatRelativePast(ms: number, referenceNowMs: number, de: boolean): string {
+function formatRelativePast(ms: number, referenceNowMs: number, locale: string): string {
   const diffMs = referenceNowMs - ms;
-  if (diffMs < 0) return de ? 'jetzt' : 'now';
+  if (diffMs < 0) return dt(locale, 'dashboard.time.now');
   const absMin = Math.round(diffMs / 60_000);
-  if (absMin < 1) return de ? 'jetzt' : 'now';
-  if (absMin < 60) return de ? `vor ${absMin} Min.` : `${absMin}m ago`;
+  if (absMin < 1) return dt(locale, 'dashboard.time.now');
+  if (absMin < 60) return dt(locale, 'dashboard.time.agoMinutes', { count: absMin });
   const hours = Math.floor(absMin / 60);
-  if (hours < 24) return de ? `vor ${hours} Std.` : `${hours}h ago`;
+  if (hours < 24) return dt(locale, 'dashboard.time.agoHours', { count: hours });
   const days = Math.floor(hours / 24);
-  return de ? `vor ${days} T.` : `${days}d ago`;
+  return dt(locale, 'dashboard.time.agoDays', { count: days });
 }
 
 export function formatNotificationTimeLabel(
@@ -69,15 +70,14 @@ export function formatNotificationTimeLabel(
   >,
   context: NotificationTimeContext,
 ): string {
-  const de = context.locale === 'de';
-  const intlLocale = de ? 'de-DE' : 'en-US';
+  const locale = context.locale;
 
   if (model.lifecycleStatus === 'resolved' || model.lifecycleStatus === 'archived') {
     const resolvedMs = parseIsoMs(model.resolvedAt) ?? parseIsoMs(model.lastSeenAt);
     if (resolvedMs != null) {
-      return de
-        ? `behoben um ${formatClockTime(new Date(resolvedMs).toISOString(), context.locale)}`
-        : `resolved at ${formatClockTime(new Date(resolvedMs).toISOString(), context.locale)}`;
+      return dt(locale, 'notification.time.resolvedAt', {
+        time: formatClockTime(new Date(resolvedMs).toISOString(), locale),
+      });
     }
   }
 
@@ -85,16 +85,18 @@ export function formatNotificationTimeLabel(
   if (lastSeenMs != null) {
     const diffMs = context.referenceNowMs - lastSeenMs;
     if (diffMs >= 0 && diffMs < 24 * 60 * 60_000) {
-      return de
-        ? `zuletzt erkannt ${formatRelativePast(lastSeenMs, context.referenceNowMs, true)}`
-        : `last seen ${formatRelativePast(lastSeenMs, context.referenceNowMs, false)}`;
+      return dt(locale, 'notification.time.lastSeen', {
+        relative: formatRelativePast(lastSeenMs, context.referenceNowMs, locale),
+      });
     }
-    return de ? `seit ${formatShortDate(new Date(lastSeenMs).toISOString(), context.locale)}` : `since ${formatShortDate(new Date(lastSeenMs).toISOString(), context.locale)}`;
+    return dt(locale, 'notification.time.sinceDate', {
+      date: formatShortDate(new Date(lastSeenMs).toISOString(), locale),
+    });
   }
 
   const occurredMs = parseIsoMs(model.occurredAt) ?? parseIsoMs(model.createdAt);
   if (occurredMs != null) {
-    return formatRelativePast(occurredMs, context.referenceNowMs, de);
+    return formatRelativePast(occurredMs, context.referenceNowMs, locale);
   }
 
   return '';
@@ -108,26 +110,26 @@ export function formatNotificationLastSeenShort(
   >,
   context: NotificationTimeContext,
 ): string {
-  const de = context.locale === 'de';
+  const locale = context.locale;
 
   if (model.lifecycleStatus === 'resolved' || model.lifecycleStatus === 'archived') {
     const resolvedMs = parseIsoMs(model.resolvedAt) ?? parseIsoMs(model.lastSeenAt);
     if (resolvedMs != null) {
-      const rel = formatRelativePast(resolvedMs, context.referenceNowMs, de);
-      return de ? `behoben ${rel}` : `resolved ${rel}`;
+      const rel = formatRelativePast(resolvedMs, context.referenceNowMs, locale);
+      return dt(locale, 'notification.time.resolvedShort', { relative: rel });
     }
   }
 
   const lastSeenMs = parseIsoMs(model.lastSeenAt) ?? parseIsoMs(model.occurredAt);
   if (lastSeenMs != null) {
-    const rel = formatRelativePast(lastSeenMs, context.referenceNowMs, de);
-    return de ? `zuletzt ${rel}` : `last ${rel}`;
+    const rel = formatRelativePast(lastSeenMs, context.referenceNowMs, locale);
+    return dt(locale, 'notification.time.lastShort', { relative: rel });
   }
 
   const occurredMs = parseIsoMs(model.occurredAt) ?? parseIsoMs(model.createdAt);
   if (occurredMs != null) {
-    const rel = formatRelativePast(occurredMs, context.referenceNowMs, de);
-    return de ? `zuletzt ${rel}` : `last ${rel}`;
+    const rel = formatRelativePast(occurredMs, context.referenceNowMs, locale);
+    return dt(locale, 'notification.time.lastShort', { relative: rel });
   }
 
   return '';

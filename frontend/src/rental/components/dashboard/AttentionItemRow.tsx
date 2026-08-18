@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { memo, type MouseEvent, type ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
@@ -16,13 +17,13 @@ export type AttentionSeverity =
   | ActionQueueChildSeverity
   | NotificationSeverity;
 
-function severityLabel(severity: AttentionSeverity, de: boolean): string {
-  if (severity === 'success') return de ? 'Behoben' : 'Resolved';
-  if (severity === 'critical') return de ? 'Kritisch' : 'Critical';
-  if (severity === 'overdue') return de ? 'Überfällig' : 'Overdue';
-  if (severity === 'warning') return de ? 'Warnung' : 'Warning';
-  if (severity === 'attention') return de ? 'Hinweis' : 'Notice';
-  return de ? 'Hinweis' : 'Info';
+function severityLabel(severity: AttentionSeverity, locale: string): string {
+  if (severity === 'success') return dt(locale, 'dashboard.label.resolved');
+  if (severity === 'critical') return dt(locale, 'dashboard.label.critical');
+  if (severity === 'overdue') return dt(locale, 'dashboard.label.overdue');
+  if (severity === 'warning') return dt(locale, 'dashboard.label.warning');
+  if (severity === 'attention') return dt(locale, 'dashboard.label.notice');
+  return dt(locale, 'dashboard.label.info');
 }
 
 function severityTone(severity: AttentionSeverity) {
@@ -149,7 +150,8 @@ export const AttentionItemRow = memo(function AttentionItemRow({
   onRowClick,
   onCtaClick,
 }: AttentionItemRowProps) {
-  const eyebrow = domainEyebrow ?? attentionCategoryEyebrow({ category, module, groupType }, de);
+  const locale = de ? 'de' : 'en';
+  const eyebrow = domainEyebrow ?? attentionCategoryEyebrow({ category, module, groupType }, locale);
   const interactive = Boolean(onRowClick);
   const tint = rowTint(severity, pinned, nested);
 
@@ -190,7 +192,7 @@ export const AttentionItemRow = memo(function AttentionItemRow({
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <StatusChip tone={severityTone(severity)} className={NOTIFICATION_CARD_TYPO.severityChip}>
-              {severityLabel(severity, de)}
+              {severityLabel(severity, locale)}
             </StatusChip>
             <span className={NOTIFICATION_CARD_TYPO.eyebrow}>{eyebrow}</span>
             {timeLabel ? <span className={NOTIFICATION_CARD_TYPO.time}>{timeLabel}</span> : null}

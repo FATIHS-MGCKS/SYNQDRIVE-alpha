@@ -141,7 +141,7 @@ describe('rowSeverityLabel', () => {
     expect(rowSeverityLabel('success', 'en')).toBe('Ready');
     expect(rowSeverityLabel('warning', 'de')).toBe('Warnung');
     expect(rowSeverityLabel('critical', 'de')).toBe('Kritisch');
-    expect(rowSeverityLabel('info', 'de')).toBe('Info');
+    expect(rowSeverityLabel('info', 'de')).toBe('Hinweis');
     expect(rowSeverityLabel('neutral', 'de')).toBeNull();
   });
 });

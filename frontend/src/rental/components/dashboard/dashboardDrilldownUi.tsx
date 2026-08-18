@@ -1,14 +1,15 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
 
 export function drawerStationScopeLabel(
   selectedStationName: string | null | undefined,
-  de: boolean,
+  locale: string,
 ): string {
   if (selectedStationName?.trim()) {
-    return de ? `Station: ${selectedStationName.trim()}` : `Station: ${selectedStationName.trim()}`;
+    return dt(locale, 'dashboard.drilldown.stationScope', { name: selectedStationName.trim() });
   }
-  return de ? 'Alle Stationen' : 'All Stations';
+  return dt(locale, 'dashboard.drilldown.allStations');
 }
 
 export interface DashboardDrilldownToolbarProps {

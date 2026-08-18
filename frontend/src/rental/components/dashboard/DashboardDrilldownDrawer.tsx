@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from './dashboard-i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
@@ -138,7 +139,7 @@ function handoverReasonChipClass(tone: 'success' | 'watch' | 'warning' | 'critic
 }
 
 function formatOperationsDrawerDate(locale: string, now = new Date()): string {
-  return new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-US', {
+  return new Intl.DateTimeFormat(dashboardFormattingLocale(locale), {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
@@ -148,100 +149,94 @@ function formatOperationsDrawerDate(locale: string, now = new Date()): string {
 
 function operationsDrawerStationLabel(
   selectedStationName: string | null | undefined,
-  de: boolean,
+  locale: string,
 ): string {
   const trimmed = selectedStationName?.trim();
-  return trimmed || (de ? 'Alle Stationen' : 'All stations');
+  return trimmed || dt(locale, 'dashboard.station.allStations');
 }
 
 function formatDate(value: string | null | undefined, locale: string): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-US', {
+  return new Intl.DateTimeFormat(dashboardFormattingLocale(locale), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(date);
 }
 
-function reasonsLabel(count: number, de: boolean): string {
-  return de ? `+${count} Gründe` : `+${count} reasons`;
+function reasonsLabel(count: number, locale: string): string {
+  return dt(locale, 'dashboard.count.moreReasons', { count });
 }
 
 function vehicleStatesById(states: VehicleRuntimeState[]): Map<string, VehicleRuntimeState> {
   return new Map(states.map((state) => [state.vehicleId, state]));
 }
 
-function sliceDisplayTitle(slice: DashboardSlice, de: boolean): string {
+function sliceDisplayTitle(slice: DashboardSlice, locale: string): string {
   if (slice.id === 'blocked-maintenance') {
-    return de ? 'Blockiert / Wartung' : 'Blocked / maintenance';
+    return dt(locale, 'dashboard.drilldown.blockedMaint');
   }
   return slice.title;
 }
 
-function defaultVehicleCta(de: boolean): string {
-  return de ? 'Fahrzeug öffnen' : 'Open vehicle';
+function defaultVehicleCta(locale: string): string {
+  return dt(locale, 'notification.cta.openVehicle');
 }
 
-function defaultBookingCta(de: boolean): string {
-  return de ? 'Zur Buchung' : 'To booking';
+function defaultBookingCta(locale: string): string {
+  return dt(locale, 'dashboard.cta.toBooking');
 }
 
-function defaultInvoiceCta(de: boolean): string {
-  return de ? 'Rechnung öffnen' : 'Open invoice';
+function defaultInvoiceCta(locale: string): string {
+  return dt(locale, 'notification.cta.openInvoice');
 }
 
-function operativeEyebrow(sliceId: DashboardSliceId, de: boolean): string {
-  if (sliceId === 'ready-to-rent') return de ? 'Mietbereitschaft' : 'Rental readiness';
-  if (sliceId === 'critical-alerts') return de ? 'Alerts & Probleme' : 'Alerts & issues';
-  if (sliceId === 'blocked-maintenance') return de ? 'Service & Blocker' : 'Service & blockers';
-  if (sliceId === 'due-soon') return de ? 'Timeline' : 'Timeline';
-  if (sliceId === 'overdue-returns') return de ? 'Rückgaben' : 'Returns';
-  if (sliceId === 'overdue-pickups') return de ? 'Übergaben' : 'Pickups';
-  return de ? 'Operativ' : 'Operations';
+function operativeEyebrow(sliceId: DashboardSliceId, locale: string): string {
+  if (sliceId === 'ready-to-rent') return dt(locale, 'dashboard.drilldown.rentalReadiness');
+  if (sliceId === 'critical-alerts') return dt(locale, 'dashboard.drilldown.alertsIssues');
+  if (sliceId === 'blocked-maintenance') return dt(locale, 'dashboard.drilldown.serviceBlockers');
+  if (sliceId === 'due-soon') return dt(locale, 'dashboard.drilldown.timeline');
+  if (sliceId === 'overdue-returns') return dt(locale, 'dashboard.drilldown.returns');
+  if (sliceId === 'overdue-pickups') return dt(locale, 'dashboard.drilldown.pickups');
+  return dt(locale, 'dashboard.drilldown.operative');
 }
 
-function vehicleDrawerEmptyTitle(slice: DashboardSlice, de: boolean): string {
+function vehicleDrawerEmptyTitle(slice: DashboardSlice, locale: string): string {
   if (slice.id === 'critical-alerts') {
-    return de ? 'Keine kritischen Alerts' : 'No critical alerts';
+    return dt(locale, 'dashboard.drilldown.noCriticalAlerts');
   }
   if (slice.id === 'blocked-maintenance') {
-    return de ? 'Keine blockierten Fahrzeuge' : 'No blocked vehicles';
+    return dt(locale, 'dashboard.drilldown.noBlockedVehicles');
   }
-  return emptyTitle(slice, de);
+  return emptyTitle(slice, locale);
 }
 
-function vehicleDrawerEmptyDescription(slice: DashboardSlice, de: boolean): string {
+function vehicleDrawerEmptyDescription(slice: DashboardSlice, locale: string): string {
   if (slice.id === 'critical-alerts') {
-    return de
-      ? 'In diesem Bereich liegen aktuell keine kritischen Hinweise vor.'
-      : 'No critical alerts in this scope right now.';
+    return dt(locale, 'dashboard.drilldown.noCriticalAlertsDescription');
   }
   if (slice.id === 'blocked-maintenance') {
-    return de
-      ? 'Aktuell keine Fahrzeuge blockiert oder in Wartung in diesem Bereich.'
-      : 'No blocked or maintenance vehicles in this scope right now.';
+    return dt(locale, 'dashboard.drilldown.noBlockedVehiclesDescription');
   }
-  return emptyDescription(slice, de);
+  return emptyDescription(slice, locale);
 }
 
-function drawerSearchEmptyTitle(de: boolean): string {
-  return de ? 'Keine Treffer' : 'No matches';
+function drawerSearchEmptyTitle(locale: string): string {
+  return dt(locale, 'dashboard.drilldown.noMatches');
 }
 
-function drawerSearchEmptyDescription(de: boolean): string {
-  return de
-    ? 'Passe die Suche an oder wähle eine andere Station.'
-    : 'Adjust your search or try a different station.';
+function drawerSearchEmptyDescription(locale: string): string {
+  return dt(locale, 'dashboard.drilldown.searchEmptyDescription');
 }
 
-function emptyTitle(slice: DashboardSlice, de: boolean): string {
-  return slice.emptyTitle ?? (de ? 'Keine Fahrzeuge' : 'No vehicles');
+function emptyTitle(slice: DashboardSlice, locale: string): string {
+  return slice.emptyTitle ?? dt(locale, 'dashboard.drilldown.noVehicles');
 }
 
-function emptyDescription(slice: DashboardSlice, de: boolean): string {
-  return slice.emptyDescription ?? (de ? 'Aktuell keine Einträge in diesem Bereich.' : 'No items in this area right now.');
+function emptyDescription(slice: DashboardSlice, locale: string): string {
+  return slice.emptyDescription ?? dt(locale, 'dashboard.drilldown.noItemsInArea');
 }
 
 function BookingDrawerRowCard({
@@ -291,15 +286,15 @@ function BookingDrawerRowCard({
     && !metaNormalized.includes(row.stationLabel.trim().toLowerCase());
   const timingText = row.statusLabel
     ?? (row.severity === 'critical'
-      ? de ? 'Kritisch' : 'Critical'
+      ? dt(locale, 'dashboard.label.critical')
       : row.severity === 'warning'
-        ? de ? 'Warnung' : 'Warning'
+        ? dt(locale, 'dashboard.label.warning')
         : row.severity === 'success'
-          ? de ? 'Bereit' : 'Ready'
+          ? dt(locale, 'dashboard.label.ready')
           : null);
   const canOpenBooking = Boolean(row.bookingId && onOpenBooking);
   const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
-  const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
+  const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(locale) : defaultVehicleCta(locale));
   const canOpen = canOpenBooking || canOpenVehicle;
   const handoverReadiness = resolveHandoverReadinessBadge(
     vehicle,
@@ -408,7 +403,7 @@ function BookingDrawerRowCard({
               ))}
               {visibleReasons.length > 3 ? (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {reasonsLabel(visibleReasons.length - 3, de)}
+                  {reasonsLabel(visibleReasons.length - 3, locale)}
                 </span>
               ) : null}
             </div>
@@ -533,8 +528,8 @@ function BusinessRowCard({
           </div>
           {row.subtitle ? <p className="truncate text-[12px] text-muted-foreground">{row.subtitle}</p> : null}
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            {invoiceDate ? <span>{de ? 'Rechnung' : 'Invoice'}: {invoiceDate}</span> : null}
-            {dueDate ? <span>{de ? 'Fällig' : 'Due'}: {dueDate}</span> : null}
+            {invoiceDate ? <span>{dt(locale, 'dashboard.label.invoice')}: {invoiceDate}</span> : null}
+            {dueDate ? <span>{dt(locale, 'dashboard.label.due')}: {dueDate}</span> : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5 self-stretch justify-between">
@@ -549,7 +544,7 @@ function BusinessRowCard({
                   onClose();
                 }}
               >
-                {row.primaryActionLabel ?? defaultInvoiceCta(de)}
+                {row.primaryActionLabel ?? defaultInvoiceCta(locale)}
               </DrawerRowActionButton>
             </div>
           ) : null}
@@ -573,62 +568,60 @@ function resolveOperationsFocusedCount(
 
 function operationsDrawerTitle(
   focusedGroupId: TodaysOperationsDrilldownGroupId | null | undefined,
-  de: boolean,
+  locale: string,
 ): string | null {
-  if (focusedGroupId === 'pickups-today') return de ? 'Übergaben' : 'Pickups';
-  if (focusedGroupId === 'returns-today') return de ? 'Rückgaben' : 'Returns';
-  if (focusedGroupId === 'active-rentals') return de ? 'Aktive Vermietungen' : 'Active rentals';
+  if (focusedGroupId === 'pickups-today') return dt(locale, 'dashboard.drilldown.pickups');
+  if (focusedGroupId === 'returns-today') return dt(locale, 'dashboard.drilldown.returns');
+  if (focusedGroupId === 'active-rentals') return dt(locale, 'dashboard.drilldown.activeRentals');
   return null;
 }
 
 function operationsDrawerHint(
   focusedGroupId: TodaysOperationsDrilldownGroupId,
   count: number | null,
-  de: boolean,
+  locale: string,
 ): string {
   const n = count ?? 0;
   if (focusedGroupId === 'pickups-today') {
-    return de ? `${n} Übergabe${n === 1 ? '' : 'n'} heute` : `${n} pickup${n === 1 ? '' : 's'} today`;
+    return n === 1
+      ? dt(locale, 'dashboard.count.pickupTodayOne')
+      : dt(locale, 'dashboard.count.pickupsTodayMany', { count: n });
   }
   if (focusedGroupId === 'returns-today') {
-    return de ? `${n} Rückgabe${n === 1 ? '' : 'n'} heute` : `${n} return${n === 1 ? '' : 's'} today`;
+    return n === 1
+      ? dt(locale, 'dashboard.count.returnTodayOne')
+      : dt(locale, 'dashboard.count.returnsTodayMany', { count: n });
   }
-  return de ? `${n} aktive Vermietung${n === 1 ? '' : 'en'}` : `${n} active rental${n === 1 ? '' : 's'}`;
+  return n === 1
+    ? dt(locale, 'dashboard.count.activeRentalOne')
+    : dt(locale, 'dashboard.count.activeRentalsMany', { count: n });
 }
 
 function operationsDrawerEmptyCopy(
   focusedGroupId: TodaysOperationsDrilldownGroupId | null | undefined,
-  de: boolean,
+  locale: string,
 ): { title: string; description: string } {
   if (focusedGroupId === 'pickups-today') {
     return {
-      title: de ? 'Keine Übergaben heute' : 'No pickups today',
-      description: de
-        ? 'Für heute sind keine offenen Übergaben geplant.'
-        : 'There are no open pickups scheduled for today.',
+      title: dt(locale, 'dashboard.empty.noPickupsToday'),
+      description: dt(locale, 'dashboard.empty.noPickupsTodayDescription'),
     };
   }
   if (focusedGroupId === 'returns-today') {
     return {
-      title: de ? 'Keine Rückgaben heute' : 'No returns today',
-      description: de
-        ? 'Für heute sind keine offenen Rückgaben geplant.'
-        : 'There are no open returns scheduled for today.',
+      title: dt(locale, 'dashboard.empty.noReturnsToday'),
+      description: dt(locale, 'dashboard.empty.noReturnsTodayDescription'),
     };
   }
   if (focusedGroupId === 'active-rentals') {
     return {
-      title: de ? 'Keine aktiven Vermietungen' : 'No active rentals',
-      description: de
-        ? 'Aktuell sind keine Fahrzeuge aktiv vermietet.'
-        : 'No vehicles are currently on active rental.',
+      title: dt(locale, 'dashboard.drilldown.noActiveRentals'),
+      description: dt(locale, 'dashboard.empty.noActiveRentalsDescription'),
     };
   }
   return {
-    title: de ? 'Keine Operationen heute' : 'No operations today',
-    description: de
-      ? 'Keine Übergaben, Rückgaben oder aktiven Vermietungen in diesem Bereich.'
-      : 'No pickups, returns, or active rentals in this scope.',
+    title: dt(locale, 'dashboard.empty.noOperationsToday'),
+    description: dt(locale, 'dashboard.empty.noOperationsTodayDescription'),
   };
 }
 
@@ -689,12 +682,12 @@ function DashboardGroupList({
 
   const emptyCopy =
     slice.id === 'active-rented'
-      ? operationsDrawerEmptyCopy(focusedGroupId, de)
+      ? operationsDrawerEmptyCopy(focusedGroupId, locale)
       : {
-          title: isVehicleDrawer ? vehicleDrawerEmptyTitle(slice, de) : emptyTitle(slice, de),
+          title: isVehicleDrawer ? vehicleDrawerEmptyTitle(slice, locale) : emptyTitle(slice, locale),
           description: isVehicleDrawer
-            ? vehicleDrawerEmptyDescription(slice, de)
-            : emptyDescription(slice, de),
+            ? vehicleDrawerEmptyDescription(slice, locale)
+            : emptyDescription(slice, locale),
         };
 
   if (groups.length === 0) {
@@ -706,8 +699,8 @@ function DashboardGroupList({
     return filterDashboardDrawerGroups(groups, vehicleStates, searchQuery, locale);
   }, [groups, isVehicleDrawer, searchQuery, vehicleStates, locale]);
 
-  const searchPlaceholder = de ? 'Kennzeichen, Marke, Modell…' : 'Plate, make, model…';
-  const stationScopeLabel = drawerStationScopeLabel(selectedStationName, de);
+  const searchPlaceholder = dt(locale, 'dashboard.drilldown.searchPlaceholder');
+  const stationScopeLabel = drawerStationScopeLabel(selectedStationName, locale);
 
   return (
     <div className="space-y-3">
@@ -722,8 +715,8 @@ function DashboardGroupList({
 
       {filteredGroups.length === 0 ? (
         <EmptyState
-          title={drawerSearchEmptyTitle(de)}
-          description={drawerSearchEmptyDescription(de)}
+          title={drawerSearchEmptyTitle(locale)}
+          description={drawerSearchEmptyDescription(locale)}
         />
       ) : (
         filteredGroups.map((group, index) => (
@@ -783,8 +776,8 @@ function BusinessGroupList({
   if (renderGroups.length === 0) {
     return (
       <EmptyState
-        title={de ? 'Keine Finanzdaten' : 'No financial data'}
-        description={de ? 'Für diese Metrik liegen aktuell keine Einträge vor.' : 'No entries are available for this metric right now.'}
+        title={dt(locale, 'dashboard.drilldown.noFinancialData')}
+        description={dt(locale, 'dashboard.drilldown.noFinancialEntries')}
       />
     );
   }
@@ -847,12 +840,12 @@ export function DashboardDrilldownDrawer({
   const open = Boolean(activeTargetId);
   const operationsTitle =
     dashboardSlice?.id === 'active-rented' && focusedGroupId
-      ? operationsDrawerTitle(focusedGroupId, de)
+      ? operationsDrawerTitle(focusedGroupId, locale)
       : null;
   const title = operationsTitle
     ?? (dashboardSlice
-      ? sliceDisplayTitle(dashboardSlice, de)
-      : businessSlice?.title ?? (de ? 'Details' : 'Details'));
+      ? sliceDisplayTitle(dashboardSlice, locale)
+      : businessSlice?.title ?? dt(locale, 'common.details'));
   const count = dashboardSlice
     ? resolveOperationsFocusedCount(dashboardSlice, focusedGroupId)
     : businessSlice?.count ?? null;
@@ -872,10 +865,10 @@ export function DashboardDrilldownDrawer({
             <p className="text-[12px] text-muted-foreground">
               {formatOperationsDrawerDate(locale)}
               {' · '}
-              {operationsDrawerStationLabel(selectedStationName, de)}
+              {operationsDrawerStationLabel(selectedStationName, locale)}
             </p>
             <p className="text-[12px] text-muted-foreground">
-              {operationsDrawerHint(focusedGroupId, count, de)}
+              {operationsDrawerHint(focusedGroupId, count, locale)}
             </p>
           </div>
         ) : drawerHeaderHint(dashboardSlice, locale) ? (
@@ -909,7 +902,7 @@ export function DashboardDrilldownDrawer({
         if (!next) onClose();
       }}
       onContentOpenAutoFocus={handleContentOpenAutoFocus}
-      eyebrow={dashboardSlice ? operativeEyebrow(dashboardSlice.id, de) : businessSlice ? (de ? 'Finanzen' : 'Financial') : undefined}
+      eyebrow={dashboardSlice ? operativeEyebrow(dashboardSlice.id, locale) : businessSlice ? dt(locale, 'dashboard.label.financial') : undefined}
       title={title}
       description={description}
       status={
@@ -920,7 +913,7 @@ export function DashboardDrilldownDrawer({
         ) : undefined
       }
       widthClassName="sm:max-w-xl"
-      closeLabel={de ? 'Schließen' : 'Close'}
+      closeLabel={dt(locale, 'common.close')}
       footer={
         businessSlice && onOpenBilling ? (
           <button
@@ -931,7 +924,7 @@ export function DashboardDrilldownDrawer({
               onClose();
             }}
           >
-            {de ? 'Abrechnung öffnen' : 'Open billing'}
+            {dt(locale, 'dashboard.drilldown.openBilling')}
             <Icon name="arrow-right" className="h-4 w-4" />
           </button>
         ) : undefined
@@ -966,8 +959,8 @@ export function DashboardDrilldownDrawer({
         />
       ) : (
         <EmptyState
-          title={de ? 'Keine Daten' : 'No data'}
-          description={de ? 'Für dieses Ziel liegt aktuell kein Slice vor.' : 'No slice is available for this target right now.'}
+          title={dt(locale, 'dashboard.drilldown.noData')}
+          description={dt(locale, 'dashboard.drilldown.noSlice')}
         />
       )}
     </DetailDrawer>

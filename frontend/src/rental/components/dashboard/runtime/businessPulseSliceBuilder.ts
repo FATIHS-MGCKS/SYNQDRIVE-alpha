@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from '../dashboard-i18n';
 import type { DashboardInvoice } from '../dashboardTypes';
 import { bookingRef } from '../../bookings/bookingUtils';
 import {
@@ -27,14 +28,6 @@ export interface BuildBusinessPulseSlicesInput {
   locale: string;
   now?: Date;
   currency?: string;
-}
-
-function isDe(locale: string): boolean {
-  return locale === 'de';
-}
-
-function label(locale: string, deText: string, enText: string): string {
-  return isDe(locale) ? deText : enText;
 }
 
 function normalizeStatus(status: string | undefined): string {
@@ -88,7 +81,7 @@ function monthWindow(now: Date): { from: Date; to: Date } {
 }
 
 function monthLabel(now: Date, locale: string): string {
-  return now.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+  return now.toLocaleDateString(dashboardFormattingLocale(locale), {
     month: 'long',
     year: 'numeric',
   });
@@ -140,7 +133,7 @@ function formatShortDate(iso: string | null | undefined, locale: string): string
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+  return d.toLocaleDateString(dashboardFormattingLocale(locale), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -149,27 +142,26 @@ function formatShortDate(iso: string | null | undefined, locale: string): string
 
 function invoiceStatusLabel(status: string | undefined, locale: string): string {
   const normalized = normalizeInvoiceStatus(status);
-  const de = isDe(locale);
-  if (normalized === 'PAID') return de ? 'Bezahlt' : 'Paid';
-  if (normalized === 'DRAFT') return de ? 'Entwurf' : 'Draft';
-  if (normalized === 'OVERDUE') return de ? 'Überfällig' : 'Overdue';
+  if (normalized === 'PAID') return dt(locale, 'dashboard.label.paid');
+  if (normalized === 'DRAFT') return dt(locale, 'dashboard.label.draft');
+  if (normalized === 'OVERDUE') return dt(locale, 'dashboard.label.overdue');
   if (normalized === 'OPEN' || normalized === 'ISSUED' || normalized === 'SENT') {
-    return de ? 'Offen' : 'Open';
+    return dt(locale, 'dashboard.label.open');
   }
-  if (normalized === 'PARTIALLY_PAID') return de ? 'Teilweise bezahlt' : 'Partially paid';
+  if (normalized === 'PARTIALLY_PAID') return dt(locale, 'dashboard.label.partiallyPaid');
   if (normalized === 'CANCELLED' || normalized === 'CANCELED' || normalized === 'VOID') {
-    return de ? 'Storniert' : 'Void';
+    return dt(locale, 'dashboard.label.void');
   }
-  return status?.trim() || (de ? 'Unbekannt' : 'Unknown');
+  return status?.trim() || dt(locale, 'dashboard.label.unknown');
 }
 
 function rowTitle(inv: DashboardInvoice, locale: string): string {
   if (inv.invoiceNumberDisplay?.trim()) return inv.invoiceNumberDisplay.trim();
   if (inv.title?.trim()) return inv.title.trim();
   if (inv.bookingId) {
-    return label(locale, `Buchung ${bookingRef(inv.bookingId)}`, `Booking ${bookingRef(inv.bookingId)}`);
+    return dt(locale, 'dashboard.billing.bookingRef', { ref: bookingRef(inv.bookingId) });
   }
-  return label(locale, 'Rechnung', 'Invoice');
+  return dt(locale, 'dashboard.label.invoice');
 }
 
 function rowSubtitle(inv: DashboardInvoice, locale: string): string | undefined {
@@ -205,7 +197,7 @@ function invoiceRow(
     dueDate: inv.dueDate ?? null,
     invoiceDate: inv.invoiceDate ?? inv.createdAt ?? null,
     severity: rowSeverity(state),
-    primaryActionLabel: label(locale, 'Rechnung öffnen', 'Open invoice'),
+    primaryActionLabel: dt(locale, 'notification.cta.openInvoice'),
     primaryActionTarget: 'open-invoice',
   };
 }
@@ -225,14 +217,14 @@ function sortRows(rows: BusinessPulseRow[]): BusinessPulseRow[] {
 
 function groupByState(locale: string, rows: BusinessPulseRow[]) {
   const titles: Record<BusinessDocumentState, string> = {
-    paid: label(locale, 'Bezahlt', 'Paid'),
-    open: label(locale, 'Offen', 'Open'),
-    overdue: label(locale, 'Überfällig', 'Overdue'),
-    draft: label(locale, 'Entwurf', 'Draft'),
-    failed: label(locale, 'Fehlgeschlagen', 'Failed'),
-    refunded: label(locale, 'Erstattet', 'Refunded'),
-    disputed: label(locale, 'Strittig', 'Disputed'),
-    unknown: label(locale, 'Unklar', 'Unknown'),
+    paid: dt(locale, 'dashboard.label.paid'),
+    open: dt(locale, 'dashboard.label.open'),
+    overdue: dt(locale, 'dashboard.label.overdue'),
+    draft: dt(locale, 'dashboard.label.draft'),
+    failed: dt(locale, 'dashboard.billing.failed'),
+    refunded: dt(locale, 'dashboard.billing.refunded'),
+    disputed: dt(locale, 'dashboard.billing.disputed'),
+    unknown: dt(locale, 'dashboard.billing.unclear'),
   };
 
   return (Object.keys(titles) as BusinessDocumentState[])
@@ -343,20 +335,20 @@ export function buildBusinessPulseSlices(
   return {
     revenue: makeSlice({
       id: 'revenue',
-      title: label(input.locale, 'Umsatz', 'Revenue'),
+      title: dt(input.locale, 'dashboard.revenue'),
       rows: outgoingRows,
       locale: input.locale,
       valueCents: revenueCents,
       tone: revenueCents > 0 ? 'success' : 'neutral',
-      hint: label(input.locale, `${periodLabel} · MTD`, `${periodLabel} · MTD`),
+      hint: dt(input.locale, 'dashboard.billing.mtdHint', { period: periodLabel }),
     }),
     profit: makeSlice({
       id: 'profit',
-      title: label(input.locale, 'Ergebnis', 'Result'),
+      title: dt(input.locale, 'dashboard.result'),
       rows: [
         summaryRow({
           id: 'business-summary:revenue',
-          title: label(input.locale, 'Umsatz', 'Revenue'),
+          title: dt(input.locale, 'dashboard.revenue'),
           valueCents: revenueCents,
           currency,
           state: 'paid',
@@ -364,7 +356,7 @@ export function buildBusinessPulseSlices(
         }),
         summaryRow({
           id: 'business-summary:expenses',
-          title: label(input.locale, 'Ausgaben', 'Expenses'),
+          title: dt(input.locale, 'dashboard.expenses'),
           valueCents: expensesCents,
           currency,
           state: 'open',
@@ -379,16 +371,16 @@ export function buildBusinessPulseSlices(
     }),
     expenses: makeSlice({
       id: 'expenses',
-      title: label(input.locale, 'Ausgaben', 'Expenses'),
+      title: dt(input.locale, 'dashboard.expenses'),
       rows: incomingRows,
       locale: input.locale,
       valueCents: expensesCents,
       tone: expensesCents > 0 ? 'watch' : 'neutral',
-      hint: label(input.locale, `${periodLabel} · MTD`, `${periodLabel} · MTD`),
+      hint: dt(input.locale, 'dashboard.billing.mtdHint', { period: periodLabel }),
     }),
     'open-receivables': makeSlice({
       id: 'open-receivables',
-      title: label(input.locale, 'Offene Forderungen', 'Open receivables'),
+      title: dt(input.locale, 'dashboard.openReceivables'),
       rows: openReceivables,
       locale: input.locale,
       valueCents: sumCents(openReceivables),
@@ -396,7 +388,7 @@ export function buildBusinessPulseSlices(
     }),
     'overdue-receivables': makeSlice({
       id: 'overdue-receivables',
-      title: label(input.locale, 'Überfällig', 'Overdue'),
+      title: dt(input.locale, 'dashboard.overdueReceivables'),
       rows: overdueReceivables.map((row) => ({ ...row, severity: 'critical' as const })),
       locale: input.locale,
       valueCents: sumCents(overdueReceivables),
@@ -404,7 +396,7 @@ export function buildBusinessPulseSlices(
     }),
     'paid-invoices': makeSlice({
       id: 'paid-invoices',
-      title: label(input.locale, 'Bezahlte Rechnungen', 'Paid invoices'),
+      title: dt(input.locale, 'dashboard.paidInvoicesLabel'),
       rows: paidInvoices,
       locale: input.locale,
       valueCents: sumCents(paidInvoices),
@@ -412,7 +404,7 @@ export function buildBusinessPulseSlices(
     }),
     'draft-invoices': makeSlice({
       id: 'draft-invoices',
-      title: label(input.locale, 'Rechnungsentwürfe', 'Draft invoices'),
+      title: dt(input.locale, 'dashboard.draftInvoicesLabel'),
       rows: draftInvoices,
       locale: input.locale,
       valueCents: sumCents(draftInvoices),
@@ -420,7 +412,7 @@ export function buildBusinessPulseSlices(
     }),
     'failed-payments': makeSlice({
       id: 'failed-payments',
-      title: label(input.locale, 'Fehlgeschlagene Zahlungen', 'Failed payments'),
+      title: dt(input.locale, 'dashboard.failedPaymentsLabel'),
       rows: failedPayments.map((row) => ({ ...row, severity: 'critical' as const })),
       locale: input.locale,
       valueCents: sumCents(failedPayments),
@@ -428,12 +420,12 @@ export function buildBusinessPulseSlices(
     }),
     'reserved-revenue': makeSlice({
       id: 'reserved-revenue',
-      title: label(input.locale, 'Reservierter Umsatz', 'Reserved revenue'),
+      title: dt(input.locale, 'dashboard.reservedRevenue'),
       rows: reservedRows,
       locale: input.locale,
       valueCents: sumCents(reservedRows),
       tone: reservedRows.length > 0 ? 'info' : 'neutral',
-      hint: label(input.locale, `${periodLabel} · Vorauszahlung`, `${periodLabel} · Prepaid`),
+      hint: dt(input.locale, 'dashboard.billing.prepaidHint', { period: periodLabel }),
     }),
   };
 }

@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -171,15 +172,15 @@ export function OperationsEmptyState({
   const de = locale === 'de';
   const messages: Record<typeof variant, { title: string; subtitle: string }> = {
     timeline: {
-      title: de ? 'Keine anstehenden Ereignisse' : 'No upcoming events',
-      subtitle: de ? 'Im gewählten Zeitraum ist nichts geplant.' : 'Nothing scheduled in this window.',
+      title: dt(locale, 'dashboard.empty.noUpcomingEvents'),
+      subtitle: dt(locale, 'dashboard.empty.nothingScheduled'),
     },
     today: {
-      title: de ? 'Keine Operationen heute' : 'No operations today',
-      subtitle: de ? 'Pickups und Returns erscheinen hier automatisch.' : 'Pickups and returns will appear here automatically.',
+      title: dt(locale, 'dashboard.empty.noOperationsToday'),
+      subtitle: dt(locale, 'dashboard.empty.pickupsReturnsAuto'),
     },
     station: {
-      title: de ? 'Keine Daten für diese Station' : 'No data for this station',
+      title: dt(locale, 'dashboard.empty.noDataForStation'),
       subtitle: stationName
         ? de
           ? `${stationName} hat heute keine Pickups/Returns.`
@@ -189,12 +190,12 @@ export function OperationsEmptyState({
           : 'Try another station or “All stations”.',
     },
     pickups: {
-      title: de ? 'Keine Abholungen heute' : 'No pickups today',
-      subtitle: de ? 'Neue Abholungen erscheinen hier.' : 'New pickups will show up here.',
+      title: dt(locale, 'dashboard.empty.noPickupsToday'),
+      subtitle: dt(locale, 'dashboard.empty.newPickupsHere'),
     },
     returns: {
-      title: de ? 'Keine Rückgaben heute' : 'No returns today',
-      subtitle: de ? 'Rückgaben des Tages erscheinen hier.' : 'Today’s returns will appear here.',
+      title: dt(locale, 'dashboard.empty.noReturnsToday'),
+      subtitle: dt(locale, 'dashboard.empty.returnsAppearHere'),
     },
   };
   const msg = messages[variant];

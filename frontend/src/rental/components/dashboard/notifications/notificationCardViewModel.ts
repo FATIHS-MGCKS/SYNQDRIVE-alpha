@@ -1,3 +1,4 @@
+import { dt } from '../dashboard-i18n';
 import type { TranslationKey } from '../../../i18n/translations/en';
 import type { ActionQueueItem } from '../dashboardTypes';
 import type { NotificationDomain, NotificationLifecycleStatus, NotificationSeverity } from '../notificationQueueModel';
@@ -77,7 +78,7 @@ function resolveCtaLabel(
     return t(key);
   }
 
-  if (item.cta === 'open-vehicle') return de ? 'Fahrzeug prüfen' : 'Check vehicle';
+  if (item.cta === 'open-vehicle') return t('notification.cta.checkVehicle');
   if (item.cta === 'open-booking') return t('notification.cta.openBooking');
   return t('notification.cta.openRental');
 }

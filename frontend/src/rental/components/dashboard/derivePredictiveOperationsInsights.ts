@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from './dashboard-i18n';
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
@@ -234,7 +235,7 @@ export function derivePredictiveOperationsInsights(input: {
       timeSortMs: followMs ?? now,
       timeLabel: followMs
         ? de
-          ? `Pickup ${new Date(followMs).toLocaleTimeString(de ? 'de-DE' : 'en-US', { hour: '2-digit', minute: '2-digit' })}`
+          ? dt(locale, 'dashboard.time.pickupAt', { time: new Date(followMs).toLocaleTimeString(dashboardFormattingLocale(locale), { hour: '2-digit', minute: '2-digit' }) })
           : undefined
         : undefined,
       cta: 'start-handover-return',
@@ -348,7 +349,7 @@ export function derivePredictiveOperationsInsights(input: {
         sourceData: de
           ? `cleaningStatus=${vehicle.cleaningStatus} · Pickup BK ${p.bookingId}`
           : `cleaningStatus=${vehicle.cleaningStatus} · pickup BK ${p.bookingId}`,
-        recommendedAction: de ? 'Reinigung einplanen oder abschließen.' : 'Schedule or complete cleaning.',
+        recommendedAction: dt(locale, 'dashboard.insight.scheduleCleaning'),
         confidence: hoursUntil != null && hoursUntil <= 2 ? 'high' : 'medium',
         timeSortMs: startMs ?? now,
         timeLabel,
@@ -455,7 +456,7 @@ export function derivePredictiveOperationsInsights(input: {
             sourceData: de
               ? `fuelPercent=${fuel} · Pickup BK ${p.bookingId}`
               : `fuelPercent=${fuel} · pickup BK ${p.bookingId}`,
-            recommendedAction: de ? 'Tankstand prüfen oder betanken lassen.' : 'Verify or refuel before pickup.',
+            recommendedAction: dt(locale, 'dashboard.insight.verifyFuel'),
             confidence: vehicle.isFresh === true ? 'medium' : 'low',
             timeSortMs: startMs ?? now,
             timeLabel,
@@ -485,7 +486,7 @@ export function derivePredictiveOperationsInsights(input: {
             sourceData: de
               ? `evSoc=${soc} · Pickup BK ${p.bookingId}`
               : `evSoc=${soc} · pickup BK ${p.bookingId}`,
-            recommendedAction: de ? 'Ladestand prüfen oder laden lassen.' : 'Verify charge level or charge before pickup.',
+            recommendedAction: dt(locale, 'dashboard.insight.verifyCharge'),
             confidence: vehicle.isFresh === true ? 'medium' : 'low',
             timeSortMs: startMs ?? now,
             timeLabel,

@@ -1,3 +1,4 @@
+import { dt } from '../dashboard-i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../components/ui/utils';
 import { api, type Vendor } from '../../../../lib/api';
@@ -241,7 +242,7 @@ export function NotificationPanel({
         : 'Notification API is disabled.';
     }
     if (code === 'permission_denied') {
-      return de ? 'Keine Berechtigung für Benachrichtigungen.' : 'Permission denied.';
+      return dt(locale, 'notification.permissionDenied');
     }
     if (code === 'network') {
       return de

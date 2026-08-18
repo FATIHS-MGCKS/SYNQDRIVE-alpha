@@ -13,6 +13,7 @@ import type {
   RuntimeReason,
   RuntimeReasonCategory,
 } from './runtime';
+import { dt } from './dashboard-i18n';
 import { formatUserFacingReasonLabel } from '../../lib/operational-issues';
 
 const HEALTH_CATEGORIES = new Set<RuntimeReasonCategory>([
@@ -60,7 +61,7 @@ function normalizeTitle(title: string | undefined): string {
  * when the reason carries no title at all.
  */
 export function formatRuntimeReasonLabel(reason: RuntimeReason, locale: string): string {
-  const formatted = formatUserFacingReasonLabel(reason, locale === 'de' ? 'de' : 'en');
+  const formatted = formatUserFacingReasonLabel(reason, locale);
   if (formatted) return formatted;
   const [en, de] = CATEGORY_FALLBACK_LABEL[reason.category] ?? CATEGORY_FALLBACK_LABEL.unknown;
   return locale === 'de' ? de : en;
@@ -159,16 +160,15 @@ export function rowSeverityLabel(
   severity: DashboardSliceRow['severity'],
   locale: string,
 ): string | null {
-  const de = locale === 'de';
   switch (severity) {
     case 'success':
-      return de ? 'Bereit' : 'Ready';
+      return dt(locale, 'dashboard.label.ready');
     case 'warning':
-      return de ? 'Warnung' : 'Warning';
+      return dt(locale, 'dashboard.label.warning');
     case 'critical':
-      return de ? 'Kritisch' : 'Critical';
+      return dt(locale, 'dashboard.label.critical');
     case 'info':
-      return 'Info';
+      return dt(locale, 'dashboard.label.info');
     default:
       return null;
   }

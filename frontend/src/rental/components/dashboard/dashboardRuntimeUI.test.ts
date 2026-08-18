@@ -102,7 +102,7 @@ describe('dashboard runtime-only UI contracts', () => {
     const notReadyGroups = groups.filter((group) => group.id === 'available-but-not-ready');
 
     expect(notReadyGroups).toHaveLength(1);
-    expect(notReadyGroups[0]?.title).toBe('Not Ready');
+    expect(notReadyGroups[0]?.title).toBe('Not ready');
     expect(notReadyGroups[0]?.count).toBe(2);
     expect(collectDrawerRowIds(groups)).toHaveLength(new Set(collectDrawerRowIds(groups)).size);
     expect(slice.secondaryRows).toHaveLength(2);

@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import type {
   ActionQueueChildAction,
   ActionQueueChildSeverity,
@@ -43,7 +44,7 @@ function childIsCritical(child: ActionQueueChildAction): boolean {
 function rebuildGroup(
   group: ActionQueueGroupItem,
   children: ActionQueueChildAction[],
-  de: boolean,
+  locale: string,
 ): ActionQueueGroupItem | null {
   if (children.length === 0) return null;
   const severity = children.reduce<ActionQueueChildSeverity>((worst, child) => {
@@ -53,7 +54,7 @@ function rebuildGroup(
     ...group,
     children,
     severity,
-    subtitle: groupSubtitle(group.groupType, children.length, de, group.groupKey),
+    subtitle: groupSubtitle(group.groupType, children.length, locale, group.groupKey),
   };
 }
 
@@ -113,7 +114,6 @@ export function prepareActionQueueRenderModel(input: {
   tab: ActionQueueFilterTab;
   visibleEntryCap?: number;
 }): ActionQueueRenderModel {
-  const de = input.locale === 'de';
   const dedupedItems = dedupeActionQueueItems(input.items);
 
   const pinnedItems = dedupedItems
@@ -123,7 +123,7 @@ export function prepareActionQueueRenderModel(input: {
 
   const groupableItems = dedupedItems.filter((item) => !pinnedIds.has(item.id));
   const entries = groupActionQueueEntries(groupableItems, input.locale);
-  const filteredEntries = filterActionQueueEntries(entries, input.tab, de);
+  const filteredEntries = filterActionQueueEntries(entries, input.tab, input.locale);
   const visibleEntryCap = input.visibleEntryCap ?? filteredEntries.length;
   const visibleEntries = filteredEntries.slice(0, visibleEntryCap);
 
@@ -224,44 +224,46 @@ function sortChildren(
 function groupSubtitle(
   groupType: ActionQueueGroupItem['groupType'],
   count: number,
-  de: boolean,
+  locale: string,
   groupKey?: string,
 ): string {
   if (groupType === 'vehicle-health') {
-    if (de) {
-      return count === 1 ? '1 aktiver Gesundheitshinweis' : `${count} aktive Gesundheitshinweise`;
-    }
-    return count === 1 ? '1 active health issue' : `${count} active health issues`;
+    return count === 1
+      ? dt(locale, 'dashboard.actionQueue.healthIssueOne')
+      : dt(locale, 'dashboard.actionQueue.healthIssueMany', { count });
   }
   if (groupKey?.startsWith('vehicle:')) {
-    if (de) return count === 1 ? '1 Meldung' : `${count} Meldungen`;
-    return count === 1 ? '1 notification' : `${count} notifications`;
+    return count === 1
+      ? dt(locale, 'dashboard.actionQueue.notificationOne')
+      : dt(locale, 'dashboard.actionQueue.notificationMany', { count });
   }
   if (groupType === 'station-ops') {
-    if (de) return count === 1 ? '1 Stationshinweis' : `${count} Stationshinweise`;
-    return count === 1 ? '1 station notice' : `${count} station notices`;
+    return count === 1
+      ? dt(locale, 'dashboard.actionQueue.stationNoticeOne')
+      : dt(locale, 'dashboard.actionQueue.stationNoticeMany', { count });
   }
-  if (de) return count === 1 ? '1 Aktion' : `${count} Aktionen`;
-  return count === 1 ? '1 action' : `${count} actions`;
+  return count === 1
+    ? dt(locale, 'dashboard.actionQueue.actionOne')
+    : dt(locale, 'dashboard.actionQueue.actionMany', { count });
 }
 
 function groupFallbackTitle(
   groupType: ActionQueueGroupItem['groupType'],
-  de: boolean,
+  locale: string,
 ): string {
   switch (groupType) {
     case 'vehicle-health':
     case 'vehicle-ops':
-      return de ? 'Fahrzeug' : 'Vehicle';
+      return dt(locale, 'dashboard.label.vehicle');
     case 'station-ops':
-      return de ? 'Station' : 'Station';
+      return dt(locale, 'dashboard.label.station');
     case 'booking':
-      return de ? 'Buchung' : 'Booking';
+      return dt(locale, 'dashboard.label.booking');
     case 'customer-docs':
     case 'finance':
-      return de ? 'Kunde' : 'Customer';
+      return dt(locale, 'dashboard.label.customer');
     default:
-      return de ? 'Hinweise' : 'Notifications';
+      return dt(locale, 'dashboard.notifications');
   }
 }
 
@@ -281,7 +283,7 @@ function resolveBucketGroupType(bucket: ActionQueueItem[]): ActionQueueGroupItem
 function buildGroup(
   groupKey: string,
   bucket: ActionQueueItem[],
-  de: boolean,
+  locale: string,
 ): ActionQueueGroupItem {
   const head = bucket[0];
   const groupType = resolveBucketGroupType(bucket);
@@ -294,7 +296,7 @@ function buildGroup(
 
   const priority = bucket.reduce((max, i) => Math.max(max, i.priority), 0);
   const title =
-    buildNotificationHeadlineTitle(head) || head.entityLabel || groupFallbackTitle(groupType, de);
+    buildNotificationHeadlineTitle(head) || head.entityLabel || groupFallbackTitle(groupType, locale);
 
   return {
     kind: 'group',
@@ -304,7 +306,7 @@ function buildGroup(
     severity,
     category: head.category,
     title,
-    subtitle: groupSubtitle(groupType, children.length, de, groupKey),
+    subtitle: groupSubtitle(groupType, children.length, locale, groupKey),
     entityLabel: head.entityLabel,
     vehicleId: head.vehicleId,
     bookingId: head.bookingId,
@@ -335,7 +337,6 @@ export function groupActionQueueEntries(
   items: ActionQueueItem[],
   locale: string,
 ): ActionQueueEntry[] {
-  const de = locale === 'de';
   const buckets = new Map<string, ActionQueueItem[]>();
   const order: string[] = [];
 
@@ -356,7 +357,7 @@ export function groupActionQueueEntries(
     const groupType = bucket[0].groupType;
     const shouldGroup = groupType === 'vehicle-health' || bucket.length > 1;
     if (shouldGroup && bucket[0].groupKey) {
-      entries.push(buildGroup(bucket[0].groupKey, bucket, de));
+      entries.push(buildGroup(bucket[0].groupKey, bucket, locale));
     } else {
       for (const item of bucket) entries.push(toLeaf(item));
     }
@@ -405,7 +406,7 @@ function categoryMatches(
 export function filterActionQueueEntries(
   entries: ActionQueueEntry[],
   tab: ActionQueueFilterTab,
-  de = false,
+  locale = 'en',
 ): ActionQueueEntry[] {
   if (tab === 'all') return entries;
 
@@ -417,7 +418,7 @@ export function filterActionQueueEntries(
         continue;
       }
       const filteredChildren = entry.children.filter(childIsCritical);
-      const rebuilt = rebuildGroup(entry, filteredChildren, de);
+      const rebuilt = rebuildGroup(entry, filteredChildren, locale);
       if (rebuilt) out.push(rebuilt);
     }
     return out;
@@ -443,7 +444,6 @@ export function computeActionQueueTabCounts(
   items: ActionQueueItem[],
   locale: string,
 ): Record<ActionQueueFilterTab, number> {
-  const de = locale === 'de';
   const dedupedItems = dedupeActionQueueItems(items);
   const pinnedItems = dedupedItems
     .filter((item) => item.pinned && item.groupType !== 'vehicle-health' && !isResolvedQueueItem(item))
@@ -454,7 +454,7 @@ export function computeActionQueueTabCounts(
 
   const counts = {} as Record<ActionQueueFilterTab, number>;
   for (const tab of ACTION_QUEUE_FILTER_TABS) {
-    const filtered = filterActionQueueEntries(entries, tab, de);
+    const filtered = filterActionQueueEntries(entries, tab, locale);
     let count = countAtomicActions(filtered);
     if (tab === 'all' || tab === 'critical') {
       count += pinnedItems.length;

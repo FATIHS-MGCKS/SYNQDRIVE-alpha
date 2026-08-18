@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
@@ -56,7 +57,7 @@ function OperationsScheduleHeader({
         />
         <div className="min-w-0">
           <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
-            {de ? 'Tagesplan' : 'Day plan'}
+            {dt(locale, 'dashboard.schedule.dayPlan')}
           </h2>
           <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">
             {horizon}
@@ -69,11 +70,11 @@ function OperationsScheduleHeader({
         <div className="flex shrink-0 items-center gap-2 sm:justify-end">
           {criticalCount > 0 ? (
             <span className="text-[11px] font-medium tabular-nums text-[color:var(--status-critical)]">
-              {criticalCount} {de ? 'kritisch' : 'critical'}
+              {criticalCount} {dt(locale, 'dashboard.count.critical')}
             </span>
           ) : null}
           <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-            {totalCount} {de ? 'Einträge' : 'items'}
+            {totalCount} {dt(locale, 'dashboard.count.items')}
           </span>
         </div>
       ) : null}
@@ -266,7 +267,7 @@ export function OperationsSchedulePanel({
   return (
     <section
       className={panelShellClass('tertiary', 'h-full')}
-      aria-label={de ? 'Tagesplan' : 'Day plan'}
+      aria-label={dt(locale, 'dashboard.schedule.dayPlan')}
     >
       <OperationsScheduleHeader vm={vm} totalCount={totalCount} criticalCount={criticalCount} />
 
@@ -293,7 +294,7 @@ export function OperationsSchedulePanel({
               <section className="space-y-2">
                 <div className="flex items-center justify-between gap-2 px-1">
                   <h3 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {de ? 'Heute' : 'Today'}
+                    {dt(locale, 'common.today')}
                   </h3>
                   <span className="text-[10.5px] font-medium tabular-nums text-muted-foreground">
                     {todayOperations.totalCount}
@@ -302,7 +303,7 @@ export function OperationsSchedulePanel({
                 <div className="space-y-2">
                   <TodayBucketSection
                     bucket="todo"
-                    title={de ? 'To Do' : 'To do'}
+                    title={dt(locale, 'dashboard.todayOperations.todo')}
                     items={todayOperations.todo}
                     vm={vm}
                     handlers={handlers}
@@ -310,7 +311,7 @@ export function OperationsSchedulePanel({
                   />
                   <TodayBucketSection
                     bucket="in-progress"
-                    title={de ? 'In Bearbeitung' : 'In progress'}
+                    title={dt(locale, 'dashboard.todayOperations.inProgress')}
                     items={todayOperations.inProgress}
                     vm={vm}
                     handlers={handlers}
@@ -318,7 +319,7 @@ export function OperationsSchedulePanel({
                   />
                   <TodayBucketSection
                     bucket="completed"
-                    title={de ? 'Erledigt' : 'Completed'}
+                    title={dt(locale, 'dashboard.todayOperations.completed')}
                     items={todayOperations.completed}
                     vm={vm}
                     handlers={handlers}
@@ -332,7 +333,7 @@ export function OperationsSchedulePanel({
               <section className="space-y-2 border-t border-border/35 pt-2.5">
                 <div className="flex items-center justify-between gap-2 px-1">
                   <h3 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {de ? 'Nächste Schritte' : 'Next steps'}
+                    {dt(locale, 'dashboard.schedule.nextSteps')}
                   </h3>
                   <span className="text-[10.5px] font-medium tabular-nums text-muted-foreground">
                     {nowNextTimeline.totalCount}
