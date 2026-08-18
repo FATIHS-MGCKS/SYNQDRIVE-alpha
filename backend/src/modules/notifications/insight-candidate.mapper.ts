@@ -44,7 +44,7 @@ const INSIGHT_CONDITION: Partial<Record<InsightType, string>> = {
   [InsightType.BATTERY_CRITICAL]: 'battery_critical',
   [InsightType.TIRE_CRITICAL]: 'tires_critical',
   [InsightType.BRAKE_CRITICAL]: 'brakes_critical',
-  [InsightType.SERVICE_OVERDUE]: 'overdue',
+  [InsightType.SERVICE_OVERDUE]: 'service_overdue',
   [InsightType.PICKUP_OVERDUE]: 'pickup_overdue',
   [InsightType.TUV_OVERDUE]: 'tuv_overdue',
   [InsightType.BOKRAFT_OVERDUE]: 'bokraft_overdue',

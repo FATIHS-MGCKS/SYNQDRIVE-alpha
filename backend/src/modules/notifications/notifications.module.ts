@@ -13,6 +13,7 @@ import { NotificationProducerRouter } from './adapters/notification-producer.rou
 import { StationShortageNotificationAdapter } from './adapters/station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './adapters/low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './adapters/vehicle-health-notification.adapter';
+import { ServiceComplianceNotificationAdapter } from './adapters/service-compliance-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
 import { NotificationEngineConfig } from './notification-engine.config';
@@ -102,6 +103,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
     VehicleHealthNotificationAdapter,
+    ServiceComplianceNotificationAdapter,
     NotificationProducerRouter,
     NotificationProducerIngestService,
     NotificationEvaluationObservabilityService,
@@ -136,6 +138,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     StationShortageNotificationAdapter,
     LowUtilizationNotificationAdapter,
     VehicleHealthNotificationAdapter,
+    ServiceComplianceNotificationAdapter,
   ],
 })
 export class NotificationsModule {}

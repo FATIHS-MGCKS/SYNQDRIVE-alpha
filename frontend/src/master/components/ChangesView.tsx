@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-compliance-notification-p21-2026-08-18',
+    version: '4.9.920',
+    title: 'Service/Compliance Notification V2 Producer (P2.1)',
+    summary: [
+      'Live V2 Producer für `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` aus kanonischem `ServiceComplianceService.evaluateCompliance()`.',
+      '`ServiceComplianceNotificationAdapter` + `projectServiceComplianceWarnings` — keine parallele Compliance-Policy; shared `buildComplianceInsightCandidates`.',
+      'OPEN / REOPEN / RESOLVE via `syncServiceComplianceWarnings` + Fleet-Sweep (6h Grace) nach BI-Evaluation.',
+      'Fingerprint: Registry `tuv_overdue`, `bokraft_overdue`, `service_overdue` (v1). `insight-candidate.mapper` SERVICE_OVERDUE auf `service_overdue` vereinheitlicht.',
+      'Audit: YELLOW — NOT READY FOR UI CUTOVER (andere P0-Gaps offen).',
+    ],
+    reason:
+      'Schließt P0 Producer-Lücke: Rental-blocking Compliance-Zustände materialisieren zuverlässig als V2 Notifications — unabhängig von DashboardInsight.',
+    previousBehavior:
+      'Compliance-Notifications nur über DashboardInsight/Backfill; BI sync rief keinen Live-Ingest für TÜV/BOKraft/Service auf.',
+    details:
+      'service-compliance-notification.projector.ts, service-compliance-notification.adapter.ts, notification-producer.ingest.service.ts, business-insights.service.ts, insight-candidate.mapper.ts, service-compliance-notification.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-18T23:30:00.000Z',
+  },
+  {
     id: 'notification-attention-scope-p11-2026-08-18',
     version: '4.9.919',
     title: 'Notification Registry — attentionScope Routing Foundation (P1.1)',

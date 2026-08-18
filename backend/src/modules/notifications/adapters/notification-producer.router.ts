@@ -9,6 +9,7 @@ import type {
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
+import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { NotificationIngestObservabilityService } from '../observability/notification-ingest-observability.service';
 
@@ -27,8 +28,9 @@ export class NotificationProducerRouter {
     technicalObservation: TechnicalObservationNotificationAdapter,
     stationShortage: StationShortageNotificationAdapter,
     vehicleHealth: VehicleHealthNotificationAdapter,
+    serviceCompliance: ServiceComplianceNotificationAdapter,
   ) {
-    this.adapters = [drivingAssessment, technicalObservation, stationShortage, vehicleHealth];
+    this.adapters = [drivingAssessment, technicalObservation, stationShortage, vehicleHealth, serviceCompliance];
   }
 
   get registeredAdapters(): readonly NotificationProducerAdapter[] {

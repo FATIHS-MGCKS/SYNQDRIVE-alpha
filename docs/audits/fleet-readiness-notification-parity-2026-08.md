@@ -1,8 +1,8 @@
 # Fleet Readiness ↔ Notification V2 Parity Audit
 
-**Date:** 2026-08-18  
-**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit  
-**Code baseline:** `main` + `cursor/notification-attention-scope-dcd7`
+**Date:** 2026-08-18 (updated P2.1)  
+**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit; **P2.1** — service/compliance live V2 producers  
+**Code baseline:** `main` + `cursor/service-compliance-notification-p21-dcd7`
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Question | Rating | Rationale |
 |----------|--------|-----------|
-| Can vehicle messages be losslessly extracted from the general Operations notification box today? | **YELLOW** | Registry routing (`attentionScope`) is now complete and test-backed, but **producer parity and lifecycle coverage gaps** remain. Several rental-blocking health states have no live V2 producer; aggregate readiness events (`BLOCKED_VEHICLE`, `VEHICLE_NOT_READY`) are registered but unwired. |
+| Can vehicle messages be losslessly extracted from the general Operations notification box today? | **YELLOW** | Registry routing (`attentionScope`) is complete. **P2.1** closes live V2 ingest for TÜV/BOKraft/HM service overdue (`TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE`). Remaining gaps: `vehicle_alerts`, aggregate readiness, unevaluable states, shadow producers. |
 
 **Verdict:** **NOT READY FOR PHASE 2** (dashboard UI split). Routing metadata is ready; notification materialization is not yet lossless for fleet readiness.
 
@@ -150,8 +150,9 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | **brakes** | DATA_NO_BASELINE | no block | — | — | No | — | **Yes** | Measurement gap silent |
 | **error_codes** | active DTC (per code) | blocks if safety-critical band | ACTIVE_DTC | `DimoDtcProcessor` + BI sweep | **Yes** | Per-code resolve | No | Module-level `unknown` has no notification |
 | **error_codes** | stale/unavailable poll | `rental_blocked=null` | — | — | No | — | **Yes** | Pipeline failure silent |
-| **service_compliance** | TÜV/BOKraft overdue | blocks rental | TUV_OVERDUE / BOKRAFT_OVERDUE | DashboardInsight only | **No live ingest** | Legacy only | **Yes (P0)** | Blocks rental without guaranteed V2 notification |
-| **service_compliance** | HM service critical | blocks rental | SERVICE_OVERDUE | DashboardInsight only | **No live ingest** | Legacy only | **Yes (P0)** | Same |
+| **service_compliance** | TÜV/BOKraft overdue | blocks rental | TUV_OVERDUE / BOKRAFT_OVERDUE | `ServiceComplianceNotificationAdapter` + BI sweep | **Yes (P2.1)** | Sweep + grace | No | Live producer from canonical `evaluateCompliance` |
+| **service_compliance** | HM service critical | blocks rental | SERVICE_OVERDUE | `ServiceComplianceNotificationAdapter` + BI sweep | **Yes (P2.1)** | Sweep + grace | No | Same; warning window emits WARNING severity |
+| **service_compliance** | service warning window (due soon) | no block | SERVICE_OVERDUE / TUV / BOKraft | same (WARNING severity) | **Yes (P2.1)** | Sweep + grace | Low | Informational — does not block rental |
 | **service_compliance** | service warning window | no block | SERVICE_WINDOW | DashboardInsight only | No | — | Medium | Informational gap |
 | **service_compliance** | HM no tracking | evaluability | HM_SERVICE_NO_TRACKING | resolve-only in V2 | **Resolve only** | Yes | **Yes** | Never ingested open in V2 |
 | **complaints** | blocksRental=true | blocks rental | TECHNICAL_OBSERVATION_ACTIVE | `TechnicalObservationsService` | Shadow only | Yes | **Yes (P1)** | Shadow gate limits production visibility |
@@ -187,7 +188,7 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 
 | Priority | Gap | Detail |
 |----------|-----|--------|
-| **P0** | Compliance notifications not live-ingested | `SERVICE_OVERDUE`, `TUV_OVERDUE`, `BOKRAFT_OVERDUE` — DashboardInsight only; BI sync does not call ingest for these |
+| ~~**P0**~~ | ~~Compliance notifications not live-ingested~~ | **Closed in P2.1** — `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` via `ServiceComplianceNotificationAdapter` |
 | **P0** | `vehicle_alerts` (limp/oil) | Blocks rental in health; no registry event or producer |
 | **P0** | `BLOCKED_VEHICLE` / `VEHICLE_NOT_READY` | Registered, no producer wired to `rental_blocked` transitions |
 | **P1** | `TECHNICAL_OBSERVATION_ACTIVE` | Shadow-only (`shadowModeEnabled: true`) |
@@ -196,11 +197,12 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 | **P1** | Most BI insight types | `TIGHT_HANDOVER`, `RETURN_NEEDS_INSPECTION`, `PICKUP_OVERDUE`, `SERVICE_BEFORE_BOOKING`, etc. — registry only |
 | **P1** | Driving analysis types | `MISUSE_DETECTED`, `POSSIBLE_IMPACT`, `TRIP_ANALYSIS_COMPLETED`, `DATA_QUALITY_LIMITED` — registry only |
 | **P2** | `HM_SERVICE_NO_TRACKING` | Resolve-only path; never opens in V2 |
-| **P2** | `insight-candidate.mapper` | `SERVICE_OVERDUE` conditionCode mismatch (`overdue` vs `service_overdue`) — backfill fingerprint risk |
+| **P2** | `insight-candidate.mapper` | ~~`SERVICE_OVERDUE` conditionCode mismatch~~ — **fixed in P2.1** (`service_overdue`); legacy backfill rows with `overdue` fingerprint may still exist — separate migration if needed |
 | **P2** | `VehicleHealthWorkflowEmitter` | Parallel workflow path, not V2 |
 
 **Live V2 producers today (fleet-relevant):**
 - `VehicleHealthNotificationAdapter` — ACTIVE_DTC, BATTERY_CRITICAL, TIRE_CRITICAL, BRAKE_CRITICAL (full)
+- `ServiceComplianceNotificationAdapter` — TUV_OVERDUE, BOKRAFT_OVERDUE, SERVICE_OVERDUE (full, P2.1)
 - `ConnectivityAlertService` — 9 vehicle connectivity types (full)
 - `TechnicalObservationNotificationAdapter` — TECHNICAL_OBSERVATION_ACTIVE (shadow)
 
@@ -212,7 +214,7 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 |----------|------|--------|
 | Health recovers, notification stale | Medium | Fleet sweep + 6h grace on health notifications; realtime ingest without sweep may leave stale OPEN |
 | `rental_blocked` clears | High | No aggregate producer → no auto-resolve for BLOCKED_VEHICLE/VEHICLE_NOT_READY |
-| Compliance resolved | High | No live V2 ingest → legacy insight may clear while V2 notification absent or stale |
+| Compliance resolved | ~~High~~ **Mitigated (P2.1)** | Live V2 ingest + fleet sweep resolve for TUV/BOKraft/SERVICE; DashboardInsight legacy path coexists |
 | Shadow producers | Medium | TECHNICAL_OBSERVATION_ACTIVE may not appear in production inbox depending on flags |
 | HM_SERVICE_NO_TRACKING | Low | Active resolve without corresponding open notification |
 | Unevaluable health (`rental_blocked=null`) | High | Partial connectivity coverage; no generic "health pipeline unavailable" notification |
@@ -236,11 +238,11 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 
 ### P0 — Correctness (before UI split)
 
-1. Wire compliance producers: `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` from `service_compliance` module state (not DashboardInsight-only).
+1. ~~Wire compliance producers: `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE`~~ — **Done (P2.1)**
 2. Register + produce notifications for `vehicle_alerts` (limp mode, oil minimum) OR map to existing types with explicit condition codes.
 3. Wire `BLOCKED_VEHICLE` / `VEHICLE_NOT_READY` producers from `rental_blocked` / `rental_readiness` transitions (aggregate only — do not replace cause notifications).
 4. Add pipeline-degraded notification path for `availability !== ready` (or ensure connectivity types cover all cases).
-5. Fix `insight-candidate.mapper` `SERVICE_OVERDUE` conditionCode mismatch.
+5. ~~Fix `insight-candidate.mapper` `SERVICE_OVERDUE` conditionCode mismatch~~ — **Done (P2.1)**; monitor legacy `overdue` fingerprints from prior backfill
 
 ### P1 — Producer parity
 
@@ -282,9 +284,75 @@ All must be machine/test verifiable before splitting Operations + Fleet Readines
 
 | Module | Fleet-relevant events | Status |
 |--------|----------------------|--------|
-| `business-insights` | BATTERY/TIRE/BRAKE_CRITICAL, compliance types, SERVICE_WINDOW | Partial (health only live) |
+| `business-insights` | BATTERY/TIRE/BRAKE_CRITICAL, TUV/BOKRAFT/SERVICE_OVERDUE (P2.1), SERVICE_WINDOW | Partial (health + compliance live) |
 | `vehicle-intelligence` | ACTIVE_DTC | Live (DTC processor) |
 | `vehicle-complaints` | TECHNICAL_OBSERVATION_ACTIVE | Shadow |
 | `dimo` | Connectivity types | Live |
 | `operations` | BLOCKED_VEHICLE, VEHICLE_NOT_READY, MAINTENANCE_REQUIRED | Unwired |
 | `rental-health` | Workflow events only | Not V2 |
+
+---
+
+## Appendix B: P2.1 Service/Compliance Producer (2026-08-18)
+
+### Source of truth chain
+
+```
+ServiceComplianceService.evaluateCompliance()
+        ↓
+buildComplianceInsightCandidates()  (shared signal builder — no duplicate policy)
+        ↓
+projectServiceComplianceWarnings()
+        ↓
+ServiceComplianceNotificationAdapter
+        ↓
+NotificationProducerIngestService.syncServiceComplianceWarnings()
+        ↓
+NotificationCoreService → OPEN / REOPEN / RESOLVE
+```
+
+**Trigger:** `BusinessInsightsService.syncVehicleHealthNotifications()` after each BI evaluation pass (batch per org fleet).
+
+### Producer files
+
+| File | Role |
+|------|------|
+| `service-compliance-notification.projector.ts` | Maps canonical evaluation → adapter sources |
+| `service-compliance-notification.adapter.ts` | Registry-backed candidate builder |
+| `notification-producer.ingest.service.ts` | `syncServiceComplianceWarnings()` + fleet sweep resolve |
+| `business-insights.service.ts` | Wires `evaluateCompliance` + sync |
+
+### Lifecycle
+
+| Event | OPEN | RESOLVE | REOPEN |
+|-------|------|---------|--------|
+| TUV_OVERDUE | `tuvBokraft.tuvOverdue` or imminent warning window | condition clears (sweep) | same fingerprint, new generation |
+| BOKRAFT_OVERDUE | `tuvBokraft.bokraftOverdue` or imminent | condition clears | same |
+| SERVICE_OVERDUE | HM tracked + CRITICAL (overdue) or WARNING (due soon) | condition clears | same |
+
+Severity from canonical evaluation only — adapter maps `critical` → CRITICAL, `warning` → WARNING.
+
+### Fingerprint / conditionCode
+
+| eventType | conditionCode | fingerprintVersion |
+|-----------|---------------|-------------------|
+| TUV_OVERDUE | `tuv_overdue` | 1 |
+| BOKRAFT_OVERDUE | `bokraft_overdue` | 1 |
+| SERVICE_OVERDUE | `service_overdue` | 1 |
+
+### SERVICE_OVERDUE `overdue` vs `service_overdue` analysis
+
+- **Registry + live producer:** `service_overdue` (canonical)
+- **Legacy `insight-candidate.mapper`:** was `overdue` — **fixed to `service_overdue` in P2.1**
+- **Risk:** DashboardInsight backfill may have persisted notifications with `overdue` conditionCode before P2.1. Live producer uses `service_overdue` — no duplicate from live path. Legacy rows require separate migration/cleanup if found in prod.
+- **DashboardInsight coexistence:** `ComplianceOperationalDetector` still writes insights for display/tasks; live V2 producer is canonical for notification lifecycle. No dual ingest from insights path.
+
+### Tests
+
+`service-compliance-notification.spec.ts` — lifecycle matrix, blocking parity, fingerprints, org isolation, registry regression (66/23/43).
+
+### Remaining risks
+
+- Duplicate `overdue` fingerprint rows from pre-P2.1 backfill (monitor, do not auto-migrate)
+- `evaluateCompliance` called twice per vehicle per BI pass (inside `getVehicleHealth` + sync) — performance, not correctness
+- Other P0 gaps unchanged (`vehicle_alerts`, aggregates, unevaluable)
