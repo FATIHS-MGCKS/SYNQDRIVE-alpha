@@ -13,27 +13,65 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
+import {
+  normalizeChangelogEntries,
+  toSummaryLines,
+  type ChangelogEntry,
+  type RawChangelogEntry,
+} from './changelog-fallback';
 
 export interface ChangesViewProps {
   isDarkMode: boolean;
 }
 
-export interface ChangelogEntry {
-  id: string;
-  version: string;
-  title: string;
-  summary: string[];
-  reason: string | null;
-  previousBehavior: string | null;
-  details: string | null;
-  affectsArchitecture: boolean;
-  module: string | null;
-  createdAt: string;
-}
+export type { ChangelogEntry };
 
 const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Vehicle Intelligence', 'Automation'] as const;
 
-export const FALLBACK_ENTRIES: ChangelogEntry[] = [
+export const FALLBACK_ENTRIES: RawChangelogEntry[] = [
+  {
+    id: 'master-changes-fallback-summary-crash-v49896-2026-08-12',
+    version: '4.9.896',
+    title: 'V4.9.896 — Master Admin Changes: Absturz der Fallback-Liste behoben',
+    summary: [
+      'Die Changes-Ansicht stürzte mit "entry.summary.map is not a function" ab, sobald sie auf die eingebaute Liste zurückfiel. Weil die Master-Shell keine Error-Boundary hat, wurde dabei die gesamte Seite leer.',
+      'Ursache: 48 der 1327 Einträge beenden ihre summary mit .join(" | ") und halten damit einen String statt der Zeilen, die der Typ zusagt.',
+      'Die Umwandlung liegt jetzt in changelog-fallback.ts (toSummaryLines, normalizeChangelogEntries) und wird von beiden Wegen genutzt: ein zusammengefügter Text wird eine Zeile, nichts geht verloren. Die 48 historischen Einträge bleiben unverändert.',
+      'Eigene Datei, weil react-refresh/only-export-components bei jedem weiteren Nicht-Komponenten-Export der Ansicht anschlägt und FALLBACK_ENTRIES dieses Budget bereits verbraucht.',
+      'Der Fehler blieb unentdeckt, weil TypeScript den Inhalt der großen Literal-Datei stillschweigend nicht mehr prüft: ein absichtlich eingebauter Typfehler darin wird nicht gemeldet, derselbe Fehler in einer kleinen Datei desselben Projekts schon. Neuer Unit-Test changelog-fallback.test.ts sichert die Form ab.',
+    ],
+    reason:
+      'Die Ansicht ist die Stelle, an der Änderungen dokumentiert werden. Fällt sie auf die eingebaute Liste zurück, muss sie funktionieren, statt die Master-Oberfläche unbenutzbar zu machen.',
+    previousBehavior:
+      'Bei leerer API-Antwort blieb die komplette Master-Admin-Seite weiß, ohne Fehlermeldung für den Nutzer.',
+    details:
+      'frontend/src/master/components/changelog-fallback.ts (neu: ChangelogEntry, RawChangelogEntry, toSummaryLines, normalizeChangelogEntries), ChangesView.tsx (nutzt sie im Fallback- und API-Pfad), changelog-fallback.test.ts',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-08-12T08:10:00.000Z',
+  },
+  {
+    id: 'public-landing-page-synqdrive-eu-v49895-2026-08-12',
+    version: '4.9.895',
+    title: 'V4.9.895 — Öffentliche Landingpage auf synqdrive.eu',
+    summary: [
+      'synqdrive.eu zeigt die vollständige öffentliche Produktseite: Hero, sechs USP-Abschnitte zu Betrieb, Fahrzeugintelligenz, KI-Orchestrierung, Workflow-Automatisierung, Kundenkommunikation und Integrationen, plus Abschluss-CTA und Footer.',
+      'Zweisprachig ausgeliefert: Deutsch auf der Wurzel, Englisch unter /en/, wechselseitig über hreflang verknüpft.',
+      'Alle Produktbilder sind echte Aufnahmen des SynqDrive-Frontends gegen einen synthetischen Demo-Mandanten. Keine Produktionsdaten, keine Kundendaten, keine Pixel-Zensur nötig.',
+      'Eigene Telefon-Zuschnitte statt herunterskalierter Desktop-Bilder, damit Tabellen und Karten auf dem Telefon lesbar bleiben; die Fahrzeugliste nutzt das native Schmal-Layout des Produkts.',
+      'Die Seite lebt vollständig im eigenen Repository FATIHS-MGCKS/SynqDrive-Landing-Page: Templates, Inhalte, Build, Bilder und eigene QA. Dieses Repository baut nichts davon und enthält bewusst keine deploybare öffentliche Seite.',
+      'Produktbilder werden dort von Hand gepflegt; das committete assets/ ist die Wahrheit über den Live-Stand.',
+    ],
+    reason:
+      'Der öffentliche Auftritt soll das Produkt zeigen statt es anzukündigen, und er soll unabhängig vom Produkt versioniert und deployt werden.',
+    previousBehavior:
+      'synqdrive.eu zeigte eine statische Coming-soon-Seite (live seit 2026-08-11, nie nach main gemerged). Sie ist als Rollback-Stand unter rollback/coming-soon-2026-08-11/ im Landingpage-Repository erhalten.',
+    details:
+      'Landingpage-Repository: content/, src/, tools/, assets/, e2e/, docs/IMPLEMENTATION.md. Produkt-Repository: nur architecture/PUBLIC_LANDING_PAGE_HOSTING_BOUNDARY_2026-08-11.md sowie diese beiden In-App-Einträge.',
+    affectsArchitecture: true,
+    module: 'Public Website',
+    createdAt: '2026-08-12T07:30:00.000Z',
+  },
   {
     id: 'evaluations-e9d-forecast-runtime-deferred-2026-08-17',
     version: '4.9.904',
@@ -26563,8 +26601,7 @@ function normalizeChangelogRow(raw: Record<string, unknown>): ChangelogEntry | n
   const version = raw.version != null ? String(raw.version) : '';
   const title = raw.title != null ? String(raw.title) : '';
   if (!id || !version || !title) return null;
-  const summaryRaw = raw.summary;
-  const summary = Array.isArray(summaryRaw) ? summaryRaw.map((s) => String(s)) : [];
+  const summary = toSummaryLines(raw.summary);
   const pb = raw.previousBehavior ?? raw.previous_behavior;
   const ca = raw.createdAt ?? raw.created_at;
   return {
@@ -26628,7 +26665,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
       const arr = Array.isArray(res) ? res : [];
       const parsed = arr.map((row) => normalizeChangelogRow(row as Record<string, unknown>)).filter((x): x is ChangelogEntry => x != null);
       if (parsed.length === 0) {
-        setSourceRows(FALLBACK_ENTRIES);
+        setSourceRows(normalizeChangelogEntries(FALLBACK_ENTRIES));
         setUsingFallback(true);
       } else {
         setSourceRows(parsed);
