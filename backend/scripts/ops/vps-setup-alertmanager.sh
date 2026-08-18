@@ -90,6 +90,8 @@ export ALERTMANAGER_EMAIL_ESCALATION
 
 envsubst < "$AM_DIR/alertmanager.yml.template" > "$AM_DIR/alertmanager.yml"
 chmod 600 "$AM_DIR/alertmanager.yml"
+# alertmanager image runs as nobody (65534) — allow container read without world-readable secrets
+chown 65534:65534 "$AM_DIR/alertmanager.yml" 2>/dev/null || chmod 640 "$AM_DIR/alertmanager.yml"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker not installed on VPS" >&2
@@ -98,6 +100,7 @@ fi
 
 echo "==> Validating Alertmanager config (amtool)"
 if ! docker run --rm \
+  --user 65534:65534 \
   --entrypoint amtool \
   -v "$AM_DIR/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
   -v "$AM_DIR/templates:/etc/alertmanager/templates:ro" \
