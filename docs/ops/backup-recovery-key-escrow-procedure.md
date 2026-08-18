@@ -52,3 +52,20 @@ pg_restore --list backup.dump
 - [ ] Fingerprint matches `D50BCE8EB4A747F582B9D9C37439FE8C4034183A`
 - [ ] Production `gpg --list-secret-keys` → 0
 - [ ] Repository contains public key only (`keys/synqdrive-backup-recovery.pub.asc`)
+
+---
+
+## Escrow status (2026-08-18 UTC)
+
+| Check | Result |
+|-------|--------|
+| Recipient | `backup@synqdrive.eu` |
+| Fingerprint | `D50BCE8EB4A747F582B9D9C37439FE8C4034183A` |
+| Ephemeral agent secret key (`GNUPGHOME=/tmp/synqdrive-backup-keygen`) | **Present** (1 `sec`) |
+| `BACKUP_RECOVERY_ESCROW_PASSPHRASE` Runtime Secret | **Not set** — export blocked |
+| Escrow artifact `backup-recovery-private-key-escrow.gpg` | **Not created** |
+| Export | **PENDING** — awaiting operator passphrase |
+| Production secret keys | **0** |
+| Repository private key material | **None** |
+
+**Operator action:** Add `BACKUP_RECOVERY_ESCROW_PASSPHRASE` to Cursor Cloud Agents → Secrets (Runtime Secret), then re-run escrow export. Ephemeral keyring must remain until operator confirms secure storage of the encrypted bundle.
