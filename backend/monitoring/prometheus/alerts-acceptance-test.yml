@@ -8,7 +8,7 @@ groups:
         expr: vector(1)
         for: 0m
         labels:
-          severity: warning
+          severity: critical
           component: observability
           cluster: synqdrive-prod
         annotations:
