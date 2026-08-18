@@ -36,6 +36,7 @@
     "audit:voice-secrets": "bash ../scripts/audits/scan-voice-secrets.sh",
     "billing:sandbox:replay-webhook": "ts-node -r tsconfig-paths/register scripts/ops/stripe-billing-e2e-replay-webhook.ts",
     "billing:sandbox:cleanup": "ts-node -r tsconfig-paths/register scripts/ops/stripe-billing-sandbox-cleanup.ts",
+    "master-admin-smoke:lifecycle": "ts-node -r tsconfig-paths/register scripts/ops/master-admin-smoke-lifecycle.ts",
     "test:document-extraction:live": "DOCUMENT_EXTRACTION_LIVE_INTEGRATION=1 jest document-extraction.live.integration.spec.ts",
     "test:document-intake:v2": "jest --testPathPattern='modules/document-extraction' --testPathIgnorePatterns='integration|\\.live\\.integration\\.'",
     "test:document-intake:v2:integration": "jest document-extraction.pipeline.integration document-action-plan.state-machine.integration document-intake-v2-race-conditions.integration",

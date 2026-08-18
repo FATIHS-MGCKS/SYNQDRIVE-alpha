@@ -99,6 +99,7 @@ export class MasterAdminAuditService {
       case MasterAdminAuditAction.ORG_CREATED:
       case MasterAdminAuditAction.ORG_ADMIN_CREATED:
       case MasterAdminAuditAction.PLATFORM_USER_CREATED:
+      case MasterAdminAuditAction.TEMP_MASTER_ADMIN_CREATED:
         return ActivityAction.CREATE;
       case MasterAdminAuditAction.MFA_STEP_UP_DENIED:
         return ActivityAction.AUTH_FAIL;
