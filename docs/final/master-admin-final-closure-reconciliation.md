@@ -19,11 +19,11 @@
 | **Active P1** | **6** (`MA-BKP-P1-001`, `MA-REDIS-P1-001`, `MA-OBS-P1-001`, `MA-CH-P1-002`, `TB-2`, `TB-3` — letztere nur wenn HM produktiv) |
 | **Active P2** | **~17** (kanonisch dedupliziert; `CP-P2-05` unter Accepted Risk, nicht mitgezählt) |
 | **Active P3** | **~12** (kanonisch dedupliziert; v. a. `CP-P3-04`…`CP-P3-09`, E2E, Hygiene) |
-| **Closed** | **~95** Finding-Instanzen → **~62 kanonische IDs** |
-| **Partially Closed** | **8** |
-| **Open** | **9** |
+| **Closed** | **~97** Finding-Instanzen → **~64 kanonische IDs** |
+| **Partially Closed** | **6** |
+| **Open** | **7** |
 | **Accepted Risk** | **6** (inkl. `MA-CH-P0-002` — orig. P0, kanonisch ACCEPTED RISK) |
-| **Blocking Before Production** | **5** (A1–A5 aktiv) |
+| **Blocking Before Production** | **4** (A1–A4 aktiv; A5 geschlossen) |
 | **Technical FAIL Gates** | **0** (kein Gate vollständig FAIL; Sandbox-Betrieb bewusst) |
 | **UI FAIL Gates** | **0** |
 | **Final Decision** | **NOT PRODUCTION READY** |
@@ -40,13 +40,13 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 
 **Superseded:** Ursprüngliche standalone Audit-Artefakte (VPS Read-only Audit, dedizierte Findings-JSON, P0 Validation, Remediation Order Review, Post-Canonicalization Report) existieren **nicht als eigenständige Dateien** im Repo; Inhalt ist in `docs/final/master-admin-go-live-certification.md`, `docs/final/master-admin-re-audit-2026-07-26.md` und den Remediation-Phasendokumenten konsolidiert. Phase-spezifische UI-Finding-IDs (z. B. `UI-4-P0-1`) sind durch Hub-Post-Remediation und `CP-*`-IDs superseded, sofern dieselbe Root Cause.
 
-**Production-Blocker (aktiv — §11 A1–A5):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A2) Backup-Verschlüsselung `MA-BKP-P0-002`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`; (A5) UI-Convergence-Deploy + authentifizierter Staging-Smoke.
+**Production-Blocker (aktiv — §11 A1–A4):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A2) Backup-Verschlüsselung `MA-BKP-P0-002`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`. **A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE) geschlossen** — siehe `docs/final/master-admin-a1-ui-production-deploy-closure.md` und `docs/final/master-admin-authenticated-staging-smoke-closure.md`.
 
 **Nicht blockierend:** Failed BullMQ-Jobs `MA-REDIS-P1-001`, In-Memory-Filter Scale `CP-P2-05` (Accepted Risk), Partner-View-Heterogenität `CP-P2-06`, Playwright-E2E `CP-P3-08`.
 
 **Accepted Risk (nicht in Active P0/P1):** Historischer CH-Datenverlust `MA-CH-P0-002` (orig. P0) — siehe §8.
 
-**Finale Entscheidung:** **NOT PRODUCTION READY** — fünf aktive Production-Blocker (§11). Remediation- und Hub-Arbeit ist weitgehend abgeschlossen; die Plattform ist **bis zur Schließung von A1–A5** nicht produktionsfreigegeben. Nach Blocker-Schließung: erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3-Restarbeiten).
+**Finale Entscheidung:** **NOT PRODUCTION READY** — vier aktive Production-Blocker (§11 A1–A4). Remediation- und Hub-Arbeit inkl. UI-Live-Abnahme (A5) ist abgeschlossen; die Plattform ist **bis zur Schließung von A1–A4** nicht produktionsfreigegeben. Nach Blocker-Schließung: erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3-Restarbeiten).
 
 ---
 
@@ -185,8 +185,9 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 | **UI-SOT-P2** | Certification §9 | Acceptance | P2 | P2 | SoT | Nav badge client derivation | Dokumentiert PARTIAL | **ACCEPTED RISK** |
 | **UI-BUNDLE-P3** | Certification §14 | Acceptance | P3 | P3 | Performance | ~14.7MB bundle | Build output | **ACCEPTED RISK** |
 | **UI-A11Y-P3** | Certification §12 | Acceptance | P3 | P3 | A11y | Full SR audit fehlt | Nicht durchgeführt | **OPEN** |
-| **UI-STAGING-SMOKE** | Certification | Acceptance | — | P1 (gate) | Release | 1× auth smoke A–F | Nicht live verifiziert | **PARTIALLY CLOSED** |
-| **UI-DEPLOY-GAP** | Certification | Acceptance | — | P1 (gate) | Release | Merge `cursor/master-admin-ia-audit-6608` → main | Branch nicht merged | **OPEN** |
+| **UI-STAGING-SMOKE** | Certification | Acceptance | — | P1 (gate) | Release | 1× auth smoke A–F | Live verifiziert 2026-08-18 | **CLOSED** |
+| **UI-DEPLOY-GAP** | Certification | Acceptance | — | P1 (gate) | Release | Merge + deploy convergence | Prod asset `index-Dn0wo6ra.js` | **CLOSED** |
+| **SMOKE-PROV-001** | Smoke lifecycle | Acceptance | P0 (gate) | P0 | Ops CLI | `master-admin-smoke-lifecycle` | VPS setup/smoke/cleanup | **CLOSED** |
 
 ### 3.3 Superseded (nicht doppelt zählen)
 
@@ -227,7 +228,6 @@ Alle UI-3…UI-10 P0/P1 Hub-Findings; `CP-P2-01`…`04`, `07`, `09`…`12`; `CP-
 | **P1-5** | CI-Release-Gate Nachweis | Tests existieren; CI-Bindung nicht verifiziert |
 | **P1-7** | Formaler CH-Acceptance-Lauf | Script existiert; Exit-0-Log nicht in Repo |
 | **CP-P2-10** | `ChangesView` lokaler Formatter | Hauptpfade zentralisiert |
-| **UI-STAGING-SMOKE** | Authentifizierte Browser-Workflows | Keine MASTER_ADMIN-Creds in Agent-Session |
 
 ---
 
@@ -245,7 +245,6 @@ Alle UI-3…UI-10 P0/P1 Hub-Findings; `CP-P2-01`…`04`, `07`, `09`…`12`; `CP-
 | **CP-P2-06** | P2 | Nein | Partner-Views nicht migriert |
 | **CP-P2-08** | P2 | Nein | Billing Resend/Outbox orphan |
 | **CP-P3-04…09, CP-P3-08** | P3 | Nein | Kosmetik, E2E, Feature gaps |
-| **UI-DEPLOY-GAP** | Gate | **Ja** (für UI-FINAL) | Convergence branch nicht auf main/prod |
 
 ---
 
@@ -309,7 +308,7 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 
 ## 11. A — BLOCKING BEFORE PRODUCTION
 
-**Status: 5 aktive Blocker (A1–A5).** Solange mindestens einer offen ist, gilt **NOT PRODUCTION READY** (§15).
+**Status: 4 aktive Blocker (A1–A4).** A5 geschlossen. Solange mindestens einer von A1–A4 offen ist, gilt **NOT PRODUCTION READY** (§15).
 
 Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
@@ -357,16 +356,16 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 | **Acceptance** | Container healthy; Test-Alert zugestellt |
 | **Abhängigkeiten** | Slack/Email webhook credentials |
 
-### A5 — `UI-DEPLOY-GAP` + `UI-STAGING-SMOKE`
+### A5 — `UI-DEPLOY-GAP` + `UI-STAGING-SMOKE` — **CLOSED**
 
 | Feld | Wert |
 |------|------|
 | **Severity** | Release Gate |
-| **Root Cause** | Convergence branch nicht auf Production; keine auth Live-Abnahme |
-| **Evidenz** | Branch `cursor/master-admin-ia-audit-6608`; Certification §Einschränkung |
-| **Restarbeit** | Merge → deploy → 1× staging smoke Workflows A–F + browser back |
-| **Acceptance** | Prod asset hash matches convergence; smoke checklist signed |
-| **Abhängigkeiten** | PR merge; MASTER_ADMIN test account |
+| **Status** | **CLOSED** (2026-08-18) |
+| **UI-DEPLOY-GAP Evidenz** | `docs/final/master-admin-a1-ui-production-deploy-closure.md` — Release `20260818142436_v4994`, Asset `index-Dn0wo6ra.js` |
+| **UI-STAGING-SMOKE Evidenz** | `docs/final/master-admin-authenticated-staging-smoke-closure.md` — authentifizierter Production read-only Smoke A–F |
+| **Provisioning** | Ops CLI `master-admin-smoke-lifecycle` — `SMOKE-PROV-001` **CLOSED** |
+| **Acceptance** | Setup → Login → A–F → Mobile → Cleanup → Gate disabled |
 
 ---
 
@@ -409,8 +408,8 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
 | Order | Finding | Change | Verification | Dependency |
 |-------|---------|--------|--------------|------------|
-| **1** | A5 `UI-DEPLOY-GAP` | Merge `cursor/master-admin-ia-audit-6608` → `main`; deploy | Prod health + asset hash | — |
-| **2** | A5 `UI-STAGING-SMOKE` | Execute workflows A–F + browser back on staging/prod | Signed smoke checklist | 1 |
+| **1** | ~~A5 `UI-DEPLOY-GAP`~~ | **CLOSED** — siehe A1 UI deploy closure | Prod health + asset hash | — |
+| **2** | ~~A5 `UI-STAGING-SMOKE`~~ | **CLOSED** — `master-admin-smoke-lifecycle` + auth smoke A–F | Signed smoke checklist | 1 |
 | **3** | A2 `MA-BKP-P0-002` | Provision GPG; set passphrase files on VPS | Backup cron exit 0 + `.gpg` artifact | — |
 | **4** | A3 `MA-BKP-P1-001` | Configure rclone/S3 offsite; install cron | `vps-verify-offsite-backups.sh` exit 0 | 3 |
 | **5** | A4 `MA-OBS-P1-001` | Create `alertmanager.env`; start container | Test alert delivered | — |
@@ -444,22 +443,23 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 | Kontext | Entscheidung | Begründung |
 |---------|--------------|------------|
 | **Technische Plattform** | ☑ **NOT PRODUCTION READY** | A1–A4 aktiv (Billing-Reconcile/Live, Backup-GPG, Offsite, Alertmanager) |
-| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A5 aktiv (Convergence-Deploy + auth Staging-Smoke) |
-| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 5 aktive Blocker; Hub-P0/P1-UI = 0, aber Blocker-Gates unerfüllt |
+| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A1–A4 aktiv (Billing/Backup/Observability); A5 geschlossen |
+| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 4 aktive Blocker (A1–A4); A5 geschlossen |
 
-### Pflicht vor Freigabe (schließt A1–A5)
+### Pflicht vor Freigabe (schließt A1–A4)
 
-1. **A5** — Convergence-Branch deployen (`UI-DEPLOY-GAP`) + Staging-Smoke Workflows A–F (`UI-STAGING-SMOKE`)
-2. **A2** — Backup-Verschlüsselung (`MA-BKP-P0-002`)
-3. **A3** — Offsite-Backups (`MA-BKP-P1-001`)
-4. **A4** — Alertmanager starten (`MA-OBS-P1-001`)
-5. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
+1. **A2** — Backup-Verschlüsselung (`MA-BKP-P0-002`)
+2. **A3** — Offsite-Backups (`MA-BKP-P1-001`)
+3. **A4** — Alertmanager starten (`MA-OBS-P1-001`)
+4. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
+
+**A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE + SMOKE-PROV-001): CLOSED** — siehe Closure-Docs 2026-08-18.
 
 **Erwartung nach Schließung aller Blocker:** erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3, z. B. `MA-REDIS-P1-001`, `CP-P2-06`, E2E).
 
 ### Was nicht mehr gilt
 
-- **NOT PRODUCTION READY** aus Re-Audit 2026-07-26 (Grund: Remediation nicht deployt) — **superseded**; aktueller Blocker-Grund sind offene A1–A5, nicht fehlender Code-Merge
+- **NOT PRODUCTION READY** aus Re-Audit 2026-07-26 (Grund: Remediation nicht deployt) — **superseded**; aktueller Blocker-Grund sind offene A1–A4, nicht fehlender Code-Merge
 - **PRODUCTION READY WITH CONDITIONS** aus Go-Live Cert 2026-07-26 — **nicht mehr gültig** ohne erneute Blocker-Prüfung; aktueller Zustand überschreibt
 - Einzelne UI-Phase-P0-Findings — **superseded** durch Hub-Remediation (alle CLOSED)
 
