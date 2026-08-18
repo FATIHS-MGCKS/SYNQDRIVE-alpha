@@ -15,7 +15,7 @@
 
 | Metrik | Wert |
 |--------|------|
-| **Active P0** | **2** (`MA-BILL-P0-001`, `MA-BKP-P0-002`) — `ACCEPTED RISK` ausgeschlossen |
+| **Active P0** | **1** (`MA-BILL-P0-001`) — `ACCEPTED RISK` ausgeschlossen |
 | **Active P1** | **6** (`MA-BKP-P1-001`, `MA-REDIS-P1-001`, `MA-OBS-P1-001`, `MA-CH-P1-002`, `TB-2`, `TB-3` — letztere nur wenn HM produktiv) |
 | **Active UI P0** | **0** |
 | **Active UI P1** | **0** (`UI-DASH-RENDER-P1-001` **CLOSED** 2026-08-18) |
@@ -25,7 +25,7 @@
 | **Partially Closed** | **6** |
 | **Open** | **7** |
 | **Accepted Risk** | **6** (inkl. `MA-CH-P0-002` — orig. P0, kanonisch ACCEPTED RISK) |
-| **Blocking Before Production** | **4** (A1–A4 aktiv; A5 geschlossen) |
+| **Blocking Before Production** | **3** (A1, A3, A4 aktiv; A2 + A5 geschlossen) |
 | **Technical FAIL Gates** | **0** (kein Gate vollständig FAIL; Sandbox-Betrieb bewusst) |
 | **UI FAIL Gates** | **0** |
 | **Final Decision** | **NOT PRODUCTION READY** |
@@ -42,7 +42,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 
 **Superseded:** Ursprüngliche standalone Audit-Artefakte (VPS Read-only Audit, dedizierte Findings-JSON, P0 Validation, Remediation Order Review, Post-Canonicalization Report) existieren **nicht als eigenständige Dateien** im Repo; Inhalt ist in `docs/final/master-admin-go-live-certification.md`, `docs/final/master-admin-re-audit-2026-07-26.md` und den Remediation-Phasendokumenten konsolidiert. Phase-spezifische UI-Finding-IDs (z. B. `UI-4-P0-1`) sind durch Hub-Post-Remediation und `CP-*`-IDs superseded, sofern dieselbe Root Cause.
 
-**Production-Blocker (aktiv — §11 A1–A4):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A2) Backup-Verschlüsselung `MA-BKP-P0-002`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`. **A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE + UI-DASH-RENDER-P1-001 + SMOKE-PROV-001) geschlossen** — siehe Closure-Docs 2026-08-18.
+**Production-Blocker (aktiv — §11 A1, A3, A4):** (A1) Stripe Live + Reconcile `MA-BILL-P0-001`; (A3) Offsite-Backups `MA-BKP-P1-001`; (A4) Alertmanager-Runtime `MA-OBS-P1-001`. **A2 (`MA-BKP-P0-002`) + A5 geschlossen** — siehe `docs/final/master-admin-backup-gpg-encryption-closure.md` und Smoke/Deploy Closure-Docs 2026-08-18.
 
 **Nicht blockierend:** Failed BullMQ-Jobs `MA-REDIS-P1-001`, In-Memory-Filter Scale `CP-P2-05` (Accepted Risk), Partner-View-Heterogenität `CP-P2-06`, Playwright-E2E `CP-P3-08`.
 
@@ -146,7 +146,7 @@ Die Master-Admin-Arbeit ist **überwiegend abgeschlossen**. Der technische P0/P1
 | **MA-OBS-P1-001** | — | 2F.2 | P1 | P1 | Observability | Keine Alert-Zustellung | Alertmanager stack in Repo | Config sync ✅; Container ❌ (`alertmanager.env` fehlt) | **PARTIALLY CLOSED** |
 | **MA-BILL-P0-001** | — | 2B / Go-Live | P0 | P0 | Billing | TRIALING orphan | Stripe-Reconcile Runbook | Kein Nachweis Reconcile ausgeführt | **OPEN** |
 | **MA-CH-P0-002** | — | Go-Live Post-Ops | **P0** (historisch) | — (kanonisch n/a) | ClickHouse | Historischer Part-Verlust 202607 | Re-Ingest oder DROP + Dokumentation | Bekannt dokumentiert; kein Forward-Impact | **ACCEPTED RISK** |
-| **MA-BKP-P0-002** | — | Go-Live | P0 | P0 | DR | GPG-Entscheidung offen | `CH_BACKUP_GPG_PASSPHRASE_FILE` setzen | Crons scheitern bewusst ohne Keys | **OPEN** |
+| **MA-BKP-P0-002** | — | Go-Live | P0 | P0 | DR | GPG public-key encryption | Live verified 2026-08-18 | **CLOSED** |
 | **MA-BKP-P1-001** | — | 2C.5 | P1 | P1 | DR | Offsite nicht konfiguriert | `vps-sync-offsite-backups.sh` + rclone | Scripts in Repo; Prod offsite nicht verifiziert | **OPEN** |
 | **MA-REDIS-P1-001** | — | Go-Live Deploy | P1 | P1 | Worker | Failed BullMQ jobs | Drain-Skript | 30+2 failed jobs dokumentiert; kein Drain-Nachweis | **OPEN** |
 | **MA-CH-P1-002** | R-P2-1 | 2D.3 | P1 | P1 | ClickHouse | Checksum/schema drift | Re-Baseline Entscheidung | `schemaDrift` sichtbar; keine Re-Baseline | **OPEN** |
@@ -226,7 +226,7 @@ Alle UI-3…UI-10 P0/P1 Hub-Findings; `CP-P2-01`…`04`, `07`, `09`…`12`; `CP-
 | ID | Was fehlt | Warum nicht CLOSED |
 |----|-----------|-------------------|
 | **MA-BILL-P0-002/003** | Live `sk_live_*` + Live webhook secrets | Guards aktiv; Sandbox bewusst |
-| **MA-BKP-P0-001** | GPG-Verschlüsselung | Restore-Drill OK; encrypted backup chain nein |
+| **MA-BKP-P0-001** | GPG-Verschlüsselung | Restore-Drill OK; encrypted backup chain **CLOSED** (`MA-BKP-P0-002`) |
 | **MA-OBS-P1-001** | `alertmanager.env` + laufender Container | Config in Repo; Runtime fehlt |
 | **P1-5** | CI-Release-Gate Nachweis | Tests existieren; CI-Bindung nicht verifiziert |
 | **P1-7** | Formaler CH-Acceptance-Lauf | Script existiert; Exit-0-Log nicht in Repo |
@@ -239,7 +239,6 @@ Alle UI-3…UI-10 P0/P1 Hub-Findings; `CP-P2-01`…`04`, `07`, `09`…`12`; `CP-
 | ID | Sev. | Blocker? | Kurzbeschreibung |
 |----|------|----------|------------------|
 | **MA-BILL-P0-001** | P0 | **Ja** (vor Live-Billing) | TRIALING orphan Stripe-Reconcile |
-| **MA-BKP-P0-002** | P0 | **Ja** | GPG-Schlüssel für Backup-Verschlüsselung |
 | **MA-BKP-P1-001** | P1 | **Ja** | Offsite-Backups nicht konfiguriert |
 | **MA-OBS-P1-001** | P1 | **Ja** | Alertmanager läuft nicht |
 | **MA-REDIS-P1-001** | P1 | Nein | Failed jobs drain offen |
@@ -311,7 +310,7 @@ Siehe §3.3. Keine dieser IDs zählt in Active-P0/P1/P2/P3-Metriken.
 
 ## 11. A — BLOCKING BEFORE PRODUCTION
 
-**Status: 4 aktive Blocker (A1–A4).** A5 geschlossen. Solange mindestens einer von A1–A4 offen ist, gilt **NOT PRODUCTION READY** (§15).
+**Status: 3 aktive Blocker (A1, A3, A4).** A2 + A5 geschlossen. Solange mindestens einer von A1, A3, A4 offen ist, gilt **NOT PRODUCTION READY** (§15).
 
 Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
@@ -326,16 +325,16 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 | **Acceptance** | Billing operational zeigt 0 orphan TRIALING; `runtime=LIVE`; Webhook-Test event OK |
 | **Abhängigkeiten** | Product Go-Live-Entscheidung; Stripe Dashboard Zugang |
 
-### A2 — `MA-BKP-P0-002` Backup-Verschlüsselung
+### A2 — `MA-BKP-P0-002` Backup-Verschlüsselung — **CLOSED**
 
 | Feld | Wert |
 |------|------|
 | **Severity** | P0 |
-| **Root Cause** | GPG-Passphrase-Files nicht gesetzt; Crons fail-by-design |
-| **Evidenz** | Go-Live Cert: „Verschlüsselung offen“ |
-| **Restarbeit** | GPG-Keys + `CH_BACKUP_GPG_PASSPHRASE_FILE` / `REDIS_BACKUP_GPG_PASSPHRASE_FILE` |
-| **Acceptance** | Nightly backup cron exit 0; `.gpg` artifacts mit sha256 |
-| **Abhängigkeiten** | A3 (Offsite synciert nur encrypted) |
+| **Status** | **CLOSED** (2026-08-18) |
+| **Root Cause** | Kein GPG Recipient/Keyring; Crons fail-by-design |
+| **Fix** | Public-key model + `vps-setup-backup-gpg.sh` + shared `gpg-backup-lib.sh` |
+| **Evidenz** | `docs/final/master-admin-backup-gpg-encryption-closure.md` |
+| **Acceptance** | PG/CH/Redis encrypted `.gpg` artifacts; decrypt validated offline; cron `GNUPGHOME` set |
 
 ### A3 — `MA-BKP-P1-001` Offsite-Backups
 
@@ -414,8 +413,8 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 |-------|---------|--------|--------------|------------|
 | **1** | ~~A5 `UI-DEPLOY-GAP`~~ | **CLOSED** — siehe A1 UI deploy closure | Prod health + asset hash | — |
 | **2** | ~~A5 `UI-STAGING-SMOKE`~~ | **CLOSED** — `master-admin-smoke-lifecycle` + auth smoke A–F | Signed smoke checklist | 1 |
-| **3** | A2 `MA-BKP-P0-002` | Provision GPG; set passphrase files on VPS | Backup cron exit 0 + `.gpg` artifact | — |
-| **4** | A3 `MA-BKP-P1-001` | Configure rclone/S3 offsite; install cron | `vps-verify-offsite-backups.sh` exit 0 | 3 |
+| **3** | ~~A2 `MA-BKP-P0-002`~~ | **CLOSED** — GPG public-key encryption live | Encrypted `.gpg` + decrypt validation | — |
+| **4** | A3 `MA-BKP-P1-001` | Configure rclone/S3 offsite; install cron | `vps-verify-offsite-backups.sh` exit 0 | — |
 | **5** | A4 `MA-OBS-P1-001` | Create `alertmanager.env`; start container | Test alert delivered | — |
 | **6** | A1 `MA-BILL-P0-001` | Stripe reconcile orphans | 0 orphan TRIALING in billing ops | Product decision |
 | **7** | A1 Stripe Live | `sk_live_*`; remove sandbox overrides; live webhooks | `runtime=LIVE` log; test payment | 6 |
@@ -446,17 +445,17 @@ Nur Findings, die mindestens ein Production-Blocker-Kriterium erfüllen.
 
 | Kontext | Entscheidung | Begründung |
 |---------|--------------|------------|
-| **Technische Plattform** | ☑ **NOT PRODUCTION READY** | A1–A4 aktiv (Billing-Reconcile/Live, Backup-GPG, Offsite, Alertmanager) |
-| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A1–A4 aktiv (Billing/Backup/Observability); A5 geschlossen |
-| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 4 aktive Blocker (A1–A4); A5 geschlossen |
+| **Technische Plattform** | ☑ **NOT PRODUCTION READY** | A1, A3, A4 aktiv (Billing-Reconcile/Live, Offsite, Alertmanager) |
+| **Master-Admin UI** | ☑ **NOT PRODUCTION READY** | A1, A3, A4 aktiv; A2 + A5 geschlossen |
+| **Gesamt Master-Admin Programm** | ☑ **NOT PRODUCTION READY** | 3 aktive Blocker (A1, A3, A4); A2 + A5 geschlossen |
 
-### Pflicht vor Freigabe (schließt A1–A4)
+### Pflicht vor Freigabe (schließt A1, A3, A4)
 
-1. **A2** — Backup-Verschlüsselung (`MA-BKP-P0-002`)
-2. **A3** — Offsite-Backups (`MA-BKP-P1-001`)
-3. **A4** — Alertmanager starten (`MA-OBS-P1-001`)
-4. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
+1. **A3** — Offsite-Backups (`MA-BKP-P1-001`)
+2. **A4** — Alertmanager starten (`MA-OBS-P1-001`)
+3. **A1** — Stripe Live + Reconcile (`MA-BILL-P0-001`, `MA-BILL-P0-002/003`)
 
+**A2 (`MA-BKP-P0-002`): CLOSED** — `docs/final/master-admin-backup-gpg-encryption-closure.md`  
 **A5 (UI-DEPLOY-GAP + UI-STAGING-SMOKE + UI-DASH-RENDER-P1-001 + SMOKE-PROV-001): CLOSED** — siehe Closure-Docs 2026-08-18.
 
 **Erwartung nach Schließung aller Blocker:** erneute Bewertung → voraussichtlich **PRODUCTION READY WITH CONDITIONS** (verbleibende P2/P3, z. B. `MA-REDIS-P1-001`, `CP-P2-06`, E2E).
