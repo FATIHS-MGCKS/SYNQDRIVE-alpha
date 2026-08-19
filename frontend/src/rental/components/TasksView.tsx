@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListTodo } from 'lucide-react';
 import { PageHeader, EmptyState, ErrorState } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api, type ApiServiceCase, type ApiTask, type Station } from '../../lib/api';
 import { getStoredUser } from '../../lib/auth';
 import {
@@ -49,6 +50,7 @@ import {
 } from './tasks/tasksListState';
 import type { Invoice } from './invoices/invoiceTypes';
 import { Icon } from './ui/Icon';
+import { tt } from './tasks-settings/tasks-i18n';
 
 interface TasksViewProps {
   autoOpenNewTask?: boolean;
@@ -79,6 +81,7 @@ export function TasksView({
   highlightedTaskId,
   onHighlightConsumed,
 }: TasksViewProps) {
+  const { t, locale, formattingLocale } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId, userRole, hasPermission } = useRentalOrg();
   const currentUserId = getStoredUser()?.id ?? null;
@@ -186,7 +189,7 @@ export function TasksView({
             value: String(row.id ?? ''),
             label: taskEntityOptionLabel(
               row.bookingNumber != null ? String(row.bookingNumber) : null,
-              'Buchung',
+              tt(locale, 'tasks.entity.booking'),
             ),
           })),
           customers: (customers as Array<Record<string, unknown>>).map((row) => ({
@@ -199,19 +202,19 @@ export function TasksView({
                   : row.email != null
                     ? String(row.email)
                     : null,
-              'Kunde',
+              tt(locale, 'tasks.entity.customer'),
             ),
           })),
           invoices: (invoices as Invoice[]).map((row) => ({
             value: String(row.id ?? ''),
             label: taskEntityOptionLabel(
               row.invoiceNumber != null ? String(row.invoiceNumber) : null,
-              'Rechnung',
+              tt(locale, 'tasks.entity.invoice'),
             ),
           })),
           serviceCases: (serviceCases as ApiServiceCase[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: taskEntityOptionLabel(row.title, 'Servicefall'),
+            label: taskEntityOptionLabel(row.title, tt(locale, 'tasks.entity.serviceCase')),
           })),
         });
         setLookupLoaded(true);
@@ -222,7 +225,7 @@ export function TasksView({
     return () => {
       cancelled = true;
     };
-  }, [lookupLoaded, orgId]);
+  }, [lookupLoaded, orgId, locale]);
 
   const apiFilters = useMemo(
     () => buildTasksListApiParams(filters, debouncedSearch, currentUserId),
@@ -257,8 +260,10 @@ export function TasksView({
       })),
       orgMembers,
       orgStations: orgStations.map((station) => ({ id: station.id, name: station.name })),
+      locale,
+      formattingLocale,
     }),
-    [fleetVehicles, orgMembers, orgStations],
+    [fleetVehicles, orgMembers, orgStations, locale, formattingLocale],
   );
 
   const tasks = useMemo(
@@ -324,8 +329,8 @@ export function TasksView({
   );
 
   const hasActiveFilters = hasActiveTaskFilters(filters, debouncedSearch);
-  const emptyCopy = tasksPageEmptyState(activeView, hasActiveFilters);
-  const resultLabel = tasksPageViewCountLabel(activeView, sortedTasks.length);
+  const emptyCopy = tasksPageEmptyState(locale, activeView, hasActiveFilters);
+  const resultLabel = tasksPageViewCountLabel(locale, activeView, sortedTasks.length);
 
   const clearFilters = useCallback(() => {
     setFilters((current) => ({
@@ -414,7 +419,7 @@ export function TasksView({
   return (
     <div className="mx-auto max-w-[1800px] space-y-4" data-testid="tasks-view">
       <PageHeader
-        title="Aufgaben"
+        title={t('tasks.pageHeader')}
         status={
           <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold tabular-nums text-muted-foreground">
             {resultLabel}
@@ -423,8 +428,8 @@ export function TasksView({
         actions={(
           <Button type="button" variant="primary" size="sm" onClick={() => setIsNewTaskOpen(true)}>
             <Icon name="plus" className="h-3.5 w-3.5" />
-            <span className="hidden min-[400px]:inline">Aufgabe erstellen</span>
-            <span className="min-[400px]:hidden">Neu</span>
+            <span className="hidden min-[400px]:inline">{t('tasks.createTaskButton')}</span>
+            <span className="min-[400px]:hidden">{t('tasks.createTaskNew')}</span>
           </Button>
         )}
       />
@@ -460,7 +465,7 @@ export function TasksView({
       {tasksError && !tasks.length ? (
         <ErrorState
           compact
-          title="Aufgaben konnten nicht geladen werden"
+          title={t('tasks.loadError')}
           error={tasksError}
           onRetry={() => void reloadTasks()}
           className="surface-premium rounded-2xl py-12"
@@ -480,11 +485,11 @@ export function TasksView({
           action={
             hasActiveFilters ? (
               <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                Filter zurücksetzen
+                {t('tasks.filter.resetFilters')}
               </Button>
             ) : activeView !== 'open' ? (
               <Button type="button" variant="outline" size="sm" onClick={() => setActiveView('open')}>
-                Alle offenen anzeigen
+                {t('tasks.showAllOpen')}
               </Button>
             ) : undefined
           }
@@ -493,9 +498,9 @@ export function TasksView({
         <div className="space-y-2" data-testid="tasks-list">
           {isStale ? (
             <p className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-[11px] text-[color:var(--status-watch)]">
-              Anzeige möglicherweise veraltet —{' '}
+              {t('tasks.staleNotice')}{' '}
               <button type="button" className="font-semibold underline" onClick={() => void reloadTasks()}>
-                erneut laden
+                {t('common.reload')}
               </button>
             </p>
           ) : null}
@@ -522,7 +527,7 @@ export function TasksView({
                 disabled={loadingMore}
                 onClick={() => void loadMore()}
               >
-                {loadingMore ? 'Lädt…' : 'Weitere Aufgaben laden'}
+                {loadingMore ? t('tasks.loadMoreLoading') : t('tasks.loadMore')}
               </Button>
             </div>
           ) : null}

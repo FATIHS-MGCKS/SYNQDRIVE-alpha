@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiTaskSummary } from '../../lib/tasks/types';
+import { translateKey } from '../../i18n/LanguageContext';
+import { de } from '../../i18n/translations/de';
 import {
   buildTasksPageKpis,
   buildTasksPageListFilters,
@@ -49,9 +51,9 @@ describe('tasks-page.utils', () => {
   });
 
   it('returns view-specific empty states', () => {
-    expect(tasksPageEmptyState('overdue', false).title).toContain('überfällig');
-    expect(tasksPageEmptyState('today', false).title).toContain('Heute');
-    expect(tasksPageEmptyState('mine', true).title).toContain('passenden');
+    expect(tasksPageEmptyState('de', 'overdue', false).title).toBe(de['tasks.empty.overdue.title']);
+    expect(tasksPageEmptyState('de', 'today', false).title).toBe(de['tasks.empty.today.title']);
+    expect(tasksPageEmptyState('de', 'mine', true).title).toBe(de['tasks.empty.filtered.title']);
   });
 
   it('covers all target views', () => {
@@ -66,5 +68,10 @@ describe('tasks-page.utils', () => {
       'completed',
     ];
     expect(ids).toEqual(expected);
+  });
+
+  it('uses canonical translation keys for KPI labels', () => {
+    const kpis = buildTasksPageKpis(null, false);
+    expect(translateKey('de', kpis[0].labelKey).text).toBe(de[kpis[0].labelKey]);
   });
 });

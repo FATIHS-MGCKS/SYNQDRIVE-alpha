@@ -9,6 +9,7 @@ import { DetailDrawer, EmptyState } from '../../../../components/patterns';
 import type { RentalFleetVehicleDto } from './rental-rules.types';
 
 import { RentalRequirementsStatusBadge } from '../../shared/rental-requirements-ui';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 
 
@@ -41,10 +42,9 @@ type FilterMode = 'all' | 'uncategorized' | 'override' | 'status';
 
 
 function VehicleListSkeleton() {
-
+  const { t } = useLanguage();
   return (
-
-    <div className="space-y-2" aria-busy="true" aria-label="Loading vehicles">
+    <div className="space-y-2" aria-busy="true" aria-label={t('rentalRules.ui.assignment.loadingVehicles')}>
 
       {Array.from({ length: 5 }).map((_, i) => (
 
@@ -87,6 +87,7 @@ export function VehicleAssignmentDrawer({
   onSave,
 
 }: VehicleAssignmentDrawerProps) {
+  const { t } = useLanguage();
 
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -248,7 +249,7 @@ export function VehicleAssignmentDrawer({
 
             >
 
-              {saving ? 'Saving…' : 'Save assignment'}
+              {saving ? t('rentalRules.ui.assignment.saving') : t('rentalRules.ui.assignment.save')}
 
             </button>
 
@@ -272,13 +273,13 @@ export function VehicleAssignmentDrawer({
 
               className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-[13px] outline-none transition-colors focus:border-brand/50 focus:ring-2 focus:ring-brand/15"
 
-              placeholder="Search plate, make, model…"
+              placeholder={t('rentalRules.ui.assignment.searchPlaceholder')}
 
               value={search}
 
               onChange={(e) => setSearch(e.target.value)}
 
-              aria-label="Search vehicles"
+              aria-label={t('rentalRules.ui.assignment.searchAria')}
 
             />
 
@@ -292,15 +293,15 @@ export function VehicleAssignmentDrawer({
 
             onChange={(e) => setFilter(e.target.value as FilterMode)}
 
-            aria-label="Filter vehicles"
+            aria-label={t('rentalRules.ui.assignment.filterAria')}
 
           >
 
-            <option value="all">All vehicles</option>
+            <option value="all">{t('rentalRules.ui.assignment.filter.all')}</option>
 
-            <option value="uncategorized">Without category</option>
+            <option value="uncategorized">{t('rentalRules.ui.assignment.filter.uncategorized')}</option>
 
-            <option value="override">With override</option>
+            <option value="override">{t('rentalRules.ui.assignment.filter.override')}</option>
 
           </select>
 
@@ -312,11 +313,11 @@ export function VehicleAssignmentDrawer({
 
             onChange={(e) => setStatusFilter(e.target.value)}
 
-            aria-label="Filter by fleet status"
+            aria-label={t('rentalRules.ui.assignment.filterStatusAria')}
 
           >
 
-            <option value="all">Any status</option>
+            <option value="all">{t('rentalRules.ui.assignment.filter.anyStatus')}</option>
 
             {statusOptions.map((s) => (
 
@@ -344,7 +345,7 @@ export function VehicleAssignmentDrawer({
 
               <AlertTriangle className="h-3.5 w-3.5 text-[color:var(--status-watch)]" aria-hidden />
 
-              Category moves
+              {t('rentalRules.ui.assignment.categoryMoves')}
 
             </div>
 
@@ -370,7 +371,7 @@ export function VehicleAssignmentDrawer({
 
               {moveWarnings.length > 5 && (
 
-                <li>…and {moveWarnings.length - 5} more</li>
+                <li>{t('rentalRules.ui.assignment.moreMoves', { count: moveWarnings.length - 5 })}</li>
 
               )}
 
@@ -396,9 +397,9 @@ export function VehicleAssignmentDrawer({
 
               icon={<Car className="h-5 w-5" />}
 
-              title="No vehicles match"
+              title={t('rentalRules.ui.assignment.emptyTitle')}
 
-              description="Try a different search or filter."
+              description={t('rentalRules.ui.assignment.emptyDescription')}
 
             />
 
@@ -470,7 +471,11 @@ export function VehicleAssignmentDrawer({
 
                         <span className="text-[11px] text-muted-foreground">
 
-                          {foreign ? `Current: ${foreign}` : v.rentalCategoryName ? `In ${v.rentalCategoryName}` : 'No category'}
+                          {foreign
+                            ? t('rentalRules.ui.assignment.currentCategory', { name: foreign })
+                            : v.rentalCategoryName
+                              ? t('rentalRules.ui.assignment.inCategory', { name: v.rentalCategoryName })
+                              : t('rentalRules.ui.assignment.noCategory')}
 
                         </span>
 

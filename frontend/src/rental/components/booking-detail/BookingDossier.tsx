@@ -147,12 +147,12 @@ export function BookingDossier({
       <div className="max-w-[1800px] mx-auto px-4 py-10">
         <button type="button" onClick={onBack} className="mb-4 text-xs text-muted-foreground hover:text-foreground flex items-center gap-2">
           <Icon name="arrow-left" className="w-4 h-4" />
-          Zurück
+          {t('common.back')}
         </button>
         <div className="rounded-lg border border-border surface-premium p-6 text-center space-y-3">
-          <p className="text-sm text-foreground">{error ?? 'Buchung nicht gefunden'}</p>
+          <p className="text-sm text-foreground">{error ?? t('bookings.detail.notFound')}</p>
           <button type="button" onClick={refresh} className="text-xs font-semibold sq-tone-brand px-4 py-2 rounded-lg">
-            Erneut laden
+            {t('common.reload')}
           </button>
         </div>
       </div>

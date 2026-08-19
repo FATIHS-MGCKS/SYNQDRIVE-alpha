@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorState, SectionHeader, SkeletonCard } from '../../../components/patterns';
 import { useRentalOrg } from '../../RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { AccountHeaderCard } from './account/AccountHeaderCard';
 import { AccountHealthCard } from './account/AccountHealthCard';
 import { AccountAccessCard } from './account/AccountAccessCard';
@@ -34,6 +35,7 @@ interface AccountInformationTabProps {
 }
 
 export function AccountInformationTab({ onNavigateToUsers }: AccountInformationTabProps) {
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const {
     account,
@@ -128,7 +130,7 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
 
   const handleProfileSave = async () => {
     if (!profileDraft) return;
-    const err = validateProfileDraft(profileDraft);
+    const err = validateProfileDraft(locale, profileDraft);
     if (err) {
       setProfileValidationError(err);
       return;
@@ -167,10 +169,10 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
   if (loadError && !account) {
     return (
       <ErrorState
-        title="Account konnte nicht geladen werden"
+        title={t('settings.account.loadErrorTitle')}
         error={loadError}
         onRetry={() => void loadAccount()}
-        retryLabel="Erneut laden"
+        retryLabel={t('settings.shell.retryLoad')}
       />
     );
   }
@@ -187,7 +189,7 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
 
   return (
     <div className="space-y-4 animate-fade-up pb-6">
-      <SectionHeader title="Kontoinformationen" />
+      <SectionHeader title={t('settings.account.sectionTitle')} />
 
       <AccountHeaderCard
         account={account}

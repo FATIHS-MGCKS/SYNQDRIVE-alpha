@@ -91,32 +91,48 @@
         "rental/lib/customer-",
         "rental/lib/add-customer-wizard.ts"
       ]
+    },
+    "P24": {
+      "enforceCleanExact": [
+        "rental/components/TasksView.tsx",
+        "rental/components/SettingsView.tsx"
+      ],
+      "enforceCleanPrefixes": [
+        "rental/components/tasks/",
+        "rental/components/settings/",
+        "rental/components/tasks-settings/",
+        "rental/lib/task-list.utils.ts",
+        "rental/lib/task-create.utils.ts",
+        "rental/lib/tasks-page.utils.ts",
+        "rental/lib/task-display.utils.ts",
+        "rental/lib/task-create-form.utils.ts",
+        "rental/lib/taskBulkActions.utils.ts"
+      ]
     }
   },
   "summary": {
-    "total": 2494,
+    "total": 2320,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 1172,
+      "RENTAL": 998,
       "SHARED": 35,
       "SHELL": 38
     },
     "byCategory": {
-      "ARIA": 102,
-      "TITLE": 348,
-      "TEXT": 1715,
-      "LABEL": 148,
-      "PLACEHOLDER": 173,
+      "ARIA": 90,
+      "TITLE": 319,
+      "TEXT": 1609,
+      "LABEL": 136,
+      "PLACEHOLDER": 158,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 607,
-      "Tasks": 114,
-      "Settings": 103,
-      "Finance/Billing": 130,
-      "Stations": 7,
-      "Automation": 183,
+      "other Rental areas": 556,
+      "Stations": 57,
+      "Finance/Billing": 131,
+      "Automation": 209,
+      "Tasks": 17,
       "Support": 19,
       "Documents": 8,
       "App / routing shell": 1
@@ -364,7 +380,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1444,
+      "line": 1452,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -392,7 +408,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23211,
+      "line": 23245,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -644,7 +660,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27096,
+      "line": 27130,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1635,7 +1651,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27041,
+      "line": 27075,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1776,7 +1792,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 915,
+      "line": 923,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1790,7 +1806,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23515,
+      "line": 23549,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1832,7 +1848,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1534,
+      "line": 1542,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2757,7 +2773,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1655,
+      "line": 1663,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2841,7 +2857,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 964,
+      "line": 972,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3135,7 +3151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1545,
+      "line": 1553,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3461,7 +3477,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1449,
+      "line": 1457,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3517,7 +3533,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1603,
+      "line": 1611,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3531,7 +3547,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1605,
+      "line": 1613,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4136,7 +4152,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24483,
+      "line": 24517,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4165,7 +4181,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1429,
+      "line": 1437,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4179,7 +4195,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1573,
+      "line": 1581,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4670,7 +4686,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27031,
+      "line": 27065,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4881,7 +4897,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1653,
+      "line": 1661,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5190,7 +5206,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 21824,
+      "line": 21858,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5638,7 +5654,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23125,
+      "line": 23159,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6269,7 +6285,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1492,
+      "line": 1500,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6284,7 +6300,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 932,
+      "line": 940,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7749,7 +7765,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1508,
+      "line": 1516,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7973,7 +7989,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1498,
+      "line": 1506,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8015,7 +8031,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27066,
+      "line": 27100,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8310,7 +8326,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23191,
+      "line": 23225,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8548,7 +8564,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1485,
+      "line": 1493,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9082,7 +9098,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27053,
+      "line": 27087,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9096,7 +9112,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27070,
+      "line": 27104,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9517,7 +9533,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26747,
+      "line": 26781,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10181,7 +10197,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1473,
+      "line": 1481,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10699,7 +10715,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1609,
+      "line": 1617,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10713,7 +10729,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1606,
+      "line": 1614,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10727,7 +10743,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1602,
+      "line": 1610,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11624,7 +11640,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1506,
+      "line": 1514,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11834,7 +11850,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1656,
+      "line": 1664,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12464,7 +12480,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1407,
+      "line": 1415,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13054,7 +13070,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27020,
+      "line": 27054,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13068,7 +13084,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1203,
+      "line": 1211,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13166,7 +13182,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1546,
+      "line": 1554,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13743,7 +13759,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1403,
+      "line": 1411,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13841,7 +13857,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1536,
+      "line": 1544,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13927,7 +13943,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1451,
+      "line": 1459,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14109,7 +14125,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24485,
+      "line": 24519,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14151,7 +14167,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23211,
+      "line": 23245,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14179,7 +14195,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1407,
+      "line": 1415,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14193,7 +14209,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1408,
+      "line": 1416,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14236,7 +14252,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1350,
+      "line": 1358,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14250,7 +14266,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1374,
+      "line": 1382,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14292,7 +14308,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1533,
+      "line": 1541,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14644,7 +14660,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23251,
+      "line": 23285,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14812,7 +14828,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1656,
+      "line": 1664,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -17725,34 +17741,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 345,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "`Checklistenpunkt $",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 275,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "ARIA",
-      "sample": "`Color $",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageEvidenceCanvas.tsx",
       "line": 327,
       "surface": "RENTAL",
@@ -17781,17 +17769,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1488,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1441,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TITLE",
       "sample": "`GPS-Position im $",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -17824,20 +17812,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/email/EmailVersandTab.tsx",
-      "line": 293,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "<p>Mit freundlichen Grüßen<br/>Ihr Team</p>",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/email/EmailVersandTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/LegalDocumentsTab.tsx",
       "line": 83,
       "surface": "RENTAL",
@@ -17867,20 +17841,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 264,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Abgebrochene Aufgaben können nicht mehr bearbeitet werden. Teilweise Fehler werden pro Aufgabe gemeldet.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
       "file": "rental/components/stations/StationSelectFields.tsx",
       "line": 52,
       "surface": "RENTAL",
@@ -17906,34 +17866,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/stations/StationSelectFields.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 191,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Ablaufdatum (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 191,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Ablaufdatum (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
       ]
     },
     {
@@ -17993,34 +17925,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 261,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Accent color",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 261,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Accent color",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 608,
       "surface": "RENTAL",
@@ -18046,34 +17950,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/RentalRulesTab.tsx",
-      "line": 178,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "accessDenied ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/RentalRulesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/AccountInformationTab.tsx",
-      "line": 170,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Account konnte nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/AccountInformationTab.tsx"
       ]
     },
     {
@@ -18315,34 +18191,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 108,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Adresse & Kontakt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 479,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "AGB & Widerruf verwalten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 262,
       "surface": "RENTAL",
@@ -18567,20 +18415,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 151,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Aktiv ab",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceFilters.tsx",
       "line": 157,
       "surface": "RENTAL",
@@ -18592,20 +18426,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceFilters.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 208,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Aktive Sitzungen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
       ]
     },
     {
@@ -18634,62 +18454,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceDocuments.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 482,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "ARIA",
-      "sample": "Aktivierung bis",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 473,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Aktivierung bis",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 468,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "ARIA",
-      "sample": "Aktivierung von",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 459,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Aktivierung von",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
       ]
     },
     {
@@ -18736,59 +18500,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1464,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1417,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Aktuell:",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 268,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Aktuelles Gerät",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 107,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Aktuelles Passwort",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 107,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Aktuelles Passwort",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -18876,38 +18598,10 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 299,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "All vehicles",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 171,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Alle anderen Sitzungen abmelden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 751,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Alle eigenen Anpassungen für diese Regel werden entfernt. Bereits aktive Aufgaben bleiben unverändert.",
       "severity": "debt",
@@ -18915,34 +18609,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 136,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Alle Kategorien",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/TasksView.tsx",
-      "line": 486,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Alle offenen anzeigen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/TasksView.tsx"
       ]
     },
     {
@@ -18957,20 +18623,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillingOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 148,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Alle Service-Bereiche",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
       ]
     },
     {
@@ -19137,7 +18789,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 528,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Änderungsgrund (optional)",
       "severity": "debt",
@@ -19151,7 +18803,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 525,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "LABEL",
       "sample": "Änderungsgrund (optional)",
       "severity": "debt",
@@ -19165,7 +18817,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 469,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Änderungshistorie",
       "severity": "debt",
@@ -19187,34 +18839,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillableVehiclesDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 562,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Änderungsverlauf",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 555,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Änderungsverlauf wird vorbereitet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
       ]
     },
     {
@@ -19260,20 +18884,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 319,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Any status",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WorkflowAutomationView.tsx",
       "line": 1507,
       "surface": "RENTAL",
@@ -19327,34 +18937,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountPreferencesSection.tsx",
-      "line": 41,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Arbeitspräferenzen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountPreferencesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 347,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Assign vehicles",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
       ]
     },
     {
@@ -19375,7 +18957,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 421,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Auf SynqDrive-Standard zurücksetzen",
       "severity": "debt",
@@ -19389,7 +18971,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 750,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Auf SynqDrive-Standard zurücksetzen?",
       "severity": "debt",
@@ -19400,80 +18982,10 @@
       ]
     },
     {
-      "file": "rental/components/TasksView.tsx",
-      "line": 426,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Aufgabe erstellen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/TasksView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksNewTaskDialog.tsx",
-      "line": 193,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Aufgabe erstellen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksNewTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/VehicleTaskDetailDrawer.tsx",
-      "line": 351,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Aufgabe konnte nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/TasksView.tsx",
-      "line": 463,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Aufgaben konnten nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/TasksView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 114,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "ARIA",
-      "sample": "Aufgaben suchen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
       "line": 223,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TITLE",
       "sample": "Aufgaben-Automationen konnten nicht geladen werden",
       "severity": "debt",
@@ -19487,7 +18999,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
       "line": 219,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Aufgaben-Automationen werden geladen…",
       "severity": "debt",
@@ -19527,20 +19039,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 119,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Auswahl aufheben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinesView.tsx",
       "line": 470,
       "surface": "RENTAL",
@@ -19556,24 +19054,10 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx",
-      "line": 292,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Auswirkungen bei Widerruf",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx",
       "line": 28,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Auswirkungsschätzung wird berechnet…",
       "severity": "debt",
@@ -19679,34 +19163,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/SendInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx",
-      "line": 72,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Begründung (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx",
-      "line": 72,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Begründung (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
       ]
     },
     {
@@ -19911,34 +19367,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx",
-      "line": 260,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Betroffene Fahrzeuge",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 159,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Bevorzugt für Fahrzeug",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
       "line": 152,
       "surface": "RENTAL",
@@ -19992,20 +19420,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceDocuments.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 395,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Blockiert Fahrzeugverfügbarkeit",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
       ]
     },
     {
@@ -20093,31 +19507,31 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 932,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 885,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Breitengrad (Lat)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 932,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 885,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "LABEL",
       "sample": "Breitengrad (Lat)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -20247,20 +19661,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/VehicleTaskActionCenter.tsx",
-      "line": 121,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "canCreate ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskActionCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/BusinessInsightsBox.tsx",
       "line": 786,
       "surface": "RENTAL",
@@ -20286,34 +19686,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/AddDamagePhotoPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 345,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Category moves",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 307,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Category rules",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
       ]
     },
     {
@@ -21174,20 +20546,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 345,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Data Authorization & Consent Center",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 573,
       "surface": "RENTAL",
@@ -21258,62 +20616,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 467,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Datenkategorie:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 166,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Datenkategorien *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 166,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Datenkategorien *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 209,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Datum setzen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WorkflowAutomationView.tsx",
       "line": 1318,
       "surface": "RENTAL",
@@ -21350,7 +20652,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 91,
+      "occurrences": 90,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
@@ -21403,7 +20705,6 @@
         "rental/lib/document-extraction-field-format.ts",
         "rental/lib/rpm-webhook-ui.ts",
         "rental/lib/task-detail.utils.ts",
-        "rental/lib/task-display.utils.ts",
         "rental/lib/task-list.utils.ts",
         "rental/lib/task-operator.utils.ts"
       ]
@@ -21479,20 +20780,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx",
-      "line": 68,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Der Zugriff wird für betroffene Verarbeitungszwecke blockiert. Der Eintrag bleibt im Audit-Verlauf sichtbar.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WorkflowAutomationView.tsx",
       "line": 1126,
       "surface": "RENTAL",
@@ -21532,20 +20819,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/GlobalTaskDetailPanel.tsx",
-      "line": 215,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "detail?.assignedUserId ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/GlobalTaskDetailPanel.tsx"
       ]
     },
     {
@@ -21591,20 +20864,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 76,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "ARIA",
-      "sample": "Dialog schließen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingPaymentMethodCard.tsx",
       "line": 119,
       "surface": "RENTAL",
@@ -21616,34 +20875,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingPaymentMethodCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 77,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Dienstleister / Werkstatt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 77,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "LABEL",
-      "sample": "Dienstleister / Werkstatt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
       ]
     },
     {
@@ -21714,20 +20945,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx",
-      "line": 63,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "DIMO Telemetry — kritische Auswirkung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
       ]
     },
     {
@@ -21946,20 +21163,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 227,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "e.g. Premium",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 160,
       "surface": "RENTAL",
@@ -21971,20 +21174,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceAssistantBuilder.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/DefaultRulesDrawer.tsx",
-      "line": 119,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Edit default rental rules",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/DefaultRulesDrawer.tsx"
       ]
     },
     {
@@ -22312,33 +21501,17 @@
       ]
     },
     {
-      "file": "rental/components/TasksView.tsx",
-      "line": 497,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 670,
       "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "erneut laden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/TasksView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 717,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Erneut laden",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx",
-        "rental/components/booking-detail/BookingDossier.tsx",
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -22382,34 +21555,6 @@
       "files": [
         "rental/components/billing/BillableVehiclesDrawer.tsx",
         "rental/components/documents/DocumentExtractionFlowStatus.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 135,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Erste Notiz",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 97,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "erstellt — Genehmigung erforderlich.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
       ]
     },
     {
@@ -22458,7 +21603,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 729,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Es gibt ungespeicherte Anpassungen an dieser Aufgaben-Automation. Möchten Sie den Drawer wirklich schließen?",
       "severity": "debt",
@@ -22707,17 +21852,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1008,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 961,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Fahrzeuge gelten als",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -22735,45 +21880,45 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1403,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1356,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Fahrzeuge werden geladenâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1755,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1708,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TITLE",
       "sample": "Fahrzeuge zu diesem Standort zuweisen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1329,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1282,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Fahrzeuge zuweisen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 2,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -22819,77 +21964,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 162,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Fällig am",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx",
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 506,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "ARIA",
-      "sample": "Fällig bis",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 499,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Fällig bis",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 494,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "ARIA",
-      "sample": "Fällig von",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 487,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Fällig von",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
       "line": 148,
       "surface": "RENTAL",
@@ -22898,25 +21972,9 @@
       "sample": "Fälligkeit",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
-      "files": [
-        "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
-        "rental/components/tasks/TasksBulkActionBar.tsx",
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 193,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Fälligkeit verschieben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
+        "rental/components/billing/TenantInvoiceDetailDrawer.tsx"
       ]
     },
     {
@@ -23020,79 +22078,35 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1080,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1033,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Filiale Â· 250m",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 402,
+      "file": "rental/components/invoices/InvoiceFilters.tsx",
+      "line": 150,
       "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Filter & Suche",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 315,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "ARIA",
-      "sample": "Filter by fleet status",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 295,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "ARIA",
-      "sample": "Filter vehicles",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/TasksView.tsx",
-      "line": 482,
-      "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Filter zurücksetzen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 9,
+      "occurrences": 7,
       "files": [
-        "rental/components/TasksView.tsx",
         "rental/components/invoices/InvoiceFilters.tsx",
         "rental/components/invoices/InvoiceList.tsx",
         "rental/components/new-booking/VehiclePickerStep.tsx",
         "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-        "rental/components/support/SupportTicketInbox.tsx",
-        "rental/components/tasks/TasksFilterPanel.tsx"
+        "rental/components/support/SupportTicketInbox.tsx"
       ]
     },
     {
@@ -23208,20 +22222,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 363,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Freigabe anlegen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 276,
       "surface": "RENTAL",
@@ -23293,73 +22293,59 @@
       ]
     },
     {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 101,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1044,
       "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Geben Sie Ihr aktuelles Passwort ein und wählen Sie ein neues, sicheres Passwort.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1091,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "GelÃ¤nde Â· 1km",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 614,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 567,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Geocoding fehlgeschlagen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1005,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 958,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Geofence-Umkreis (Home-Zone)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1003,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 956,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "LABEL",
       "sample": "Geofence-Umkreis (Home-Zone)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -23374,20 +22360,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/handover/HandoverProtocolDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 186,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Gerät:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
       ]
     },
     {
@@ -23430,20 +22402,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/insights/InsightsCockpit.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 173,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Geschätzte Dauer",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
       ]
     },
     {
@@ -23671,17 +22629,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 659,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 612,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "ARIA",
       "sample": "Hinweis schlieÃŸen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -23870,7 +22828,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 567,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Ich verstehe die Auswirkungen und möchte die Regel dennoch deaktivieren.",
       "severity": "debt",
@@ -23895,20 +22853,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/email/EmailVersandTab.tsx",
-      "line": 293,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Ihr Team",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/email/EmailVersandTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WorkflowAutomationView.tsx",
       "line": 1441,
       "surface": "RENTAL",
@@ -23920,20 +22864,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/VehicleTaskDetailDrawer.tsx",
-      "line": 238,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "In Tasks öffnen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
       ]
     },
     {
@@ -24235,17 +23165,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1162,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1115,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "PLACEHOLDER",
       "sample": "Interne Notizen zum Standortâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -24277,17 +23207,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1763,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1716,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TITLE",
       "sample": "isActive ?",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -24361,20 +23291,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 237,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Kein Fahrzeug",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 216,
       "surface": "RENTAL",
@@ -24389,20 +23305,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/CreateVehicleTaskDialog.tsx",
-      "line": 190,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Kein Fahrzeug im Kontext — Aufgabe kann nicht erstellt werden.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/CreateVehicleTaskDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/PermissionEditor.tsx",
       "line": 126,
       "surface": "RENTAL",
@@ -24414,20 +23316,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/PermissionEditor.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 105,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Kein Partner ausgewählt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
       ]
     },
     {
@@ -24473,21 +23361,6 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1892,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Kein Zugriff auf Mietregeln",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/SettingsView.tsx",
-        "rental/components/settings/rental-rules/RentalRulesTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/insights/InsightsCockpit.tsx",
       "line": 231,
       "surface": "RENTAL",
@@ -24516,20 +23389,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 180,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Keine Angabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UserDetailDrawer.tsx",
       "line": 392,
       "surface": "RENTAL",
@@ -24541,20 +23400,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 423,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Keine Auswahl",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
       ]
     },
     {
@@ -24684,17 +23529,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1414,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1367,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Keine Fahrzeuge in dieser Organisation registriert.",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -24709,20 +23554,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/insights/InsightsCockpit.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 182,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Keine Partner gefunden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
       ]
     },
     {
@@ -24743,7 +23574,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
       "line": 226,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TITLE",
       "sample": "Keine Regeln gefunden",
       "severity": "debt",
@@ -24779,48 +23610,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/SecurityActivityTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 246,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Keine Sitzungen erfasst",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountPreferencesSection.tsx",
-      "line": 137,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Keine Standard-Station",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountPreferencesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 215,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Keine Station",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
       ]
     },
     {
@@ -24866,17 +23655,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1418,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1371,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Keine Treffer fÃ¼r die gewÃ¤hlten Filter.",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -25008,17 +23797,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 983,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 936,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Koordinaten zurÃ¼cksetzen (beim nÃ¤chsten Speichern wird neu geocodiert)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -25039,7 +23828,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 559,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Kritische operative Regel — Deaktivierung kann Lücken im Tagesgeschäft verursachen.",
       "severity": "debt",
@@ -25050,87 +23839,73 @@
       ]
     },
     {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 184,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1249,
       "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "künftige",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1296,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "LÃ¶scheâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1783,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1736,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TITLE",
       "sample": "LÃ¶schen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1300,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1253,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "LÃ¶schen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 955,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 908,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "LÃ¤ngengrad (Lng)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 955,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 908,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "LABEL",
       "sample": "LÃ¤ngengrad (Lng)",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -25174,20 +23949,6 @@
       "files": [
         "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
         "rental/components/insights/InsightsCockpit.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 497,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Laden fehlgeschlagen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
       ]
     },
     {
@@ -25261,17 +24022,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 736,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 689,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Legen Sie Ihren ersten Standort an, um Fahrzeuge und Benutzer geografisch zuzuordnen.",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -25552,20 +24313,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 47,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "ARIA",
-      "sample": "Loading vehicles",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
       ]
     },
     {
@@ -25976,20 +24723,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/email/EmailVersandTab.tsx",
-      "line": 293,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Mit freundlichen Grüßen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/email/EmailVersandTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/CreateUserWizard.tsx",
       "line": 298,
       "surface": "RENTAL",
@@ -26046,17 +24779,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 860,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 813,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "PLACEHOLDER",
       "sample": "MusterstraÃŸe 12",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -26130,48 +24863,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/VehicleTaskActionCenter.tsx",
-      "line": 38,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Nächste Aktion",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskActionCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/VehicleTaskActionCenter.tsx",
-      "line": 101,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Nächste Buchung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskActionCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 113,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "Name des Empfängers",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 299,
       "surface": "RENTAL",
@@ -26197,20 +24888,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 124,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "Name, Stadt, Service-Bereich…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
       ]
     },
     {
@@ -26284,48 +24961,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/VehicleTaskActionCenter.tsx",
-      "line": 124,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Neue Aufgabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskActionCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 95,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Neue Datenfreigabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/CreateVehicleTaskDialog.tsx",
-      "line": 143,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Neue Fahrzeugaufgabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/CreateVehicleTaskDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/HandoverProtocolDialog.tsx",
       "line": 742,
       "surface": "RENTAL",
@@ -26340,48 +24975,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 225,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Neues Fälligkeitsdatum",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 121,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Neues Passwort",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 121,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Neues Passwort",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UsersTab.tsx",
       "line": 566,
       "surface": "RENTAL",
@@ -26393,34 +24986,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UsersTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 136,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Neues Passwort bestätigen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/ChangePasswordDialog.tsx",
-      "line": 136,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Neues Passwort bestätigen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
       ]
     },
     {
@@ -26575,22 +25140,6 @@
       "occurrences": 2,
       "files": [
         "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/GlobalTaskDetailPanel.tsx",
-      "line": 229,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Nicht zugewiesen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 3,
-      "files": [
-        "rental/components/tasks/GlobalTaskDetailPanel.tsx",
-        "rental/components/tasks/ManualTaskCreateForm.tsx",
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
       ]
     },
     {
@@ -26830,20 +25379,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/EffectiveRulesPreviewDrawer.tsx",
-      "line": 135,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "No effective rules available.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/EffectiveRulesPreviewDrawer.tsx"
       ]
     },
     {
@@ -27239,20 +25774,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 353,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "No vehicles assigned yet.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 369,
       "surface": "RENTAL",
@@ -27278,20 +25799,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 399,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "No vehicles match",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
       ]
     },
     {
@@ -27481,7 +25988,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 481,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Noch keine org-spezifischen Anpassungen protokolliert.",
       "severity": "debt",
@@ -27507,31 +26014,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 735,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 688,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Noch keine Standorte",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountPreferencesSection.tsx",
-      "line": 149,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Noch keine Stationen angelegt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountPreferencesSection.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -27577,20 +26070,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 55,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Noch nicht eingerichtet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 209,
       "surface": "RENTAL",
@@ -27616,20 +26095,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageInsightsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx",
-      "line": 251,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Not set",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/CategoryDetailDrawer.tsx"
       ]
     },
     {
@@ -27703,20 +26168,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 396,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Nur für berechtigte Rollen. Die Aufgabe gilt bis zur Erledigung als vermietungsrelevant.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceNotes.tsx",
       "line": 54,
       "surface": "RENTAL",
@@ -27728,20 +26179,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceNotes.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountNotificationsSection.tsx",
-      "line": 94,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Nur kritisch",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountNotificationsSection.tsx"
       ]
     },
     {
@@ -27759,20 +26196,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/CompanyInformationTab.tsx",
-      "line": 187,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Nur Organisationsadministratoren können diese Daten bearbeiten.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/CompanyInformationTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingPaymentMethodCard.tsx",
       "line": 44,
       "surface": "RENTAL",
@@ -27784,20 +26207,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingPaymentMethodCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 376,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Nur überfällig",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
       ]
     },
     {
@@ -27899,17 +26308,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1468,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1421,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "ohne Station",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -28096,34 +26505,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 94,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "Optionale Details zur Aufgabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 304,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "Optionale Dokumentenreferenz",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingTab.tsx",
       "line": 108,
       "surface": "RENTAL",
@@ -28306,59 +26687,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1069,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1022,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Parkplatz Â· 100m",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 98,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Partner entfernen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 111,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Partner suchen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TaskVendorPicker.tsx",
-      "line": 217,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Partner wechseln",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TaskVendorPicker.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -28373,21 +26712,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 103,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Passwort ändern",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx",
-        "rental/components/settings/account/ChangePasswordDialog.tsx"
       ]
     },
     {
@@ -28444,20 +26768,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 107,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Passwortverwaltung wird über Ihren Login-Anbieter gesteuert.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
       ]
     },
     {
@@ -28713,20 +27023,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 348,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "PNG, JPG oder WebP · max. 2 MB",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 1121,
       "surface": "RENTAL",
@@ -28966,36 +27262,6 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 114,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Priorität",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 3,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx",
-        "rental/components/tasks/TasksBulkActionBar.tsx",
-        "rental/components/tasks/TasksFilterPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 163,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Priorität ändern",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingPriceTierLadder.tsx",
       "line": 75,
       "surface": "RENTAL",
@@ -29021,20 +27287,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountHeaderCard.tsx",
-      "line": 62,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Profil bearbeiten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountHeaderCard.tsx"
       ]
     },
     {
@@ -29136,24 +27388,10 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 365,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "ARIA",
-      "sample": "Punkt entfernen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 693,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Punkt hinzufügen",
       "severity": "debt",
@@ -29190,20 +27428,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppQuickActions.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/DefaultRulesDrawer.tsx",
-      "line": 138,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Read-only access",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/DefaultRulesDrawer.tsx"
       ]
     },
     {
@@ -29549,7 +27773,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
       "line": 181,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "ARIA",
       "sample": "Regeln durchsuchen",
       "severity": "debt",
@@ -29563,7 +27787,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
       "line": 180,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "PLACEHOLDER",
       "sample": "Regeln durchsuchen…",
       "severity": "debt",
@@ -29843,7 +28067,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 473,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Revisionen werden geladen…",
       "severity": "debt",
@@ -30185,25 +28409,9 @@
       "sample": "Schließen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
-      "files": [
-        "rental/components/FinancialInsightsView.tsx",
-        "rental/components/settings/account/ChangePasswordDialog.tsx",
-        "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 136,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Schützen Sie Ihr Konto mit einem zusätzlichen Sicherheitscode bei der Anmeldung.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
+        "rental/components/FinancialInsightsView.tsx"
       ]
     },
     {
@@ -30292,20 +28500,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 275,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "Search plate, make, model…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 708,
       "surface": "RENTAL",
@@ -30359,20 +28553,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 281,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "ARIA",
-      "sample": "Search vehicles",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
       ]
     },
     {
@@ -30802,7 +28982,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
       "line": 160,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Sie haben nur Lesezugriff. Änderungen erfordern Workflow-Automatisierungs-Schreibrechte.",
       "severity": "debt",
@@ -30873,7 +29053,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx",
       "line": 38,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Simulation nicht verfügbar",
       "severity": "debt",
@@ -30881,20 +29061,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 241,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Sitzungen werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
       ]
     },
     {
@@ -30940,17 +29106,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1235,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1188,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Speichereâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 2,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -30968,73 +29134,59 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 330,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 546,
       "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Standard-Checkliste für Aufgabentyp übernehmen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 593,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Standort hinzufÃ¼gen",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 2,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1266,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1219,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Standort lÃ¶schen?",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1332,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1285,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Standort:",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 727,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 680,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Standorte werden geladenâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -31063,34 +29215,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountPreferencesSection.tsx",
-      "line": 110,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Startseite nach Login",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountPreferencesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountPreferencesSection.tsx",
-      "line": 110,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Startseite nach Login",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountPreferencesSection.tsx"
       ]
     },
     {
@@ -31136,17 +29260,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1139,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1092,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "PLACEHOLDER",
       "sample": "station@firma.de",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -31178,59 +29302,45 @@
       ]
     },
     {
-      "file": "rental/components/settings/account/AccountPreferencesSection.tsx",
-      "line": 130,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 511,
       "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Stationen werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountPreferencesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 558,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Stations &amp; Branches",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 808,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 761,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Stationsname / Adresse",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 808,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 761,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "LABEL",
       "sample": "Stationsname / Adresse",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -31245,20 +29355,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceFilters.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 181,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Steuer & Rechnung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
       ]
     },
     {
@@ -31304,31 +29400,31 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 857,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 810,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "StraÃŸe / Adresse",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 857,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 810,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "LABEL",
       "sample": "StraÃŸe / Adresse",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -31402,17 +29498,17 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1365,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1318,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "PLACEHOLDER",
       "sample": "Suche nach Kennzeichen, Modell, Standortâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -31430,45 +29526,31 @@
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 567,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 520,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "PLACEHOLDER",
       "sample": "Suche nach Name, Stadt, Managerâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 827,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 780,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Suche Standorteâ€¦",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksFilterPanel.tsx",
-      "line": 113,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "Suchen …",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksFilterPanel.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -31581,48 +29663,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceAssistantBuilder.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 357,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Systemfreigaben synchronisieren",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 215,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Tage (+/-)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 201,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Tage verschieben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
       ]
     },
     {
@@ -32046,20 +30086,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/email/EmailVersandTab.tsx",
-      "line": 448,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "test@example.com",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/email/EmailVersandTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WorkflowAutomationView.tsx",
       "line": 1099,
       "surface": "RENTAL",
@@ -32172,20 +30198,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx",
-      "line": 300,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Timeline / Audit",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 482,
       "surface": "RENTAL",
@@ -32208,11 +30220,9 @@
       "sample": "Titel *",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 1,
       "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx",
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
+        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -32224,10 +30234,9 @@
       "sample": "Titel *",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx",
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
+        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -32262,7 +30271,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 702,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "PLACEHOLDER",
       "sample": "Titel des zusätzlichen Punkts",
       "severity": "debt",
@@ -32270,34 +30279,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/lib/task-create-form.utils.ts",
-      "line": 105,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Titel ist erforderlich",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/lib/task-create-form.utils.ts"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-      "line": 424,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "Titel, Verarbeiter, Modul, Beschreibung …",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
       ]
     },
     {
@@ -32469,20 +30450,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx",
-      "line": 210,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Überblick",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/EntityTasksSection.tsx",
       "line": 142,
       "surface": "RENTAL",
@@ -32601,7 +30568,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 728,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Ungespeicherte Änderungen",
       "severity": "debt",
@@ -32623,20 +30590,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceAssistantBuilder.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/CompanyInformationTab.tsx",
-      "line": 206,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Unternehmensprofil konnte nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/CompanyInformationTab.tsx"
       ]
     },
     {
@@ -32936,34 +30889,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 112,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Verarbeiter / Partner",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 112,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Verarbeiter / Partner",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinesView.tsx",
       "line": 652,
       "surface": "RENTAL",
@@ -32989,20 +30914,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 255,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Verknüpfungen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
       ]
     },
     {
@@ -33090,50 +31001,36 @@
       ]
     },
     {
-      "file": "rental/components/tasks/VehicleTaskActionCenter.tsx",
-      "line": 189,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1444,
       "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Vor Buchung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskActionCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1491,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "vor Ort",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1009,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 962,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "vor Ort / Home",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1119,
+      "file": "rental/components/handover/SignaturePad.tsx",
+      "line": 243,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "PLACEHOLDER",
@@ -33142,36 +31039,8 @@
       "migrationPhase": "P2.2",
       "occurrences": 2,
       "files": [
-        "rental/components/SettingsView.tsx",
-        "rental/components/handover/SignaturePad.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/company/CompanySetupChecklist.tsx",
-      "line": 67,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Voraussetzungen für Rechnungen, Dokumente und Kommunikation.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySetupChecklist.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/company/CompanySections.tsx",
-      "line": 407,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Vorschau auf Dokumenten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/company/CompanySections.tsx"
+        "rental/components/handover/SignaturePad.tsx",
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -33273,20 +31142,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx",
-      "line": 232,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Was wird verarbeitet?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 251,
       "surface": "RENTAL",
@@ -33318,7 +31173,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 734,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Weiter bearbeiten",
       "severity": "debt",
@@ -33469,87 +31324,31 @@
       ]
     },
     {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 142,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1464,
       "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "Wird als erster Kommentar zur Aufgabe gespeichert",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1511,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Wird entfernt",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 96,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1455,
       "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Wird mit Status",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1502,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Wird verschoben",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 303,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "With override",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx",
-      "line": 301,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Without category",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/VehicleAssignmentDrawer.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -33564,20 +31363,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/support/SupportCenterHero.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx",
-      "line": 249,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TITLE",
-      "sample": "Wofür wird es verwendet?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationDetailDrawer.tsx"
       ]
     },
     {
@@ -33707,20 +31492,6 @@
       ]
     },
     {
-      "file": "rental/components/settings/rental-rules/DefaultRulesDrawer.tsx",
-      "line": 143,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "You do not have permission to edit organization rental rules.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/rental-rules/DefaultRulesDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorDetailView.tsx",
       "line": 724,
       "surface": "RENTAL",
@@ -33732,20 +31503,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 82,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. Bremsen prüfen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
       ]
     },
     {
@@ -33777,24 +31534,10 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 109,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. Partner Analytics Zugriff",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 537,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "PLACEHOLDER",
       "sample": "z. B. Pickup-Fenster für Station Nord verkürzen",
       "severity": "debt",
@@ -33819,31 +31562,17 @@
       ]
     },
     {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx",
-      "line": 79,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 764,
       "surface": "RENTAL",
-      "module": "Settings",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. Vertrag beendet, Zweck entfällt …",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 811,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "PLACEHOLDER",
       "sample": "z.B. SynqDrive Berlin Mitte",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -33901,48 +31630,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantInvoiceDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/ManualTaskCreateForm.tsx",
-      "line": 148,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Zeitplan & Zuweisung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/ManualTaskCreateForm.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 187,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Ziel / Destination *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 187,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Ziel / Destination *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
       ]
     },
     {
@@ -34038,7 +31725,7 @@
       "sample": "Zurück",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 14,
+      "occurrences": 12,
       "files": [
         "rental/components/FinesView.tsx",
         "rental/components/billing/BillingInvoiceSection.tsx",
@@ -34049,8 +31736,7 @@
         "rental/components/invoices/CreateInvoiceDialog.tsx",
         "rental/components/invoices/InvoiceDetail.tsx",
         "rental/components/invoices/InvoiceListPagination.tsx",
-        "rental/components/new-booking/MobileBookingFooter.tsx",
-        "rental/components/tasks/TasksBulkActionBar.tsx"
+        "rental/components/new-booking/MobileBookingFooter.tsx"
       ]
     },
     {
@@ -34068,19 +31754,16 @@
       ]
     },
     {
-      "file": "rental/components/settings/account/AccountNotificationsSection.tsx",
-      "line": 154,
+      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
+      "line": 757,
       "surface": "RENTAL",
-      "module": "Settings",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Zurücksetzen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 4,
+      "occurrences": 1,
       "files": [
-        "rental/components/settings/account/AccountNotificationsSection.tsx",
-        "rental/components/settings/account/AccountPreferencesSection.tsx",
-        "rental/components/tasks/TasksFilterPanel.tsx",
         "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
@@ -34117,7 +31800,7 @@
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 692,
       "surface": "RENTAL",
-      "module": "Tasks",
+      "module": "Automation",
       "category": "TEXT",
       "sample": "Zusätzliche Punkte",
       "severity": "debt",
@@ -34142,143 +31825,17 @@
       ]
     },
     {
-      "file": "rental/components/tasks/VehicleTaskDetailDrawer.tsx",
-      "line": 262,
+      "file": "rental/components/stations/StationsTab.tsx",
+      "line": 1507,
       "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Zuständig",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/VehicleTaskDetailDrawer.tsx",
-      "line": 250,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TITLE",
-      "sample": "Zuweisung & Termine",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/TasksBulkActionBar.tsx",
-      "line": 135,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Zuweisung aufheben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/TasksBulkActionBar.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/tasks/GlobalTaskDetailPanel.tsx",
-      "line": 201,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Zuweisung erforderlich — kein Bearbeiter gesetzt.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/tasks/GlobalTaskDetailPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/SettingsView.tsx",
-      "line": 1554,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Stations",
       "category": "TEXT",
       "sample": "Zuweisung speichern",
       "severity": "debt",
       "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 146,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Zweck(e) *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx",
-      "line": 146,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "LABEL",
-      "sample": "Zweck(e) *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/data-authorization/DataAuthorizationCreateDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 122,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Zwei-Faktor-Authentifizierung (2FA)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 132,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Zwei-Faktor-Authentifizierung ist für Ihr Konto aktiv.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/settings/account/AccountSessionsSection.tsx",
-      "line": 140,
-      "surface": "RENTAL",
-      "module": "Settings",
-      "category": "TEXT",
-      "sample": "Zwei-Faktor-Authentifizierung wird vorbereitet.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/settings/account/AccountSessionsSection.tsx"
+        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {

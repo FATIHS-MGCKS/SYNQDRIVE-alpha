@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DetailDrawer, StatusChip } from '../../../../components/patterns';
 import { api } from '../../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EffectiveRentalRulesDto } from './rental-rules.types';
 import { effectiveRulesRows, parseApiError } from './rental-rules.utils';
 import {
@@ -23,6 +24,7 @@ export function EffectiveRulesPreviewDrawer({
   vehicleId,
   vehicleLabel,
 }: EffectiveRulesPreviewDrawerProps) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [effective, setEffective] = useState<EffectiveRentalRulesDto | null>(null);
@@ -65,13 +67,15 @@ export function EffectiveRulesPreviewDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={handleOpenChange}
-      eyebrow="Effective requirements"
-      title={vehicleLabel ?? 'Vehicle requirements'}
-      description="Merged organization defaults, category rules, and vehicle overrides."
+      eyebrow={t('rentalRules.ui.effectivePreview.eyebrow')}
+      title={vehicleLabel ?? t('rentalRules.ui.effectivePreview.title')}
+      description={t('rentalRules.ui.effectivePreview.description')}
       status={
         effective ? (
           <StatusChip tone={effective.rulesActive ? 'success' : 'neutral'} dot>
-            {effective.rulesActive ? 'Enforcement active' : 'Enforcement inactive'}
+            {effective.rulesActive
+              ? t('rentalRules.ui.effectivePreview.enforcementActive')
+              : t('rentalRules.ui.effectivePreview.enforcementInactive')}
           </StatusChip>
         ) : undefined
       }
@@ -98,9 +102,11 @@ export function EffectiveRulesPreviewDrawer({
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5">
-            <span className="text-[12px] text-muted-foreground">Category</span>
+            <span className="text-[12px] text-muted-foreground">
+              {t('rentalRules.ui.effectivePreview.category')}
+            </span>
             <span className="text-[12px] font-medium text-foreground">
-              {effective.rentalCategoryName ?? 'None assigned'}
+              {effective.rentalCategoryName ?? t('rentalRules.ui.effectivePreview.noneAssigned')}
             </span>
           </div>
 
@@ -132,7 +138,9 @@ export function EffectiveRulesPreviewDrawer({
       )}
 
       {!loading && !error && !effective && open && orgId && vehicleId && (
-        <p className="py-6 text-center text-[12px] text-muted-foreground">No effective rules available.</p>
+        <p className="py-6 text-center text-[12px] text-muted-foreground">
+          {t('rentalRules.ui.effectivePreview.empty')}
+        </p>
       )}
     </DetailDrawer>
   );

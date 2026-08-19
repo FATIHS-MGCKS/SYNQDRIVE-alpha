@@ -3,6 +3,8 @@ import type {
   AccountNotificationCategory,
   AccountSessionDto,
 } from '../../../../lib/api';
+import type { TranslationKey } from '../../../../i18n/translations/en';
+import { st } from '../../tasks-settings/settings-i18n';
 
 export type AccountSection = 'profile' | 'preferences' | 'notifications' | 'security';
 
@@ -23,10 +25,12 @@ export interface PreferencesDraft {
   defaultLandingPage: '' | 'dashboard' | 'bookings' | 'fleet' | 'customers' | 'tasks';
 }
 
-export const LANGUAGE_OPTIONS: Array<{ value: 'de' | 'en'; label: string }> = [
-  { value: 'de', label: 'Deutsch' },
-  { value: 'en', label: 'English' },
-];
+export function getLanguageOptions(locale: string): Array<{ value: 'de' | 'en'; label: string }> {
+  return [
+    { value: 'de', label: st(locale, 'settings.account.options.language.de') },
+    { value: 'en', label: st(locale, 'settings.account.options.language.en') },
+  ];
+}
 
 export const DATE_FORMAT_OPTIONS: Array<{ value: PreferencesDraft['dateFormat']; label: string }> = [
   { value: 'DD.MM.YYYY', label: 'DD.MM.YYYY' },
@@ -44,17 +48,18 @@ export const TIMEZONE_OPTIONS = [
   'UTC',
 ] as const;
 
-export const LANDING_PAGE_OPTIONS: Array<{
-  value: PreferencesDraft['defaultLandingPage'];
-  label: string;
-}> = [
-  { value: '', label: 'Standard (Dashboard)' },
-  { value: 'dashboard', label: 'Dashboard' },
-  { value: 'bookings', label: 'Buchungen' },
-  { value: 'fleet', label: 'Flotte' },
-  { value: 'customers', label: 'Kunden' },
-  { value: 'tasks', label: 'Aufgaben' },
-];
+export function getLandingPageOptions(
+  locale: string,
+): Array<{ value: PreferencesDraft['defaultLandingPage']; label: string }> {
+  return [
+    { value: '', label: st(locale, 'settings.account.options.landing.default') },
+    { value: 'dashboard', label: st(locale, 'settings.account.options.landing.dashboard') },
+    { value: 'bookings', label: st(locale, 'settings.account.options.landing.bookings') },
+    { value: 'fleet', label: st(locale, 'settings.account.options.landing.fleet') },
+    { value: 'customers', label: st(locale, 'settings.account.options.landing.customers') },
+    { value: 'tasks', label: st(locale, 'settings.account.options.landing.tasks') },
+  ];
+}
 
 export function getInitials(name: string | null | undefined, email: string): string {
   if (name?.trim()) {
@@ -155,6 +160,22 @@ export type NotificationPresetId =
   | 'operational'
   | 'quiet_except_security';
 
+const NOTIFICATION_PRESET_KEYS: Record<NotificationPresetId, TranslationKey> = {
+  org_admin_full: 'settings.account.notifications.preset.orgAdminFull',
+  critical_only: 'settings.account.notifications.preset.criticalOnly',
+  operational: 'settings.account.notifications.preset.operational',
+  quiet_except_security: 'settings.account.notifications.preset.quietExceptSecurity',
+};
+
+export function getNotificationPresets(
+  locale: string,
+): Array<{ id: NotificationPresetId; label: string }> {
+  return (Object.keys(NOTIFICATION_PRESET_KEYS) as NotificationPresetId[]).map((id) => ({
+    id,
+    label: st(locale, NOTIFICATION_PRESET_KEYS[id]),
+  }));
+}
+
 export function applyNotificationPreset(
   rows: NotificationRow[],
   preset: NotificationPresetId,
@@ -204,14 +225,14 @@ export function applyNotificationPreset(
   }
 }
 
-export function sessionStatusLabel(status: AccountSessionDto['status']): string {
+export function sessionStatusLabel(locale: string, status: AccountSessionDto['status']): string {
   switch (status) {
     case 'active':
-      return 'Aktiv';
+      return st(locale, 'settings.account.sessions.status.active');
     case 'revoked':
-      return 'Widerrufen';
+      return st(locale, 'settings.account.sessions.status.revoked');
     case 'expired':
-      return 'Abgelaufen';
+      return st(locale, 'settings.account.sessions.status.expired');
     default:
       return status;
   }
@@ -230,13 +251,15 @@ export function healthScoreTone(score: number): 'success' | 'warning' | 'critica
   return 'critical';
 }
 
-export const NOTIFICATION_CHANNELS = [
-  { key: 'inApp' as const, label: 'In-App', short: 'App' },
-  { key: 'email' as const, label: 'E-Mail', short: 'Mail' },
-  { key: 'push' as const, label: 'Push', short: 'Push' },
-  { key: 'sms' as const, label: 'SMS', short: 'SMS' },
-  { key: 'criticalOnly' as const, label: 'Nur kritisch', short: 'Krit.' },
-];
+export function getNotificationChannels(locale: string) {
+  return [
+    { key: 'inApp' as const, label: st(locale, 'settings.account.notifications.channel.inApp'), short: st(locale, 'settings.account.notifications.channel.inAppShort') },
+    { key: 'email' as const, label: st(locale, 'settings.account.notifications.channel.email'), short: st(locale, 'settings.account.notifications.channel.emailShort') },
+    { key: 'push' as const, label: st(locale, 'settings.account.notifications.channel.push'), short: st(locale, 'settings.account.notifications.channel.push') },
+    { key: 'sms' as const, label: st(locale, 'settings.account.notifications.channel.sms'), short: st(locale, 'settings.account.notifications.channel.sms') },
+    { key: 'criticalOnly' as const, label: st(locale, 'settings.account.notifications.channel.criticalOnly'), short: st(locale, 'settings.account.notifications.channel.criticalOnlyShort') },
+  ];
+}
 
 export function canToggleNotificationChannel(
   category: AccountNotificationCategory,
@@ -251,15 +274,12 @@ export function canToggleNotificationChannel(
   return true;
 }
 
-/** Enabled delivery channels on a row (excludes the criticalOnly flag). */
 export function countEnabledNotificationChannels(row: NotificationRow): number {
   return [row.inApp, row.email, row.push, row.sms].filter(Boolean).length;
 }
 
-export const SECURITY_CHANNEL_REQUIRED_MESSAGE =
-  'Sicherheit benötigt mindestens In-App oder E-Mail.';
-
 export function securityChannelBlockMessage(
+  locale: string,
   category: AccountNotificationCategory,
   channel: keyof NotificationRow,
   row: NotificationRow,
@@ -267,11 +287,20 @@ export function securityChannelBlockMessage(
 ): string | null {
   if (channel !== 'inApp' && channel !== 'email') return null;
   if (canToggleNotificationChannel(category, channel, row, nextValue)) return null;
-  return SECURITY_CHANNEL_REQUIRED_MESSAGE;
+  return st(locale, 'settings.account.notifications.securityChannelRequired');
 }
 
-export function validateProfileDraft(draft: ProfileDraft): string | null {
-  if (!draft.firstName.trim()) return 'Vorname ist erforderlich';
-  if (!draft.lastName.trim()) return 'Nachname ist erforderlich';
+export function validateProfileDraft(locale: string, draft: ProfileDraft): string | null {
+  if (!draft.firstName.trim()) return st(locale, 'settings.account.validation.firstNameRequired');
+  if (!draft.lastName.trim()) return st(locale, 'settings.account.validation.lastNameRequired');
   return null;
+}
+
+export function getAccountSections(locale: string): Array<{ id: AccountSection; label: string }> {
+  return [
+    { id: 'profile', label: st(locale, 'settings.account.sections.profile') },
+    { id: 'preferences', label: st(locale, 'settings.account.sections.preferences') },
+    { id: 'notifications', label: st(locale, 'settings.account.sections.notifications') },
+    { id: 'security', label: st(locale, 'settings.account.sections.security') },
+  ];
 }

@@ -305,38 +305,3 @@ export function hasActiveTasksListFilters(filters: TasksListFilters, search: str
     filters.overdue
   );
 }
-
-export const TASK_FILTER_LABELS = {
-  status: {
-    OPEN: 'Offen',
-    IN_PROGRESS: 'In Bearbeitung',
-    WAITING: 'Wartend',
-    DONE: 'Erledigt',
-    CANCELLED: 'Abgebrochen',
-  },
-  priority: {
-    LOW: 'Niedrig',
-    NORMAL: 'Mittel',
-    HIGH: 'Hoch',
-    CRITICAL: 'Kritisch',
-  },
-  source: {
-    MANUAL: 'Manuell',
-    SYSTEM: 'System',
-    ALERT: 'Alert',
-    HEALTH: 'Health',
-    BOOKING: 'Buchung',
-    DOCUMENT: 'Dokument',
-    VENDOR: 'Lieferant',
-  },
-  bucket: {
-    NOW: 'Jetzt',
-    TODAY: 'Heute',
-    UPCOMING: 'Demnächst',
-    PLANNED: 'Geplant',
-    OVERDUE: 'Überfällig',
-    UNASSIGNED: 'Unzugewiesen',
-    ALL_OPEN: 'Alle offenen',
-    COMPLETED: 'Erledigt',
-  },
-} as const;

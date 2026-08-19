@@ -9,6 +9,7 @@ import {
 import { Button } from '../../../components/ui/button';
 import { isMasterAdmin } from '../../../lib/auth';
 import { useRentalOrg } from '../../RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { CompanySetupChecklist } from './company/CompanySetupChecklist';
 import { CompanySectionTabBar } from './company/CompanySectionTabBar';
 import {
@@ -24,8 +25,8 @@ import {
   computeSetupChecklist,
   draftFromProfile,
   isDraftDirty,
+  getReadinessLabel,
   overallReadiness,
-  READINESS_LABEL,
   validateCompanyDraft,
   type CompanyDraft,
   type CompanySection,
@@ -50,6 +51,7 @@ export function CompanyInformationTab({
   onNavigateToLegalDocuments,
   onNavigateToStations,
 }: CompanyInformationTabProps) {
+  const { t, locale } = useLanguage();
   const { orgId, setOrgBranding, userRole } = useRentalOrg();
   const canEdit = userRole === 'ORG_ADMIN' || isMasterAdmin();
 
@@ -88,8 +90,8 @@ export function CompanyInformationTab({
   );
 
   const setupItems = useMemo(
-    () => computeSetupChecklist(profile, profile?.logoUrl ?? null, legalDocs, stations),
-    [profile, legalDocs, stations],
+    () => computeSetupChecklist(locale, profile, profile?.logoUrl ?? null, legalDocs, stations),
+    [profile, legalDocs, stations, locale],
   );
 
   const readiness = overallReadiness(setupItems);
@@ -135,7 +137,7 @@ export function CompanyInformationTab({
 
   const handleSave = async () => {
     if (!draft) return;
-    const err = validateCompanyDraft(draft);
+    const err = validateCompanyDraft(locale, draft);
     if (err) {
       setValidationError(err);
       return;
@@ -165,7 +167,7 @@ export function CompanyInformationTab({
     isEditing ? (
       <div className="flex flex-wrap items-center gap-1.5">
         <Button type="button" variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>
-          Abbrechen
+          {t('common.cancel')}
         </Button>
         <Button
           type="button"
@@ -174,18 +176,18 @@ export function CompanyInformationTab({
           disabled={!dirty || saving}
         >
           {saving ? <Loader2 className="animate-spin" /> : null}
-          Änderungen speichern
+          {t('settings.company.saveChanges')}
         </Button>
       </div>
     ) : (
       <Button type="button" variant="outline" size="sm" onClick={startEdit}>
         <Pencil />
-        Bearbeiten
+        {t('common.edit')}
       </Button>
     )
   ) : (
     <span className="text-[11px] text-muted-foreground max-w-xs">
-      Nur Organisationsadministratoren können diese Daten bearbeiten.
+      {t('settings.company.adminOnlyHint')}
     </span>
   );
 
@@ -203,10 +205,10 @@ export function CompanyInformationTab({
     return (
       <div className="max-w-[1600px] mx-auto">
         <ErrorState
-          title="Unternehmensprofil konnte nicht geladen werden"
+          title={t('settings.company.loadErrorTitle')}
           error={loadError}
           onRetry={() => void loadProfile()}
-          retryLabel="Erneut laden"
+          retryLabel={t('settings.shell.retryLoad')}
         />
       </div>
     );
@@ -217,8 +219,8 @@ export function CompanyInformationTab({
   return (
     <div className="max-w-[1600px] mx-auto space-y-4 animate-fade-up pb-6">
       <PageHeader
-        title="Unternehmensinformationen"
-        status={<StatusChip tone={READINESS_TONE[readiness]}>{READINESS_LABEL[readiness]}</StatusChip>}
+        title={t('settings.company.title')}
+        status={<StatusChip tone={READINESS_TONE[readiness]}>{getReadinessLabel(locale, readiness)}</StatusChip>}
         actions={headerActions}
         className="mb-0"
       />

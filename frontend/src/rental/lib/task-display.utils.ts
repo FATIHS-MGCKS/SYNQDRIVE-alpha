@@ -1,4 +1,11 @@
+import { DEFAULT_PRODUCT_LOCALE } from '../../i18n/locales';
 import type { ApiTask, ApiTaskPriority, ApiTaskStatus } from '../../lib/api';
+import {
+  vehicleTaskPriorityLabelI18n,
+  vehicleTaskStatusLabelI18n,
+  tt,
+  tasksFormattingLocaleOrDefault,
+} from '../components/tasks-settings/tasks-i18n';
 
 /** Display buckets for the vehicle task list — aligned with backend `ApiTaskStatus`. */
 export type VehicleTaskDisplayStatus =
@@ -72,28 +79,29 @@ export function mapApiPriority(priority?: ApiTaskPriority | null): VehicleTaskPr
   }
 }
 
-export function mapApiTaskToVehicleRow(task: ApiTask): VehicleTaskRow | null {
+export function mapApiTaskToVehicleRow(task: ApiTask, locale?: string | null): VehicleTaskRow | null {
+  const productLocale = locale ?? DEFAULT_PRODUCT_LOCALE;
   if (!task?.id) return null;
   const apiStatus = task.status ?? 'OPEN';
   return {
     id: task.id,
-    title: task.title?.trim() || 'Ohne Titel',
+    title: task.title?.trim() || tt(productLocale, 'tasks.display.noTitle'),
     description: task.description?.trim() || '',
     apiStatus,
     displayStatus: mapApiTaskToDisplayStatus(apiStatus),
     isOverdue: deriveTaskIsOverdue(task),
     priority: mapApiPriority(task.priority),
-    category: task.category?.trim() || task.type || 'Allgemein',
-    assigneeLabel: task.assignedUserId?.trim() || 'Nicht zugewiesen',
+    category: task.category?.trim() || task.type || tt(productLocale, 'tasks.display.general'),
+    assigneeLabel: task.assignedUserId?.trim() || tt(productLocale, 'tasks.display.unassigned'),
     dueDate: task.dueDate,
     createdAt: task.createdAt ?? null,
   };
 }
 
-export function parseVehicleTaskList(rows: unknown): VehicleTaskRow[] {
+export function parseVehicleTaskList(rows: unknown, locale?: string | null): VehicleTaskRow[] {
   if (!Array.isArray(rows)) return [];
   return rows
-    .map((row) => mapApiTaskToVehicleRow(row as ApiTask))
+    .map((row) => mapApiTaskToVehicleRow(row as ApiTask, locale))
     .filter((t): t is VehicleTaskRow => t != null);
 }
 
@@ -129,11 +137,18 @@ export function vehicleTaskSortRank(task: VehicleTaskRow): number {
   }
 }
 
-export function formatTaskDueDate(iso: string | null): string {
-  if (!iso) return 'Kein Fälligkeitsdatum';
+export function formatTaskDueDate(iso: string | null, locale?: string | null): string {
+  const productLocale = locale ?? DEFAULT_PRODUCT_LOCALE;
+  if (!iso) return tt(productLocale, 'tasks.display.noDueDate');
+  const formattingLocale = tasksFormattingLocaleOrDefault(productLocale);
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return 'Kein Fälligkeitsdatum';
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  if (Number.isNaN(d.getTime())) return tt(productLocale, 'tasks.display.noDueDate');
+  const formatted = d.toLocaleDateString(formattingLocale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  });
+  return formatted;
 }
 
 /**
@@ -144,45 +159,28 @@ export function formatTaskDueDate(iso: string | null): string {
  */
 export function formatVehicleMaintenanceDueLabel(
   task: Pick<ApiTask, 'dueDate' | 'isOverdue' | 'status'>,
+  locale?: string | null,
 ): string | null {
+  const productLocale = locale ?? DEFAULT_PRODUCT_LOCALE;
   if (!task.dueDate) return null;
-  const formatted = formatTaskDueDate(task.dueDate);
-  if (formatted === 'Kein Fälligkeitsdatum') return null;
-  return deriveTaskIsOverdue(task) ? `Fällig seit ${formatted}` : `Fällig bis ${formatted}`;
+  const formatted = formatTaskDueDate(task.dueDate, productLocale);
+  const noDue = tt(productLocale, 'tasks.display.noDueDate');
+  if (formatted === noDue) return null;
+  return deriveTaskIsOverdue(task)
+    ? tt(productLocale, 'tasks.display.dueSince', { date: formatted })
+    : tt(productLocale, 'tasks.display.dueBy', { date: formatted });
 }
 
 export function vehicleTaskStatusLabel(
   status: VehicleTaskDisplayStatus,
   isOverdue: boolean,
+  locale?: string | null,
 ): string {
-  if (isOverdue && status !== 'done' && status !== 'cancelled') return 'Überfällig';
-  switch (status) {
-    case 'in-progress':
-      return 'In Bearbeitung';
-    case 'waiting':
-      return 'Wartend';
-    case 'done':
-      return 'Erledigt';
-    case 'cancelled':
-      return 'Storniert';
-    case 'open':
-    default:
-      return 'Offen';
-  }
+  return vehicleTaskStatusLabelI18n(locale ?? DEFAULT_PRODUCT_LOCALE, status, isOverdue);
 }
 
-export function vehicleTaskPriorityLabel(priority: VehicleTaskPriority): string {
-  switch (priority) {
-    case 'critical':
-      return 'Kritisch';
-    case 'high':
-      return 'Hoch';
-    case 'low':
-      return 'Niedrig';
-    case 'normal':
-    default:
-      return 'Normal';
-  }
+export function vehicleTaskPriorityLabel(priority: VehicleTaskPriority, locale?: string | null): string {
+  return vehicleTaskPriorityLabelI18n(locale ?? DEFAULT_PRODUCT_LOCALE, priority);
 }
 
 export function vehicleTaskStatusTone(

@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '../../../components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '../../../components/ui/sheet';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type ApiTaskPriority } from '../../../lib/api';
 import {
   bulkActionFailureMessages,
   formatBulkActionSummary,
   type BulkTaskActionType,
 } from '../../lib/taskBulkActions.utils';
-import { TASK_FILTER_LABELS } from './tasksListState';
+import { taskFilterPriorityLabel } from '../tasks-settings/tasks-i18n';
 import { Icon } from '../ui/Icon';
 
 export interface TasksBulkActionBarProps {
@@ -22,6 +23,8 @@ export interface TasksBulkActionBarProps {
 
 type BulkDialogMode = 'assign' | 'priority' | 'dueDate' | 'waiting' | 'cancel' | null;
 
+const TASK_PRIORITIES: ApiTaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
+
 export function TasksBulkActionBar({
   orgId,
   selectedTaskIds,
@@ -30,6 +33,7 @@ export function TasksBulkActionBar({
   onClearSelection,
   onCompleted,
 }: TasksBulkActionBarProps) {
+  const { t, locale } = useLanguage();
   const [dialog, setDialog] = useState<BulkDialogMode>(null);
   const [assigneeId, setAssigneeId] = useState('');
   const [priority, setPriority] = useState<ApiTaskPriority>('NORMAL');
@@ -53,7 +57,7 @@ export function TasksBulkActionBar({
         action,
         ...payload,
       });
-      const summary = formatBulkActionSummary(result);
+      const summary = formatBulkActionSummary(result, locale);
       if (result.failed === 0) {
         toast.success(summary);
       } else if (result.succeeded === 0) {
@@ -69,7 +73,7 @@ export function TasksBulkActionBar({
       onCompleted();
       setDialog(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Massenaktion fehlgeschlagen');
+      toast.error(error instanceof Error ? error.message : t('tasks.bulk.actionFailed'));
     } finally {
       setLoading(false);
     }
@@ -85,18 +89,18 @@ export function TasksBulkActionBar({
           <span className="rounded-full bg-[color:var(--brand-soft)] px-2.5 py-1 text-xs tabular-nums">
             {count}
           </span>
-          <span>{count === 1 ? 'Aufgabe ausgewählt' : 'Aufgaben ausgewählt'}</span>
+          <span>{count === 1 ? t('tasks.bulk.selectedOne') : t('tasks.bulk.selectedMany')}</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="outline" onClick={() => setDialog('assign')}>
-            Zuweisen
+            {t('tasks.bulk.assign')}
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setDialog('priority')}>
-            Priorität
+            {t('tasks.bulk.priority')}
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => setDialog('dueDate')}>
-            Fälligkeit
+            {t('tasks.bulk.dueDate')}
           </Button>
           <Button
             type="button"
@@ -105,7 +109,7 @@ export function TasksBulkActionBar({
             disabled={loading}
             onClick={() => void runBulk('set_waiting')}
           >
-            Wartend
+            {t('tasks.bulk.waiting')}
           </Button>
           <Button
             type="button"
@@ -114,25 +118,25 @@ export function TasksBulkActionBar({
             className="text-[color:var(--status-critical)]"
             onClick={() => setDialog('cancel')}
           >
-            Abbrechen
+            {t('tasks.bulk.cancel')}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={onClearSelection}>
-            Auswahl aufheben
+            {t('tasks.bulk.clearSelection')}
           </Button>
         </div>
       </div>
 
       <Sheet open={dialog === 'assign'} onOpenChange={(open) => !open && setDialog(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
-          <SheetTitle className="mb-4 text-base font-semibold">Zuweisen</SheetTitle>
+          <SheetTitle className="mb-4 text-base font-semibold">{t('tasks.bulk.assignTitle')}</SheetTitle>
           <label className="block space-y-1">
-            <span className="text-[11px] font-semibold text-muted-foreground">Verantwortlicher</span>
+            <span className="text-[11px] font-semibold text-muted-foreground">{t('tasks.bulk.assigneeLabel')}</span>
             <select
               value={assigneeId}
               onChange={(event) => setAssigneeId(event.target.value)}
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
             >
-              <option value="">Zuweisung aufheben</option>
+              <option value="">{t('tasks.bulk.unassign')}</option>
               {assigneeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -142,7 +146,7 @@ export function TasksBulkActionBar({
           </label>
           <div className="mt-5 flex gap-2">
             <Button type="button" variant="neutral" className="flex-1" onClick={() => setDialog(null)}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -152,7 +156,7 @@ export function TasksBulkActionBar({
                 void runBulk('assign', { assignedUserId: assigneeId || null })
               }
             >
-              Zuweisen
+              {t('tasks.bulk.assign')}
             </Button>
           </div>
         </SheetContent>
@@ -160,21 +164,21 @@ export function TasksBulkActionBar({
 
       <Sheet open={dialog === 'priority'} onOpenChange={(open) => !open && setDialog(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
-          <SheetTitle className="mb-4 text-base font-semibold">Priorität ändern</SheetTitle>
+          <SheetTitle className="mb-4 text-base font-semibold">{t('tasks.bulk.priorityTitle')}</SheetTitle>
           <select
             value={priority}
             onChange={(event) => setPriority(event.target.value as ApiTaskPriority)}
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
           >
-            {(Object.keys(TASK_FILTER_LABELS.priority) as ApiTaskPriority[]).map((key) => (
+            {TASK_PRIORITIES.map((key) => (
               <option key={key} value={key}>
-                {TASK_FILTER_LABELS.priority[key]}
+                {taskFilterPriorityLabel(locale, key)}
               </option>
             ))}
           </select>
           <div className="mt-5 flex gap-2">
             <Button type="button" variant="neutral" className="flex-1" onClick={() => setDialog(null)}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -182,7 +186,7 @@ export function TasksBulkActionBar({
               disabled={loading}
               onClick={() => void runBulk('set_priority', { priority })}
             >
-              Speichern
+              {t('common.save')}
             </Button>
           </div>
         </SheetContent>
@@ -190,7 +194,7 @@ export function TasksBulkActionBar({
 
       <Sheet open={dialog === 'dueDate'} onOpenChange={(open) => !open && setDialog(null)}>
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
-          <SheetTitle className="mb-4 text-base font-semibold">Fälligkeit verschieben</SheetTitle>
+          <SheetTitle className="mb-4 text-base font-semibold">{t('tasks.bulk.dueDateTitle')}</SheetTitle>
           <div className="space-y-3">
             <div className="flex gap-2">
               <Button
@@ -199,7 +203,7 @@ export function TasksBulkActionBar({
                 variant={dueMode === 'shift' ? 'primary' : 'outline'}
                 onClick={() => setDueMode('shift')}
               >
-                Tage verschieben
+                {t('tasks.bulk.shiftDays')}
               </Button>
               <Button
                 type="button"
@@ -207,12 +211,12 @@ export function TasksBulkActionBar({
                 variant={dueMode === 'absolute' ? 'primary' : 'outline'}
                 onClick={() => setDueMode('absolute')}
               >
-                Datum setzen
+                {t('tasks.bulk.setDate')}
               </Button>
             </div>
             {dueMode === 'shift' ? (
               <label className="block space-y-1">
-                <span className="text-[11px] font-semibold text-muted-foreground">Tage (+/-)</span>
+                <span className="text-[11px] font-semibold text-muted-foreground">{t('tasks.bulk.shiftDaysLabel')}</span>
                 <input
                   type="number"
                   value={shiftDays}
@@ -222,7 +226,7 @@ export function TasksBulkActionBar({
               </label>
             ) : (
               <label className="block space-y-1">
-                <span className="text-[11px] font-semibold text-muted-foreground">Neues Fälligkeitsdatum</span>
+                <span className="text-[11px] font-semibold text-muted-foreground">{t('tasks.bulk.newDueDate')}</span>
                 <input
                   type="date"
                   value={dueDate}
@@ -234,7 +238,7 @@ export function TasksBulkActionBar({
           </div>
           <div className="mt-5 flex gap-2">
             <Button type="button" variant="neutral" className="flex-1" onClick={() => setDialog(null)}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -249,7 +253,7 @@ export function TasksBulkActionBar({
                 )
               }
             >
-              Anwenden
+              {t('common.apply')}
             </Button>
           </div>
         </SheetContent>
@@ -259,14 +263,14 @@ export function TasksBulkActionBar({
         <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-6 pt-4">
           <SheetTitle className="mb-4 flex items-center gap-2 text-base font-semibold text-[color:var(--status-critical)]">
             <Icon name="alert-triangle" className="h-4 w-4" />
-            {count === 1 ? '1 Aufgabe abbrechen?' : `${count} Aufgaben abbrechen?`}
+            {count === 1
+              ? t('tasks.bulk.cancelTitleOne')
+              : t('tasks.bulk.cancelTitleMany', { count })}
           </SheetTitle>
-          <p className="text-xs text-muted-foreground">
-            Abgebrochene Aufgaben können nicht mehr bearbeitet werden. Teilweise Fehler werden pro Aufgabe gemeldet.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('tasks.bulk.cancelDescription')}</p>
           <div className="mt-5 flex gap-2">
             <Button type="button" variant="neutral" className="flex-1" onClick={() => setDialog(null)}>
-              Zurück
+              {t('common.back')}
             </Button>
             <Button
               type="button"
@@ -275,7 +279,7 @@ export function TasksBulkActionBar({
               disabled={loading}
               onClick={() => void runBulk('cancel')}
             >
-              Abbrechen
+              {t('tasks.bulk.cancel')}
             </Button>
           </div>
         </SheetContent>

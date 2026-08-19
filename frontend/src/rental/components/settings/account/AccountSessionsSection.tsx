@@ -3,6 +3,7 @@ import type { AccountMeDto, AccountSessionDto } from '../../../../lib/api';
 import { DataCard, EmptyState } from '../../../../components/patterns';
 import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { formatAccountDate } from './account-utils';
 import {
   formatSessionIdentity,
@@ -26,10 +27,14 @@ function SecurityStatusBadge({
   enabled,
   available,
   comingSoonLabel,
+  activeLabel,
+  notSetupLabel,
 }: {
   enabled: boolean;
   available: boolean;
   comingSoonLabel: string;
+  activeLabel: string;
+  notSetupLabel: string;
 }) {
   if (enabled) {
     return (
@@ -37,7 +42,7 @@ function SecurityStatusBadge({
         variant="outline"
         className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
       >
-        Aktiv
+        {activeLabel}
       </Badge>
     );
   }
@@ -53,7 +58,7 @@ function SecurityStatusBadge({
       variant="outline"
       className="border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200"
     >
-      Noch nicht eingerichtet
+      {notSetupLabel}
     </Badge>
   );
 }
@@ -69,6 +74,7 @@ export function AccountSessionsSection({
   onRevokeSession,
   onRefreshSessions,
 }: AccountSessionsSectionProps) {
+  const { t } = useLanguage();
   const { security, user } = account;
   const activeSessions = sessions.filter((session) => session.status === 'active');
   const otherActiveSessions = activeSessions.filter((session) => !session.current);
@@ -81,8 +87,8 @@ export function AccountSessionsSection({
   return (
     <div id="account-section-security" className="space-y-4">
       <DataCard
-        title="Sicherheit"
-        description="Passwort, Mehrfaktor-Authentifizierung und Anmeldehistorie."
+        title={t('settings.account.security.title')}
+        description={t('settings.account.security.description')}
       >
         <div className="space-y-3">
           <div className="flex flex-col justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center">
@@ -91,21 +97,21 @@ export function AccountSessionsSection({
                 <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden />
               </div>
               <div>
-                <p className="text-xs font-medium text-foreground">Passwort</p>
+                <p className="text-xs font-medium text-foreground">{t('settings.account.security.password')}</p>
                 <p className="text-[11px] text-muted-foreground">
                   {security.hasPassword
-                    ? 'Passwort ist gesetzt'
-                    : 'Kein Passwort hinterlegt'}
+                    ? t('settings.account.security.passwordSet')
+                    : t('settings.account.security.passwordNotSet')}
                 </p>
               </div>
             </div>
             {security.hasPassword ? (
               <Button type="button" variant="outline" size="sm" onClick={onChangePassword}>
-                Passwort ändern
+                {t('settings.account.security.changePassword')}
               </Button>
             ) : (
               <p className="max-w-xs text-[11px] text-muted-foreground">
-                Passwortverwaltung wird über Ihren Login-Anbieter gesteuert.
+                {t('settings.account.security.passwordManagedExternally')}
               </p>
             )}
           </div>
@@ -120,31 +126,33 @@ export function AccountSessionsSection({
                     <ShieldOff className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   )}
                   <p className="text-xs font-medium text-foreground">
-                    Zwei-Faktor-Authentifizierung (2FA)
+                    {t('settings.account.security.twoFactor')}
                   </p>
                   <SecurityStatusBadge
                     enabled={twoFactorEnabled}
                     available={twoFactorAvailable}
-                    comingSoonLabel="Demnächst verfügbar"
+                    comingSoonLabel={t('settings.account.security.comingSoon')}
+                    activeLabel={t('settings.account.security.statusActive')}
+                    notSetupLabel={t('settings.account.security.statusNotSetup')}
                   />
                 </div>
                 {twoFactorEnabled ? (
                   <p className="text-[11px] text-muted-foreground">
-                    Zwei-Faktor-Authentifizierung ist für Ihr Konto aktiv.
+                    {t('settings.account.security.twoFactorActive')}
                   </p>
                 ) : twoFactorAvailable ? (
                   <p className="text-[11px] text-muted-foreground">
-                    Schützen Sie Ihr Konto mit einem zusätzlichen Sicherheitscode bei der Anmeldung.
+                    {t('settings.account.security.twoFactorSetupHint')}
                   </p>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
-                    Zwei-Faktor-Authentifizierung wird vorbereitet.
+                    {t('settings.account.security.twoFactorPreparing')}
                   </p>
                 )}
               </div>
               {twoFactorAvailable && !twoFactorEnabled ? (
                 <Button type="button" variant="outline" size="sm" className="shrink-0" disabled>
-                  2FA einrichten
+                  {t('settings.account.security.setup2fa')}
                 </Button>
               ) : null}
             </div>
@@ -153,23 +161,25 @@ export function AccountSessionsSection({
           <div className="rounded-xl border border-border/60 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <Smartphone className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-              <p className="text-xs font-medium text-foreground">Passkeys</p>
+              <p className="text-xs font-medium text-foreground">{t('settings.account.security.passkeys')}</p>
               <SecurityStatusBadge
                 enabled={false}
                 available={passkeysAvailable}
-                comingSoonLabel="Demnächst verfügbar"
+                comingSoonLabel={t('settings.account.security.comingSoon')}
+                activeLabel={t('settings.account.security.statusActive')}
+                notSetupLabel={t('settings.account.security.statusNotSetup')}
               />
             </div>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               {passkeysAvailable
-                ? 'Melden Sie sich künftig ohne Passwort mit biometrischen Daten oder einem Sicherheitsschlüssel an.'
-                : 'Passkey-Anmeldung wird vorbereitet und ist bald verfügbar.'}
+                ? t('settings.account.security.passkeysHint')
+                : t('settings.account.security.passkeysPreparing')}
             </p>
           </div>
 
           <div className="space-y-1 rounded-xl border border-border/60 p-3 text-[11px] text-muted-foreground">
             <p>
-              Letzte Anmeldung:{' '}
+              {t('settings.account.security.lastLogin')}{' '}
               <span className="font-medium text-foreground">
                 {formatAccountDate(security.lastLoginAt ?? user.lastLoginAt)}
               </span>
@@ -184,14 +194,14 @@ export function AccountSessionsSection({
             )}
             {user.lastLoginDevice ? (
               <p>
-                Gerät: <span className="text-foreground">{user.lastLoginDevice}</span>
+                {t('settings.account.security.device')} <span className="text-foreground">{user.lastLoginDevice}</span>
               </p>
             ) : null}
           </div>
 
           {security.recommendations.length > 0 ? (
             <div className="rounded-xl border border-[color:var(--status-warning)]/20 bg-[color:var(--status-warning-soft)]/30 p-3">
-              <p className="mb-1.5 text-[11px] font-semibold text-foreground">Empfehlungen</p>
+              <p className="mb-1.5 text-[11px] font-semibold text-foreground">{t('settings.account.security.recommendations')}</p>
               <ul className="space-y-1">
                 {security.recommendations.map((rec) => (
                   <li key={rec} className="text-[11px] text-muted-foreground">
@@ -205,8 +215,8 @@ export function AccountSessionsSection({
       </DataCard>
 
       <DataCard
-        title="Aktive Sitzungen"
-        description="Geräte, mit denen Sie aktuell angemeldet sind."
+        title={t('settings.account.sessions.title')}
+        description={t('settings.account.sessions.description')}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             <Button
@@ -216,7 +226,7 @@ export function AccountSessionsSection({
               onClick={onRefreshSessions}
               disabled={sessionsLoading}
             >
-              Aktualisieren
+              {t('settings.account.sessions.refresh')}
             </Button>
             {otherActiveSessions.length > 0 ? (
               <Button
@@ -231,20 +241,20 @@ export function AccountSessionsSection({
                 ) : (
                   <LogOut className="h-3.5 w-3.5" aria-hidden />
                 )}
-                Andere Sitzungen abmelden
+                {t('settings.account.sessions.revokeOthers')}
               </Button>
             ) : null}
           </div>
         }
       >
         {sessionsLoading ? (
-          <p className="py-5 text-center text-xs text-muted-foreground">Sitzungen werden geladen…</p>
+          <p className="py-5 text-center text-xs text-muted-foreground">{t('settings.account.sessions.loading')}</p>
         ) : sessions.length === 0 ? (
           <EmptyState
             compact
             icon={<MonitorSmartphone className="h-5 w-5" />}
-            title="Keine Sitzungen erfasst"
-            description="Es sind noch keine aktiven Sitzungen für dieses Konto vorhanden."
+            title={t('settings.account.sessions.emptyTitle')}
+            description={t('settings.account.sessions.emptyDescription')}
           />
         ) : (
           <ul className="space-y-2">
@@ -266,12 +276,12 @@ export function AccountSessionsSection({
                             variant="outline"
                             className="border-primary/30 bg-primary/10 text-primary"
                           >
-                            Aktuelles Gerät
+                            {t('settings.account.sessions.currentDevice')}
                           </Badge>
                         ) : null}
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Letzte Aktivität: {formatSessionLastActivity(session)}
+                        {t('settings.account.sessions.lastActivity')} {formatSessionLastActivity(session)}
                       </p>
                       {ip ? (
                         <p className="text-[11px] text-muted-foreground/80">IP: {ip}</p>
@@ -291,7 +301,7 @@ export function AccountSessionsSection({
                         ) : (
                           <LogOut className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                         )}
-                        {revokingSessionId === session.id ? 'Wird abgemeldet…' : 'Abmelden'}
+                        {revokingSessionId === session.id ? t('settings.account.sessions.revoking') : t('settings.account.sessions.revoke')}
                       </Button>
                     ) : null}
                   </div>

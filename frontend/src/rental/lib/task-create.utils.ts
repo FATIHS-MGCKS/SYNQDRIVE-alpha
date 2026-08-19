@@ -1,4 +1,5 @@
 import type { ApiTaskType, CreateTaskPayload } from '../../lib/api';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export type TaskCategory =
   | 'Cleaning'
@@ -50,19 +51,19 @@ export const VIEW_PRIORITY_TO_API: Record<TaskPriorityView, NonNullable<CreateTa
   Critical: 'CRITICAL',
 };
 
-export const TASK_TYPE_LABELS: Record<ApiTaskType, string> = {
-  VEHICLE_SERVICE: 'Fahrzeug-Service',
-  VEHICLE_INSPECTION: 'Inspektion / HU',
-  TIRE_CHECK: 'Reifenprüfung',
-  BRAKE_CHECK: 'Bremsenprüfung',
-  BATTERY_CHECK: 'Batterieprüfung',
-  VEHICLE_CLEANING: 'Fahrzeugreinigung',
-  BOOKING_PREPARATION: 'Buchungsvorbereitung',
-  BOOKING_PICKUP: 'Fahrzeugübergabe',
-  BOOKING_RETURN: 'Fahrzeugrückgabe',
-  DOCUMENT_REVIEW: 'Dokumentenprüfung',
-  INVOICE_REQUIRED: 'Rechnung erforderlich',
-  CUSTOMER_FOLLOWUP: 'Kunden-Nachverfolgung',
-  REPAIR: 'Reparatur',
-  CUSTOM: 'Individuelle Aufgabe',
+export const TASK_TYPE_LABEL_KEYS: Record<ApiTaskType, TranslationKey> = {
+  VEHICLE_SERVICE: 'tasks.type.VEHICLE_SERVICE',
+  VEHICLE_INSPECTION: 'tasks.type.VEHICLE_INSPECTION',
+  TIRE_CHECK: 'tasks.type.TIRE_CHECK',
+  BRAKE_CHECK: 'tasks.type.BRAKE_CHECK',
+  BATTERY_CHECK: 'tasks.type.BATTERY_CHECK',
+  VEHICLE_CLEANING: 'tasks.type.VEHICLE_CLEANING',
+  BOOKING_PREPARATION: 'tasks.type.BOOKING_PREPARATION',
+  BOOKING_PICKUP: 'tasks.type.BOOKING_PICKUP',
+  BOOKING_RETURN: 'tasks.type.BOOKING_RETURN',
+  DOCUMENT_REVIEW: 'tasks.type.DOCUMENT_REVIEW',
+  INVOICE_REQUIRED: 'tasks.type.INVOICE_REQUIRED',
+  CUSTOMER_FOLLOWUP: 'tasks.type.CUSTOMER_FOLLOWUP',
+  REPAIR: 'tasks.type.REPAIR',
+  CUSTOM: 'tasks.type.CUSTOM',
 };

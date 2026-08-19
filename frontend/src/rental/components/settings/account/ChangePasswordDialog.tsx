@@ -1,9 +1,10 @@
 import { Loader2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '../../../../components/ui/button';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   ACCOUNT_PASSWORD_MIN_LENGTH,
-  ACCOUNT_PASSWORD_REQUIREMENTS,
+  getAccountPasswordRequirements,
   validateAccountPasswordChange,
 } from './password-policy';
 import { accountFieldLabelClass, accountInputClass } from './account-ui';
@@ -28,8 +29,10 @@ const EMPTY_FORM = {
 };
 
 export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: ChangePasswordDialogProps) {
+  const { t, locale } = useLanguage();
   const [form, setForm] = useState(EMPTY_FORM);
   const [localError, setLocalError] = useState<string | null>(null);
+  const requirements = useMemo(() => getAccountPasswordRequirements(locale), [locale]);
 
   if (!open) return null;
 
@@ -43,7 +46,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
     event.preventDefault();
     setLocalError(null);
 
-    const validationError = validateAccountPasswordChange({
+    const validationError = validateAccountPasswordChange(locale, {
       currentPassword: form.currentPassword,
       newPassword: form.newPassword,
       confirmPassword: form.confirmPassword,
@@ -73,7 +76,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
       <button
         type="button"
         className="absolute inset-0 overlay-scrim"
-        aria-label="Dialog schließen"
+        aria-label={t('settings.account.password.closeDialog')}
         onClick={() => !saving && resetAndClose()}
       />
       <div
@@ -84,7 +87,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 id="change-password-title" className="text-sm font-semibold text-foreground">
-            Passwort ändern
+            {t('settings.account.password.title')}
           </h3>
           <Button
             type="button"
@@ -92,20 +95,20 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
             size="icon"
             onClick={resetAndClose}
             disabled={saving}
-            aria-label="Schließen"
+            aria-label={t('common.close')}
           >
             <X />
           </Button>
         </div>
 
         <p className="mb-4 text-[11px] text-muted-foreground">
-          Geben Sie Ihr aktuelles Passwort ein und wählen Sie ein neues, sicheres Passwort.
+          {t('settings.account.password.description')}
         </p>
 
         <form onSubmit={(event) => void handleSubmit(event)} className="space-y-3">
           <div>
             <label className={accountFieldLabelClass} htmlFor="account-current-password">
-              Aktuelles Passwort
+              {t('settings.account.password.current')}
             </label>
             <input
               id="account-current-password"
@@ -119,7 +122,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
           </div>
           <div>
             <label className={accountFieldLabelClass} htmlFor="account-new-password">
-              Neues Passwort
+              {t('settings.account.password.new')}
             </label>
             <input
               id="account-new-password"
@@ -134,7 +137,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
           </div>
           <div>
             <label className={accountFieldLabelClass} htmlFor="account-confirm-password">
-              Neues Passwort bestätigen
+              {t('settings.account.password.confirm')}
             </label>
             <input
               id="account-confirm-password"
@@ -149,9 +152,11 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
           </div>
 
           <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
-            <p className="text-[11px] font-medium text-foreground">Passwortanforderungen</p>
+            <p className="text-[11px] font-medium text-foreground">
+              {t('settings.account.password.requirements')}
+            </p>
             <ul className="mt-1.5 space-y-1">
-              {ACCOUNT_PASSWORD_REQUIREMENTS.map((requirement) => (
+              {requirements.map((requirement) => (
                 <li key={requirement} className="text-[11px] text-muted-foreground">
                   · {requirement}
                 </li>
@@ -169,7 +174,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
               className="rounded border-border"
               disabled={saving}
             />
-            Alle anderen Sitzungen abmelden
+            {t('settings.account.password.revokeOthers')}
           </label>
 
           {localError ? (
@@ -180,11 +185,11 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" size="sm" onClick={resetAndClose} disabled={saving}>
-              Abbrechen
+              {t('common.cancel')}
             </Button>
             <Button type="submit" size="sm" disabled={saving}>
               {saving ? <Loader2 className="animate-spin" aria-hidden /> : null}
-              Passwort speichern
+              {t('settings.account.password.save')}
             </Button>
           </div>
         </form>

@@ -6,6 +6,7 @@ import {
   type Station,
   type TenantOrganizationProfileDto,
 } from '../../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { draftToUpdatePayload, type CompanyDraft } from './company-utils';
 
 export interface ActivityLogRow {
@@ -18,6 +19,7 @@ export interface ActivityLogRow {
 }
 
 export function useCompanyCenter(orgId: string | undefined) {
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<TenantOrganizationProfileDto | null>(null);
   const [legalDocs, setLegalDocs] = useState<LegalDocumentDto[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
@@ -33,7 +35,7 @@ export function useCompanyCenter(orgId: string | undefined) {
   const loadProfile = useCallback(async () => {
     if (!orgId?.trim()) {
       setLoading(false);
-      setLoadError('Keine Organisation geladen.');
+      setLoadError(t('settings.company.toast.noOrg'));
       return;
     }
     setLoading(true);
@@ -42,11 +44,13 @@ export function useCompanyCenter(orgId: string | undefined) {
       const data = await api.organizations.getProfile(orgId);
       setProfile(data);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Unternehmensprofil konnte nicht geladen werden.');
+      setLoadError(
+        err instanceof Error ? err.message : t('settings.company.loadErrorTitle'),
+      );
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   const loadLegalDocs = useCallback(async () => {
     if (!orgId?.trim()) return;
@@ -109,43 +113,43 @@ export function useCompanyCenter(orgId: string | undefined) {
 
   const saveProfile = useCallback(
     async (draft: CompanyDraft) => {
-      if (!orgId?.trim()) throw new Error('Keine Organisation geladen.');
+      if (!orgId?.trim()) throw new Error(t('settings.company.toast.noOrg'));
       setSaving(true);
       try {
         const data = await api.organizations.updateProfile(orgId, draftToUpdatePayload(draft));
         setProfile(data);
-        toast.success('Unternehmensdaten gespeichert');
+        toast.success(t('settings.company.toast.saved'));
         await loadActivity();
         return data;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Speichern fehlgeschlagen';
+        const msg = err instanceof Error ? err.message : t('settings.company.toast.saveFailed');
         toast.error(msg);
         throw err;
       } finally {
         setSaving(false);
       }
     },
-    [orgId, loadActivity],
+    [orgId, loadActivity, t],
   );
 
   const uploadLogo = useCallback(
     async (file: File) => {
-      if (!orgId?.trim()) throw new Error('Keine Organisation geladen.');
+      if (!orgId?.trim()) throw new Error(t('settings.company.toast.noOrg'));
       setLogoUploading(true);
       try {
         const { url } = await api.organizations.uploadLogo(orgId, file);
         setProfile((p) => (p ? { ...p, logoUrl: url } : p));
-        toast.success('Logo hochgeladen');
+        toast.success(t('settings.company.toast.logoUploaded'));
         return url;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Logo-Upload fehlgeschlagen';
+        const msg = err instanceof Error ? err.message : t('settings.company.toast.logoUploadFailed');
         toast.error(msg);
         throw err;
       } finally {
         setLogoUploading(false);
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const removeLogo = useCallback(async () => {
@@ -154,14 +158,14 @@ export function useCompanyCenter(orgId: string | undefined) {
     try {
       const data = await api.organizations.updateProfile(orgId, { logoUrl: null });
       setProfile(data);
-      toast.success('Logo entfernt');
+      toast.success(t('settings.company.toast.logoRemoved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Logo konnte nicht entfernt werden');
+      toast.error(err instanceof Error ? err.message : t('settings.company.toast.logoRemoveFailed'));
       throw err;
     } finally {
       setLogoUploading(false);
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   return {
     profile,

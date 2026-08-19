@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { EMPTY_VALUE, INPUT_CLASS, LABEL_CLASS } from './company-utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { getEmptyValue, INPUT_CLASS, LABEL_CLASS } from './company-utils';
 
 interface CompanyFieldProps {
   label: string;
@@ -30,7 +31,8 @@ export function CompanyField({
   onCheckedChange,
   rows = 3,
 }: CompanyFieldProps) {
-  const display = value.trim() ? value : EMPTY_VALUE;
+  const { t, locale } = useLanguage();
+  const display = value.trim() ? value : getEmptyValue(locale);
   const isEmpty = !value.trim();
 
   if (!editing) {
@@ -43,7 +45,7 @@ export function CompanyField({
         <dd
           className={`text-xs ${isEmpty ? 'text-muted-foreground italic' : 'text-foreground'}`}
         >
-          {type === 'checkbox' ? (checked ? 'Ja' : 'Nein') : display}
+          {type === 'checkbox' ? (checked ? t('common.yes') : t('common.no')) : display}
         </dd>
         {hint && <p className="text-[10px] text-muted-foreground mt-1">{hint}</p>}
       </div>
@@ -74,7 +76,7 @@ export function CompanyField({
               value={value}
               onChange={(e) => onChange?.(e.target.value)}
             >
-              <option value="">— Auswählen —</option>
+              <option value="">{t('settings.company.field.selectPlaceholder')}</option>
               {options?.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}

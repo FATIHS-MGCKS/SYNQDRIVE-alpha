@@ -95,6 +95,28 @@ function isP23EnforceCleanPath(relPath: string): boolean {
   return P23_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
+const P24_ENFORCE_CLEAN_EXACT = [
+  'rental/components/TasksView.tsx',
+  'rental/components/SettingsView.tsx',
+];
+
+const P24_ENFORCE_CLEAN_PREFIXES = [
+  'rental/components/tasks/',
+  'rental/components/settings/',
+  'rental/components/tasks-settings/',
+  'rental/lib/task-list.utils.ts',
+  'rental/lib/task-create.utils.ts',
+  'rental/lib/tasks-page.utils.ts',
+  'rental/lib/task-display.utils.ts',
+  'rental/lib/task-create-form.utils.ts',
+  'rental/lib/taskBulkActions.utils.ts',
+];
+
+function isP24EnforceCleanPath(relPath: string): boolean {
+  if (P24_ENFORCE_CLEAN_EXACT.includes(relPath)) return true;
+  return P24_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
+}
+
 function isP22EnforceCleanPath(relPath: string): boolean {
   if (P22_ENFORCE_CLEAN_EXACT.includes(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -105,7 +127,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -137,5 +159,12 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 enforce-cle
       isP23EnforceCleanPath(finding.file),
     );
     expect(p23Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.4 enforce-clean findings to tasks and settings only', () => {
+    const p24Debt = inventory.findings.filter((finding) =>
+      isP24EnforceCleanPath(finding.file),
+    );
+    expect(p24Debt).toHaveLength(0);
   });
 });

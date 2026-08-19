@@ -1,9 +1,11 @@
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   getVisibleTasksPageViews,
   type TasksPageView,
   type TasksPageViewMeta,
 } from '../../lib/tasks-page.utils';
+import { tasksPageViewLabel } from '../tasks-settings/tasks-i18n';
 
 export interface TasksPageViewsProps {
   activeView: TasksPageView;
@@ -18,13 +20,14 @@ export function TasksPageViews({
   canViewUnassigned,
   counts,
 }: TasksPageViewsProps) {
+  const { t, locale } = useLanguage();
   const views = getVisibleTasksPageViews(canViewUnassigned);
 
   return (
     <div
       className="sq-tab-bar sq-tab-bar--inset flex gap-1 overflow-x-auto p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="tablist"
-      aria-label="Aufgaben-Ansichten"
+      aria-label={t('tasks.pageViewsAria')}
       data-testid="tasks-page-views"
     >
       {views.map((view) => (
@@ -33,6 +36,7 @@ export function TasksPageViews({
           view={view}
           active={activeView === view.id}
           count={counts?.[view.id]}
+          label={tasksPageViewLabel(locale, view.id)}
           onSelect={() => onViewChange(view.id)}
         />
       ))}
@@ -44,11 +48,13 @@ function ViewTab({
   view,
   active,
   count,
+  label,
   onSelect,
 }: {
   view: TasksPageViewMeta;
   active: boolean;
   count?: number;
+  label: string;
   onSelect: () => void;
 }) {
   return (
@@ -65,7 +71,7 @@ function ViewTab({
           : 'text-muted-foreground hover:text-foreground',
       )}
     >
-      <span>{view.label}</span>
+      <span>{label}</span>
       {typeof count === 'number' && count > 0 ? (
         <span
           className={cn(

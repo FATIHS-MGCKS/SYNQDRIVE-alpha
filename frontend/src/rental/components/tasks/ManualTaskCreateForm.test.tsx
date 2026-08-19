@@ -1,8 +1,12 @@
 /**
  * Task Domain V2 — Manual task creation form (areas 7 + 8)
  */
+// @vitest-environment happy-dom
+import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider, translateKey } from '../../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY } from '../../../i18n/locales';
 import {
   createChecklistDraft,
   EMPTY_MANUAL_TASK_FORM,
@@ -11,9 +15,14 @@ import { ManualTaskCreateForm } from './ManualTaskCreateForm';
 
 const noop = vi.fn();
 
+function renderDe(ui: React.ReactElement) {
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, 'de');
+  return renderToStaticMarkup(createElement(LanguageProvider, null, ui));
+}
+
 describe('ManualTaskCreateForm', () => {
   it('renders all core fields with accessible labels', () => {
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <ManualTaskCreateForm
         form={{
           ...EMPTY_MANUAL_TASK_FORM,
@@ -38,18 +47,18 @@ describe('ManualTaskCreateForm', () => {
     );
 
     expect(html).toContain('data-testid="manual-task-create-form"');
-    expect(html).toContain('Titel *');
-    expect(html).toContain('Beschreibung');
-    expect(html).toContain('Geschätzte Dauer');
-    expect(html).toContain('Erste Notiz');
+    expect(html).toContain(translateKey('de', 'tasks.form.titleRequired').text);
+    expect(html).toContain(translateKey('de', 'tasks.form.description').text);
+    expect(html).toContain(translateKey('de', 'tasks.form.estimatedDuration').text);
+    expect(html).toContain(translateKey('de', 'tasks.form.initialNote').text);
     expect(html).toContain('HU fällig');
     expect(html).toContain('Vorabinfo');
-    expect(html).toContain('Checkliste');
-    expect(html).toContain('Verknüpfungen');
+    expect(html).toContain(translateKey('de', 'tasks.form.checklist').text);
+    expect(html).toContain(translateKey('de', 'tasks.form.links').text);
   });
 
   it('shows field errors and supports locked vehicle context', () => {
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <ManualTaskCreateForm
         form={EMPTY_MANUAL_TASK_FORM}
         errors={{ title: 'Titel ist erforderlich', dueDate: 'Fälligkeit ungültig' }}
@@ -72,6 +81,6 @@ describe('ManualTaskCreateForm', () => {
     expect(html).toContain('Titel ist erforderlich');
     expect(html).toContain('Fälligkeit ungültig');
     expect(html).not.toContain('name="vehicleId"');
-    expect(html).not.toContain('>Fahrzeug</label>');
+    expect(html).not.toContain(`>${translateKey('de', 'tasks.form.vehicle').text}</label>`);
   });
 });

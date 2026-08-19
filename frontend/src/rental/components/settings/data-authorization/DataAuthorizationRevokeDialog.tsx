@@ -1,7 +1,8 @@
 import { Loader2, ShieldOff, X } from 'lucide-react';
 import { useState } from 'react';
 import type { DataAuthorizationDto } from '../../../../lib/api';
-import { DIMO_REVOKE_IMPACT, isDimoTelemetryAuth } from './data-authorization.constants';
+import { getDimoRevokeImpact, isDimoTelemetryAuth } from './data-authorization.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface DataAuthorizationRevokeDialogProps {
   open: boolean;
@@ -18,6 +19,8 @@ export function DataAuthorizationRevokeDialog({
   onCancel,
   onConfirm,
 }: DataAuthorizationRevokeDialogProps) {
+  const { t, locale } = useLanguage();
+  const dimoRevokeImpact = getDimoRevokeImpact(locale);
   const [reason, setReason] = useState('');
 
   if (!open || !auth) return null;
@@ -52,7 +55,7 @@ export function DataAuthorizationRevokeDialog({
             type="button"
             onClick={onCancel}
             className="ml-auto p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
-            aria-label="Schließen"
+            aria-label={t('common.close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -60,23 +63,23 @@ export function DataAuthorizationRevokeDialog({
 
         {dimo && (
           <div className="mb-4 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-[12px] text-muted-foreground leading-relaxed">
-            <p className="font-semibold text-destructive mb-1">DIMO Telemetry — kritische Auswirkung</p>
-            {DIMO_REVOKE_IMPACT}
+            <p className="font-semibold text-destructive mb-1">{t('settings.dataAuth.revoke.dimoImpactTitle')}</p>
+            {dimoRevokeImpact}
           </div>
         )}
 
         <p className="text-[12px] text-muted-foreground mb-3">
-          Der Zugriff wird für betroffene Verarbeitungszwecke blockiert. Der Eintrag bleibt im Audit-Verlauf sichtbar.
+          {t('settings.dataAuth.revoke.dimoImpactBody')}
         </p>
 
         <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">
-          Begründung (optional)
+          {t('settings.dataAuth.revoke.reasonOptional')}
         </label>
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={3}
-          placeholder="z. B. Vertrag beendet, Zweck entfällt …"
+          placeholder={t('settings.dataAuth.revoke.reasonPlaceholder')}
           className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-xs text-foreground outline-none focus:ring-2 focus:ring-[var(--brand-soft)]"
         />
 
@@ -87,7 +90,7 @@ export function DataAuthorizationRevokeDialog({
             disabled={loading}
             className="px-4 py-2.5 rounded-xl text-xs font-medium border border-border hover:bg-muted disabled:opacity-50"
           >
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"

@@ -4,35 +4,56 @@ import type {
   RentalVehicleCategoryType,
   RentalYoungDriverPolicy,
 } from './rental-rules.types';
+import type { TranslationKey } from '../../../../i18n/translations/en';
+import { st } from '../../tasks-settings/settings-i18n';
 
-export const FOREIGN_TRAVEL_OPTIONS: { value: RentalForeignTravelPolicy; label: string }[] = [
-  { value: 'ALLOWED', label: 'Allowed' },
-  { value: 'APPROVAL_REQUIRED', label: 'Approval required' },
-  { value: 'NOT_ALLOWED', label: 'Not allowed' },
-];
+function policyOptions<T extends string>(
+  locale: string,
+  entries: Array<{ value: T; key: TranslationKey }>,
+): { value: T; label: string }[] {
+  return entries.map(({ value, key }) => ({ value, label: st(locale, key) }));
+}
 
-export const ADDITIONAL_DRIVER_OPTIONS: { value: RentalAdditionalDriverPolicy; label: string }[] = [
-  { value: 'ALLOWED', label: 'Allowed' },
-  { value: 'APPROVAL_REQUIRED', label: 'Approval required' },
-  { value: 'NOT_ALLOWED', label: 'Not allowed' },
-];
+export function getForeignTravelOptions(locale: string): { value: RentalForeignTravelPolicy; label: string }[] {
+  return policyOptions(locale, [
+    { value: 'ALLOWED', key: 'rentalRules.policy.allowed' },
+    { value: 'APPROVAL_REQUIRED', key: 'rentalRules.policy.approvalRequired' },
+    { value: 'NOT_ALLOWED', key: 'rentalRules.policy.notAllowed' },
+  ]);
+}
 
-export const YOUNG_DRIVER_OPTIONS: { value: RentalYoungDriverPolicy; label: string }[] = [
-  { value: 'ALLOWED', label: 'Allowed' },
-  { value: 'FEE_REQUIRED', label: 'Fee required' },
-  { value: 'NOT_ALLOWED', label: 'Not allowed' },
-];
+export function getAdditionalDriverOptions(
+  locale: string,
+): { value: RentalAdditionalDriverPolicy; label: string }[] {
+  return policyOptions(locale, [
+    { value: 'ALLOWED', key: 'rentalRules.policy.allowed' },
+    { value: 'APPROVAL_REQUIRED', key: 'rentalRules.policy.approvalRequired' },
+    { value: 'NOT_ALLOWED', key: 'rentalRules.policy.notAllowed' },
+  ]);
+}
 
-export const CATEGORY_TYPE_OPTIONS: { value: RentalVehicleCategoryType; label: string }[] = [
-  { value: 'ECONOMY', label: 'Economy' },
-  { value: 'COMPACT', label: 'Compact' },
-  { value: 'TRANSPORTER', label: 'Transporter' },
-  { value: 'PREMIUM', label: 'Premium' },
-  { value: 'PERFORMANCE', label: 'Performance' },
-  { value: 'LUXURY', label: 'Luxury' },
-  { value: 'EV_PERFORMANCE', label: 'EV Performance' },
-  { value: 'CUSTOM', label: 'Custom' },
-];
+export function getYoungDriverOptions(locale: string): { value: RentalYoungDriverPolicy; label: string }[] {
+  return policyOptions(locale, [
+    { value: 'ALLOWED', key: 'rentalRules.policy.allowed' },
+    { value: 'FEE_REQUIRED', key: 'rentalRules.policy.feeRequired' },
+    { value: 'NOT_ALLOWED', key: 'rentalRules.policy.notAllowed' },
+  ]);
+}
+
+export function getCategoryTypeOptions(
+  locale: string,
+): { value: RentalVehicleCategoryType; label: string }[] {
+  return policyOptions(locale, [
+    { value: 'ECONOMY', key: 'rentalRules.categoryType.ECONOMY' },
+    { value: 'COMPACT', key: 'rentalRules.categoryType.COMPACT' },
+    { value: 'TRANSPORTER', key: 'rentalRules.categoryType.TRANSPORTER' },
+    { value: 'PREMIUM', key: 'rentalRules.categoryType.PREMIUM' },
+    { value: 'PERFORMANCE', key: 'rentalRules.categoryType.PERFORMANCE' },
+    { value: 'LUXURY', key: 'rentalRules.categoryType.LUXURY' },
+    { value: 'EV_PERFORMANCE', key: 'rentalRules.categoryType.EV_PERFORMANCE' },
+    { value: 'CUSTOM', key: 'rentalRules.categoryType.CUSTOM' },
+  ]);
+}
 
 export const CATEGORY_COLOR_PRESETS = [
   '#3D5A73',

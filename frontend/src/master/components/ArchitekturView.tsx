@@ -396,6 +396,14 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Tasks & Settings (P2.2.4 — V4.9.924)', icon: Globe,
+    endpoint: 'Rental Tasks page + Settings administration (account, company, data-authorization, email, rental-rules).',
+    service: '**Helpers:** `tasks-i18n.ts` (`tt`, label maps) + `settings-i18n.ts` (`st`); React uses `useLanguage()`. **Keys:** 808 raw candidates / 790 net EN+DE (5136→5926); 21 duplicate reviews (18 SAME-SEMANTIC, 3 DIFFERENT-SEMANTIC); `settings-admin.{en,de}.ts`; reused `common.*`, `adminTab.*`, `email.*`. **Guardrails:** P2.2.4 enforce-clean — 0 findings; SettingsView→Settings; StationsTab extracted (A). **Shim:** 32→31; 0 new compat. **Scanner:** Tasks 114→17; Automation +26 reclass. **Enums:** task API values unchanged.',
+    dataSource: 'architecture/I18N_RENTAL_TASKS_SETTINGS_P2_2_4_2026-08-19.md; docs/audits/i18n-production-hardening-baseline-2026-08.md' },
+  { name: 'Platform i18n Rental Tasks (P2.2.4 partial — V4.9.923)', icon: Globe,
+    endpoint: 'Tasks-only checkpoint notes (superseded by V4.9.924 combined entry).',
+    service: 'See combined Tasks + Settings architecture record.',
+    dataSource: 'architecture/I18N_RENTAL_TASKS_P2_2_4_2026-08-19.md' },
   { name: 'Platform i18n Rental Bookings & Customers (P2.2.3 — V4.9.922)', icon: Globe,
     endpoint: 'Bookings list/planner/detail/wizard/payment; Customers list/detail/wizard/verification presentation.',
     service: '**Helpers:** `bookings-i18n.ts` (`bt`, `bookingsFormattingLocaleOrDefault`) + `customers-i18n.ts` (`ct`, `customersFormattingLocaleOrDefault`) for non-React builders; React uses `useLanguage()` (`t`, `locale`, `formattingLocale`). **Keys:** +458 raw / +449 net EN+DE (`bookings.*` 104, `customers.*` 354; 9 duplicate-semantics → `common.*`; final **5136**); reused `common.*`, `email.*`, vehicle-booking keys. **Guardrails:** P2.2.3 enforce-clean paths in `i18n-hardcoded-scan.mjs` — Bookings/Customers modules 0 findings. **Shim:** `BookingDocumentsSection` migrated compat→canonical; inventory 33→32 (one deterministic removal); no new `../i18n/` compat consumers.',

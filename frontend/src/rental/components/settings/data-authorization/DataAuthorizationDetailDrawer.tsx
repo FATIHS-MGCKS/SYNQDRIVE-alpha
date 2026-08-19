@@ -4,7 +4,7 @@ import { DetailDrawer, StatusChip, Timeline, type TimelineItem } from '../../../
 import { SupportContextButton } from '../../../../components/support/SupportContextButton';
 import { api, type DataAuthorizationAuditEntry, type DataAuthorizationDto } from '../../../../lib/api';
 import {
-  DIMO_REVOKE_IMPACT,
+  getDimoRevokeImpact,
   isDimoTelemetryAuth,
   labelDataCategory,
   labelProcessor,
@@ -12,6 +12,7 @@ import {
   labelScope,
   labelSourceType,
 } from './data-authorization.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { AuthRiskChip, AuthStatusChip } from './data-authorization.badges';
 import { affectedObjectsSummary, formatAuthDate, labelScopeStatus } from './data-authorization.utils';
 
@@ -70,6 +71,8 @@ export function DataAuthorizationDetailDrawer({
   onGrant,
   onRevoke,
 }: DataAuthorizationDetailDrawerProps) {
+  const { t, locale } = useLanguage();
+  const dimoRevokeImpact = getDimoRevokeImpact(locale);
   const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
   const [audit, setAudit] = useState<DataAuthorizationAuditEntry[]>([]);
@@ -207,11 +210,11 @@ export function DataAuthorizationDetailDrawer({
       footer={footer}
     >
       <div className="space-y-6">
-        <DetailSection title="Überblick">
+        <DetailSection title={t('settings.dataAuth.detail.overview')}>
           <div className="surface-premium rounded-xl border border-border/70 p-3 space-y-2">
-            <DetailRow label="Quelle" value={labelSourceType(auth.sourceType)} />
+            <DetailRow label="Quelle" value={labelSourceType(locale, auth.sourceType)} />
             <DetailRow label="Verarbeiter" value={labelProcessor(auth)} />
-            <DetailRow label="Scope" value={labelScope(auth.scopeKey)} />
+            <DetailRow label="Scope" value={labelScope(locale, auth.scopeKey)} />
             {(dimo || auth.scopeStatus) && (
               <DetailRow label="Scope-Status" value={labelScopeStatus(auth)} />
             )}
@@ -229,11 +232,11 @@ export function DataAuthorizationDetailDrawer({
           </div>
         </DetailSection>
 
-        <DetailSection title="Was wird verarbeitet?">
+        <DetailSection title={t('settings.dataAuth.detail.whatProcessed')}>
           <div className="flex flex-wrap gap-1.5">
             {auth.dataCategories.map((cat) => (
               <StatusChip key={cat} tone="neutral">
-                {labelDataCategory(cat)}
+                {labelDataCategory(locale, cat)}
               </StatusChip>
             ))}
           </div>
@@ -246,18 +249,18 @@ export function DataAuthorizationDetailDrawer({
           )}
         </DetailSection>
 
-        <DetailSection title="Wofür wird es verwendet?">
+        <DetailSection title={t('settings.dataAuth.detail.usedFor')}>
           <div className="flex flex-wrap gap-1.5">
             {purposes.map((p) => (
               <StatusChip key={p} tone="info">
-                {labelPurpose(p)}
+                {labelPurpose(locale, p)}
               </StatusChip>
             ))}
           </div>
         </DetailSection>
 
         {vehicles.length > 0 && (
-          <DetailSection title="Betroffene Fahrzeuge">
+          <DetailSection title={t('settings.dataAuth.detail.affectedVehicles')}>
             <ul className="space-y-2">
               {visibleVehicles.map((v) => (
                 <li
@@ -289,15 +292,15 @@ export function DataAuthorizationDetailDrawer({
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex gap-2.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-[12px] font-semibold text-foreground">Auswirkungen bei Widerruf</p>
+              <p className="text-[12px] font-semibold text-foreground">{t('settings.dataAuth.detail.revokeImpact')}</p>
               <p className="text-[11.5px] text-muted-foreground mt-1 leading-relaxed">
-                {DIMO_REVOKE_IMPACT}
+                {dimoRevokeImpact}
               </p>
             </div>
           </div>
         )}
 
-        <DetailSection title="Timeline / Audit">
+        <DetailSection title={t('settings.dataAuth.detail.timeline')}>
           {auditTimeline.length > 0 ? (
             <Timeline items={auditTimeline} />
           ) : (

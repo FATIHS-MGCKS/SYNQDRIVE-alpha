@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FormDialog } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type ApiServiceCase, type ApiTask, type Station, type Vendor } from '../../../lib/api';
 import {
   buildManualTaskCreatePayload,
@@ -17,6 +18,7 @@ import { Icon } from '../ui/Icon';
 import type { Invoice } from '../invoices/invoiceTypes';
 import { ManualTaskCreateForm } from './ManualTaskCreateForm';
 import { taskEntityOptionLabel } from '../../../lib/tasks/entity-label.utils';
+import { tt } from '../tasks-settings/tasks-i18n';
 
 interface TasksNewTaskDialogProps {
   open: boolean;
@@ -53,6 +55,7 @@ export function TasksNewTaskDialog({
   orgStations,
   onCreated,
 }: TasksNewTaskDialogProps) {
+  const { t, locale } = useLanguage();
   const { userRole, hasPermission } = useRentalOrg();
   const [form, setForm] = useState<ManualTaskFormState>(EMPTY_MANUAL_TASK_FORM);
   const [checklistItems, setChecklistItems] = useState<ManualTaskChecklistDraft[]>([]);
@@ -98,7 +101,7 @@ export function TasksNewTaskDialog({
             value: String(row.id ?? ''),
             label: taskEntityOptionLabel(
               row.bookingNumber != null ? String(row.bookingNumber) : null,
-              'Buchung',
+              tt(locale, 'tasks.entity.booking'),
             ),
           })),
           customers: (customers as Array<Record<string, unknown>>).map((row) => ({
@@ -111,23 +114,23 @@ export function TasksNewTaskDialog({
                   : row.email != null
                     ? String(row.email)
                     : null,
-              'Kunde',
+              tt(locale, 'tasks.entity.customer'),
             ),
           })),
           invoices: (invoices as Invoice[]).map((row) => ({
             value: String(row.id ?? ''),
             label: taskEntityOptionLabel(
               row.invoiceNumber != null ? String(row.invoiceNumber) : null,
-              'Rechnung',
+              tt(locale, 'tasks.entity.invoice'),
             ),
           })),
           vendors: (vendors as Vendor[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: taskEntityOptionLabel(row.name, 'Lieferant'),
+            label: taskEntityOptionLabel(row.name, tt(locale, 'tasks.entity.vendor')),
           })),
           serviceCases: (serviceCases as ApiServiceCase[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: taskEntityOptionLabel(row.title, 'Servicefall'),
+            label: taskEntityOptionLabel(row.title, tt(locale, 'tasks.entity.serviceCase')),
           })),
         });
       })
@@ -137,7 +140,7 @@ export function TasksNewTaskDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, orgId]);
+  }, [open, orgId, locale]);
 
   const vehicleOptions = useMemo(
     () =>
@@ -163,7 +166,7 @@ export function TasksNewTaskDialog({
 
   const handleSubmit = async () => {
     if (!orgId || submitting) return;
-    const nextErrors = validateManualTaskForm(form, { checklistItems });
+    const nextErrors = validateManualTaskForm(form, { checklistItems }, locale);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -172,11 +175,11 @@ export function TasksNewTaskDialog({
     setSubmitError(null);
     try {
       const created = await api.tasks.create(orgId, payload);
-      toast.success('Aufgabe erstellt', { description: created.title });
+      toast.success(t('tasks.dialog.createSuccess'), { description: created.title });
       onCreated(created);
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Aufgabe konnte nicht erstellt werden';
+      const message = error instanceof Error ? error.message : t('tasks.dialog.createError');
       setSubmitError(message);
     } finally {
       setSubmitting(false);
@@ -190,8 +193,8 @@ export function TasksNewTaskDialog({
         if (!submitting) onOpenChange(next);
       }}
       maxWidthClassName="sm:max-w-[760px]"
-      title="Aufgabe erstellen"
-      description="Alle sichtbaren Angaben werden beim Speichern übernommen."
+      title={t('tasks.dialog.createTitle')}
+      description={t('tasks.dialog.createDescription')}
       hideClose={submitting}
       bodyClassName="max-h-[70dvh] overflow-y-auto px-5 py-4 sm:px-7"
       footer={(
@@ -202,7 +205,7 @@ export function TasksNewTaskDialog({
             disabled={submitting}
             className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -211,7 +214,7 @@ export function TasksNewTaskDialog({
             className="sq-cta inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-60"
           >
             {submitting ? <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> : <Icon name="check-circle" className="h-3.5 w-3.5" />}
-            Aufgabe anlegen
+            {t('tasks.createTaskSubmit')}
           </button>
         </div>
       )}

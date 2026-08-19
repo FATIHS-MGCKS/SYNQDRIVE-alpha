@@ -1,16 +1,9 @@
-import {
-  ArrowRight,
-  Building2,
-  CreditCard,
-  FileText,
-  ImageIcon,
-  Mail,
-  MapPin,
-} from 'lucide-react';
+import { ArrowRight, Building2, CreditCard, FileText, ImageIcon, Mail, MapPin } from 'lucide-react';
 import { StatusChip } from '../../../../components/patterns';
 import { Button } from '../../../../components/ui/button';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CompanySection, SetupCheckItem, SetupItemStatus } from './company-utils';
-import { SETUP_STATUS_LABEL } from './company-utils';
+import { getSetupStatusLabel } from './company-utils';
 
 const ICONS: Record<string, typeof Building2> = {
   company: Building2,
@@ -40,6 +33,8 @@ export function CompanySetupChecklist({
   onManageDocuments,
   onNavigateToStations,
 }: CompanySetupChecklistProps) {
+  const { t, locale } = useLanguage();
+
   const handleCta = (item: SetupCheckItem) => {
     if (item.id === 'legal' && onManageDocuments) {
       onManageDocuments();
@@ -63,9 +58,9 @@ export function CompanySetupChecklist({
   return (
     <div className="surface-premium overflow-hidden">
       <div className="border-b border-border/70 px-4 py-3">
-        <h3 className="text-sm font-semibold text-foreground">Einrichtungsstatus</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t('settings.company.setup.title')}</h3>
         <p className="mt-0.5 text-[12px] text-muted-foreground">
-          Voraussetzungen für Rechnungen, Dokumente und Kommunikation.
+          {t('settings.company.setup.description')}
         </p>
       </div>
       <ul className="divide-y divide-border/60">
@@ -87,7 +82,7 @@ export function CompanySetupChecklist({
               </div>
               <div className="flex shrink-0 items-center gap-2 pl-10 sm:pl-0">
                 <StatusChip tone={TONE[item.status]}>
-                  {SETUP_STATUS_LABEL[item.status]}
+                  {getSetupStatusLabel(locale, item.status)}
                 </StatusChip>
                 {showCta(item) && (
                   <Button

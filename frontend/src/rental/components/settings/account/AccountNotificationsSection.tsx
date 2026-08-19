@@ -14,19 +14,12 @@ import {
   applyNotificationPreset,
   canToggleNotificationChannel,
   countEnabledNotificationChannels,
-  NOTIFICATION_CHANNELS,
+  getNotificationChannels,
+  getNotificationPresets,
   securityChannelBlockMessage,
-  SECURITY_CHANNEL_REQUIRED_MESSAGE,
-  type NotificationPresetId,
   type NotificationRow,
 } from './account-utils';
-
-const PRESETS: Array<{ id: NotificationPresetId; label: string }> = [
-  { id: 'org_admin_full', label: 'Org Admin vollständig' },
-  { id: 'critical_only', label: 'Nur kritische Alerts' },
-  { id: 'operational', label: 'Operativer Mitarbeiter' },
-  { id: 'quiet_except_security', label: 'Alles außer Security aus' },
-];
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 const NOTIFICATION_SWITCH_CLASS =
   'h-6 w-11 shrink-0 data-[state=checked]:bg-[color:var(--brand)] data-[state=unchecked]:bg-muted/80 [&_[data-slot=switch-thumb]]:size-5';
@@ -40,6 +33,8 @@ interface AccountNotificationsSectionProps {
   onReset: () => void;
 }
 
+type NotificationChannelKey = 'inApp' | 'email' | 'push' | 'sms' | 'criticalOnly';
+
 function NotificationChannelSwitch({
   row,
   channelKey,
@@ -48,11 +43,12 @@ function NotificationChannelSwitch({
   onToggle,
 }: {
   row: NotificationRow;
-  channelKey: (typeof NOTIFICATION_CHANNELS)[number]['key'];
+  channelKey: NotificationChannelKey;
   channelLabel: string;
   onBlocked: (message: string) => void;
   onToggle: (category: NotificationRow['category'], key: keyof NotificationRow, value: boolean) => void;
 }) {
+  const { locale } = useLanguage();
   const value = row[channelKey] as boolean;
   const disabled =
     row.category === 'SECURITY' &&
@@ -65,7 +61,7 @@ function NotificationChannelSwitch({
       disabled={disabled}
       className={NOTIFICATION_SWITCH_CLASS}
       onCheckedChange={(checked) => {
-        const blockMessage = securityChannelBlockMessage(
+        const blockMessage = securityChannelBlockMessage(locale,
           row.category,
           channelKey,
           row,
@@ -83,6 +79,7 @@ function NotificationChannelSwitch({
 }
 
 function NotificationRowSummary({ row }: { row: NotificationRow }) {
+  const { t } = useLanguage();
   const activeChannels = countEnabledNotificationChannels(row);
 
   return (
@@ -92,14 +89,14 @@ function NotificationRowSummary({ row }: { row: NotificationRow }) {
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
           {row.criticalOnly ? (
             <StatusChip tone="warning" className="!text-[9px] !px-1.5 !py-0">
-              Nur kritisch
+              {t('settings.account.notifications.criticalOnly')}
             </StatusChip>
           ) : null}
         </div>
       </div>
       <p className="line-clamp-2 text-[10px] leading-snug text-muted-foreground">{row.description}</p>
       <p className="text-[10px] font-medium text-muted-foreground">
-        {activeChannels} Kanal{activeChannels === 1 ? '' : 'e'} aktiv
+        {activeChannels === 1 ? t('settings.account.notifications.channelsActive', { count: activeChannels }) : t('settings.account.notifications.channelsActivePlural', { count: activeChannels })}
       </p>
     </div>
   );
@@ -113,6 +110,10 @@ export function AccountNotificationsSection({
   onSave,
   onReset,
 }: AccountNotificationsSectionProps) {
+  const { t, locale } = useLanguage();
+  const notificationChannels = getNotificationChannels(locale);
+  const presets = getNotificationPresets(locale);
+  const securityChannelRequired = t('settings.account.notifications.securityChannelRequired');
   const [securityHint, setSecurityHint] = useState<string | null>(null);
 
   const updateRow = useCallback(
@@ -141,8 +142,8 @@ export function AccountNotificationsSection({
   return (
     <div id="account-section-notifications">
       <DataCard
-        title="Benachrichtigungen"
-        description="Kategorien und Kanäle — Security-Benachrichtigungen benötigen mindestens In-App oder E-Mail."
+        title={t('settings.account.notifications.title')}
+        description={t('settings.account.notifications.description')}
         actions={
           <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto">
             <Button
@@ -152,17 +153,17 @@ export function AccountNotificationsSection({
               onClick={onReset}
               disabled={!dirty || saving}
             >
-              Zurücksetzen
+              {t('common.reset')}
             </Button>
             <Button type="button" size="sm" onClick={onSave} disabled={!dirty || saving}>
               {saving ? <Loader2 className="animate-spin" /> : null}
-              Speichern
+              {t('common.save')}
             </Button>
           </div>
         }
       >
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {PRESETS.map((preset) => (
+          {presets.map((preset) => (
             <Button
               key={preset.id}
               type="button"
@@ -195,9 +196,9 @@ export function AccountNotificationsSection({
               <thead>
                 <tr className="border-b border-border/60 bg-muted/25">
                   <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Kategorie
+                    {t('settings.account.notifications.category')}
                   </th>
-                  {NOTIFICATION_CHANNELS.map((ch) => (
+                  {notificationChannels.map((ch) => (
                     <th
                       key={ch.key}
                       className="w-[4.5rem] px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
@@ -223,11 +224,11 @@ export function AccountNotificationsSection({
                       </p>
                       {row.category === 'SECURITY' ? (
                         <p className="mt-1 text-[10px] text-muted-foreground">
-                          {SECURITY_CHANNEL_REQUIRED_MESSAGE}
+                          {securityChannelRequired}
                         </p>
                       ) : null}
                     </td>
-                    {NOTIFICATION_CHANNELS.map((ch) => (
+                    {notificationChannels.map((ch) => (
                       <td key={ch.key} className="px-2 py-2 text-center align-middle">
                         <div className="flex justify-center py-0.5">
                           <NotificationChannelSwitch
@@ -262,11 +263,11 @@ export function AccountNotificationsSection({
                 <AccordionContent className="px-3 pb-3">
                   {row.category === 'SECURITY' ? (
                     <p className="mb-2 text-[10px] leading-snug text-muted-foreground">
-                      {SECURITY_CHANNEL_REQUIRED_MESSAGE}
+                      {securityChannelRequired}
                     </p>
                   ) : null}
                   <div className="space-y-1">
-                    {NOTIFICATION_CHANNELS.map((ch) => (
+                    {notificationChannels.map((ch) => (
                       <label
                         key={ch.key}
                         className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/30"

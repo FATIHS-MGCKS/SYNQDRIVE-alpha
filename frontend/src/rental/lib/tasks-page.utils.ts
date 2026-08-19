@@ -1,4 +1,8 @@
 import type { ApiTaskSummary, TaskBucket, TaskCompletionMode, TaskListFilters } from '../../lib/tasks/types';
+import {
+  tasksPageViewLabel,
+  tt,
+} from '../components/tasks-settings/tasks-i18n';
 
 /** Rental global tasks page views — mapped to canonical backend buckets. */
 export type TasksPageView =
@@ -12,7 +16,6 @@ export type TasksPageView =
 
 export interface TasksPageViewMeta {
   id: TasksPageView;
-  label: string;
   bucket: TaskBucket;
   /** When true, adds `assignedUserId` for the current user. */
   mine?: boolean;
@@ -21,13 +24,13 @@ export interface TasksPageViewMeta {
 }
 
 export const TASKS_PAGE_VIEWS: TasksPageViewMeta[] = [
-  { id: 'mine', label: 'Meine Aufgaben', bucket: 'ALL_OPEN', mine: true },
-  { id: 'open', label: 'Offen', bucket: 'ALL_OPEN' },
-  { id: 'overdue', label: 'Überfällig', bucket: 'OVERDUE' },
-  { id: 'today', label: 'Heute', bucket: 'TODAY' },
-  { id: 'planned', label: 'Geplant', bucket: 'PLANNED' },
-  { id: 'unassigned', label: 'Unzugewiesen', bucket: 'UNASSIGNED', requiresUnassignedPermission: true },
-  { id: 'completed', label: 'Erledigt', bucket: 'COMPLETED' },
+  { id: 'mine', bucket: 'ALL_OPEN', mine: true },
+  { id: 'open', bucket: 'ALL_OPEN' },
+  { id: 'overdue', bucket: 'OVERDUE' },
+  { id: 'today', bucket: 'TODAY' },
+  { id: 'planned', bucket: 'PLANNED' },
+  { id: 'unassigned', bucket: 'UNASSIGNED', requiresUnassignedPermission: true },
+  { id: 'completed', bucket: 'COMPLETED' },
 ];
 
 export function canViewUnassignedTasksBucket(input: {
@@ -80,7 +83,7 @@ export function bucketCountFromSummary(
 
 export interface TasksPageKpiItem {
   id: 'overdue' | 'today' | 'mine' | 'unassigned';
-  label: string;
+  labelKey: 'tasks.view.overdue' | 'tasks.view.today' | 'tasks.kpi.mineOpen' | 'tasks.view.unassigned';
   value: number;
   view: TasksPageView;
   tone: 'critical' | 'watch' | 'info' | 'neutral';
@@ -93,21 +96,21 @@ export function buildTasksPageKpis(
   const items: TasksPageKpiItem[] = [
     {
       id: 'overdue',
-      label: 'Überfällig',
+      labelKey: 'tasks.view.overdue',
       value: bucketCountFromSummary(summary, 'OVERDUE', summary?.overdue ?? 0),
       view: 'overdue',
       tone: 'critical',
     },
     {
       id: 'today',
-      label: 'Heute',
+      labelKey: 'tasks.view.today',
       value: bucketCountFromSummary(summary, 'TODAY', summary?.dueToday ?? 0),
       view: 'today',
       tone: 'watch',
     },
     {
       id: 'mine',
-      label: 'Meine offenen',
+      labelKey: 'tasks.kpi.mineOpen',
       value: summary?.assignedToMe ?? 0,
       view: 'mine',
       tone: 'info',
@@ -117,7 +120,7 @@ export function buildTasksPageKpis(
   if (canViewUnassigned) {
     items.push({
       id: 'unassigned',
-      label: 'Unzugewiesen',
+      labelKey: 'tasks.view.unassigned',
       value: bucketCountFromSummary(summary, 'UNASSIGNED', 0),
       view: 'unassigned',
       tone: 'neutral',
@@ -127,77 +130,78 @@ export function buildTasksPageKpis(
   return items;
 }
 
-export function tasksPageViewCountLabel(view: TasksPageView, count: number): string {
-  const meta = findTasksPageViewMeta(view);
-  if (count === 0) return `${meta.label} · keine Einträge`;
-  if (count === 1) return `${meta.label} · 1 Aufgabe`;
-  return `${meta.label} · ${count} Aufgaben`;
+export function tasksPageViewCountLabel(locale: string, view: TasksPageView, count: number): string {
+  const label = tasksPageViewLabel(locale, view);
+  if (count === 0) return tt(locale, 'tasks.count.none', { label });
+  if (count === 1) return tt(locale, 'tasks.count.one', { label });
+  return tt(locale, 'tasks.count.many', { label, count });
 }
 
-export function tasksPageEmptyState(view: TasksPageView, hasActiveFilters: boolean): {
+export function tasksPageEmptyState(
+  locale: string,
+  view: TasksPageView,
+  hasActiveFilters: boolean,
+): {
   title: string;
   description: string;
 } {
   if (hasActiveFilters) {
     return {
-      title: 'Keine passenden Aufgaben',
-      description: 'Passen Sie die Suche oder Filter an.',
+      title: tt(locale, 'tasks.empty.filtered.title'),
+      description: tt(locale, 'tasks.empty.filtered.description'),
     };
   }
 
   switch (view) {
     case 'mine':
       return {
-        title: 'Keine eigenen Aufgaben',
-        description: 'Ihnen sind aktuell keine offenen Aufgaben zugewiesen.',
+        title: tt(locale, 'tasks.empty.mine.title'),
+        description: tt(locale, 'tasks.empty.mine.description'),
       };
     case 'open':
       return {
-        title: 'Keine offenen Aufgaben',
-        description: 'Alle aktivierten Aufgaben sind erledigt oder noch nicht geplant.',
+        title: tt(locale, 'tasks.empty.open.title'),
+        description: tt(locale, 'tasks.empty.open.description'),
       };
     case 'overdue':
       return {
-        title: 'Keine überfälligen Aufgaben',
-        description: 'Aktuell liegen keine überfälligen Fälligkeiten vor.',
+        title: tt(locale, 'tasks.empty.overdue.title'),
+        description: tt(locale, 'tasks.empty.overdue.description'),
       };
     case 'today':
       return {
-        title: 'Heute nichts fällig',
-        description: 'Für heute sind keine Aufgaben im Kalender der Organisation.',
+        title: tt(locale, 'tasks.empty.today.title'),
+        description: tt(locale, 'tasks.empty.today.description'),
       };
     case 'planned':
       return {
-        title: 'Keine geplanten Aufgaben',
-        description: 'Es gibt keine Aufgaben mit zukünftiger Aktivierung.',
+        title: tt(locale, 'tasks.empty.planned.title'),
+        description: tt(locale, 'tasks.empty.planned.description'),
       };
     case 'unassigned':
       return {
-        title: 'Keine unzugewiesenen Aufgaben',
-        description: 'Alle aktiven Aufgaben haben einen Bearbeiter.',
+        title: tt(locale, 'tasks.empty.unassigned.title'),
+        description: tt(locale, 'tasks.empty.unassigned.description'),
       };
     case 'completed':
       return {
-        title: 'Noch keine erledigten Aufgaben',
-        description: 'Abgeschlossene Aufgaben erscheinen hier.',
+        title: tt(locale, 'tasks.empty.completed.title'),
+        description: tt(locale, 'tasks.empty.completed.description'),
       };
     default:
       return {
-        title: 'Keine Aufgaben',
-        description: 'Es sind noch keine Aufgaben vorhanden.',
+        title: tt(locale, 'tasks.empty.default.title'),
+        description: tt(locale, 'tasks.empty.default.description'),
       };
   }
 }
 
-export const TASK_COMPLETION_MODE_LABELS: Record<TaskCompletionMode, string> = {
-  MANUAL: 'Manuell abgeschlossen',
-  AUTO_RESOLVED: 'Automatisch aufgelöst',
-  SUPERSEDED: 'Ersetzt',
-};
-
 export function taskCompletionModeLabel(
+  locale: string,
   mode: TaskCompletionMode | null | undefined,
 ): string | null {
   if (!mode || mode === 'MANUAL') return null;
-  return TASK_COMPLETION_MODE_LABELS[mode] ?? null;
+  if (mode === 'AUTO_RESOLVED') return tt(locale, 'tasks.completionMode.autoResolved');
+  if (mode === 'SUPERSEDED') return tt(locale, 'tasks.completionMode.superseded');
+  return null;
 }

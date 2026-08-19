@@ -1,6 +1,12 @@
 import type { ApiTaskType, CreateTaskPayload } from '../../lib/api';
+import { DEFAULT_PRODUCT_LOCALE } from '../../i18n/locales';
 import { checklistPreviewForType } from './task-templates';
-import { TASK_TYPE_LABELS, VIEW_PRIORITY_TO_API, type TaskPriorityView } from './task-create.utils';
+import { TASK_TYPE_LABEL_KEYS, VIEW_PRIORITY_TO_API, type TaskPriorityView } from './task-create.utils';
+import {
+  taskEstimatedDurationOptionLabel,
+  taskTypeLabel,
+  tt,
+} from '../components/tasks-settings/tasks-i18n';
 
 export interface ManualTaskChecklistDraft {
   id: string;
@@ -52,23 +58,32 @@ export const EMPTY_MANUAL_TASK_FORM: ManualTaskFormState = {
   useTypeChecklistTemplate: false,
 };
 
-export const ESTIMATED_DURATION_OPTIONS = [
-  { value: '30', label: '30 Minuten' },
-  { value: '60', label: '1 Stunde' },
-  { value: '90', label: '1,5 Stunden' },
-  { value: '120', label: '2 Stunden' },
-  { value: '180', label: '3 Stunden' },
-  { value: '240', label: '4 Stunden' },
-  { value: '360', label: '6 Stunden' },
-  { value: '480', label: '8 Stunden' },
-  { value: '1440', label: '1 Tag' },
-  { value: '2880', label: '2 Tage' },
+export const ESTIMATED_DURATION_MINUTES = [
+  '30',
+  '60',
+  '90',
+  '120',
+  '180',
+  '240',
+  '360',
+  '480',
+  '1440',
+  '2880',
 ] as const;
 
-export const TASK_TYPE_OPTIONS = (Object.keys(TASK_TYPE_LABELS) as ApiTaskType[]).map((type) => ({
-  value: type,
-  label: TASK_TYPE_LABELS[type],
-}));
+export function estimatedDurationOptions(locale: string) {
+  return ESTIMATED_DURATION_MINUTES.map((value) => ({
+    value,
+    label: taskEstimatedDurationOptionLabel(locale, value),
+  }));
+}
+
+export function taskTypeOptions(locale: string) {
+  return (Object.keys(TASK_TYPE_LABEL_KEYS) as ApiTaskType[]).map((type) => ({
+    value: type,
+    label: taskTypeLabel(locale, type),
+  }));
+}
 
 export function createChecklistDraft(title = '', isRequired = false): ManualTaskChecklistDraft {
   return {
@@ -100,34 +115,36 @@ export function validateManualTaskForm(
     requireVehicle?: boolean;
     checklistItems?: ManualTaskChecklistDraft[];
   },
+  locale?: string | null,
 ): Record<string, string> {
+  const productLocale = locale ?? DEFAULT_PRODUCT_LOCALE;
   const errors: Record<string, string> = {};
-  if (!form.title.trim()) errors.title = 'Titel ist erforderlich';
+  if (!form.title.trim()) errors.title = tt(productLocale, 'tasks.validation.titleRequired');
 
   const activatesAt = toIsoDateTime(form.activatesAt);
   const dueDate = toIsoDateTime(form.dueDate);
   if (form.activatesAt.trim() && !activatesAt) {
-    errors.activatesAt = 'Ungültiger Aktivierungszeitpunkt';
+    errors.activatesAt = tt(productLocale, 'tasks.validation.invalidActivatesAt');
   }
   if (form.dueDate.trim() && !dueDate) {
-    errors.dueDate = 'Ungültiges Fälligkeitsdatum';
+    errors.dueDate = tt(productLocale, 'tasks.validation.invalidDueDate');
   }
   if (activatesAt && dueDate && new Date(dueDate).getTime() < new Date(activatesAt).getTime()) {
-    errors.dueDate = 'Fälligkeit darf nicht vor der Aktivierung liegen';
+    errors.dueDate = tt(productLocale, 'tasks.validation.dueBeforeActivation');
   }
 
   if (form.estimatedDurationMinutes.trim()) {
     const minutes = parseEstimatedDurationMinutes(form.estimatedDurationMinutes);
-    if (!minutes) errors.estimatedDurationMinutes = 'Geschätzte Dauer muss eine positive Minutenanzahl sein';
+    if (!minutes) errors.estimatedDurationMinutes = tt(productLocale, 'tasks.validation.invalidDuration');
   }
 
   if (options?.requireVehicle && !form.vehicleId) {
-    errors.vehicleId = 'Fahrzeug ist erforderlich';
+    errors.vehicleId = tt(productLocale, 'tasks.validation.vehicleRequired');
   }
 
   const checklistItems = options?.checklistItems ?? [];
   if (checklistItems.some((item) => !item.title.trim())) {
-    errors.checklist = 'Jeder Checklistenpunkt braucht einen Titel';
+    errors.checklist = tt(productLocale, 'tasks.validation.checklistItemTitle');
   }
 
   return errors;

@@ -2,11 +2,12 @@ import { Loader2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { CreateDataAuthorizationPayload } from '../../../../lib/api';
 import {
-  DATA_CATEGORY_OPTIONS,
-  PURPOSE_OPTIONS,
-  SCOPE_OPTIONS,
-  SOURCE_TYPE_OPTIONS,
+  getDataCategoryOptions,
+  getPurposeOptions,
+  getScopeOptions,
+  getSourceTypeOptions,
 } from './data-authorization.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface DataAuthorizationCreateDialogProps {
   open: boolean;
@@ -21,6 +22,11 @@ export function DataAuthorizationCreateDialog({
   onClose,
   onSubmit,
 }: DataAuthorizationCreateDialogProps) {
+  const { t, locale } = useLanguage();
+  const sourceTypeOptions = getSourceTypeOptions(locale);
+  const scopeOptions = getScopeOptions(locale);
+  const purposeOptions = getPurposeOptions(locale);
+  const dataCategoryOptions = getDataCategoryOptions(locale);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sourceType, setSourceType] = useState('PARTNER_ACCESS');
@@ -92,9 +98,9 @@ export function DataAuthorizationCreateDialog({
       >
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-popover">
           <div>
-            <h3 className="text-base font-bold text-foreground">Neue Datenfreigabe</h3>
+            <h3 className="text-base font-bold text-foreground">{t('settings.dataAuth.create.title')}</h3>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Wird mit Status <strong>Ausstehend</strong> erstellt — Genehmigung erforderlich.
+              {t('settings.dataAuth.create.subtitle')}
             </p>
           </div>
           <button type="button" onClick={onClose} className="p-2 rounded-xl hover:bg-muted">
@@ -105,37 +111,37 @@ export function DataAuthorizationCreateDialog({
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Titel *</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="z. B. Partner Analytics Zugriff" />
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.titleLabel')}</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder={t('settings.dataAuth.create.titlePlaceholder')} />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Verarbeiter / Partner</label>
-              <input value={processorName} onChange={(e) => setProcessorName(e.target.value)} className={inputClass} placeholder="Name des Empfängers" />
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.processor')}</label>
+              <input value={processorName} onChange={(e) => setProcessorName(e.target.value)} className={inputClass} placeholder={t('settings.dataAuth.create.processorPlaceholder')} />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-muted-foreground">Beschreibung</label>
+            <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.description')}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputClass} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Quelle</label>
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.source')}</label>
               <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} className={inputClass}>
-                {SOURCE_TYPE_OPTIONS.filter((o) => o.value !== 'all').map((o) => (
+                {sourceTypeOptions.filter((o) => o.value !== 'all').map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Modul</label>
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.module')}</label>
               <input value={moduleOrigin} onChange={(e) => setModuleOrigin(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Scope</label>
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.scope')}</label>
               <select value={scope} onChange={(e) => setScope(e.target.value)} className={inputClass}>
-                {SCOPE_OPTIONS.filter((o) => o.value !== 'all' && o.value !== 'CONNECTED_VEHICLES').map((o) => (
+                {scopeOptions.filter((o) => o.value !== 'all' && o.value !== 'CONNECTED_VEHICLES').map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
@@ -143,9 +149,9 @@ export function DataAuthorizationCreateDialog({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-muted-foreground">Zweck(e) *</label>
+            <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.purposes')}</label>
             <div className="flex flex-wrap gap-2 mt-2">
-              {PURPOSE_OPTIONS.map((p) => (
+              {purposeOptions.map((p) => (
                 <button
                   key={p.value}
                   type="button"
@@ -163,9 +169,9 @@ export function DataAuthorizationCreateDialog({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-muted-foreground">Datenkategorien *</label>
+            <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.categories')}</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-              {DATA_CATEGORY_OPTIONS.map((cat) => (
+              {dataCategoryOptions.map((cat) => (
                 <button
                   key={cat.value}
                   type="button"
@@ -184,24 +190,24 @@ export function DataAuthorizationCreateDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Ziel / Destination *</label>
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.destination')}</label>
               <input value={destination} onChange={(e) => setDestination(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground">Ablaufdatum (optional)</label>
+              <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.expiresAt')}</label>
               <input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-muted-foreground">Notizen</label>
+            <label className="text-[11px] font-semibold text-muted-foreground">{t('settings.dataAuth.create.notes')}</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputClass} />
           </div>
         </div>
 
         <div className="sticky bottom-0 flex justify-end gap-2 px-6 py-4 border-t border-border surface-premium">
           <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs font-medium border border-border hover:bg-muted">
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -210,7 +216,7 @@ export function DataAuthorizationCreateDialog({
             className="sq-3d-btn sq-3d-btn--primary px-5 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-50 inline-flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            Freigabe anlegen
+            {t('settings.dataAuth.create.submit')}
           </button>
         </div>
       </div>

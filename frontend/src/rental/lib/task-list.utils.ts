@@ -6,6 +6,12 @@ import {
   type TaskCategory,
   type TaskPriorityView,
 } from './task-create.utils';
+import {
+  taskListPriorityLabel,
+  taskListStatusLabel,
+  tt,
+} from '../components/tasks-settings/tasks-i18n';
+import { taskCompletionModeLabel } from './tasks-page.utils';
 
 export type TaskListStatus = 'Open' | 'In Progress' | 'Waiting' | 'Completed' | 'Overdue';
 export type TaskListPriority = TaskPriorityView;
@@ -62,6 +68,14 @@ export interface StationRef {
   name: string;
 }
 
+export interface TaskListRowContext {
+  fleetVehicles: FleetVehicleRef[];
+  orgMembers: OrgMemberRef[];
+  orgStations: StationRef[];
+  locale: string;
+  formattingLocale: string;
+}
+
 const KNOWN_CATEGORIES: TaskCategory[] = [...TASK_CATEGORIES];
 
 export function shortTaskId(id: string): string {
@@ -69,11 +83,11 @@ export function shortTaskId(id: string): string {
   return `#…${id.slice(-4)}`;
 }
 
-export function fmtTaskDate(iso?: string | null): string {
+export function fmtTaskDate(iso?: string | null, formattingLocale = 'de-DE'): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return d.toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function mapTaskCategory(c?: string | null): TaskCategory {
@@ -111,25 +125,26 @@ export function mapTaskStatus(
 }
 
 export function resolveDisplaySource(
+  locale: string,
   sourceType?: string | null,
   source?: string | null,
 ): string {
   const st = (sourceType ?? '').toUpperCase();
   const src = (source ?? '').toUpperCase();
-  if (st === 'MANUAL') return 'Manuell';
-  if (src.startsWith('INSIGHT_') || st === 'HEALTH') return 'SynqDrive Insights';
+  if (st === 'MANUAL') return tt(locale, 'tasks.display.manual');
+  if (src.startsWith('INSIGHT_') || st === 'HEALTH') return tt(locale, 'tasks.display.insights');
   if (st === 'SYSTEM') {
-    if (src.includes('BOOKING')) return 'Buchung';
-    if (src.includes('DOCUMENT')) return 'Dokument';
-    if (src.includes('DAMAGE')) return 'Schaden';
-    if (src.includes('SERVICE')) return 'Service';
-    return 'SynqDrive Automation';
+    if (src.includes('BOOKING')) return tt(locale, 'tasks.display.booking');
+    if (src.includes('DOCUMENT')) return tt(locale, 'tasks.display.document');
+    if (src.includes('DAMAGE')) return tt(locale, 'tasks.display.damage');
+    if (src.includes('SERVICE')) return tt(locale, 'tasks.display.service');
+    return tt(locale, 'tasks.display.automation');
   }
-  if (src.includes('BOOKING')) return 'Buchung';
-  if (src.includes('DOCUMENT')) return 'Dokument';
-  if (src.includes('DAMAGE')) return 'Schaden';
-  if (src.includes('SERVICE')) return 'Service';
-  return st ? st.charAt(0) + st.slice(1).toLowerCase() : 'Manuell';
+  if (src.includes('BOOKING')) return tt(locale, 'tasks.display.booking');
+  if (src.includes('DOCUMENT')) return tt(locale, 'tasks.display.document');
+  if (src.includes('DAMAGE')) return tt(locale, 'tasks.display.damage');
+  if (src.includes('SERVICE')) return tt(locale, 'tasks.display.service');
+  return st ? st.charAt(0) + st.slice(1).toLowerCase() : tt(locale, 'tasks.display.manual');
 }
 
 export function isSystemTask(
@@ -152,39 +167,46 @@ export function resolveUserName(
 }
 
 export function resolveCreatorName(
+  locale: string,
   task: Pick<ApiTask, 'createdByUserId' | 'sourceType' | 'source'>,
   members: OrgMemberRef[],
 ): string {
   if (task.createdByUserId) {
-    return resolveUserName(task.createdByUserId, members, 'Unbekannt');
+    return resolveUserName(task.createdByUserId, members, tt(locale, 'tasks.display.unknown'));
   }
   if (isSystemTask(task)) {
     const src = (task.source ?? '').toUpperCase();
     if (src.startsWith('INSIGHT_') || (task.sourceType ?? '').toUpperCase() === 'HEALTH') {
-      return 'SynqDrive Insights';
+      return tt(locale, 'tasks.display.insights');
     }
-    return 'SynqDrive Automation';
+    return tt(locale, 'tasks.display.automation');
   }
-  return 'Unbekannt';
+  return tt(locale, 'tasks.display.unknown');
 }
 
 export function resolveAssigneeName(
+  locale: string,
   assignedUserId: string | null | undefined,
   members: OrgMemberRef[],
 ): string {
   if (assignedUserId) {
-    return resolveUserName(assignedUserId, members, 'Unbekannt');
+    return resolveUserName(assignedUserId, members, tt(locale, 'tasks.display.unknown'));
   }
-  return 'Nicht zugewiesen';
+  return tt(locale, 'tasks.display.unassigned');
 }
 
-export function userInitials(name: string): string {
+export function userInitials(locale: string, name: string): string {
+  const unassigned = tt(locale, 'tasks.display.unassigned');
+  const automation = tt(locale, 'tasks.display.automation');
+  const insights = tt(locale, 'tasks.display.insights');
+  const unknown = tt(locale, 'tasks.display.unknown');
   if (
     !name ||
-    name === 'Nicht zugewiesen' ||
-    name === 'SynqDrive Automation' ||
+    name === unassigned ||
+    name === automation ||
+    name === insights ||
     name === 'System' ||
-    name === 'Unbekannt'
+    name === unknown
   ) {
     return '?';
   }
@@ -195,6 +217,7 @@ export function userInitials(name: string): string {
 }
 
 export function resolvePrimaryLinkedObjectLabel(
+  locale: string,
   task: Pick<ApiTask, 'linkedObjects' | 'vehicleId' | 'bookingId' | 'invoiceId' | 'documentId'>,
   vehicle?: FleetVehicleRef,
 ): { primary: string; secondary: string | null } {
@@ -211,44 +234,37 @@ export function resolvePrimaryLinkedObjectLabel(
       secondary: vehicle.model || null,
     };
   }
-  if (task.bookingId) return { primary: 'Buchung', secondary: null };
-  if (task.invoiceId) return { primary: 'Rechnung', secondary: null };
-  if (task.documentId) return { primary: 'Dokument', secondary: null };
-  return { primary: '—', secondary: null };
+  if (task.bookingId) return { primary: tt(locale, 'tasks.entity.booking'), secondary: null };
+  if (task.invoiceId) return { primary: tt(locale, 'tasks.entity.invoice'), secondary: null };
+  if (task.documentId) return { primary: tt(locale, 'tasks.entity.document'), secondary: null };
+  return { primary: tt(locale, 'tasks.display.emDash'), secondary: null };
 }
 
 function formatChecklistProgressLabel(
+  locale: string,
   progress: ApiTask['checklistProgress'],
 ): { percent: number | null; label: string | null } {
   if (!progress?.hasChecklist) return { percent: null, label: null };
   const percent = progress.progressPercent;
-  const label = `${progress.completedItems} von ${progress.totalItems}`;
+  const label = tt(locale, 'tasks.display.checklistProgress', {
+    completed: progress.completedItems,
+    total: progress.totalItems,
+  });
   return { percent, label };
 }
 
-function resolveCompletionModeLabel(mode: TaskCompletionMode | null | undefined): string | null {
-  if (!mode || mode === 'MANUAL') return null;
-  if (mode === 'AUTO_RESOLVED') return 'Automatisch aufgelöst';
-  if (mode === 'SUPERSEDED') return 'Ersetzt';
-  return null;
-}
-
-function formatEstimatedDuration(minutes?: number | null): string {
-  if (!minutes || minutes < 1) return '—';
-  if (minutes < 60) return `${minutes} Min.`;
+function formatEstimatedDuration(locale: string, minutes?: number | null): string {
+  if (!minutes || minutes < 1) return tt(locale, 'tasks.display.emDash');
+  if (minutes < 60) return tt(locale, 'tasks.display.durationMinutes', { minutes });
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest > 0 ? `${hours} Std. ${rest} Min.` : `${hours} Std.`;
+  return rest > 0
+    ? tt(locale, 'tasks.display.durationHoursMinutes', { hours, minutes: rest })
+    : tt(locale, 'tasks.display.durationHours', { hours });
 }
 
-export function mapApiTaskToTaskListRow(
-  task: ApiTask,
-  ctx: {
-    fleetVehicles: FleetVehicleRef[];
-    orgMembers: OrgMemberRef[];
-    orgStations: StationRef[];
-  },
-): TaskListRow {
+export function mapApiTaskToTaskListRow(task: ApiTask, ctx: TaskListRowContext): TaskListRow {
+  const { locale, formattingLocale } = ctx;
   const veh = task.vehicleId
     ? ctx.fleetVehicles.find((v) => v.id === task.vehicleId)
     : undefined;
@@ -262,8 +278,8 @@ export function mapApiTaskToTaskListRow(
   const stationId =
     typeof task.metadata?.stationId === 'string' ? task.metadata.stationId : null;
   const responsibility = resolveTaskResponsibility(task, ctx.orgMembers, stationId);
-  const linked = resolvePrimaryLinkedObjectLabel(task, veh);
-  const checklist = formatChecklistProgressLabel(task.checklistProgress);
+  const linked = resolvePrimaryLinkedObjectLabel(locale, task, veh);
+  const checklist = formatChecklistProgressLabel(locale, task.checklistProgress);
 
   return {
     id: task.id,
@@ -275,7 +291,7 @@ export function mapApiTaskToTaskListRow(
     priority: mapTaskPriority(task.priority),
     source: task.source,
     sourceType: task.sourceType,
-    displaySource: resolveDisplaySource(task.sourceType, task.source),
+    displaySource: resolveDisplaySource(locale, task.sourceType, task.source),
     isSystemTask: systemTask,
     vehicleId: task.vehicleId || '',
     vehicleLicense: veh?.license || '',
@@ -284,49 +300,40 @@ export function mapApiTaskToTaskListRow(
     assignedUserId: task.assignedUserId ?? '',
     assignedUserName: responsibility.displayName,
     createdByUserId: task.createdByUserId ?? null,
-    createdByUserName: resolveCreatorName(task, ctx.orgMembers),
+    createdByUserName: resolveCreatorName(locale, task, ctx.orgMembers),
     createdAtRaw: task.createdAt ?? null,
-    createdDate: fmtTaskDate(task.createdAt),
+    createdDate: fmtTaskDate(task.createdAt, formattingLocale),
     dueDateRaw: task.dueDate ?? null,
-    dueDate: fmtTaskDate(task.dueDate),
+    dueDate: fmtTaskDate(task.dueDate, formattingLocale),
     completedAtRaw: task.completedAt ?? null,
-    completedDate: task.completedAt ? fmtTaskDate(task.completedAt) : undefined,
-    estimatedDuration: formatEstimatedDuration(task.estimatedDurationMinutes),
+    completedDate: task.completedAt ? fmtTaskDate(task.completedAt, formattingLocale) : undefined,
+    estimatedDuration: formatEstimatedDuration(locale, task.estimatedDurationMinutes),
     notes: systemTask && task.source?.startsWith('INSIGHT_')
-      ? 'Automatisch erzeugt durch SynqDrive Insights.'
+      ? tt(locale, 'tasks.display.insightNote')
       : undefined,
     linkedObjectLabel: linked.primary,
     linkedObjectSecondary: linked.secondary,
     checklistProgressPercent: checklist.percent,
     checklistProgressLabel: checklist.label,
     completionMode: task.completionMode ?? null,
-    completionModeLabel: resolveCompletionModeLabel(task.completionMode),
+    completionModeLabel: taskCompletionModeLabel(locale, task.completionMode),
     isOverdue: task.isOverdue,
     serverBucket: task.bucket ?? null,
   };
 }
 
-export const TASK_STATUS_LABEL_DE: Record<TaskListStatus, string> = {
-  Open: 'Offen',
-  'In Progress': 'In Bearbeitung',
-  Waiting: 'Wartend',
-  Completed: 'Erledigt',
-  Overdue: 'Überfällig',
-};
+/** @deprecated Use taskListStatusLabel from tasks-i18n */
+export const TASK_STATUS_LABEL_DE = {} as Record<TaskListStatus, string>;
 
-export const TASK_PRIORITY_LABEL_DE: Record<TaskListPriority, string> = {
-  Critical: 'Kritisch',
-  High: 'Hoch',
-  Medium: 'Mittel',
-  Low: 'Niedrig',
-};
+/** @deprecated Use taskListPriorityLabel from tasks-i18n */
+export const TASK_PRIORITY_LABEL_DE = {} as Record<TaskListPriority, string>;
 
 export function taskStatusLabelDe(status: TaskListStatus): string {
-  return TASK_STATUS_LABEL_DE[status] ?? status;
+  return taskListStatusLabel('de', status);
 }
 
 export function taskPriorityLabelDe(priority: TaskListPriority): string {
-  return TASK_PRIORITY_LABEL_DE[priority] ?? priority;
+  return taskListPriorityLabel('de', priority);
 }
 
 export function sortTaskListRows(

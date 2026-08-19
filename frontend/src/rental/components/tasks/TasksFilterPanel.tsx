@@ -3,11 +3,18 @@ import type { ApiTaskPriority, ApiTaskSource, ApiTaskStatus, ApiTaskType, TaskBu
 import { Button } from '../../../components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '../../../components/ui/sheet';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
+import {
+  taskFilterBucketLabel,
+  taskFilterPriorityLabel,
+  taskFilterSourceLabel,
+  taskFilterStatusLabel,
+  taskTypeLabel,
+} from '../tasks-settings/tasks-i18n';
 import {
   DEFAULT_TASKS_LIST_FILTERS,
   hasActiveTasksListFilters,
-  TASK_FILTER_LABELS,
   type TasksListFilters,
 } from './tasksListState';
 
@@ -37,10 +44,10 @@ export interface TasksFilterPanelProps {
   resultLabel: string;
 }
 
-const TASK_STATUSES = Object.keys(TASK_FILTER_LABELS.status) as ApiTaskStatus[];
-const TASK_PRIORITIES = Object.keys(TASK_FILTER_LABELS.priority) as ApiTaskPriority[];
-const TASK_SOURCES = Object.keys(TASK_FILTER_LABELS.source) as ApiTaskSource[];
-const TASK_BUCKETS = Object.keys(TASK_FILTER_LABELS.bucket) as TaskBucket[];
+const TASK_STATUSES: ApiTaskStatus[] = ['OPEN', 'IN_PROGRESS', 'WAITING', 'DONE', 'CANCELLED'];
+const TASK_PRIORITIES: ApiTaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
+const TASK_SOURCES: ApiTaskSource[] = ['MANUAL', 'SYSTEM', 'ALERT', 'HEALTH', 'BOOKING', 'DOCUMENT', 'VENDOR'];
+const TASK_BUCKETS: TaskBucket[] = ['NOW', 'TODAY', 'UPCOMING', 'PLANNED', 'OVERDUE', 'UNASSIGNED', 'ALL_OPEN', 'COMPLETED'];
 const TASK_TYPES: ApiTaskType[] = [
   'VEHICLE_SERVICE',
   'VEHICLE_INSPECTION',
@@ -74,6 +81,7 @@ export function TasksFilterPanel({
   hasActiveFilters,
   resultLabel,
 }: TasksFilterPanelProps) {
+  const { t, locale } = useLanguage();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -110,8 +118,8 @@ export function TasksFilterPanel({
             type="search"
             value={searchDraft}
             onChange={(event) => onSearchDraftChange(event.target.value)}
-            placeholder="Suchen …"
-            aria-label="Aufgaben suchen"
+            placeholder={t('tasks.filter.searchPlaceholder')}
+            aria-label={t('tasks.filter.searchAria')}
             className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
           />
         </div>
@@ -126,7 +134,7 @@ export function TasksFilterPanel({
             data-testid="tasks-filter-sheet-trigger"
           >
             <Icon name="filter" className="h-3.5 w-3.5" />
-            Filter
+            {t('tasks.filter.title')}
             {activeFilterCount > 0 ? (
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
                 {activeFilterCount}
@@ -158,7 +166,7 @@ export function TasksFilterPanel({
           onClick={() => setAdvancedOpen((open) => !open)}
           className="text-[11px] font-semibold text-[color:var(--brand)]"
         >
-          {advancedOpen ? 'Erweiterte Filter ausblenden' : 'Erweiterte Filter anzeigen'}
+          {advancedOpen ? t('tasks.filter.advancedHide') : t('tasks.filter.advancedShow')}
         </button>
         {advancedOpen ? (
           <div className="mt-3 rounded-xl border border-border/60 bg-muted/20 p-3">
@@ -187,14 +195,14 @@ export function TasksFilterPanel({
             onClick={onClear}
             className="font-semibold text-[color:var(--brand)]"
           >
-            Filter zurücksetzen
+            {t('tasks.filter.resetFilters')}
           </button>
         ) : null}
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pb-6 pt-4">
-          <SheetTitle className="mb-4 text-base font-semibold">Filter</SheetTitle>
+          <SheetTitle className="mb-4 text-base font-semibold">{t('tasks.filter.title')}</SheetTitle>
           <FilterFields
             filters={filters}
             onChange={onChange}
@@ -218,10 +226,10 @@ export function TasksFilterPanel({
                 setSheetOpen(false);
               }}
             >
-              Zurücksetzen
+              {t('common.reset')}
             </Button>
             <Button type="button" className="flex-1" onClick={() => setSheetOpen(false)}>
-              Anwenden
+              {t('common.apply')}
             </Button>
           </div>
         </SheetContent>
@@ -255,6 +263,7 @@ function FilterFields({
   layout: 'inline' | 'stacked';
   section: 'primary' | 'advanced' | 'all';
 }) {
+  const { t, locale } = useLanguage();
   const fieldClass = cn(
     'rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-[color:var(--brand)]',
     layout === 'inline' ? 'min-w-[9rem]' : 'w-full',
@@ -315,56 +324,56 @@ function FilterFields({
       {showPrimary ? (
         <>
           {renderSelect(
-            'Status',
+            t('tasks.filter.statusLabel'),
             filters.status,
             TASK_STATUSES.map((status) => ({
               value: status,
-              label: TASK_FILTER_LABELS.status[status],
+              label: taskFilterStatusLabel(locale, status),
             })),
             (value) => onChange({ status: value as TasksFilterState['status'] }),
-            'Alle Status',
-            'Status filtern',
+            t('tasks.filter.statusAll'),
+            t('tasks.filter.statusAria'),
           )}
           {renderSelect(
-            'Bucket',
+            t('tasks.filter.bucketLabel'),
             filters.bucket,
             TASK_BUCKETS.map((bucket) => ({
               value: bucket,
-              label: TASK_FILTER_LABELS.bucket[bucket],
+              label: taskFilterBucketLabel(locale, bucket),
             })),
             (value) => onChange({ bucket: value as TasksFilterState['bucket'] }),
-            'Alle Buckets',
-            'Bucket filtern',
+            t('tasks.filter.bucketAll'),
+            t('tasks.filter.bucketAria'),
           )}
           {renderSelect(
-            'Priorität',
+            t('tasks.filter.priorityLabel'),
             filters.priority,
             TASK_PRIORITIES.map((priority) => ({
               value: priority,
-              label: TASK_FILTER_LABELS.priority[priority],
+              label: taskFilterPriorityLabel(locale, priority),
             })),
             (value) => onChange({ priority: value as TasksFilterState['priority'] }),
-            'Alle Prioritäten',
-            'Priorität filtern',
+            t('tasks.filter.priorityAll'),
+            t('tasks.filter.priorityAria'),
           )}
           {renderSelect(
-            'Aufgabentyp',
+            t('tasks.filter.typeLabel'),
             filters.type,
-            TASK_TYPES.map((type) => ({ value: type, label: type.replaceAll('_', ' ') })),
+            TASK_TYPES.map((type) => ({ value: type, label: taskTypeLabel(locale, type) })),
             (value) => onChange({ type: value as TasksFilterState['type'] }),
-            'Alle Typen',
-            'Aufgabentyp filtern',
+            t('tasks.filter.typeAll'),
+            t('tasks.filter.typeAria'),
           )}
           {renderSelect(
-            'Quelle',
+            t('tasks.filter.sourceLabel'),
             filters.source,
             TASK_SOURCES.map((source) => ({
               value: source,
-              label: TASK_FILTER_LABELS.source[source],
+              label: taskFilterSourceLabel(locale, source),
             })),
             (value) => onChange({ source: value as TasksFilterState['source'] }),
-            'Alle Quellen',
-            'Quelle filtern',
+            t('tasks.filter.sourceAll'),
+            t('tasks.filter.sourceAria'),
           )}
           <label className={layout === 'stacked' ? 'flex items-center gap-2' : 'flex items-center gap-2 px-1'}>
             <input
@@ -373,11 +382,11 @@ function FilterFields({
               onChange={(event) => onChange({ overdue: event.target.checked })}
               className="rounded border-border"
             />
-            <span className="text-xs text-foreground">Nur überfällig</span>
+            <span className="text-xs text-foreground">{t('tasks.filter.overdueOnly')}</span>
           </label>
           <label className={layout === 'stacked' ? 'block' : undefined}>
             {layout === 'stacked' ? (
-              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">Sortierung</span>
+              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">{t('tasks.filter.sortAria')}</span>
             ) : null}
             <select
               value={filters.sortBy}
@@ -385,12 +394,12 @@ function FilterFields({
                 onChange({ sortBy: event.target.value as TasksFilterState['sortBy'] })
               }
               className={fieldClass}
-              aria-label="Sortierung"
+              aria-label={t('tasks.filter.sortAria')}
             >
-              <option value="dueDate">Fälligkeit</option>
-              <option value="priority">Priorität</option>
-              <option value="status">Status</option>
-              <option value="created">Neueste</option>
+              <option value="dueDate">{t('tasks.filter.sortDue')}</option>
+              <option value="priority">{t('tasks.filter.sortPriority')}</option>
+              <option value="status">{t('tasks.filter.sortStatus')}</option>
+              <option value="created">{t('tasks.filter.sortCreated')}</option>
             </select>
           </label>
         </>
@@ -399,65 +408,65 @@ function FilterFields({
       {showAdvanced ? (
         <>
           {renderEntitySelect(
-            'Station',
+            t('tasks.filter.stationLabel'),
             filters.stationId,
             stationOptions,
             (value) => onChange({ stationId: value }),
-            'Alle Stationen',
-            'Station filtern',
+            t('tasks.filter.stationAll'),
+            t('tasks.filter.stationAria'),
           )}
           {renderEntitySelect(
-            'Verantwortlicher',
+            t('tasks.filter.assigneeLabel'),
             filters.assignedUserId,
             assigneeOptions,
             (value) => onChange({ assignedUserId: value }),
-            'Alle Verantwortlichen',
-            'Verantwortlichen filtern',
+            t('tasks.filter.assigneeAll'),
+            t('tasks.filter.assigneeAria'),
           )}
           {renderEntitySelect(
-            'Fahrzeug',
+            t('tasks.filter.vehicleLabel'),
             filters.vehicleId,
             vehicleOptions,
             (value) => onChange({ vehicleId: value }),
-            'Alle Fahrzeuge',
-            'Fahrzeug filtern',
+            t('tasks.filter.vehicleAll'),
+            t('tasks.filter.vehicleAria'),
           )}
           {renderEntitySelect(
-            'Buchung',
+            t('tasks.filter.bookingLabel'),
             filters.bookingId,
             bookingOptions,
             (value) => onChange({ bookingId: value }),
-            'Alle Buchungen',
-            'Buchung filtern',
+            t('tasks.filter.bookingAll'),
+            t('tasks.filter.bookingAria'),
           )}
           {renderEntitySelect(
-            'Kunde',
+            t('tasks.filter.customerLabel'),
             filters.customerId,
             customerOptions,
             (value) => onChange({ customerId: value }),
-            'Alle Kunden',
-            'Kunde filtern',
+            t('tasks.filter.customerAll'),
+            t('tasks.filter.customerAria'),
           )}
           {renderEntitySelect(
-            'Rechnung',
+            t('tasks.filter.invoiceLabel'),
             filters.invoiceId,
             invoiceOptions,
             (value) => onChange({ invoiceId: value }),
-            'Alle Rechnungen',
-            'Rechnung filtern',
+            t('tasks.filter.invoiceAll'),
+            t('tasks.filter.invoiceAria'),
           )}
           {renderEntitySelect(
-            'Servicefall',
+            t('tasks.filter.serviceCaseLabel'),
             filters.serviceCaseId,
             serviceCaseOptions,
             (value) => onChange({ serviceCaseId: value }),
-            'Alle Servicefälle',
-            'Servicefall filtern',
+            t('tasks.filter.serviceCaseAll'),
+            t('tasks.filter.serviceCaseAria'),
           )}
           <label className={layout === 'stacked' ? 'block' : undefined}>
             {layout === 'stacked' ? (
               <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-                Aktivierung von
+                {t('tasks.filter.activatesFrom')}
               </span>
             ) : null}
             <input
@@ -465,13 +474,13 @@ function FilterFields({
               value={filters.activatesFrom}
               onChange={(event) => onChange({ activatesFrom: event.target.value })}
               className={fieldClass}
-              aria-label="Aktivierung von"
+              aria-label={t('tasks.filter.activatesFromAria')}
             />
           </label>
           <label className={layout === 'stacked' ? 'block' : undefined}>
             {layout === 'stacked' ? (
               <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">
-                Aktivierung bis
+                {t('tasks.filter.activatesTo')}
               </span>
             ) : null}
             <input
@@ -479,31 +488,31 @@ function FilterFields({
               value={filters.activatesTo}
               onChange={(event) => onChange({ activatesTo: event.target.value })}
               className={fieldClass}
-              aria-label="Aktivierung bis"
+              aria-label={t('tasks.filter.activatesToAria')}
             />
           </label>
           <label className={layout === 'stacked' ? 'block' : undefined}>
             {layout === 'stacked' ? (
-              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">Fällig von</span>
+              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">{t('tasks.filter.dueFrom')}</span>
             ) : null}
             <input
               type="date"
               value={filters.dueFrom}
               onChange={(event) => onChange({ dueFrom: event.target.value })}
               className={fieldClass}
-              aria-label="Fällig von"
+              aria-label={t('tasks.filter.dueFromAria')}
             />
           </label>
           <label className={layout === 'stacked' ? 'block' : undefined}>
             {layout === 'stacked' ? (
-              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">Fällig bis</span>
+              <span className="mb-1 block text-[11px] font-semibold text-muted-foreground">{t('tasks.filter.dueTo')}</span>
             ) : null}
             <input
               type="date"
               value={filters.dueTo}
               onChange={(event) => onChange({ dueTo: event.target.value })}
               className={fieldClass}
-              aria-label="Fällig bis"
+              aria-label={t('tasks.filter.dueToAria')}
             />
           </label>
         </>

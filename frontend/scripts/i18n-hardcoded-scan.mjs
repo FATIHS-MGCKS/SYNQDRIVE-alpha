@@ -87,6 +87,23 @@ const P23_ENFORCE_CLEAN_PREFIXES = [
   'rental/lib/add-customer-wizard.ts',
 ];
 
+const P24_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/TasksView.tsx',
+  'rental/components/SettingsView.tsx',
+]);
+
+const P24_ENFORCE_CLEAN_PREFIXES = [
+  'rental/components/tasks/',
+  'rental/components/settings/',
+  'rental/components/tasks-settings/',
+  'rental/lib/task-list.utils.ts',
+  'rental/lib/task-create.utils.ts',
+  'rental/lib/tasks-page.utils.ts',
+  'rental/lib/task-display.utils.ts',
+  'rental/lib/task-create-form.utils.ts',
+  'rental/lib/taskBulkActions.utils.ts',
+];
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -261,6 +278,14 @@ function classifyRentalModule(relPath) {
   }
   if (relPath.includes('booking') || relPath.includes('Booking')) return 'Bookings';
   if (relPath.includes('customer')) return 'Customers';
+  if (relPath === 'rental/components/SettingsView.tsx') return 'Settings';
+  if (
+    relPath.includes('workflow-automation') ||
+    relPath.includes('voice-assistant') ||
+    relPath.includes('whatsapp')
+  ) {
+    return 'Automation';
+  }
   if (
     (relPath.includes('task') || relPath.includes('Task')) &&
     !relPath.includes('fleet-health-service') &&
@@ -279,15 +304,17 @@ function classifyRentalModule(relPath) {
   if (relPath.includes('insurance') || relPath.includes('parts-accessories') || relPath.includes('integration')) {
     return 'Integrations';
   }
-  if (relPath.includes('workflow-automation') || relPath.includes('voice-assistant') || relPath.includes('whatsapp')) {
-    return 'Automation';
-  }
   if (relPath.includes('data-analyse') || relPath.includes('financial-insight') || relPath.includes('report')) {
     return 'Reports/Analytics';
   }
   if (relPath.includes('station')) return 'Stations';
   if (relPath.includes('support') || relPath.includes('help-center')) return 'Support';
   return 'other Rental areas';
+}
+
+function isP24EnforceCleanPath(relPath) {
+  if (P24_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
+  return P24_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
 function isP22EnforceCleanPath(relPath) {
@@ -311,6 +338,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   }
   if (surface === 'RENTAL' && isP22EnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP23EnforceCleanPath(relPath)) return true;
+  if (surface === 'RENTAL' && isP24EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -319,6 +347,7 @@ function migrationPhaseFor(relPath, surface) {
     return surface === 'LOGIN' || surface === 'SHELL' ? 'P2.1' : surface === 'RENTAL' ? 'P2.2' : 'P2.3';
   }
   if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
+  if (isP24EnforceCleanPath(relPath)) return 'P2.2.4';
   if (
     relPath.startsWith('rental/components/dashboard/') ||
     P21_ENFORCE_CLEAN_EXACT.has(relPath)
@@ -444,6 +473,10 @@ const inventory = {
     P23: {
       enforceCleanExact: [...P23_ENFORCE_CLEAN_EXACT],
       enforceCleanPrefixes: [...P23_ENFORCE_CLEAN_PREFIXES],
+    },
+    P24: {
+      enforceCleanExact: [...P24_ENFORCE_CLEAN_EXACT],
+      enforceCleanPrefixes: [...P24_ENFORCE_CLEAN_PREFIXES],
     },
   },
   summary,

@@ -3,7 +3,8 @@ import {
   chromeTabTriggerClass,
   CHROME_TAB_BAR_SCROLL_CLASS,
 } from '../../../../components/patterns/chrome-tab-bar';
-import { COMPANY_SECTIONS, type CompanySection } from './company-utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { getCompanySections, type CompanySection } from './company-utils';
 
 interface CompanySectionTabBarProps {
   activeSection: CompanySection;
@@ -14,14 +15,17 @@ export function CompanySectionTabBar({
   activeSection,
   onSectionChange,
 }: CompanySectionTabBarProps) {
+  const { t, locale } = useLanguage();
+  const sections = getCompanySections(locale);
+
   return (
     <div
       className={chromeTabBarClass('p-1')}
       role="tablist"
-      aria-label="Unternehmensbereiche"
+      aria-label={t('settings.company.sections.ariaLabel')}
     >
       <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
-        {COMPANY_SECTIONS.map((section) => {
+        {sections.map((section) => {
           const isActive = activeSection === section.id;
           return (
             <button

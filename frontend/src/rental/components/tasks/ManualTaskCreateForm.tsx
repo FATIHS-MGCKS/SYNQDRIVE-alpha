@@ -1,13 +1,15 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiTaskType } from '../../../lib/api';
 import { TASK_PRIORITIES, type TaskPriorityView } from '../../lib/task-create.utils';
 import {
   createChecklistDraft,
-  ESTIMATED_DURATION_OPTIONS,
-  TASK_TYPE_OPTIONS,
+  estimatedDurationOptions,
+  taskTypeOptions,
   type ManualTaskChecklistDraft,
   type ManualTaskFormState,
 } from '../../lib/task-create-form.utils';
+import { taskPriorityViewLabel } from '../tasks-settings/tasks-i18n';
 import { Icon } from '../ui/Icon';
 
 export interface EntityOption {
@@ -64,46 +66,49 @@ export function ManualTaskCreateForm({
   canBlockVehicleAvailability = false,
   disabled = false,
 }: ManualTaskCreateFormProps) {
+  const { t, locale } = useLanguage();
+  const typeOptions = taskTypeOptions(locale);
+  const durationOptions = estimatedDurationOptions(locale);
   const [linksOpen, setLinksOpen] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
 
   return (
     <div className="space-y-5" data-testid="manual-task-create-form">
       <section className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Grunddaten</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('tasks.form.basics')}</h3>
         <label className="block">
-          <span className={labelClass}>Titel *</span>
+          <span className={labelClass}>{t('tasks.form.titleRequired')}</span>
           <input
             type="text"
             value={form.title}
             disabled={disabled}
             onChange={(event) => onFormChange({ title: event.target.value })}
             className={inputClass}
-            placeholder="z. B. Bremsen prüfen"
+            placeholder={t('tasks.form.titlePlaceholder')}
           />
           {errors.title ? <FieldError message={errors.title} /> : null}
         </label>
         <label className="block">
-          <span className={labelClass}>Beschreibung</span>
+          <span className={labelClass}>{t('tasks.form.description')}</span>
           <textarea
             rows={3}
             value={form.description}
             disabled={disabled}
             onChange={(event) => onFormChange({ description: event.target.value })}
             className={`${inputClass} resize-y`}
-            placeholder="Optionale Details zur Aufgabe"
+            placeholder={t('tasks.form.descriptionPlaceholder')}
           />
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>Aufgabentyp</span>
+            <span className={labelClass}>{t('tasks.form.taskType')}</span>
             <select
               value={form.type}
               disabled={disabled}
               onChange={(event) => onFormChange({ type: event.target.value as ApiTaskType })}
               className={inputClass}
             >
-              {TASK_TYPE_OPTIONS.map((option) => (
+              {typeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -111,7 +116,7 @@ export function ManualTaskCreateForm({
             </select>
           </label>
           <div>
-            <span className={labelClass}>Priorität</span>
+            <span className={labelClass}>{t('tasks.form.priority')}</span>
             <div className="flex flex-wrap gap-1.5">
               {TASK_PRIORITIES.map((priority) => (
                 <button
@@ -125,30 +130,30 @@ export function ManualTaskCreateForm({
                       : 'border-border text-muted-foreground'
                   }`}
                 >
-                  {priority}
+                  {taskPriorityViewLabel(locale, priority)}
                 </button>
               ))}
             </div>
           </div>
         </div>
         <label className="block">
-          <span className={labelClass}>Erste Notiz</span>
+          <span className={labelClass}>{t('tasks.form.initialNote')}</span>
           <textarea
             rows={2}
             value={form.initialNote}
             disabled={disabled}
             onChange={(event) => onFormChange({ initialNote: event.target.value })}
             className={`${inputClass} resize-y`}
-            placeholder="Wird als erster Kommentar zur Aufgabe gespeichert"
+            placeholder={t('tasks.form.initialNotePlaceholder')}
           />
         </label>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Zeitplan & Zuweisung</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('tasks.form.schedule')}</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>Aktiv ab</span>
+            <span className={labelClass}>{t('tasks.form.activatesAt')}</span>
             <input
               type="datetime-local"
               value={form.activatesAt}
@@ -159,7 +164,7 @@ export function ManualTaskCreateForm({
             {errors.activatesAt ? <FieldError message={errors.activatesAt} /> : null}
           </label>
           <label className="block">
-            <span className={labelClass}>Fällig am</span>
+            <span className={labelClass}>{t('tasks.form.dueDate')}</span>
             <input
               type="datetime-local"
               value={form.dueDate}
@@ -170,15 +175,15 @@ export function ManualTaskCreateForm({
             {errors.dueDate ? <FieldError message={errors.dueDate} /> : null}
           </label>
           <label className="block">
-            <span className={labelClass}>Geschätzte Dauer</span>
+            <span className={labelClass}>{t('tasks.form.estimatedDuration')}</span>
             <select
               value={form.estimatedDurationMinutes}
               disabled={disabled}
               onChange={(event) => onFormChange({ estimatedDurationMinutes: event.target.value })}
               className={inputClass}
             >
-              <option value="">Keine Angabe</option>
-              {ESTIMATED_DURATION_OPTIONS.map((option) => (
+              <option value="">{t('tasks.form.noDuration')}</option>
+              {durationOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -189,14 +194,14 @@ export function ManualTaskCreateForm({
             ) : null}
           </label>
           <label className="block">
-            <span className={labelClass}>Verantwortlicher</span>
+            <span className={labelClass}>{t('tasks.form.assignee')}</span>
             <select
               value={form.assignedUserId}
               disabled={disabled}
               onChange={(event) => onFormChange({ assignedUserId: event.target.value })}
               className={inputClass}
             >
-              <option value="">Nicht zugewiesen</option>
+              <option value="">{t('tasks.display.unassigned')}</option>
               {assigneeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -205,14 +210,14 @@ export function ManualTaskCreateForm({
             </select>
           </label>
           <label className="block sm:col-span-2">
-            <span className={labelClass}>Station</span>
+            <span className={labelClass}>{t('tasks.form.station')}</span>
             <select
               value={form.stationId}
               disabled={disabled}
               onChange={(event) => onFormChange({ stationId: event.target.value })}
               className={inputClass}
             >
-              <option value="">Keine Station</option>
+              <option value="">{t('tasks.form.noStation')}</option>
               {stationOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -225,16 +230,16 @@ export function ManualTaskCreateForm({
 
       {showVehicleField ? (
         <section className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Fahrzeug</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('tasks.form.vehicle')}</h3>
           <label className="block">
-            <span className={labelClass}>Fahrzeug</span>
+            <span className={labelClass}>{t('tasks.form.vehicle')}</span>
             <select
               value={lockedVehicleId ?? form.vehicleId}
               disabled={disabled || Boolean(lockedVehicleId)}
               onChange={(event) => onFormChange({ vehicleId: event.target.value })}
               className={inputClass}
             >
-              <option value="">Kein Fahrzeug</option>
+              <option value="">Kein {t('tasks.form.vehicle')}</option>
               {vehicleOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -253,55 +258,55 @@ export function ManualTaskCreateForm({
             className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-left text-xs font-semibold text-foreground"
             onClick={() => setLinksOpen((open) => !open)}
           >
-            Verknüpfungen
+            {t('tasks.form.links')}
             <Icon name={linksOpen ? 'chevron-up' : 'chevron-down'} className="h-4 w-4" />
           </button>
           {linksOpen ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <EntitySelect
-                label="Buchung"
+                label={t('tasks.form.booking')}
                 value={lockedBookingId ?? form.bookingId}
                 options={bookingOptions}
                 disabled={disabled || Boolean(lockedBookingId)}
                 onChange={(value) => onFormChange({ bookingId: value })}
               />
               <EntitySelect
-                label="Kunde"
+                label={t('tasks.form.customer')}
                 value={form.customerId}
                 options={customerOptions}
                 disabled={disabled}
                 onChange={(value) => onFormChange({ customerId: value })}
               />
               <EntitySelect
-                label="Rechnung"
+                label={t('tasks.form.invoice')}
                 value={form.invoiceId}
                 options={invoiceOptions}
                 disabled={disabled}
                 onChange={(value) => onFormChange({ invoiceId: value })}
               />
               <EntitySelect
-                label="Lieferant"
+                label={t('tasks.form.vendor')}
                 value={form.vendorId}
                 options={vendorOptions}
                 disabled={disabled}
                 onChange={(value) => onFormChange({ vendorId: value })}
               />
               <EntitySelect
-                label="Servicefall"
+                label={t('tasks.form.serviceCase')}
                 value={form.serviceCaseId}
                 options={serviceCaseOptions}
                 disabled={disabled}
                 onChange={(value) => onFormChange({ serviceCaseId: value })}
               />
               <label className="block">
-                <span className={labelClass}>Dokument-ID</span>
+                <span className={labelClass}>{t('tasks.form.documentId')}</span>
                 <input
                   type="text"
                   value={form.documentId}
                   disabled={disabled}
                   onChange={(event) => onFormChange({ documentId: event.target.value })}
                   className={inputClass}
-                  placeholder="Optionale Dokumentenreferenz"
+                  placeholder={t('tasks.form.documentIdPlaceholder')}
                 />
               </label>
             </div>
@@ -316,7 +321,7 @@ export function ManualTaskCreateForm({
             className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-left text-xs font-semibold text-foreground"
             onClick={() => setChecklistOpen((open) => !open)}
           >
-            Checkliste
+            {t('tasks.form.checklist')}
             <Icon name={checklistOpen ? 'chevron-up' : 'chevron-down'} className="h-4 w-4" />
           </button>
           {checklistOpen ? (
@@ -328,7 +333,7 @@ export function ManualTaskCreateForm({
                   disabled={disabled}
                   onChange={(event) => onFormChange({ useTypeChecklistTemplate: event.target.checked })}
                 />
-                Standard-Checkliste für Aufgabentyp übernehmen
+                Standard-{t('tasks.form.checklist')} für {t('tasks.form.taskType')} übernehmen
               </label>
               {checklistItems.map((item, index) => (
                 <div key={item.id} className="flex items-start gap-2">
@@ -342,7 +347,7 @@ export function ManualTaskCreateForm({
                       onChecklistChange(next);
                     }}
                     className={`${inputClass} flex-1`}
-                    placeholder={`Checklistenpunkt ${index + 1}`}
+                    placeholder={`{t('tasks.form.checklist')}npunkt ${index + 1}`}
                   />
                   <label className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <input
@@ -355,14 +360,14 @@ export function ManualTaskCreateForm({
                         onChecklistChange(next);
                       }}
                     />
-                    Pflicht
+                    {t('tasks.form.checklistRequired')}
                   </label>
                   <button
                     type="button"
                     disabled={disabled}
                     onClick={() => onChecklistChange(checklistItems.filter((row) => row.id !== item.id))}
                     className="mt-2 rounded-md p-1 text-muted-foreground hover:bg-muted"
-                    aria-label="Punkt entfernen"
+                    aria-label={t('tasks.form.removeChecklistItem')}
                   >
                     <Icon name="x" className="h-4 w-4" />
                   </button>
@@ -375,7 +380,7 @@ export function ManualTaskCreateForm({
                 onClick={() => onChecklistChange([...checklistItems, createChecklistDraft()])}
                 className="text-xs font-semibold text-[color:var(--brand)]"
               >
-                + Checklistenpunkt hinzufügen
+                + {t('tasks.form.checklist')}npunkt hinzufügen
               </button>
             </div>
           ) : null}
@@ -392,9 +397,9 @@ export function ManualTaskCreateForm({
             className="mt-0.5 h-4 w-4 rounded accent-[color:var(--status-critical)]"
           />
           <span className="text-[11px] text-foreground">
-            <span className="block font-semibold">Blockiert Fahrzeugverfügbarkeit</span>
+            <span className="block font-semibold">Blockiert {t('tasks.form.vehicle')}verfügbarkeit</span>
             <span className="text-muted-foreground">
-              Nur für berechtigte Rollen. Die Aufgabe gilt bis zur Erledigung als vermietungsrelevant.
+              {t('tasks.form.blocksAvailabilityHint')}
             </span>
           </span>
         </label>
@@ -416,11 +421,12 @@ function EntitySelect({
   disabled?: boolean;
   onChange: (value: string) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <label className="block">
       <span className={labelClass}>{label}</span>
       <select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className={inputClass}>
-        <option value="">Keine Auswahl</option>
+        <option value="">{t('tasks.form.noSelection')}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

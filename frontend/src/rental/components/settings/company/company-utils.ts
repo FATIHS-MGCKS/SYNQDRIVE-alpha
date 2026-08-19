@@ -4,6 +4,9 @@ import type {
   TenantOrganizationProfileDto,
   TenantOrganizationProfileUiUpdate,
 } from '../../../../lib/api';
+import type { TranslationKey } from '../../../../i18n/translations/en';
+import { st } from '../../tasks-settings/settings-i18n';
+import { rs } from '../../../lib/rental-surface-ui';
 
 export type CompanySection =
   | 'basis'
@@ -47,33 +50,44 @@ export interface CompanyDraft {
   emailSignature: string;
 }
 
-export const COMPANY_SECTIONS: Array<{ id: CompanySection; label: string }> = [
-  { id: 'basis', label: 'Basisdaten' },
-  { id: 'contact', label: 'Adresse & Kontakt' },
-  { id: 'tax', label: 'Steuer & Rechnung' },
-  { id: 'branding', label: 'Branding' },
-  { id: 'documents', label: 'Dokumentenstatus' },
-  { id: 'history', label: 'Änderungsverlauf' },
-];
+export function getCompanySections(locale: string): Array<{ id: CompanySection; label: string }> {
+  return [
+    { id: 'basis', label: st(locale, 'settings.company.sections.basis') },
+    { id: 'contact', label: st(locale, 'settings.company.sections.contact') },
+    { id: 'tax', label: st(locale, 'settings.company.sections.tax') },
+    { id: 'branding', label: st(locale, 'settings.company.sections.branding') },
+    { id: 'documents', label: st(locale, 'settings.company.sections.documents') },
+    { id: 'history', label: st(locale, 'settings.company.sections.history') },
+  ];
+}
 
-export const LEGAL_FORM_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'GMBH', label: 'GmbH' },
-  { value: 'UG', label: 'UG (haftungsbeschränkt)' },
-  { value: 'AG', label: 'AG' },
-  { value: 'KG', label: 'KG' },
-  { value: 'OHG', label: 'OHG' },
-  { value: 'GBR', label: 'GbR' },
-  { value: 'EINZELUNTERNEHMEN', label: 'Einzelunternehmen' },
-  { value: 'FREIBERUFLER', label: 'Freiberufler' },
-  { value: 'OTHER', label: 'Sonstige' },
-];
+const LEGAL_FORM_KEYS: Record<string, TranslationKey> = {
+  GMBH: 'settings.company.legalForm.GMBH',
+  UG: 'settings.company.legalForm.UG',
+  AG: 'settings.company.legalForm.AG',
+  KG: 'settings.company.legalForm.KG',
+  OHG: 'settings.company.legalForm.OHG',
+  GBR: 'settings.company.legalForm.GBR',
+  EINZELUNTERNEHMEN: 'settings.company.legalForm.EINZELUNTERNEHMEN',
+  FREIBERUFLER: 'settings.company.legalForm.FREIBERUFLER',
+  OTHER: 'settings.company.legalForm.OTHER',
+};
 
-export const LANGUAGE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'de-DE', label: 'Deutsch (de-DE)' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'en-US', label: 'Englisch (en-US)' },
-  { value: 'en', label: 'Englisch' },
-];
+export function getLegalFormOptions(locale: string): Array<{ value: string; label: string }> {
+  return Object.entries(LEGAL_FORM_KEYS).map(([value, key]) => ({
+    value,
+    label: st(locale, key),
+  }));
+}
+
+export function getCompanyLanguageOptions(locale: string): Array<{ value: string; label: string }> {
+  return [
+    { value: 'de-DE', label: st(locale, 'settings.company.language.deDE') },
+    { value: 'de', label: st(locale, 'settings.company.language.de') },
+    { value: 'en-US', label: st(locale, 'settings.company.language.enUS') },
+    { value: 'en', label: st(locale, 'settings.company.language.en') },
+  ];
+}
 
 export const TIMEZONE_OPTIONS = [
   'Europe/Berlin',
@@ -86,7 +100,9 @@ export const TIMEZONE_OPTIONS = [
   'UTC',
 ] as const;
 
-export const EMPTY_VALUE = 'Nicht hinterlegt';
+export function getEmptyValue(locale: string): string {
+  return st(locale, 'settings.company.emptyValue');
+}
 
 export function draftFromProfile(p: TenantOrganizationProfileDto): CompanyDraft {
   return {
@@ -141,39 +157,39 @@ export function normalizeWebsiteInput(value: string): string {
   return `https://${t}`;
 }
 
-export function validateCompanyDraft(draft: CompanyDraft): string | null {
-  if (!draft.companyName.trim()) return 'Anzeigename ist erforderlich.';
-  if (!draft.email.trim()) return 'E-Mail ist erforderlich.';
-  if (!EMAIL_RE.test(draft.email.trim())) return 'Ungültige E-Mail-Adresse.';
+export function validateCompanyDraft(locale: string, draft: CompanyDraft): string | null {
+  if (!draft.companyName.trim()) return st(locale, 'settings.company.validation.displayNameRequired');
+  if (!draft.email.trim()) return st(locale, 'settings.company.validation.emailRequired');
+  if (!EMAIL_RE.test(draft.email.trim())) return st(locale, 'settings.company.validation.emailInvalid');
   if (!draft.address.trim() || !draft.city.trim() || !draft.country.trim()) {
-    return 'Adresse, Stadt und Land sind erforderlich.';
+    return st(locale, 'settings.company.validation.addressRequired');
   }
   if (draft.managerEmail.trim() && !EMAIL_RE.test(draft.managerEmail.trim())) {
-    return 'Ungültige E-Mail des Geschäftsführers.';
+    return st(locale, 'settings.company.validation.managerEmailInvalid');
   }
   if (draft.invoiceEmail.trim() && !EMAIL_RE.test(draft.invoiceEmail.trim())) {
-    return 'Ungültige Rechnungs-E-Mail.';
+    return st(locale, 'settings.company.validation.invoiceEmailInvalid');
   }
   if (draft.phone.trim() && !PHONE_RE.test(draft.phone.trim())) {
-    return 'Telefonnummer wirkt ungültig.';
+    return st(locale, 'settings.company.validation.phoneInvalid');
   }
   if (draft.website.trim() && !WEBSITE_RE.test(draft.website.trim())) {
-    return 'Website-Format ungültig (z. B. https://beispiel.de).';
+    return st(locale, 'settings.company.validation.websiteInvalid');
   }
   const vat = draft.defaultVatRate.trim();
   if (vat) {
     const n = Number(vat);
-    if (Number.isNaN(n) || n < 0 || n > 100) return 'Standard-MwSt. muss zwischen 0 und 100 liegen.';
+    if (Number.isNaN(n) || n < 0 || n > 100) return st(locale, 'settings.company.validation.vatRange');
   }
   const terms = draft.paymentTermsDays.trim();
   if (terms) {
     const n = Number(terms);
-    if (!Number.isInteger(n) || n < 0) return 'Zahlungsziel muss 0 oder größer sein.';
+    if (!Number.isInteger(n) || n < 0) return st(locale, 'settings.company.validation.paymentTerms');
   }
   const invNum = draft.nextInvoiceNumber.trim();
   if (invNum) {
     const n = Number(invNum);
-    if (!Number.isInteger(n) || n < 1) return 'Nächste Rechnungsnummer muss mindestens 1 sein.';
+    if (!Number.isInteger(n) || n < 1) return st(locale, 'settings.company.validation.invoiceNumber');
   }
   return null;
 }
@@ -245,6 +261,7 @@ export function isBillingDataComplete(
 }
 
 export function computeSetupChecklist(
+  locale: string,
   profile: TenantOrganizationProfileDto | null,
   logoUrl: string | null,
   legalDocs: LegalDocumentDto[],
@@ -272,51 +289,51 @@ export function computeSetupChecklist(
   return [
     {
       id: 'company',
-      label: 'Unternehmensdaten vollständig',
-      description: 'Anzeigename, Rechtsform, Geschäftsführung und Lokalisierung.',
+      label: st(locale, 'settings.company.setup.item.company.label'),
+      description: st(locale, 'settings.company.setup.item.company.description'),
       status: companyComplete ? 'done' : 'missing',
-      ctaLabel: companyComplete ? undefined : 'Basisdaten öffnen',
+      ctaLabel: companyComplete ? undefined : st(locale, 'settings.company.setup.item.company.cta'),
       ctaSection: 'basis',
     },
     {
       id: 'billing',
-      label: 'Rechnungsdaten vollständig',
-      description: 'Steuernummer oder USt-ID, Bankverbindung, MwSt. und Rechnungspräfix.',
+      label: st(locale, 'settings.company.setup.item.billing.label'),
+      description: st(locale, 'settings.company.setup.item.billing.description'),
       status: billingComplete ? 'done' : 'missing',
-      ctaLabel: billingComplete ? undefined : 'Steuer & Rechnung öffnen',
+      ctaLabel: billingComplete ? undefined : st(locale, 'settings.company.setup.item.billing.cta'),
       ctaSection: 'tax',
     },
     {
       id: 'branding',
-      label: 'Logo / Branding vorhanden',
-      description: 'Logo für Sidebar, Dokumente und Kundenkommunikation.',
+      label: st(locale, 'settings.company.setup.item.branding.label'),
+      description: st(locale, 'settings.company.setup.item.branding.description'),
       status: brandingOk ? 'done' : 'missing',
-      ctaLabel: brandingOk ? undefined : 'Branding öffnen',
+      ctaLabel: brandingOk ? undefined : st(locale, 'settings.company.setup.item.branding.cta'),
       ctaSection: 'branding',
     },
     {
       id: 'legal',
-      label: 'Rechtstexte hinterlegt',
-      description: 'Aktive AGB und Widerrufsbelehrung.',
+      label: st(locale, 'settings.company.setup.item.legal.label'),
+      description: st(locale, 'settings.company.setup.item.legal.description'),
       status: legalOk ? 'done' : legalDocs.length > 0 ? 'review' : 'missing',
-      ctaLabel: 'AGB & Widerruf verwalten',
+      ctaLabel: st(locale, 'settings.company.setup.item.legal.cta'),
       ctaSection: 'documents',
     },
     {
       id: 'station',
-      label: 'Hauptstation konfiguriert',
+      label: st(locale, 'settings.company.setup.item.station.label'),
       description: hasStations
-        ? 'Mindestens eine Station ist als Hauptstation markiert.'
-        : 'Keine Stationen im System — optional.',
+        ? st(locale, 'settings.company.setup.item.station.descriptionWithStations')
+        : st(locale, 'settings.company.setup.item.station.descriptionNoStations'),
       status: stationOk ? 'done' : 'missing',
-      ctaLabel: stationOk ? undefined : 'Stationen prüfen',
+      ctaLabel: stationOk ? undefined : st(locale, 'settings.company.setup.item.station.cta'),
     },
     {
       id: 'contact',
-      label: 'Kontaktinformationen vollständig',
-      description: 'E-Mail und mindestens ein weiterer Kanal (Telefon oder Website).',
+      label: st(locale, 'settings.company.setup.item.contact.label'),
+      description: st(locale, 'settings.company.setup.item.contact.description'),
       status: contactOk ? 'done' : 'missing',
-      ctaLabel: contactOk ? undefined : 'Kontakt öffnen',
+      ctaLabel: contactOk ? undefined : st(locale, 'settings.company.setup.item.contact.cta'),
       ctaSection: 'contact',
     },
   ];
@@ -328,17 +345,13 @@ export function overallReadiness(items: SetupCheckItem[]): OverallReadiness {
   return 'incomplete';
 }
 
-export const READINESS_LABEL: Record<OverallReadiness, string> = {
-  ready: 'Bereit',
-  incomplete: 'Unvollständig',
-  review: 'Prüfung nötig',
-};
+export function getReadinessLabel(locale: string, readiness: OverallReadiness): string {
+  return st(locale, `settings.company.setup.readiness.${readiness}`);
+}
 
-export const SETUP_STATUS_LABEL: Record<SetupItemStatus, string> = {
-  done: 'Erledigt',
-  missing: 'Fehlt',
-  review: 'Prüfung nötig',
-};
+export function getSetupStatusLabel(locale: string, status: SetupItemStatus): string {
+  return st(locale, `settings.company.setup.status.${status}`);
+}
 
 export interface DocumentStatusRow {
   id: string;
@@ -357,48 +370,54 @@ export interface DocumentStatusGroup {
 }
 
 const MANAGEABLE_LEGAL_TYPES = [
-  { type: 'TERMS_AND_CONDITIONS', label: 'AGB' },
-  { type: 'WITHDRAWAL_INFORMATION', label: 'Widerrufsbelehrung' },
-  { type: 'PRIVACY_POLICY', label: 'Datenschutzerklärung' },
+  { type: 'TERMS_AND_CONDITIONS', labelKey: 'settings.company.documents.terms' as const },
+  { type: 'WITHDRAWAL_INFORMATION', labelKey: 'settings.company.documents.withdrawal' as const },
+  { type: 'PRIVACY_POLICY', labelKey: 'settings.company.documents.privacy' as const },
 ] as const;
 
-const SYSTEM_TEMPLATE_ROWS: DocumentStatusRow[] = [
-  {
-    id: 'RENTAL_CONTRACT',
-    label: 'Mietvertragsvorlage',
-    status: 'generated',
-    detail: 'Wird automatisch aus Buchungs- und Übergabedaten erzeugt.',
-  },
-  {
-    id: 'HANDOVER',
-    label: 'Übergabeprotokollvorlage',
-    status: 'generated',
-    detail: 'Wird automatisch aus Buchungs- und Übergabedaten erzeugt.',
-  },
-];
+function getSystemTemplateRows(locale: string): DocumentStatusRow[] {
+  return [
+    {
+      id: 'RENTAL_CONTRACT',
+      label: st(locale, 'settings.company.documents.rentalContract'),
+      status: 'generated',
+      detail: st(locale, 'settings.company.documents.status.generated'),
+    },
+    {
+      id: 'HANDOVER',
+      label: st(locale, 'settings.company.documents.handover'),
+      status: 'generated',
+      detail: st(locale, 'settings.company.documents.status.generated'),
+    },
+  ];
+}
 
-const UNCONNECTED_ROWS: DocumentStatusRow[] = [
-  {
-    id: 'TELEMATICS_CONSENT',
-    label: 'Telematik- / GPS-Einwilligung',
-    status: 'unconnected',
-    detail: 'Wird später über Datenschutz / Data Authorization angebunden.',
-  },
-];
+function getUnconnectedRows(locale: string): DocumentStatusRow[] {
+  return [
+    {
+      id: 'TELEMATICS_CONSENT',
+      label: st(locale, 'settings.company.documents.telematicsConsent'),
+      status: 'unconnected',
+      detail: st(locale, 'settings.company.documents.status.unconnected'),
+    },
+  ];
+}
 
 function buildManageableLegalRow(
+  locale: string,
   legalDocs: LegalDocumentDto[],
   activeByType: Map<string, LegalDocumentDto>,
   type: string,
-  label: string,
+  labelKey: TranslationKey,
 ): DocumentStatusRow {
+  const label = st(locale, labelKey);
   const doc = activeByType.get(type);
   if (doc) {
     return {
       id: type,
       label,
       status: 'active',
-      detail: `Aktiv · Version ${doc.versionLabel}`,
+      detail: st(locale, 'settings.company.documents.status.active', { version: doc.versionLabel }),
     };
   }
   const draft = legalDocs.find((d) => d.documentType === type);
@@ -407,10 +426,15 @@ function buildManageableLegalRow(
       id: type,
       label,
       status: 'review',
-      detail: `Entwurf vorhanden (${draft.versionLabel})`,
+      detail: st(locale, 'settings.company.documents.status.draft', { version: draft.versionLabel }),
     };
   }
-  return { id: type, label, status: 'missing', detail: 'In Rechtliche Dokumente hinterlegen' };
+  return {
+    id: type,
+    label,
+    status: 'missing',
+    detail: st(locale, 'settings.company.documents.status.missing'),
+  };
 }
 
 /** Legal readiness — only AGB and Widerrufsbelehrung; ignores privacy/telematics/system templates. */
@@ -422,7 +446,7 @@ export function isLegalTextsComplete(legalDocs: LegalDocumentDto[]): boolean {
   );
 }
 
-export function buildDocumentStatusGroups(legalDocs: LegalDocumentDto[]): DocumentStatusGroup[] {
+export function buildDocumentStatusGroups(locale: string, legalDocs: LegalDocumentDto[]): DocumentStatusGroup[] {
   const activeByType = new Map<string, LegalDocumentDto>();
   for (const doc of legalDocs) {
     if (doc.status === 'ACTIVE' && !activeByType.has(doc.documentType)) {
@@ -433,39 +457,37 @@ export function buildDocumentStatusGroups(legalDocs: LegalDocumentDto[]): Docume
   return [
     {
       id: 'manageable',
-      title: 'Verwaltbare Rechtstexte',
-      description: 'AGB, Widerrufsbelehrung und Datenschutzerklärung werden unter Rechtliche Dokumente gepflegt.',
-      rows: MANAGEABLE_LEGAL_TYPES.map(({ type, label }) =>
-        buildManageableLegalRow(legalDocs, activeByType, type, label),
+      title: st(locale, 'settings.company.documents.group.manageable.title'),
+      description: st(locale, 'settings.company.documents.group.manageable.description'),
+      rows: MANAGEABLE_LEGAL_TYPES.map(({ type, labelKey }) =>
+        buildManageableLegalRow(locale, legalDocs, activeByType, type, labelKey),
       ),
     },
     {
       id: 'system',
-      title: 'Systemvorlagen',
-      description: 'Von SynqDrive automatisch erzeugt — kein Upload nötig.',
-      rows: SYSTEM_TEMPLATE_ROWS,
+      title: st(locale, 'settings.company.documents.group.system.title'),
+      description: st(locale, 'settings.company.documents.group.system.description'),
+      rows: getSystemTemplateRows(locale),
     },
     {
       id: 'unconnected',
-      title: 'Noch nicht angebunden',
-      description: 'Geplante Anbindung über Datenschutz bzw. Data Authorization.',
-      rows: UNCONNECTED_ROWS,
+      title: st(locale, 'settings.company.documents.group.unconnected.title'),
+      description: st(locale, 'settings.company.documents.group.unconnected.description'),
+      rows: getUnconnectedRows(locale),
     },
   ];
 }
 
 /** @deprecated Use buildDocumentStatusGroups for grouped document status UI. */
-export function buildDocumentStatusRows(legalDocs: LegalDocumentDto[]): DocumentStatusRow[] {
-  return buildDocumentStatusGroups(legalDocs).flatMap((g) => g.rows);
+export function buildDocumentStatusRows(locale: string, legalDocs: LegalDocumentDto[]): DocumentStatusRow[] {
+  return buildDocumentStatusGroups(locale, legalDocs).flatMap((g) => g.rows);
 }
 
-export function displayValue(value: string | null | undefined, editing = false): string {
+export function displayValue(locale: string, value: string | null | undefined, editing = false): string {
   if (editing) return value ?? '';
   const t = value?.trim();
-  return t ? t : EMPTY_VALUE;
+  return t ? t : getEmptyValue(locale);
 }
-
-import { rs } from '../../../lib/rental-surface-ui';
 
 export const INPUT_CLASS = rs.inputLg;
 

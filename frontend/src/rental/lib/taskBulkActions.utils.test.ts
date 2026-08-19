@@ -89,14 +89,17 @@ describe('taskBulkActions.utils', () => {
   });
 
   it('formats partial bulk results', () => {
-    const summary = formatBulkActionSummary({
-      results: [
-        { taskId: 'a', success: true },
-        { taskId: 'b', success: false, error: 'Task not found' },
-      ],
-      succeeded: 1,
-      failed: 1,
-    });
+    const summary = formatBulkActionSummary(
+      {
+        results: [
+          { taskId: 'a', success: true },
+          { taskId: 'b', success: false, error: 'Task not found' },
+        ],
+        succeeded: 1,
+        failed: 1,
+      },
+      'de',
+    );
     expect(summary).toBe('1 erfolgreich, 1 fehlgeschlagen');
     expect(bulkActionFailureMessages({
       results: [{ taskId: 'b', success: false, error: 'Task not found' }],

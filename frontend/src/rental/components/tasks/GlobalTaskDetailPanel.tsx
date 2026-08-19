@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type ApiTask } from '../../../lib/api';
 import { getStoredUser } from '../../../lib/auth';
 import {
@@ -57,6 +58,7 @@ export function GlobalTaskDetailPanel({
   runTaskAction,
   onOpenSuccessorTask,
 }: GlobalTaskDetailPanelProps) {
+  const { t, locale } = useLanguage();
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignDraft, setAssignDraft] = useState('');
   const [commentDraft, setCommentDraft] = useState('');
@@ -101,7 +103,7 @@ export function GlobalTaskDetailPanel({
     if (!detail || !isNormalizedTaskDetail(detail)) return null;
     return buildTaskDetailViewModel(detail, {
       category: taskRow?.category ?? detail.category,
-      priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority)),
+      priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority), locale),
       orgMembers,
       stationLabel: taskRow?.station || undefined,
     });
@@ -126,21 +128,21 @@ export function GlobalTaskDetailPanel({
     if (!orgId || !detail) return;
     await runTaskAction(() => api.tasks.assign(orgId, detail.id, assignDraft || null));
     setAssignOpen(false);
-    toast.success('Zuweisung gespeichert');
+    toast.success(t('tasks.detail.assignSaved'));
   };
 
   const handleAddComment = async () => {
     if (!detail) return;
     const body = commentDraft.trim();
     if (!body) {
-      setCommentError('Notiz darf nicht leer sein.');
+      setCommentError(t('tasks.detail.noteEmpty'));
       return;
     }
     setCommentError(null);
     const saved = await addTaskComment(body);
     if (saved) {
       setCommentDraft('');
-      toast.success('Notiz gespeichert');
+      toast.success(t('tasks.detail.noteSaved'));
     }
   };
 
@@ -194,12 +196,12 @@ export function GlobalTaskDetailPanel({
                   disabled={mutating}
                   onClick={() => setAssignOpen(true)}
                 >
-                  {detail.assignedUserId ? 'Weiterleiten' : 'Zuweisen'}
+                  {detail.assignedUserId ? t('tasks.detail.forward') : t('tasks.detail.assign')}
                 </Button>
               ) : null}
               {responsibility?.requiresAssignment ? (
                 <p className="text-[10px] text-[color:var(--status-watch)]">
-                  Zuweisung erforderlich — kein Bearbeiter gesetzt.
+                  {t('tasks.detail.assignmentRequired')}
                 </p>
               ) : null}
             </div>
@@ -212,21 +214,21 @@ export function GlobalTaskDetailPanel({
       <ConfirmDialog
         open={assignOpen}
         onOpenChange={setAssignOpen}
-        title={detail?.assignedUserId ? 'Aufgabe weiterleiten' : 'Aufgabe zuweisen'}
-        description="Wählen Sie einen Mitarbeiter aus Ihrer Organisation."
-        confirmLabel="Speichern"
+        title={detail?.assignedUserId ? t('tasks.detail.forwardTitle') : t('tasks.detail.assignTitle')}
+        description={t('tasks.detail.assignDescription')}
+        confirmLabel={t('common.save')}
         loading={mutating}
         onConfirm={() => void handleAssignConfirm()}
       >
         <label className="mt-3 block text-[11px] font-semibold text-muted-foreground">
-          Mitarbeiter
+          {t('tasks.detail.employee')}
           <select
             value={assignDraft}
             onChange={(e) => setAssignDraft(e.target.value)}
             disabled={mutating}
             className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-[12px]"
           >
-            <option value="">Nicht zugewiesen</option>
+            <option value="">{t('tasks.display.unassigned')}</option>
             {orgMembers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}

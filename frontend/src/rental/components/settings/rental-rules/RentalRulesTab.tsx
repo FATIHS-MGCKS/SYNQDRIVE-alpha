@@ -4,7 +4,6 @@ import { api } from '../../../../lib/api';
 import { ErrorState } from '../../../../components/patterns';
 import { useRentalOrg } from '../../../RentalContext';
 import { useLanguage } from '../../../i18n/LanguageContext';
-import { RENTAL_RULES_PERMISSION_DENIED_MESSAGE } from '../../../lib/rental-rules-permissions';
 import { useRentalRulesPermissions } from '../../../hooks/useRentalRulesPermissions';
 import { CategoryDetailDrawer } from './CategoryDetailDrawer';
 import { DefaultRulesDrawer } from './DefaultRulesDrawer';
@@ -58,7 +57,7 @@ export function RentalRulesTab({
   onCheckBooking,
 }: RentalRulesTabProps = {}) {
   const { orgId } = useRentalOrg();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const resolvedPermissions = useRentalRulesPermissions();
   const permissions = permissionsOverride ?? resolvedPermissions;
   const { canRead, canWrite, canPublish, canAssignVehicles, canManageOverrides } = permissions;
@@ -122,7 +121,7 @@ export function RentalRulesTab({
         setAssignedVehicles(vehicles);
         setAssignDrawer(category);
       } catch (e: unknown) {
-        toast.error(e instanceof Error ? e.message : 'Could not load vehicles');
+        toast.error(e instanceof Error ? e.message : t('rentalRules.ui.loadVehiclesError'));
       }
     },
     [orgId],
@@ -146,10 +145,10 @@ export function RentalRulesTab({
         if (vehicles[0]) {
           setPreviewVehicle({ id: vehicles[0].id, label: vehicles[0].displayName });
         } else {
-          toast.message('Assign a vehicle to preview effective rules for this category.');
+          toast.message(t('rentalRules.ui.assignVehicleForPreview'));
         }
       } catch {
-        toast.error('Preview unavailable');
+        toast.error(t('rentalRules.ui.previewUnavailable'));
       }
     },
     [orgId, fleetVehicles],
@@ -158,8 +157,8 @@ export function RentalRulesTab({
   if (!canRead) {
     return (
       <ErrorState
-        title="Kein Zugriff auf Mietregeln"
-        description={RENTAL_RULES_PERMISSION_DENIED_MESSAGE}
+        title={t('settings.shell.rentalRulesDeniedTitle')}
+        description={t('settings.shell.rentalRulesDeniedMessage')}
       />
     );
   }
@@ -175,7 +174,11 @@ export function RentalRulesTab({
   if (error && !overview) {
     return (
       <ErrorState
-        title={accessDenied ? 'Kein Zugriff auf Mietregeln' : 'Rental rules could not be loaded'}
+        title={
+          accessDenied
+            ? t('settings.shell.rentalRulesDeniedTitle')
+            : t('rentalRules.ui.loadError')
+        }
         description={error}
         onRetry={accessDenied ? undefined : () => void load()}
       />

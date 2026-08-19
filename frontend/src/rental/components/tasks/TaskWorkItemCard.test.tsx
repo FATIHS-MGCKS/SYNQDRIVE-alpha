@@ -1,7 +1,16 @@
+// @vitest-environment happy-dom
+import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider, translateKey } from '../../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY } from '../../../i18n/locales';
 import type { TaskListRow } from '../../lib/task-list.utils';
 import { TaskWorkItemCard } from './TaskWorkItemCard';
+
+function renderDe(ui: React.ReactElement) {
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, 'de');
+  return renderToStaticMarkup(createElement(LanguageProvider, null, ui));
+}
 
 function taskFixture(overrides?: Partial<TaskListRow>): TaskListRow {
   return {
@@ -44,26 +53,24 @@ function taskFixture(overrides?: Partial<TaskListRow>): TaskListRow {
 
 describe('TaskWorkItemCard', () => {
   it('renders linked object, assignee, due date and checklist progress', () => {
-    const html = renderToStaticMarkup(
-      <TaskWorkItemCard task={taskFixture()} onClick={vi.fn()} />,
-    );
+    const html = renderDe(<TaskWorkItemCard task={taskFixture()} onClick={vi.fn()} />);
 
     expect(html).toContain('data-testid="task-work-item-card"');
-    expect(html).toContain('Verknüpft');
+    expect(html).toContain(translateKey('de', 'tasks.card.linked').text);
     expect(html).toContain('M-AB 1234');
-    expect(html).toContain('Zuständig');
+    expect(html).toContain(translateKey('de', 'tasks.card.assignee').text);
     expect(html).toContain('Alex Operator');
     expect(html).toContain('role="progressbar"');
     expect(html).toContain('2 von 4');
   });
 
   it('shows completion mode for closed tasks', () => {
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <TaskWorkItemCard
         task={taskFixture({
           status: 'Completed',
           completionMode: 'AUTO_RESOLVED',
-          completionModeLabel: 'Automatisch aufgelöst',
+          completionModeLabel: translateKey('de', 'tasks.completionMode.autoResolved').text,
           completedDate: '15.07.2026',
           checklistProgressPercent: null,
           checklistProgressLabel: null,
@@ -72,7 +79,7 @@ describe('TaskWorkItemCard', () => {
       />,
     );
 
-    expect(html).toContain('Automatisch aufgelöst');
-    expect(html).toContain('Abgeschlossen');
+    expect(html).toContain(translateKey('de', 'tasks.completionMode.autoResolved').text);
+    expect(html).toContain(translateKey('de', 'tasks.card.completed').text);
   });
 });

@@ -1,8 +1,10 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TaskListRow } from '../../lib/task-list.utils';
 import {
   AssigneeAvatar,
   priorityStripClass,
+  taskEmDash,
   TaskCategoryChip,
   TaskPriorityBadge,
   TaskStatusChip,
@@ -27,6 +29,8 @@ export function TaskWorkItemCard({
   selected = false,
   onSelectedChange,
 }: TaskWorkItemCardProps) {
+  const { t, locale } = useLanguage();
+  const emDash = taskEmDash(locale);
   const terminal = task.status === 'Completed';
   const cardTone = isFlashing
     ? 'ring-1 ring-[color:var(--brand-soft)] bg-[color:var(--brand-soft)]'
@@ -43,7 +47,7 @@ export function TaskWorkItemCard({
             checked={selected}
             onChange={(event) => onSelectedChange?.(event.target.checked)}
             onClick={(event) => event.stopPropagation()}
-            aria-label={`${task.title} auswählen`}
+            aria-label={t('tasks.card.selectAria', { title: task.title })}
             data-testid="task-select-checkbox"
             className="h-4 w-4 rounded border-border"
           />
@@ -94,34 +98,34 @@ export function TaskWorkItemCard({
 
           <div className="mt-2 hidden flex-wrap items-center gap-x-4 gap-y-1 text-[11px] md:flex">
             <MetaInline
-              label="Verknüpft"
+              label={t('tasks.card.linked')}
               value={task.linkedObjectLabel}
               secondary={task.linkedObjectSecondary ?? undefined}
             />
-            <MetaInline label="Zuständig" value={task.assignedUserName} withAvatar />
+            <MetaInline label={t('tasks.card.assignee')} value={task.assignedUserName} withAvatar />
             <MetaInline
-              label="Fällig"
-              value={task.dueDate || '—'}
+              label={t('tasks.card.due')}
+              value={task.dueDate || emDash}
               critical={task.isOverdue}
             />
             {task.checklistProgressLabel ? (
-              <MetaInline label="Fortschritt" value={task.checklistProgressLabel} />
+              <MetaInline label={t('tasks.card.progress')} value={task.checklistProgressLabel} />
             ) : null}
             {terminal && task.completedDate ? (
-              <MetaInline label="Abgeschlossen" value={task.completedDate} muted />
+              <MetaInline label={t('tasks.card.completed')} value={task.completedDate} muted />
             ) : null}
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] md:hidden">
-            <MetaStacked label="Verknüpft" value={task.linkedObjectLabel} />
-            <MetaStacked label="Zuständig" value={task.assignedUserName} />
+            <MetaStacked label={t('tasks.card.linked')} value={task.linkedObjectLabel} />
+            <MetaStacked label={t('tasks.card.assignee')} value={task.assignedUserName} />
             <MetaStacked
-              label="Fällig"
-              value={task.dueDate || '—'}
+              label={t('tasks.card.due')}
+              value={task.dueDate || emDash}
               critical={task.isOverdue}
             />
             {task.checklistProgressLabel ? (
-              <MetaStacked label="Fortschritt" value={task.checklistProgressLabel} />
+              <MetaStacked label={t('tasks.card.progress')} value={task.checklistProgressLabel} />
             ) : null}
           </div>
 

@@ -78,7 +78,7 @@ export function DefaultRulesDrawer({
         `/organizations/${orgId}/rental-rules/defaults`,
         withExpectedVersion(patch, defaults?.version),
       );
-      toast.success('Default rules saved');
+      toast.success(t('rentalRules.ui.defaults.saved'));
       await onSaved();
       onOpenChange(false);
     } catch (e: unknown) {
@@ -115,15 +115,15 @@ export function DefaultRulesDrawer({
       <DetailDrawer
         open={open}
         onOpenChange={handleOpenChange}
-        eyebrow="Organization defaults"
-        title="Edit default rental rules"
-        description="These rules apply when no category or vehicle override is set."
+        eyebrow={t('rentalRules.ui.defaults.eyebrow')}
+        title={t('rentalRules.ui.defaults.title')}
+        description={t('rentalRules.ui.defaults.description')}
         widthClassName="sm:max-w-xl"
         footer={
           canWrite ? (
             <>
               <button type="button" className="sq-btn sq-btn-ghost min-h-9" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -131,17 +131,17 @@ export function DefaultRulesDrawer({
                 disabled={saving}
                 onClick={() => void handleSave()}
               >
-                {saving ? 'Saving…' : 'Save defaults'}
+                {saving ? t('common.saving') : t('rentalRules.ui.defaults.save')}
               </button>
             </>
           ) : (
-            <p className="text-[12px] text-muted-foreground">Read-only access</p>
+            <p className="text-[12px] text-muted-foreground">{t('rentalRules.ui.defaults.readOnly')}</p>
           )
         }
       >
         {!canWrite && (
           <p className="mb-4 rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-[12px] text-muted-foreground">
-            You do not have permission to edit organization rental rules.
+            {t('rentalRules.ui.defaults.noPermission')}
           </p>
         )}
         {formError && (

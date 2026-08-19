@@ -172,7 +172,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
 
   const deleteDomain = async (domainId: string, domainName: string) => {
     if (!orgId || !canManage) return;
-    if (!window.confirm(`Domain „${domainName}" wirklich entfernen?`)) return;
+    if (!window.confirm(t('email.domain.deleteConfirm', { domain: domainName }))) return;
     setBusyDomainId(domainId);
     try {
       await api.orgEmail.deleteDomain(orgId, domainId);
@@ -290,7 +290,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                 onChange={(e) => setSettings({ ...settings, signatureHtml: e.target.value })}
                 rows={4}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono"
-                placeholder="<p>Mit freundlichen Grüßen<br/>Ihr Team</p>"
+                placeholder={t('email.settings.signaturePlaceholder')}
               />
             </div>
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 p-3">
@@ -445,7 +445,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
               type="email"
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="test@example.com"
+              placeholder={t('email.test.emailPlaceholder')}
               className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
             <button

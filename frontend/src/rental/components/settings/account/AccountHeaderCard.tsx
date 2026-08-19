@@ -2,6 +2,7 @@ import { Building2, Mail, Pencil, Shield } from 'lucide-react';
 import type { AccountMeDto } from '../../../../lib/api';
 import { Button } from '../../../../components/ui/button';
 import { StatusChip } from '../../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { getInitials, membershipStatusLabel } from './account-utils';
 
 interface AccountHeaderCardProps {
@@ -10,6 +11,7 @@ interface AccountHeaderCardProps {
 }
 
 export function AccountHeaderCard({ account, onEditProfile }: AccountHeaderCardProps) {
+  const { t } = useLanguage();
   const { user, organization, membership } = account;
   const initials = getInitials(user.displayName, user.email);
   const roleLabel = membership.roleLabel ?? membership.role;
@@ -60,7 +62,7 @@ export function AccountHeaderCard({ account, onEditProfile }: AccountHeaderCardP
           className="w-full shrink-0 sm:w-auto"
         >
           <Pencil />
-          Profil bearbeiten
+          {t('settings.account.profile.edit')}
         </Button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FormDialog } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type ApiTask } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import type { VehicleData } from '../../data/vehicles';
@@ -30,6 +31,7 @@ export function CreateVehicleTaskDialog({
   vehicleVin,
   onCreated,
 }: CreateVehicleTaskDialogProps) {
+  const { t, locale } = useLanguage();
   const { orgId, userRole, hasPermission } = useRentalOrg();
   const [form, setForm] = useState<ManualTaskFormState>(EMPTY_MANUAL_TASK_FORM);
   const [checklistItems, setChecklistItems] = useState<ManualTaskChecklistDraft[]>([]);
@@ -110,6 +112,7 @@ export function CreateVehicleTaskDialog({
     const nextErrors = validateManualTaskForm(
       { ...form, vehicleId: vehicle.id },
       { requireVehicle: true, checklistItems },
+      locale,
     );
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -119,11 +122,11 @@ export function CreateVehicleTaskDialog({
     setSubmitError(null);
     try {
       const created = await api.tasks.create(orgId, payload);
-      toast.success('Fahrzeugaufgabe erstellt', { description: created.title });
+      toast.success(t('tasks.dialog.vehicleCreateSuccess'), { description: created.title });
       onCreated?.(created);
       onOpenChange(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Aufgabe konnte nicht erstellt werden';
+      const message = err instanceof Error ? err.message : t('tasks.dialog.createError');
       setSubmitError(message);
     } finally {
       setSubmitting(false);
@@ -140,8 +143,8 @@ export function CreateVehicleTaskDialog({
         else onOpenChange(true);
       }}
       maxWidthClassName="sm:max-w-[760px]"
-      title="Neue Fahrzeugaufgabe"
-      description="Die Aufgabe wird automatisch mit dem aktuellen Fahrzeug verknüpft."
+      title={t('tasks.dialog.vehicleCreateTitle')}
+      description={t('tasks.dialog.vehicleCreateDescription')}
       hideClose={submitting}
       bodyClassName="max-h-[70dvh] overflow-y-auto px-5 py-4 sm:px-7"
       footer={
@@ -152,7 +155,7 @@ export function CreateVehicleTaskDialog({
             disabled={submitting}
             className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -165,7 +168,7 @@ export function CreateVehicleTaskDialog({
             ) : (
               <Icon name="check-circle" className="h-3.5 w-3.5" />
             )}
-            Aufgabe anlegen
+            {t('tasks.createTaskSubmit')}
           </button>
         </div>
       }
@@ -177,7 +180,7 @@ export function CreateVehicleTaskDialog({
       ) : null}
 
       <div className="mb-4 rounded-xl border border-border bg-muted/30 p-3">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fahrzeug</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('tasks.form.vehicle')}</p>
         {vehicle?.id ? (
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">{vehicle.license}</p>
@@ -188,7 +191,7 @@ export function CreateVehicleTaskDialog({
           </div>
         ) : (
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            Kein Fahrzeug im Kontext — Aufgabe kann nicht erstellt werden.
+            {t('tasks.vehicleDialog.noVehicle')}
           </p>
         )}
       </div>

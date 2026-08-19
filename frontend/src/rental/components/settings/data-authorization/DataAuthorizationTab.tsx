@@ -30,16 +30,17 @@ import { DataAuthorizationDetailDrawer } from './DataAuthorizationDetailDrawer';
 import { DataAuthorizationRevokeDialog } from './DataAuthorizationRevokeDialog';
 import { AuthRiskChip, AuthSourceChip, AuthStatusChip } from './data-authorization.badges';
 import {
-  DATA_CATEGORY_OPTIONS,
+  getDataCategoryOptions,
   labelDataCategory,
   labelProcessor,
   labelPurpose,
   labelScope,
-  RISK_OPTIONS,
-  SCOPE_OPTIONS,
-  SOURCE_TYPE_OPTIONS,
-  STATUS_OPTIONS,
+  getRiskOptions,
+  getScopeOptions,
+  getSourceTypeOptions,
+  getStatusOptions,
 } from './data-authorization.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   affectedObjectsSummary,
   filterDataAuthorizations,
@@ -168,6 +169,12 @@ function kpiStatusToTone(
 }
 
 export function DataAuthorizationTab({ canWrite = false, canManage = false }: Props) {
+  const { t, locale } = useLanguage();
+  const statusOptions = getStatusOptions(locale);
+  const sourceTypeOptions = getSourceTypeOptions(locale);
+  const scopeOptions = getScopeOptions(locale);
+  const riskOptions = getRiskOptions(locale);
+  const dataCategoryOptions = getDataCategoryOptions(locale);
   const { orgId } = useRentalOrg();
   const {
     authorizations,
@@ -297,7 +304,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
           <div className="min-w-0">
             <p className="font-semibold text-foreground truncate">{auth.title}</p>
             <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-              {labelProcessor(auth)} · {labelScope(auth.scopeKey)}
+              {labelProcessor(auth)} · {labelScope(locale, auth.scopeKey)}
             </p>
           </div>
         ),
@@ -342,7 +349,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto">
       <PageHeader
-        title="Data Authorization & Consent Center"
+        title={t('settings.dataAuth.page.title')}
         className="mb-4 flex-col gap-2.5 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         actions={
           <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
@@ -355,13 +362,13 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
                 disabled={actionId === 'sync'}
               >
                 <RefreshCw className={cn('h-3.5 w-3.5', actionId === 'sync' && 'animate-spin')} />
-                Systemfreigaben synchronisieren
+                {t('settings.dataAuth.syncSystem')}
               </Button>
             )}
             {canWrite && (
               <Button type="button" variant="primary" size="sm" onClick={() => setShowCreate(true)}>
                 <Plus className="h-3.5 w-3.5" />
-                Freigabe anlegen
+                {t('settings.dataAuth.create')}
               </Button>
             )}
           </div>
@@ -399,7 +406,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       <div className="surface-premium rounded-2xl border border-border/70 p-4 space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-[13px] font-semibold text-foreground">Filter & Suche</p>
+            <p className="text-[13px] font-semibold text-foreground">{t('settings.dataAuth.filters.title')}</p>
             <p className="text-[11px] text-muted-foreground">
               {filtered.length} von {authorizations.length} Freigaben
             </p>
@@ -421,7 +428,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
             <input
               value={filters.search}
               onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-              placeholder="Titel, Verarbeiter, Modul, Beschreibung …"
+              placeholder={t('settings.dataAuth.filters.searchPlaceholder')}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-xs outline-none focus:ring-2 focus:ring-[var(--brand-soft)]"
             />
           </div>
@@ -430,7 +437,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
             onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
             className={selectClass}
           >
-            {STATUS_OPTIONS.map((o) => (
+            {statusOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -439,7 +446,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
             onChange={(e) => setFilters((f) => ({ ...f, sourceType: e.target.value }))}
             className={selectClass}
           >
-            {SOURCE_TYPE_OPTIONS.map((o) => (
+            {sourceTypeOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -448,7 +455,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
             onChange={(e) => setFilters((f) => ({ ...f, scope: e.target.value }))}
             className={selectClass}
           >
-            {SCOPE_OPTIONS.map((o) => (
+            {scopeOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -457,7 +464,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
             onChange={(e) => setFilters((f) => ({ ...f, risk: e.target.value }))}
             className={selectClass}
           >
-            {RISK_OPTIONS.map((o) => (
+            {riskOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
@@ -465,7 +472,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
 
         <div className="flex flex-wrap gap-2">
           <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide self-center">
-            Datenkategorie:
+            {t('settings.dataAuth.filters.dataCategory')}
           </span>
           <button
             type="button"
@@ -476,7 +483,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
           >
             Alle
           </button>
-          {DATA_CATEGORY_OPTIONS.slice(0, 8).map((cat) => (
+          {dataCategoryOptions.slice(0, 8).map((cat) => (
             <button
               key={cat.value}
               type="button"
@@ -494,7 +501,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       </div>
 
       {error && !loading ? (
-        <ErrorState title="Laden fehlgeschlagen" description={error} onRetry={() => void load(filters)} />
+        <ErrorState title={t('settings.dataAuth.loadFailed')} description={error} onRetry={() => void load(filters)} />
       ) : loading ? (
         <SkeletonRows rows={6} />
       ) : filtered.length === 0 ? (
@@ -513,7 +520,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
                 onClick={() => void syncSystem()}
                 className="sq-3d-btn sq-3d-btn--primary px-4 py-2.5 rounded-xl text-xs font-semibold"
               >
-                Systemfreigaben synchronisieren
+                {t('settings.dataAuth.syncSystem')}
               </button>
             ) : undefined
           }
@@ -584,6 +591,7 @@ function AuthorizationCard({
   auth: DataAuthorizationDto;
   onClick: () => void;
 }) {
+  const { locale } = useLanguage();
   const purposes = auth.purposes?.length ? auth.purposes : [auth.purpose];
   return (
     <button
@@ -608,12 +616,12 @@ function AuthorizationCard({
       <div className="flex flex-wrap gap-1 mt-2">
         {auth.dataCategories.slice(0, 4).map((c) => (
           <StatusChip key={c} tone="neutral">
-            {labelDataCategory(c).split(' / ')[0]}
+            {labelDataCategory(locale, c).split(' / ')[0]}
           </StatusChip>
         ))}
       </div>
       <p className="text-[10px] text-muted-foreground mt-2">
-        {purposes.slice(0, 3).map(labelPurpose).join(' · ')} · {formatAuthDate(auth.grantedAt ?? auth.createdAt)}
+        {purposes.slice(0, 3).map((purpose) => labelPurpose(locale, purpose)).join(' · ')} · {formatAuthDate(auth.grantedAt ?? auth.createdAt)}
       </p>
     </button>
   );

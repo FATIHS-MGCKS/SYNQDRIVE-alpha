@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type ApiTask } from '../../../lib/api';
 import {
   buildTaskDetailViewModel,
@@ -54,6 +55,7 @@ export function VehicleTaskDetailDrawer({
   onTaskUpdated,
   onOpenInGlobalTasks,
 }: VehicleTaskDetailDrawerProps) {
+  const { t, locale } = useLanguage();
   const [detail, setDetail] = useState<ApiTask | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function VehicleTaskDetailDrawer({
       setDueDraft(toDateInputValue(full.dueDate));
     } catch (err) {
       setDetail(null);
-      setLoadError(err instanceof Error ? err.message : 'Aufgabe konnte nicht geladen werden.');
+      setLoadError(err instanceof Error ? err.message : t('tasks.detail.loadError'));
     } finally {
       setLoading(false);
     }
@@ -113,7 +115,7 @@ export function VehicleTaskDetailDrawer({
   }, [open]);
 
   const assigneeName = useMemo(() => {
-    if (!detail?.assignedUserId) return 'Nicht zugewiesen';
+    if (!detail?.assignedUserId) return t('tasks.display.unassigned');
     return orgMembers.find((m) => m.id === detail.assignedUserId)?.name ?? detail.assignedUserId;
   }, [detail?.assignedUserId, orgMembers]);
 
@@ -126,8 +128,8 @@ export function VehicleTaskDetailDrawer({
   const detailModel = useMemo(() => {
     if (!detail || !isNormalizedTaskDetail(detail)) return null;
     return buildTaskDetailViewModel(detail, {
-      eyebrow: 'Fahrzeugaufgabe',
-      priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority)),
+      eyebrow: t('tasks.detail.vehicleTaskEyebrow'),
+      priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority), locale),
       orgMembers,
       stationLabel: vehicle?.station || undefined,
     });
@@ -176,9 +178,9 @@ export function VehicleTaskDetailDrawer({
       setDetail(current);
       onTaskUpdated(current);
       setEditingMeta(false);
-      toast.success('Aufgabe aktualisiert');
+      toast.success(t('tasks.detail.updated'));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen';
+      const message = err instanceof Error ? err.message : t('tasks.detail.updateFailed');
       setActionError(message);
       toast.error(message);
     } finally {
@@ -190,14 +192,14 @@ export function VehicleTaskDetailDrawer({
     if (!detail) return;
     const body = commentDraft.trim();
     if (!body) {
-      setCommentError('Kommentar darf nicht leer sein.');
+      setCommentError(t('tasks.detail.commentEmpty'));
       return;
     }
     setCommentError(null);
     const saved = await addTaskComment(body);
     if (saved) {
       setCommentDraft('');
-      toast.success('Kommentar hinzugefügt');
+      toast.success(t('tasks.detail.commentAdded'));
     }
   };
 
@@ -240,34 +242,34 @@ export function VehicleTaskDetailDrawer({
           </button>
         )}
 
-        <VehicleMetaSection title="Fahrzeug">
+        <VehicleMetaSection title={t('tasks.detail.vehicleSection')}>
           <p className="text-[12px] font-semibold text-foreground">{vehicle?.license ?? '—'}</p>
           <p className="text-[11px] text-muted-foreground">
             {[vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || '—'}
           </p>
         </VehicleMetaSection>
 
-        <VehicleMetaSection title="Zuweisung & Termine">
+        <VehicleMetaSection title={t('tasks.detail.assignmentDates')}>
           {isActiveTaskStatus(detail.status) && (
             <button
               type="button"
               onClick={() => setEditingMeta((value) => !value)}
               className="sq-press mb-2 text-[10px] font-semibold text-[color:var(--brand)]"
             >
-              {editingMeta ? 'Bearbeitung abbrechen' : 'Bearbeiten'}
+              {editingMeta ? t('tasks.detail.cancelEdit') : t('tasks.detail.edit')}
             </button>
           )}
           {editingMeta && isActiveTaskStatus(detail.status) ? (
             <div className="space-y-2">
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Zuständig
+                {t('tasks.detail.metaAssignee')}
                 <select
                   value={assignDraft}
                   onChange={(e) => setAssignDraft(e.target.value)}
                   disabled={mutating}
                   className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
                 >
-                  <option value="">Nicht zugewiesen</option>
+                  <option value="">{t('tasks.display.unassigned')}</option>
                   {orgMembers.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.name}
@@ -276,7 +278,7 @@ export function VehicleTaskDetailDrawer({
                 </select>
               </label>
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Fällig am
+                {t('tasks.form.dueDate')}
                 <input
                   type="date"
                   value={dueDraft}
@@ -291,21 +293,21 @@ export function VehicleTaskDetailDrawer({
                 onClick={() => void handleSaveMeta()}
                 className="sq-cta px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
               >
-                Speichern
+                {t('common.save')}
               </button>
             </div>
           ) : (
             <div className="space-y-1.5 text-[11px]">
-              <MetaRow label="Zuständig" value={assigneeName} />
-              <MetaRow label="Fällig" value={formatTaskDate(detail.dueDate)} highlight={detail.isOverdue} />
-              <MetaRow label="Erstellt" value={formatTaskDateTime(detail.createdAt)} />
-              <MetaRow label="Aktualisiert" value={formatTaskDateTime(detail.updatedAt)} />
-              {detail.startedAt && <MetaRow label="Gestartet" value={formatTaskDateTime(detail.startedAt)} />}
+              <MetaRow label={t('tasks.detail.metaAssignee')} value={assigneeName} />
+              <MetaRow label={t('tasks.detail.metaDue')} value={formatTaskDate(detail.dueDate)} highlight={detail.isOverdue} />
+              <MetaRow label={t('tasks.detail.metaCreated')} value={formatTaskDateTime(detail.createdAt)} />
+              <MetaRow label={t('tasks.detail.metaUpdated')} value={formatTaskDateTime(detail.updatedAt)} />
+              {detail.startedAt && <MetaRow label={t('tasks.detail.metaStarted')} value={formatTaskDateTime(detail.startedAt)} />}
               {detail.completedAt && (
-                <MetaRow label="Abgeschlossen" value={formatTaskDateTime(detail.completedAt)} />
+                <MetaRow label={t('tasks.detail.metaCompleted')} value={formatTaskDateTime(detail.completedAt)} />
               )}
               {detail.cancelledAt && (
-                <MetaRow label="Storniert" value={formatTaskDateTime(detail.cancelledAt)} />
+                <MetaRow label={t('tasks.detail.metaCancelled')} value={formatTaskDateTime(detail.cancelledAt)} />
               )}
             </div>
           )}
@@ -348,16 +350,16 @@ export function VehicleTaskDetailDrawer({
       >
         {!loading && loadError && (
           <div className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] px-3 py-3 text-[12px] text-foreground">
-            <p className="font-medium">Aufgabe konnte nicht geladen werden</p>
+            <p className="font-medium">{t('tasks.detail.loadError')}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              {import.meta.env.DEV ? loadError : 'Bitte versuchen Sie es erneut.'}
+              {import.meta.env.DEV ? loadError : t('tasks.detail.loadErrorRetry')}
             </p>
             <button
               type="button"
               onClick={() => void loadDetail()}
               className="mt-2.5 inline-flex items-center gap-1 rounded-lg border border-border surface-premium px-3 py-1.5 text-[11px] font-semibold sq-press hover:bg-muted"
             >
-              Erneut laden
+              {t('tasks.detail.retry')}
             </button>
           </div>
         )}

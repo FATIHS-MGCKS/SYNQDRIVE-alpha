@@ -7,7 +7,7 @@ import {
 describe('validateAccountPasswordChange', () => {
   it('requires minimum password length', () => {
     expect(
-      validateAccountPasswordChange({
+      validateAccountPasswordChange('de', {
         currentPassword: 'oldpassword',
         newPassword: 'short',
         confirmPassword: 'short',
@@ -17,7 +17,7 @@ describe('validateAccountPasswordChange', () => {
 
   it('rejects identical new and current password', () => {
     expect(
-      validateAccountPasswordChange({
+      validateAccountPasswordChange('de', {
         currentPassword: 'samepassword',
         newPassword: 'samepassword',
         confirmPassword: 'samepassword',
@@ -27,7 +27,7 @@ describe('validateAccountPasswordChange', () => {
 
   it('accepts valid password change payload', () => {
     expect(
-      validateAccountPasswordChange({
+      validateAccountPasswordChange('de', {
         currentPassword: 'oldpassword1',
         newPassword: 'newpassword1',
         confirmPassword: 'newpassword1',

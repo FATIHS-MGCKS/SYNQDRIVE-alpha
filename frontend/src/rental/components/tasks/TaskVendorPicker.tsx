@@ -1,19 +1,25 @@
 import { useMemo, useState } from 'react';
 import { Briefcase, Search, Star, X } from 'lucide-react';
 import type { Vendor, VendorCategory } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { preferredVendorsForVehicle } from '../../lib/service-task-semantics';
 
-const CATEGORY_LABELS: Partial<Record<VendorCategory, string>> = {
-  WORKSHOP: 'Werkstatt',
-  SERVICE_PARTNER: 'Service Partner',
-  TIRE_DEALER: 'Reifenhändler',
-  TUV_STATION: 'TÜV-Station',
-  BODY_REPAIR: 'Karosserie',
-  PAINT_SHOP: 'Lackiererei',
-  AUTO_GLASS: 'Autoglas',
-  DETAILING: 'Detailing',
-  OTHER: 'Sonstige',
-};
+const VENDOR_CATEGORIES: VendorCategory[] = [
+  'WORKSHOP',
+  'SERVICE_PARTNER',
+  'TIRE_DEALER',
+  'TUV_STATION',
+  'BODY_REPAIR',
+  'PAINT_SHOP',
+  'AUTO_GLASS',
+  'DETAILING',
+  'OTHER',
+];
+
+function vendorCategoryLabel(t: (key: TranslationKey) => string, category: VendorCategory): string {
+  return t(`tasks.vendor.category.${category}` as TranslationKey);
+}
 
 interface TaskVendorPickerProps {
   vendors: Vendor[];
@@ -30,6 +36,7 @@ export function TaskVendorPicker({
   vehicleId,
   disabled,
 }: TaskVendorPickerProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<VendorCategory | 'ALL'>('ALL');
@@ -75,7 +82,7 @@ export function TaskVendorPicker({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Dienstleister / Werkstatt
+        {t('tasks.vendor.label')}
       </label>
 
       {selected ? (
@@ -85,7 +92,7 @@ export function TaskVendorPicker({
             <div className="min-w-0">
               <p className="text-[12px] font-semibold truncate">{selected.name}</p>
               <p className="text-[10px] text-muted-foreground truncate">
-                {CATEGORY_LABELS[selected.category] ?? selected.category}
+                {vendorCategoryLabel(t, selected.category)}
                 {selected.city ? ` · ${selected.city}` : ''}
               </p>
             </div>
@@ -95,21 +102,21 @@ export function TaskVendorPicker({
             disabled={disabled}
             onClick={() => onChange(null)}
             className="p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground"
-            title="Partner entfernen"
+            title={t('tasks.vendor.remove')}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-center">
-          <p className="text-[11px] text-muted-foreground">Kein Partner ausgewählt</p>
+          <p className="text-[11px] text-muted-foreground">{t('tasks.vendor.noneSelected')}</p>
           <button
             type="button"
             disabled={disabled}
             onClick={() => setOpen((o) => !o)}
             className="mt-2 text-[11px] font-semibold text-[color:var(--brand-ink)] hover:underline"
           >
-            Partner suchen…
+            {t('tasks.vendor.search')}
           </button>
         </div>
       )}
@@ -121,7 +128,7 @@ export function TaskVendorPicker({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name, Stadt, Service-Bereich…"
+              placeholder={t('tasks.vendor.searchPlaceholder')}
               className={`${inputClass} pl-8`}
               disabled={disabled}
             />
@@ -133,9 +140,9 @@ export function TaskVendorPicker({
               className="rounded-lg border border-border px-2 py-1 text-[10px] bg-[color:var(--input-background)]"
               disabled={disabled}
             >
-              <option value="ALL">Alle Kategorien</option>
-              {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
+              <option value="ALL">{t('tasks.vendor.allCategories')}</option>
+              {VENDOR_CATEGORIES.map((k) => (
+                <option key={k} value={k}>{vendorCategoryLabel(t, k)}</option>
               ))}
             </select>
             {serviceAreas.length > 0 && (
@@ -145,7 +152,7 @@ export function TaskVendorPicker({
                 className="rounded-lg border border-border px-2 py-1 text-[10px] bg-[color:var(--input-background)]"
                 disabled={disabled}
               >
-                <option value="ALL">Alle Service-Bereiche</option>
+                <option value="ALL">{t('tasks.vendor.allServiceAreas')}</option>
                 {serviceAreas.map((a) => (
                   <option key={a} value={a}>{a}</option>
                 ))}
@@ -156,7 +163,7 @@ export function TaskVendorPicker({
           {preferred.length > 0 && (
             <div className="space-y-1">
               <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
-                <Star className="w-3 h-3" /> Bevorzugt für Fahrzeug
+                <Star className="w-3 h-3" /> {t('tasks.vendor.preferred')}
               </p>
               <div className="flex flex-wrap gap-1">
                 {preferred.map((p) => (
@@ -179,7 +186,7 @@ export function TaskVendorPicker({
 
           <div className="max-h-40 overflow-y-auto space-y-1">
             {filtered.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground py-2 text-center">Keine Partner gefunden</p>
+              <p className="text-[10px] text-muted-foreground py-2 text-center">{t('tasks.vendor.noneFound')}</p>
             ) : (
               filtered.map((v) => (
                 <button
@@ -195,7 +202,7 @@ export function TaskVendorPicker({
                 >
                   <p className="text-[11px] font-medium">{v.name}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {CATEGORY_LABELS[v.category] ?? v.category}
+                    {vendorCategoryLabel(t, v.category)}
                     {v.serviceAreas?.length ? ` · ${v.serviceAreas.slice(0, 2).join(', ')}` : ''}
                   </p>
                 </button>
@@ -215,7 +222,7 @@ export function TaskVendorPicker({
           }}
           className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
         >
-          Partner wechseln
+          {t('tasks.vendor.change')}
         </button>
       )}
     </div>

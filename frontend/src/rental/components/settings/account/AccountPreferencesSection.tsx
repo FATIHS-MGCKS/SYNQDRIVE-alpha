@@ -5,11 +5,12 @@ import { Button } from '../../../../components/ui/button';
 import { accountFieldLabelClass, accountSelectClass } from './account-ui';
 import {
   DATE_FORMAT_OPTIONS,
-  LANGUAGE_OPTIONS,
-  LANDING_PAGE_OPTIONS,
+  getLanguageOptions,
+  getLandingPageOptions,
   TIMEZONE_OPTIONS,
   type PreferencesDraft,
 } from './account-utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface AccountPreferencesSectionProps {
   draft: PreferencesDraft;
@@ -33,13 +34,16 @@ export function AccountPreferencesSection({
   onSave,
   onReset,
 }: AccountPreferencesSectionProps) {
+  const { t, locale } = useLanguage();
+  const languageOptions = getLanguageOptions(locale);
+  const landingPageOptions = getLandingPageOptions(locale);
   const hasStations = stations.length > 0;
 
   return (
     <div id="account-section-preferences">
       <DataCard
-        title="Arbeitspräferenzen"
-        description="Sprache, Zeitzone und persönliche Standardwerte für Ihre Organisation."
+        title={t('settings.account.preferences.title')}
+        description={t('settings.account.preferences.description')}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             <Button
@@ -49,24 +53,24 @@ export function AccountPreferencesSection({
               onClick={onReset}
               disabled={!dirty || saving}
             >
-              Zurücksetzen
+              {t('common.reset')}
             </Button>
             <Button type="button" size="sm" onClick={onSave} disabled={!dirty || saving}>
               {saving ? <Loader2 className="animate-spin" /> : null}
-              Speichern
+              {t('common.save')}
             </Button>
           </div>
         }
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label className={accountFieldLabelClass}>Sprache</label>
+            <label className={accountFieldLabelClass}>{t('settings.account.preferences.language')}</label>
             <select
               className={accountSelectClass}
               value={draft.language}
               onChange={(e) => onDraftChange({ language: e.target.value as 'de' | 'en' })}
             >
-              {LANGUAGE_OPTIONS.map((o) => (
+              {languageOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -74,7 +78,7 @@ export function AccountPreferencesSection({
             </select>
           </div>
           <div>
-            <label className={accountFieldLabelClass}>Zeitzone</label>
+            <label className={accountFieldLabelClass}>{t('settings.account.preferences.timezone')}</label>
             <select
               className={accountSelectClass}
               value={draft.timezone}
@@ -91,7 +95,7 @@ export function AccountPreferencesSection({
             </select>
           </div>
           <div>
-            <label className={accountFieldLabelClass}>Datumsformat</label>
+            <label className={accountFieldLabelClass}>{t('settings.account.preferences.dateFormat')}</label>
             <select
               className={accountSelectClass}
               value={draft.dateFormat}
@@ -107,7 +111,7 @@ export function AccountPreferencesSection({
             </select>
           </div>
           <div>
-            <label className={accountFieldLabelClass}>Startseite nach Login</label>
+            <label className={accountFieldLabelClass}>{t('settings.account.preferences.landingPage')}</label>
             <select
               className={accountSelectClass}
               value={draft.defaultLandingPage}
@@ -117,7 +121,7 @@ export function AccountPreferencesSection({
                 })
               }
             >
-              {LANDING_PAGE_OPTIONS.map((o) => (
+              {landingPageOptions.map((o) => (
                 <option key={o.value || 'default'} value={o.value}>
                   {o.label}
                 </option>
@@ -125,16 +129,16 @@ export function AccountPreferencesSection({
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className={accountFieldLabelClass}>Standard-Station</label>
+            <label className={accountFieldLabelClass}>{t('settings.account.preferences.defaultStation')}</label>
             {stationsLoading ? (
-              <p className="py-2 text-xs text-muted-foreground">Stationen werden geladen…</p>
+              <p className="py-2 text-xs text-muted-foreground">{t('settings.account.preferences.stationsLoading')}</p>
             ) : hasStations ? (
               <select
                 className={accountSelectClass}
                 value={draft.defaultStationId}
                 onChange={(e) => onDraftChange({ defaultStationId: e.target.value })}
               >
-                <option value="">Keine Standard-Station</option>
+                <option value="">Keine {t('settings.account.preferences.defaultStation')}</option>
                 {stations.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -146,8 +150,8 @@ export function AccountPreferencesSection({
               <EmptyState
                 compact
                 icon={<MapPin className="h-5 w-5" />}
-                title="Noch keine Stationen angelegt"
-                description="Legen Sie unter Administration → Stationen mindestens einen Standort an, um eine Standard-Station zu wählen."
+                title={t('settings.account.preferences.noStationsTitle')}
+                description="Legen Sie unter Administration → Stationen mindestens einen Standort an, um eine {t('settings.account.preferences.defaultStation')} zu wählen."
               />
             )}
           </div>

@@ -93,6 +93,7 @@ describe('task-display.utils', () => {
   it('formats the maintenance due label as "Fällig bis" when not overdue', () => {
     const label = formatVehicleMaintenanceDueLabel(
       makeTask({ status: 'OPEN', isOverdue: false, dueDate: '2026-02-27T00:00:00.000Z' }),
+      'de',
     );
     expect(label).toBe('Fällig bis 27.02.26');
   });
@@ -100,6 +101,7 @@ describe('task-display.utils', () => {
   it('formats the maintenance due label as "Fällig seit" when overdue', () => {
     const label = formatVehicleMaintenanceDueLabel(
       makeTask({ status: 'OPEN', isOverdue: true, dueDate: '2026-02-27T00:00:00.000Z' }),
+      'de',
     );
     expect(label).toBe('Fällig seit 27.02.26');
   });

@@ -65,7 +65,7 @@ describe('task-create-form.utils', () => {
   });
 
   it('validates title, timing and checklist titles', () => {
-    expect(validateManualTaskForm(EMPTY_MANUAL_TASK_FORM)).toEqual({
+    expect(validateManualTaskForm(EMPTY_MANUAL_TASK_FORM, undefined, 'de')).toEqual({
       title: 'Titel ist erforderlich',
     });
 
@@ -74,12 +74,13 @@ describe('task-create-form.utils', () => {
       title: 'Task',
       activatesAt: '2026-08-10T10:00',
       dueDate: '2026-08-01T10:00',
-    });
+    }, undefined, 'de');
     expect(timingErrors.dueDate).toContain('Aktivierung');
 
     const checklistErrors = validateManualTaskForm(
       { ...EMPTY_MANUAL_TASK_FORM, title: 'Task' },
       { checklistItems: [createChecklistDraft('   ')] },
+      'de',
     );
     expect(checklistErrors.checklist).toBeTruthy();
   });

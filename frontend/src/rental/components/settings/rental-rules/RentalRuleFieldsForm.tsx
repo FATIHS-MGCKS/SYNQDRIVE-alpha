@@ -2,10 +2,11 @@ import { useMemo, useState, type ReactNode } from 'react';
 import type { RentalRuleFields, RentalRuleFormValues } from './rental-rules.types';
 import type { RentalRuleFieldScope } from './rental-rule-field-state.util';
 import {
-  ADDITIONAL_DRIVER_OPTIONS,
-  FOREIGN_TRAVEL_OPTIONS,
-  YOUNG_DRIVER_OPTIONS,
+  getAdditionalDriverOptions,
+  getForeignTravelOptions,
+  getYoungDriverOptions,
 } from './rental-rules.constants';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   rentalFormSectionClass,
   rentalFormSectionTitleClass,
@@ -17,7 +18,6 @@ import {
   resolveInheritedFieldValue,
 } from './rental-rule-field-state.util';
 import { extractRulePatchBaseline } from './rental-rules.utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
 
 const inputClass =
   'w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none transition-colors focus:border-brand/50 focus:ring-2 focus:ring-brand/15 disabled:opacity-60';
@@ -43,6 +43,10 @@ export function RentalRuleFieldsForm({
   baselineRules,
   showFieldMeta = true,
 }: RentalRuleFieldsFormProps) {
+  const { locale } = useLanguage();
+  const foreignTravelOptions = getForeignTravelOptions(locale);
+  const additionalDriverOptions = getAdditionalDriverOptions(locale);
+  const youngDriverOptions = getYoungDriverOptions(locale);
   const { t } = useLanguage();
   const [forcedOwnFields, setForcedOwnFields] = useState<Set<string>>(() => new Set());
 
@@ -343,7 +347,7 @@ export function RentalRuleFieldsForm({
                   aria-label={t('rentalRules.workflow.fields.foreignTravel')}
                 >
                   <option value="">{t('rentalRules.workflow.selectPolicy')}</option>
-                  {FOREIGN_TRAVEL_OPTIONS.map((o) => (
+                  {foreignTravelOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -380,7 +384,7 @@ export function RentalRuleFieldsForm({
                   aria-label={t('rentalRules.workflow.fields.additionalDriver')}
                 >
                   <option value="">{t('rentalRules.workflow.selectPolicy')}</option>
-                  {ADDITIONAL_DRIVER_OPTIONS.map((o) => (
+                  {additionalDriverOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -417,7 +421,7 @@ export function RentalRuleFieldsForm({
                   aria-label={t('rentalRules.workflow.fields.youngDriver')}
                 >
                   <option value="">{t('rentalRules.workflow.selectPolicy')}</option>
-                  {YOUNG_DRIVER_OPTIONS.map((o) => (
+                  {youngDriverOptions.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>

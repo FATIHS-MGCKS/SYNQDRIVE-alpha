@@ -65,6 +65,8 @@ const ctx = {
   fleetVehicles: [{ id: 'veh-1', license: 'B-SD 100', model: 'Mercedes E-Klasse', station: 'Berlin' }],
   orgMembers: members,
   orgStations: [{ id: 'station-1', name: 'Berlin Mitte' }],
+  locale: 'de',
+  formattingLocale: 'de-DE',
 };
 
 describe('task-list.utils', () => {
@@ -94,7 +96,7 @@ describe('task-list.utils', () => {
     expect(row.createdByUserName).toBe('SynqDrive Insights');
     expect(row.isSystemTask).toBe(true);
     expect(row.assignedUserName).toBe('Stefan Stationsleiter');
-    expect(resolveDisplaySource('SYSTEM', 'INSIGHT_HEALTH')).toBe('SynqDrive Insights');
+    expect(resolveDisplaySource('de', 'SYSTEM', 'INSIGHT_HEALTH')).toBe('SynqDrive Insights');
   });
 
   it('does not treat UUID as assignee display name when member is missing', () => {
@@ -135,6 +137,7 @@ describe('task-list.utils', () => {
   it('resolves creator from members when createdByUserId is present', () => {
     expect(
       resolveCreatorName(
+        'de',
         { createdByUserId: 'user-creator', sourceType: 'MANUAL', source: null },
         members,
       ),

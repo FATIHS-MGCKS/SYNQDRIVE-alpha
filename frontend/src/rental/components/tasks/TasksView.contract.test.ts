@@ -32,7 +32,7 @@ describe('TasksView integration contract', () => {
 
   it('renders loading, empty and error states', () => {
     expect(source).toContain('<ErrorState');
-    expect(source).toContain('Aufgaben konnten nicht geladen werden');
+    expect(source).toContain('tasks.loadError');
     expect(source).toContain('<EmptyState');
     expect(source).toContain('animate-pulse');
   });

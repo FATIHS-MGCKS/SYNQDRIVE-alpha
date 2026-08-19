@@ -1,4 +1,6 @@
 import type { ApiTask, ApiTaskType } from '../../lib/api';
+import { DEFAULT_PRODUCT_LOCALE } from '../../i18n/locales';
+import { tt } from '../components/tasks-settings/tasks-i18n';
 
 export type BulkTaskActionType =
   | 'assign'
@@ -50,18 +52,22 @@ export function canOfferBulkComplete(tasks: ApiTask[]): boolean {
   return true;
 }
 
-export function formatBulkActionSummary(result: BulkTaskActionResult): string {
+export function formatBulkActionSummary(result: BulkTaskActionResult, locale?: string | null): string {
+  const productLocale = locale ?? DEFAULT_PRODUCT_LOCALE;
   if (result.failed === 0) {
     return result.succeeded === 1
-      ? '1 Aufgabe erfolgreich aktualisiert'
-      : `${result.succeeded} Aufgaben erfolgreich aktualisiert`;
+      ? tt(productLocale, 'tasks.bulk.summaryOneSuccess')
+      : tt(productLocale, 'tasks.bulk.summaryManySuccess', { count: result.succeeded });
   }
   if (result.succeeded === 0) {
     return result.failed === 1
-      ? '1 Aufgabe konnte nicht aktualisiert werden'
-      : `${result.failed} Aufgaben konnten nicht aktualisiert werden`;
+      ? tt(productLocale, 'tasks.bulk.summaryOneFailed')
+      : tt(productLocale, 'tasks.bulk.summaryManyFailed', { count: result.failed });
   }
-  return `${result.succeeded} erfolgreich, ${result.failed} fehlgeschlagen`;
+  return tt(productLocale, 'tasks.bulk.summaryPartial', {
+    succeeded: result.succeeded,
+    failed: result.failed,
+  });
 }
 
 export function bulkActionFailureMessages(result: BulkTaskActionResult): string[] {

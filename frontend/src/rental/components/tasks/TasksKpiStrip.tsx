@@ -1,4 +1,5 @@
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TasksPageKpiItem, TasksPageView } from '../../lib/tasks-page.utils';
 
 export interface TasksKpiStripProps {
@@ -8,6 +9,8 @@ export interface TasksKpiStripProps {
 }
 
 export function TasksKpiStrip({ items, activeView, onSelectView }: TasksKpiStripProps) {
+  const { t } = useLanguage();
+
   return (
     <div
       className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5"
@@ -28,7 +31,7 @@ export function TasksKpiStrip({ items, activeView, onSelectView }: TasksKpiStrip
             item.tone === 'watch' && item.value > 0 && 'border-[color:var(--status-watch)]/25',
           )}
         >
-          <p className="text-[10px] font-medium text-muted-foreground">{item.label}</p>
+          <p className="text-[10px] font-medium text-muted-foreground">{t(item.labelKey)}</p>
           <p
             className={cn(
               'mt-0.5 text-xl font-semibold tabular-nums leading-none tracking-tight',

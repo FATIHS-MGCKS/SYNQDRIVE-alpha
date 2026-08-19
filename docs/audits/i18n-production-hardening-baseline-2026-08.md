@@ -635,7 +635,128 @@ See complete module table in P2.2.3 section below (sums to **1172**).
 
 ### Next phase
 
-**P2.2.4 (recommended):** Tasks + Settings presentation extraction.
+**P2.2.5 (recommended):** Automation presentation extraction (or Finance/Billing per product priority).
+
+---
+
+## P2.2.4 Tasks + Settings Outcome
+
+### Git accounting (exact)
+
+| Metric | Count |
+|--------|------:|
+| Tracked modified (`git diff --name-only`) | 78 |
+| Untracked files (`git ls-files --others --exclude-standard`) | 8 |
+| Untracked status paths (`??` in `git status --short`) | 7 |
+| Total status paths | 85 |
+| Tracked deleted / renamed / staged | 0 / 0 / 0 |
+| P2.2.4 functional-scope files | 74 |
+
+Prior incorrect arithmetic `78 + 7 = 83` conflated status paths (7) with physical untracked files (8).
+
+### True baseline (checkpoint `b6302e8`)
+
+| Module | Findings |
+|--------|----------|
+| Tasks | **114** |
+| Settings | **103** |
+| P2.2.4 in-scope (deterministic paths) | **227** |
+| Global | 2494 |
+| Rental | 1172 |
+| Canonical keys | 5136 |
+| Shim compat | 32 (21 prod / 11 test) |
+
+### Findings before/after
+
+| Metric | Before P2.2.4 | After P2.2.4 |
+|--------|---------------|--------------|
+| Tasks module (scanner) | 114 | **17** (all category A, outside P24 enforce-clean) |
+| Settings module | 103 | **0** |
+| P2.2.4 enforce-clean scope | 227 | **0** |
+| Global findings | 2494 | **2320** |
+| Rental findings | 1172 | **998** |
+| Enforce-clean remaining | 0 | **0** |
+
+Tasks 43→17: scanner fix reclassified 26 `workflow-automation/**` findings from Tasks to Automation (183→209).
+
+### Canonical keys (exact)
+
+| | Count |
+|--|------:|
+| After P2.2.3 | 5136 |
+| Raw candidate keys (790 added + 18 consolidation eliminations) | 808 |
+| Existing semantic keys reused in P2.2.4 scope | 263 |
+| Duplicate candidates reviewed | 21 |
+| SAME-SEMANTIC | 18 |
+| DIFFERENT-SEMANTIC | 3 |
+| AMBIGUOUS | 0 |
+| Eliminated by consolidation | 18 |
+| **Net growth** | **790** → **5926** |
+
+Invariant: `5136 + 790 = 5926`.
+
+Added-key sources: `settings-admin.en.ts` 432 + inline `en.ts` 358. Prefixes: `tasks.*` 353, `settings.*` 363, `rentalRules.*` 69, `common.*` 1, `bookings.*` 1, `email.*` 3.
+
+### Coverage after P2.2.4
+
+| Locale | Owned | Status |
+|--------|------:|--------|
+| en | 5926 | COMPLETE |
+| de | 5926 | COMPLETE |
+| pl/cs/nl/es/it | 493 | PARTIAL (floor unchanged) |
+| fr | 786 | PARTIAL (floor unchanged) |
+| tr | 0 | FALLBACK ONLY |
+
+### Shim inventory
+
+| | Checkpoint | Final |
+|--|------------|-------|
+| Total compat | 32 | **31** |
+| Production | 21 | **20** |
+| Test | 11 | 11 |
+
+Removed: `SettingsView.tsx` (`../i18n/` → `../../i18n/`). Added: **0**.
+
+### Scanner A/B/C
+
+| Cat | Count | Notes |
+|-----|------:|-------|
+| A | 1 | `BookingDossier` error reload — P2.2.3 path |
+| B | 1 | `SettingsView` → Settings module |
+| C | 1 | `workflow-automation/**` misclassified as Tasks |
+
+### StationsTab / BookingDossier
+
+- **StationsTab:** classification **A** (required Settings infrastructure extraction; no Stations i18n)
+- **BookingDossier:** classification **A** (presentation-only; retained)
+
+### Business-logic safety
+
+**BUSINESS LOGIC CHANGED: NO**
+
+### Validation
+
+- `npm run i18n:check` — pass (145 tests)
+- `rental-tasks-settings-localization.test.tsx` — 23/23 pass
+- Tasks suites — 16 files, 80/80 pass
+- Settings suites — 13 files, 77/77 pass
+- `npm run test:bookings` — 58/58 pass
+- `npm test` — 7 baseline failures unchanged
+- `npm run build` — pass
+- `git diff --check` — pass
+
+### Remaining Rental debt (998)
+
+| Module | Findings |
+|--------|----------:|
+| other Rental areas | 556 |
+| Automation | 209 |
+| Finance/Billing | 131 |
+| Stations | 57 |
+| Tasks (out of P24 zone) | 17 |
+| Support | 19 |
+| Documents | 8 |
+| App / routing shell | 1 |
 
 ---
 

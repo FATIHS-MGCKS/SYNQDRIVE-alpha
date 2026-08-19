@@ -25,13 +25,14 @@ import {
 } from './CompanyField';
 import {
   buildDocumentStatusGroups,
-  LANGUAGE_OPTIONS,
-  LEGAL_FORM_OPTIONS,
+  getCompanyLanguageOptions,
+  getLegalFormOptions,
   TIMEZONE_OPTIONS,
   type CompanyDraft,
   type DocumentStatusGroup,
   type DocumentStatusRow,
 } from './company-utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 const ALLOWED_LOGO = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
@@ -43,12 +44,15 @@ interface SectionProps {
 }
 
 export function CompanyBasisSection({ editing, draft, onChange }: SectionProps) {
+  const { t, locale } = useLanguage();
+  const legalFormOptions = getLegalFormOptions(locale);
+  const languageOptions = getCompanyLanguageOptions(locale);
   return (
-    <DataCard title="Basisdaten" description="Identität und Lokalisierung im Mandanten.">
+    <DataCard title={t('settings.company.basis.title')} description={t('settings.company.basis.description')}>
       <CompanyFieldGrid>
         <div className="md:col-span-2">
           <CompanyField
-            label="Anzeigename"
+            label={t('settings.company.basis.displayName')}
             value={draft.companyName}
             editing={editing}
             required
@@ -56,42 +60,42 @@ export function CompanyBasisSection({ editing, draft, onChange }: SectionProps) 
           />
         </div>
         <CompanyField
-          label="Rechtlicher Firmenname"
+          label={t('settings.company.basis.legalName')}
           value={draft.legalCompanyName}
           editing={editing}
           onChange={(v) => onChange({ legalCompanyName: v })}
         />
         <CompanyField
-          label="Rechtsform"
+          label={t('settings.company.basis.legalForm')}
           value={draft.legalForm}
           editing={editing}
           type="select"
-          options={LEGAL_FORM_OPTIONS}
+          options={legalFormOptions}
           onChange={(v) => onChange({ legalForm: v })}
         />
         <CompanyField
-          label="Geschäftsführer / Inhaber"
+          label={t('settings.company.basis.manager')}
           value={draft.managerName}
           editing={editing}
           onChange={(v) => onChange({ managerName: v })}
         />
         <CompanyField
-          label="E-Mail Geschäftsführung"
+          label={t('settings.company.basis.managerEmail')}
           value={draft.managerEmail}
           editing={editing}
           type="email"
           onChange={(v) => onChange({ managerEmail: v })}
         />
         <CompanyField
-          label="Hauptsprache"
+          label={t('settings.company.basis.language')}
           value={draft.language}
           editing={editing}
           type="select"
-          options={LANGUAGE_OPTIONS}
+          options={languageOptions}
           onChange={(v) => onChange({ language: v })}
         />
         <CompanyField
-          label="Zeitzone"
+          label={t('settings.company.basis.timezone')}
           value={draft.timezone}
           editing={editing}
           type="select"
@@ -104,8 +108,9 @@ export function CompanyBasisSection({ editing, draft, onChange }: SectionProps) 
 }
 
 export function CompanyContactSection({ editing, draft, onChange }: SectionProps) {
+  const { t } = useLanguage();
   return (
-    <DataCard title="Adresse & Kontakt" description="Erreichbarkeit und Standort.">
+    <DataCard title={t('settings.company.contact.title')} description={t('settings.company.contact.description')}>
       <CompanyFieldGrid>
         <div className="md:col-span-2">
           <CompanyField
@@ -177,12 +182,11 @@ export function CompanyContactSection({ editing, draft, onChange }: SectionProps
 }
 
 export function CompanyTaxSection({ editing, draft, onChange }: SectionProps) {
+  const { t } = useLanguage();
   return (
-    <DataCard title="Steuer & Rechnung" description="Steuerliche Angaben für Ausgangsrechnungen.">
+    <DataCard title={t('settings.company.tax.title')} description={t('settings.company.tax.description')}>
       <CompanyCriticalNotice>
-        Änderungen an Rechnungspräfix und nächster Rechnungsnummer wirken sich auf{' '}
-        <strong className="font-semibold text-foreground">künftige</strong> Rechnungen aus.
-        Bereits erstellte Belege bleiben unverändert.
+        <span dangerouslySetInnerHTML={{ __html: t('settings.company.tax.notice') }} />
       </CompanyCriticalNotice>
       <CompanyFieldGrid>
         <CompanyField
@@ -280,6 +284,7 @@ export function CompanyBrandingSection({
   onUpload,
   onRemoveLogo,
 }: BrandingProps) {
+  const { t } = useLanguage();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -346,7 +351,7 @@ export function CompanyBrandingSection({
             {logoUrl ? 'Logo ersetzen' : 'Logo hochladen'}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            PNG, JPG oder WebP · max. 2 MB
+            {t('settings.company.branding.logoHint')}
           </p>
           {canEdit && (
             <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
@@ -405,7 +410,7 @@ export function CompanyBrandingSection({
 
       <div className="surface-premium border border-border/60 p-3.5">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Vorschau auf Dokumenten
+          {t('settings.company.branding.preview')}
         </p>
         <div className="space-y-2 rounded-lg border border-border/60 surface-premium p-3">
           <div className="flex items-center gap-3">
@@ -460,6 +465,7 @@ function DocumentStatusGroupBlock({
   group: DocumentStatusGroup;
   onManageDocuments?: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -477,7 +483,7 @@ function DocumentStatusGroupBlock({
             className="shrink-0"
             onClick={onManageDocuments}
           >
-            AGB & Widerruf verwalten
+            {t('settings.company.documents.manageLegal')}
             <ExternalLink />
           </Button>
         ) : null}
@@ -513,7 +519,8 @@ export function CompanyDocumentsSection({
   loading,
   onManageDocuments,
 }: DocumentsSectionProps) {
-  const groups = buildDocumentStatusGroups(legalDocs);
+  const { t, locale } = useLanguage();
+  const groups = buildDocumentStatusGroups(locale, legalDocs);
 
   return (
     <DataCard
@@ -543,6 +550,7 @@ interface HistoryProps {
 }
 
 export function CompanyHistorySection({ activity, loading }: HistoryProps) {
+  const { t } = useLanguage();
   const items = mapCompanyActivityLogEntries(activity);
 
   if (loading) {
@@ -552,14 +560,14 @@ export function CompanyHistorySection({ activity, loading }: HistoryProps) {
   if (activity.length === 0) {
     return (
       <EmptyState
-        title="Änderungsverlauf wird vorbereitet"
+        title={t('settings.company.history.preparing')}
         description="Sobald Unternehmensdaten geändert werden, erscheinen hier die letzten Einträge aus dem Aktivitätsprotokoll."
       />
     );
   }
 
   return (
-    <DataCard title="Änderungsverlauf" description="Letzte Änderungen an Unternehmensdaten.">
+    <DataCard title={t('settings.company.history.title')} description="Letzte Änderungen an Unternehmensdaten.">
       <CompanyActivityTimeline items={items} />
     </DataCard>
   );

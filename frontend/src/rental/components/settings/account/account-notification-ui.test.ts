@@ -3,9 +3,9 @@ import {
   canToggleNotificationChannel,
   countEnabledNotificationChannels,
   securityChannelBlockMessage,
-  SECURITY_CHANNEL_REQUIRED_MESSAGE,
   type NotificationRow,
 } from './account-utils';
+import { st } from '../../tasks-settings/settings-i18n';
 
 function securityRow(overrides: Partial<NotificationRow> = {}): NotificationRow {
   return {
@@ -40,14 +40,14 @@ describe('account notification UI helpers', () => {
   it('blocks disabling the last security delivery channel', () => {
     const row = securityRow({ inApp: true, email: false });
     expect(canToggleNotificationChannel('SECURITY', 'inApp', row, false)).toBe(false);
-    expect(securityChannelBlockMessage('SECURITY', 'inApp', row, false)).toBe(
-      SECURITY_CHANNEL_REQUIRED_MESSAGE,
+    expect(securityChannelBlockMessage('de', 'SECURITY', 'inApp', row, false)).toBe(
+      st('de', 'settings.account.notifications.securityChannelRequired'),
     );
   });
 
   it('allows disabling one security channel when the other stays on', () => {
     const row = securityRow({ inApp: true, email: true });
     expect(canToggleNotificationChannel('SECURITY', 'inApp', row, false)).toBe(true);
-    expect(securityChannelBlockMessage('SECURITY', 'inApp', row, false)).toBeNull();
+    expect(securityChannelBlockMessage('de', 'SECURITY', 'inApp', row, false)).toBeNull();
   });
 });

@@ -101,7 +101,7 @@ describe('draftToUpdatePayload', () => {
 
 describe('buildDocumentStatusGroups', () => {
   it('groups manageable, system, and unconnected documents', () => {
-    const groups = buildDocumentStatusGroups([]);
+    const groups = buildDocumentStatusGroups('de', []);
     expect(groups.map((g) => g.id)).toEqual(['manageable', 'system', 'unconnected']);
     expect(groups[0].rows.map((r) => r.label)).toEqual(['AGB', 'Widerrufsbelehrung', 'Datenschutzerklärung']);
     expect(groups[1].rows.every((r) => r.status === 'generated')).toBe(true);
@@ -109,7 +109,7 @@ describe('buildDocumentStatusGroups', () => {
   });
 
   it('marks active AGB and Widerruf as Hinterlegt', () => {
-    const groups = buildDocumentStatusGroups([
+    const groups = buildDocumentStatusGroups('de', [
       legalDoc('TERMS_AND_CONDITIONS'),
       legalDoc('WITHDRAWAL_INFORMATION'),
     ]);
@@ -119,7 +119,7 @@ describe('buildDocumentStatusGroups', () => {
   });
 
   it('shows system templates without manageable affordance', () => {
-    const groups = buildDocumentStatusGroups([]);
+    const groups = buildDocumentStatusGroups('de', []);
     const system = groups.find((g) => g.id === 'system')!;
     expect(system.rows[0]).toMatchObject({
       label: 'Mietvertragsvorlage',
@@ -133,7 +133,7 @@ describe('buildDocumentStatusGroups', () => {
   });
 
   it('shows telematics consent as not yet connected', () => {
-    const groups = buildDocumentStatusGroups([]);
+    const groups = buildDocumentStatusGroups('de', []);
     const unconnected = groups.find((g) => g.id === 'unconnected')!;
     expect(unconnected.rows[0].label).toContain('Telematik');
   });

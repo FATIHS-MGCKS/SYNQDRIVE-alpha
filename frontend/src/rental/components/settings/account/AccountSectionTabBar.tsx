@@ -3,14 +3,8 @@ import {
   chromeTabTriggerClass,
   CHROME_TAB_BAR_SCROLL_CLASS,
 } from '../../../../components/patterns/chrome-tab-bar';
-import type { AccountSection } from './account-utils';
-
-const SECTIONS: Array<{ id: AccountSection; label: string }> = [
-  { id: 'profile', label: 'Profil' },
-  { id: 'preferences', label: 'Arbeitspräferenzen' },
-  { id: 'notifications', label: 'Benachrichtigungen' },
-  { id: 'security', label: 'Sicherheit & Sitzungen' },
-];
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { getAccountSections, type AccountSection } from './account-utils';
 
 interface AccountSectionTabBarProps {
   activeSection: AccountSection;
@@ -21,14 +15,17 @@ export function AccountSectionTabBar({
   activeSection,
   onSectionChange,
 }: AccountSectionTabBarProps) {
+  const { t, locale } = useLanguage();
+  const sections = getAccountSections(locale);
+
   return (
     <div
       className={chromeTabBarClass('p-1')}
       role="tablist"
-      aria-label="Kontobereiche"
+      aria-label={t('settings.account.sections.ariaLabel')}
     >
       <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
-        {SECTIONS.map((section) => {
+        {sections.map((section) => {
           const isActive = activeSection === section.id;
           return (
             <button

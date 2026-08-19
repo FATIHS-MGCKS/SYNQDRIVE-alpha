@@ -8,9 +8,11 @@ import {
   type Station,
 } from '../../../../lib/api';
 import { patchStoredUser } from '../../../../lib/auth';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { NotificationRow, PreferencesDraft, ProfileDraft } from './account-utils';
 
 export function useAccountCenter(orgId: string | undefined) {
+  const { t } = useLanguage();
   const [account, setAccount] = useState<AccountMeDto | null>(null);
   const [sessions, setSessions] = useState<AccountSessionDto[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
@@ -42,11 +44,13 @@ export function useAccountCenter(orgId: string | undefined) {
       setAccount(data);
       syncStoredUser(data);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Account konnte nicht geladen werden');
+      setLoadError(
+        err instanceof Error ? err.message : t('settings.account.toast.loadFailed'),
+      );
     } finally {
       setLoading(false);
     }
-  }, [syncStoredUser]);
+  }, [syncStoredUser, t]);
 
   const loadSessions = useCallback(async () => {
     setSessionsLoading(true);
@@ -54,11 +58,13 @@ export function useAccountCenter(orgId: string | undefined) {
       const rows = await api.account.sessions();
       setSessions(rows);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Sitzungen konnten nicht geladen werden');
+      toast.error(
+        err instanceof Error ? err.message : t('settings.account.toast.sessionsLoadFailed'),
+      );
     } finally {
       setSessionsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadStations = useCallback(async () => {
     if (!orgId?.trim()) {
@@ -96,17 +102,18 @@ export function useAccountCenter(orgId: string | undefined) {
         });
         setAccount(data);
         syncStoredUser(data);
-        toast.success('Profil gespeichert');
+        toast.success(t('settings.account.toast.profileSaved'));
         return data;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Profil konnte nicht gespeichert werden';
+        const msg =
+          err instanceof Error ? err.message : t('settings.account.toast.profileSaveFailed');
         toast.error(msg);
         throw err;
       } finally {
         setSavingProfile(false);
       }
     },
-    [syncStoredUser],
+    [syncStoredUser, t],
   );
 
   const updatePreferences = useCallback(
@@ -121,45 +128,50 @@ export function useAccountCenter(orgId: string | undefined) {
           defaultLandingPage: draft.defaultLandingPage || null,
         });
         setAccount(data);
-        toast.success('Arbeitspräferenzen gespeichert');
+        toast.success(t('settings.account.toast.preferencesSaved'));
         return data;
       } catch (err) {
         const msg =
-          err instanceof Error ? err.message : 'Präferenzen konnten nicht gespeichert werden';
+          err instanceof Error ? err.message : t('settings.account.toast.preferencesSaveFailed');
         toast.error(msg);
         throw err;
       } finally {
         setSavingPreferences(false);
       }
     },
-    [],
+    [t],
   );
 
-  const updateNotifications = useCallback(async (rows: NotificationRow[]) => {
-    setSavingNotifications(true);
-    try {
-      const data = await api.account.updateNotifications({
-        preferences: rows.map((r) => ({
-          category: r.category as AccountNotificationCategory,
-          inApp: r.inApp,
-          email: r.email,
-          push: r.push,
-          sms: r.sms,
-          criticalOnly: r.criticalOnly,
-        })),
-      });
-      setAccount(data);
-      toast.success('Benachrichtigungen gespeichert');
-      return data;
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'Benachrichtigungen konnten nicht gespeichert werden';
-      toast.error(msg);
-      throw err;
-    } finally {
-      setSavingNotifications(false);
-    }
-  }, []);
+  const updateNotifications = useCallback(
+    async (rows: NotificationRow[]) => {
+      setSavingNotifications(true);
+      try {
+        const data = await api.account.updateNotifications({
+          preferences: rows.map((r) => ({
+            category: r.category as AccountNotificationCategory,
+            inApp: r.inApp,
+            email: r.email,
+            push: r.push,
+            sms: r.sms,
+            criticalOnly: r.criticalOnly,
+          })),
+        });
+        setAccount(data);
+        toast.success(t('settings.account.toast.notificationsSaved'));
+        return data;
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : t('settings.account.toast.notificationsSaveFailed');
+        toast.error(msg);
+        throw err;
+      } finally {
+        setSavingNotifications(false);
+      }
+    },
+    [t],
+  );
 
   const changePassword = useCallback(
     async (payload: {
@@ -171,7 +183,7 @@ export function useAccountCenter(orgId: string | undefined) {
       setChangingPassword(true);
       try {
         const result = await api.account.changePassword(payload);
-        toast.success(result.message || 'Passwort aktualisiert');
+        toast.success(result.message || t('settings.account.toast.passwordUpdated'));
         if (payload.revokeOtherSessions) {
           await loadSessions();
         }
@@ -179,50 +191,55 @@ export function useAccountCenter(orgId: string | undefined) {
         setAccount(refreshed);
         return result;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Passwort konnte nicht geändert werden';
+        const msg =
+          err instanceof Error ? err.message : t('settings.account.toast.passwordChangeFailed');
         toast.error(msg);
         throw err;
       } finally {
         setChangingPassword(false);
       }
     },
-    [loadSessions],
+    [loadSessions, t],
   );
 
   const revokeOtherSessions = useCallback(async () => {
     setRevokingSessions(true);
     try {
       const result = await api.account.revokeOtherSessions();
-      toast.success(`${result.revoked} andere Sitzung(en) beendet`);
+      toast.success(t('settings.account.toast.sessionsRevoked', { count: result.revoked }));
       await loadSessions();
       const refreshed = await api.account.me();
       setAccount(refreshed);
       return result;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Sitzungen konnten nicht beendet werden');
+      toast.error(
+        err instanceof Error ? err.message : t('settings.account.toast.sessionsRevokeFailed'),
+      );
       throw err;
     } finally {
       setRevokingSessions(false);
     }
-  }, [loadSessions]);
+  }, [loadSessions, t]);
 
   const revokeSession = useCallback(
     async (sessionId: string) => {
       setRevokingSessionId(sessionId);
       try {
         await api.account.revokeSession(sessionId);
-        toast.success('Sitzung beendet');
+        toast.success(t('settings.account.toast.sessionRevoked'));
         await loadSessions();
         const refreshed = await api.account.me();
         setAccount(refreshed);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Sitzung konnte nicht beendet werden');
+        toast.error(
+          err instanceof Error ? err.message : t('settings.account.toast.sessionRevokeFailed'),
+        );
         throw err;
       } finally {
         setRevokingSessionId(null);
       }
     },
-    [loadSessions],
+    [loadSessions, t],
   );
 
   return {

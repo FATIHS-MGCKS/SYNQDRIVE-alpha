@@ -11,15 +11,16 @@ import {
 
 import { PriorityBadge, StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TaskCategory } from '../../lib/task-create.utils';
+import type { TaskListRow } from '../../lib/task-list.utils';
+import { userInitials } from '../../lib/task-list.utils';
 import {
-  taskPriorityLabelDe,
-  taskStatusLabelDe,
-  userInitials,
-  type TaskListPriority,
-  type TaskListRow,
-  type TaskListStatus,
-} from '../../lib/task-list.utils';
+  taskCategoryLabel,
+  taskListPriorityLabel,
+  taskListStatusLabel,
+  tt,
+} from '../tasks-settings/tasks-i18n';
 
 const categoryIcons: Record<TaskCategory, typeof Wrench> = {
   Cleaning: Sparkles,
@@ -34,7 +35,7 @@ const categoryIcons: Record<TaskCategory, typeof Wrench> = {
   'Oil Change': Timer,
 };
 
-function taskStatusTone(status: TaskListStatus): StatusTone {
+function taskStatusTone(status: TaskListRow['status']): StatusTone {
   switch (status) {
     case 'In Progress':
       return 'info';
@@ -49,41 +50,45 @@ function taskStatusTone(status: TaskListStatus): StatusTone {
   }
 }
 
-export function TaskStatusChip({ status }: { status: TaskListStatus }) {
+export function TaskStatusChip({ status }: { status: TaskListRow['status'] }) {
+  const { locale } = useLanguage();
   return (
     <StatusChip tone={taskStatusTone(status)} dot>
-      {taskStatusLabelDe(status)}
+      {taskListStatusLabel(locale, status)}
     </StatusChip>
   );
 }
 
-export function TaskPriorityBadge({ priority }: { priority: TaskListPriority }) {
+export function TaskPriorityBadge({ priority }: { priority: TaskListRow['priority'] }) {
+  const { locale } = useLanguage();
   return (
     <PriorityBadge
       priority={priority === 'Critical' ? 'urgent' : priority.toLowerCase()}
-      label={taskPriorityLabelDe(priority)}
+      label={taskListPriorityLabel(locale, priority)}
     />
   );
 }
 
 export function TaskCategoryChip({ category }: { category: TaskCategory }) {
+  const { locale } = useLanguage();
   const CatIcon = categoryIcons[category];
   return (
     <StatusChip tone="neutral" icon={<CatIcon className="h-3 w-3" />}>
-      {category}
+      {taskCategoryLabel(locale, category)}
     </StatusChip>
   );
 }
 
 export function AssigneeAvatar({ name }: { name: string }) {
+  const { locale } = useLanguage();
   return (
     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-brand-foreground">
-      {userInitials(name)}
+      {userInitials(locale, name)}
     </div>
   );
 }
 
-export function priorityStripClass(priority: TaskListPriority): string {
+export function priorityStripClass(priority: TaskListRow['priority']): string {
   switch (priority) {
     case 'Critical':
       return 'bg-[color:var(--status-critical)]';
@@ -97,11 +102,11 @@ export function priorityStripClass(priority: TaskListPriority): string {
 }
 
 /** Fields rendered in list rows — used for parity / UUID visibility tests. */
-export function getTaskListDisplayFields(task: TaskListRow): string[] {
+export function getTaskListDisplayFields(locale: string, task: TaskListRow): string[] {
   return [
     task.title,
     task.displaySource,
-    task.category,
+    taskCategoryLabel(locale, task.category),
     task.vehicleLicense,
     task.vehicleModel,
     task.station,
@@ -110,13 +115,17 @@ export function getTaskListDisplayFields(task: TaskListRow): string[] {
     task.dueDate,
     task.createdDate,
     task.estimatedDuration,
-    taskStatusLabelDe(task.status),
-    taskPriorityLabelDe(task.priority),
+    taskListStatusLabel(locale, task.status),
+    taskListPriorityLabel(locale, task.priority),
   ].filter(Boolean);
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function taskListDisplayAvoidsRawUuid(task: TaskListRow): boolean {
-  return !getTaskListDisplayFields(task).some((field) => field === task.id || UUID_PATTERN.test(field));
+export function taskListDisplayAvoidsRawUuid(locale: string, task: TaskListRow): boolean {
+  return !getTaskListDisplayFields(locale, task).some((field) => field === task.id || UUID_PATTERN.test(field));
+}
+
+export function taskEmDash(locale: string): string {
+  return tt(locale, 'tasks.display.emDash');
 }

@@ -5,13 +5,7 @@ import { DetailDrawer, StatusChip } from '../../../../components/patterns';
 import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto, RentalVehicleCategoryStatus, OrganizationRentalRulesDto } from './rental-rules.types';
 import { RentalRuleFieldsForm } from './RentalRuleFieldsForm';
 import { RentalRuleLivePreviewPanel } from './RentalRuleLivePreviewPanel';
-import { CATEGORY_COLOR_PRESETS, CATEGORY_TYPE_OPTIONS } from './rental-rules.constants';
-import {
-  CATEGORY_LIFECYCLE_ACTIONS,
-  CATEGORY_STATUS_TONES,
-  categoryAllowsVehicleAssignment,
-  labelCategoryStatus,
-} from './rental-rules-category-lifecycle.utils';
+import { CATEGORY_COLOR_PRESETS, getCategoryTypeOptions } from './rental-rules.constants';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { RentalRulesMutationError, rentalRulesMutate } from './rental-rules-concurrency.errors';
 import { RentalRulesConcurrencyDialog } from './RentalRulesConcurrencyDialog';
@@ -27,6 +21,12 @@ import {
   summarizeRuleEntity,
   validateRuleForm,
 } from './rental-rules.utils';
+import {
+  CATEGORY_LIFECYCLE_ACTIONS,
+  CATEGORY_STATUS_TONES,
+  categoryAllowsVehicleAssignment,
+  labelCategoryStatus,
+} from './rental-rules-category-lifecycle.utils';
 import { RentalRulePublishImpactPanel } from './RentalRulePublishImpactPanel';
 
 interface CategoryDetailDrawerProps {
@@ -62,7 +62,8 @@ export function CategoryDetailDrawer({
   onAssignVehicles,
   onPreviewVehicle,
 }: CategoryDetailDrawerProps) {
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
+  const categoryTypeOptions = getCategoryTypeOptions(locale);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('');
@@ -96,7 +97,7 @@ export function CategoryDetailDrawer({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setFormError('Category name is required.');
+      setFormError(t('rentalRules.ui.category.nameRequired'));
       return;
     }
     const err = validateRuleForm(ruleValues);
@@ -128,7 +129,7 @@ export function CategoryDetailDrawer({
           withExpectedVersion(payload, category.version),
         );
       }
-      toast.success(mode === 'create' ? 'Category created' : 'Category updated');
+      toast.success(mode === 'create' ? t('rentalRules.ui.category.created') : t('rentalRules.ui.category.updated'));
       await onSaved();
       onOpenChange(false);
     } catch (e: unknown) {
@@ -137,7 +138,7 @@ export function CategoryDetailDrawer({
         setConflictOpen(true);
         return;
       }
-      toast.error(e instanceof Error ? e.message : 'Save failed');
+      toast.error(e instanceof Error ? e.message : t('rentalRules.ui.category.saveFailed'));
     }
   };
 
@@ -159,7 +160,7 @@ export function CategoryDetailDrawer({
         setConflictOpen(true);
         return;
       }
-      toast.error(e instanceof Error ? e.message : 'Lifecycle update failed');
+      toast.error(e instanceof Error ? e.message : t('rentalRules.ui.category.lifecycleFailed'));
     } finally {
       setLifecycleSaving(false);
     }
@@ -178,9 +179,9 @@ export function CategoryDetailDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      eyebrow={mode === 'create' ? 'New category' : 'Edit category'}
-      title={mode === 'create' ? 'Create vehicle category' : category?.name ?? 'Category'}
-      description="Define eligibility requirements for a group of vehicles."
+      eyebrow={mode === 'create' ? t('rentalRules.ui.category.eyebrowCreate') : t('rentalRules.ui.category.eyebrowEdit')}
+      title={mode === 'create' ? t('rentalRules.ui.category.titleCreate') : category?.name ?? t('rentalRules.ui.category.titleFallback')}
+      description={t('rentalRules.ui.category.description')}
       status={
         category ? (
           <StatusChip tone={CATEGORY_STATUS_TONES[category.status]}>
@@ -193,7 +194,7 @@ export function CategoryDetailDrawer({
         canWrite ? (
           <>
             <button type="button" className="sq-btn sq-btn-ghost min-h-9" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -201,7 +202,11 @@ export function CategoryDetailDrawer({
               disabled={saving || lifecycleSaving || isArchived}
               onClick={() => void handleSave()}
             >
-              {saving ? 'Saving…' : mode === 'create' ? 'Create category' : 'Save changes'}
+              {saving
+                ? t('common.saving')
+                : mode === 'create'
+                  ? t('rentalRules.ui.category.createAction')
+                  : t('rentalRules.ui.category.saveChanges')}
             </button>
           </>
         ) : undefined
@@ -224,7 +229,7 @@ export function CategoryDetailDrawer({
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!canWrite || saving || lifecycleSaving || isArchived}
-              placeholder="e.g. Premium"
+              placeholder={t('rentalRules.ui.category.namePlaceholder')}
             />
           </div>
           <div className="sm:col-span-2">
@@ -248,8 +253,8 @@ export function CategoryDetailDrawer({
               onChange={(e) => setType(e.target.value)}
               disabled={!canWrite || saving || lifecycleSaving || isArchived}
             >
-              <option value="">Not set</option>
-              {CATEGORY_TYPE_OPTIONS.map((o) => (
+              <option value="">{t('rentalRules.ui.category.notSet')}</option>
+              {categoryTypeOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
@@ -259,7 +264,7 @@ export function CategoryDetailDrawer({
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Accent color
+              {t('rentalRules.ui.category.accentColor')}
             </label>
             <div className="flex flex-wrap gap-2">
               {CATEGORY_COLOR_PRESETS.map((c) => (
@@ -272,7 +277,7 @@ export function CategoryDetailDrawer({
                   style={{ backgroundColor: c }}
                   disabled={!canWrite || saving || lifecycleSaving || isArchived}
                   onClick={() => setColor(c)}
-                  aria-label={`Color ${c}`}
+                  aria-label={t('rentalRules.ui.category.colorAria', { color: c })}
                 />
               ))}
             </div>
@@ -304,7 +309,7 @@ export function CategoryDetailDrawer({
         )}
 
         <div>
-          <h4 className="mb-3 text-[13px] font-semibold text-foreground">Category rules</h4>
+          <h4 className="mb-3 text-[13px] font-semibold text-foreground">{t('rentalRules.ui.category.rulesTitle')}</h4>
           <RentalRuleFieldsForm
             values={ruleValues}
             onChange={setRuleValues}
@@ -345,12 +350,12 @@ export function CategoryDetailDrawer({
               </h4>
               {canAssignVehicles && categoryAllowsVehicleAssignment(category.status) && (
                 <button type="button" className="sq-btn sq-btn-ghost min-h-8 text-[12px]" onClick={onAssignVehicles}>
-                  Assign vehicles
+                  {t('rentalRules.ui.category.assignVehicles')}
                 </button>
               )}
             </div>
             {assignedVehicles.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground">No vehicles assigned yet.</p>
+              <p className="text-[12px] text-muted-foreground">{t('rentalRules.ui.category.noVehiclesAssigned')}</p>
             ) : (
               <ul className="max-h-40 space-y-1 overflow-y-auto">
                 {assignedVehicles.map((v) => (

@@ -36,6 +36,40 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-tasks-settings-p2-2-4-2026-08-19',
+    version: '4.9.924',
+    title: 'Rental i18n — P2.2.4 Tasks + Settings',
+    summary: [
+      'Rental Tasks (global page, filters, bulk actions, dialogs, display helpers) and Settings (account, company, data-authorization, email, rental-rules shell) migrated to canonical `frontend/src/i18n`.',
+      'Scanner P2.2.4 enforce-clean zone reports 0 findings; 808 raw candidates / 790 net EN+DE keys (5136→5926); 21 duplicate reviews (18 SAME-SEMANTIC, 3 DIFFERENT-SEMANTIC); helpers `tasks-i18n.ts` / `settings-i18n.ts`; `settings-admin.{en,de}.ts` split.',
+      'Git: 78 tracked modified + 8 untracked files (85 status paths); StationsTab extracted (classification A, no Stations i18n); SettingsView canonical import; shim 32→31; Tasks scanner 114→17; no commit/push.',
+    ],
+    reason: 'Tasks and Settings still carried 227 in-scope hardcoded strings; SettingsView mixed unwired Stations UI with administration tabs.',
+    previousBehavior: 'Inline DE/EN copy, `TASK_STATUS_LABEL_DE`, hardcoded rental-rules/email strings, SettingsView monolith with StationsTab.',
+    details:
+      'frontend/src/rental/components/TasksView.tsx; tasks/**; settings/**; tasks-settings/*; rental/lib/task-*.utils.ts; settings-admin translations; stations/StationsTab.tsx; rental-tasks-settings-localization.test.tsx; architecture/I18N_RENTAL_TASKS_SETTINGS_P2_2_4_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-19T05:30:00.000Z',
+  },
+  {
+    id: 'i18n-rental-tasks-p2-2-4-2026-08-19',
+    version: '4.9.923',
+    title: 'Rental i18n — P2.2.4 Tasks (superseded by combined entry)',
+    summary: [
+      'Rental global Tasks page, task list cards, filters, bulk actions, manual/vehicle task dialogs, and task display helpers migrated to canonical `frontend/src/i18n`.',
+      'Scanner P2.2.4 enforce-clean zone (TasksView, tasks/**, task-*.utils.ts) reports 0 findings; ~350+ new `tasks.*` EN+DE keys; helper `tasks-i18n.ts` (`tt`, label helpers).',
+      'Removed `TASK_FILTER_LABELS` / hardcoded German label maps; date formatters accept `formattingLocale`; internal task enums unchanged.',
+    ],
+    reason: 'Tasks module still carried hardcoded German/English presentation strings and `de-DE` locale literals in list builders and UI components.',
+    previousBehavior: 'Inline DE copy, `TASK_STATUS_LABEL_DE`, `TASK_FILTER_LABELS`, and fixed `de-DE` in `fmtTaskDate`.',
+    details:
+      'frontend/src/rental/components/TasksView.tsx; rental/components/tasks/**; rental/lib/task-*.utils.ts; tasks-settings/tasks-i18n.ts; frontend/scripts/i18n-hardcoded-scan.mjs; architecture/I18N_RENTAL_TASKS_P2_2_4_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-19T05:20:00.000Z',
+  },
+  {
     id: 'i18n-rental-bookings-customers-p2-2-3-2026-08-19',
     version: '4.9.922',
     title: 'Rental i18n — P2.2.3 Bookings + Customers',
