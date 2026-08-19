@@ -11,6 +11,7 @@ import { StationShortageNotificationAdapter } from './station-shortage-notificat
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
+import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -207,6 +208,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new StationShortageNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
       new ServiceComplianceNotificationAdapter(),
+      new VehicleAlertsNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -217,6 +219,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new LowUtilizationNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
       new ServiceComplianceNotificationAdapter(),
+      new VehicleAlertsNotificationAdapter(),
       core,
     );
   });
@@ -695,9 +698,9 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
   });
 
   describe('registry regression', () => {
-    it('attentionScope partition unchanged (66 / 23 / 43)', () => {
-      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(66);
-      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(23);
+    it('attentionScope partition unchanged (69 / 26 / 43)', () => {
+      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(69);
+      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(26);
       expect(getNotificationDefinitionsByAttentionScope('OPERATIONS').length).toBe(43);
     });
   });

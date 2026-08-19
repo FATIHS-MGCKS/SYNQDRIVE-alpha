@@ -97,3 +97,15 @@ export interface ServiceComplianceAdapterSource {
   severity: 'warning' | 'critical';
   blocksRental: boolean;
 }
+
+export interface VehicleAlertsNotificationAdapterSource {
+  eventType: 'LIMP_MODE_ACTIVE' | 'ENGINE_OIL_LEVEL_LOW' | 'ENGINE_OIL_LEVEL_HIGH';
+  vehicleId: string;
+  label: string;
+  reason?: string;
+  cleared?: boolean;
+  severity: 'warning' | 'critical';
+  blocksRental: boolean;
+  telltaleKey: 'engine_limp_mode' | 'engine_oil_level';
+  canonicalState: 'ACTIVE' | 'CLEARED';
+}

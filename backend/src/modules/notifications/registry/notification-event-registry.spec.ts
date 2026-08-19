@@ -184,6 +184,9 @@ describe('NotificationEventRegistry', () => {
       'TIRE_CRITICAL',
       'TUV_OVERDUE',
       'VEHICLE_NOT_READY',
+      'LIMP_MODE_ACTIVE',
+      'ENGINE_OIL_LEVEL_LOW',
+      'ENGINE_OIL_LEVEL_HIGH',
     ] as const;
 
     it('assigns a valid attentionScope to every registered event type', () => {
@@ -284,6 +287,26 @@ describe('NotificationEventRegistry', () => {
         eventType: 'ACTIVE_DTC',
         entityId: GOLDEN_VEHICLE_ENTITY_ID,
         canonical: 'org-golden|ACTIVE_DTC|VEHICLE|veh-golden-1|active_dtc|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'LIMP_MODE_ACTIVE',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|LIMP_MODE_ACTIVE|VEHICLE|veh-golden-1|limp_mode_active|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'ENGINE_OIL_LEVEL_LOW',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical:
+          'org-golden|ENGINE_OIL_LEVEL_LOW|VEHICLE|veh-golden-1|engine_oil_level_low|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'ENGINE_OIL_LEVEL_HIGH',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical:
+          'org-golden|ENGINE_OIL_LEVEL_HIGH|VEHICLE|veh-golden-1|engine_oil_level_high|v1',
         attentionScope: 'FLEET_READINESS',
       },
       {

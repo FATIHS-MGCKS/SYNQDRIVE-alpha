@@ -10,6 +10,7 @@ import { StationShortageNotificationAdapter } from './station-shortage-notificat
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
+import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
@@ -19,9 +20,14 @@ import {
   legacyServiceOverdueFingerprint,
   serviceComplianceSourceFingerprint,
 } from './service-compliance-notification.projector';
+import {
+  VEHICLE_ALERTS_NOTIFICATION_EVENT_TYPES,
+  vehicleAlertsSourceFingerprint,
+} from './vehicle-alerts-notification.projector';
 import type {
   VehicleHealthAdapterSource,
   ServiceComplianceAdapterSource,
+  VehicleAlertsNotificationAdapterSource,
 } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
@@ -98,6 +104,7 @@ export class NotificationProducerIngestService {
     private readonly lowUtilizationAdapter: LowUtilizationNotificationAdapter,
     private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
     private readonly serviceComplianceAdapter: ServiceComplianceNotificationAdapter,
+    private readonly vehicleAlertsAdapter: VehicleAlertsNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
 
@@ -558,6 +565,46 @@ export class NotificationProducerIngestService {
         );
       }
     }
+  }
+
+  /**
+   * Materialize canonical vehicle alert causes (limp, oil low, oil high) as V2 notifications.
+   * Cause-aware only: explicit CLEARED resolves; UNEVALUABLE preserves existing lifecycle.
+   * No absent-fingerprint sweep — stale/provider_error must not auto-resolve.
+   */
+  async syncVehicleAlertsWarnings(
+    organizationId: string,
+    runId: string,
+    sources: VehicleAlertsNotificationAdapterSource[],
+  ): Promise<void> {
+    await this.ingestVehicleAlertsSources(organizationId, runId, sources);
+  }
+
+  async ingestVehicleAlertsSources(
+    organizationId: string,
+    runId: string,
+    sources: VehicleAlertsNotificationAdapterSource[],
+  ): Promise<void> {
+    for (const source of sources) {
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleAlertsAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Vehicle alerts V2 ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  vehicleAlertsFingerprint(
+    organizationId: string,
+    source: Pick<VehicleAlertsNotificationAdapterSource, 'eventType' | 'vehicleId'>,
+  ): string {
+    return vehicleAlertsSourceFingerprint(organizationId, source);
   }
 
   serviceComplianceFingerprint(

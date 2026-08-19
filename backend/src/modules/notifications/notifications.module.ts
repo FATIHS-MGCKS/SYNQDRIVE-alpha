@@ -16,6 +16,7 @@ import { StationShortageNotificationAdapter } from './adapters/station-shortage-
 import { LowUtilizationNotificationAdapter } from './adapters/low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './adapters/vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './adapters/service-compliance-notification.adapter';
+import { VehicleAlertsNotificationAdapter } from './adapters/vehicle-alerts-notification.adapter';
 import { VehicleHealthNotificationSyncService } from './adapters/vehicle-health-notification-sync.service';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
@@ -109,6 +110,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     LowUtilizationNotificationAdapter,
     VehicleHealthNotificationAdapter,
     ServiceComplianceNotificationAdapter,
+    VehicleAlertsNotificationAdapter,
     VehicleHealthNotificationSyncService,
     NotificationProducerRouter,
     NotificationProducerIngestService,
@@ -145,6 +147,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     LowUtilizationNotificationAdapter,
     VehicleHealthNotificationAdapter,
     ServiceComplianceNotificationAdapter,
+    VehicleAlertsNotificationAdapter,
     VehicleHealthNotificationSyncService,
   ],
 })

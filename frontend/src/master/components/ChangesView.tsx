@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-alerts-notification-v22b-2026-08-19',
+    version: '4.9.922',
+    title: 'Vehicle Alerts Notification V2 Producer (P2.2B)',
+    summary: [
+      'Notification-V2-Parität für drei kanonische vehicle_alerts Causes: `LIMP_MODE_ACTIVE`, `ENGINE_OIL_LEVEL_LOW`, `ENGINE_OIL_LEVEL_HIGH`.',
+      'SoT-Kette: HM/OEM → `DashboardWarningLightsService` → `projectVehicleAlertNotifications()` → `VehicleAlertsNotificationAdapter` → `NotificationCoreService`.',
+      'Lifecycle: ACTIVE/CLEARED/UNEVALUABLE — UNEVALUABLE ≠ CLEARED; stale/provider_error/not_connected lösen keine bestehende OPEN-Notification.',
+      'Oil LOW (CRITICAL, blocks rental) und Oil HIGH (WARNING, inspect) bleiben getrennte Fingerprints/Lifecycles inkl. LOW↔HIGH-Übergänge.',
+      'Producer: `VehicleHealthNotificationSyncService.syncVehicleAlertsWarnings()` — cause-aware reconcile ohne absent-fingerprint-sweep.',
+      'Registry: 66/23/43 → 69/26/43 (+3 FLEET_READINESS, +0 OPERATIONS). Audit: YELLOW — NOT READY FOR UI CUTOVER.',
+    ],
+    reason:
+      'Fleet Readiness P2.2B — Notification V2 darf keine Limp-/Oil-Health-Policy neu berechnen; explizite Recovery-Evidenz für RESOLVE.',
+    previousBehavior:
+      'P2.2A kanonisierte nur Rental Health; keine V2-Events für Limp/Oil LOW/Oil HIGH; aggregiertes `vehicle_alerts` ModuleHealth trennt Causes nicht.',
+    details:
+      'vehicle-alerts-notification.{projector,adapter}.ts, vehicle-health-notification-sync.service.ts, notification-producer.ingest.service.ts, notification-event-registry.definitions.ts, architecture/VEHICLE_ALERTS_NOTIFICATION_V2_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-19T06:00:00.000Z',
+  },
+  {
     id: 'vehicle-alerts-canonical-source-p22a-2026-08-19',
     version: '4.9.921',
     title: 'Vehicle Alerts Canonical Source Migration (P2.2A)',
