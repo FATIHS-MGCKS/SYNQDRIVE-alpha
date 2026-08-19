@@ -550,7 +550,12 @@ export class NotificationProducerIngestService {
 
     await this.ingestServiceComplianceSources(organizationId, runId, sources);
 
-    await this.reconcileLegacyServiceOverdueFingerprints(organizationId, runId, sources);
+    await this.reconcileLegacyServiceOverdueFingerprints(
+      organizationId,
+      runId,
+      sources,
+      recoveryEligibilityByVehicleId,
+    );
 
     const activeNotifications = await this.listAllActiveServiceComplianceNotifications(
       organizationId,
@@ -971,7 +976,7 @@ export class NotificationProducerIngestService {
     for (const notification of activeNotifications) {
       if (activeFingerprints.has(notification.fingerprint)) continue;
 
-      if (damageQuerySucceededByVehicleId.get(notification.entityId) === false) continue;
+      if (damageQuerySucceededByVehicleId.get(notification.entityId) !== true) continue;
 
       const withinClearGrace =
         vehicleHealthNotificationClearGraceMs() > 0 &&
@@ -1138,11 +1143,26 @@ export class NotificationProducerIngestService {
   private async reconcileLegacyServiceOverdueFingerprints(
     organizationId: string,
     _runId: string,
-    _sources: ServiceComplianceAdapterSource[],
+    sources: ServiceComplianceAdapterSource[],
+    recoveryEligibilityByVehicleId: ServiceComplianceRecoveryEligibilityByVehicle,
   ): Promise<void> {
+    const canonicalServiceOverdueActiveByVehicle = new Set<string>();
+    for (const source of sources) {
+      if (!source.cleared && source.eventType === 'SERVICE_OVERDUE') {
+        canonicalServiceOverdueActiveByVehicle.add(source.vehicleId);
+      }
+    }
+
     const legacyActives = await this.listActiveLegacyServiceOverdueNotifications(organizationId);
 
     for (const legacy of legacyActives) {
+      const vehicleId = legacy.entityId;
+      const canonicalActive = canonicalServiceOverdueActiveByVehicle.has(vehicleId);
+      const recoveryEligible =
+        recoveryEligibilityByVehicleId.get(vehicleId)?.SERVICE_OVERDUE === true;
+
+      if (!canonicalActive && !recoveryEligible) continue;
+
       try {
         await this.core.resolveNotificationByFingerprint({
           organizationId,

@@ -522,14 +522,14 @@ export class NotificationApiService {
     const prefClause = buildPreferenceWhereClause(ctx.preferences);
     if (prefClause) {
       where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), prefClause],
+        AND: [where, prefClause],
       };
     }
 
     if (excludeUserSnoozed) {
       const snoozeClause = buildUserSnoozeExclusionClause(ctx.userId, referenceNow);
       where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), snoozeClause],
+        AND: [where, snoozeClause],
       };
     }
 

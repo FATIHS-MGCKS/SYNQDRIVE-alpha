@@ -74,10 +74,16 @@ export function buildServiceComplianceRecoveryEligibility(input: {
   }
 
   const blocking = evaluateServiceComplianceRentalBlocking(input.evaluation);
+  const { nextService, tuvBokraft } = input.evaluation;
 
-  eligibility.TUV_OVERDUE = !blocking.tuvOverdue;
-  eligibility.BOKRAFT_OVERDUE = !blocking.bokraftOverdue;
-  eligibility.SERVICE_OVERDUE = !blocking.serviceOverdue;
+  eligibility.TUV_OVERDUE =
+    tuvBokraft?.tuvRemainingDays != null && !blocking.tuvOverdue;
+
+  eligibility.BOKRAFT_OVERDUE =
+    tuvBokraft?.bokraftRemainingDays != null && !blocking.bokraftOverdue;
+
+  eligibility.SERVICE_OVERDUE =
+    nextService?.trackingStatus === 'TRACKED' && !blocking.serviceOverdue;
 
   return eligibility;
 }
