@@ -59,16 +59,13 @@ export function projectVehicleAlertsToRentalHealth(
   envelope: DashboardWarningLightsResponse | null,
   opts?: { loadFailed?: boolean },
 ): VehicleAlertsRentalHealthProjection {
-  if (opts?.loadFailed) {
-    return {
-      moduleHealth: pipelineFailureModule('OEM-Warnleuchten konnten nicht geladen werden'),
-      blockingCauses: [],
-    };
-  }
-
   if (!envelope) {
     return {
-      moduleHealth: pipelineFailureModule('OEM-Warnleuchten nicht verfügbar'),
+      moduleHealth: pipelineFailureModule(
+        opts?.loadFailed
+          ? 'OEM-Warnleuchten konnten nicht geladen werden'
+          : 'OEM-Warnleuchten nicht verfügbar',
+      ),
       blockingCauses: [],
     };
   }
@@ -100,6 +97,13 @@ export function projectVehicleAlertsToRentalHealth(
         source: 'dashboard_warning_lights',
         evidence_type: 'provider',
       },
+      blockingCauses: [],
+    };
+  }
+
+  if (opts?.loadFailed) {
+    return {
+      moduleHealth: pipelineFailureModule('OEM-Warnleuchten konnten nicht geladen werden'),
       blockingCauses: [],
     };
   }

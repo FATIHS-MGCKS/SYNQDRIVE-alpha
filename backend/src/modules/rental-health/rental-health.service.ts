@@ -49,7 +49,6 @@ import { BrakeRentalHealthReviewService } from './brake-rental-health-review.ser
 import { VehicleHealthWorkflowEmitter } from './vehicle-health-workflow.emitter';
 import { DashboardWarningLightsService } from '../vehicle-intelligence/dashboard-warning-lights/dashboard-warning-lights.service';
 import {
-  isVehicleAlertsDashboardPipelineFailed,
   projectVehicleAlertsToRentalHealth,
   vehicleAlertBlockingCausesToReasons,
   type VehicleAlertBlockingCause,
@@ -214,10 +213,13 @@ export class RentalHealthService {
     const rentalBlockingDamages =
       damagesRes.status === 'fulfilled' ? (damagesRes.value ?? []) : [];
     const vehicleAlertsPipelineFailed =
-      isVehicleAlertsDashboardPipelineFailed(dashboardLightsRes);
+      dashboardLightsRes.status === 'rejected' ||
+      (dashboardLightsRes.status === 'fulfilled' &&
+        (dashboardLightsRes.value.connectionStatus === 'provider_error' ||
+          dashboardLightsRes.value.freshness === 'error'));
     const vehicleAlertsProjection = projectVehicleAlertsToRentalHealth(
       dashboardLightsRes.status === 'fulfilled' ? dashboardLightsRes.value : null,
-      { loadFailed: dashboardLightsRes.status === 'rejected' },
+      { loadFailed: vehicleAlertsPipelineFailed },
     );
     const serviceComplianceModule = complianceEval
       ? this.serviceCompliance.toRentalModuleHealth(
