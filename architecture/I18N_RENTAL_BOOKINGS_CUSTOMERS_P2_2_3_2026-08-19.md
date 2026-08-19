@@ -23,14 +23,28 @@ P2.2.3 extracts user-facing copy from Rental **Bookings** and **Customers** pres
 | Customers module | **−67** | Migrated in-scope Customers presentation |
 | other Rental areas (P2.2.3 paths) | **−52** | Previously classified “other”; files in P2.2.3 enforce-clean paths, reclassified + migrated |
 | **Gross P2.2.3 migration** | **−225** | 106 + 67 + 52 |
-| New scanner findings (offset) | **+7** | +4 other, +1 Finance/Billing, +1 Tasks, +1 Settings (post-migration scan noise, not P2.2.3 scope) |
+| Pre-existing findings newly surfaced (offset) | **+7** | +4 other, +1 Finance/Billing, +1 Tasks, +1 Settings — category **A** only (improved scanner visibility; P2.2.3 introduced zero new hardcoded copy outside the clean zone) |
 | **Net Rental reduction** | **−218** | 225 − 7 |
+
+### +7 offset provenance (category A = 7, B = 0, C = 0)
+
+All seven are **pre-existing source text** at checkpoint `39c33e0` (`git diff` empty on each file). None were introduced by P2.2.3 UI work. They became visible because scanner path/classification improved after enforce-clean expansion — not because P2.2.3 added new hardcoded copy.
+
+| File | Module | Sample |
+|------|--------|--------|
+| `BusinessInsightsBox.tsx:955` | other | `de-DE` (`FORMAT_LOCALE`) |
+| `SettingsView.tsx:717` | other | `Erneut laden` |
+| `FinancialInsightsView.tsx:1045` | other | `Schließen` (ARIA) |
+| `FinesView.tsx:457` | other | `Zurück` |
+| `invoices/InvoiceDocuments.tsx:322` | Finance/Billing | `Dokumente werden geladen…` |
+| `tasks/VehicleTaskActionCenter.tsx:38` | Tasks | `Nächste Aktion` |
+| `settings/account/AccountNotificationsSection.tsx:154` | Settings | `Zurücksetzen` |
 
 ### The “45 beyond 173” explained
 
 - Known module reductions: **173** (106 Bookings + 67 Customers)
 - Unexplained gap vs 218: **45**
-- **Exact source:** **52** findings migrated from `other Rental areas` inside P2.2.3 file paths, minus **7** new rental findings introduced by the post-migration inventory scan = **45**
+- **Exact source:** **52** findings migrated from `other Rental areas` inside P2.2.3 file paths, minus **7** pre-existing findings newly surfaced by improved scanner = **45**
 
 | Category | Count |
 |----------|------:|
@@ -88,13 +102,23 @@ P2.2.3 extracts user-facing copy from Rental **Bookings** and **Customers** pres
 
 *`bookings.*` + `customers.*` = 458. Wizard keys (138) are a subset across both namespaces.*
 
-### Duplicate-semantic audit (458 new keys)
+### Duplicate-semantic audit (458 raw extracted keys)
 
 - **55** new keys share identical EN text with an existing `common.*` / `bookings.*` / `customers.*` / `email.*` / `vehicle.*` key
-- **10** are obvious action-label overlaps (`Back`, `Next`, `Close`, `Open`, `Status`)
-- **0 safely consolidated** in P2.2.3 — wizard/domain keys kept intentionally grouped for enforce-clean maintainability; consolidating would require broad call-site churn with no user-visible benefit
+- **10** obvious action-label candidates reviewed (`Back`, `Next`, `Close`, `Open`, `Status`)
+- **9** SAME-SEMANTIC → consolidated to existing `common.*` keys (`common.back`, `common.next`, `common.close`, `common.status`)
+- **1** DIFFERENT-SEMANTIC → retained: `customers.verification.open` (verification state “open/pending”) vs `common.open` (navigation action)
 
-**Final canonical key count:** **5145** (4687 + 458)
+| Stage | Count |
+|-------|------:|
+| After P2.2.2 | 4687 |
+| Raw P2.2.3 extraction | +458 |
+| **Raw pre-consolidation** | **5145** |
+| Duplicate consolidation | −9 |
+| **Final canonical keys** | **5136** |
+| **Net growth from P2.2.2** | **+449** |
+
+EN/DE: **5136 / 5136 — 100% COMPLETE**. Partial locale owned counts unchanged (pl/cs/nl/es/it 493; fr 786; tr 0 fallback-only).
 
 ## Helpers
 
@@ -112,15 +136,24 @@ P2.2.3 extracts user-facing copy from Rental **Bookings** and **Customers** pres
 | Production | 22 | **21** |
 | Test | 11 | 11 |
 
-### Touched-file shim history
+### Deterministic set difference (checkpoint inventory script)
 
-| File | Checkpoint | During P2.2.3 | Final |
-|------|------------|---------------|-------|
-| `BookingDocumentsSection.tsx` | **Compat** (`../i18n/`) | Compat | **Canonical** (`../../i18n/`) — migrated |
-| `BookingsView.tsx` | No i18n import | **Transient compat** (`../i18n/`) | **Canonical** (`../../i18n/`) — corrected |
-| `NewBookingView.tsx` | **Compat** (`../i18n/`) | Compat | **Canonical** (`../../i18n/`) — migrated |
+| Delta | File | Explanation |
+|-------|------|-------------|
+| **Removed (−1)** | `BookingDocumentsSection.tsx` | Was compat `../i18n/` at checkpoint `39c33e0`; migrated to canonical `../../i18n/` |
+| **Added** | — | None |
 
-**No new compat consumers introduced.** Net **−1** vs checkpoint (BDS + NewBookingView migrated; BookingsView transient shim fully reversed).
+**Equation:** 33 − 1 + 0 = **32**. P2.2.3 introduced **zero** new compatibility consumers.
+
+### Touched-file import history (not all were checkpoint compat consumers)
+
+| File | Checkpoint compat inventory? | P2.2.3 import history | Final |
+|------|-------------------------------|----------------------|-------|
+| `BookingDocumentsSection.tsx` | **Yes** | compat → canonical | **Canonical** (`../../i18n/`) |
+| `BookingsView.tsx` | **No** | transient compat during migration → corrected | **Canonical** (`../../i18n/`) |
+| `NewBookingView.tsx` | **No** (no i18n import at checkpoint) | canonical `../../i18n/` added directly | **Canonical** (`../../i18n/`) |
+
+Do **not** count `NewBookingView.tsx` among deterministic checkpoint-compat removals for 33 → 32.
 
 ## Status presentation mappings
 

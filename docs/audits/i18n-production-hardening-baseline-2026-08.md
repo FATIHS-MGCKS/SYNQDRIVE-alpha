@@ -669,7 +669,7 @@ See `architecture/I18N_RENTAL_BOOKINGS_CUSTOMERS_P2_2_3_2026-08-19.md` (Bookings
 | | Count |
 |--|-------|
 | After P2.2.2 | 4687 |
-| After P2.2.3 | **5145** (+458 EN+DE) |
+| After P2.2.3 (final) | **5136** (+449 net; +458 raw −9 consolidation) |
 
 ### 218 Rental reduction reconciled
 
@@ -678,10 +678,10 @@ See `architecture/I18N_RENTAL_BOOKINGS_CUSTOMERS_P2_2_3_2026-08-19.md` (Bookings
 | Bookings module migrated | 106 |
 | Customers module migrated | 67 |
 | other → P2.2.3 path reclassified + migrated | 52 |
-| New post-scan findings (offset) | +7 |
+| Pre-existing findings newly surfaced (offset) | +7 |
 | **Net Rental reduction** | **218** |
 
-The 45 beyond 173 = **52 − 7** (other-path migrations minus new scan findings). No false positives removed; no accidental out-of-scope migration.
+The 45 beyond 173 = **52 − 7** (other-path migrations minus seven pre-existing findings newly surfaced by improved scanner). Category A = 7; category C = 0. No false positives removed; no accidental out-of-scope migration.
 
 ### 458 new-key breakdown
 
@@ -693,21 +693,21 @@ The 45 beyond 173 = **52 − 7** (other-path migrations minus new scan findings)
 | `customers.wizard.*` | 96 |
 | Other namespaces | 0 |
 
-Duplicate-semantic audit: 55 overlaps with existing keys; **0 consolidated** (intentional domain grouping).
+Duplicate-semantic audit: 55 overlaps with existing keys; **10** obvious action-label candidates reviewed; **9** consolidated to `common.*`; **1** retained (`customers.verification.open` vs `common.open`). Raw pre-consolidation count **5145**; final **5136**.
 
 ### Coverage after P2.2.3
 
 | Locale | Owned | Missing | % | Status |
 |--------|-------|---------|---|--------|
-| en | 5145 | 0 | 100% | COMPLETE |
-| de | 5145 | 0 | 100% | COMPLETE |
-| pl | 493 | 4652 | 9.58% | PARTIAL |
-| fr | 786 | 4359 | 15.28% | PARTIAL |
-| cs | 493 | 4652 | 9.58% | PARTIAL |
-| nl | 493 | 4652 | 9.58% | PARTIAL |
-| es | 493 | 4652 | 9.58% | PARTIAL |
-| tr | 0 | 5145 | 0% | FALLBACK ONLY |
-| it | 493 | 4652 | 9.58% | PARTIAL |
+| en | 5136 | 0 | 100% | COMPLETE |
+| de | 5136 | 0 | 100% | COMPLETE |
+| pl | 493 | 4643 | 9.60% | PARTIAL |
+| fr | 786 | 4350 | 15.30% | PARTIAL |
+| cs | 493 | 4643 | 9.60% | PARTIAL |
+| nl | 493 | 4643 | 9.60% | PARTIAL |
+| es | 493 | 4643 | 9.60% | PARTIAL |
+| tr | 0 | 5136 | 0% | FALLBACK ONLY |
+| it | 493 | 4643 | 9.60% | PARTIAL |
 
 ### Shim inventory
 
@@ -717,7 +717,7 @@ Duplicate-semantic audit: 55 overlaps with existing keys; **0 consolidated** (in
 | Production | 22 | **21** |
 | Test | 11 | 11 |
 
-`BookingDocumentsSection` and `NewBookingView` migrated compat → canonical; `BookingsView` was transient compat during migration, corrected. **No new compat consumers.**
+Deterministic compat inventory: **removed** `BookingDocumentsSection` only (33 → 32); **added** none. `NewBookingView` was **not** a checkpoint compat consumer (no i18n import at `39c33e0`); P2.2.3 added canonical `../../i18n/` directly. `BookingsView` had transient compat during migration, final state canonical. **No new compat consumers.**
 
 ### Complete remaining Rental debt (1172)
 

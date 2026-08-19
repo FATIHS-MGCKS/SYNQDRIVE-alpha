@@ -41,8 +41,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Rental i18n — P2.2.3 Bookings + Customers',
     summary: [
       'Bookings list/planner/detail/wizard/payment and Customers list/detail/wizard/verification presentation migrated to canonical `frontend/src/i18n`.',
-      'Scanner Bookings (106→0) and Customers (67→0) enforce-clean zones; +457 EN/DE keys; helpers `bookings-i18n.ts` / `customers-i18n.ts`.',
-      'Shim count 33→32 (BDS + NewBookingView migrated; BookingsView transient compat corrected); no new compat consumers.',
+      'Scanner Bookings (106→0) and Customers (67→0) enforce-clean zones; +458 raw / +449 net EN+DE keys (9 duplicate-semantics consolidated); helpers `bookings-i18n.ts` / `customers-i18n.ts`.',
+      'Shim inventory 33→32: deterministic removal `BookingDocumentsSection` only; `NewBookingView` was not checkpoint-compat; `BookingsView` transient compat corrected; no new compat consumers.',
     ],
     reason: 'Bookings and Customers still carried ~173 scanner-classified hardcoded strings outside P2.2.2 vehicle-bookings scope.',
     previousBehavior: 'Inline German/English copy in booking wizard, dossier tabs, customer wizard, and list/detail surfaces.',
