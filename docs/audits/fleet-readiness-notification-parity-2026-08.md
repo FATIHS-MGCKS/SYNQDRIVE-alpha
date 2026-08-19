@@ -157,9 +157,9 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | **service_compliance** | HM no tracking | evaluability | HM_SERVICE_NO_TRACKING | resolve-only in V2 | **Resolve only** | Yes | **Yes** | Never ingested open in V2 |
 | **complaints** | blocksRental=true | blocks rental | TECHNICAL_OBSERVATION_ACTIVE | `TechnicalObservationsService` | Shadow only | Yes | **Yes (P1)** | Shadow gate limits production visibility |
 | **complaints** | critical urgency, no block | no block | TECHNICAL_OBSERVATION_ACTIVE | shadow | Shadow | Yes | Medium | Semantic split |
-| **vehicle_alerts** | limp mode | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | **P2.2A:** canonical source `DashboardWarningLights`; RH projection wired; Notification V2 **P2.2B** |
-| **vehicle_alerts** | oil minimum | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Same — source parity closed in P2.2A |
-| **vehicle_alerts** | oil high warning | no block | — | — | No | — | Low | P2.2A: warning module, no hard block |
+| **vehicle_alerts** | limp mode | blocks rental | `LIMP_MODE_ACTIVE` | `VehicleAlertsNotificationAdapter` | **Yes** | Yes | **No P0** | **P2.2B:** V2 wired; explicit clear resolution; UNEVALUABLE ≠ CLEARED |
+| **vehicle_alerts** | oil minimum | blocks rental | `ENGINE_OIL_LEVEL_LOW` | `VehicleAlertsNotificationAdapter` | **Yes** | Yes | **No P0** | **P2.2B:** V2 wired; separate fingerprint from HIGH |
+| **vehicle_alerts** | oil high warning | no block | `ENGINE_OIL_LEVEL_HIGH` | `VehicleAlertsNotificationAdapter` | **Yes** | Yes | Low | **P2.2B:** WARNING; no hard block; explicit clear |
 | **overall_state** | warning/critical transition | indirect | vehicle.health.* workflow | `VehicleHealthWorkflowEmitter` | Workflow only | N/A | **Yes** | Not a V2 notification |
 | **rental_blocked** | true (any cause) | aggregate | BLOCKED_VEHICLE / VEHICLE_NOT_READY | — | **Unwired** | — | **Yes (P0)** | Aggregate readiness not materialized |
 | **availability** | partial/unavailable | `rental_readiness=unevaluable` | CONNECTIVITY_STATE_UNKNOWN? | partial (connectivity only) | Partial | Partial | **Yes** | Health pipeline failure under-notified |
@@ -406,7 +406,24 @@ Severity: overdue sources always `critical` → CRITICAL.
 2. `vehicles-security-negative.spec.ts:367,533,569` — ctor arity mismatch (pre-existing)
 3. `vehicles.controller.status-patch.spec.ts:25` — `undefined` vs `VehiclesOperationalService` (pre-existing; sole failing vehicle-detail suite)
 
-**Verdict:** **P2.2A: READY FOR MERGE.** **P2.2B: READY TO START AFTER MERGE.** **Overall: YELLOW / NOT READY FOR UI CUTOVER** (notification producer + aggregate gaps remain).
+**Verdict:** **P2.2A: merged on main.** **P2.2B:** see below. **Overall: YELLOW / NOT READY FOR UI CUTOVER** (aggregate readiness + unevaluable parity remain).
+
+### P2.2B — Vehicle alerts Notification V2 (2026-08-19)
+
+| Layer | Status |
+|-------|--------|
+| Canonical source | `DashboardWarningLightsService` (unchanged from P2.2A) |
+| Notification projector | `projectVehicleAlertNotifications()` — ACTIVE/CLEARED/UNEVALUABLE |
+| Adapter / sync | `VehicleAlertsNotificationAdapter` + `syncVehicleAlertsWarnings()` via `VehicleHealthNotificationSyncService` |
+| Registry delta | **66/23/43 → 69/26/43** (+3 FLEET_READINESS) |
+| Reconciliation | Cause-aware only — **no absent-fingerprint sweep**; stale/provider_error preserve OPEN |
+| Failure isolation | Vehicle alerts projection isolated from DTC/compliance/rental-health/tire/brake; sync stages attempted independently |
+| Healthy CLEARED | Active-fingerprint pre-check — CLEARED without OPEN row is no-op (no false recovery failures) |
+| i18n | All 8 rental locales (`en`–`cs`) with native title/body keys |
+
+**Lifecycle rule:** UNEVALUABLE does not equal CLEARED. Stale/provider_error/not_connected do not resolve existing cause notifications.
+
+**Verdict:** **P2.2B: READY FOR MERGE** (notification scope). **Overall: YELLOW / NOT READY FOR UI CUTOVER**.
 
 ### P2.1 final verdict
 

@@ -122,6 +122,9 @@ const LEGACY_FALLBACK_TITLE_KEYS: Record<string, TranslationKey> = {
   TIRE_CRITICAL: 'notification.title.tireCritical',
   SERVICE_OVERDUE: 'notification.title.serviceOverdue',
   ACTIVE_DTC: 'notification.title.activeDtc',
+  LIMP_MODE_ACTIVE: 'notification.title.limpModeActive',
+  ENGINE_OIL_LEVEL_LOW: 'notification.title.engineOilLevelLow',
+  ENGINE_OIL_LEVEL_HIGH: 'notification.title.engineOilLevelHigh',
 };
 
 const LEGACY_FALLBACK_BODY_KEYS: Record<string, TranslationKey> = {
@@ -129,6 +132,9 @@ const LEGACY_FALLBACK_BODY_KEYS: Record<string, TranslationKey> = {
   HM_SERVICE_NO_TRACKING: 'notification.body.hmServiceNoTracking',
   STATION_SHORTAGE: 'notification.body.stationShortage',
   ACTIVE_DTC: 'notification.body.activeDtc',
+  LIMP_MODE_ACTIVE: 'notification.body.limpModeActive',
+  ENGINE_OIL_LEVEL_LOW: 'notification.body.engineOilLevelLow',
+  ENGINE_OIL_LEVEL_HIGH: 'notification.body.engineOilLevelHigh',
 };
 
 function resolveTitleKey(
