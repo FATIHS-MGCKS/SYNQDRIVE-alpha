@@ -1,5 +1,4 @@
 export const stationsTabEn = {
-  'stations.tab.title': 'Stations & Branches',
   'stations.tab.searchPlaceholder': 'Search name, city, manager…',
   'stations.tab.backfillButton': 'Backfill coordinates ({count})',
   'stations.tab.backfillTitle':
@@ -10,9 +9,6 @@ export const stationsTabEn = {
   'stations.tab.backfill.skippedCount': ', {count} skipped',
   'stations.tab.backfill.andMore': '… and {count} more',
   'stations.tab.dismissBanner': 'Dismiss notice',
-  'stations.tab.scope.all': 'All',
-  'stations.tab.scope.active': 'Active',
-  'stations.tab.scope.vehicles': 'Vehicles',
   'stations.tab.scope.setup': 'Setup',
   'stations.tab.loading': 'Loading stations…',
   'stations.tab.noSearchResults': 'No matches for "{query}".',
@@ -51,7 +47,6 @@ export const stationsTabEn = {
   'stations.tab.form.hoursExample': 'Mon–Fri 08:00–18:00',
   'stations.tab.form.notesPlaceholder': 'Internal notes about this location…',
   'stations.tab.coordsDisplay': 'Coordinates: {lat}, {lng}',
-  'stations.tab.save.update': 'Update',
   'stations.tab.save.create': 'Create location',
   'stations.tab.delete.title': 'Delete location?',
   'stations.tab.delete.withVehicles':
@@ -79,12 +74,8 @@ export const stationsTabEn = {
   'stations.tab.assign.noPendingChanges': 'No pending changes',
   'stations.tab.assign.pendingChanges': '{count} pending change(s)',
   'stations.tab.assign.save': 'Save assignment',
-  'stations.tab.card.vehicles': 'Vehicles',
-  'stations.tab.card.manager': 'Manager',
-  'stations.tab.card.phone': 'Phone',
-  'stations.tab.card.email': 'Email',
   'stations.tab.card.assignTitle': 'Assign vehicles to this location',
-  'stations.tab.card.assign': 'Assign vehicles',
+  'stations.tab.card.manager': 'Manager',
   'stations.tab.card.deactivate': 'Deactivate',
   'stations.tab.card.activate': 'Activate',
   'stations.tab.card.radius': 'Radius',
@@ -92,13 +83,10 @@ export const stationsTabEn = {
     'Vehicles within {radius} m count as on site',
   'stations.tab.card.radiusTitlePending':
     'Radius configured — applies once the station has coordinates.',
-  'stations.tab.error.load': 'Failed to load stations',
   'stations.tab.error.backfill': 'Backfill failed',
   'stations.tab.error.save': 'Could not save',
   'stations.tab.error.delete': 'Could not delete',
   'stations.tab.error.nameRequired': 'Station name is required.',
-  'stations.tab.error.assignLoad': 'Could not load vehicles',
-  'stations.tab.error.assignSave': 'Assignment failed',
 
   'stations.select.pickupLabel': 'Pickup station *',
   'stations.select.returnLabel': 'Return station *',
@@ -106,7 +94,5 @@ export const stationsTabEn = {
   'stations.select.primarySuffix': ' · Primary station',
   'stations.select.warning.pickupDisabled': 'No pickup',
   'stations.select.warning.returnDisabled': 'No return',
-  'stations.select.warning.archived': 'Archived',
-  'stations.select.warning.inactive': 'Inactive',
   'stations.select.sameReturn': 'Same station for return',
 } as const;

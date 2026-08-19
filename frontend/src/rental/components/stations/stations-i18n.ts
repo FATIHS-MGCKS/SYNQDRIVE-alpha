@@ -26,8 +26,8 @@ export function st(
 const STATION_WARNING_KEYS: Record<StationBookingWarning, TranslationKey> = {
   pickupDisabled: 'stations.select.warning.pickupDisabled',
   returnDisabled: 'stations.select.warning.returnDisabled',
-  archived: 'stations.select.warning.archived',
-  inactive: 'stations.select.warning.inactive',
+  archived: 'stations.status.ARCHIVED',
+  inactive: 'stations.status.INACTIVE',
 };
 
 export function labelStationWarning(locale: string, code: StationBookingWarning): string {
