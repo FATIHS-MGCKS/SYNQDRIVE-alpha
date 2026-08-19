@@ -126,4 +126,31 @@ describe('insight-candidate.mapper', () => {
     expect(fp.parts.conditionCode).toBe('driving_assessment_device_quality');
     expect(fp.parts.entityId).toBe('veh-wob-l-7503');
   });
+
+  it('SERVICE_OVERDUE insight maps to registry conditionCode service_overdue', () => {
+    const serviceInsight: InsightCandidate = {
+      type: InsightType.SERVICE_OVERDUE,
+      severity: InsightSeverity.CRITICAL,
+      priority: 85,
+      title: 'Service überfällig',
+      message: 'WOB L 7503: Service überfällig',
+      actionLabel: 'Service dringend prüfen',
+      actionType: 'navigate_vehicle',
+      entityScope: InsightEntityScope.VEHICLE,
+      entityIds: ['veh-1'],
+      metrics: { suggestionOnly: false },
+      reasons: ['Überfällig seit 14 Tagen'],
+      confidence: 0.9,
+      dedupeKey: 'service_overdue:veh-1',
+    };
+    const candidate = notificationCandidateFromInsight(serviceInsight, {
+      organizationId: 'org-1',
+      sourceRef: 'insight-svc',
+      occurredAt: new Date('2026-08-18T00:00:00.000Z'),
+    })!;
+    expect(candidate.conditionCode).toBe('service_overdue');
+    const fp = fingerprintFromCandidate(candidate);
+    expect(fp.parts.conditionCode).toBe('service_overdue');
+    expect(fp.parts.conditionCode).not.toBe('overdue');
+  });
 });

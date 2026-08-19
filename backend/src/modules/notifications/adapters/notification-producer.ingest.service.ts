@@ -9,11 +9,20 @@ import { TechnicalObservationNotificationAdapter } from './technical-observation
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
+import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
 } from './rental-health-notification.projector';
-import type { VehicleHealthAdapterSource } from './notification-adapter.types';
+import {
+  SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES,
+  legacyServiceOverdueFingerprint,
+  serviceComplianceSourceFingerprint,
+} from './service-compliance-notification.projector';
+import type {
+  VehicleHealthAdapterSource,
+  ServiceComplianceAdapterSource,
+} from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
   isDeviceQualitySystemObservation,
@@ -41,6 +50,8 @@ const DEFERRABLE_HEALTH_SEVERITIES = new Set<NotificationSeverity>([
   NotificationSeverity.WARNING,
   NotificationSeverity.CRITICAL,
 ]);
+
+const SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
 
 const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
   Math.max(
@@ -86,6 +97,7 @@ export class NotificationProducerIngestService {
     private readonly stationShortageAdapter: StationShortageNotificationAdapter,
     private readonly lowUtilizationAdapter: LowUtilizationNotificationAdapter,
     private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
+    private readonly serviceComplianceAdapter: ServiceComplianceNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
 
@@ -464,6 +476,97 @@ export class NotificationProducerIngestService {
     return vehicleHealthSourceFingerprint(organizationId, source);
   }
 
+  /**
+   * Materialize canonical service_compliance warnings (TÜV, BOKraft, HM service) as V2 notifications.
+   * Active sources are ingested; stale active rows are resolved via SUCCESS ingest.
+   */
+  async syncServiceComplianceWarnings(
+    organizationId: string,
+    runId: string,
+    sources: ServiceComplianceAdapterSource[],
+  ): Promise<void> {
+    const activeFingerprints = new Set<string>();
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        activeFingerprints.add(serviceComplianceSourceFingerprint(organizationId, source));
+      }
+    }
+
+    await this.ingestServiceComplianceSources(organizationId, runId, sources);
+
+    await this.reconcileLegacyServiceOverdueFingerprints(organizationId, runId, sources);
+
+    const activeNotifications = await this.listAllActiveServiceComplianceNotifications(
+      organizationId,
+    );
+
+    for (const notification of activeNotifications) {
+      if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const withinClearGrace =
+        vehicleHealthNotificationClearGraceMs() > 0 &&
+        DEFERRABLE_HEALTH_SEVERITIES.has(
+          notification.severity as NotificationSeverity,
+        ) &&
+        Date.now() - notification.lastSeenAt.getTime() <
+          vehicleHealthNotificationClearGraceMs();
+      if (withinClearGrace) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.serviceComplianceAdapter,
+          {
+            eventType: notification.eventType as ServiceComplianceAdapterSource['eventType'],
+            vehicleId: notification.entityId,
+            label,
+            cleared: true,
+            severity: 'warning',
+            blocksRental: false,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Service compliance V2 resolve failed for ${notification.entityId}/${notification.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /** Ingest compliance sources without fleet-wide sweep — for targeted updates. */
+  async ingestServiceComplianceSources(
+    organizationId: string,
+    runId: string,
+    sources: ServiceComplianceAdapterSource[],
+  ): Promise<void> {
+    for (const source of sources) {
+      try {
+        await this.router.ingestFromAdapter(
+          this.serviceComplianceAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Service compliance V2 ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  serviceComplianceFingerprint(
+    organizationId: string,
+    source: Pick<ServiceComplianceAdapterSource, 'eventType' | 'vehicleId'>,
+  ): string {
+    return serviceComplianceSourceFingerprint(organizationId, source);
+  }
+
   drivingAssessmentFingerprint(organizationId: string, vehicleId: string): string {
     return buildRegistryFingerprint(organizationId, 'DRIVING_ASSESSMENT_DEVICE_QUALITY', vehicleId).canonical;
   }
@@ -486,6 +589,83 @@ export class NotificationProducerIngestService {
 
   stationShortageFingerprint(organizationId: string, stationId: string): string {
     return buildRegistryFingerprint(organizationId, 'STATION_SHORTAGE', stationId).canonical;
+  }
+
+  private async listAllActiveServiceComplianceNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [...SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES],
+        limit: SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE,
+        offset,
+      });
+      results.push(...page);
+      if (page.length < SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE) break;
+      offset += SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE;
+    }
+
+    return results;
+  }
+
+  /**
+   * Idempotent reconciliation for pre-P2.1 SERVICE_OVERDUE rows using legacy `overdue` fingerprint.
+   *
+   * A) legacy OPEN + canonical SERVICE_OVERDUE active → legacy resolves, canonical remains
+   * B) legacy OPEN + canonical recovered → legacy resolves, no canonical row created
+   */
+  private async reconcileLegacyServiceOverdueFingerprints(
+    organizationId: string,
+    _runId: string,
+    _sources: ServiceComplianceAdapterSource[],
+  ): Promise<void> {
+    const legacyActives = await this.listActiveLegacyServiceOverdueNotifications(organizationId);
+
+    for (const legacy of legacyActives) {
+      try {
+        await this.core.resolveNotificationByFingerprint({
+          organizationId,
+          fingerprint: legacy.fingerprint,
+        });
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Legacy SERVICE_OVERDUE reconcile failed for ${legacy.entityId}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  private async listActiveLegacyServiceOverdueNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: ['SERVICE_OVERDUE'],
+        limit: SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE,
+        offset,
+      });
+
+      for (const row of page) {
+        const legacyFp = legacyServiceOverdueFingerprint(organizationId, row.entityId);
+        if (row.fingerprint === legacyFp) {
+          results.push(row);
+        }
+      }
+
+      if (page.length < SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE) break;
+      offset += SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE;
+    }
+
+    return results;
   }
 
   private adapterContext(organizationId: string, sourceRef: string, runId?: string) {

@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'service-compliance-notification-p21-2026-08-18',
+    version: '4.9.920',
+    title: 'Service/Compliance Notification V2 Producer (P2.1)',
+    summary: [
+      'P2.1 Hardening: Live V2 Producer für `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` — nur echte Overdue-Zustände (kein due-soon als *_OVERDUE).',
+      '`VehicleHealthNotificationSyncService` — kanonischer Fleet-Readiness-Sync, unabhängig von Business-Insights `policy.enabled`. Trigger: `NotificationEvaluationService`.',
+      'Shared Blocking-Policy: `evaluateServiceComplianceRentalBlocking` für RentalHealth + Notification-Metadaten.',
+      'Legacy `overdue`-Fingerprint-Reconciliation für pre-P2.1 Backfill-Rows; eventType-filtered Sweep-Pagination.',
+      'Audit: YELLOW — NOT READY FOR UI CUTOVER; READY FOR P2.2.',
+    ],
+    reason:
+      'Correctness/Architecture-Hardening: Notification-Correctness darf nicht von BI-Policy abhängen; due-soon darf nicht als OVERDUE materialisiert werden.',
+    previousBehavior:
+      'Sync hing an `BusinessInsightsService.runForOrganization()` (früher Exit bei disabled policy); Projector emittierte auch WARNING/due-soon als *_OVERDUE.',
+    details:
+      'vehicle-health-notification-sync.service.ts, service-compliance-rental-blocking.policy.ts, service-compliance-notification.projector.ts, notification-evaluation.service.ts, notification-producer.ingest.service.ts, service-compliance-notification.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-18T23:30:00.000Z',
+  },
+  {
     id: 'notification-attention-scope-p11-2026-08-18',
     version: '4.9.919',
     title: 'Notification Registry — attentionScope Routing Foundation (P1.1)',

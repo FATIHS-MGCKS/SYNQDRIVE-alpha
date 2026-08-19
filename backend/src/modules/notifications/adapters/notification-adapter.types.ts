@@ -87,3 +87,13 @@ export interface LowUtilizationAdapterSource {
   lostRevenueEur: number;
   cleared?: boolean;
 }
+
+export interface ServiceComplianceAdapterSource {
+  eventType: 'TUV_OVERDUE' | 'BOKRAFT_OVERDUE' | 'SERVICE_OVERDUE';
+  vehicleId: string;
+  label: string;
+  reason?: string;
+  cleared?: boolean;
+  severity: 'warning' | 'critical';
+  blocksRental: boolean;
+}

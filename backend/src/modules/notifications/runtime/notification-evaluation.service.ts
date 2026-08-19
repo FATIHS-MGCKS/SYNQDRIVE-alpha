@@ -8,6 +8,7 @@ import { RedisService } from '@shared/redis/redis.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { BusinessInsightsService } from '@modules/business-insights/business-insights.service';
+import { VehicleHealthNotificationSyncService } from '../adapters/vehicle-health-notification-sync.service';
 import { RedisDistributedLockService } from '@shared/redis/redis-distributed-lock.service';
 import {
   buildNotificationEvaluationJobId,
@@ -40,6 +41,8 @@ export class NotificationEvaluationService {
     private readonly observability: NotificationEvaluationObservabilityService,
     @Inject(forwardRef(() => BusinessInsightsService))
     private readonly insightsService: BusinessInsightsService,
+    @Optional()
+    private readonly fleetReadinessSync?: VehicleHealthNotificationSyncService,
     @Optional() private readonly evaluationsObservability?: EvaluationsObservabilityService,
   ) {}
 
@@ -103,18 +106,42 @@ export class NotificationEvaluationService {
     this.observability.logLockAcquired(job.organizationId, job.runId);
     this.startLockHeartbeat(lockKey, lockResult.handle);
 
+    let terminalErrorObserved = false;
+
     try {
       const coalescedEvents = await this.drainPendingEvents(job.organizationId, job.coalescedEvents);
       const triggerType = this.buildTriggerType(job.triggerType, coalescedEvents);
 
-      const insightsResult = await runWithNotificationRunContext(
-        {
-          runId: job.runId,
-          organizationId: job.organizationId,
-          stats,
-        },
-        () => this.insightsService.runForOrganization(job.organizationId, triggerType),
-      );
+      let insightsResult = { runId: '', published: 0 };
+      let insightsError: unknown;
+
+      try {
+        insightsResult = await runWithNotificationRunContext(
+          {
+            runId: job.runId,
+            organizationId: job.organizationId,
+            stats,
+          },
+          () => this.insightsService.runForOrganization(job.organizationId, triggerType),
+        );
+      } catch (err) {
+        insightsError = err;
+        stats.failureCount++;
+        this.logger.error(
+          `Business insights run failed for org ${job.organizationId}: ${(err as Error).message}`,
+        );
+      }
+
+      let fleetSyncError: unknown;
+      try {
+        await this.syncFleetReadinessNotifications(job.organizationId, job.runId);
+      } catch (err) {
+        fleetSyncError = err;
+        stats.failureCount++;
+        this.logger.error(
+          `Fleet readiness notification sync failed for org ${job.organizationId}: ${(err as Error).message}`,
+        );
+      }
 
       stats.candidateCount = insightsResult.published;
 
@@ -135,6 +162,20 @@ export class NotificationEvaluationService {
         await this.scheduleFollowUpRun(job.organizationId);
       }
 
+      if (insightsError || fleetSyncError) {
+        this.observability.observeRunDuration(result.durationMs ?? 0, job.triggerClass);
+        this.observability.logRunCompleted(result);
+        this.evaluationsObservability?.observeEvaluationJob(
+          evalCtx,
+          job.triggerClass,
+          'error',
+          result.durationMs ?? Date.now() - startedAt.getTime(),
+        );
+        terminalErrorObserved = true;
+        if (insightsError) throw insightsError;
+        throw fleetSyncError;
+      }
+
       this.observability.observeRunDuration(result.durationMs ?? 0, job.triggerClass);
       this.observability.logRunCompleted(result);
       this.evaluationsObservability?.observeEvaluationJob(
@@ -145,13 +186,15 @@ export class NotificationEvaluationService {
       );
       return result;
     } catch (err) {
-      stats.failureCount++;
-      this.evaluationsObservability?.observeEvaluationJob(
-        evalCtx,
-        job.triggerClass,
-        'error',
-        Date.now() - startedAt.getTime(),
-      );
+      if (!terminalErrorObserved) {
+        stats.failureCount++;
+        this.evaluationsObservability?.observeEvaluationJob(
+          evalCtx,
+          job.triggerClass,
+          'error',
+          Date.now() - startedAt.getTime(),
+        );
+      }
       throw err;
     } finally {
       this.stopLockHeartbeat(lockKey);
@@ -345,5 +388,17 @@ export class NotificationEvaluationService {
       clearInterval(timer);
       this.heartbeatTimers.delete(lockKey);
     }
+  }
+
+  /**
+   * Canonical fleet-readiness notification producer — independent of Business Insights policy.
+   * Runs on every evaluation pass (scheduled, debounced, boot) via NotificationEvaluationService.
+   */
+  private async syncFleetReadinessNotifications(
+    organizationId: string,
+    runId: string,
+  ): Promise<void> {
+    if (!this.fleetReadinessSync) return;
+    await this.fleetReadinessSync.syncForOrganization(organizationId, runId);
   }
 }

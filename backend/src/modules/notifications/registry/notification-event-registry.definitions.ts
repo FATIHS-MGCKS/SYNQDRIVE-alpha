@@ -344,7 +344,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     supportedRoles: OPS_ROLES,
     requiresNavigation: true,
     shadowModeEnabled: false,
-    producerModule: 'business-insights',
+    producerModule: 'vehicle-intelligence',
   },
   {
     slug: 'tight-handover',
@@ -494,7 +494,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     supportedRoles: OPS_ROLES,
     requiresNavigation: true,
     shadowModeEnabled: false,
-    producerModule: 'business-insights',
+    producerModule: 'vehicle-intelligence',
   },
   {
     slug: 'bokraft-overdue',
@@ -519,7 +519,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     supportedRoles: OPS_ROLES,
     requiresNavigation: true,
     shadowModeEnabled: false,
-    producerModule: 'business-insights',
+    producerModule: 'vehicle-intelligence',
   },
   {
     slug: 'hm-service-no-tracking',

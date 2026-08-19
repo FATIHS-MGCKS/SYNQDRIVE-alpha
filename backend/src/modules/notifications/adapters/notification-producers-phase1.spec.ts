@@ -11,6 +11,7 @@ import { TechnicalObservationNotificationAdapter } from './technical-observation
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
+import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import { DEVICE_QUALITY_OBSERVATION_MARKER, DEVICE_QUALITY_WORKER_ID } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
@@ -167,6 +168,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
+      new ServiceComplianceNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -176,6 +178,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new StationShortageNotificationAdapter(),
       new LowUtilizationNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
+      new ServiceComplianceNotificationAdapter(),
       core,
     );
   });
