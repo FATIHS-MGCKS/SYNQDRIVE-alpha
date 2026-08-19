@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'attentionScope API: `GET .../notifications?attentionScope=` + counts — registry-driven partition.',
       'Live: `TECHNICAL_OBSERVATION_ACTIVE`, neuer Cause `VEHICLE_DAMAGE_BLOCKING` + shared `damage-rental-health.policy`.',
-      'Fail-safe recovery: positive evidence only; paginated health/compliance sweeps; DTC-only stub ohne false module recovery.',
+      'Fail-safe recovery: positive evidence only (TRACKED+non-overdue service, remainingDays TÜV/BOKraft, explicit damage query success); legacy SERVICE_OVERDUE vehicle-scoped; paginated sweeps.',
       'Full-fleet summary: `GET .../rental-health/fleet/summary` aus kanonischem `rental_readiness`.',
       'Registry +1: 71/28/43. Audit: GREEN — READY FOR UI CUTOVER (backend gate).',
     ],
