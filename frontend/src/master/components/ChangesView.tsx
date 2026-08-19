@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-readiness-unevaluable-p24-2026-08-19',
+    version: '4.9.924',
+    title: 'Fleet Readiness UNEVALUABLE Aggregate (P2.4)',
+    summary: [
+      'Neuer kanonischer Aggregate-Producer: `VEHICLE_READINESS_UNEVALUABLE` aus `rental_readiness=unevaluable`.',
+      '`projectVehicleReadinessEvaluability()` + Adapter + `syncVehicleReadinessEvaluabilityAggregate()` — gleicher RentalHealth-Snapshot wie P2.3.',
+      'UNEVALUABLE → OPEN; EVALUABLE (ready/not_ready) → RESOLVE mit active-fingerprint pre-check; first-run no-op.',
+      'NO_ASSERTION: fehlendes `rental_readiness` → keine Source (kein `?? ready` Fail-open); bestehende OPEN bleiben.',
+      'P2.3 `VEHICLE_NOT_READY` unverändert — NOT_READY bleibt bei UNEVALUABLE OPEN (fail-safe).',
+      'Registry +1: 70/27/43. Connectivity-Events bleiben Causes. Audit: YELLOW — UI cutover weiter offen.',
+    ],
+    reason:
+      'Generischer RentalHealth-UNEVALUABLE-State hatte keine eigene Notification-V2-Identität; Connectivity-Events decken ihn nicht vollständig ab.',
+    previousBehavior:
+      'rental_readiness=unevaluable nur im Health-Objekt — keine persistente Aggregate-Notification.',
+    details:
+      'vehicle-readiness-evaluability-notification.{projector,adapter}.ts, architecture/FLEET_READINESS_UNEVALUABLE_NOTIFICATION_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-19T21:30:00.000Z',
+  },
+  {
     id: 'fleet-readiness-aggregate-p23-2026-08-19',
     version: '4.9.923',
     title: 'Fleet Readiness Aggregate Notification (P2.3)',

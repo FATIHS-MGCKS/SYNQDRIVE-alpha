@@ -64,4 +64,7 @@ export const nl: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelHigh': 'Het motorolieniveau van {label} is te hoog en moet worden gecontroleerd.',
   'notification.title.vehicleNotReady': 'Voertuig niet verhuurklaar — {label}',
   'notification.body.vehicleNotReady': '{label} is momenteel niet verhuurklaar. Controleer de voertuigmeldingen.',
+  'notification.title.vehicleReadinessUnevaluable': 'Inzetbaarheid niet beoordeelbaar — {label}',
+  'notification.body.vehicleReadinessUnevaluable':
+    'SynqDrive kan de inzetbaarheid van {label} momenteel niet betrouwbaar beoordelen. Controleer de beschikbare voertuiggegevens.',
 };

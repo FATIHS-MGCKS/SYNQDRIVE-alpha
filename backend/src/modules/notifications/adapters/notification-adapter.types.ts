@@ -1,4 +1,5 @@
 import type { NotificationCandidate } from '../notification.types';
+import type { VehicleHealth } from '@modules/rental-health/rental-health.types';
 
 /** Shared context for all producer adapters. */
 export interface NotificationAdapterContext {
@@ -118,5 +119,16 @@ export interface VehicleReadinessNotificationAdapterSource {
   cleared?: boolean;
   blockingReasonCount?: number;
   rentalReadiness?: 'ready' | 'not_ready' | 'unevaluable';
+  projectionVersion?: string;
+}
+
+export interface VehicleReadinessEvaluabilityNotificationAdapterSource {
+  eventType: 'VEHICLE_READINESS_UNEVALUABLE';
+  vehicleId: string;
+  label: string;
+  condition: 'UNEVALUABLE' | 'EVALUABLE';
+  cleared?: boolean;
+  rentalReadiness?: 'ready' | 'not_ready' | 'unevaluable';
+  availability?: VehicleHealth['availability'];
   projectionVersion?: string;
 }

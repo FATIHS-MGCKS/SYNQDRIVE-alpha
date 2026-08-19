@@ -804,4 +804,7 @@ export const fr: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelHigh': 'Le niveau d\'huile de {label} est eleve et doit etre verifie.',
   'notification.title.vehicleNotReady': 'Vehicule non pret — {label}',
   'notification.body.vehicleNotReady': '{label} n\'est pas pret a la location. Verifiez les alertes du vehicule.',
+  'notification.title.vehicleReadinessUnevaluable': 'Disponibilite non evaluable — {label}',
+  'notification.body.vehicleReadinessUnevaluable':
+    'SynqDrive ne peut pas evaluer de facon fiable la disponibilite de {label} pour le moment. Verifiez les donnees vehicule disponibles.',
 };

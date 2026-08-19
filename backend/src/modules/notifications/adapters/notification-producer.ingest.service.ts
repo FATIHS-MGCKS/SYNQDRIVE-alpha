@@ -12,6 +12,7 @@ import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
+import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
@@ -26,6 +27,10 @@ import {
   vehicleAlertsSourceFingerprint,
 } from './vehicle-alerts-notification.projector';
 import {
+  VEHICLE_READINESS_EVALUABILITY_EVENT_TYPE,
+  vehicleReadinessEvaluabilitySourceFingerprint,
+} from './vehicle-readiness-evaluability-notification.projector';
+import {
   LEGACY_AGGREGATE_EVENT_TYPES,
   VEHICLE_READINESS_AGGREGATE_EVENT_TYPE,
   vehicleReadinessSourceFingerprint,
@@ -36,6 +41,7 @@ import type {
   ServiceComplianceAdapterSource,
   VehicleAlertsNotificationAdapterSource,
   VehicleReadinessNotificationAdapterSource,
+  VehicleReadinessEvaluabilityNotificationAdapterSource,
 } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
@@ -118,6 +124,7 @@ export class NotificationProducerIngestService {
     private readonly serviceComplianceAdapter: ServiceComplianceNotificationAdapter,
     private readonly vehicleAlertsAdapter: VehicleAlertsNotificationAdapter,
     private readonly vehicleReadinessAdapter: VehicleReadinessNotificationAdapter,
+    private readonly vehicleReadinessEvaluabilityAdapter: VehicleReadinessEvaluabilityNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
 
@@ -685,6 +692,85 @@ export class NotificationProducerIngestService {
     );
     const vehicleIdsToReconcile = this.buildLegacyReconcileVehicleIds(sources, ingestOutcomes);
     await this.reconcileLegacyAggregateNotifications(organizationId, vehicleIdsToReconcile);
+  }
+
+  /**
+   * Materialize canonical evaluability aggregate (VEHICLE_READINESS_UNEVALUABLE) from RentalHealth.
+   * EVALUABLE resolves only when an active canonical fingerprint exists (healthy no-op otherwise).
+   */
+  async syncVehicleReadinessEvaluabilityAggregate(
+    organizationId: string,
+    runId: string,
+    sources: VehicleReadinessEvaluabilityNotificationAdapterSource[],
+  ): Promise<void> {
+    const activeFingerprints =
+      await this.listAllActiveVehicleReadinessEvaluabilityFingerprints(organizationId);
+    const sourcesToIngest: VehicleReadinessEvaluabilityNotificationAdapterSource[] = [];
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        sourcesToIngest.push(source);
+        continue;
+      }
+      const fingerprint = vehicleReadinessEvaluabilitySourceFingerprint(organizationId, source);
+      if (activeFingerprints.has(fingerprint)) {
+        sourcesToIngest.push(source);
+      }
+    }
+
+    await this.ingestVehicleReadinessEvaluabilitySources(organizationId, runId, sourcesToIngest);
+  }
+
+  async ingestVehicleReadinessEvaluabilitySources(
+    organizationId: string,
+    runId: string,
+    sources: VehicleReadinessEvaluabilityNotificationAdapterSource[],
+  ): Promise<void> {
+    for (const source of sources) {
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleReadinessEvaluabilityAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Vehicle readiness evaluability aggregate ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  vehicleReadinessEvaluabilityFingerprint(
+    organizationId: string,
+    source: Pick<VehicleReadinessEvaluabilityNotificationAdapterSource, 'vehicleId'>,
+  ): string {
+    return vehicleReadinessEvaluabilitySourceFingerprint(organizationId, source);
+  }
+
+  private async listAllActiveVehicleReadinessEvaluabilityFingerprints(
+    organizationId: string,
+  ): Promise<Set<string>> {
+    const fingerprints = new Set<string>();
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [VEHICLE_READINESS_EVALUABILITY_EVENT_TYPE],
+        limit: VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE,
+        offset,
+      });
+      for (const notification of page) {
+        fingerprints.add(notification.fingerprint);
+      }
+      if (page.length < VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE) break;
+      offset += VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE;
+    }
+
+    return fingerprints;
   }
 
   async ingestVehicleReadinessSources(

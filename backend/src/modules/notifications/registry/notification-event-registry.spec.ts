@@ -184,6 +184,7 @@ describe('NotificationEventRegistry', () => {
       'TIRE_CRITICAL',
       'TUV_OVERDUE',
       'VEHICLE_NOT_READY',
+      'VEHICLE_READINESS_UNEVALUABLE',
       'LIMP_MODE_ACTIVE',
       'ENGINE_OIL_LEVEL_LOW',
       'ENGINE_OIL_LEVEL_HIGH',
