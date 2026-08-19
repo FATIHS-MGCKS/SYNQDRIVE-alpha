@@ -1,5 +1,4 @@
 export const stationsTabDe = {
-  'stations.tab.title': 'Stationen & Filialen',
   'stations.tab.searchPlaceholder': 'Suche nach Name, Stadt, Manager…',
   'stations.tab.backfillButton': 'Koordinaten nachziehen ({count})',
   'stations.tab.backfillTitle':
@@ -10,9 +9,6 @@ export const stationsTabDe = {
   'stations.tab.backfill.skippedCount': ', {count} übersprungen',
   'stations.tab.backfill.andMore': '… und {count} weitere',
   'stations.tab.dismissBanner': 'Hinweis schließen',
-  'stations.tab.scope.all': 'Alle',
-  'stations.tab.scope.active': 'Aktiv',
-  'stations.tab.scope.vehicles': 'Fahrzeuge',
   'stations.tab.scope.setup': 'Setup',
   'stations.tab.loading': 'Standorte werden geladen…',
   'stations.tab.noSearchResults': 'Keine Treffer für "{query}".',
@@ -51,7 +47,6 @@ export const stationsTabDe = {
   'stations.tab.form.hoursExample': 'Mo–Fr 08:00–18:00',
   'stations.tab.form.notesPlaceholder': 'Interne Notizen zum Standort…',
   'stations.tab.coordsDisplay': 'Koordinaten: {lat}, {lng}',
-  'stations.tab.save.update': 'Aktualisieren',
   'stations.tab.save.create': 'Standort anlegen',
   'stations.tab.delete.title': 'Standort löschen?',
   'stations.tab.delete.withVehicles':
@@ -79,12 +74,8 @@ export const stationsTabDe = {
   'stations.tab.assign.noPendingChanges': 'Keine ausstehenden Änderungen',
   'stations.tab.assign.pendingChanges': '{count} ausstehende Änderung(en)',
   'stations.tab.assign.save': 'Zuweisung speichern',
-  'stations.tab.card.vehicles': 'Fahrzeuge',
-  'stations.tab.card.manager': 'Manager',
-  'stations.tab.card.phone': 'Telefon',
-  'stations.tab.card.email': 'E-Mail',
   'stations.tab.card.assignTitle': 'Fahrzeuge zu diesem Standort zuweisen',
-  'stations.tab.card.assign': 'Fahrzeuge zuweisen',
+  'stations.tab.card.manager': 'Manager',
   'stations.tab.card.deactivate': 'Deaktivieren',
   'stations.tab.card.activate': 'Aktivieren',
   'stations.tab.card.radius': 'Umkreis',
@@ -92,13 +83,10 @@ export const stationsTabDe = {
     'Fahrzeuge innerhalb von {radius} m gelten als „vor Ort“',
   'stations.tab.card.radiusTitlePending':
     'Umkreis konfiguriert — wirkt erst, wenn die Station Koordinaten hat.',
-  'stations.tab.error.load': 'Standorte konnten nicht geladen werden',
   'stations.tab.error.backfill': 'Backfill fehlgeschlagen',
   'stations.tab.error.save': 'Speichern fehlgeschlagen',
   'stations.tab.error.delete': 'Löschen fehlgeschlagen',
   'stations.tab.error.nameRequired': 'Stationsname ist erforderlich.',
-  'stations.tab.error.assignLoad': 'Fahrzeuge konnten nicht geladen werden',
-  'stations.tab.error.assignSave': 'Zuweisung fehlgeschlagen',
 
   'stations.select.pickupLabel': 'Abholstation *',
   'stations.select.returnLabel': 'Rückgabestation *',
@@ -106,7 +94,5 @@ export const stationsTabDe = {
   'stations.select.primarySuffix': ' · Hauptstation',
   'stations.select.warning.pickupDisabled': 'Kein Pickup',
   'stations.select.warning.returnDisabled': 'Kein Return',
-  'stations.select.warning.archived': 'Archiviert',
-  'stations.select.warning.inactive': 'Inaktiv',
   'stations.select.sameReturn': 'Gleiche Station für Rückgabe',
 } as const;

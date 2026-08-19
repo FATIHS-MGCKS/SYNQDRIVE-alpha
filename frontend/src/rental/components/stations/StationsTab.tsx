@@ -143,7 +143,7 @@ export function StationsTab() {
       setStations(Array.isArray(list) ? list : []);
       setStats(aggStats ?? null);
     } catch (e) {
-      setError((e as Error).message || t('stations.tab.error.load'));
+      setError((e as Error).message || t('stations.errorLoad'));
       setStations([]);
       setStats(null);
     } finally {
@@ -417,7 +417,7 @@ export function StationsTab() {
           new Set(list.filter((v) => v.stationId === station.id).map((v) => v.id)),
         );
       } catch (e) {
-        setAssignError((e as Error).message || t('stations.tab.error.assignLoad'));
+        setAssignError((e as Error).message || t('stations.assign.errorLoad'));
       } finally {
         setAssignLoading(false);
       }
@@ -459,7 +459,7 @@ export function StationsTab() {
       setAssignVehicles([]);
       setAssignSelected(new Set());
     } catch (e) {
-      setAssignError((e as Error).message || t('stations.tab.error.assignSave'));
+      setAssignError((e as Error).message || t('stations.assign.errorSave'));
     } finally {
       setAssignSaving(false);
     }
@@ -511,7 +511,7 @@ export function StationsTab() {
       <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
         <div className="animate-fade-up min-w-0">
           <h2 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-            {t('stations.tab.title')}
+            {t('settings.stationsBranches')}
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -626,7 +626,7 @@ export function StationsTab() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <StationStatPill
             icon={<Icon name="map-pin" className="w-4 h-4" />}
-            label={t('stations.tab.scope.all')}
+            label={t('common.all')}
             value={totalStations}
             tone="brand"
             active={stationScope === 'all'}
@@ -634,7 +634,7 @@ export function StationsTab() {
           />
           <StationStatPill
             icon={<Icon name="check-circle" className="w-4 h-4" />}
-            label={t('stations.tab.scope.active')}
+            label={t('stations.status.ACTIVE')}
             value={activeStations}
             tone="success"
             active={stationScope === 'active'}
@@ -642,7 +642,7 @@ export function StationsTab() {
           />
           <StationStatPill
             icon={<Icon name="car" className="w-4 h-4" />}
-            label={t('stations.tab.scope.vehicles')}
+            label={t('stations.detail.tab.fleet')}
             value={totalVehicles}
             tone="neutral"
             active={stationScope === 'assigned'}
@@ -1196,7 +1196,7 @@ export function StationsTab() {
                 ) : (
                   <>
                     <Icon name="save" className="w-4 h-4" />
-                    {editingId ? t('stations.tab.save.update') : t('stations.tab.save.create')}
+                    {editingId ? t('common.update') : t('stations.tab.save.create')}
                   </>
                 )}
               </button>
@@ -1673,7 +1673,7 @@ function StationCard({
         <div className="flex flex-wrap items-center gap-4 lg:gap-5">
           <div className="flex flex-col">
             <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-              {t('stations.tab.card.vehicles')}
+              {t('stations.detail.tab.fleet')}
             </span>
             <span className={`text-sm font-bold ${textPrimary}`}>{station.vehicleCount}</span>
           </div>
@@ -1688,7 +1688,7 @@ function StationCard({
           {station.phone && (
             <div className="flex flex-col min-w-0 max-w-[160px]">
               <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-                {t('stations.tab.card.phone')}
+                {t('stations.form.phone')}
               </span>
               <a
                 href={`tel:${station.phone}`}
@@ -1701,7 +1701,7 @@ function StationCard({
           {station.email && (
             <div className="flex flex-col min-w-0 max-w-[200px]">
               <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-                {t('stations.tab.card.email')}
+                {t('stations.form.email')}
               </span>
               <a
                 href={`mailto:${station.email}`}
@@ -1720,7 +1720,7 @@ function StationCard({
             title={t('stations.tab.card.assignTitle')}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors mr-1 sq-tone-brand hover:opacity-90"
           >
-            <Icon name="car" className="w-3.5 h-3.5" /> {t('stations.tab.card.assign')}
+            <Icon name="car" className="w-3.5 h-3.5" /> {t('stations.assign.title')}
           </button>
           <button
             onClick={onToggleStatus}
