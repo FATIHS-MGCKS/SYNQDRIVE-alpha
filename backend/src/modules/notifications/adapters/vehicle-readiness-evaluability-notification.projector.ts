@@ -5,17 +5,24 @@ import type { VehicleReadinessEvaluabilityNotificationAdapterSource } from './no
 export const VEHICLE_READINESS_EVALUABILITY_EVENT_TYPE =
   'VEHICLE_READINESS_UNEVALUABLE' as const;
 
-export type VehicleReadinessEvaluabilityCondition = 'UNEVALUABLE' | 'EVALUABLE';
+export type VehicleReadinessEvaluabilityCondition =
+  | 'UNEVALUABLE'
+  | 'EVALUABLE'
+  | 'NO_ASSERTION';
 
 export function projectVehicleReadinessEvaluabilityCondition(
   health: Pick<VehicleHealth, 'rental_readiness'>,
 ): VehicleReadinessEvaluabilityCondition {
-  return health.rental_readiness === 'unevaluable' ? 'UNEVALUABLE' : 'EVALUABLE';
+  const readiness = health.rental_readiness;
+  if (readiness === 'unevaluable') return 'UNEVALUABLE';
+  if (readiness === 'ready' || readiness === 'not_ready') return 'EVALUABLE';
+  return 'NO_ASSERTION';
 }
 
 /**
  * Maps canonical RentalHealth evaluability to V2 adapter sources.
  * UNEVALUABLE opens; EVALUABLE (ready or not_ready) resolves when active fingerprint exists.
+ * NO_ASSERTION (missing rental_readiness) emits nothing — no fail-open ready fallback.
  */
 export function projectVehicleReadinessEvaluability(
   vehicleId: string,
@@ -23,6 +30,10 @@ export function projectVehicleReadinessEvaluability(
   health: VehicleHealth,
 ): VehicleReadinessEvaluabilityNotificationAdapterSource[] {
   const condition = projectVehicleReadinessEvaluabilityCondition(health);
+
+  if (condition === 'NO_ASSERTION') {
+    return [];
+  }
 
   if (condition === 'UNEVALUABLE') {
     return [
@@ -46,7 +57,7 @@ export function projectVehicleReadinessEvaluability(
       label,
       condition: 'EVALUABLE',
       cleared: true,
-      rentalReadiness: health.rental_readiness ?? 'ready',
+      rentalReadiness: health.rental_readiness as 'ready' | 'not_ready',
       availability: health.availability,
       projectionVersion: health.projection_version,
     },

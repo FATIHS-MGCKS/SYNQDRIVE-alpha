@@ -62,14 +62,17 @@ Allowed: `NOT_READY` OPEN + `UNEVALUABLE` OPEN simultaneously = last confirmed n
 |-----------|--------|
 | `rental_readiness === 'unevaluable'` | OPEN / REOPEN `VEHICLE_READINESS_UNEVALUABLE` (WARNING) |
 | `rental_readiness === 'ready'` or `'not_ready'` | RESOLVE if active fingerprint exists; else no-op |
+| `rental_readiness === undefined` | **NO_ASSERTION** — emit nothing; preserve existing OPEN rows |
 
-`ready` and `not_ready` are both **EVALUABLE** states.
+`ready` and `not_ready` are both **EVALUABLE** states. Missing `rental_readiness` is **not** treated as evaluable — no `?? 'ready'` fallback.
 
 ## 7. RentalHealth load failure boundary
 
 When `getVehicleHealth()` throws and `rentalHealth === null`, P2.4 emits **nothing** (same as P2.3). The synthetic `emptyVehicleHealthForDtcOnly()` helper is used only for DTC health warnings — not for aggregate projection.
 
-Existing OPEN `VEHICLE_READINESS_UNEVALUABLE` rows are preserved on projection failure.
+When a canonical snapshot exists but omits `rental_readiness` (e.g. `buildDegradedVehicleHealth()`), P2.4 also emits **nothing** — **NO_ASSERTION**, not fail-open EVALUABLE.
+
+Existing OPEN `VEHICLE_READINESS_UNEVALUABLE` rows are preserved on projection failure or missing-field snapshots.
 
 ## 8. Sync integration
 

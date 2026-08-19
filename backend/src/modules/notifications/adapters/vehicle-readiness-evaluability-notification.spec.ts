@@ -1,5 +1,6 @@
 import { NotificationEntityType, NotificationSeverity, NotificationStatus } from '@prisma/client';
 import type { VehicleHealth } from '@modules/rental-health/rental-health.types';
+import { buildDegradedVehicleHealth } from '@modules/rental-health/rental-health.types';
 import { NotificationEngineConfig } from '../notification-engine.config';
 import { NotificationCoreService } from '../notification-core.service';
 import { NotificationRepository } from '../notification.repository';
@@ -307,6 +308,67 @@ describe('VehicleReadinessEvaluabilityNotificationAdapter + lifecycle (P2.4)', (
       }
       await syncEvaluability(uneval, 'run-reopen-3');
       expect(openNotifications()[0].id).toBe(first.id);
+    });
+  });
+
+  describe('missing rental_readiness (NO_ASSERTION)', () => {
+    function healthWithoutReadiness(overrides: Partial<VehicleHealth> = {}): VehicleHealth {
+      const full = health(overrides);
+      const { rental_readiness: _omit, ...rest } = full;
+      return rest as VehicleHealth;
+    }
+
+    it('B: no existing aggregate + missing rental_readiness creates no notification', async () => {
+      await syncEvaluability(
+        projectVehicleReadinessEvaluability(VEH_A, LABEL_A, healthWithoutReadiness()),
+        'no-assert-1',
+      );
+      expect(openNotifications()).toHaveLength(0);
+    });
+
+    it('C: existing OPEN UNEVALUABLE preserved when snapshot lacks rental_readiness', async () => {
+      await syncEvaluability(
+        projectVehicleReadinessEvaluability(VEH_A, LABEL_A, unevaluableHealth()),
+        'preserve-1',
+      );
+      const openRow = openNotifications()[0];
+      await syncEvaluability(
+        projectVehicleReadinessEvaluability(VEH_A, LABEL_A, healthWithoutReadiness()),
+        'preserve-2',
+      );
+      expect(openNotifications()).toHaveLength(1);
+      expect(openNotifications()[0].id).toBe(openRow.id);
+      expect(openNotifications()[0].status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('missing rental_readiness with availability unavailable does not resolve OPEN UNEVALUABLE', async () => {
+      await syncEvaluability(
+        projectVehicleReadinessEvaluability(VEH_A, LABEL_A, unevaluableHealth()),
+        'unavail-1',
+      );
+      const openRow = openNotifications()[0];
+      await syncEvaluability(
+        projectVehicleReadinessEvaluability(
+          VEH_A,
+          LABEL_A,
+          healthWithoutReadiness({ availability: 'unavailable', rental_blocked: null }),
+        ),
+        'unavail-2',
+      );
+      expect(notifications.get(openRow.id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('buildDegradedVehicleHealth through ingest creates no notification', async () => {
+      const degraded = buildDegradedVehicleHealth({
+        vehicle_id: VEH_A,
+        organization_id: ORG_A,
+        availability: 'unavailable',
+      });
+      await syncEvaluability(
+        projectVehicleReadinessEvaluability(VEH_A, LABEL_A, degraded),
+        'degraded-1',
+      );
+      expect(openNotifications()).toHaveLength(0);
     });
   });
 

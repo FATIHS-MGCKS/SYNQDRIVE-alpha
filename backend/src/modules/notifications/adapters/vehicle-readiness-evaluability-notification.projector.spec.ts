@@ -1,4 +1,5 @@
 import type { VehicleHealth } from '@modules/rental-health/rental-health.types';
+import { buildDegradedVehicleHealth } from '@modules/rental-health/rental-health.types';
 import {
   projectVehicleReadinessEvaluability,
   projectVehicleReadinessEvaluabilityCondition,
@@ -82,6 +83,44 @@ describe('projectVehicleReadinessEvaluability (P2.4)', () => {
         health({ rental_readiness: 'unevaluable', rental_blocked: null, availability: 'partial' }),
       ),
     ).toBe('UNEVALUABLE');
+  });
+
+  describe('missing rental_readiness (NO_ASSERTION)', () => {
+    it('A: VehicleHealth without rental_readiness returns no sources', () => {
+      const { rental_readiness: _omit, ...withoutReadiness } = health();
+      const sources = projectVehicleReadinessEvaluability(
+        'veh-1',
+        'WOB 1',
+        withoutReadiness as VehicleHealth,
+      );
+      expect(sources).toEqual([]);
+    });
+
+    it('missing rental_readiness maps to NO_ASSERTION', () => {
+      const { rental_readiness: _omit, ...withoutReadiness } = health();
+      expect(
+        projectVehicleReadinessEvaluabilityCondition(withoutReadiness as VehicleHealth),
+      ).toBe('NO_ASSERTION');
+    });
+
+    it('D: missing rental_readiness with availability unavailable emits nothing', () => {
+      const sources = projectVehicleReadinessEvaluability(
+        'veh-1',
+        'WOB 1',
+        health({ availability: 'unavailable', rental_blocked: null, rental_readiness: undefined }),
+      );
+      expect(sources).toEqual([]);
+    });
+
+    it('buildDegradedVehicleHealth without rental_readiness returns no sources', () => {
+      const degraded = buildDegradedVehicleHealth({
+        vehicle_id: 'veh-1',
+        organization_id: 'org-a',
+        availability: 'unavailable',
+      });
+      expect(degraded.rental_readiness).toBeUndefined();
+      expect(projectVehicleReadinessEvaluability('veh-1', 'WOB 1', degraded)).toEqual([]);
+    });
   });
 
   it('golden fingerprint', () => {
