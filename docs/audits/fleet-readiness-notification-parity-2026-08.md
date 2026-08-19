@@ -66,7 +66,7 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | AUTHORIZATION_REQUIRED | SECURITY | VEHICLE | dimo | FLEET_READINESS | Per-vehicle authorization required for data access |
 | BATTERY_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Battery health affects vehicle readiness |
 | BLOCKED_VEHICLE | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate rental-blocking state |
-| BOKRAFT_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | BOKraft overdue blocks rental |
+| BOKRAFT_OVERDUE | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | BOKraft overdue blocks rental |
 | BOOKING_CREATED | BOOKINGS | BOOKING | bookings | OPERATIONS | Booking workflow event |
 | BOOKING_UPDATED | BOOKINGS | BOOKING | bookings | OPERATIONS | Booking workflow event |
 | BRAKE_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Brake safety/readiness |
@@ -116,7 +116,7 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | RETURN_NEEDS_INSPECTION | HANDOVERS | BOOKING | business-insights | OPERATIONS | Return inspection workflow |
 | RETURN_OVERDUE | HANDOVERS | BOOKING | business-insights | OPERATIONS | Handover return overdue |
 | SERVICE_BEFORE_BOOKING | HANDOVERS | VEHICLE | business-insights | OPERATIONS | Booking impact — service scheduling operations |
-| SERVICE_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Service overdue affects readiness |
+| SERVICE_OVERDUE | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | Service overdue affects readiness |
 | SERVICE_WINDOW | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Upcoming service window on vehicle |
 | STATION_SHORTAGE | OPERATIONS | STATION | business-insights | OPERATIONS | Station capacity / availability operations |
 | TECHNICAL_OBSERVATION_ACTIVE | VEHICLE_HEALTH | VEHICLE | vehicle-complaints | FLEET_READINESS | Active technical observation on vehicle |
@@ -125,7 +125,7 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | TIGHT_HANDOVER | HANDOVERS | BOOKING | business-insights | OPERATIONS | Booking handover timing operations |
 | TIRE_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Tire safety/readiness |
 | TRIP_ANALYSIS_COMPLETED | DRIVING_ANALYSIS | TRIP | vehicle-intelligence | OPERATIONS | Driving analysis trip event |
-| TUV_OVERDUE | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | TÜV overdue blocks rental |
+| TUV_OVERDUE | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | TÜV overdue blocks rental |
 | VEHICLE_NOT_READY | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate vehicle readiness-not-ready state |
 | WEBHOOK_FAILURE | SYSTEM | ORGANIZATION | webhooks | OPERATIONS | Org-wide webhook failure |
 
@@ -197,7 +197,7 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 | **P1** | Most BI insight types | `TIGHT_HANDOVER`, `RETURN_NEEDS_INSPECTION`, `PICKUP_OVERDUE`, `SERVICE_BEFORE_BOOKING`, etc. — registry only |
 | **P1** | Driving analysis types | `MISUSE_DETECTED`, `POSSIBLE_IMPACT`, `TRIP_ANALYSIS_COMPLETED`, `DATA_QUALITY_LIMITED` — registry only |
 | **P2** | `HM_SERVICE_NO_TRACKING` | Resolve-only path; never opens in V2 |
-| **P2** | `insight-candidate.mapper` | ~~`SERVICE_OVERDUE` conditionCode mismatch~~ — **fixed in P2.1** (`service_overdue`); legacy backfill rows with `overdue` fingerprint may still exist — separate migration if needed |
+| **P2** | `insight-candidate.mapper` | ~~`SERVICE_OVERDUE` conditionCode mismatch~~ — **fixed in P2.1** (`service_overdue`); legacy `overdue` fingerprints reconciled idempotently in `reconcileLegacyServiceOverdueFingerprints()` |
 | **P2** | `VehicleHealthWorkflowEmitter` | Parallel workflow path, not V2 |
 
 **Live V2 producers today (fleet-relevant):**
@@ -313,7 +313,16 @@ NotificationProducerIngestService.syncServiceComplianceWarnings()
 NotificationCoreService → OPEN / REOPEN / RESOLVE
 ```
 
-**Trigger:** `NotificationEvaluationService` on every evaluation run (scheduled / debounced / boot via `BusinessInsightsScheduler`). **Independent of Business Insights `policy.enabled`.**
+**Trigger:** `NotificationEvaluationService` on every evaluation run (scheduled / debounced / boot via `BusinessInsightsScheduler`). **Independent of Business Insights `policy.enabled`.** Fleet sync runs even when `runForOrganization()` throws; the evaluation job still fails (observability `error`) after fleet sync completes.
+
+### Registry metadata (P2.1 final)
+
+| Field | Value | Rationale |
+|-------|-------|-----------|
+| `producerModule` | `vehicle-intelligence` | Canonical SoT is `ServiceComplianceService` (live path: `VehicleHealthNotificationSyncService` → `ServiceComplianceNotificationAdapter`) |
+| `sourceType` | `DASHBOARD_INSIGHT` | **Unchanged** — persisted notification contract / backfill compatibility; does not affect fingerprint or lifecycle |
+
+Same pattern as `BATTERY_CRITICAL` / `TIRE_CRITICAL` (live fleet-health sync, registry `sourceType: DASHBOARD_INSIGHT`).
 
 ### Producer files
 
@@ -350,14 +359,17 @@ Severity: overdue sources always `critical` → CRITICAL.
 
 - **Registry + live producer:** `service_overdue` (canonical)
 - **Legacy `insight-candidate.mapper`:** was `overdue` until P2.1 — DashboardInsight backfill **could** have persisted `org|SERVICE_OVERDUE|VEHICLE|vehicleId|overdue|v1`
-- **Reconciliation:** `reconcileLegacyServiceOverdueFingerprints()` resolves active legacy rows by fingerprint when canonical `service_overdue` is active (idempotent)
+- **Reconciliation:** `reconcileLegacyServiceOverdueFingerprints()` resolves **all** active legacy rows (paginated sweep):
+  - **A)** legacy OPEN + canonical SERVICE_OVERDUE active → legacy resolves, canonical remains
+  - **B)** legacy OPEN + canonical recovered → legacy resolves, no canonical row created
+- **Multi-cause:** `serviceOverdue` cause detection is separate from `serviceOverdueBlocksRental` (RentalHealth UX dedup only). TÜV + Service → both `TUV_OVERDUE` and `SERVICE_OVERDUE` with distinct fingerprints.
 - **DashboardInsight coexistence:** `ComplianceOperationalDetector` still writes insights for display/tasks; live V2 producer is canonical for notification lifecycle
 
 ### Tests
 
 - `service-compliance-notification.spec.ts` — overdue-only semantics, full lifecycle (all 3), legacy reconcile, sweep, registry 66/23/43
 - `service-compliance-notification-blocking-parity.spec.ts` — RentalHealth `blocking_reasons` ↔ notification projection
-- `vehicle-health-notification-sync.service.spec.ts` — BI policy disabled still runs sync
+- `vehicle-health-notification-sync.service.spec.ts` — BI policy disabled + BI runtime throw still runs sync
 - `service-compliance-rental-blocking.policy.spec.ts` — shared blocking predicate
 
 ### Remaining risks / tech debt
@@ -365,6 +377,6 @@ Severity: overdue sources always `critical` → CRITICAL.
 - Duplicate `evaluateCompliance` per vehicle (inside `getVehicleHealth` + sync) — performance follow-up
 - Other P0 gaps unchanged (`vehicle_alerts`, aggregates, unevaluable)
 
-### P2.1 hardening verdict
+### P2.1 final verdict
 
-**READY FOR P2.2** (next producer wave). **NOT READY FOR UI CUTOVER** (aggregate/P0 gaps remain).
+**READY FOR MERGE** (P2.1 scope). **NOT READY FOR UI CUTOVER** (aggregate/P0 gaps remain).

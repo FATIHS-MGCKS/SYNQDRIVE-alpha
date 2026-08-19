@@ -1,7 +1,6 @@
 import type { ComplianceOperationalVehicle } from '@modules/vehicle-intelligence/service-compliance/service-compliance-operational.signals';
 import {
   evaluateServiceComplianceRentalBlocking,
-  isHmServiceOverdue,
 } from '@modules/vehicle-intelligence/service-compliance/service-compliance-rental-blocking.policy';
 import type { ServiceComplianceEvaluation } from '@modules/vehicle-intelligence/service-compliance/service-compliance.types';
 import { requireEventTypeDefinition } from '../registry/notification-event-registry';
@@ -61,14 +60,14 @@ export function projectServiceComplianceOverdueNotifications(
     });
   }
 
-  if (blocking.serviceOverdueBlocksRental && isHmServiceOverdue(evaluation)) {
+  if (blocking.serviceOverdue) {
     sources.push({
       eventType: 'SERVICE_OVERDUE',
       vehicleId: vehicle.id,
       label,
       reason: evaluation.nextService.message,
       severity: 'critical',
-      blocksRental: true,
+      blocksRental: blocking.serviceOverdueBlocksRental,
     });
   }
 

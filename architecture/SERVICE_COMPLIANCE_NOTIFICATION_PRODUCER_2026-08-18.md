@@ -57,11 +57,33 @@ Fleet-readiness sync runs on **every** evaluation pass, regardless of tenant ins
 Single shared policy: `evaluateServiceComplianceRentalBlocking()` in  
 `service-compliance-rental-blocking.policy.ts`
 
-Used by:
-- `RentalHealthService.collectBlockingReasons()`
-- `projectServiceComplianceOverdueNotifications()` (`blocksRental` metadata)
+- **Cause detection:** `tuvOverdue`, `bokraftOverdue`, `serviceOverdue` — independent; multiple causes may coexist as separate V2 notifications
+- **Rental UX dedup:** `serviceOverdueBlocksRental` — suppresses duplicate service entry in `blocking_reasons` only when TÜV/BOKraft already block; does **not** suppress `SERVICE_OVERDUE` notification emission
 
-**Note:** `NextServiceComplianceDto.blocksRental` remains `false` even on CRITICAL — historical API contract for HM service module display. Rental blocking uses the shared policy above, not that DTO field.
+Used by:
+- `RentalHealthService.collectBlockingReasons()` (blocking reasons display)
+- `projectServiceComplianceOverdueNotifications()` (`blocksRental` metadata on SERVICE_OVERDUE)
+
+**Note:** `NextServiceComplianceDto.blocksRental` remains `false` even on CRITICAL — historical API contract for HM service module display.
+
+## Evaluation run failure semantics
+
+When Business Insights throws, `NotificationEvaluationService`:
+1. Logs error, increments `stats.failureCount`
+2. **Still runs** `VehicleHealthNotificationSyncService.syncForOrganization()`
+3. Re-throws BI error → BullMQ job marked failed (`observeEvaluationJob: error`)
+
+Fleet-readiness sync errors are also logged, increment failure count, and rethrow if BI succeeded.
+
+## Registry metadata
+
+| eventType | producerModule | sourceType |
+|-----------|----------------|------------|
+| TUV_OVERDUE | `vehicle-intelligence` | `DASHBOARD_INSIGHT` (unchanged — persistence contract) |
+| BOKRAFT_OVERDUE | `vehicle-intelligence` | `DASHBOARD_INSIGHT` |
+| SERVICE_OVERDUE | `vehicle-intelligence` | `DASHBOARD_INSIGHT` |
+
+`producerModule` reflects canonical evaluation owner. `sourceType` unchanged — no fingerprint/lifecycle impact.
 
 ## Lifecycle
 
@@ -77,7 +99,7 @@ Pre-P2.1 `insight-candidate.mapper` mapped `SERVICE_OVERDUE` → conditionCode `
 
 `orgId|SERVICE_OVERDUE|VEHICLE|vehicleId|overdue|v1`
 
-Live P2.1 producer uses `service_overdue`. Reconciliation in `reconcileLegacyServiceOverdueFingerprints()` resolves active legacy rows by fingerprint when canonical `service_overdue` is active for the same vehicle (idempotent, tenant-scoped).
+Live P2.1 producer uses `service_overdue`. Reconciliation in `reconcileLegacyServiceOverdueFingerprints()` resolves **all** active legacy rows (cases A: canonical active, B: canonical recovered).
 
 ## Known technical debt (P2.1)
 

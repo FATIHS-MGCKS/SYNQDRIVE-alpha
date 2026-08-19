@@ -305,6 +305,40 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     return eval_;
   }
 
+  function tuvAndServiceOverdueEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = tuvOverdueEvaluation();
+    eval_.nextService = {
+      ...eval_.nextService,
+      severity: 'CRITICAL',
+      distanceToNextServiceKm: -500,
+      timeToNextServiceDays: -14,
+      message: 'Service überfällig',
+    };
+    return eval_;
+  }
+
+  function bokraftAndServiceOverdueEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = bokraftOverdueEvaluation();
+    eval_.nextService = {
+      ...eval_.nextService,
+      severity: 'CRITICAL',
+      distanceToNextServiceKm: -300,
+      timeToNextServiceDays: -7,
+      message: 'Service überfällig',
+    };
+    return eval_;
+  }
+
+  function allThreeOverdueEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = tuvAndServiceOverdueEvaluation();
+    eval_.tuvBokraft = {
+      ...eval_.tuvBokraft,
+      bokraftOverdue: true,
+      bokraftRemainingDays: -4,
+    };
+    return eval_;
+  }
+
   async function runFullLifecycle(
     sourcesFactory: () => ReturnType<typeof projectServiceComplianceOverdueNotifications>,
     expectedEventType: string,
@@ -448,6 +482,62 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     });
   });
 
+  describe('multi-cause coexistence', () => {
+    it('TÜV only → TUV_OVERDUE', () => {
+      const sources = projectServiceComplianceOverdueNotifications(baseVehicle, tuvOverdueEvaluation());
+      expect(sources.map((s) => s.eventType)).toEqual(['TUV_OVERDUE']);
+    });
+
+    it('BOKraft only → BOKRAFT_OVERDUE', () => {
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        bokraftOverdueEvaluation(),
+      );
+      expect(sources.map((s) => s.eventType)).toEqual(['BOKRAFT_OVERDUE']);
+    });
+
+    it('Service only → SERVICE_OVERDUE', () => {
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      expect(sources.map((s) => s.eventType)).toEqual(['SERVICE_OVERDUE']);
+    });
+
+    it('TÜV + Service → TUV_OVERDUE and SERVICE_OVERDUE with distinct fingerprints', () => {
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvAndServiceOverdueEvaluation(),
+      );
+      expect(sources.map((s) => s.eventType).sort()).toEqual(['SERVICE_OVERDUE', 'TUV_OVERDUE']);
+      const fps = sources.map((s) => serviceComplianceSourceFingerprint(ORG_A, s));
+      expect(new Set(fps).size).toBe(2);
+      const service = sources.find((s) => s.eventType === 'SERVICE_OVERDUE');
+      expect(service?.blocksRental).toBe(false);
+    });
+
+    it('BOKraft + Service → BOKRAFT_OVERDUE and SERVICE_OVERDUE', () => {
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        bokraftAndServiceOverdueEvaluation(),
+      );
+      expect(sources.map((s) => s.eventType).sort()).toEqual(['BOKRAFT_OVERDUE', 'SERVICE_OVERDUE']);
+    });
+
+    it('TÜV + BOKraft + Service → all three events', () => {
+      const sources = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        allThreeOverdueEvaluation(),
+      );
+      expect(sources.map((s) => s.eventType).sort()).toEqual([
+        'BOKRAFT_OVERDUE',
+        'SERVICE_OVERDUE',
+        'TUV_OVERDUE',
+      ]);
+      expect(new Set(sources.map((s) => serviceComplianceSourceFingerprint(ORG_A, s))).size).toBe(3);
+    });
+  });
+
   describe('legacy SERVICE_OVERDUE fingerprint reconciliation', () => {
     it('pre-P2.1 mapper used overdue conditionCode — legacy fingerprint is distinct', () => {
       const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
@@ -495,6 +585,34 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       expect(canonical).toBeDefined();
       expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
       expect(open.filter((n) => n.eventType === 'SERVICE_OVERDUE')).toHaveLength(1);
+    });
+
+    it('legacy OPEN + canonical recovered → legacy resolves without creating canonical row', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-recovered';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-recovered', []);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
+      expect(openNotifications()).toHaveLength(0);
     });
   });
 

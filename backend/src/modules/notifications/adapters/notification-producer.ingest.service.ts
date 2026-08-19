@@ -614,39 +614,58 @@ export class NotificationProducerIngestService {
 
   /**
    * Idempotent reconciliation for pre-P2.1 SERVICE_OVERDUE rows using legacy `overdue` fingerprint.
-   * When canonical `service_overdue` is active, resolve any parallel legacy row for the same vehicle.
+   *
+   * A) legacy OPEN + canonical SERVICE_OVERDUE active → legacy resolves, canonical remains
+   * B) legacy OPEN + canonical recovered → legacy resolves, no canonical row created
    */
   private async reconcileLegacyServiceOverdueFingerprints(
     organizationId: string,
-    runId: string,
-    sources: ServiceComplianceAdapterSource[],
+    _runId: string,
+    _sources: ServiceComplianceAdapterSource[],
   ): Promise<void> {
-    const canonicalActiveVehicleIds = new Set(
-      sources
-        .filter((s) => s.eventType === 'SERVICE_OVERDUE' && !s.cleared)
-        .map((s) => s.vehicleId),
-    );
+    const legacyActives = await this.listActiveLegacyServiceOverdueNotifications(organizationId);
 
-    for (const vehicleId of canonicalActiveVehicleIds) {
-      const legacyFp = legacyServiceOverdueFingerprint(organizationId, vehicleId);
-      const legacyActive = await this.repository.findAnyActiveByFingerprint(
-        organizationId,
-        legacyFp,
-      );
-      if (!legacyActive) continue;
-
+    for (const legacy of legacyActives) {
       try {
         await this.core.resolveNotificationByFingerprint({
           organizationId,
-          fingerprint: legacyFp,
+          fingerprint: legacy.fingerprint,
         });
       } catch (err) {
         if (this.isRecoveryNotFound(err)) continue;
         this.logger.warn(
-          `Legacy SERVICE_OVERDUE reconcile failed for ${vehicleId}: ${(err as Error).message}`,
+          `Legacy SERVICE_OVERDUE reconcile failed for ${legacy.entityId}: ${(err as Error).message}`,
         );
       }
     }
+  }
+
+  private async listActiveLegacyServiceOverdueNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: ['SERVICE_OVERDUE'],
+        limit: SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE,
+        offset,
+      });
+
+      for (const row of page) {
+        const legacyFp = legacyServiceOverdueFingerprint(organizationId, row.entityId);
+        if (row.fingerprint === legacyFp) {
+          results.push(row);
+        }
+      }
+
+      if (page.length < SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE) break;
+      offset += SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE;
+    }
+
+    return results;
   }
 
   private adapterContext(organizationId: string, sourceRef: string, runId?: string) {

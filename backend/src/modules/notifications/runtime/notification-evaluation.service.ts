@@ -110,16 +110,36 @@ export class NotificationEvaluationService {
       const coalescedEvents = await this.drainPendingEvents(job.organizationId, job.coalescedEvents);
       const triggerType = this.buildTriggerType(job.triggerType, coalescedEvents);
 
-      const insightsResult = await runWithNotificationRunContext(
-        {
-          runId: job.runId,
-          organizationId: job.organizationId,
-          stats,
-        },
-        () => this.insightsService.runForOrganization(job.organizationId, triggerType),
-      );
+      let insightsResult = { runId: '', published: 0 };
+      let insightsError: unknown;
 
-      await this.syncFleetReadinessNotifications(job.organizationId, job.runId);
+      try {
+        insightsResult = await runWithNotificationRunContext(
+          {
+            runId: job.runId,
+            organizationId: job.organizationId,
+            stats,
+          },
+          () => this.insightsService.runForOrganization(job.organizationId, triggerType),
+        );
+      } catch (err) {
+        insightsError = err;
+        stats.failureCount++;
+        this.logger.error(
+          `Business insights run failed for org ${job.organizationId}: ${(err as Error).message}`,
+        );
+      }
+
+      let fleetSyncError: unknown;
+      try {
+        await this.syncFleetReadinessNotifications(job.organizationId, job.runId);
+      } catch (err) {
+        fleetSyncError = err;
+        stats.failureCount++;
+        this.logger.error(
+          `Fleet readiness notification sync failed for org ${job.organizationId}: ${(err as Error).message}`,
+        );
+      }
 
       stats.candidateCount = insightsResult.published;
 
@@ -138,6 +158,19 @@ export class NotificationEvaluationService {
       if (followUp) {
         result.followUpScheduled = true;
         await this.scheduleFollowUpRun(job.organizationId);
+      }
+
+      if (insightsError || fleetSyncError) {
+        this.observability.observeRunDuration(result.durationMs ?? 0, job.triggerClass);
+        this.observability.logRunCompleted(result);
+        this.evaluationsObservability?.observeEvaluationJob(
+          evalCtx,
+          job.triggerClass,
+          'error',
+          result.durationMs ?? Date.now() - startedAt.getTime(),
+        );
+        if (insightsError) throw insightsError;
+        throw fleetSyncError;
       }
 
       this.observability.observeRunDuration(result.durationMs ?? 0, job.triggerClass);
@@ -361,13 +394,6 @@ export class NotificationEvaluationService {
     runId: string,
   ): Promise<void> {
     if (!this.fleetReadinessSync) return;
-
-    try {
-      await this.fleetReadinessSync.syncForOrganization(organizationId, runId);
-    } catch (err) {
-      this.logger.warn(
-        `Fleet readiness notification sync failed for org ${organizationId}: ${(err as Error).message}`,
-      );
-    }
+    await this.fleetReadinessSync.syncForOrganization(organizationId, runId);
   }
 }

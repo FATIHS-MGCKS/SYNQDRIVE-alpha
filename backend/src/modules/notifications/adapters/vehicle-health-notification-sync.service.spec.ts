@@ -93,4 +93,28 @@ describe('Fleet readiness notification sync independence', () => {
       expect.any(String),
     );
   });
+
+  it('runs fleet readiness sync even when Business Insights run throws', async () => {
+    insightsService.runForOrganization.mockImplementationOnce(async () => {
+      insightsRuns++;
+      throw new Error('BI detector crash');
+    });
+
+    await expect(
+      evaluation.executeRun({
+        organizationId: orgId,
+        triggerType: 'scheduled_active',
+        triggerClass: 'scheduled',
+        scheduledAt: new Date().toISOString(),
+        runId: randomUUID(),
+      }),
+    ).rejects.toThrow('BI detector crash');
+
+    expect(insightsRuns).toBe(1);
+    expect(fleetSyncRuns).toBe(1);
+    expect(fleetReadinessSync.syncForOrganization).toHaveBeenCalledWith(
+      orgId,
+      expect.any(String),
+    );
+  });
 });

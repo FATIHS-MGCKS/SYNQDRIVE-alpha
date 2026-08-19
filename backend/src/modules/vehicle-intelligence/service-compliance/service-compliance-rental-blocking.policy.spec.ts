@@ -49,6 +49,7 @@ describe('service-compliance-rental-blocking.policy', () => {
       }),
     );
     expect(decision.tuvOverdue).toBe(true);
+    expect(decision.serviceOverdue).toBe(false);
     expect(decision.serviceOverdueBlocksRental).toBe(false);
   });
 
@@ -61,7 +62,7 @@ describe('service-compliance-rental-blocking.policy', () => {
     expect(decision.bokraftOverdue).toBe(true);
   });
 
-  it('flags HM service CRITICAL as rental-blocking when TÜV/BOKraft are not overdue', () => {
+  it('flags HM service CRITICAL as overdue and rental-blocking when TÜV/BOKraft are not overdue', () => {
     const evaluation = baseEvaluation({
       nextService: {
         severity: 'CRITICAL',
@@ -70,10 +71,12 @@ describe('service-compliance-rental-blocking.policy', () => {
       } as any,
     });
     expect(isHmServiceOverdue(evaluation)).toBe(true);
-    expect(evaluateServiceComplianceRentalBlocking(evaluation).serviceOverdueBlocksRental).toBe(true);
+    const decision = evaluateServiceComplianceRentalBlocking(evaluation);
+    expect(decision.serviceOverdue).toBe(true);
+    expect(decision.serviceOverdueBlocksRental).toBe(true);
   });
 
-  it('does not block rental for HM service WARNING / due soon', () => {
+  it('does not mark service overdue for HM service WARNING / due soon', () => {
     const evaluation = baseEvaluation({
       nextService: {
         severity: 'WARNING',
@@ -82,14 +85,18 @@ describe('service-compliance-rental-blocking.policy', () => {
       } as any,
     });
     expect(isHmServiceOverdue(evaluation)).toBe(false);
-    expect(evaluateServiceComplianceRentalBlocking(evaluation).serviceOverdueBlocksRental).toBe(false);
+    const decision = evaluateServiceComplianceRentalBlocking(evaluation);
+    expect(decision.serviceOverdue).toBe(false);
+    expect(decision.serviceOverdueBlocksRental).toBe(false);
   });
 
-  it('does not double-count service block when TÜV is already overdue', () => {
+  it('keeps serviceOverdue true but deduplicates rental blocking when TÜV is already overdue', () => {
     const evaluation = baseEvaluation({
       nextService: { severity: 'CRITICAL', timeToNextServiceDays: -5 } as any,
       tuvBokraft: { tuvOverdue: true, tuvRemainingDays: -5 } as any,
     });
-    expect(evaluateServiceComplianceRentalBlocking(evaluation).serviceOverdueBlocksRental).toBe(false);
+    const decision = evaluateServiceComplianceRentalBlocking(evaluation);
+    expect(decision.serviceOverdue).toBe(true);
+    expect(decision.serviceOverdueBlocksRental).toBe(false);
   });
 });
