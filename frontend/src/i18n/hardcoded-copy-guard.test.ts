@@ -125,6 +125,16 @@ const P25_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/workflow-automation/',
 ];
 
+const P26_ENFORCE_CLEAN_PREFIXES = [
+  'rental/components/stations/',
+];
+
+function isP26EnforceCleanPath(relPath: string): boolean {
+  return P26_ENFORCE_CLEAN_PREFIXES.some(
+    (prefix) => relPath === prefix || relPath.startsWith(prefix),
+  );
+}
+
 function isP25EnforceCleanPath(relPath: string): boolean {
   if (P25_ENFORCE_CLEAN_EXACT.includes(relPath)) return true;
   return P25_ENFORCE_CLEAN_PREFIXES.some(
@@ -142,7 +152,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -188,5 +198,12 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP25EnforceCleanPath(finding.file),
     );
     expect(p25Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.6 enforce-clean findings to rental stations only', () => {
+    const p26Debt = inventory.findings.filter((finding) =>
+      isP26EnforceCleanPath(finding.file),
+    );
+    expect(p26Debt).toHaveLength(0);
   });
 });

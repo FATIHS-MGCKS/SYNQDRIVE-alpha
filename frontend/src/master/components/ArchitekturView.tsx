@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Stations (P2.2.6 — V4.9.926)', icon: Globe,
+    endpoint: 'Stations settings tab (legacy) and booking station select fields.',
+    service: '**Helper:** `stations-i18n.ts` (`st`, `labelStationWarning`); React uses `useLanguage()`. **Keys:** +98 EN+DE (`stations.tab.*`, `stations.select.*`; 6265→6363); reused `stations.*`, `common.*`, `bookings.detail.oneWayRental`. **Guardrails:** P2.2.6 enforce-clean — 0 findings (57→0). **Shim:** four station shells `../../i18n/`→`../../../i18n/`; rental compat 30→26; 0 new compat. **Semantics:** station CRUD, assignment, and booking selectors unchanged.',
+    dataSource: 'architecture/I18N_RENTAL_STATIONS_P2_2_6_2026-08-19.md; docs/audits/i18n-production-hardening-baseline-2026-08.md' },
   { name: 'Platform i18n Rental Workflow Automation (P2.2.5 — V4.9.925)', icon: Globe,
     endpoint: 'Workflow Automation shell (legacy builder + runtime drawers) and Task Automation rules/drawer/simulation.',
     service: '**Helper:** `automation-i18n.ts` (`at`, label maps, `automationFormattingLocaleOrDefault`); React uses `useLanguage()`. **Keys:** +339 EN+DE (`taskAutomation.*`, `workflowAutomation.legacy.*`; 5926→6265); reused `tasks.filter.priority.*`, existing `workflowAutomation.*` runtime (226). **Guardrails:** P2.2.5 enforce-clean — 0 findings (108→0); Workflow Automation scanner module 108→0. **Shim:** WorkflowAutomationView `../i18n/`→`../../i18n/`; rental compat 31→30; 0 new compat. **Enums:** task automation API values unchanged.',

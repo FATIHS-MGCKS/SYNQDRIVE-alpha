@@ -3,7 +3,7 @@ import { Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Station } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 type AssignVehicleRow = {
   id: string;
   license: string;

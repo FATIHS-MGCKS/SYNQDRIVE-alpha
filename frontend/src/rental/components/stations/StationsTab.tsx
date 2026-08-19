@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Building2 } from 'lucide-react';
 import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api } from '../../../lib/api';
 import { isVehicleAtHomeStation } from '../../../lib/geospatial';
 import {
@@ -55,6 +56,7 @@ const EMPTY_STATION_FORM: StationFormState = {
 
 export function StationsTab() {
   const { orgId } = useRentalOrg();
+  const { t } = useLanguage();
 
   const [stations, setStations] = useState<import('../../../lib/api').Station[]>([]);
   const [stats, setStats] = useState<import('../../../lib/api').StationsStats | null>(null);
@@ -141,13 +143,13 @@ export function StationsTab() {
       setStations(Array.isArray(list) ? list : []);
       setStats(aggStats ?? null);
     } catch (e) {
-      setError((e as Error).message || 'Failed to load stations');
+      setError((e as Error).message || t('stations.tab.error.load'));
       setStations([]);
       setStats(null);
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   useEffect(() => {
     load();
@@ -165,11 +167,11 @@ export function StationsTab() {
       setBackfillResult(res);
       await load();
     } catch (e) {
-      setBackfillError((e as Error).message || 'Backfill fehlgeschlagen');
+      setBackfillError((e as Error).message || t('stations.tab.error.backfill'));
     } finally {
       setBackfillRunning(false);
     }
-  }, [orgId, backfillRunning, load]);
+  }, [orgId, backfillRunning, load, t]);
 
   const stationsMissingCoords = useMemo(
     () => stations.filter((s) => s.latitude == null || s.longitude == null).length,
@@ -294,7 +296,7 @@ export function StationsTab() {
     if (!orgId) return;
     const name = form.name.trim();
     if (!name) {
-      setFormError('Stationsname ist erforderlich.');
+      setFormError(t('stations.tab.error.nameRequired'));
       return;
     }
     setSaving(true);
@@ -342,7 +344,7 @@ export function StationsTab() {
       setEditingId(null);
       setForm(EMPTY_STATION_FORM);
     } catch (e) {
-      setFormError((e as Error).message || 'Speichern fehlgeschlagen');
+      setFormError((e as Error).message || t('stations.tab.error.save'));
     } finally {
       setSaving(false);
     }
@@ -357,7 +359,7 @@ export function StationsTab() {
       setStations((prev) =>
         prev.map((s) =>
           s.id === station.id
-            ? { ...s, status: nextStatus, statusLabel: nextStatus === 'ACTIVE' ? 'Active' : 'Inactive' }
+            ? { ...s, status: nextStatus, statusLabel: nextStatus === 'ACTIVE' ? t('stations.status.ACTIVE') : t('stations.status.INACTIVE') }
             : s,
         ),
       );
@@ -378,7 +380,7 @@ export function StationsTab() {
       await load();
       setDeletingId(null);
     } catch (e) {
-      setError((e as Error).message || 'LÃ¶schen fehlgeschlagen');
+      setError((e as Error).message || t('stations.tab.error.delete'));
     } finally {
       setDeleting(false);
     }
@@ -415,7 +417,7 @@ export function StationsTab() {
           new Set(list.filter((v) => v.stationId === station.id).map((v) => v.id)),
         );
       } catch (e) {
-        setAssignError((e as Error).message || 'Fahrzeuge konnten nicht geladen werden');
+        setAssignError((e as Error).message || t('stations.tab.error.assignLoad'));
       } finally {
         setAssignLoading(false);
       }
@@ -457,7 +459,7 @@ export function StationsTab() {
       setAssignVehicles([]);
       setAssignSelected(new Set());
     } catch (e) {
-      setAssignError((e as Error).message || 'Zuweisung fehlgeschlagen');
+      setAssignError((e as Error).message || t('stations.tab.error.assignSave'));
     } finally {
       setAssignSaving(false);
     }
@@ -509,7 +511,7 @@ export function StationsTab() {
       <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
         <div className="animate-fade-up min-w-0">
           <h2 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-            Stations &amp; Branches
+            {t('stations.tab.title')}
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -517,7 +519,7 @@ export function StationsTab() {
             <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Suche nach Name, Stadt, Managerâ€¦"
+              placeholder={t('stations.tab.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={`${inputClass} w-60 pl-9`}
@@ -528,7 +530,7 @@ export function StationsTab() {
               type="button"
               onClick={runBackfill}
               disabled={backfillRunning}
-              title={`${stationsMissingCoords} Station${stationsMissingCoords === 1 ? '' : 'en'} ohne Koordinaten â€” jetzt automatisch Ã¼ber Mapbox geocodieren`}
+              title={t('stations.tab.backfillTitle', { count: stationsMissingCoords })}
               className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-semibold transition-all disabled:opacity-50 sq-tone-warning hover:opacity-90"
             >
               {backfillRunning ? (
@@ -536,14 +538,14 @@ export function StationsTab() {
               ) : (
                 <Icon name="refresh-cw" className="w-4 h-4" />
               )}
-              Koordinaten nachziehen ({stationsMissingCoords})
+              {t('stations.tab.backfillButton', { count: stationsMissingCoords })}
             </button>
           )}
           <button
             onClick={openCreate}
             className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
-            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> {t('stations.newStation')}
           </button>
         </div>
       </div>
@@ -565,7 +567,7 @@ export function StationsTab() {
               {backfillError ? (
                 <>
                   <p className={`text-xs font-semibold ${'text-[color:var(--status-critical)]'}`}>
-                    Geocoding fehlgeschlagen
+                    {t('stations.tab.backfill.failedTitle')}
                   </p>
                   <p className={`text-[11px] mt-0.5 ${'text-[color:var(--status-critical)]'}`}>
                     {backfillError}
@@ -574,9 +576,11 @@ export function StationsTab() {
               ) : backfillResult ? (
                 <>
                   <p className={`text-xs font-semibold ${'text-[color:var(--status-positive)]'}`}>
-                    Backfill abgeschlossen â€” {backfillResult.totalGeocoded} geocodiert
-                    {backfillResult.totalFailed > 0 && `, ${backfillResult.totalFailed} fehlgeschlagen`}
-                    {backfillResult.totalSkipped > 0 && `, ${backfillResult.totalSkipped} Ã¼bersprungen`}
+                    {t('stations.tab.backfill.completeSummary', { geocoded: backfillResult.totalGeocoded })}
+                    {backfillResult.totalFailed > 0 &&
+                      t('stations.tab.backfill.failedCount', { count: backfillResult.totalFailed })}
+                    {backfillResult.totalSkipped > 0 &&
+                      t('stations.tab.backfill.skippedCount', { count: backfillResult.totalSkipped })}
                   </p>
                   {backfillResult.results.length > 0 && (
                     <ul className={`mt-1.5 space-y-0.5 text-[10.5px] ${'text-[color:var(--status-positive)]'}`}>
@@ -595,7 +599,7 @@ export function StationsTab() {
                         </li>
                       ))}
                       {backfillResult.results.length > 8 && (
-                        <li className="opacity-70">â€¦ und {backfillResult.results.length - 8} weitere</li>
+                        <li className="opacity-70">{t('stations.tab.backfill.andMore', { count: backfillResult.results.length - 8 })}</li>
                       )}
                     </ul>
                   )}
@@ -609,7 +613,7 @@ export function StationsTab() {
                 setBackfillError(null);
               }}
               className="p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Hinweis schlieÃŸen"
+              aria-label={t('stations.tab.dismissBanner')}
             >
               <Icon name="x" className="w-3.5 h-3.5" />
             </button>
@@ -622,7 +626,7 @@ export function StationsTab() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <StationStatPill
             icon={<Icon name="map-pin" className="w-4 h-4" />}
-            label="Alle"
+            label={t('stations.tab.scope.all')}
             value={totalStations}
             tone="brand"
             active={stationScope === 'all'}
@@ -630,7 +634,7 @@ export function StationsTab() {
           />
           <StationStatPill
             icon={<Icon name="check-circle" className="w-4 h-4" />}
-            label="Aktiv"
+            label={t('stations.tab.scope.active')}
             value={activeStations}
             tone="success"
             active={stationScope === 'active'}
@@ -638,7 +642,7 @@ export function StationsTab() {
           />
           <StationStatPill
             icon={<Icon name="car" className="w-4 h-4" />}
-            label="Fahrzeuge"
+            label={t('stations.tab.scope.vehicles')}
             value={totalVehicles}
             tone="neutral"
             active={stationScope === 'assigned'}
@@ -646,7 +650,7 @@ export function StationsTab() {
           />
           <StationStatPill
             icon={<Icon name="alert-circle" className="w-4 h-4" />}
-            label="Setup"
+            label={t('stations.tab.scope.setup')}
             value={stationsMissingCoords}
             tone={stationsMissingCoords > 0 ? 'warning' : 'neutral'}
             active={stationScope === 'setup'}
@@ -668,7 +672,7 @@ export function StationsTab() {
             onClick={load}
             className="ml-auto text-xs font-semibold underline-offset-2 hover:underline"
           >
-            Erneut laden
+            {t('common.reload')}
           </button>
         </div>
       )}
@@ -677,7 +681,7 @@ export function StationsTab() {
       {loading ? (
         <div className={`${cardClass} flex items-center justify-center py-12`}>
           <Icon name="loader-2" className="w-5 h-5 animate-spin text-[color:var(--brand)] mr-2" />
-          <span className={`text-xs ${textSecondary}`}>Standorte werden geladenâ€¦</span>
+          <span className={`text-xs ${textSecondary}`}>{t('stations.tab.loading')}</span>
         </div>
       ) : stations.length === 0 ? (
         // Empty state
@@ -685,20 +689,20 @@ export function StationsTab() {
           <div className="p-4 rounded-full mb-3 sq-tone-brand">
             <Icon name="map-pin" className="w-10 h-10" />
           </div>
-          <p className={`text-sm font-semibold ${textPrimary}`}>Noch keine Standorte</p>
+          <p className={`text-sm font-semibold ${textPrimary}`}>{t('stations.empty.title')}</p>
           <p className={`text-xs mt-1 max-w-sm ${textSecondary}`}>
-            Legen Sie Ihren ersten Standort an, um Fahrzeuge und Benutzer geografisch zuzuordnen.
+            {t('stations.empty.description')}
           </p>
           <button
             onClick={openCreate}
             className="sq-press mt-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
-            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> {t('stations.newStation')}
           </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className={`${cardClass} text-center py-10`}>
-          <p className={`text-xs ${textSecondary}`}>Keine Treffer fÃ¼r &quot;{search}&quot;.</p>
+          <p className={`text-xs ${textSecondary}`}>{t('stations.tab.noSearchResults', { query: search })}</p>
         </div>
       ) : (
         // Station list
@@ -736,12 +740,12 @@ export function StationsTab() {
             >
               <div>
                 <h3 className={`text-base font-semibold ${textPrimary}`}>
-                  {editingId ? 'Standort bearbeiten' : 'Neuen Standort anlegen'}
+                  {editingId ? t('stations.tab.modal.editTitle') : t('stations.tab.modal.createTitle')}
                 </h3>
                 <p className={`text-[11px] mt-0.5 ${textSecondary}`}>
                   {editingId
-                    ? 'Aktualisieren Sie Adresse, Kontakt und Status dieses Standorts.'
-                    : 'Tippen Sie den Namen oder die Adresse ein — Mapbox schlägt passende Standorte vor.'}
+                    ? t('stations.tab.modal.editHint')
+                    : t('stations.tab.modal.createHint')}
                 </p>
               </div>
               <button
@@ -758,10 +762,10 @@ export function StationsTab() {
             <div className="p-5 space-y-4">
               {/* Name + place autocomplete */}
               <div className="relative">
-                <label className={labelClass}>Stationsname / Adresse</label>
+                <label className={labelClass}>{t('stations.tab.form.nameAddress')}</label>
                 <input
                   type="text"
-                  placeholder="z.B. SynqDrive Berlin Mitte"
+                  placeholder={t('stations.tab.form.nameExample')}
                   value={form.name}
                   onChange={(e) => handleNameChange(e.target.value)}
                   onFocus={() => form.name.trim().length >= 2 && suggestions.length > 0 && setSuggestOpen(true)}
@@ -778,7 +782,7 @@ export function StationsTab() {
                     {suggestLoading ? (
                       <div className={`px-3 py-2.5 text-xs flex items-center gap-2 ${textSecondary}`}>
                         <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-                        Suche Standorteâ€¦
+                        {t('stations.tab.form.searching')}
                       </div>
                     ) : (
                       suggestions.map((s) => (
@@ -807,17 +811,17 @@ export function StationsTab() {
               {/* Address grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <label className={labelClass}>StraÃŸe / Adresse</label>
+                  <label className={labelClass}>{t('stations.tab.form.street')}</label>
                   <input
                     type="text"
-                    placeholder="MusterstraÃŸe 12"
+                    placeholder={t('stations.tab.form.streetExample')}
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>PLZ</label>
+                  <label className={labelClass}>{t('stations.form.postalCode')}</label>
                   <input
                     type="text"
                     placeholder="10115"
@@ -827,20 +831,20 @@ export function StationsTab() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Stadt</label>
+                  <label className={labelClass}>{t('stations.form.city')}</label>
                   <input
                     type="text"
-                    placeholder="Berlin"
+                    placeholder={t('stations.form.city')}
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
                     className={inputClass}
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className={labelClass}>Land</label>
+                  <label className={labelClass}>{t('stations.form.country')}</label>
                   <input
                     type="text"
-                    placeholder="Deutschland"
+                    placeholder={t('stations.form.country')}
                     value={form.country}
                     onChange={(e) => setForm({ ...form, country: e.target.value })}
                     className={inputClass}
@@ -868,22 +872,22 @@ export function StationsTab() {
                     <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
                       'text-foreground'
                     }`}>
-                      Koordinaten {form.latitude != null && form.longitude != null && (
+                      {t('stations.tab.coords.title')}{' '}
+                      {form.latitude != null && form.longitude != null && (
                         <span className="ml-2 text-[9px] font-normal normal-case tracking-normal text-emerald-500">
-                          âœ“ gesetzt
+                          {t('stations.tab.coords.set')}
                         </span>
                       )}
                     </label>
                     <p className={`text-[10.5px] mt-0.5 ${textSecondary}`}>
-                      Beim Speichern automatisch aus der Adresse berechnet (Mapbox).
-                      Optional manuell Ã¼berschreiben â€” z.B. aus Google Maps kopieren.
+                      {t('stations.tab.coords.hint')}
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={`block text-[10px] font-semibold mb-1 uppercase tracking-wider ${textSecondary}`}>
-                      Breitengrad (Lat)
+                      {t('stations.tab.coords.latitude')}
                     </label>
                     <input
                       type="number"
@@ -906,7 +910,7 @@ export function StationsTab() {
                   </div>
                   <div>
                     <label className={`block text-[10px] font-semibold mb-1 uppercase tracking-wider ${textSecondary}`}>
-                      LÃ¤ngengrad (Lng)
+                      {t('stations.tab.coords.longitude')}
                     </label>
                     <input
                       type="number"
@@ -934,7 +938,7 @@ export function StationsTab() {
                     onClick={() => setForm({ ...form, latitude: null, longitude: null, googlePlaceId: null })}
                     className={`mt-1.5 text-[10px] underline-offset-2 hover:underline ${textSecondary}`}
                   >
-                    Koordinaten zurÃ¼cksetzen (beim nÃ¤chsten Speichern wird neu geocodiert)
+                    {t('stations.tab.coords.reset')}
                   </button>
                 )}
               </div>
@@ -956,11 +960,12 @@ export function StationsTab() {
                       <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
                         'text-foreground'
                       }`}>
-                        Geofence-Umkreis (Home-Zone)
+                        {t('stations.tab.geofence.title')}
                       </label>
                       <p className={`text-[10.5px] mt-0.5 ${textSecondary}`}>
-                        Fahrzeuge gelten als <span className="font-semibold">vor Ort / Home</span>, sobald
-                        ihre GPS-Position innerhalb dieses Radius liegt.
+                        {t('stations.tab.geofence.hint', {
+                          home: t('stations.tab.geofence.home'),
+                        })}
                       </p>
                     </div>
                   </div>
@@ -1020,7 +1025,7 @@ export function StationsTab() {
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
-                      Parkplatz Â· 100m
+                      {t('stations.tab.geofence.presetParking')}
                     </button>
                     <button
                       type="button"
@@ -1031,7 +1036,7 @@ export function StationsTab() {
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
-                      Filiale Â· 250m
+                      {t('stations.tab.geofence.presetBranch')}
                     </button>
                     <button
                       type="button"
@@ -1042,7 +1047,7 @@ export function StationsTab() {
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
-                      GelÃ¤nde Â· 1km
+                      {t('stations.tab.geofence.presetSite')}
                     </button>
                   </div>
                   <span>{STATION_RADIUS_MAX_M >= 1000 ? `${STATION_RADIUS_MAX_M / 1000} km` : `${STATION_RADIUS_MAX_M} m`}</span>
@@ -1055,9 +1060,7 @@ export function StationsTab() {
                   >
                     <Icon name="alert-circle" className="w-3 h-3 shrink-0 mt-0.5" />
                     <span>
-                      Hinweis: Der Umkreis greift erst, wenn die Station Koordinaten hat.
-                      Beim Speichern werden Lat/Lng automatisch aus der Adresse berechnet â€”
-                      oder Sie tragen sie oben manuell ein.
+                      {t('stations.tab.geofence.warning')}
                     </span>
                   </p>
                 )}
@@ -1066,40 +1069,40 @@ export function StationsTab() {
               {/* Contact */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Stationsleiter</label>
+                  <label className={labelClass}>{t('stations.tab.form.manager')}</label>
                   <input
                     type="text"
-                    placeholder="Vor- und Nachname"
+                    placeholder={t('stations.tab.form.managerPlaceholder')}
                     value={form.managerName}
                     onChange={(e) => setForm({ ...form, managerName: e.target.value })}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Telefon</label>
+                  <label className={labelClass}>{t('stations.form.phone')}</label>
                   <input
                     type="tel"
-                    placeholder="+49 30 1234567"
+                    placeholder={t('stations.tab.form.phoneExample')}
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>E-Mail</label>
+                  <label className={labelClass}>{t('stations.form.email')}</label>
                   <input
                     type="email"
-                    placeholder="station@firma.de"
+                    placeholder={t('stations.tab.form.emailExample')}
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Ã–ffnungszeiten</label>
+                  <label className={labelClass}>{t('stations.detail.hours')}</label>
                   <input
                     type="text"
-                    placeholder="Moâ€“Fr 08:00â€“18:00"
+                    placeholder={t('stations.tab.form.hoursExample')}
                     value={form.openingHours}
                     onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
                     className={inputClass}
@@ -1109,10 +1112,10 @@ export function StationsTab() {
 
               {/* Notes */}
               <div>
-                <label className={labelClass}>Notizen</label>
+                <label className={labelClass}>{t('stations.form.internalNotes')}</label>
                 <textarea
                   rows={3}
-                  placeholder="Interne Notizen zum Standortâ€¦"
+                  placeholder={t('stations.tab.form.notesPlaceholder')}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   className={`${inputClass} resize-none`}
@@ -1121,7 +1124,7 @@ export function StationsTab() {
 
               {/* Status */}
               <div>
-                <label className={labelClass}>Status</label>
+                <label className={labelClass}>{t('stations.form.status')}</label>
                 <div className="flex gap-2">
                   {(['ACTIVE', 'INACTIVE'] as const).map((st) => {
                     const active = form.status === st;
@@ -1138,7 +1141,7 @@ export function StationsTab() {
                             : 'border border-border/60 surface-premium text-foreground hover:bg-muted'
                         }`}
                       >
-                        {st === 'ACTIVE' ? 'Aktiv' : 'Inaktiv'}
+                        {st === 'ACTIVE' ? t('stations.status.ACTIVE') : t('stations.status.INACTIVE')}
                       </button>
                     );
                   })}
@@ -1147,7 +1150,10 @@ export function StationsTab() {
 
               {form.latitude !== null && form.longitude !== null && (
                 <div className={`text-[11px] ${textSecondary}`}>
-                  Koordinaten: {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+                  {t('stations.tab.coordsDisplay', {
+                    lat: form.latitude.toFixed(5),
+                    lng: form.longitude.toFixed(5),
+                  })}
                   {form.googlePlaceId && <> Â· <span className="font-mono">{form.googlePlaceId.slice(0, 18)}â€¦</span></>}
                 </div>
               )}
@@ -1176,7 +1182,7 @@ export function StationsTab() {
                   'border border-border/60 surface-premium text-foreground hover:bg-muted'
                 }`}
               >
-                Abbrechen
+                {t('common.cancel')}
               </button>
               <button
                 onClick={submit}
@@ -1185,12 +1191,12 @@ export function StationsTab() {
               >
                 {saving ? (
                   <>
-                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichereâ€¦
+                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> {t('common.saving')}
                   </>
                 ) : (
                   <>
                     <Icon name="save" className="w-4 h-4" />
-                    {editingId ? 'Aktualisieren' : 'Standort anlegen'}
+                    {editingId ? t('stations.tab.save.update') : t('stations.tab.save.create')}
                   </>
                 )}
               </button>
@@ -1216,15 +1222,15 @@ export function StationsTab() {
                 <Icon name="alert-circle" className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <h3 className={`text-sm font-semibold ${textPrimary}`}>Standort lÃ¶schen?</h3>
+                <h3 className={`text-sm font-semibold ${textPrimary}`}>{t('stations.tab.delete.title')}</h3>
                 <p className={`text-xs mt-1 ${textSecondary}`}>
                   {(() => {
                     const s = stations.find((x) => x.id === deletingId);
                     return s
                       ? s.vehicleCount > 0
-                        ? `${s.vehicleCount} Fahrzeug(e) sind diesem Standort zugewiesen und werden entkoppelt. Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.`
-                        : 'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.'
-                      : 'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.';
+                        ? t('stations.tab.delete.withVehicles', { count: s.vehicleCount })
+                        : t('stations.tab.delete.confirm')
+                      : t('stations.tab.delete.confirm');
                   })()}
                 </p>
               </div>
@@ -1237,7 +1243,7 @@ export function StationsTab() {
                   'border border-border/60 surface-premium text-foreground hover:bg-muted'
                 }`}
               >
-                Abbrechen
+                {t('common.cancel')}
               </button>
               <button
                 onClick={confirmDelete}
@@ -1246,11 +1252,11 @@ export function StationsTab() {
               >
                 {deleting ? (
                   <>
-                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> LÃ¶scheâ€¦
+                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> {t('stations.tab.delete.deleting')}
                   </>
                 ) : (
                   <>
-                    <Icon name="trash-2" className="w-4 h-4" /> LÃ¶schen
+                    <Icon name="trash-2" className="w-4 h-4" /> {t('common.delete')}
                   </>
                 )}
               </button>
@@ -1280,16 +1286,19 @@ export function StationsTab() {
               <div className="min-w-0">
                 <h3 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
                   <Icon name="car" className="w-4 h-4 text-status-info" />
-                  Fahrzeuge zuweisen
+                  {t('stations.assign.title')}
                 </h3>
                 <p className={`text-[11px] mt-0.5 truncate ${textSecondary}`}>
-                  Standort: <span className={`font-medium ${textPrimary}`}>{assignStation.name}</span>
-                  {' Â· '}
-                  {assignSelected.size} ausgewÃ¤hlt
+                  {t('stations.tab.assign.stationLabel')}{' '}
+                  <span className={`font-medium ${textPrimary}`}>{assignStation.name}</span>
+                  {' · '}
+                  {t('stations.tab.assign.selected', { count: assignSelected.size })}
                   {assignChangeCount > 0 && (
                     <>
-                      {' Â· '}
-                      <span className="text-status-info font-semibold">{assignChangeCount} Ã„nderung(en)</span>
+                      {' · '}
+                      <span className="text-status-info font-semibold">
+                        {t('stations.tab.assign.changes', { count: assignChangeCount })}
+                      </span>
                     </>
                   )}
                 </p>
@@ -1315,7 +1324,7 @@ export function StationsTab() {
                 <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <input
                   type="text"
-                  placeholder="Suche nach Kennzeichen, Modell, Standortâ€¦"
+                  placeholder={t('stations.tab.assign.searchPlaceholder')}
                   value={assignSearch}
                   onChange={(e) => setAssignSearch(e.target.value)}
                   className={`w-full pl-9 pr-3 py-2 rounded-lg border text-xs transition-all duration-200 ${
@@ -1325,10 +1334,10 @@ export function StationsTab() {
               </div>
               <div className="flex flex-wrap items-center gap-1">
                 {([
-                  { id: 'all', label: 'Alle' },
-                  { id: 'this', label: 'Aktuell hier' },
-                  { id: 'unassigned', label: 'Ohne Station' },
-                  { id: 'other', label: 'Andere Station' },
+                  { id: 'all', label: t('stations.assign.filter.all') },
+                  { id: 'this', label: t('stations.tab.assign.filter.here') },
+                  { id: 'unassigned', label: t('stations.tab.assign.filter.unassigned') },
+                  { id: 'other', label: t('stations.tab.assign.filter.other') },
                 ] as const).map((opt) => {
                   const active = assignFilter === opt.id;
                   return (
@@ -1353,7 +1362,7 @@ export function StationsTab() {
               {assignLoading ? (
                 <div className={`flex items-center justify-center py-12 ${textSecondary}`}>
                   <Icon name="loader-2" className="w-5 h-5 animate-spin text-status-info mr-2" />
-                  <span className="text-xs">Fahrzeuge werden geladenâ€¦</span>
+                  <span className="text-xs">{t('stations.tab.assign.loading')}</span>
                 </div>
               ) : assignError ? (
                 <div
@@ -1365,11 +1374,11 @@ export function StationsTab() {
                 </div>
               ) : assignVehicles.length === 0 ? (
                 <div className={`text-center py-10 text-xs ${textSecondary}`}>
-                  Keine Fahrzeuge in dieser Organisation registriert.
+                  {t('stations.tab.assign.noOrgVehicles')}
                 </div>
               ) : assignFiltered.length === 0 ? (
                 <div className={`text-center py-10 text-xs ${textSecondary}`}>
-                  Keine Treffer fÃ¼r die gewÃ¤hlten Filter.
+                  {t('stations.tab.assign.noFilterResults')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-1.5">
@@ -1414,12 +1423,12 @@ export function StationsTab() {
                             </span>
                           </div>
                           <div className="flex items-center flex-wrap gap-1.5 mt-0.5 text-[10px]">
-                            <span className={textSecondary}>Aktuell:</span>
+                            <span className={textSecondary}>{t('stations.tab.assign.currently')}</span>
                             {v.stationId === null ? (
                               <span
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-watch"
                               >
-                                ohne Station
+                                {t('stations.tab.assign.unassignedBadge')}
                               </span>
                             ) : v.stationId === assignStation.id ? (
                               <span
@@ -1433,16 +1442,18 @@ export function StationsTab() {
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-neutral"
                               >
                                 <Icon name="map-pin" className="w-2.5 h-2.5" />
-                                {v.stationName ?? 'Andere'}
+                                {v.stationName ?? t('stations.tab.assign.otherStation')}
                               </span>
                             )}
                             {atHome === true && (
                               <span
-                                title={`GPS-Position im ${assignStation.radiusMeters}m-Radius dieser Station`}
+                                title={t('stations.tab.assign.onSiteTitle', {
+                                  radius: assignStation.radiusMeters ?? 0,
+                                })}
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-brand"
                               >
                                 <Icon name="crosshair" className="w-2.5 h-2.5" />
-                                vor Ort
+                                {t('stations.tab.assign.onSite')}
                               </span>
                             )}
                           </div>
@@ -1453,7 +1464,7 @@ export function StationsTab() {
                               'sq-tone-brand'
                             }`}
                           >
-                            Wird verschoben
+                            {t('stations.tab.assign.willMove')}
                           </span>
                         )}
                         {willDetach && (
@@ -1462,7 +1473,7 @@ export function StationsTab() {
                               'sq-tone-watch'
                             }`}
                           >
-                            Wird entfernt
+                            {t('stations.tab.assign.willRemove')}
                           </span>
                         )}
                       </label>
@@ -1480,8 +1491,8 @@ export function StationsTab() {
             >
               <span className={`text-[11px] ${textSecondary}`}>
                 {assignChangeCount === 0
-                  ? 'Keine ausstehenden Ã„nderungen'
-                  : `${assignChangeCount} ausstehende Ã„nderung(en)`}
+                  ? t('stations.tab.assign.noPendingChanges')
+                  : t('stations.tab.assign.pendingChanges', { count: assignChangeCount })}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1491,7 +1502,7 @@ export function StationsTab() {
                     'border border-border/60 surface-premium text-foreground hover:bg-muted'
                   }`}
                 >
-                  Abbrechen
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={submitAssign}
@@ -1500,11 +1511,11 @@ export function StationsTab() {
                 >
                   {assignSaving ? (
                     <>
-                      <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichereâ€¦
+                      <Icon name="loader-2" className="w-4 h-4 animate-spin" /> {t('common.saving')}
                     </>
                   ) : (
                     <>
-                      <Icon name="save" className="w-4 h-4" /> Zuweisung speichern
+                      <Icon name="save" className="w-4 h-4" /> {t('stations.tab.assign.save')}
                     </>
                   )}
                 </button>
@@ -1585,6 +1596,7 @@ function StationCard({
   onAssign: () => void;
   toggling: boolean;
 }) {
+  const { t } = useLanguage();
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
 
@@ -1616,7 +1628,7 @@ function StationCard({
                     isActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
                   }`}
                 />
-                {isActive ? 'Aktiv' : 'Inaktiv'}
+                {isActive ? t('stations.status.ACTIVE') : t('stations.status.INACTIVE')}
               </span>
             </div>
             {addressLine && (
@@ -1635,8 +1647,8 @@ function StationCard({
                 <span
                   title={
                     station.latitude != null && station.longitude != null
-                      ? `Fahrzeuge innerhalb von ${station.radiusMeters} m gelten als â€žvor Ort"`
-                      : 'Umkreis konfiguriert â€” wirkt erst, wenn die Station Koordinaten hat.'
+                      ? t('stations.tab.card.radiusTitleActive', { radius: station.radiusMeters ?? 0 })
+                      : t('stations.tab.card.radiusTitlePending')
                   }
                   className={`text-[11px] flex items-center gap-1 ${
                     station.latitude != null && station.longitude != null
@@ -1645,7 +1657,7 @@ function StationCard({
                   }`}
                 >
                   <Icon name="crosshair" className="w-3 h-3" />
-                  Umkreis{' '}
+                  {t('stations.tab.card.radius')}{' '}
                   <span className="font-semibold tabular-nums">
                     {station.radiusMeters >= 1000
                       ? `${(station.radiusMeters / 1000).toFixed(station.radiusMeters % 1000 === 0 ? 0 : 1)} km`
@@ -1661,14 +1673,14 @@ function StationCard({
         <div className="flex flex-wrap items-center gap-4 lg:gap-5">
           <div className="flex flex-col">
             <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-              Fahrzeuge
+              {t('stations.tab.card.vehicles')}
             </span>
             <span className={`text-sm font-bold ${textPrimary}`}>{station.vehicleCount}</span>
           </div>
           {station.managerName && (
             <div className="flex flex-col min-w-0 max-w-[180px]">
               <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-                Manager
+                {t('stations.tab.card.manager')}
               </span>
               <span className={`text-xs truncate ${textPrimary}`}>{station.managerName}</span>
             </div>
@@ -1676,7 +1688,7 @@ function StationCard({
           {station.phone && (
             <div className="flex flex-col min-w-0 max-w-[160px]">
               <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-                Telefon
+                {t('stations.tab.card.phone')}
               </span>
               <a
                 href={`tel:${station.phone}`}
@@ -1689,7 +1701,7 @@ function StationCard({
           {station.email && (
             <div className="flex flex-col min-w-0 max-w-[200px]">
               <span className={`text-[10px] uppercase tracking-wider font-semibold ${textSecondary}`}>
-                E-Mail
+                {t('stations.tab.card.email')}
               </span>
               <a
                 href={`mailto:${station.email}`}
@@ -1705,15 +1717,15 @@ function StationCard({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={onAssign}
-            title="Fahrzeuge zu diesem Standort zuweisen"
+            title={t('stations.tab.card.assignTitle')}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors mr-1 sq-tone-brand hover:opacity-90"
           >
-            <Icon name="car" className="w-3.5 h-3.5" /> Fahrzeuge zuweisen
+            <Icon name="car" className="w-3.5 h-3.5" /> {t('stations.tab.card.assign')}
           </button>
           <button
             onClick={onToggleStatus}
             disabled={toggling}
-            title={isActive ? 'Deaktivieren' : 'Aktivieren'}
+            title={isActive ? t('stations.tab.card.deactivate') : t('stations.tab.card.activate')}
             className="p-2 rounded-lg transition-colors disabled:opacity-50 hover:bg-muted"
           >
             {toggling ? (
@@ -1726,14 +1738,14 @@ function StationCard({
           </button>
           <button
             onClick={onEdit}
-            title="Bearbeiten"
+            title={t('common.edit')}
             className="p-2 rounded-lg transition-colors hover:bg-muted"
           >
             <Icon name="edit-3" className={`w-4 h-4 ${textSecondary}`} />
           </button>
           <button
             onClick={onDelete}
-            title="LÃ¶schen"
+            title={t('common.delete')}
             className="p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors"
           >
             <Icon name="trash-2" className={`w-4 h-4 ${textSecondary}`} />

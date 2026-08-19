@@ -3,6 +3,7 @@ import type { TranslationKey } from './en';
 import { automationWorkflowDe } from './automation-workflow.de';
 import { legalDocumentsDe } from './legal-documents.de';
 import { settingsAdminDe } from './settings-admin.de';
+import { stationsTabDe } from './stations-tab.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -5374,4 +5375,5 @@ export const de: Record<TranslationKey, string> = {
   ...legalDocumentsDe,
   ...settingsAdminDe,
   ...automationWorkflowDe,
+  ...stationsTabDe,
 } satisfies CompleteTranslationDictionary;

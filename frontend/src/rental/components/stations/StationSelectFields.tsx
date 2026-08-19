@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Station } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   getStationWarnings,
   isOneWayRental,
@@ -8,6 +9,7 @@ import {
   stationsForPickup,
   stationsForReturn,
 } from '../../lib/stationBookingUtils';
+import { labelStationWarning } from './stations-i18n';
 
 interface StationSelectFieldsProps {
   stations: Station[];
@@ -33,6 +35,7 @@ export function StationSelectFields({
   compact,
   touchFriendly,
 }: StationSelectFieldsProps) {
+  const { t, locale } = useLanguage();
   const pickupOptions = useMemo(() => stationsForPickup(stations), [stations]);
   const returnOptions = useMemo(() => stationsForReturn(stations), [stations]);
   const pickupStation = stations.find((s) => s.id === pickupStationId);
@@ -49,17 +52,17 @@ export function StationSelectFields({
     <div className="space-y-3">
       <div className={compact ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
         <div>
-          <label className={labelClass}>Abholstation *</label>
+          <label className={labelClass}>{t('stations.select.pickupLabel')}</label>
           <select
             value={pickupStationId}
             onChange={(e) => onPickupChange(e.target.value)}
             className={inputClass}
           >
-            <option value="">Station wählen…</option>
+            <option value="">{t('stations.select.placeholder')}</option>
             {pickupOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {stationLabel(s)}
-                {s.isPrimary ? ' · Hauptstation' : ''}
+                {s.isPrimary ? t('stations.select.primarySuffix') : ''}
               </option>
             ))}
           </select>
@@ -67,21 +70,21 @@ export function StationSelectFields({
             <div className="flex flex-wrap gap-1 mt-1.5">
               {pickupWarnings.map((w) => (
                 <StatusChip key={w} tone="warning">
-                  {w === 'pickupDisabled' ? 'Kein Pickup' : w === 'archived' ? 'Archiviert' : 'Inaktiv'}
+                  {labelStationWarning(locale, w)}
                 </StatusChip>
               ))}
             </div>
           )}
         </div>
         <div>
-          <label className={labelClass}>Rückgabestation *</label>
+          <label className={labelClass}>{t('stations.select.returnLabel')}</label>
           <select
             value={sameReturnStation ? pickupStationId : returnStationId}
             disabled={sameReturnStation}
             onChange={(e) => onReturnChange(e.target.value)}
             className={`${inputClass} disabled:opacity-60`}
           >
-            <option value="">Station wählen…</option>
+            <option value="">{t('stations.select.placeholder')}</option>
             {returnOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {stationLabel(s)}
@@ -92,7 +95,7 @@ export function StationSelectFields({
             <div className="flex flex-wrap gap-1 mt-1.5">
               {returnWarnings.map((w) => (
                 <StatusChip key={w} tone="warning">
-                  {w === 'returnDisabled' ? 'Kein Return' : w === 'archived' ? 'Archiviert' : 'Inaktiv'}
+                  {labelStationWarning(locale, w)}
                 </StatusChip>
               ))}
             </div>
@@ -108,11 +111,11 @@ export function StationSelectFields({
             if (e.target.checked && pickupStationId) onReturnChange(pickupStationId);
           }}
         />
-        Gleiche Station für Rückgabe
+        {t('stations.select.sameReturn')}
       </label>
       {oneWay && (
         <p className="text-xs sq-tone-info px-3 py-2 rounded-lg border border-border">
-          One-Way: Abholung und Rückgabe an unterschiedlichen Stationen.
+          {t('bookings.detail.oneWayRental')}
         </p>
       )}
     </div>

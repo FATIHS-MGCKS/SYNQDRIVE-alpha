@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-stations-p2-2-6-2026-08-19',
+    version: '4.9.926',
+    title: 'Rental i18n — P2.2.6 Stations presentation',
+    summary: [
+      'Rental Stations legacy settings tab (`StationsTab`) and booking station selectors (`StationSelectFields`) migrated to canonical `frontend/src/i18n`.',
+      'Scanner P2.2.6 enforce-clean zone reports 0 findings (57→0); +98 EN+DE keys via `stations-tab.{en,de}.ts` (6265→6363); helper `stations-i18n.ts`; reused `stations.*`, `common.*`, `bookings.detail.oneWayRental`.',
+      'Four existing station shells migrated shim→canonical (`../../i18n/`→`../../../i18n/`); rental compat 30→26; presentation-only — CRUD, routing, and API semantics unchanged.',
+    ],
+    reason: 'StationsTab (extracted in P2.2.4) and StationSelectFields still carried 57 hardcoded presentation strings outside canonical i18n.',
+    previousBehavior: 'German/English inline copy in StationsTab and StationSelectFields; station shells on rental/i18n shim.',
+    details:
+      'frontend/src/rental/components/stations/StationsTab.tsx; StationSelectFields.tsx; stations-i18n.ts; stations-tab translations; rental-stations-localization.test.tsx; architecture/I18N_RENTAL_STATIONS_P2_2_6_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-19T21:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-automation-p2-2-5-2026-08-19',
     version: '4.9.925',
     title: 'Rental i18n — P2.2.5 Workflow + Task Automation',

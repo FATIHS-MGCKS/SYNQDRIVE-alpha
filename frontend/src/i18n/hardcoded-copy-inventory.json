@@ -111,25 +111,24 @@
     }
   },
   "summary": {
-    "total": 2212,
+    "total": 2155,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 890,
+      "RENTAL": 833,
       "SHARED": 35,
       "SHELL": 38
     },
     "byCategory": {
-      "ARIA": 89,
-      "TITLE": 317,
-      "TEXT": 1531,
-      "LABEL": 119,
-      "PLACEHOLDER": 148,
+      "ARIA": 88,
+      "TITLE": 313,
+      "TEXT": 1492,
+      "LABEL": 112,
+      "PLACEHOLDER": 142,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 474,
-      "Stations": 57,
       "Finance/Billing": 131,
       "WhatsApp": 72,
       "Tasks": 17,
@@ -381,7 +380,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1456,
+      "line": 1460,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -409,7 +408,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23262,
+      "line": 23279,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -661,7 +660,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27147,
+      "line": 27164,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1652,7 +1651,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27092,
+      "line": 27109,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1793,7 +1792,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 927,
+      "line": 931,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1807,7 +1806,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23566,
+      "line": 23583,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1849,7 +1848,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1546,
+      "line": 1550,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2774,7 +2773,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1667,
+      "line": 1671,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2858,7 +2857,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 976,
+      "line": 980,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3152,7 +3151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1557,
+      "line": 1561,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3478,7 +3477,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1461,
+      "line": 1465,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3534,7 +3533,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1615,
+      "line": 1619,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3548,7 +3547,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1617,
+      "line": 1621,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4153,7 +4152,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24534,
+      "line": 24551,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4182,7 +4181,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1441,
+      "line": 1445,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4196,7 +4195,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1585,
+      "line": 1589,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4687,7 +4686,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27082,
+      "line": 27099,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4898,7 +4897,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1665,
+      "line": 1669,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5207,7 +5206,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 21875,
+      "line": 21892,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5655,7 +5654,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23176,
+      "line": 23193,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6286,7 +6285,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1504,
+      "line": 1508,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6301,7 +6300,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 944,
+      "line": 948,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7766,7 +7765,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1520,
+      "line": 1524,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7990,7 +7989,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1510,
+      "line": 1514,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8032,7 +8031,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27117,
+      "line": 27134,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8327,7 +8326,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23242,
+      "line": 23259,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8565,7 +8564,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1497,
+      "line": 1501,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9099,7 +9098,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27104,
+      "line": 27121,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9113,7 +9112,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27121,
+      "line": 27138,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9534,7 +9533,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26798,
+      "line": 26815,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10198,7 +10197,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1485,
+      "line": 1489,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10716,7 +10715,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1621,
+      "line": 1625,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10730,7 +10729,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1618,
+      "line": 1622,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10744,7 +10743,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1614,
+      "line": 1618,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11641,7 +11640,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1518,
+      "line": 1522,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11851,7 +11850,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1668,
+      "line": 1672,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12481,7 +12480,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1419,
+      "line": 1423,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13071,7 +13070,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27071,
+      "line": 27088,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13085,7 +13084,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1215,
+      "line": 1219,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13183,7 +13182,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1558,
+      "line": 1562,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13760,7 +13759,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1415,
+      "line": 1419,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13858,7 +13857,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1548,
+      "line": 1552,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13944,7 +13943,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1463,
+      "line": 1467,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14126,7 +14125,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24536,
+      "line": 24553,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14168,7 +14167,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23262,
+      "line": 23279,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14196,7 +14195,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1419,
+      "line": 1423,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14210,7 +14209,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1420,
+      "line": 1424,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14253,7 +14252,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1362,
+      "line": 1366,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14267,7 +14266,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1386,
+      "line": 1390,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14309,7 +14308,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1545,
+      "line": 1549,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14661,7 +14660,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23302,
+      "line": 23319,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14829,7 +14828,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1668,
+      "line": 1672,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -17770,20 +17769,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1441,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TITLE",
-      "sample": "`GPS-Position im $",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingInvoiceDetailDrawer.tsx",
       "line": 38,
       "surface": "RENTAL",
@@ -17839,34 +17824,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 52,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Abholstation *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 52,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "Abholstation *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
       ]
     },
     {
@@ -18428,20 +18385,6 @@
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1417,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Aktuell:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -19169,34 +19112,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/ScheduleBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 885,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Breitengrad (Lat)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 885,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "Breitengrad (Lat)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -20982,20 +20897,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 670,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Erneut laden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/InvitesTab.tsx",
       "line": 152,
       "surface": "RENTAL",
@@ -21305,20 +21206,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 961,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Fahrzeuge gelten als",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillableVehiclesTable.tsx",
       "line": 45,
       "surface": "RENTAL",
@@ -21330,48 +21217,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1356,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Fahrzeuge werden geladenâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1708,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TITLE",
-      "sample": "Fahrzeuge zu diesem Standort zuweisen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1282,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Fahrzeuge zuweisen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -21528,20 +21373,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/RolesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1033,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Filiale Â· 250m",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -21732,62 +21563,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1044,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "GelÃ¤nde Â· 1km",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 567,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Geocoding fehlgeschlagen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 958,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Geofence-Umkreis (Home-Zone)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 956,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "Geofence-Umkreis (Home-Zone)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/HandoverProtocolDialog.tsx",
       "line": 551,
       "surface": "RENTAL",
@@ -21855,20 +21630,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 110,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Gleiche Station für Rückgabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
       ]
     },
     {
@@ -22065,20 +21826,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantPaymentMethodsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 612,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "ARIA",
-      "sample": "Hinweis schlieÃŸen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -22520,20 +22267,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1115,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "PLACEHOLDER",
-      "sample": "Interne Notizen zum Standortâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceNotes.tsx",
       "line": 79,
       "surface": "RENTAL",
@@ -22559,20 +22292,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceDetailSecondary.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1716,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TITLE",
-      "sample": "isActive ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -22884,20 +22603,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1367,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Keine Fahrzeuge in dieser Organisation registriert.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/insights/InsightsCockpit.tsx",
       "line": 359,
       "surface": "RENTAL",
@@ -22993,20 +22698,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1371,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Keine Treffer fÃ¼r die gewÃ¤hlten Filter.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -23138,20 +22829,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 936,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Koordinaten zurÃ¼cksetzen (beim nÃ¤chsten Speichern wird neu geocodiert)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillingOverviewTab.tsx",
       "line": 116,
       "surface": "RENTAL",
@@ -23163,76 +22840,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillingOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1249,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "LÃ¶scheâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1736,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TITLE",
-      "sample": "LÃ¶schen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1253,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "LÃ¶schen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 908,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "LÃ¤ngengrad (Lng)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 908,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "LÃ¤ngengrad (Lng)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -23318,20 +22925,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceAssistantBuilder.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 689,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Legen Sie Ihren ersten Standort an, um Fahrzeuge und Benutzer geografisch zuzuordnen.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -24033,20 +23626,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/documents/DocumentExtractionFlowStatus.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 813,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "PLACEHOLDER",
-      "sample": "MusterstraÃŸe 12",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -25173,20 +24752,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 688,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Noch keine Standorte",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/support/SupportTicketInbox.tsx",
       "line": 190,
       "surface": "RENTAL",
@@ -25450,34 +25015,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/BusinessInsightsBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1421,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "ohne Station",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 114,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "One-Way: Abholung und Rückgabe an unterschiedlichen Stationen.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
       ]
     },
     {
@@ -25759,20 +25296,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoicePermissionsMatrix.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1022,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Parkplatz Â· 100m",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -27181,34 +26704,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 77,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Rückgabestation *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 77,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "Rückgabestation *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 437,
       "surface": "RENTAL",
@@ -27942,20 +27437,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1188,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Speichereâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantPaymentMethodsSection.tsx",
       "line": 59,
       "surface": "RENTAL",
@@ -27967,62 +27448,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantPaymentMethodsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 546,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Standort hinzufÃ¼gen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1219,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Standort lÃ¶schen?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1285,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Standort:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 680,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Standorte werden geladenâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -28068,34 +27493,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationSelectFields.tsx",
-      "line": 58,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Station wählen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/stations/StationSelectFields.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1092,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "PLACEHOLDER",
-      "sample": "station@firma.de",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UserDetailDrawer.tsx",
       "line": 307,
       "surface": "RENTAL",
@@ -28121,48 +27518,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/AccessScopesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 511,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Stations &amp; Branches",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 761,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Stationsname / Adresse",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 761,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "Stationsname / Adresse",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -28222,34 +27577,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 810,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "StraÃŸe / Adresse",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 810,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "LABEL",
-      "sample": "StraÃŸe / Adresse",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 424,
       "surface": "RENTAL",
@@ -28306,20 +27633,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1318,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "PLACEHOLDER",
-      "sample": "Suche nach Kennzeichen, Modell, Standortâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UsersTab.tsx",
       "line": 388,
       "surface": "RENTAL",
@@ -28331,34 +27644,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UsersTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 520,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "PLACEHOLDER",
-      "sample": "Suche nach Name, Stadt, Managerâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 780,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Suche Standorteâ€¦",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -29626,34 +28911,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1444,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "vor Ort",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 962,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "vor Ort / Home",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/SignaturePad.tsx",
       "line": 243,
       "surface": "RENTAL",
@@ -29662,10 +28919,9 @@
       "sample": "Vor- und Nachname",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/handover/SignaturePad.tsx",
-        "rental/components/stations/StationsTab.tsx"
+        "rental/components/handover/SignaturePad.tsx"
       ]
     },
     {
@@ -29921,34 +29177,6 @@
       ]
     },
     {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1464,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Wird entfernt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1455,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Wird verschoben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/support/SupportCenterHero.tsx",
       "line": 88,
       "surface": "RENTAL",
@@ -30072,20 +29300,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 764,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "PLACEHOLDER",
-      "sample": "z.B. SynqDrive Berlin Mitte",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {
@@ -30307,20 +29521,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillingAddOnsTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/stations/StationsTab.tsx",
-      "line": 1507,
-      "surface": "RENTAL",
-      "module": "Stations",
-      "category": "TEXT",
-      "sample": "Zuweisung speichern",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/stations/StationsTab.tsx"
       ]
     },
     {

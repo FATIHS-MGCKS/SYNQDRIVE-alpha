@@ -1,6 +1,7 @@
 import { automationWorkflowEn } from './automation-workflow.en';
 import { legalDocumentsEn } from './legal-documents.en';
 import { settingsAdminEn } from './settings-admin.en';
+import { stationsTabEn } from './stations-tab.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5374,6 +5375,7 @@ export const en = {
   ...legalDocumentsEn,
   ...settingsAdminEn,
   ...automationWorkflowEn,
+  ...stationsTabEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;
