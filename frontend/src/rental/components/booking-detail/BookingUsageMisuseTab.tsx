@@ -4,6 +4,7 @@ import { api } from '../../../lib/api';
 import { MisuseCasesPanel } from '../MisuseCasesPanel';
 import { RentalStressAnalysisCard } from '../RentalStressAnalysisCard';
 import { VehicleStressPanel } from '../VehicleStressPanel';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { EM_DASH } from './bookingDetailUtils';
 import { formatStressScore } from '../../lib/scoreFormat';
 import { bd } from './booking-detail-ui';
@@ -21,6 +22,7 @@ export function BookingUsageMisuseTab({
   rentalAnalysis: rentalAnalysisProp,
   analysisLoading: analysisLoadingProp,
 }: BookingUsageMisuseTabProps) {
+  const { t } = useLanguage();
   const u = detail.usage;
   const [rentalAnalysis, setRentalAnalysis] = useState<RentalDrivingAnalysisItem | null>(
     rentalAnalysisProp ?? null,
@@ -66,7 +68,7 @@ export function BookingUsageMisuseTab({
   return (
     <div className="space-y-4">
       <VehicleStressPanel
-        title="Fahrbelastung dieser Buchung"
+        title={t('bookings.detail.usageLoadTitle')}
         stressScore={u.drivingStressScore}
         stressLevel={u.stressLevel}
         hasEnoughData={u.hasAnalysis || stressDisplay.isMissing === false}
@@ -93,14 +95,14 @@ export function BookingUsageMisuseTab({
 
       {!u.hasAnalysis && u.misuseCaseCount === 0 && !rentalAnalysis && !analysisLoading && (
         <p className="text-xs text-muted-foreground px-1">
-          Nutzungsanalyse steht nach oder während der Vermietung zur Verfügung, sobald Fahrdaten vorliegen.
+          {t('bookings.detail.usageAnalysisPending')}
         </p>
       )}
 
       <MisuseCasesPanel
         orgId={orgId}
         bookingId={detail.core.bookingId}
-        title="Missbrauchs-/Schadensverdacht während dieser Buchung"
+        title={t('bookings.detail.misuseTitle')}
         limit={15}
       />
     </div>

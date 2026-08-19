@@ -16,6 +16,8 @@ import { BookingsPage } from './bookings/BookingsPage';
 import { BookingDossier } from './booking-detail/BookingDossier';
 import { StationSelectFields } from './stations/StationSelectFields';
 import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerStatusTone } from './bookings/bookingStatus';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { bookingsFormattingLocaleOrDefault } from './bookings-customers/bookings-i18n';
 // V4.6.76 Rental Health V1 — surface the rental_blocked gate on the
 // "Pickup bestätigen" flow so dispatchers can't even try to hand over a
 // vehicle that the backend will refuse. The BookingsService.create gate
@@ -52,8 +54,6 @@ const buildMMY = (v: { make?: string | null; model?: string | null; year?: numbe
 };
 
 const bookingStatusTone = (status: string): StatusTone => plannerStatusTone(status as any);
-
-const bookingStatusLabel = (status: string): string => plannerStatusLabel(status as any) || status;
 
 const metricToneToStatus = (tone: 'brand' | 'success' | 'warning' | 'neutral'): StatusTone => {
   if (tone === 'brand') return 'info';
@@ -92,6 +92,12 @@ export function BookingsView({
   initialDetailBookingId,
   onConsumeInitialDetailBookingId,
 }: BookingsViewProps) {
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
+  const bookingStatusLabel = useCallback(
+    (status: string): string => plannerStatusLabel(status as any, locale) || status,
+    [locale],
+  );
   const { orgId } = useRentalOrg();
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
@@ -322,11 +328,11 @@ export function BookingsView({
       if (!name) return;
       const createdAt = c?.createdAt ? new Date(c.createdAt) : null;
       const sinceLabel = createdAt && !isNaN(createdAt.getTime())
-        ? createdAt.toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })
+        ? createdAt.toLocaleDateString(fmtLocale, { month: 'short', year: 'numeric' })
         : '';
       const licenseExpiry = c?.licenseExpiry ? new Date(c.licenseExpiry) : null;
       const licenseExpiryLabel = licenseExpiry && !isNaN(licenseExpiry.getTime())
-        ? licenseExpiry.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        ? licenseExpiry.toLocaleDateString(fmtLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
         : '';
       byName.set(name, {
         email: c?.email || '',
@@ -341,7 +347,7 @@ export function BookingsView({
       });
     });
     return byName;
-  }, [apiCustomers]);
+  }, [apiCustomers, fmtLocale]);
 
   // Calendar helper functions for inline edit
   const editCalMonthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
@@ -1244,7 +1250,7 @@ export function BookingsView({
         ),
       },
     ],
-    [fleetVehicles, systemDark],
+    [fleetVehicles, systemDark, bookingStatusLabel],
   );
 
   const popupBooking = useMemo(() => {
@@ -1336,7 +1342,7 @@ export function BookingsView({
                 className="sq-press flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold sq-tone-brand"
               >
                 <Icon name="maximize-2" className="w-4 h-4" />
-                Full detail
+                {t('bookings.drawer.fullDetail')}
               </button>
             </div>
           ) : undefined
@@ -1410,7 +1416,7 @@ export function BookingsView({
                                   <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
                                     <Icon name="map-pin" className={`w-5 h-5 ${'text-[color:var(--status-success)]'}`} />
                                     <div>
-                                      <div className={`text-xs text-muted-foreground`}>Rückgabe</div>
+                                      <div className={`text-xs text-muted-foreground`}>{t('bookings.drawer.return')}</div>
                                       <div className={`text-xs font-semibold text-foreground`}>{popupBooking.returnLocation}</div>
                                     </div>
                                   </div>
@@ -1420,7 +1426,7 @@ export function BookingsView({
                               {/* Vehicle & Payment - 4 columns */}
                               <div>
                                 <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
-                                  Fahrzeug & Zahlung
+                                  {t('bookings.drawer.vehicleAndPayment')}
                                 </div>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                   <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
@@ -1454,10 +1460,10 @@ export function BookingsView({
                                             on the Booking model; mapApiBooking assigns null). Without
                                             this guard the expanded booking card crashes on
                                             `.toLocaleString` the moment the user clicks any booking. */}
-                                        {popupBooking.mileageStart != null ? `${popupBooking.mileageStart.toLocaleString('de-DE')} km` : '—'}
+                                        {popupBooking.mileageStart != null ? `${popupBooking.mileageStart.toLocaleString(fmtLocale)} km` : '—'}
                                         {popupBooking.mileageStart != null && popupBooking.mileageEnd != null && (
                                           <span className={`ml-1 text-muted-foreground`}>
-                                            → {popupBooking.mileageEnd.toLocaleString('de-DE')} km
+                                            → {popupBooking.mileageEnd.toLocaleString(fmtLocale)} km
                                           </span>
                                         )}
                                       </div>
@@ -1472,7 +1478,7 @@ export function BookingsView({
                                   'sq-tone-success border border-current/30'
                                 }`}>
                                   <Icon name="car" className="w-5 h-5" />
-                                  <span className="font-semibold">Gefahrene Kilometer:</span> {(popupBooking.mileageEnd - popupBooking.mileageStart).toLocaleString('de-DE')} km
+                                  <span className="font-semibold">{t('bookings.drawer.drivenKm')}</span> {(popupBooking.mileageEnd - popupBooking.mileageStart).toLocaleString(fmtLocale)} km
                                 </div>
                               )}
           
@@ -1481,7 +1487,7 @@ export function BookingsView({
                                 <div className={`px-3 py-3 rounded-lg ${
                                   'bg-muted/50 text-muted-foreground border border-border/30'
                                 }`}>
-                                  <span className="font-semibold">Notiz:</span> {popupBooking.notes}
+                                  <span className="font-semibold">{t('bookings.drawer.noteLabel')}</span> {popupBooking.notes}
                                 </div>
                               )}
           
@@ -1512,7 +1518,7 @@ export function BookingsView({
                                                 {[
                                                   popupBooking.pickupProtocol?.performedByName || null,
                                                   popupBooking.pickupProtocol?.performedAt
-                                                    ? new Date(popupBooking.pickupProtocol.performedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+                                                    ? new Date(popupBooking.pickupProtocol.performedAt).toLocaleString(fmtLocale, { dateStyle: 'short', timeStyle: 'short' })
                                                     : null,
                                                 ].filter(Boolean).join(' · ')}
                                               </div>
@@ -1561,7 +1567,7 @@ export function BookingsView({
                                                 {[
                                                   popupBooking.returnProtocol?.performedByName || null,
                                                   popupBooking.returnProtocol?.performedAt
-                                                    ? new Date(popupBooking.returnProtocol.performedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+                                                    ? new Date(popupBooking.returnProtocol.performedAt).toLocaleString(fmtLocale, { dateStyle: 'short', timeStyle: 'short' })
                                                     : null,
                                                 ].filter(Boolean).join(' · ')}
                                               </div>
@@ -1599,7 +1605,7 @@ export function BookingsView({
         open={!!editingBooking}
         onOpenChange={(open) => { if (!open) setEditingBooking(null); }}
         maxWidthClassName="sm:max-w-2xl"
-        title="Buchung bearbeiten"
+        title={t('bookings.edit.title')}
         description={editingBooking ? `Ref: ${editingBooking.bookingRef}` : undefined}
         bodyClassName="p-0"
         footer={(
@@ -1617,7 +1623,7 @@ export function BookingsView({
               className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
             >
               <Icon name="save" className="w-3.5 h-3.5" />
-              Änderungen speichern
+              {t('bookings.edit.saveChanges')}
             </button>
           </div>
         )}
@@ -1626,7 +1632,7 @@ export function BookingsView({
             <div className="max-h-[min(70vh,100dvh-14rem)] overflow-y-auto px-3 py-3 space-y-5">
               {/* Section: Kunde & Fahrzeug */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Kunde & Fahrzeug</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>{t('bookings.edit.customerAndVehicle')}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className={`text-xs mb-1 block text-muted-foreground`}>Kunde</label>
@@ -1652,7 +1658,7 @@ export function BookingsView({
                         className={`min-w-0 flex-1 px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}
                       >
                         {vehicleOptions.length === 0 ? (
-                          <option value="">Keine Fahrzeuge verfügbar</option>
+                          <option value="">{t('bookings.edit.noVehiclesAvailable')}</option>
                         ) : (
                           vehicleOptions.map((v) => (
                             <option key={v.id} value={v.name}>
@@ -1687,7 +1693,7 @@ export function BookingsView({
                     <input type="text" value={editForm.endDate} onChange={(e) => setEditForm(f => ({ ...f, endDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block text-muted-foreground`}>Rückgabezeit</label>
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>{t('bookings.edit.returnTime')}</label>
                     <input type="text" value={editForm.endTime} onChange={(e) => setEditForm(f => ({ ...f, endTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                 </div>
@@ -1716,7 +1722,7 @@ export function BookingsView({
 
               {/* Section: Versicherung & Zahlung */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Versicherung & Zahlung</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>{t('bookings.edit.insuranceAndPayment')}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={`text-xs mb-1 block text-muted-foreground`}>Versicherung</label>
@@ -1724,7 +1730,7 @@ export function BookingsView({
                       <option value="Vollkasko">Vollkasko</option>
                       <option value="Teilkasko">Teilkasko</option>
                       <option value="Haftpflicht">Haftpflicht</option>
-                      <option value="Premium Vollkasko">Premium Vollkasko</option>
+                      <option value="Premium Vollkasko">{t('bookings.edit.premiumFullCover')}</option>
                     </select>
                   </div>
                   <div>
@@ -1732,7 +1738,7 @@ export function BookingsView({
                     <select value={editForm.paymentMethod} onChange={(e) => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
                       <option value="Kreditkarte">Kreditkarte</option>
                       <option value="PayPal">PayPal</option>
-                      <option value="Überweisung">Überweisung</option>
+                      <option value="Überweisung">{t('bookings.edit.bankTransfer')}</option>
                       <option value="Lastschrift">Lastschrift</option>
                       <option value="Bar">Bar</option>
                     </select>
@@ -1747,7 +1753,7 @@ export function BookingsView({
                   value={editForm.notes}
                   onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))}
                   rows={3}
-                  placeholder="Optionale Anmerkungen zur Buchung..."
+                  placeholder={t('bookings.edit.notesPlaceholder')}
                   className={`w-full px-3 py-2 rounded-lg text-xs border transition-all resize-none border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] placeholder:text-muted-foreground outline-none`}
                 />
               </div>
@@ -1758,7 +1764,7 @@ export function BookingsView({
       <ConfirmDialog
         open={!!cancelConfirmId}
         onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}
-        title="Buchung stornieren?"
+        title={t('bookings.cancelBooking')}
         description="Möchten Sie diese Buchung wirklich stornieren? Diese Aktion kann nicht rückgängig gemacht werden."
         confirmLabel="Stornieren"
         cancelLabel="Zurück"

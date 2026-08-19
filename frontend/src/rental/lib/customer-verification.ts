@@ -1,4 +1,6 @@
 import type { StatusTone } from '../../components/patterns';
+import { ct } from '../components/bookings-customers/customers-i18n';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export type CustomerVerificationCheckKind =
   | 'ID_DOCUMENT'
@@ -71,31 +73,53 @@ export interface ManualPickupCheckPayload {
   notes?: string;
 }
 
-export const DIDIT_CONSENT_TEXT =
-  'Die Dokumentenprüfung wird durch Didit durchgeführt. SynqDrive nutzt diese Prüfung zur Ausweis-, Führerschein- oder Adressprüfung im Rahmen der Buchung. Es wird kein Selfie, kein Face Match und keine biometrische Liveness-Prüfung verwendet. Die endgültige Entscheidung wird nach Abschluss automatisch an SynqDrive übermittelt.';
+export function diditConsentText(locale: string): string {
+  return ct(locale, 'customers.verification.diditConsentText');
+}
 
+/** @deprecated Use diditConsentText(locale) or t('customers.verification.diditConsentText') */
+export const DIDIT_CONSENT_TEXT = ct('de', 'customers.verification.diditConsentText');
+
+export function verificationKindLabel(
+  kind: CustomerVerificationCheckKind,
+  locale: string,
+): string {
+  const key: TranslationKey =
+    kind === 'ID_DOCUMENT'
+      ? 'customers.verification.idDocument'
+      : kind === 'DRIVING_LICENSE'
+        ? 'customers.verification.drivingLicense'
+        : 'customers.verification.proofOfAddress';
+  return ct(locale, key);
+}
+
+/** @deprecated Prefer verificationKindLabel(kind, locale) */
 export const VERIFICATION_KIND_LABELS: Record<CustomerVerificationCheckKind, string> = {
-  ID_DOCUMENT: 'Ausweisprüfung',
-  DRIVING_LICENSE: 'Führerscheinprüfung',
-  PROOF_OF_ADDRESS: 'Adressnachweis',
+  ID_DOCUMENT: ct('de', 'customers.verification.idDocument'),
+  DRIVING_LICENSE: ct('de', 'customers.verification.drivingLicense'),
+  PROOF_OF_ADDRESS: ct('de', 'customers.verification.proofOfAddress'),
 };
 
 export function documentEligibilityLabelDe(status: DocumentEligibilityStatus): string {
+  return documentEligibilityLabel(status, 'de');
+}
+
+export function documentEligibilityLabel(status: DocumentEligibilityStatus, locale: string): string {
   switch (status) {
     case 'verified':
-      return 'Geprüft';
+      return ct(locale, 'customers.eligibility.verified');
     case 'missing':
-      return 'Fehlt';
+      return ct(locale, 'customers.eligibility.missing');
     case 'pending':
-      return 'In Prüfung';
+      return ct(locale, 'customers.eligibility.pending');
     case 'pickup_required':
-      return 'Prüfung beim Pickup';
+      return ct(locale, 'customers.eligibility.pickupRequired');
     case 'requires_review':
-      return 'Manuell prüfen';
+      return ct(locale, 'customers.eligibility.requiresReview');
     case 'rejected':
-      return 'Abgelehnt';
+      return ct(locale, 'customers.eligibility.rejected');
     case 'expired':
-      return 'Abgelaufen';
+      return ct(locale, 'customers.eligibility.expired');
     default:
       return status;
   }
@@ -104,19 +128,26 @@ export function documentEligibilityLabelDe(status: DocumentEligibilityStatus): s
 export function proofOfAddressEligibilityLabelDe(
   status: ProofOfAddressEligibilityStatus,
 ): string {
+  return proofOfAddressEligibilityLabel(status, 'de');
+}
+
+export function proofOfAddressEligibilityLabel(
+  status: ProofOfAddressEligibilityStatus,
+  locale: string,
+): string {
   switch (status) {
     case 'not_required':
-      return 'Nicht erforderlich';
+      return ct(locale, 'customers.eligibility.notRequired');
     case 'required':
-      return 'Erforderlich';
+      return ct(locale, 'customers.eligibility.required');
     case 'verified':
-      return 'Geprüft';
+      return ct(locale, 'customers.eligibility.verified');
     case 'pending':
-      return 'In Prüfung';
+      return ct(locale, 'customers.eligibility.pending');
     case 'requires_review':
-      return 'Manuell prüfen';
+      return ct(locale, 'customers.eligibility.requiresReview');
     case 'rejected':
-      return 'Abgelehnt';
+      return ct(locale, 'customers.eligibility.rejected');
     default:
       return status;
   }
@@ -142,14 +173,14 @@ export function proofOfAddressEligibilityTone(
   return 'neutral';
 }
 
-export function diditAutoCheckButtonLabel(kind: CustomerVerificationCheckKind): string {
+export function diditAutoCheckButtonLabel(kind: CustomerVerificationCheckKind, locale = 'de'): string {
   switch (kind) {
     case 'ID_DOCUMENT':
-      return 'Ausweisprozess starten';
+      return ct(locale, 'customers.verification.diditAction.id');
     case 'DRIVING_LICENSE':
-      return 'Führerscheinprozess starten';
+      return ct(locale, 'customers.verification.diditAction.license');
     case 'PROOF_OF_ADDRESS':
-      return 'Adressnachweis starten';
+      return ct(locale, 'customers.verification.diditAction.poa');
   }
 }
 

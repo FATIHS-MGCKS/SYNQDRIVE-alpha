@@ -15,11 +15,11 @@ import type { BookingRow, CustomerDetail, EligibilityStage, KycDocSlot } from '.
 
 export const EM_DASH = '\u2014';
 
-export function formatDate(raw?: string | Date | null): string {
+export function formatDate(raw?: string | Date | null, formattingLocale?: string): string {
   if (!raw) return EM_DASH;
   const d = typeof raw === 'string' ? new Date(raw) : raw;
   if (!d || Number.isNaN(d.getTime())) return EM_DASH;
-  return d.toLocaleDateString('de-DE');
+  return d.toLocaleDateString(formattingLocale ?? 'de-DE');
 }
 
 export function formatDateTime(raw?: string | Date | null): string {

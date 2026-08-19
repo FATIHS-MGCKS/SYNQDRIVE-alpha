@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { TripDecisionSummary } from '../trips/trip-decision.types';
 
@@ -25,6 +26,7 @@ export function ManualRentalApprovalDialog({
   recommendationAtDecision,
   onSubmit,
 }: ManualRentalApprovalDialogProps) {
+  const { t } = useLanguage();
   const [decision, setDecision] = useState<'APPROVE' | 'CONDITIONAL' | 'REJECT'>('APPROVE');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +41,7 @@ export function ManualRentalApprovalDialog({
       <div className="w-full max-w-lg rounded-xl border border-border bg-background p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold">Manuelle Mietfreigabe</h2>
+            <h2 className="text-base font-semibold">{t('customers.manualApproval.title')}</h2>
             <p className="mt-1 text-[12px] text-muted-foreground">
               {subjectType} · {subjectId.slice(0, 8)}… · Empfehlung: {recommendationAtDecision}
             </p>
@@ -50,23 +52,23 @@ export function ManualRentalApprovalDialog({
         </div>
 
         <div className="mt-4 space-y-3">
-          <label className="block text-[12px] font-medium">Entscheidung</label>
+          <label className="block text-[12px] font-medium">{t('customers.manualApproval.decision')}</label>
           <select
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             value={decision}
             onChange={(e) => setDecision(e.target.value as typeof decision)}
           >
-            <option value="APPROVE">Freigeben</option>
-            <option value="CONDITIONAL">Bedingt freigeben</option>
-            <option value="REJECT">Ablehnen</option>
+            <option value="APPROVE">{t('customers.manualApproval.approve')}</option>
+            <option value="CONDITIONAL">{t('customers.manualApproval.conditional')}</option>
+            <option value="REJECT">{t('customers.manualApproval.reject')}</option>
           </select>
 
-          <label className="block text-[12px] font-medium">Begründung (mind. 20 Zeichen)</label>
+          <label className="block text-[12px] font-medium">{t('customers.manualApproval.reasonLabel')}</label>
           <textarea
             className="min-h-[96px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Operative Begründung für die manuelle Entscheidung…"
+            placeholder={t('customers.manualApproval.reasonPlaceholder')}
           />
 
           {error && <p className="text-[12px] text-red-600">{error}</p>}
@@ -79,7 +81,7 @@ export function ManualRentalApprovalDialog({
             onClick={onClose}
             disabled={submitting}
           >
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -92,18 +94,18 @@ export function ManualRentalApprovalDialog({
                 await onSubmit({ decision, reason: reason.trim() });
                 onClose();
               } catch (err) {
-                setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen');
+                setError(err instanceof Error ? err.message : t('customers.manualApproval.saveFailed'));
               } finally {
                 setSubmitting(false);
               }
             }}
           >
-            Entscheidung speichern
+            {t('customers.manualApproval.save')}
           </button>
         </div>
 
         <p className="mt-3 text-[10px] text-muted-foreground">
-          Snapshot der Dimensionen wird im Audit-Trail gespeichert. Keine automatische Kundensperre.
+          {t('customers.manualApproval.auditNote')}
         </p>
         <pre className="mt-2 hidden">{JSON.stringify(dimensionsSnapshot, null, 2)}</pre>
       </div>

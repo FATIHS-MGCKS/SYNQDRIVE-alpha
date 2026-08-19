@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 import { Car, IdCard } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
@@ -31,12 +32,14 @@ export function AddCustomerDocumentsStep({
   onVerificationUpdated,
   sectionTitle,
 }: AddCustomerDocumentsStepProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-5">
       {isPreparingDraft && (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
           <Icon name="loader-2" className="h-4 w-4 animate-spin" />
-          Kundendaten werden vorbereitet…
+          {t('customers.wizard.documents.preparing')}
         </div>
       )}
 
@@ -53,16 +56,16 @@ export function AddCustomerDocumentsStep({
         <div className="relative flex items-center py-1">
           <div className="h-px flex-1 bg-border" />
           <span className="px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            oder manuell hochladen
+            {t('customers.wizard.documents.orManualUpload')}
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
       )}
 
-      {sectionTitle(IdCard, `${idType} hochladen`)}
+      {sectionTitle(IdCard, t('customers.wizard.documents.uploadId', { idType }))}
       <div className="grid grid-cols-2 gap-3">
         <CustomerDocumentUploadBox
-          label="Vorderseite *"
+          label={t('customers.wizard.documents.frontRequired')}
           documentType="ID_FRONT"
           orgId={orgId}
           pendingFile={pendingDocFiles.ID_FRONT}
@@ -70,7 +73,7 @@ export function AddCustomerDocumentsStep({
           onPendingFileChange={(file) => onPendingFileChange('ID_FRONT', file)}
         />
         <CustomerDocumentUploadBox
-          label="Rückseite *"
+          label={t('customers.wizard.documents.backRequired')}
           documentType="ID_BACK"
           orgId={orgId}
           pendingFile={pendingDocFiles.ID_BACK}
@@ -80,10 +83,10 @@ export function AddCustomerDocumentsStep({
       </div>
 
       <div className="h-px my-1 bg-border" />
-      {sectionTitle(Car, 'Führerschein hochladen')}
+      {sectionTitle(Car, t('customers.wizard.documents.uploadLicense'))}
       <div className="grid grid-cols-2 gap-3">
         <CustomerDocumentUploadBox
-          label="Vorderseite *"
+          label={t('customers.wizard.documents.frontRequired')}
           documentType="LICENSE_FRONT"
           orgId={orgId}
           pendingFile={pendingDocFiles.LICENSE_FRONT}
@@ -91,7 +94,7 @@ export function AddCustomerDocumentsStep({
           onPendingFileChange={(file) => onPendingFileChange('LICENSE_FRONT', file)}
         />
         <CustomerDocumentUploadBox
-          label="Rückseite (optional)"
+          label={t('customers.wizard.documents.backOptional')}
           documentType="LICENSE_BACK"
           orgId={orgId}
           pendingFile={pendingDocFiles.LICENSE_BACK}

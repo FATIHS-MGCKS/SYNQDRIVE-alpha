@@ -631,8 +631,117 @@ Deterministic inventory: `node frontend/scripts/i18n-shim-inventory.mjs` (also r
 
 ### Remaining Rental debt
 
-**1390** findings — primarily Bookings (106), Tasks (113), Settings (102), Finance (129), Automation (183), Customers (67), and 655 in misc “other Rental areas”.
+See complete module table in P2.2.3 section below (sums to **1172**).
 
 ### Next phase
 
-**P2.2.3:** Bookings surfaces, Customers, Tasks, Settings, Finance/Billing.
+**P2.2.4 (recommended):** Tasks + Settings presentation extraction.
+
+---
+
+## P2.2.3 Bookings + Customers Outcome
+
+### True baseline (checkpoint `39c33e0`)
+
+| Module | Findings |
+|--------|----------|
+| Bookings | **106** |
+| Customers | **67** |
+| Global | 2712 |
+| Rental | 1390 |
+
+### Clean-zone boundary
+
+See `architecture/I18N_RENTAL_BOOKINGS_CUSTOMERS_P2_2_3_2026-08-19.md` (Bookings list/detail/wizard/payment + Customers list/detail/wizard/verification). `vehicle-bookings/**` remains P2.2.2.
+
+### Findings before/after
+
+| Metric | Before P2.2.3 | After P2.2.3 |
+|--------|---------------|--------------|
+| Bookings module | 106 | **0** |
+| Customers module | 67 | **0** |
+| Global findings | 2712 | **2494** |
+| Rental findings | 1390 | **1172** |
+| Enforce-clean remaining | 0 | **0** |
+
+### Canonical keys
+
+| | Count |
+|--|-------|
+| After P2.2.2 | 4687 |
+| After P2.2.3 | **5145** (+458 EN+DE) |
+
+### 218 Rental reduction reconciled
+
+| Category | Count |
+|----------|------:|
+| Bookings module migrated | 106 |
+| Customers module migrated | 67 |
+| other → P2.2.3 path reclassified + migrated | 52 |
+| New post-scan findings (offset) | +7 |
+| **Net Rental reduction** | **218** |
+
+The 45 beyond 173 = **52 − 7** (other-path migrations minus new scan findings). No false positives removed; no accidental out-of-scope migration.
+
+### 458 new-key breakdown
+
+| Namespace | Count |
+|-----------|------:|
+| `bookings.*` non-wizard | 62 |
+| `bookings.wizard.*` | 42 |
+| `customers.*` non-wizard | 258 |
+| `customers.wizard.*` | 96 |
+| Other namespaces | 0 |
+
+Duplicate-semantic audit: 55 overlaps with existing keys; **0 consolidated** (intentional domain grouping).
+
+### Coverage after P2.2.3
+
+| Locale | Owned | Missing | % | Status |
+|--------|-------|---------|---|--------|
+| en | 5145 | 0 | 100% | COMPLETE |
+| de | 5145 | 0 | 100% | COMPLETE |
+| pl | 493 | 4652 | 9.58% | PARTIAL |
+| fr | 786 | 4359 | 15.28% | PARTIAL |
+| cs | 493 | 4652 | 9.58% | PARTIAL |
+| nl | 493 | 4652 | 9.58% | PARTIAL |
+| es | 493 | 4652 | 9.58% | PARTIAL |
+| tr | 0 | 5145 | 0% | FALLBACK ONLY |
+| it | 493 | 4652 | 9.58% | PARTIAL |
+
+### Shim inventory
+
+| | Checkpoint | Final |
+|--|------------|-------|
+| Total compat | 33 | **32** |
+| Production | 22 | **21** |
+| Test | 11 | 11 |
+
+`BookingDocumentsSection` and `NewBookingView` migrated compat → canonical; `BookingsView` was transient compat during migration, corrected. **No new compat consumers.**
+
+### Complete remaining Rental debt (1172)
+
+| Module | Findings |
+|--------|----------:|
+| other Rental areas | 607 |
+| Automation | 183 |
+| Finance/Billing | 130 |
+| Tasks | 114 |
+| Settings | 103 |
+| Support | 19 |
+| Documents | 8 |
+| Stations | 7 |
+| App / routing shell | 1 |
+
+`ArchitekturView` updated (P2.2.3 entry — matches P2.2.1/P2.2.2 convention).
+
+### Business-logic safety
+
+Presentation/i18n only — booking/customer business rules and API contracts unchanged.
+
+### Validation
+
+- `npm run i18n:check` — pass
+- `rental-bookings-customers-localization.test.tsx` — pass
+- `npm test` — 7 pre-existing Fleet Health failures unchanged
+- `npm run build` — pass

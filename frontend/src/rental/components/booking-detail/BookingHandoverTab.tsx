@@ -4,6 +4,8 @@ import type { BookingActionMatrix } from './bookingDetailTypes';
 import { EM_DASH, formatDateTime } from './bookingDetailUtils';
 import { BookingStationPanel } from './BookingStationPanel';
 import { bd } from './booking-detail-ui';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { bookingsFormattingLocaleOrDefault } from '../bookings-customers/bookings-i18n';
 
 interface BookingHandoverTabProps {
   detail: BookingDetailDto;
@@ -19,6 +21,8 @@ function HandoverSide({
   actionAllowed,
   actionReason,
   onAction,
+  noProtocolLabel,
+  formattingLocale,
 }: {
   title: string;
   side: BookingDetailDto['handover']['pickup'];
@@ -26,7 +30,11 @@ function HandoverSide({
   actionAllowed: boolean;
   actionReason?: string;
   onAction: () => void;
+  noProtocolLabel: string;
+  formattingLocale: string;
 }) {
+  const disabledTitle = !actionAllowed ? actionReason : undefined;
+
   return (
     <div className={bd.card}>
       <div className="flex items-center justify-between gap-2 mb-3">
@@ -34,7 +42,7 @@ function HandoverSide({
         <button
           type="button"
           disabled={!actionAllowed}
-          title={!actionAllowed ? actionReason : undefined}
+          title={disabledTitle}
           onClick={onAction}
           className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${
             actionAllowed ? 'sq-tone-brand' : 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
@@ -44,12 +52,12 @@ function HandoverSide({
         </button>
       </div>
       {!side ? (
-        <p className="text-xs text-muted-foreground">Noch kein Protokoll erfasst.</p>
+        <p className="text-xs text-muted-foreground">{noProtocolLabel}</p>
       ) : (
         <dl className="space-y-2 text-xs">
           <Row label="Zeitpunkt" value={formatDateTime(side.completedAt)} />
           <Row label="Mitarbeiter" value={side.performedByName ?? EM_DASH} />
-          <Row label="Kilometerstand" value={`${side.odometerKm.toLocaleString('de-DE')} km`} />
+          <Row label="Kilometerstand" value={`${side.odometerKm.toLocaleString(formattingLocale)} km`} />
           <Row
             label="Kraftstoff/SoC"
             value={side.fuelFull ? 'Voll' : `${side.fuelPercent} %`}
@@ -63,6 +71,9 @@ function HandoverSide({
 }
 
 export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: BookingHandoverTabProps) {
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
+
   return (
     <div className="space-y-4">
       {detail.stations && (
@@ -70,25 +81,29 @@ export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: Booki
       )}
       {detail.stations?.hasReturnDeviation && (
         <p className="text-xs px-3 py-2 rounded-lg border border-border sq-tone-warning">
-          Rückgabe an abweichender Station — optional Fahrzeugtransfer prüfen.
+          {t('bookings.handover.returnDeviation')}
         </p>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <HandoverSide
-        title="Abholung (Pickup)"
+        title={t('bookings.handover.pickupTitle')}
         side={detail.handover.pickup}
         actionLabel={detail.handover.pickup ? 'Protokoll anzeigen' : 'Pickup starten'}
         actionAllowed={detail.handover.pickup ? true : matrix.pickup.allowed}
         actionReason={matrix.pickup.reason}
         onAction={onPickup}
+        noProtocolLabel={t('bookings.handover.noProtocol')}
+        formattingLocale={fmtLocale}
       />
       <HandoverSide
-        title="Rückgabe (Return)"
+        title={t('bookings.handover.returnTitle')}
         side={detail.handover.return}
         actionLabel={detail.handover.return ? 'Protokoll anzeigen' : 'Return starten'}
         actionAllowed={detail.handover.return ? true : matrix.return.allowed}
         actionReason={matrix.return.reason}
         onAction={onReturn}
+        noProtocolLabel={t('bookings.handover.noProtocol')}
+        formattingLocale={fmtLocale}
       />
       {!detail.handover.pickup && !matrix.pickup.allowed && matrix.pickup.reason && (
         <div className="lg:col-span-2 flex items-start gap-2 text-xs text-muted-foreground px-1">

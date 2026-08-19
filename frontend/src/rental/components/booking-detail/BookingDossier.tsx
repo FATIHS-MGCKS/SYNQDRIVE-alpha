@@ -18,6 +18,7 @@ import { BOOKING_DETAIL_TABS, type BookingDetailTab } from './bookingDetailTypes
 import { getBookingActionMatrix, getPrimaryBookingAction } from './bookingActionRules';
 import { useBookingDetail } from './useBookingDetail';
 import { formatDateTime } from './bookingDetailUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface BookingDossierProps {
   bookingId: string;
@@ -38,6 +39,7 @@ export function BookingDossier({
   onOpenCustomer,
   onOpenVehicle,
 }: BookingDossierProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { openHandover } = useHandover();
   const { detail, loading, error, refresh } = useBookingDetail(orgId, bookingId);
@@ -133,7 +135,7 @@ export function BookingDossier({
       <div className="max-w-[1800px] mx-auto px-4 py-10 space-y-4">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <Icon name="loader-2" className="w-4 h-4 animate-spin" />
-          <span>Lade Buchungsakte…</span>
+          <span>{t('bookings.detail.loadingDossier')}</span>
         </div>
         <SkeletonCard />
       </div>
@@ -235,7 +237,7 @@ export function BookingDossier({
 
       {cancelOpen && (
         <ConfirmModal
-          title="Buchung stornieren?"
+          title={t('bookings.cancelBooking')}
           description="Die Buchung wird als storniert markiert."
           confirmLabel="Stornieren"
           tone="critical"
@@ -255,7 +257,7 @@ export function BookingDossier({
 
       {noShowOpen && (
         <ConfirmModal
-          title="Kunde nicht erschienen?"
+          title={t('bookings.detail.noShowTitle')}
           description="Die Buchung wird auf No-Show gesetzt — getrennt von einer Stornierung."
           confirmLabel={submitting ? 'Wird gesetzt …' : 'Als No-Show markieren'}
           tone="critical"
@@ -270,7 +272,7 @@ export function BookingDossier({
             value={noShowReason}
             onChange={(e) => setNoShowReason(e.target.value)}
             rows={3}
-            placeholder="Grund (optional)"
+            placeholder={t('bookings.detail.noShowReasonPlaceholder')}
             className="w-full px-2.5 py-2 rounded-md border border-border bg-[color:var(--input-background)] text-xs outline-none resize-none mb-3"
           />
         </ConfirmModal>

@@ -28,6 +28,8 @@ import {
 
 import { changeCustomerRisk, changeCustomerStatus } from '../lib/customer-mutations.utils';
 
+import { resolveDrivingStressScore } from '../lib/scoreFormat';
+
 import { SkeletonCard, SkeletonMetricGrid } from '../../components/patterns';
 
 import { Button } from '../../components/ui/button';
@@ -116,7 +118,7 @@ import {
 
 } from './customer-detail/useCustomerDetailData';
 
-import { resolveDrivingStressScore } from '../lib/scoreFormat';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 
 
@@ -175,6 +177,8 @@ export function CustomerDetailView({
   onOpenInvoice,
 
 }: CustomerDetailViewProps) {
+
+  const { t } = useLanguage();
 
   const { orgId } = useRentalOrg();
 
@@ -583,7 +587,7 @@ export function CustomerDetailView({
 
         <AlertCircle className="mx-auto size-10 text-[color:var(--status-critical)]" />
 
-        <p className="text-sm font-semibold">Kunde konnte nicht geladen werden</p>
+        <p className="text-sm font-semibold">{t('customers.detail.loadError')}</p>
 
         <p className="text-xs text-muted-foreground">{error}</p>
 
@@ -591,13 +595,13 @@ export function CustomerDetailView({
 
           <Button type="button" size="sm" variant="primary" onClick={refresh}>
 
-            Erneut laden
+            {t('customers.detail.decisions.reload')}
 
           </Button>
 
           <Button type="button" size="sm" variant="neutral" onClick={onBack}>
 
-            Zurück zur Liste
+            {t('customers.detail.backToList')}
 
           </Button>
 

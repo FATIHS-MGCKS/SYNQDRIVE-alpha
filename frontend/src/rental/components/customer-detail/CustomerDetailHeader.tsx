@@ -4,16 +4,18 @@ import type { StatusTone } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
-  customerStatusUiLabelDe,
-  customerVerificationUiLabelDe,
+  customerRiskUiLabel,
+  customerStatusUiLabel,
+  customerVerificationUiLabel,
   type CustomerUiVerification,
 } from '../../lib/entityMappers';
 import type { CustomerListRow } from './customerDetailTypes';
 import {
   cdv,
   customerDetailTitleClass,
-  customerRiskHeaderLabelDe,
+  customerRiskHeaderLabel,
   customerRiskHeaderTone,
   customerStatusTone,
   customerVerificationTone,
@@ -60,9 +62,11 @@ export function CustomerDetailHeader({
   onAddNote,
   onStatusShortcut,
 }: CustomerDetailHeaderProps) {
-  const statusShortcut = resolveCustomerStatusAction(displayStatus);
-  const customerTypeLabel = displayType === 'Corporate' ? 'Firma' : 'Privat';
-  const customerSinceLabel = formatDate(customerSince);
+  const { t, locale, formattingLocale } = useLanguage();
+  const statusShortcut = resolveCustomerStatusAction(displayStatus, locale);
+  const customerTypeLabel =
+    displayType === 'Corporate' ? t('customers.type.corporate') : t('customers.type.individual');
+  const customerSinceLabel = formatDate(customerSince, formattingLocale);
   const hasContact = Boolean(phone || email);
 
   return (
@@ -70,7 +74,7 @@ export function CustomerDetailHeader({
       <div className={cdv.headerInner}>
         <button type="button" onClick={onBack} className={cdv.backLink}>
           <ArrowLeft className="size-3.5" />
-          Kunden
+          {t('customers.detail.backToCustomers')}
         </button>
 
         <div className={cdv.heroTopRow}>
@@ -85,12 +89,12 @@ export function CustomerDetailHeader({
               <span aria-hidden className={cdv.metaSeparator}>
                 •
               </span>
-              <span>Kunde seit {customerSinceLabel}</span>
+              <span>{t('customers.detail.header.customerSince', { date: customerSinceLabel })}</span>
             </div>
           </div>
           <div className={cdv.heroStatusChip}>
             <StatusChip tone={customerStatusTone(displayStatus)} dot>
-              {customerStatusUiLabelDe(displayStatus)}
+              {customerStatusUiLabel(displayStatus, locale)}
             </StatusChip>
           </div>
         </div>
@@ -103,7 +107,7 @@ export function CustomerDetailHeader({
               title={rentalClearanceTitle ?? undefined}
               className={cdv.heroBadgeChip}
             >
-              Mietfreigabe: {rentalClearanceLabel}
+              {t('customers.detail.header.clearancePrefix')} {rentalClearanceLabel}
             </StatusChip>
           </div>
           <div className={cdv.heroBadgeCell}>
@@ -112,12 +116,12 @@ export function CustomerDetailHeader({
               dot
               className={cdv.heroBadgeChip}
             >
-              Ausweis: {customerVerificationUiLabelDe(idVerificationUi)}
+              {t('customers.detail.decisions.idPrefix')} {customerVerificationUiLabel(idVerificationUi, locale)}
             </StatusChip>
           </div>
           <div className={cdv.heroBadgeCell}>
             <StatusChip tone={customerRiskHeaderTone(displayRisk)} dot className={cdv.heroBadgeChip}>
-              Risiko: {customerRiskHeaderLabelDe(displayRisk)}
+              {t('customers.detail.header.riskPrefix')} {customerRiskHeaderLabel(displayRisk, locale)}
             </StatusChip>
           </div>
           <div className={cdv.heroBadgeCell}>
@@ -126,7 +130,7 @@ export function CustomerDetailHeader({
               dot
               className={cdv.heroBadgeChip}
             >
-              FS: {customerVerificationUiLabelDe(licenseVerificationUi)}
+              {t('customers.detail.decisions.licensePrefix')} {customerVerificationUiLabel(licenseVerificationUi, locale)}
             </StatusChip>
           </div>
         </div>
@@ -140,7 +144,7 @@ export function CustomerDetailHeader({
             onClick={onAddNote}
           >
             <StickyNote className="size-3.5" />
-            Notiz hinzufügen
+            {t('customers.detail.addNote')}
           </Button>
           {statusShortcut && onStatusShortcut ? (
             <Button
@@ -151,7 +155,7 @@ export function CustomerDetailHeader({
               disabled={statusShortcutSaving}
               onClick={() => onStatusShortcut(statusShortcut.nextStatus)}
             >
-              {statusShortcutSaving ? 'Speichert…' : statusShortcut.label}
+              {statusShortcutSaving ? t('customers.detail.noteModal.saving') : statusShortcut.label}
             </Button>
           ) : null}
           {hasContact ? (
@@ -165,7 +169,7 @@ export function CustomerDetailHeader({
               >
                 <a href={`tel:${phone.replace(/\s/g, '')}`}>
                   <Phone className="size-3.5" />
-                  Kontakt
+                  {t('customers.detail.header.contact')}
                 </a>
               </Button>
             ) : (
@@ -178,7 +182,7 @@ export function CustomerDetailHeader({
               >
                 <a href={`mailto:${email}`}>
                   <Mail className="size-3.5" />
-                  Kontakt
+                  {t('customers.detail.header.contact')}
                 </a>
               </Button>
             )

@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Bookings & Customers (P2.2.3 — V4.9.922)', icon: Globe,
+    endpoint: 'Bookings list/planner/detail/wizard/payment; Customers list/detail/wizard/verification presentation.',
+    service: '**Helpers:** `bookings-i18n.ts` (`bt`, `bookingsFormattingLocaleOrDefault`) + `customers-i18n.ts` (`ct`, `customersFormattingLocaleOrDefault`) for non-React builders; React uses `useLanguage()` (`t`, `locale`, `formattingLocale`). **Keys:** +458 EN/DE (`bookings.*` 104, `customers.*` 354); reused `common.*`, `email.*`, vehicle-booking keys. **Guardrails:** P2.2.3 enforce-clean paths in `i18n-hardcoded-scan.mjs` — Bookings/Customers modules 0 findings. **Shim:** touched files use `../../i18n/`; no new `../i18n/` compat consumers.',
+    dataSource: 'architecture/I18N_RENTAL_BOOKINGS_CUSTOMERS_P2_2_3_2026-08-19.md; docs/audits/i18n-production-hardening-baseline-2026-08.md' },
   { name: 'Platform i18n Rental Vehicles & Health (P2.2.2 — V4.9.921)', icon: Globe,
     endpoint: 'Fleet shell, Vehicle Detail (Overview/Trips/Health), service-center, vehicle-bookings, fleet-health-service presentation.',
     service: '**Helper:** `vehicle-i18n.ts` — `vt(locale, key)` + `vehicleFormattingLocale(locale)` for non-React vehicle builders. **Keys:** `vehicle.*`, `health.*`, `trips.*`, `serviceCenter.*`, `fleetHealthService.*`, `fleet.stat.*`; reused `vehicle.status.*`, `dashboard.operations.status.*`. **Guardrails:** P2.2.2 enforce-clean paths in `i18n-hardcoded-scan.mjs` — 0 findings. **Formatting:** `getFormattingLocale()` in migrated vehicle lib files.',

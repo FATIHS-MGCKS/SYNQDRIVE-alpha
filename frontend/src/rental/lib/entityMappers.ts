@@ -160,51 +160,75 @@ export function customerVerificationApiToUi(
   }
 }
 
+import { ct } from '../components/bookings-customers/customers-i18n';
+
 /** German display labels for customer verification status. */
 export function customerVerificationUiLabelDe(
   ui: CustomerUiVerification | string | undefined,
 ): string {
+  return customerVerificationUiLabel(ui, 'de');
+}
+
+export function customerVerificationUiLabel(
+  ui: CustomerUiVerification | string | undefined,
+  locale: string,
+): string {
   switch (ui) {
-    case 'Pending Review': return 'In Prüfung';
-    case 'Verified': return 'Verifiziert';
-    case 'Rejected': return 'Abgelehnt';
-    case 'Expired': return 'Abgelaufen';
-    default: return 'Nicht eingereicht';
+    case 'Pending Review': return ct(locale, 'customers.verification.pendingReview');
+    case 'Verified': return ct(locale, 'customers.verification.verified');
+    case 'Rejected': return ct(locale, 'customers.verification.rejected');
+    case 'Expired': return ct(locale, 'customers.verification.expired');
+    default: return ct(locale, 'customers.verification.notSubmitted');
   }
 }
 
 export function customerStatusUiLabelDe(ui: CustomerUiStatus | string | undefined): string {
+  return customerStatusUiLabel(ui, 'de');
+}
+
+export function customerStatusUiLabel(ui: CustomerUiStatus | string | undefined, locale: string): string {
   switch (ui) {
-    case 'Active': return 'Aktiv';
-    case 'Under Review': return 'In Prüfung';
-    case 'Suspended': return 'Suspendiert';
-    case 'Blocked': return 'Gesperrt';
-    case 'Inactive': return 'Inaktiv';
-    case 'Archived': return 'Archiviert';
+    case 'Active': return ct(locale, 'customers.status.active');
+    case 'Under Review': return ct(locale, 'customers.status.underReview');
+    case 'Suspended': return ct(locale, 'customers.status.suspended');
+    case 'Blocked': return ct(locale, 'customers.status.blocked');
+    case 'Inactive': return ct(locale, 'customers.status.inactive');
+    case 'Archived': return ct(locale, 'customers.status.archived');
     default: return String(ui ?? '—');
   }
 }
 
 export function customerRiskUiLabelDe(ui: CustomerUiRisk | string | undefined): string {
+  return customerRiskUiLabel(ui, 'de');
+}
+
+export function customerRiskUiLabel(ui: CustomerUiRisk | string | undefined, locale: string): string {
   switch (ui) {
-    case 'Not Assessed': return 'Keine Risikobewertung';
-    case 'Low Risk': return 'Niedrig';
-    case 'Medium Risk': return 'Mittel';
-    case 'High Risk': return 'Hoch';
-    default: return 'Keine Risikobewertung';
+    case 'Not Assessed': return ct(locale, 'customers.risk.notAssessed');
+    case 'Low Risk': return ct(locale, 'customers.risk.low');
+    case 'Medium Risk': return ct(locale, 'customers.risk.medium');
+    case 'High Risk': return ct(locale, 'customers.risk.high');
+    default: return ct(locale, 'customers.risk.notAssessed');
   }
 }
 
 export function customerDocumentStatusUiLabelDe(
   ui: CustomerUiDocumentStatus | string | undefined,
 ): string {
+  return customerDocumentStatusUiLabel(ui, 'de');
+}
+
+export function customerDocumentStatusUiLabel(
+  ui: CustomerUiDocumentStatus | string | undefined,
+  locale: string,
+): string {
   switch (ui) {
-    case 'Uploaded': return 'Hochgeladen';
-    case 'Pending Review': return 'In Prüfung';
-    case 'Verified': return 'Verifiziert';
-    case 'Rejected': return 'Abgelehnt';
-    case 'Expired': return 'Abgelaufen';
-    default: return 'Nicht eingereicht';
+    case 'Uploaded': return ct(locale, 'customers.document.uploaded');
+    case 'Pending Review': return ct(locale, 'customers.verification.pendingReview');
+    case 'Verified': return ct(locale, 'customers.verification.verified');
+    case 'Rejected': return ct(locale, 'customers.verification.rejected');
+    case 'Expired': return ct(locale, 'customers.verification.expired');
+    default: return ct(locale, 'customers.verification.notSubmitted');
   }
 }
 

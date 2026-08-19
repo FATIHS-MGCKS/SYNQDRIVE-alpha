@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-bookings-customers-p2-2-3-2026-08-19',
+    version: '4.9.922',
+    title: 'Rental i18n — P2.2.3 Bookings + Customers',
+    summary: [
+      'Bookings list/planner/detail/wizard/payment and Customers list/detail/wizard/verification presentation migrated to canonical `frontend/src/i18n`.',
+      'Scanner Bookings (106→0) and Customers (67→0) enforce-clean zones; +457 EN/DE keys; helpers `bookings-i18n.ts` / `customers-i18n.ts`.',
+      'Shim count 33→32 (BDS + NewBookingView migrated; BookingsView transient compat corrected); no new compat consumers.',
+    ],
+    reason: 'Bookings and Customers still carried ~173 scanner-classified hardcoded strings outside P2.2.2 vehicle-bookings scope.',
+    previousBehavior: 'Inline German/English copy in booking wizard, dossier tabs, customer wizard, and list/detail surfaces.',
+    details:
+      'frontend/src/rental/components/bookings/**; booking-detail/**; new-booking/**; CustomersView; customer-detail/**; customer-verification/**; bookings-customers/*; frontend/scripts/i18n-hardcoded-scan.mjs; architecture/I18N_RENTAL_BOOKINGS_CUSTOMERS_P2_2_3_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-19T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-vehicles-health-p2-2-2-2026-08-19',
     version: '4.9.921',
     title: 'Rental i18n — P2.2.2 Vehicles, Vehicle Detail & Fleet Health',

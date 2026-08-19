@@ -1,6 +1,7 @@
 import { StatusChip } from '../../../components/patterns';
 import type { BookingDetailDto } from '../../../lib/api';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   customerVerificationApiToUi,
   customerVerificationUiLabelDe,
@@ -15,6 +16,7 @@ interface BookingCustomerRiskTabProps {
 }
 
 export function BookingCustomerRiskTab({ detail, orgId, onOpenCustomer }: BookingCustomerRiskTabProps) {
+  const { t } = useLanguage();
   const c = detail.customer;
   const idUi = customerVerificationApiToUi(c.identityStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(c.licenseStatus ?? undefined);
@@ -30,7 +32,7 @@ export function BookingCustomerRiskTab({ detail, orgId, onOpenCustomer }: Bookin
               onClick={() => onOpenCustomer(c.customerId)}
               className="text-xs font-semibold text-[color:var(--brand)] hover:underline"
             >
-              Kundenakte öffnen
+              {t('bookings.detail.openCustomerFile')}
             </button>
           )}
         </div>
@@ -60,7 +62,7 @@ export function BookingCustomerRiskTab({ detail, orgId, onOpenCustomer }: Bookin
 
       {detail.eligibility && (
         <div className={bd.card}>
-          <h3 className="text-xs font-bold mb-3">Mietfreigabe (Eligibility)</h3>
+          <h3 className="text-xs font-bold mb-3">{t('bookings.detail.rentalEligibility')}</h3>
           <div className="flex flex-wrap gap-2 mb-3">
             <StatusChip tone={detail.eligibility.canStartRental ? 'success' : 'critical'}>
               Pickup: {detail.eligibility.canStartRental ? 'Erlaubt' : 'Blockiert'}

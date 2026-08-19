@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { DataCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
@@ -8,6 +9,10 @@ import { DocumentIntakeLaunchAiButton } from '../documents/DocumentIntakeLaunchB
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
 import type { CustomerDocumentDomainStatus, CustomerDocumentVerificationStatusDto } from '../../../lib/api';
 import type { CustomerDetail, KycDocSlot } from './customerDetailTypes';
+import {
+  customerVerificationUiLabel,
+  type CustomerUiVerification,
+} from '../../lib/entityMappers';
 import {
   EM_DASH,
   formatDate,
@@ -40,31 +45,37 @@ interface CustomerDocumentsTabProps {
 const ID_DOC_TYPES = ['ID_FRONT', 'ID_BACK'] as const;
 const LICENSE_DOC_TYPES = ['LICENSE_FRONT', 'LICENSE_BACK'] as const;
 
-function customerDetailDiditActionLabel(kind: 'ID_DOCUMENT' | 'DRIVING_LICENSE' | 'PROOF_OF_ADDRESS'): string {
+function customerDetailDiditActionLabel(
+  kind: 'ID_DOCUMENT' | 'DRIVING_LICENSE' | 'PROOF_OF_ADDRESS',
+  t: (key: import('../../../i18n/translations/en').TranslationKey) => string,
+): string {
   switch (kind) {
     case 'ID_DOCUMENT':
-      return 'KYC Ausweisprozess starten';
+      return t('customers.verification.diditAction.id');
     case 'DRIVING_LICENSE':
-      return 'KYC Führerscheinprozess starten';
+      return t('customers.verification.diditAction.license');
     case 'PROOF_OF_ADDRESS':
-      return 'KYC Adressnachweis starten';
+      return t('customers.verification.diditAction.poa');
   }
 }
 
-function domainStatusLabel(status: CustomerDocumentDomainStatus['status']): string {
+function domainStatusLabel(
+  status: CustomerDocumentDomainStatus['status'],
+  t: (key: import('../../../i18n/translations/en').TranslationKey) => string,
+): string {
   switch (status) {
     case 'VERIFIED':
-      return 'Verifiziert';
+      return t('customers.verification.verified');
     case 'PENDING_REVIEW':
-      return 'In Prüfung';
+      return t('customers.verification.pendingReview');
     case 'REJECTED':
-      return 'Abgelehnt';
+      return t('customers.verification.rejected');
     case 'EXPIRED':
-      return 'Abgelaufen';
+      return t('customers.verification.expired');
     case 'NOT_REQUIRED':
-      return 'Nicht erforderlich';
+      return t('customers.eligibility.notRequired');
     default:
-      return 'Nicht eingereicht';
+      return t('customers.verification.notSubmitted');
   }
 }
 
@@ -77,13 +88,16 @@ function domainStatusTone(
   return 'neutral';
 }
 
-function formatDomainStatusMeta(domain: CustomerDocumentDomainStatus): string | null {
+function formatDomainStatusMeta(
+  domain: CustomerDocumentDomainStatus,
+  t: (key: import('../../../i18n/translations/en').TranslationKey, vars?: Record<string, string | number>) => string,
+): string | null {
   const parts: string[] = [];
-  if (domain.provider === 'DIDIT') parts.push('Geprüft über Didit');
-  else if (domain.provider === 'MANUAL') parts.push('Geprüft durch Mitarbeiter');
+  if (domain.provider === 'DIDIT') parts.push(t('customers.detail.documents.verifiedViaDidit'));
+  else if (domain.provider === 'MANUAL') parts.push(t('customers.detail.documents.verifiedManually'));
   if (domain.checkedByName) parts.push(domain.checkedByName);
-  if (domain.submittedAt) parts.push(`Eingereicht am ${formatDateTime(domain.submittedAt)}`);
-  if (domain.verifiedAt) parts.push(`Verifiziert am ${formatDateTime(domain.verifiedAt)}`);
+  if (domain.submittedAt) parts.push(t('customers.detail.documents.submittedAt', { date: formatDateTime(domain.submittedAt) }));
+  if (domain.verifiedAt) parts.push(t('customers.detail.documents.verifiedAt', { date: formatDateTime(domain.verifiedAt) }));
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
@@ -102,6 +116,7 @@ export function CustomerDocumentsTab({
   onReject,
   onVerificationUpdated,
 }: CustomerDocumentsTabProps) {
+  const { t } = useLanguage();
   const showLegacy = hasLegacyDocumentsOnly(detail) && kycDocSlots.every((s) => !s.document);
 
   const pendingReviewDocumentIds = kycDocSlots
@@ -126,7 +141,7 @@ export function CustomerDocumentsTab({
   const idDomain = documentStatus?.idDocument;
   const licenseDomain = documentStatus?.drivingLicense;
   const verificationHint = licenseVerificationHint(
-    domainStatusLabel(licenseDomain?.status ?? 'NOT_SUBMITTED'),
+    domainStatusLabel(licenseDomain?.status ?? 'NOT_SUBMITTED', t),
     eligibilityBlockingReasons,
   );
 
@@ -140,19 +155,19 @@ export function CustomerDocumentsTab({
         onManualVerifyDocument={onVerify}
         onDocumentUploaded={onDocumentUploaded}
         onVerificationUpdated={onVerificationUpdated}
-        getDiditActionLabel={customerDetailDiditActionLabel}
+        getDiditActionLabel={(kind) => customerDetailDiditActionLabel(kind, t)}
       />
 
       <div className={cdv.documentsUploadSection}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h4 className="text-xs font-bold">Betriebsdokumente (KI-Upload)</h4>
+            <h4 className="text-xs font-bold">{t('customers.detail.documents.opsTitle')}</h4>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Rechnungen, Bußgelder und Belege — getrennt von KYC-Dokumenten.
+              {t('customers.detail.documents.opsHint')}
             </p>
           </div>
           <DocumentIntakeLaunchAiButton
-            label="KI-Upload"
+            label={t('customers.detail.documents.aiUpload')}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[11px] font-semibold"
             request={{
               optionalContextType: 'CUSTOMER',
@@ -166,14 +181,14 @@ export function CustomerDocumentsTab({
         </div>
       </div>
 
-      <DataCard title="Dokumentenstatus" bodyClassName="py-3.5">
+      <DataCard title={t('customers.detail.documents.statusTitle')} bodyClassName="py-3.5">
         <div className={cdv.documentsStatusGrid}>
           <DocumentStatusCard
-            title={idDomain?.displayName ?? 'Personalausweis'}
+            title={idDomain?.displayName ?? t('customers.wizard.idCard')}
             domainStatus={idDomain}
             number={idDomain?.documentNumber ?? detail?.idNumber}
             expiry={detail?.idExpiry}
-            meta={idDomain ? formatDomainStatusMeta(idDomain) : null}
+            meta={idDomain ? formatDomainStatusMeta(idDomain, t) : null}
             pendingDoc={idPendingDoc}
             previewUrl={resolveDocumentPreviewUrl(idPrimaryDoc?.fileKey, null)}
             reviewingDocId={reviewingDocId}
@@ -181,16 +196,17 @@ export function CustomerDocumentsTab({
             onReject={onReject}
             emptyHint={
               idDomain?.status === 'NOT_SUBMITTED'
-                ? 'Noch kein Ausweisdokument eingereicht'
+                ? t('customers.detail.documents.noIdYet')
                 : undefined
             }
+            t={t}
           />
           <DocumentStatusCard
-            title={licenseDomain?.displayName ?? 'Führerschein'}
+            title={licenseDomain?.displayName ?? t('customers.wizard.license')}
             domainStatus={licenseDomain}
             number={licenseDomain?.documentNumber ?? detail?.licenseNumber}
             expiry={detail?.licenseExpiry}
-            meta={licenseDomain ? formatDomainStatusMeta(licenseDomain) : null}
+            meta={licenseDomain ? formatDomainStatusMeta(licenseDomain, t) : null}
             pendingDoc={licensePendingDoc}
             previewUrl={resolveDocumentPreviewUrl(licensePrimaryDoc?.fileKey, null)}
             reviewingDocId={reviewingDocId}
@@ -198,9 +214,10 @@ export function CustomerDocumentsTab({
             onReject={onReject}
             emptyHint={
               licenseDomain?.status === 'NOT_SUBMITTED'
-                ? verificationHint ?? 'Noch kein Führerscheindokument eingereicht'
+                ? verificationHint ?? t('customers.detail.documents.noLicenseYet')
                 : verificationHint ?? undefined
             }
+            t={t}
           />
         </div>
       </DataCard>
@@ -212,15 +229,15 @@ export function CustomerDocumentsTab({
       {showLegacy ? (
         <div className="rounded-lg p-3 text-xs sq-tone-warning border border-current/30">
           <Icon name="alert-triangle" className="w-4 h-4 inline mr-1" />
-          Legacy-Dokumente vorhanden (alte URL-Felder). Bitte im neuen Dokumentensystem erneut hochladen.
+          {t('customers.detail.documents.legacyWarning')}
         </div>
       ) : null}
 
       {missingUploadSlots.length > 0 ? (
         <div className={cdv.documentsUploadSection}>
-          <h4 className="text-xs font-bold">Fehlende Dokumente hochladen</h4>
+          <h4 className="text-xs font-bold">{t('customers.detail.documents.missingUpload')}</h4>
           {documentsLoading ? (
-            <p className="text-xs text-muted-foreground">Dokumente werden geladen…</p>
+            <p className="text-xs text-muted-foreground">{t('customers.detail.documents.loading')}</p>
           ) : (
             <div className={cdv.documentsUploadGrid}>
               {missingUploadSlots.map((doc) => (
@@ -240,7 +257,7 @@ export function CustomerDocumentsTab({
         </div>
       ) : !documentsLoading ? (
         <p className={cdv.documentsEmptySuccess}>
-          Alle erforderlichen Dokumente sind bereits vorhanden.
+          {t('customers.detail.documents.allPresent')}
         </p>
       ) : null}
     </div>
@@ -259,6 +276,7 @@ function DocumentStatusCard({
   onVerify,
   onReject,
   emptyHint,
+  t,
 }: {
   title: string;
   domainStatus?: CustomerDocumentDomainStatus;
@@ -271,6 +289,7 @@ function DocumentStatusCard({
   onVerify: (documentId: string) => void;
   onReject: (documentId: string) => void;
   emptyHint?: string;
+  t: (key: import('../../../i18n/translations/en').TranslationKey, vars?: Record<string, string | number>) => string;
 }) {
   const status = domainStatus?.status ?? 'NOT_SUBMITTED';
   const rejectedReason = domainStatus?.rejectedReason ?? pendingDoc?.rejectedReason;
@@ -281,11 +300,14 @@ function DocumentStatusCard({
         <div className="min-w-0">
           <p className={cdv.documentsStatusTitle}>{title}</p>
           <p className={cdv.documentsStatusMeta}>
-            Nr. {number || EM_DASH} · gültig bis {formatDate(expiry)}
+            {t('customers.detail.documents.numberValid', {
+              number: number || EM_DASH,
+              date: formatDate(expiry),
+            })}
           </p>
         </div>
         <StatusChip tone={domainStatusTone(status)} dot className={cdv.decisionChip}>
-          {domainStatusLabel(status)}
+          {domainStatusLabel(status, t)}
         </StatusChip>
       </div>
 
@@ -300,7 +322,7 @@ function DocumentStatusCard({
             <Button type="button" size="sm" variant="neutral" className="h-8" asChild>
               <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="size-3.5" />
-                Ansehen
+                {t('customers.detail.documents.view')}
               </a>
             </Button>
           ) : null}
@@ -314,7 +336,7 @@ function DocumentStatusCard({
                 disabled={reviewingDocId === pendingDoc.id}
                 onClick={() => onVerify(pendingDoc.id)}
               >
-                Verifizieren
+                {t('customers.detail.documents.verify')}
               </Button>
               <Button
                 type="button"
@@ -324,7 +346,7 @@ function DocumentStatusCard({
                 disabled={reviewingDocId === pendingDoc.id}
                 onClick={() => onReject(pendingDoc.id)}
               >
-                Ablehnen
+                {t('customers.detail.documents.reject')}
               </Button>
             </>
           ) : null}

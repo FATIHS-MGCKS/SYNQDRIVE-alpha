@@ -62,6 +62,39 @@ const P22_ENFORCE_CLEAN_EXACT = [
   'rental/components/vehicle/vehicle-i18n.ts',
 ];
 
+const P23_ENFORCE_CLEAN_EXACT = [
+  'rental/components/BookingsView.tsx',
+  'rental/components/NewBookingView.tsx',
+  'rental/components/BookingDocumentsSection.tsx',
+  'rental/components/CustomersView.tsx',
+  'rental/components/CustomerDetailView.tsx',
+  'rental/components/CustomerDetailModal.tsx',
+  'rental/components/CustomerDocumentUploadBox.tsx',
+];
+
+const P23_ENFORCE_CLEAN_PREFIXES = [
+  'rental/components/bookings/',
+  'rental/components/booking-detail/',
+  'rental/components/new-booking/',
+  'rental/components/booking-payment/',
+  'rental/components/customer-list/',
+  'rental/components/customer-detail/',
+  'rental/components/customer-verification/',
+  'rental/components/add-customer/',
+  'rental/components/customer/',
+  'rental/components/bookings-customers/',
+  'rental/lib/booking-',
+  'rental/lib/bookingHandoverGates.ts',
+  'rental/lib/stationBookingUtils.ts',
+  'rental/lib/customer-',
+  'rental/lib/add-customer-wizard.ts',
+];
+
+function isP23EnforceCleanPath(relPath: string): boolean {
+  if (P23_ENFORCE_CLEAN_EXACT.includes(relPath)) return true;
+  return P23_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
+}
+
 function isP22EnforceCleanPath(relPath: string): boolean {
   if (P22_ENFORCE_CLEAN_EXACT.includes(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -72,7 +105,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -97,5 +130,12 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 enforce-clean surfac
       (finding.files ?? [finding.file]).some((file) => isP22EnforceCleanPath(file)),
     );
     expect(p22Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.3 enforce-clean findings to bookings and customers only', () => {
+    const p23Debt = inventory.findings.filter((finding) =>
+      isP23EnforceCleanPath(finding.file),
+    );
+    expect(p23Debt).toHaveLength(0);
   });
 });

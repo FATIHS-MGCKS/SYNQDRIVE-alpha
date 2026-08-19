@@ -1,3 +1,4 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { EmptyState, StatusChip } from '../../../components/patterns';
 import type { BookingRow } from './customerDetailTypes';
@@ -23,27 +24,42 @@ export function CustomerBookingsTab({
   totalKmDriven,
   onOpenBooking,
 }: CustomerBookingsTabProps) {
+  const { t, formattingLocale } = useLanguage();
+
   if (bookings.length === 0) {
     return (
       <EmptyState
         icon={<Icon name="calendar" className="w-6 h-6" />}
-        title="Noch keine Buchungen für diesen Kunden"
-        description="Legen Sie eine neue Buchung an, um die Historie hier zu sehen."
+        title={t('customers.detail.bookings.emptyTitle')}
+        description={t('customers.detail.bookings.emptyDescription')}
       />
     );
   }
+
+  const tableHeaders = [
+    t('customers.detail.bookings.col.booking'),
+    t('customers.detail.bookings.col.vehicle'),
+    t('customers.detail.bookings.col.period'),
+    t('common.status'),
+    t('customers.detail.bookings.col.price'),
+    '',
+  ];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-border surface-premium text-xs">
         <span>
-          Buchungen: <strong>{bookings.length}</strong>
+          {t('customers.detail.bookings.count')} <strong>{bookings.length}</strong>
         </span>
         <span>
-          Kilometer: <strong>{totalKmDriven > 0 ? `${totalKmDriven.toLocaleString('de-DE')} km` : EM_DASH}</strong>
+          {t('customers.detail.bookings.km')}{' '}
+          <strong>
+            {totalKmDriven > 0 ? `${totalKmDriven.toLocaleString(formattingLocale)} km` : EM_DASH}
+          </strong>
         </span>
         <span className="ml-auto">
-          Umsatz: <strong className="text-[color:var(--status-success)]">{formatCurrencyCents(totalRevenueCents)}</strong>
+          {t('customers.detail.bookings.revenue')}{' '}
+          <strong className="text-[color:var(--status-success)]">{formatCurrencyCents(totalRevenueCents)}</strong>
         </span>
       </div>
 
@@ -51,7 +67,7 @@ export function CustomerBookingsTab({
         <table className="w-full min-w-[720px]">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              {['Buchung', 'Fahrzeug', 'Zeitraum', 'Status', 'Preis', ''].map((h) => (
+              {tableHeaders.map((h) => (
                 <th key={h} className="text-left text-[10px] uppercase tracking-wider font-semibold px-3 py-2 text-muted-foreground">
                   {h}
                 </th>
@@ -88,7 +104,7 @@ export function CustomerBookingsTab({
                         onClick={() => onOpenBooking(b.id)}
                         className="text-[10px] font-semibold text-[color:var(--brand)]"
                       >
-                        Öffnen
+                        {t('common.open')}
                       </button>
                     )}
                   </td>

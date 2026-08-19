@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingRentalEligibilityResult } from '../../lib/booking-rental-eligibility.types';
 import {
   rentalEligibilityBadgeKind,
@@ -27,12 +28,12 @@ function statusTitle(status: BookingRentalEligibilityResult['status']): string {
   }
 }
 
-function EligibilitySkeleton() {
+function EligibilitySkeleton({ checkingLabel }: { checkingLabel: string }) {
   return (
     <div
       className="rounded-xl border border-border/60 surface-premium p-4 space-y-3"
       aria-busy="true"
-      aria-label="Fahrzeugvoraussetzungen werden geprüft"
+      aria-label={checkingLabel}
     >
       <div className="flex items-center gap-2">
         <div className="h-4 w-4 rounded-full bg-muted animate-pulse motion-reduce:animate-none" />
@@ -63,7 +64,8 @@ export function BookingRentalEligibilityCard({
   onCompleteCustomerData,
   onChooseAnotherVehicle,
 }: BookingRentalEligibilityCardProps) {
-  if (loading) return <EligibilitySkeleton />;
+  const { t } = useLanguage();
+  if (loading) return <EligibilitySkeleton checkingLabel={t('bookings.eligibility.checkingAria')} />;
 
   if (error) {
     const isForbidden = /keine berechtigung|missing permission|forbidden|403/i.test(error);
@@ -97,7 +99,7 @@ export function BookingRentalEligibilityCard({
             <p className="font-semibold text-foreground">{statusTitle(result.status)}</p>
             {previewOnly && (
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Vorschau — die finale Freigabe erfolgt serverseitig beim Abschluss.
+                {t('bookings.eligibility.previewNote')}
               </p>
             )}
             {minAge != null && (
@@ -113,7 +115,7 @@ export function BookingRentalEligibilityCard({
       {result.missingFields.length > 0 && (
         <div className="rounded-lg bg-muted/20 px-3 py-2 space-y-1">
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Fehlende Angaben
+            {t('bookings.eligibility.missingFields')}
           </p>
           {result.missingFields.map((field) => (
             <p key={field} className="text-muted-foreground flex items-center gap-1.5">
@@ -152,7 +154,7 @@ export function BookingRentalEligibilityCard({
         <p className="text-muted-foreground leading-relaxed flex gap-1.5">
           <Icon name="alert-triangle" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[color:var(--status-watch)]" aria-hidden />
           <span>
-            Der Führerschein muss beim Pickup zwingend manuell kontrolliert werden.
+            {t('bookings.eligibility.licensePickupCheck')}
           </span>
         </p>
       )}
@@ -164,7 +166,7 @@ export function BookingRentalEligibilityCard({
             onClick={onCompleteCustomerData}
             className="sq-btn sq-btn-secondary h-8 px-3 text-[11px]"
           >
-            Kundendaten ergänzen
+            {t('bookings.eligibility.completeCustomerData')}
           </button>
         )}
         {result.status === 'NOT_ELIGIBLE' && onChooseAnotherVehicle && (
@@ -173,7 +175,7 @@ export function BookingRentalEligibilityCard({
             onClick={onChooseAnotherVehicle}
             className="sq-btn sq-btn-secondary h-8 px-3 text-[11px]"
           >
-            Anderes Fahrzeug wählen
+            {t('bookings.eligibility.chooseOtherVehicle')}
           </button>
         )}
         {result.status === 'MANUAL_APPROVAL_REQUIRED' && (

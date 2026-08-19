@@ -1,6 +1,7 @@
 import { MapPin, Phone, Mail, Clock, AlertTriangle } from 'lucide-react';
 import type { BookingStationContext } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatOpeningHoursSummary, parseOpeningHours } from '../../lib/stationUtils';
 import type { Station } from '../../../lib/api';
 import { bd } from './booking-detail-ui';
@@ -10,11 +11,15 @@ function StationCard({
   planned,
   actual,
   purpose,
+  noStationLabel,
+  actualLabel,
 }: {
   title: string;
   planned: BookingStationContext | null;
   actual: BookingStationContext | null;
   purpose: 'pickup' | 'return';
+  noStationLabel: string;
+  actualLabel: string;
 }) {
   const hasDeviation =
     planned &&
@@ -29,7 +34,7 @@ function StationCard({
     return (
       <div className={bd.card}>
         <h3 className="text-xs font-bold mb-2">{title}</h3>
-        <p className="text-xs text-muted-foreground">Keine Station hinterlegt (Legacy-Freitext möglich).</p>
+        <p className="text-xs text-muted-foreground">{noStationLabel}</p>
       </div>
     );
   }
@@ -64,7 +69,7 @@ function StationCard({
             )}
             {actual && (
               <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Tatsächlich</dt>
+                <dt className="text-muted-foreground">{actualLabel}</dt>
                 <dd className="font-medium text-right">{actual.name}</dd>
               </div>
             )}
@@ -113,11 +118,13 @@ interface BookingStationPanelProps {
 }
 
 export function BookingStationPanel({ stations }: BookingStationPanelProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-3">
       {stations.isOneWayRental && (
         <p className="text-xs px-3 py-2 rounded-lg border border-border sq-tone-info">
-          One-Way-Miete: unterschiedliche Abhol- und Rückgabestation.
+          {t('bookings.detail.oneWayRental')}
         </p>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -126,12 +133,16 @@ export function BookingStationPanel({ stations }: BookingStationPanelProps) {
           planned={stations.pickup}
           actual={stations.actualPickup}
           purpose="pickup"
+          noStationLabel={t('bookings.detail.noStation')}
+          actualLabel={t('bookings.detail.actual')}
         />
         <StationCard
-          title="Rückgabestation"
+          title={t('bookings.detail.returnStation')}
           planned={stations.return}
           actual={stations.actualReturn}
           purpose="return"
+          noStationLabel={t('bookings.detail.noStation')}
+          actualLabel={t('bookings.detail.actual')}
         />
       </div>
     </div>

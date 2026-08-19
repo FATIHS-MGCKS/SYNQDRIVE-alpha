@@ -12,9 +12,10 @@ import { DataCard, StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   customerVerificationApiToUi,
-  customerVerificationUiLabelDe,
+  customerVerificationUiLabel,
   type CustomerUiVerification,
 } from '../../lib/entityMappers';
 import { formatStressScore, stressToneToStatusTone } from '../../lib/scoreFormat';
@@ -26,7 +27,7 @@ import {
   overallRentalClearanceLabel,
   overallRentalClearanceTone,
 } from './customerDetailUtils';
-import { cdv, customerVerificationTone, ELIGIBILITY_LOAD_ERROR_USER } from './customer-detail-ui';
+import { cdv, customerVerificationTone } from './customer-detail-ui';
 
 type EligibilityStage = 'allowed' | 'warning' | 'blocked';
 
@@ -62,10 +63,10 @@ function DecisionCardTitle({ icon, label }: { icon: ReactNode; label: string }) 
   );
 }
 
-function DecisionDetailsAction({ onClick }: { onClick: () => void }) {
+function DecisionDetailsAction({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <Button type="button" variant="link" size="sm" className={cdv.decisionCardAction} onClick={onClick}>
-      Details
+      {label}
       <ChevronRight className="size-3" />
     </Button>
   );
@@ -109,20 +110,24 @@ function DecisionSummaryCard({
   title,
   className,
   onDetails,
+  detailsLabel,
   children,
 }: {
   icon: ReactNode;
   title: string;
   className?: string;
   onDetails?: () => void;
+  detailsLabel: string;
   children: ReactNode;
 }) {
+  const cardTitle = <DecisionCardTitle icon={icon} label={title} />;
+
   return (
     <DataCard
       flush
       className={cn(cdv.decisionCard, className)}
-      title={<DecisionCardTitle icon={icon} label={title} />}
-      actions={onDetails ? <DecisionDetailsAction onClick={onDetails} /> : undefined}
+      title={cardTitle}
+      actions={onDetails ? <DecisionDetailsAction onClick={onDetails} label={detailsLabel} /> : undefined}
       bodyClassName={cdv.decisionCardBody}
     >
       {children}
@@ -169,6 +174,8 @@ export function CustomerDecisionCards({
   drivingEvents,
   abuseEvents,
 }: CustomerDecisionCardsProps) {
+  const { t, locale } = useLanguage();
+
   const idUi = customerVerificationApiToUi(idVerificationStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(licenseVerificationStatus ?? undefined);
 
@@ -186,13 +193,15 @@ export function CustomerDecisionCards({
     overdueInvoices > 0 ? 'critical' : financeHasIssues ? 'warning' : 'success';
   const financeSummary = financeHasIssues
     ? [
-        openInvoices > 0 ? `${openInvoices} offen` : null,
-        overdueInvoices > 0 ? `${overdueInvoices} überfällig` : null,
-        openFines > 0 ? `${openFines} Bußgelder` : null,
+        openInvoices > 0 ? t('customers.detail.decisions.countOpen', { count: openInvoices }) : null,
+        overdueInvoices > 0
+          ? t('customers.detail.decisions.countOverdue', { count: overdueInvoices })
+          : null,
+        openFines > 0 ? t('customers.detail.decisions.countFines', { count: openFines }) : null,
       ]
         .filter(Boolean)
         .join(' · ')
-    : 'Keine offenen Posten';
+    : t('customers.detail.decisions.noOpenItems');
 
   const drivingHasSignals = drivingEvents > 0 || abuseEvents > 0;
   const verificationHint = resolveVerificationHint(eligibility, licenseUi);
@@ -220,26 +229,37 @@ export function CustomerDecisionCards({
     Boolean(eligibility?.warnings[0]);
 
   const stageItems: { label: string; stage: EligibilityStage }[] = [
-    { label: 'Erstellen', stage: createStage },
-    { label: 'Bestätigen', stage: confirmStage },
-    { label: 'Übergabe', stage: pickupStage },
+    { label: t('customers.detail.decisions.stage.create'), stage: createStage },
+    { label: t('customers.detail.decisions.stage.confirm'), stage: confirmStage },
+    { label: t('customers.detail.decisions.stage.pickup'), stage: pickupStage },
   ];
+
+  const detailsLabel = t('common.details');
 
   return (
     <div className={cdv.decisionSectionGrid}>
       <DecisionSummaryCard
         icon={clearanceIcon}
-        title="Mietfreigabe"
+        title={t('customers.detail.decisions.clearance')}
         className={cdv.decisionCardPrimary}
+        detailsLabel={detailsLabel}
       >
         {eligibilityLoading ? (
-          <p className={cdv.decisionMutedText}>Wird geladen…</p>
+          <p className={cdv.decisionMutedText}>{t('customers.detail.decisions.loading')}</p>
         ) : eligibilityError ? (
           <div className="space-y-2" title={eligibilityError}>
-            <p className="text-[12px] font-medium text-foreground">{ELIGIBILITY_LOAD_ERROR_USER}</p>
+            <p className="text-[12px] font-medium text-foreground">
+              {t('customers.detail.eligibilityLoadError')}
+            </p>
             {onRetryEligibility ? (
-              <Button type="button" size="sm" variant="neutral" className="h-8" onClick={onRetryEligibility}>
-                Erneut laden
+              <Button
+                type="button"
+                size="sm"
+                variant="neutral"
+                className="h-8"
+                onClick={onRetryEligibility}
+              >
+                {t('customers.detail.decisions.reload')}
               </Button>
             ) : null}
           </div>
@@ -260,22 +280,23 @@ export function CustomerDecisionCards({
             <DecisionStageRail stages={stageItems} />
           </>
         ) : (
-          <p className={cdv.decisionMutedText}>Keine Freigabedaten</p>
+          <p className={cdv.decisionMutedText}>{t('customers.detail.decisions.noClearanceData')}</p>
         )}
       </DecisionSummaryCard>
 
       <DecisionSummaryCard
         icon={<BadgeCheck className="size-3.5" />}
-        title="Verifikation"
+        title={t('customers.detail.decisions.verification')}
         className={cdv.decisionCardSecondary}
         onDetails={onOpenDocuments}
+        detailsLabel={detailsLabel}
       >
         <div className={cdv.decisionChipStack}>
           <DecisionChip tone={customerVerificationTone(idUi)} dot>
-            Ausweis: {customerVerificationUiLabelDe(idUi)}
+            {t('customers.detail.decisions.idPrefix')} {customerVerificationUiLabel(idUi, locale)}
           </DecisionChip>
           <DecisionChip tone={customerVerificationTone(licenseUi)} dot>
-            FS: {customerVerificationUiLabelDe(licenseUi)}
+            {t('customers.detail.decisions.licensePrefix')} {customerVerificationUiLabel(licenseUi, locale)}
           </DecisionChip>
         </div>
         {verificationHint ? <p className={cdv.decisionMutedText}>{verificationHint}</p> : null}
@@ -283,27 +304,29 @@ export function CustomerDecisionCards({
 
       <DecisionSummaryCard
         icon={<Wallet className="size-3.5" />}
-        title="Finanzen"
+        title={t('customers.detail.decisions.finances')}
         className={cdv.decisionCardSecondary}
         onDetails={onOpenFinances}
+        detailsLabel={detailsLabel}
       >
         <DecisionChip tone={financeTone} dot>
           {financeSummary}
         </DecisionChip>
         {!financeHasIssues ? (
-          <p className={cdv.decisionMutedText}>Rechnungen und Gebühren im Überblick</p>
+          <p className={cdv.decisionMutedText}>{t('customers.detail.decisions.financesOverview')}</p>
         ) : null}
       </DecisionSummaryCard>
 
       <DecisionSummaryCard
         icon={<Gauge className="size-3.5" />}
-        title="Fahrbelastung"
+        title={t('customers.detail.decisions.drivingLoad')}
         className={cdv.decisionCardSecondaryWide}
         onDetails={onOpenDriving}
+        detailsLabel={detailsLabel}
       >
         <div className={cdv.decisionChipStack}>
           {stressDisplay.isMissing ? (
-            <DecisionChip tone="noData">Keine Fahrdaten vorhanden</DecisionChip>
+            <DecisionChip tone="noData">{t('customers.detail.decisions.noDrivingData')}</DecisionChip>
           ) : (
             <DecisionChip tone={stressToneToStatusTone(stressDisplay.tone)} dot>
               {stressDisplay.label}
@@ -311,7 +334,10 @@ export function CustomerDecisionCards({
           )}
           {drivingHasSignals ? (
             <p className={cdv.decisionMutedText}>
-              {drivingEvents} Ereignisse · {abuseEvents} Auffälligkeiten
+              {t('customers.detail.decisions.eventsSummary', {
+                events: drivingEvents,
+                abuse: abuseEvents,
+              })}
             </p>
           ) : null}
         </div>

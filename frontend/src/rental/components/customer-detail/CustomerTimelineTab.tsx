@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Clock, Loader2, Plus } from 'lucide-react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import { EmptyState, StatusChip } from '../../../components/patterns';
@@ -13,17 +14,6 @@ import {
 import { cdv } from './customer-detail-ui';
 
 type TimelineFilter = 'all' | TimelineFilterCategory;
-
-const FILTER_OPTIONS: { value: TimelineFilter; label: string }[] = [
-  { value: 'all', label: 'Alle' },
-  { value: 'document', label: 'Dokumente' },
-  { value: 'booking', label: 'Buchungen' },
-  { value: 'status', label: 'Status' },
-  { value: 'risk', label: 'Risiko' },
-  { value: 'payment', label: 'Zahlungen' },
-  { value: 'fine', label: 'Bußgelder' },
-  { value: 'note', label: 'Notizen' },
-];
 
 interface CustomerTimelineTabProps {
   events: Array<Record<string, unknown>>;
@@ -38,7 +28,22 @@ export function CustomerTimelineTab({
   error,
   onAddNote,
 }: CustomerTimelineTabProps) {
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<TimelineFilter>('all');
+
+  const filterOptions = useMemo(
+    (): { value: TimelineFilter; label: string }[] => [
+      { value: 'all', label: t('customers.detail.timeline.filterAll') },
+      { value: 'document', label: t('customers.detail.timeline.filterDocuments') },
+      { value: 'booking', label: t('customers.detail.timeline.filterBookings') },
+      { value: 'status', label: t('common.status') },
+      { value: 'risk', label: t('customers.detail.timeline.filterRisk') },
+      { value: 'payment', label: t('customers.detail.timeline.filterPayments') },
+      { value: 'fine', label: t('customers.detail.timeline.filterFines') },
+      { value: 'note', label: t('customers.detail.timeline.filterNotes') },
+    ],
+    [t],
+  );
 
   const filtered = useMemo(
     () => events.filter((ev) => timelineEventMatchesFilter(ev, filter)),
@@ -54,8 +59,8 @@ export function CustomerTimelineTab({
     <div className={cdv.timelineToolbar}>
       <div className={cdv.timelineToolbarRow}>
         <div className={cdv.timelineFilterBar}>
-          <div className={cdv.timelineFilterScroll} role="tablist" aria-label="Timeline-Filter">
-            {FILTER_OPTIONS.map((option) => {
+          <div className={cdv.timelineFilterScroll} role="tablist" aria-label={t('customers.detail.timeline.filterAria')}>
+            {filterOptions.map((option) => {
               const active = filter === option.value;
               return (
                 <button
@@ -83,22 +88,22 @@ export function CustomerTimelineTab({
           onClick={onAddNote}
         >
           <Plus className="size-3.5" aria-hidden />
-          Notiz hinzufügen
+          {t('customers.detail.addNote')}
         </Button>
       </div>
 
-      {error ? <p className={cdv.timelineError}>Timeline konnte nicht geladen werden.</p> : null}
+      {error ? <p className={cdv.timelineError}>{t('customers.detail.timeline.loadError')}</p> : null}
 
       {loading ? (
         <div className={cdv.timelineLoading}>
           <Loader2 className="size-4 animate-spin" aria-hidden />
-          Timeline wird geladen…
+          {t('customers.detail.timeline.loading')}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<Clock className="size-5" />}
-          title="Keine Einträge"
-          description="Für diesen Filter sind noch keine Einträge vorhanden."
+          title={t('customers.detail.timeline.emptyTitle')}
+          description={t('customers.detail.timeline.emptyDescription')}
         />
       ) : (
         <div className={cdv.timelineList}>

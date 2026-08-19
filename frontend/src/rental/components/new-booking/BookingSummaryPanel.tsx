@@ -6,6 +6,8 @@ import { formatPriceCents } from '../../pricing/pricingUtils';
 import { BookingStepCard } from './BookingStepCard';
 import { formatBookingAmount } from './format';
 import type { BookingSummaryPanelProps } from './types';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { bookingsFormattingLocaleOrDefault } from '../bookings-customers/bookings-i18n';
 
 export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
   const {
@@ -46,6 +48,8 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
     isDarkMode,
   } = props;
 
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
   const displayCurrency = pricingCurrency ?? priceSim?.currency ?? null;
   const fmt = (value: number | null | undefined) =>
     displayCurrency ? formatBookingAmount(value, displayCurrency) : '—';
@@ -55,7 +59,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
   return (
     <BookingStepCard>
       <div className="p-4">
-        <h3 className="mb-3 text-base text-muted-foreground">Buchungs- & Preisübersicht</h3>
+        <h3 className="mb-3 text-base text-muted-foreground">{t('bookings.wizard.summaryTitle')}</h3>
 
         <div className="mb-3 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -99,8 +103,8 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
               {pickupDate && returnDate ? (
                 <>
                   <p className="text-xs text-foreground">
-                    {new Date(pickupDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} –{' '}
-                    {new Date(returnDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                    {new Date(pickupDate).toLocaleDateString(fmtLocale, { day: '2-digit', month: 'short' })} –{' '}
+                    {new Date(returnDate).toLocaleDateString(fmtLocale, { day: '2-digit', month: 'short' })}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {rentalDays} Tage · {pickupTime} – {returnTime}
@@ -136,7 +140,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           </div>
           {(selectedMileagePackage || selectedInsurances.length > 0 || extras.length > 0) && (
             <div>
-              <div className="mb-1.5 text-[11px] text-muted-foreground">Extras & Packages</div>
+              <div className="mb-1.5 text-[11px] text-muted-foreground">{t('bookings.wizard.extrasAndPackages')}</div>
               <div className="flex flex-wrap gap-1.5">
                 {selectedMileagePackage && (() => {
                   const pkg = mileagePackages.find((p) => p.id === selectedMileagePackage);
@@ -169,11 +173,11 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
 
         <div className="space-y-2.5">
           {canCalculatePrice && priceLoading && (
-            <p className="text-xs text-muted-foreground">Preis wird berechnet…</p>
+            <p className="text-xs text-muted-foreground">{t('bookings.wizard.calculatingPrice')}</p>
           )}
           {priceError && <p className="text-xs text-[color:var(--status-critical)]">{priceError}</p>}
           {!canCalculatePrice && selectedVehicle && (!pickupDate || !returnDate) && (
-            <p className="text-xs text-muted-foreground">Zeitraum wählen für Preisberechnung.</p>
+            <p className="text-xs text-muted-foreground">{t('bookings.wizard.selectPeriodForPrice')}</p>
           )}
           {pricingContext && (
             <div className="flex justify-between text-xs">
@@ -194,7 +198,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           ))}
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Frei-Kilometer</span>
-            <span className="text-[color:var(--status-positive)]">{totalFreeKm.toLocaleString('de-DE')} km</span>
+            <span className="text-[color:var(--status-positive)]">{totalFreeKm.toLocaleString(fmtLocale)} km</span>
           </div>
           {extraKmPrice != null && (
             <div className="flex justify-between text-xs">
@@ -208,12 +212,12 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
                 <span className="text-muted-foreground">
                   Basis ({freeKmPerDay} km/Tag × {displayRentalDays})
                 </span>
-                <span className="text-muted-foreground">{baseFreeKm.toLocaleString('de-DE')} km</span>
+                <span className="text-muted-foreground">{baseFreeKm.toLocaleString(fmtLocale)} km</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-[color:var(--status-positive)]">+ Kilometerpaket</span>
                 <span className="text-[color:var(--status-positive)]">
-                  +{mileagePkgKm.toLocaleString('de-DE')} km
+                  +{mileagePkgKm.toLocaleString(fmtLocale)} km
                 </span>
               </div>
             </div>
@@ -225,7 +229,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           ))}
           <div className="mt-2 space-y-2 border-t border-border pt-3">
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Zwischensumme (netto)</span>
+              <span className="text-muted-foreground">{t('bookings.wizard.subtotalNet')}</span>
               <span className="text-foreground">{fmt(subtotalNet)}</span>
             </div>
             <div className="flex justify-between text-xs">
@@ -239,11 +243,11 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           </div>
           <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-muted/20 p-3">
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Mietpreis (brutto)</span>
+              <span className="text-muted-foreground">{t('bookings.wizard.rentalGross')}</span>
               <span className="text-foreground">{fmt(grandTotal)}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Kaution (bei Abholung)</span>
+              <span className="text-muted-foreground">{t('bookings.wizard.depositAtPickup')}</span>
               <span className="text-[color:var(--status-watch)]">{fmt(depositAmount)}</span>
             </div>
             {priceSim?.pricingContext?.resolvedDeposit?.reason && (

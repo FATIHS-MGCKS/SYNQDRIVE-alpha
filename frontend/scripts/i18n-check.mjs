@@ -43,6 +43,7 @@ const testFiles = [
   'src/pages/login-localization.test.tsx',
   'src/rental/components/rental-nav-dashboard-localization.test.tsx',
   'src/rental/components/rental-vehicles-health-localization.test.tsx',
+  'src/rental/components/rental-bookings-customers-localization.test.tsx',
 ];
 
 const result = spawnSync('npx', ['vitest', 'run', ...testFiles], {

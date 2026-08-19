@@ -2,6 +2,7 @@ import { Icon } from './ui/Icon';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { toast } from 'sonner';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import type { CustomerDocumentApiType } from '../lib/entityMappers';
 
@@ -72,6 +73,7 @@ export function CustomerDocumentUploadBox({
   onDocumentUploaded,
   onPendingFileChange,
 }: CustomerDocumentUploadBoxProps) {
+  const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function CustomerDocumentUploadBox({
     async (file: File | null | undefined) => {
       if (!file) return;
       if (!orgId) {
-        const msg = 'Keine Organisation geladen';
+        const msg = t('customers.document.noOrg');
         setLocalError(msg);
         toast.error(msg);
         return;
@@ -120,17 +122,17 @@ export function CustomerDocumentUploadBox({
           file,
         );
         onDocumentUploaded?.(res as unknown as CustomerDocumentRecord);
-        toast.success('Dokument hochgeladen');
+        toast.success(t('customers.document.uploadedToast'));
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
+        const msg = err instanceof Error ? err.message : t('customers.document.uploadFailed');
         setLocalError(msg);
-        toast.error('Upload fehlgeschlagen', { description: msg });
+        toast.error(t('customers.document.uploadFailed'), { description: msg });
       } finally {
         setUploading(false);
         if (inputRef.current) inputRef.current.value = '';
       }
     },
-    [orgId, customerId, documentType, onDocumentUploaded, onPendingFileChange],
+    [orgId, customerId, documentType, onDocumentUploaded, onPendingFileChange, t],
   );
 
   const isImage = hasContent && previewUrl && !/\.pdf($|\?)/i.test(previewUrl);
@@ -160,7 +162,7 @@ export function CustomerDocumentUploadBox({
           <div className="flex flex-col items-center gap-1.5 py-1">
             <Icon name="loader-2" className="w-5 h-5 text-[color:var(--brand)] animate-spin" />
             <span className="text-xs font-semibold text-[color:var(--brand-ink)]">
-              Wird hochgeladen…
+              {t('customers.document.uploading')}
             </span>
           </div>
         ) : hasContent ? (
@@ -175,14 +177,14 @@ export function CustomerDocumentUploadBox({
               <div className="flex items-center gap-2">
                 <Icon name="file-text" className="w-5 h-5 text-[color:var(--status-positive)]" />
                 <span className="text-xs font-semibold text-[color:var(--status-positive)]">
-                  PDF hochgeladen
+                  {t('customers.document.pdfUploaded')}
                 </span>
               </div>
             )}
             <div className="flex items-center gap-2">
               <Icon name="check-circle" className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
               <span className="text-[11px] font-semibold text-[color:var(--status-positive)]">
-                {customerId ? 'Hochgeladen' : 'Ausgewählt'}
+                {customerId ? t('customers.document.uploaded') : t('customers.document.selected')}
               </span>
               {!customerId && (
                 <button
@@ -191,7 +193,7 @@ export function CustomerDocumentUploadBox({
                   className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--status-critical)] hover:opacity-80"
                 >
                   <Icon name="trash-2" className="w-3 h-3" />
-                  Entfernen
+                  {t('customers.document.removed')}
                 </button>
               )}
             </div>
@@ -204,10 +206,10 @@ export function CustomerDocumentUploadBox({
           >
             <Icon name="camera" className="w-5 h-5 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">
-              Klicken zum Hochladen
+              {t('customers.document.clickToUpload')}
             </span>
             <span className="text-[10px] text-muted-foreground/80">
-              JPG, PNG oder PDF (max. 8 MB)
+              {t('customers.document.formatsHint')}
             </span>
           </button>
         )}

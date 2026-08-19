@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { api, type BookingDetailDto, type Station } from '../../../lib/api';
 import { StationSelectFields } from '../stations/StationSelectFields';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface BookingEditDialogProps {
   orgId: string;
@@ -19,6 +20,7 @@ function toLocalInput(iso: string): string {
 }
 
 export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEditDialogProps) {
+  const { t } = useLanguage();
   const [startLocal, setStartLocal] = useState(toLocalInput(detail.core.startDate));
   const [endLocal, setEndLocal] = useState(toLocalInput(detail.core.endDate));
   const [notes, setNotes] = useState(detail.core.notes ?? '');
@@ -99,7 +101,7 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
         className="relative w-full max-w-lg mx-4 rounded-lg shadow-2xl border surface-premium border-border overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-bold">Buchung bearbeiten</h3>
+          <h3 className="text-sm font-bold">{t('bookings.edit.title')}</h3>
           <button type="button" onClick={onClose} className="p-1 rounded hover:bg-muted">
             <Icon name="x" className="w-4 h-4" />
           </button>

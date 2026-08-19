@@ -1,6 +1,7 @@
 import { StatusChip } from '../../../components/patterns';
 import type { BookingDetailDto } from '../../../lib/api';
 import { normalizeBookingStatus } from '../bookings/bookingStatus';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingActionMatrix } from './bookingDetailTypes';
 import {
   EM_DASH,
@@ -17,6 +18,7 @@ interface BookingOverviewTabProps {
 }
 
 export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) {
+  const { t } = useLanguage();
   const uiStatus = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   const primary = getPrimaryBookingAction(detail, matrix);
   const warnings: string[] = [];
@@ -28,7 +30,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
     <div className="space-y-4">
       {warnings.length > 0 && (
         <div className="rounded-lg border border-current/20 sq-tone-warning px-4 py-3 space-y-1">
-          <p className="text-xs font-semibold">Wichtige Hinweise</p>
+          <p className="text-xs font-semibold">{t('bookings.detail.importantNotes')}</p>
           <ul className="text-xs space-y-1 list-disc pl-4">
             {warnings.map((w) => (
               <li key={w}>{w}</li>
@@ -53,7 +55,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
         </div>
 
         <div className={bd.card}>
-          <h3 className="text-xs font-bold mb-3">Nächste Aktion</h3>
+          <h3 className="text-xs font-bold mb-3">{t('bookings.detail.nextAction')}</h3>
           <p className="text-sm font-semibold text-foreground">{primary.label}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {uiStatus === 'confirmed' && !detail.handover.pickup

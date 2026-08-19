@@ -1,3 +1,4 @@
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { DataCard, StatusChip, Timeline } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import type { CustomerDetail, CustomerListRow } from './customerDetailTypes';
@@ -22,6 +23,8 @@ export function CustomerOverviewTab({
   timelinePreview,
   onOpenTimeline,
 }: CustomerOverviewTabProps) {
+  const { t } = useLanguage();
+
   const timelineItems = timelinePreview.slice(0, 5).map((ev, idx) => {
     const summary = mapTimelineEventToUserSummary(ev);
     return {
@@ -41,47 +44,62 @@ export function CustomerOverviewTab({
   return (
     <div className="space-y-3 pt-1">
       <div className={cdv.twoColGrid}>
-        <DataCard title="Identität & Kontakt" bodyClassName="py-2">
+        <DataCard title={t('customers.detail.overview.identity')} bodyClassName="py-2">
           {[
-            { label: 'Name', value: customer.name },
-            { label: 'Geburtsdatum', value: formatDate(detail?.dateOfBirth) },
-            { label: 'Telefon', value: customer.phone },
-            { label: 'E-Mail', value: customer.email },
+            { label: t('customers.table.name'), value: customer.name },
+            { label: t('customers.detail.overview.birthDate'), value: formatDate(detail?.dateOfBirth) },
+            { label: t('customers.phone'), value: customer.phone },
+            { label: t('customers.email'), value: customer.email },
             {
-              label: 'Adresse',
+              label: t('customers.detail.overview.address'),
               value:
                 [detail?.address, [detail?.zip, detail?.city].filter(Boolean).join(' ')]
                   .filter(Boolean)
                   .join(', ') || undefined,
             },
-            { label: 'Kundentyp', value: customer.type === 'Corporate' ? 'Firma' : 'Privat' },
-            ...(customer.company ? [{ label: 'Firma', value: customer.company }] : []),
-            ...(detail?.taxId ? [{ label: 'USt-IdNr.', value: detail.taxId }] : []),
+            {
+              label: t('customers.detail.overview.customerType'),
+              value: customer.type === 'Corporate' ? t('customers.type.corporate') : t('customers.type.individual'),
+            },
+            ...(customer.company ? [{ label: t('customers.company'), value: customer.company }] : []),
+            ...(detail?.taxId ? [{ label: t('customers.detail.overview.taxId'), value: detail.taxId }] : []),
           ].map((row) => (
             <CustomerDetailInfoRow key={row.label} label={row.label} value={row.value} />
           ))}
           {detail?.notes ? (
             <div className="mt-2 border-t border-border/40 pt-2">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Notizen
+                {t('customers.detail.overview.notes')}
               </p>
               <p className="mt-1 whitespace-pre-wrap text-[12px] text-muted-foreground">{detail.notes}</p>
             </div>
           ) : null}
         </DataCard>
 
-        <DataCard title="Operative Kennzahlen" bodyClassName="py-2">
-          <CustomerDetailInfoRow label="Buchungen gesamt" value={String(totalBookings)} />
-          <CustomerDetailInfoRow label="Letzte Buchung" value={formatDate(lastBookingDate)} />
-          <CustomerDetailInfoRow label="Kunde seit" value={formatDate(detail?.createdAt)} />
+        <DataCard title={t('customers.detail.overview.metrics')} bodyClassName="py-2">
+          <CustomerDetailInfoRow
+            label={t('customers.detail.overview.totalBookings')}
+            value={String(totalBookings)}
+          />
+          <CustomerDetailInfoRow
+            label={t('customers.detail.overview.lastBooking')}
+            value={formatDate(lastBookingDate)}
+          />
+          <CustomerDetailInfoRow
+            label={t('customers.detail.overview.customerSince')}
+            value={formatDate(detail?.createdAt)}
+          />
           {customer.currentVehicle ? (
-            <CustomerDetailInfoRow label="Aktuelles Fahrzeug" value={customer.currentVehicle} />
+            <CustomerDetailInfoRow
+              label={t('customers.detail.overview.currentVehicle')}
+              value={customer.currentVehicle}
+            />
           ) : null}
         </DataCard>
       </div>
 
       <DataCard
-        title="Letzte Aktivitäten"
+        title={t('customers.detail.overview.lastActivity')}
         actions={
           <Button
             type="button"
@@ -90,13 +108,13 @@ export function CustomerOverviewTab({
             className="h-auto px-0 text-xs"
             onClick={onOpenTimeline}
           >
-            Alle anzeigen
+            {t('customers.detail.overview.showAll')}
           </Button>
         }
         bodyClassName={cdv.overviewActivityBody}
       >
         {timelineItems.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">Noch keine Timeline-Einträge.</p>
+          <p className="text-[12px] text-muted-foreground">{t('customers.detail.overview.noTimeline')}</p>
         ) : (
           <Timeline items={timelineItems} />
         )}

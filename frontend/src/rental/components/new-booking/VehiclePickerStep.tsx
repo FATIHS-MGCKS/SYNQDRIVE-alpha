@@ -12,6 +12,7 @@ import {
 import { buildMMY } from '../../lib/vehicleMmy';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { VEHICLE_OPERATIONAL_STATUS, selectOperationalStatus } from '../../lib/vehicle-operational-state';
 
@@ -118,6 +119,7 @@ function VehiclePickerCard({
   isDarkMode: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useLanguage();
   const preflight = resolveBookingVehiclePreflight(
     vehicle,
     health,
@@ -176,7 +178,7 @@ function VehiclePickerCard({
               >
                 {priceLabel}
               </p>
-              <p className="text-[10px] text-muted-foreground">pro Tag</p>
+              <p className="text-[10px] text-muted-foreground">{t('bookings.wizard.perDay')}</p>
             </div>
           </div>
 
@@ -228,7 +230,7 @@ function VehiclePickerCard({
             ) : null}
 
             {preflight.noTariff && preflight.isSelectable ? (
-              <span className="text-[10px] text-[color:var(--status-watch)]">Kein Tarif</span>
+              <span className="text-[10px] text-[color:var(--status-watch)]">{t('bookings.wizard.noTariff')}</span>
             ) : null}
 
             {preflight.cautionReason &&
@@ -253,7 +255,7 @@ function VehiclePickerCard({
           >
             {priceLabel}
           </p>
-          <p className="text-[10px] text-muted-foreground">pro Tag</p>
+          <p className="text-[10px] text-muted-foreground">{t('bookings.wizard.perDay')}</p>
         </div>
         <div className="ml-auto shrink-0">
           <SelectionIndicator
@@ -294,6 +296,7 @@ export function VehiclePickerStep({
   getDailyRateLabel,
   isDarkMode,
 }: VehiclePickerStepProps) {
+  const { t } = useLanguage();
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
   const hasActiveFilters =
@@ -320,13 +323,13 @@ export function VehiclePickerStep({
 
   return (
     <div className="p-4">
-      <SectionHeader title="Fahrzeug auswählen" className="mb-3" />
+      <SectionHeader title={t('bookings.wizard.selectVehicle')} className="mb-3" />
 
       <div className="relative mb-3">
         <Icon name="search" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <input
           type="search"
-          placeholder="Fahrzeug suchen…"
+          placeholder={t('bookings.wizard.searchVehicle')}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
@@ -336,7 +339,7 @@ export function VehiclePickerStep({
       <div className="mb-3 space-y-2 md:hidden">
         <div className="grid min-w-0 grid-cols-2 gap-2">
           <select value={brandFilter} onChange={(e) => onBrandFilterChange(e.target.value)} className={selectClass}>
-            <option value="all">Alle Marken</option>
+            <option value="all">{t('bookings.wizard.allBrands')}</option>
             {brands.map((b) => (
               <option key={b} value={b}>{b}</option>
             ))}
@@ -366,7 +369,7 @@ export function VehiclePickerStep({
         {moreFiltersOpen ? (
           <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border border-border/70 bg-muted/20 p-2.5">
             <select value={fuelFilter} onChange={(e) => onFuelFilterChange(e.target.value)} className={selectClass}>
-              <option value="all">Alle Kraftstoffe</option>
+              <option value="all">{t('bookings.wizard.allFuels')}</option>
               {fuelTypes.map((f) => (
                 <option key={f} value={f}>{f}</option>
               ))}
@@ -388,7 +391,7 @@ export function VehiclePickerStep({
       <div className="mb-3 hidden md:block">
         <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-3">
           <select value={brandFilter} onChange={(e) => onBrandFilterChange(e.target.value)} className={selectClass}>
-            <option value="all">Alle Marken</option>
+            <option value="all">{t('bookings.wizard.allBrands')}</option>
             {brands.map((b) => (
               <option key={b} value={b}>{b}</option>
             ))}
@@ -400,7 +403,7 @@ export function VehiclePickerStep({
             ))}
           </select>
           <select value={fuelFilter} onChange={(e) => onFuelFilterChange(e.target.value)} className={selectClass}>
-            <option value="all">Alle Kraftstoffe</option>
+            <option value="all">{t('bookings.wizard.allFuels')}</option>
             {fuelTypes.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
@@ -462,7 +465,7 @@ export function VehiclePickerStep({
         {visibleVehicles.length === 0 ? (
           <div className="py-12 text-center">
             <Icon name="car" className="mx-auto mb-3 h-5 w-5 text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">Keine Fahrzeuge in dieser Kategorie gefunden</p>
+            <p className="text-xs text-muted-foreground">{t('bookings.wizard.noVehiclesInCategory')}</p>
           </div>
         ) : null}
       </div>
