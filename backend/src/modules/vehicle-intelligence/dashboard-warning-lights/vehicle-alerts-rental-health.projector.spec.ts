@@ -1,6 +1,7 @@
 import type { DashboardWarningLight } from './dashboard-warning-lights.types';
 import {
   buildVehicleAlertsTestEnvelope,
+  isVehicleAlertsDashboardPipelineFailed,
   projectVehicleAlertsToRentalHealth,
   vehicleAlertBlockingCausesToReasons,
 } from './vehicle-alerts-rental-health.projector';
@@ -312,6 +313,43 @@ describe('vehicle-alerts-rental-health.projector', () => {
       );
       expect(moduleHealth.state).toBe('good');
       expect(blockingCauses).toHaveLength(0);
+    });
+  });
+
+  describe('isVehicleAlertsDashboardPipelineFailed', () => {
+    it('treats rejected DWL fetch as pipeline failure', () => {
+      expect(
+        isVehicleAlertsDashboardPipelineFailed({
+          status: 'rejected',
+          reason: new Error('dwl down'),
+        }),
+      ).toBe(true);
+    });
+
+    it('treats fulfilled provider_error envelope as pipeline failure', () => {
+      expect(
+        isVehicleAlertsDashboardPipelineFailed({
+          status: 'fulfilled',
+          value: buildVehicleAlertsTestEnvelope([], {
+            connectionStatus: 'provider_error',
+            freshness: 'error',
+            message: 'HM raw fetch failed',
+          }),
+        }),
+      ).toBe(true);
+    });
+
+    it('does not treat not_connected as pipeline failure', () => {
+      expect(
+        isVehicleAlertsDashboardPipelineFailed({
+          status: 'fulfilled',
+          value: buildVehicleAlertsTestEnvelope([], {
+            connectionStatus: 'not_connected',
+            supportStatus: 'not_connected',
+            freshness: 'no_data',
+          }),
+        }),
+      ).toBe(false);
     });
   });
 });

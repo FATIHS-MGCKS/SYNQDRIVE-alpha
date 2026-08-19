@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Rental Health `vehicle_alerts` (limp + oil) liest nicht mehr parallel HM-Rohsignale — kanonische Quelle: `DashboardWarningLightsService`.',
       'Pure Projector: `projectVehicleAlertsToRentalHealth()` → ModuleHealth + strukturierte `VehicleAlertBlockingCause[]`.',
-      'Fail-safe: missing/stale/unsupported/historical-active ≠ confirmed healthy; Provider-Fehler → `unknown`.',
+      'Fail-safe: missing/stale/unsupported/historical-active ≠ confirmed healthy; Provider-Fehler → `unknown` + Pipeline unavailable (fail-closed).',
       'Keine Notification-V2-Registry-Änderung (66/23/43 unverändert) — P2.2B folgt.',
       'CI-Closure: tsc 5/5/0 vs main; vehicle-detail 1 failed suite baseline; P2.2A Jest grün.',
       'Audit: P2.2A READY FOR MERGE; YELLOW — NOT READY FOR UI CUTOVER.',

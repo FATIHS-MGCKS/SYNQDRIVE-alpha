@@ -60,6 +60,7 @@ describe('RentalHealthService (unit)', () => {
     undefined,
     undefined,
     undefined,
+    undefined,
     dashboardWarningLights as any,
   );
 
@@ -837,5 +838,144 @@ describe('RentalHealthService (unit)', () => {
       null,
     );
     expect(reasons.some((r: string) => /TPMS/i.test(r))).toBe(true);
+  });
+
+  function mockHealthyVehicleModules() {
+    prisma.vehicle.findFirst.mockResolvedValue({
+      id: 'veh-1',
+      organizationId: 'org-1',
+      fuelType: 'PETROL',
+      lastTuvDate: null,
+      nextTuvDate: null,
+      lastBokraftDate: null,
+      nextBokraftDate: null,
+      lastServiceDate: null,
+      lastServiceOdometerKm: null,
+    });
+    prisma.vehicleLatestState.findUnique.mockResolvedValue(null);
+    prisma.vehicleComplaint.findMany.mockResolvedValue([]);
+    prisma.vehicleDamage.findMany.mockResolvedValue([]);
+    battery.getSummary.mockResolvedValue(batterySummary({ healthStatus: 'GOOD' }));
+    tires.getSummary.mockResolvedValue({
+      overallStatus: 'GOOD',
+      displayMode: 'MEASURED',
+      confidence: 'HIGH',
+      lowestTreadMm: 5,
+      isDefaultAssumption: false,
+      measurementAgeDays: 1,
+      lastMeasurementAt: '2026-07-10T10:00:00.000Z',
+      latestMeasurementAt: '2026-07-10T10:00:00.000Z',
+      alerts: [],
+      activeSetupId: 'setup-1',
+      recommendedPressure: {
+        pressureSpecSource: 'DOOR_PLACARD',
+        pressureSpecConfidence: 98,
+        wearFactorEligible: true,
+      },
+      pressureSpecMissingLabel: null,
+      pressureContext: {
+        sourceType: 'DIMO',
+        overallStatus: 'OK',
+        overallFreshness: 'fresh',
+        tpmsWarning: null,
+        wheels: {
+          frontLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          frontRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearLeft: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+          rearRight: { statusIssue: false, sourceTimestamp: '2026-07-16T13:00:00.000Z' },
+        },
+        coverage: { periodEnd: '2026-07-16T13:00:00.000Z' },
+      },
+    });
+    brakes.getSummary.mockResolvedValue(brakeSummaryFixture());
+    dtc.getSummary.mockResolvedValue({ status: 'clean', activeFaultCount: 0 });
+    hm.getAiHealthCareSignals.mockResolvedValue(null);
+    hm.getTirePressureSignals.mockResolvedValue(null);
+    serviceCompliance.evaluateCompliance.mockResolvedValue({
+      nextService: { trackingStatus: 'NOT_TRACKED' },
+      tuvBokraft: {},
+    });
+    serviceCompliance.toRentalModuleHealth.mockReturnValue({
+      state: 'good',
+      reason: 'OK',
+      last_updated_at: null,
+      data_stale: false,
+    });
+  }
+
+  describe('vehicle_alerts pipeline failure (P2.2A)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockHealthyVehicleModules();
+    });
+
+    it('provider_error envelope fails closed via getVehicleHealth', async () => {
+      const providerMessage = 'HM raw fetch failed';
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'HIGH_MOBILITY',
+        connectionStatus: 'provider_error',
+        supportStatus: 'supported',
+        freshness: 'error',
+        overallStatus: 'unknown',
+        lastObservedAt: null,
+        message: providerMessage,
+        rentalHealthReady: false,
+        lights: [],
+      });
+
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+
+      expect(health.modules.vehicle_alerts.state).toBe('unknown');
+      expect(health.modules.vehicle_alerts.pipeline_available).toBe(false);
+      expect(health.modules.vehicle_alerts.reason).toBe(providerMessage);
+      expect(health.availability).toBe('partial');
+      expect(health.rental_blocked).toBeNull();
+      expect(health.rental_readiness).toBe('unevaluable');
+    });
+
+    it('provider_error envelope fails closed via isRentalBlocked', async () => {
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'HIGH_MOBILITY',
+        connectionStatus: 'provider_error',
+        supportStatus: 'supported',
+        freshness: 'error',
+        overallStatus: 'unknown',
+        lastObservedAt: null,
+        message: 'HM raw fetch failed',
+        rentalHealthReady: false,
+        lights: [],
+      });
+
+      const gate = await svc.isRentalBlocked('org-1', 'veh-1');
+
+      expect(gate.blocked).toBe(true);
+      expect(gate.healthGateStatus).toBe('UNAVAILABLE');
+      expect(gate.manualReviewRequired).toBe(true);
+    });
+
+    it('not_connected remains n_a without marking pipeline unavailable', async () => {
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'NONE',
+        connectionStatus: 'not_connected',
+        supportStatus: 'not_connected',
+        freshness: 'no_data',
+        overallStatus: 'unknown',
+        lastObservedAt: null,
+        message: '',
+        rentalHealthReady: true,
+        lights: [],
+      });
+
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+
+      expect(health.modules.vehicle_alerts.state).toBe('n_a');
+      expect(health.modules.vehicle_alerts.pipeline_available).toBe(true);
+      expect(health.availability).toBe('ready');
+      expect(health.rental_blocked).toBe(false);
+      expect(health.rental_readiness).toBe('ready');
+    });
   });
 });

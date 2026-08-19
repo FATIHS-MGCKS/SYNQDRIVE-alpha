@@ -390,6 +390,8 @@ Severity: overdue sources always `critical` → CRITICAL.
 
 **Hardening (2026-08-19):** per-signal stale with group fresh; `getAiHealthCareRawState` reject → provider_error envelope → RH `unknown`; stale historical active never `isCurrentActive`.
 
+**Pipeline failure (2026-08-19):** fulfilled `provider_error` / `freshness: error` envelopes are canonical pipeline failures (`moduleLoadFailures.vehicle_alerts`) — not only Promise reject. Fail-closed aggregate: `vehicle_alerts.state=unknown`, `pipeline_available=false`, `availability=partial`, `rental_blocked=null`, `rental_readiness=unevaluable`. `not_connected` remains `n_a` without marking pipeline unavailable.
+
 **CI closure (2026-08-19):**
 
 | Check | `main` (`d936b785`) | PR (`f2326b63`) | Δ |

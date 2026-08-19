@@ -42,6 +42,19 @@ const OIL_LOW_BLOCK_REASON = 'Motoröl Minimum';
  *
  * Does not interpret raw HM signals — consumes enriched telltale read model only.
  */
+/**
+ * Canonical Rental Health pipeline-failure detection for Dashboard Warning Lights.
+ *
+ * `not_connected` is intentionally excluded — missing HM/OEM link is `n_a`, not unavailable.
+ */
+export function isVehicleAlertsDashboardPipelineFailed(
+  dashboardLightsRes: PromiseSettledResult<DashboardWarningLightsResponse>,
+): boolean {
+  if (dashboardLightsRes.status === 'rejected') return true;
+  const envelope = dashboardLightsRes.value;
+  return envelope.connectionStatus === 'provider_error' || envelope.freshness === 'error';
+}
+
 export function projectVehicleAlertsToRentalHealth(
   envelope: DashboardWarningLightsResponse | null,
   opts?: { loadFailed?: boolean },

@@ -57,7 +57,7 @@ Multi-cause: limp + oil low produce **two** blocking reasons (no dedup).
 - `stale` or `isHistorical` after prior active → **not** auto-recovery to `good`; no hard rental block
 - `off_confirmed` / oil OK → confirmed recovery (`good`)
 - Provider error (`connectionStatus: provider_error`, envelope `freshness: error`, including raw fetch reject) → `unknown`, not `good`/`n_a`
-- Pipeline load failure (DWL throws into RentalHealth `Promise.allSettled`) → `unknown` + `moduleLoadFailures.vehicle_alerts`
+- Pipeline failure (DWL Promise reject **or** fulfilled provider_error envelope) → `moduleLoadFailures.vehicle_alerts` → aggregate `availability` degraded, `rental_readiness` unevaluable (fail-closed)
 
 **Availability gap (documented):** `vehicle_alerts: unknown` (stale/unevaluable) vs `n_a` (genuinely unsupported) may not yet map to distinct aggregate `rental_readiness` — deferred to Unevaluable/Data-Availability follow-up.
 
