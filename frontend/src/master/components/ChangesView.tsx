@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-alerts-canonical-source-p22a-2026-08-19',
+    version: '4.9.921',
+    title: 'Vehicle Alerts Canonical Source Migration (P2.2A)',
+    summary: [
+      'Rental Health `vehicle_alerts` (limp + oil) liest nicht mehr parallel HM-Rohsignale — kanonische Quelle: `DashboardWarningLightsService`.',
+      'Pure Projector: `projectVehicleAlertsToRentalHealth()` → ModuleHealth + strukturierte `VehicleAlertBlockingCause[]`.',
+      'Fail-safe: missing/stale/unsupported/historical-active ≠ confirmed healthy; Provider-Fehler → `unknown` + Pipeline unavailable (fail-closed).',
+      'Keine Notification-V2-Registry-Änderung (66/23/43 unverändert) — P2.2B folgt.',
+      'CI-Closure: tsc 5/5/0 vs main; vehicle-detail 1 failed suite baseline; P2.2A Jest grün.',
+      'Audit: P2.2A READY FOR MERGE; YELLOW — NOT READY FOR UI CUTOVER.',
+    ],
+    reason:
+      'Source-of-truth-Bereinigung vor P2.2B Notification Producer — keine dritte parallele Limp/Oil-Interpretation.',
+    previousBehavior:
+      'RentalHealthService.evaluateVehicleAlerts() parste `hmAi.limpModeActive` und `hmAi.oilLevel.status` direkt aus getAiHealthCareSignals().',
+    details:
+      'vehicle-alerts-rental-health.projector.ts, rental-health.service.ts, dashboard-warning-lights (export), architecture/VEHICLE_ALERTS_CANONICAL_SOURCE_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-19T00:00:00.000Z',
+  },
+  {
     id: 'service-compliance-notification-p21-2026-08-18',
     version: '4.9.920',
     title: 'Service/Compliance Notification V2 Producer (P2.1)',

@@ -710,19 +710,25 @@ export function createBrakeLifecycleHarness(input?: {
       collectBlockingReasons: (
         m: Record<string, unknown>,
         complaints: unknown[],
-        hmAi: null,
+        vehicleAlertBlockingCauses: unknown[],
         compliance: { tuvBokraft: { tuvOverdue: boolean; bokraftOverdue: boolean } },
         dtc: null,
         brake: typeof brakeSummary,
+        battery: null,
+        damages: unknown[],
+        hmAi: null,
       ) => string[];
     }
   ).collectBlockingReasons(
     modules,
     [],
-    null,
+    [],
     { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
     null,
     brakeSummary,
+    null,
+    [],
+    null,
   );
 
   async function simulateRegisterFromDimoBrakes(rawBrakes: RegistrationBrakeManualSpec) {

@@ -47,6 +47,12 @@ import {
 } from './brake-rental-health.policy';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
 import { VehicleHealthWorkflowEmitter } from './vehicle-health-workflow.emitter';
+import { DashboardWarningLightsService } from '../vehicle-intelligence/dashboard-warning-lights/dashboard-warning-lights.service';
+import {
+  projectVehicleAlertsToRentalHealth,
+  vehicleAlertBlockingCausesToReasons,
+  type VehicleAlertBlockingCause,
+} from '../vehicle-intelligence/dashboard-warning-lights/vehicle-alerts-rental-health.projector';
 import type { BrakeRentalHealthModuleHealth } from './brake-rental-health.types';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
@@ -102,6 +108,7 @@ export class RentalHealthService {
     @Optional() private readonly brakeObservability?: BrakeHealthObservabilityService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
     @Optional() private readonly healthWorkflowEmitter?: VehicleHealthWorkflowEmitter,
+    @Optional() private readonly dashboardWarningLights?: DashboardWarningLightsService,
   ) {}
 
   /**
@@ -141,6 +148,7 @@ export class RentalHealthService {
       complaintsRes,
       complianceRes,
       damagesRes,
+      dashboardLightsRes,
     ] = await Promise.allSettled([
       this.battery.getSummary(vehicleId),
       this.hm.getTirePressureSignals(vehicleId).then((hmTirePressure) =>
@@ -180,6 +188,9 @@ export class RentalHealthService {
         select: { id: true, description: true, rentalImpact: true },
         take: 10,
       }),
+      this.dashboardWarningLights
+        ? this.dashboardWarningLights.getDashboardWarningLights(vehicleId)
+        : Promise.reject(new Error('DashboardWarningLightsService not configured')),
     ]);
 
     const batterySummary = unwrap(batteryRes);
@@ -201,6 +212,15 @@ export class RentalHealthService {
     const complianceEval = unwrap(complianceRes);
     const rentalBlockingDamages =
       damagesRes.status === 'fulfilled' ? (damagesRes.value ?? []) : [];
+    const vehicleAlertsPipelineFailed =
+      dashboardLightsRes.status === 'rejected' ||
+      (dashboardLightsRes.status === 'fulfilled' &&
+        (dashboardLightsRes.value.connectionStatus === 'provider_error' ||
+          dashboardLightsRes.value.freshness === 'error'));
+    const vehicleAlertsProjection = projectVehicleAlertsToRentalHealth(
+      dashboardLightsRes.status === 'fulfilled' ? dashboardLightsRes.value : null,
+      { loadFailed: vehicleAlertsPipelineFailed },
+    );
     const serviceComplianceModule = complianceEval
       ? this.serviceCompliance.toRentalModuleHealth(
           complianceEval,
@@ -233,7 +253,7 @@ export class RentalHealthService {
         evidence_type: this.serviceComplianceEvidenceType(complianceEval),
       },
       complaints: this.evaluateComplaints(openComplaints, complaintsLoaded),
-      vehicle_alerts: this.evaluateVehicleAlerts(hmAi),
+      vehicle_alerts: vehicleAlertsProjection.moduleHealth,
     } as const;
 
     const moduleLoadFailures: Partial<Record<RentalHealthModuleKey, boolean>> = {
@@ -243,6 +263,7 @@ export class RentalHealthService {
       error_codes: dtcRes.status === 'rejected',
       service_compliance: complianceRes.status === 'rejected',
       complaints: !complaintsLoaded,
+      vehicle_alerts: vehicleAlertsPipelineFailed,
     };
     const { modules: modulesWithAvailability, availability } =
       finalizeVehicleHealthAvailability(modules, moduleLoadFailures);
@@ -251,12 +272,13 @@ export class RentalHealthService {
     const blocking_reasons = this.collectBlockingReasons(
       modulesWithAvailability,
       openComplaints,
-      hmAi,
+      vehicleAlertsProjection.blockingCauses,
       complianceEval,
       dtcSummary,
       brakeSummary,
       batterySummary,
       rentalBlockingDamages,
+      hmAi,
     );
 
     const evaluatedAt = new Date().toISOString();
@@ -579,86 +601,6 @@ export class RentalHealthService {
     };
   }
 
-  /**
-   * Vehicle Alerts (OEM) — reads {@link HmSignalUsageService.getAiHealthCareSignals}.
-   *
-   * V1 covers limp mode + oil level only (brake/tire/battery routed to sibling modules).
-   *
-   * TODO(V2): consume {@link DashboardWarningLightsService} as single canonical truth
-   * instead of parallel HM boolean parsing — `rentalHealthReady` flag is set on the
-   * telltale read model for this migration.
-   */
-  private evaluateVehicleAlerts(
-    hmAi: {
-      oilLevel: { value: unknown; unit: string | null; status: string | null } | null;
-      limpModeActive: boolean | null;
-      lastUpdatedAt: string | null;
-    } | null,
-  ): ModuleHealth {
-    if (!hmAi) {
-      return {
-        state: 'n_a',
-        reason: 'Keine OEM-Warnleuchten-Quelle aktiv',
-        last_updated_at: null,
-        data_stale: false,
-        source: 'hm_oem',
-        evidence_type: 'unknown',
-      };
-    }
-
-    const lastUpdated = hmAi.lastUpdatedAt ?? null;
-
-    if (hmAi.limpModeActive === true) {
-      return {
-        state: 'critical',
-        reason: 'Limp Mode aktiv',
-        last_updated_at: lastUpdated,
-        data_stale: isStale(lastUpdated),
-        source: 'hm_oem',
-        evidence_type: 'provider',
-      };
-    }
-
-    const oilStatus = (hmAi.oilLevel?.status ?? '').toUpperCase();
-    if (oilStatus === 'LOW' || oilStatus === 'MINIMUM') {
-      return {
-        state: 'critical',
-        reason: 'Motoröl Minimum',
-        last_updated_at: lastUpdated,
-        data_stale: isStale(lastUpdated),
-      };
-    }
-    if (oilStatus === 'HIGH' || oilStatus === 'MAXIMUM') {
-      return {
-        state: 'warning',
-        reason: 'Motoröl über Maximum',
-        last_updated_at: lastUpdated,
-        data_stale: isStale(lastUpdated),
-      };
-    }
-
-    const limpUnknown = hmAi.limpModeActive === null;
-    const oilUnknown = !oilStatus || oilStatus === 'UNKNOWN';
-    if (limpUnknown && oilUnknown) {
-      return {
-        state: 'unknown',
-        reason: 'Noch kein verwertbarer OEM-Warnleuchten-Status',
-        last_updated_at: lastUpdated,
-        data_stale: isStale(lastUpdated),
-      };
-    }
-
-    // Explicit quiet signals only — never infer "good" from missing data.
-    return {
-      state: 'good',
-      reason: 'Keine OEM-Warnleuchten aktiv',
-      last_updated_at: lastUpdated,
-      data_stale: isStale(lastUpdated),
-      source: 'hm_oem',
-      evidence_type: 'provider',
-    };
-  }
-
   private serviceComplianceEvidenceType(
     evaluation: ServiceComplianceEvaluation | null,
   ): ModuleHealth['evidence_type'] {
@@ -703,19 +645,21 @@ export class RentalHealthService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Produce the human-readable `blocking_reasons[]` list according to the
-   * V1 spec. Order matches the spec table so the UI renders a predictable
-   * blocking banner (compliance first, then safety/operational).
+   * Vehicle Alerts (OEM) — canonical projection from {@link DashboardWarningLightsService}.
+   *
+   * Scope (P2.2A): `engine_limp_mode` + `engine_oil_level` only.
+   * Brake/tire/battery/MIL remain sibling modules — not interpreted here.
    */
   private collectBlockingReasons(
     modules: VehicleHealth['modules'],
     openComplaints: Array<{ impact: string | null; description?: string; blocksRental?: boolean }>,
-    hmAi: { limpModeActive: boolean | null; oilLevel: { status: string | null } | null } | null,
+    vehicleAlertBlockingCauses: VehicleAlertBlockingCause[],
     complianceEval: ServiceComplianceEvaluation | null,
     dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
     brakeSummary: BrakeHealthSummaryDto | null,
     batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
     rentalBlockingDamages: Array<{ description: string | null; rentalImpact: string }> = [],
+    hmAi: { limpModeActive: boolean | null; oilLevel: { status: string | null } | null } | null,
   ): string[] {
     const reasons: string[] = [];
 
@@ -755,9 +699,7 @@ export class RentalHealthService {
       reasons.push('Schaden blockiert Vermietung');
     }
 
-    if (hmAi?.limpModeActive === true) {
-      reasons.push('Limp Mode aktiv');
-    }
+    reasons.push(...vehicleAlertBlockingCausesToReasons(vehicleAlertBlockingCauses));
 
     if (this.isBrakeBlockWorthy(modules)) {
       const brakeModule = modules.brakes as BrakeRentalHealthModuleHealth;
@@ -795,11 +737,6 @@ export class RentalHealthService {
       (dtcBand ? isSafetyCriticalDtcBand(dtcBand) : true)
     ) {
       reasons.push(`Fehlercodes: ${modules.error_codes.reason}`);
-    }
-
-    const oilStatus = (hmAi?.oilLevel?.status ?? '').toUpperCase();
-    if (oilStatus === 'LOW' || oilStatus === 'MINIMUM') {
-      reasons.push('Motoröl Minimum');
     }
 
     return reasons;

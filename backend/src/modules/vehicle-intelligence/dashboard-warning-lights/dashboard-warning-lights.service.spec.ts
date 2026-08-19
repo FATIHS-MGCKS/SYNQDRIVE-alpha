@@ -285,6 +285,58 @@ describe('DashboardWarningLightsService', () => {
     expect(res.lights.every((l) => l.state !== 'off_confirmed')).toBe(true);
   });
 
+  it('provider_error when HM raw fetch rejects', async () => {
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockRejectedValue(new Error('HM connection lost'));
+
+    const res = await svc.getDashboardWarningLights(vehicleId);
+    expect(res.connectionStatus).toBe('provider_error');
+    expect(res.freshness).toBe('error');
+    expect(res.overallStatus).not.toBe('good');
+    expect(res.message).toContain('HM connection lost');
+    expect(res.lights.every((l) => l.state !== 'off_confirmed')).toBe(true);
+  });
+
+  it('group fresh + individual limp sample 20h old → stale, not current active', async () => {
+    const staleAt = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockResolvedValue(
+      activeHmRaw({
+        lastSuccessAt: now.toISOString(),
+        freshnessStatus: 'fresh',
+        signals: {
+          'engine.get.limp_mode': { value: true, timestamp: staleAt },
+          'diagnostics.get.engine_oil_level': { value: 'ok', timestamp: now.toISOString() },
+        },
+      }),
+    );
+
+    const limp = light(await svc.getDashboardWarningLights(vehicleId), 'engine_limp_mode');
+    expect(limp.state).toBe('stale');
+    expect(limp.freshness).toBe('stale');
+    expect(limp.isCurrentActive).toBe(false);
+    expect(limp.isHistorical).toBe(true);
+  });
+
+  it('group fresh + individual oil LOW 20h old → stale, not current active', async () => {
+    const staleAt = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockResolvedValue(
+      activeHmRaw({
+        lastSuccessAt: now.toISOString(),
+        freshnessStatus: 'fresh',
+        signals: {
+          'engine.get.limp_mode': { value: false, timestamp: now.toISOString() },
+          'diagnostics.get.engine_oil_level': { value: 'low', timestamp: staleAt },
+        },
+      }),
+    );
+
+    const oil = light(await svc.getDashboardWarningLights(vehicleId), 'engine_oil_level');
+    expect(oil.state).toBe('stale');
+    expect(oil.isCurrentActive).toBe(false);
+  });
+
   it('provider_error when HM fetch failed without success', async () => {
     hm.isHmHealthActive.mockResolvedValue(true);
     hm.getAiHealthCareRawState.mockResolvedValue(

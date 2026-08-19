@@ -1,8 +1,8 @@
 # Fleet Readiness ↔ Notification V2 Parity Audit
 
-**Date:** 2026-08-18 (updated P2.1)  
-**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit; **P2.1** — service/compliance live V2 producers  
-**Code baseline:** `main` + `cursor/service-compliance-notification-p21-dcd7`
+**Date:** 2026-08-18 (updated P2.2A 2026-08-19)  
+**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit; **P2.1** — service/compliance live V2 producers; **P2.2A** — vehicle_alerts canonical source migration (no Notification V2)  
+**Code baseline:** `main` + `cursor/vehicle-alerts-canonical-source-p22a-dcd7`
 
 ---
 
@@ -157,9 +157,9 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | **service_compliance** | HM no tracking | evaluability | HM_SERVICE_NO_TRACKING | resolve-only in V2 | **Resolve only** | Yes | **Yes** | Never ingested open in V2 |
 | **complaints** | blocksRental=true | blocks rental | TECHNICAL_OBSERVATION_ACTIVE | `TechnicalObservationsService` | Shadow only | Yes | **Yes (P1)** | Shadow gate limits production visibility |
 | **complaints** | critical urgency, no block | no block | TECHNICAL_OBSERVATION_ACTIVE | shadow | Shadow | Yes | Medium | Semantic split |
-| **vehicle_alerts** | limp mode | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Blocks rental, zero notification type |
-| **vehicle_alerts** | oil minimum | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Same |
-| **vehicle_alerts** | oil high warning | no block | — | — | No | — | Low | |
+| **vehicle_alerts** | limp mode | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | **P2.2A:** canonical source `DashboardWarningLights`; RH projection wired; Notification V2 **P2.2B** |
+| **vehicle_alerts** | oil minimum | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Same — source parity closed in P2.2A |
+| **vehicle_alerts** | oil high warning | no block | — | — | No | — | Low | P2.2A: warning module, no hard block |
 | **overall_state** | warning/critical transition | indirect | vehicle.health.* workflow | `VehicleHealthWorkflowEmitter` | Workflow only | N/A | **Yes** | Not a V2 notification |
 | **rental_blocked** | true (any cause) | aggregate | BLOCKED_VEHICLE / VEHICLE_NOT_READY | — | **Unwired** | — | **Yes (P0)** | Aggregate readiness not materialized |
 | **availability** | partial/unavailable | `rental_readiness=unevaluable` | CONNECTIVITY_STATE_UNKNOWN? | partial (connectivity only) | Partial | Partial | **Yes** | Health pipeline failure under-notified |
@@ -375,7 +375,38 @@ Severity: overdue sources always `critical` → CRITICAL.
 ### Remaining risks / tech debt
 
 - Duplicate `evaluateCompliance` per vehicle (inside `getVehicleHealth` + sync) — performance follow-up
-- Other P0 gaps unchanged (`vehicle_alerts`, aggregates, unevaluable)
+- Other P0 gaps unchanged (`vehicle_alerts` notification producer, aggregates, unevaluable)
+
+### P2.2A — Vehicle alerts canonical source (2026-08-19)
+
+| Layer | Status |
+|-------|--------|
+| Canonical detailed source | `DashboardWarningLightsService` / telltale read model |
+| Rental Health projection | **wired** — `projectVehicleAlertsToRentalHealth()` |
+| Notification V2 | **still missing** — P2.2B |
+| Registry count | **66 / 23 / 43** — unchanged |
+
+**Tests:** `vehicle-alerts-rental-health.projector.spec.ts`, `vehicle-alerts-rental-health-blocking-parity.spec.ts`, `dashboard-warning-lights.*`, `rental-health.service.spec.ts`
+
+**Hardening (2026-08-19):** per-signal stale with group fresh; `getAiHealthCareRawState` reject → provider_error envelope → RH `unknown`; stale historical active never `isCurrentActive`.
+
+**Pipeline failure (2026-08-19):** fulfilled `provider_error` / `freshness: error` envelopes are canonical pipeline failures (`moduleLoadFailures.vehicle_alerts`) — not only Promise reject. Fail-closed aggregate: `vehicle_alerts.state=unknown`, `pipeline_available=false`, `availability=partial`, `rental_blocked=null`, `rental_readiness=unevaluable`. `not_connected` remains `n_a` without marking pipeline unavailable.
+
+**CI closure (2026-08-19):**
+
+| Check | `main` (`d936b785`) | PR (`f2326b63`) | Δ |
+|-------|---------------------|-----------------|----|
+| `npx tsc --noEmit -p tsconfig.json` | 5 errors | 5 errors | **0** |
+| `test:vehicle-detail:verify:unit` | 1 failed suite / 11 passed / 56 tests | 1 failed suite / 11 passed / 56 tests | **0** |
+| P2.2A targeted Jest | — | parsing 10/10, service 23/23, projector 17/17, blocking-parity 7/7, registry 25/25 | — |
+
+**Typecheck baseline (both branches, identical):**
+
+1. `billing.controller.security.characterization.spec.ts:184` — `BillingController` ctor **22/23 args** (missing `operationalSubscriptionsService`; pre-existing on `main`, not P2.2A)
+2. `vehicles-security-negative.spec.ts:367,533,569` — ctor arity mismatch (pre-existing)
+3. `vehicles.controller.status-patch.spec.ts:25` — `undefined` vs `VehiclesOperationalService` (pre-existing; sole failing vehicle-detail suite)
+
+**Verdict:** **P2.2A: READY FOR MERGE.** **P2.2B: READY TO START AFTER MERGE.** **Overall: YELLOW / NOT READY FOR UI CUTOVER** (notification producer + aggregate gaps remain).
 
 ### P2.1 final verdict
 

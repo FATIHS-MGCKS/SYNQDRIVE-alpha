@@ -205,9 +205,12 @@ describe('RentalHealth complaints aggregation (canonical observations)', () => {
         error_codes: { state: 'good', reason: 'ok' },
       },
       complaints,
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
+      null,
+      null,
+      [],
       null,
     );
 

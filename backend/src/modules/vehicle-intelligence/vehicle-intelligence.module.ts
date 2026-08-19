@@ -558,6 +558,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     BatterySnapshotRestBackfillService,
     BatteryShadowValidationService,
     ServiceComplianceService,
+    DashboardWarningLightsService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
     BatteryTaskService,
