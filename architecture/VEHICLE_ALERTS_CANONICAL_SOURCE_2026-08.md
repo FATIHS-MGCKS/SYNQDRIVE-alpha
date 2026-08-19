@@ -12,7 +12,7 @@ High Mobility AI_HEALTH_CARE signal group:
 | `engine_limp_mode` | `engine.get.limp_mode`, `engine.limp_mode`, `limp_mode` |
 | `engine_oil_level` | `diagnostics.get.engine_oil_level`, `diagnostics.engine_oil_level`, `engine_oil_level` |
 
-Fetched via `HmSignalUsageService.getAiHealthCareRawState()` inside `DashboardWarningLightsService`.
+Fetched via `HmSignalUsageService.getAiHealthCareRawState()` inside `DashboardWarningLightsService`. If the raw-state fetch **rejects**, the service returns an explicit provider-error envelope (`connectionStatus: provider_error`, `freshness: error`) — never a synthetic empty `no_data` payload.
 
 ## 2. Canonical telltale read model
 
@@ -51,11 +51,15 @@ Multi-cause: limp + oil low produce **two** blocking reasons (no dedup).
 
 ## 5. Freshness / historical-active behavior
 
+**Per-signal rule:** `freshnessFromTimestamp(observedAt)` is evaluated per telltale sample. Individual signal stale → telltale `state: stale` even when group/envelope freshness is `fresh`. `isCurrentActive` requires `state === 'active'` **and** per-signal freshness evaluable (not `stale`).
+
 - `missing` / `no_event_yet` / `unsupported` → **not** confirmed healthy (`unknown` or `n_a`)
-- `stale` or `isHistorical` after prior active → **not** auto-recovery to `good`
+- `stale` or `isHistorical` after prior active → **not** auto-recovery to `good`; no hard rental block
 - `off_confirmed` / oil OK → confirmed recovery (`good`)
-- Provider error (`connectionStatus: provider_error`, envelope `freshness: error`) → `unknown`, not `good`/`n_a`
-- Pipeline load failure (DWL throws) → `unknown` + `moduleLoadFailures.vehicle_alerts`
+- Provider error (`connectionStatus: provider_error`, envelope `freshness: error`, including raw fetch reject) → `unknown`, not `good`/`n_a`
+- Pipeline load failure (DWL throws into RentalHealth `Promise.allSettled`) → `unknown` + `moduleLoadFailures.vehicle_alerts`
+
+**Availability gap (documented):** `vehicle_alerts: unknown` (stale/unevaluable) vs `n_a` (genuinely unsupported) may not yet map to distinct aggregate `rental_readiness` — deferred to Unevaluable/Data-Availability follow-up.
 
 ## 6. Domain ownership
 

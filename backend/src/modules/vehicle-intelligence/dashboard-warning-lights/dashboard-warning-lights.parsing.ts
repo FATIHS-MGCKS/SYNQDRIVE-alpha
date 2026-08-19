@@ -128,7 +128,7 @@ export function buildBooleanWarnLight(opts: {
     });
   }
 
-  if (perFreshness === 'stale' && opts.groupFreshness === 'stale') {
+  if (perFreshness === 'stale' || opts.groupFreshness === 'stale') {
     return baseLight({
       key: opts.key,
       label: opts.label,
@@ -235,7 +235,7 @@ export function buildOilLevelLight(opts: {
 
   const observedAt = opts.entry.timestamp ?? opts.groupObservedAt;
   const perFreshness = freshnessFromTimestamp(observedAt, opts.groupFreshness);
-  if (perFreshness === 'stale' && opts.groupFreshness === 'stale') {
+  if (perFreshness === 'stale' || opts.groupFreshness === 'stale') {
     return baseLight({
       key: 'engine_oil_level',
       label: 'Motorölstand',
@@ -481,11 +481,14 @@ export function enrichDashboardLightMetadata(
     ? freshnessFromTimestamp(lastSeenAt, envelopeFreshness)
     : envelopeFreshness;
   const snapshotWasActive = wasTelltaleActiveInSnapshot(light);
-  const isCurrentActive =
-    light.state === 'active' &&
+  const signalFreshEnough =
+    perFreshness !== 'stale' && perFreshness !== 'no_data' && perFreshness !== 'error';
+  const envelopeEvaluable =
     envelopeFreshness !== 'stale' &&
     envelopeFreshness !== 'error' &&
     envelopeFreshness !== 'no_data';
+  const isCurrentActive =
+    light.state === 'active' && signalFreshEnough && envelopeEvaluable;
   const isHistorical =
     !isCurrentActive &&
     snapshotWasActive &&

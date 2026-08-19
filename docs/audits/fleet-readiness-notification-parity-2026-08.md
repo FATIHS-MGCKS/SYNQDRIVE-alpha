@@ -375,7 +375,22 @@ Severity: overdue sources always `critical` → CRITICAL.
 ### Remaining risks / tech debt
 
 - Duplicate `evaluateCompliance` per vehicle (inside `getVehicleHealth` + sync) — performance follow-up
-- Other P0 gaps unchanged (`vehicle_alerts`, aggregates, unevaluable)
+- Other P0 gaps unchanged (`vehicle_alerts` notification producer, aggregates, unevaluable)
+
+### P2.2A — Vehicle alerts canonical source (2026-08-19)
+
+| Layer | Status |
+|-------|--------|
+| Canonical detailed source | `DashboardWarningLightsService` / telltale read model |
+| Rental Health projection | **wired** — `projectVehicleAlertsToRentalHealth()` |
+| Notification V2 | **still missing** — P2.2B |
+| Registry count | **66 / 23 / 43** — unchanged |
+
+**Tests:** `vehicle-alerts-rental-health.projector.spec.ts`, `vehicle-alerts-rental-health-blocking-parity.spec.ts`, `dashboard-warning-lights.*`, `rental-health.service.spec.ts`
+
+**Hardening (2026-08-19):** per-signal stale with group fresh; `getAiHealthCareRawState` reject → provider_error envelope → RH `unknown`; stale historical active never `isCurrentActive`.
+
+**Verdict:** **NOT READY FOR MERGE** until hardening verified in CI. **READY FOR P2.2B** after merge. **NOT READY FOR UI CUTOVER**.
 
 ### P2.1 final verdict
 

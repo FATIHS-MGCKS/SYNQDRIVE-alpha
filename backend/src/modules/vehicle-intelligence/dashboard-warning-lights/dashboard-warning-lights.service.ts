@@ -51,14 +51,14 @@ export class DashboardWarningLightsService {
   ) {}
 
   async getDashboardWarningLights(vehicleId: string): Promise<DashboardWarningLightsResponse> {
-    const [hmActive, hmVehicleId, fuelType, rawState] = await Promise.all([
+    const [hmActive, hmVehicleId, fuelType, rawStateResult] = await Promise.all([
       this.hm.isHmHealthActive(vehicleId),
       this.hm.getLinkedHmVehicleId(vehicleId),
       this.loadFuelType(vehicleId),
-      this.hm.getAiHealthCareRawState(vehicleId).catch((err) => {
-        this.logger.warn(`HM raw state failed for ${vehicleId}: ${err?.message}`);
-        return null;
-      }),
+      this.hm.getAiHealthCareRawState(vehicleId).then(
+        (state) => ({ ok: true as const, state }),
+        (error: Error) => ({ ok: false as const, error }),
+      ),
     ]);
 
     if (!hmActive && !hmVehicleId) {
@@ -69,15 +69,23 @@ export class DashboardWarningLightsService {
       return this.inactiveHmEnvelope(vehicleId, hmVehicleId);
     }
 
-    const state = rawState ?? {
-      signals: {},
-      tirePressureStatuses: null,
-      lastSuccessAt: null,
-      lastErrorAt: null,
-      lastErrorMessage: null,
-      freshnessStatus: 'no_data' as const,
-      hmVehicleId,
-    };
+    if (!rawStateResult.ok) {
+      this.logger.warn(
+        `HM raw state failed for ${vehicleId}: ${rawStateResult.error?.message ?? rawStateResult.error}`,
+      );
+      return this.providerErrorEnvelope(vehicleId, rawStateResult.error);
+    }
+
+    const state =
+      rawStateResult.state ?? {
+        signals: {},
+        tirePressureStatuses: null,
+        lastSuccessAt: null,
+        lastErrorAt: null,
+        lastErrorMessage: null,
+        freshnessStatus: 'no_data' as const,
+        hmVehicleId,
+      };
 
     const connectionStatus = this.resolveConnectionStatus(state);
     const groupFreshness = this.mapGroupFreshness(state);
@@ -135,6 +143,51 @@ export class DashboardWarningLightsService {
         'HM Health-Verknüpfung ist nicht aktiv. Warnleuchten können erst nach Aktivierung angezeigt werden.',
       lights: TELLTALE_KEYS.map((key) => this.placeholderLight(key, 'inactive')),
       rentalHealthReady: true,
+    };
+  }
+
+  private providerErrorEnvelope(
+    vehicleId: string,
+    error: Error,
+  ): DashboardWarningLightsResponse {
+    const message =
+      error?.message?.trim() ||
+      'HM/OEM Health-Daten konnten nicht geladen werden.';
+    return {
+      vehicleId,
+      provider: 'HIGH_MOBILITY',
+      connectionStatus: 'provider_error',
+      supportStatus: 'unknown',
+      freshness: 'error',
+      overallStatus: 'unknown',
+      lastObservedAt: null,
+      message,
+      lights: TELLTALE_KEYS.map((key) => this.providerErrorPlaceholderLight(key, message)),
+      rentalHealthReady: true,
+    };
+  }
+
+  private providerErrorPlaceholderLight(key: string, message: string): DashboardWarningLight {
+    const labels: Record<string, string> = {
+      engine_limp_mode: 'Motorwarnung / Notlauf',
+      engine_oil_level: 'Motorölstand',
+      brake_lining_wear_pre_warning: 'Bremsbelag-Vorwarnung',
+      tire_pressure_warning: 'Reifendruck-Warnung',
+      battery_warning_light: 'Batterie-Warnleuchte',
+      check_engine_light: 'Motorkontrollleuchte (MIL)',
+    };
+    return {
+      key,
+      label: labels[key] ?? key,
+      state: 'unsupported',
+      severity: 'unknown',
+      supported: null,
+      observedAt: null,
+      sourceSignal: null,
+      sourceTimestamp: null,
+      reason: message,
+      action: 'Telematik-Verbindung prüfen.',
+      rentalImpact: 'none',
     };
   }
 
