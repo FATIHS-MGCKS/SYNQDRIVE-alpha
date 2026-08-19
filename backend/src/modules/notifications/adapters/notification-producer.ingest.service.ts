@@ -59,6 +59,8 @@ const DEFERRABLE_HEALTH_SEVERITIES = new Set<NotificationSeverity>([
 
 const SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
 
+const VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE = 500;
+
 const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
   Math.max(
     Number.parseInt(process.env.VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT ?? '2000', 10) || 2000,
@@ -569,15 +571,55 @@ export class NotificationProducerIngestService {
 
   /**
    * Materialize canonical vehicle alert causes (limp, oil low, oil high) as V2 notifications.
-   * Cause-aware only: explicit CLEARED resolves; UNEVALUABLE preserves existing lifecycle.
-   * No absent-fingerprint sweep — stale/provider_error must not auto-resolve.
+   * Cause-aware only: explicit CLEARED resolves an existing active fingerprint;
+   * healthy CLEARED without a prior OPEN is a no-op (no Core recovery call).
+   * UNEVALUABLE preserves existing lifecycle. No absent-fingerprint sweep.
    */
   async syncVehicleAlertsWarnings(
     organizationId: string,
     runId: string,
     sources: VehicleAlertsNotificationAdapterSource[],
   ): Promise<void> {
-    await this.ingestVehicleAlertsSources(organizationId, runId, sources);
+    const activeFingerprints = await this.listAllActiveVehicleAlertFingerprints(organizationId);
+    const sourcesToIngest: VehicleAlertsNotificationAdapterSource[] = [];
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        sourcesToIngest.push(source);
+        continue;
+      }
+      const fingerprint = vehicleAlertsSourceFingerprint(organizationId, source);
+      if (activeFingerprints.has(fingerprint)) {
+        sourcesToIngest.push(source);
+      }
+    }
+
+    await this.ingestVehicleAlertsSources(organizationId, runId, sourcesToIngest);
+  }
+
+  private async listAllActiveVehicleAlertFingerprints(
+    organizationId: string,
+  ): Promise<Set<string>> {
+    const fingerprints = new Set<string>();
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [...VEHICLE_ALERTS_NOTIFICATION_EVENT_TYPES],
+        limit: VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE,
+        offset,
+      });
+      for (const notification of page) {
+        fingerprints.add(notification.fingerprint);
+      }
+      if (page.length < VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE) break;
+      offset += VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE;
+    }
+
+    return fingerprints;
   }
 
   async ingestVehicleAlertsSources(

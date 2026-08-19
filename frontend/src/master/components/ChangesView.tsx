@@ -43,9 +43,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Notification-V2-Parität für drei kanonische vehicle_alerts Causes: `LIMP_MODE_ACTIVE`, `ENGINE_OIL_LEVEL_LOW`, `ENGINE_OIL_LEVEL_HIGH`.',
       'SoT-Kette: HM/OEM → `DashboardWarningLightsService` → `projectVehicleAlertNotifications()` → `VehicleAlertsNotificationAdapter` → `NotificationCoreService`.',
       'Lifecycle: ACTIVE/CLEARED/UNEVALUABLE — UNEVALUABLE ≠ CLEARED; stale/provider_error/not_connected lösen keine bestehende OPEN-Notification.',
+      'Hardening: cross-domain failure isolation (DTC/compliance/rental-health ≠ vehicle alerts); sync-stage isolation; healthy CLEARED no-op via active-fingerprint pagination.',
       'Oil LOW (CRITICAL, blocks rental) und Oil HIGH (WARNING, inspect) bleiben getrennte Fingerprints/Lifecycles inkl. LOW↔HIGH-Übergänge.',
-      'Producer: `VehicleHealthNotificationSyncService.syncVehicleAlertsWarnings()` — cause-aware reconcile ohne absent-fingerprint-sweep.',
-      'Registry: 66/23/43 → 69/26/43 (+3 FLEET_READINESS, +0 OPERATIONS). Audit: YELLOW — NOT READY FOR UI CUTOVER.',
+      'i18n: alle 8 Rental-Locales. Registry: 69/26/43. Audit: YELLOW — NOT READY FOR UI CUTOVER.',
     ],
     reason:
       'Fleet Readiness P2.2B — Notification V2 darf keine Limp-/Oil-Health-Policy neu berechnen; explizite Recovery-Evidenz für RESOLVE.',

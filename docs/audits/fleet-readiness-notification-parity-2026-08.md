@@ -417,6 +417,9 @@ Severity: overdue sources always `critical` → CRITICAL.
 | Adapter / sync | `VehicleAlertsNotificationAdapter` + `syncVehicleAlertsWarnings()` via `VehicleHealthNotificationSyncService` |
 | Registry delta | **66/23/43 → 69/26/43** (+3 FLEET_READINESS) |
 | Reconciliation | Cause-aware only — **no absent-fingerprint sweep**; stale/provider_error preserve OPEN |
+| Failure isolation | Vehicle alerts projection isolated from DTC/compliance/rental-health/tire/brake; sync stages attempted independently |
+| Healthy CLEARED | Active-fingerprint pre-check — CLEARED without OPEN row is no-op (no false recovery failures) |
+| i18n | All 8 rental locales (`en`–`cs`) with native title/body keys |
 
 **Lifecycle rule:** UNEVALUABLE does not equal CLEARED. Stale/provider_error/not_connected do not resolve existing cause notifications.
 

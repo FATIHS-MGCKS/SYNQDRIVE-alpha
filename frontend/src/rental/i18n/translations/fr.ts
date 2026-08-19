@@ -796,4 +796,10 @@ export const fr: Record<TranslationKey, string> = {
   'support.you': 'Vous',
   'support.supportTeam': 'Support SYNQDRIVE',
   'support.replyPlaceholder': 'Tapez votre reponse...',
+  'notification.title.limpModeActive': 'Mode degrade actif — {label}',
+  'notification.body.limpModeActive': '{label} est en mode degrade et n\'est pas pret a la location.',
+  'notification.title.engineOilLevelLow': 'Niveau d\'huile critique — {label}',
+  'notification.body.engineOilLevelLow': 'Le niveau d\'huile de {label} est critique.',
+  'notification.title.engineOilLevelHigh': 'Niveau d\'huile eleve — {label}',
+  'notification.body.engineOilLevelHigh': 'Le niveau d\'huile de {label} est eleve et doit etre verifie.',
 };

@@ -269,9 +269,6 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
 
   describe('LIMP_MODE_ACTIVE lifecycle', () => {
     it('OPEN → idempotent → RESOLVE → REOPEN', async () => {
-      await sync([], 'run-1');
-      expect(openNotifications()).toHaveLength(0);
-
       const active = sourcesFromEnvelope([limpActive(), quietOil()]);
       await sync(active, 'run-2');
       expect(openNotifications()).toHaveLength(1);
@@ -295,6 +292,87 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       await sync(active, 'run-5');
       expect(openNotifications()).toHaveLength(1);
       expect(openNotifications()[0].id).toBe(first.id);
+    });
+  });
+
+  describe('healthy CLEARED no-op', () => {
+    it('first evaluation on healthy vehicle creates no notifications', async () => {
+      const healthy = sourcesFromEnvelope([quietLimp(), quietOil()]);
+      await sync(healthy, 'run-healthy-1');
+      expect(openNotifications()).toHaveLength(0);
+      expect((repository.createNotification as jest.Mock).mock.calls).toHaveLength(0);
+    });
+
+    it('repeated healthy evaluation stays clean', async () => {
+      const healthy = sourcesFromEnvelope([quietLimp(), quietOil()]);
+      await sync(healthy, 'run-healthy-2a');
+      await sync(healthy, 'run-healthy-2b');
+      expect(openNotifications()).toHaveLength(0);
+    });
+
+    it('prior LIMP active + explicit OFF resolves only limp', async () => {
+      await sync(sourcesFromEnvelope([limpActive(), quietOil()]), 'run-limp-on');
+      const limp = openNotifications().find((n) => n.eventType === 'LIMP_MODE_ACTIVE');
+      expect(limp).toBeDefined();
+
+      await sync(sourcesFromEnvelope([quietLimp(), quietOil()]), 'run-limp-off');
+      expect(notifications.get(limp!.id)?.status).toBe(NotificationStatus.RESOLVED);
+    });
+  });
+
+  describe('ENGINE_OIL_LEVEL_LOW lifecycle', () => {
+    it('OPEN → idempotent → RESOLVE → REOPEN', async () => {
+      const active = sourcesFromEnvelope([quietLimp(), oilLowActive()]);
+      await sync(active, 'run-low-1');
+      const first = openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_LOW');
+      expect(first).toBeDefined();
+
+      await sync(active, 'run-low-2');
+      expect(
+        openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_LOW')?.id,
+      ).toBe(first!.id);
+
+      await sync(sourcesFromEnvelope([quietLimp(), quietOil()]), 'run-low-3');
+      expect(notifications.get(first!.id)?.status).toBe(NotificationStatus.RESOLVED);
+
+      const resolvedRow = notifications.get(first!.id);
+      if (resolvedRow) {
+        resolvedRow.resolvedAt = new Date(Date.now() - 20 * 60_000);
+        notifications.set(first!.id, resolvedRow);
+      }
+
+      await sync(active, 'run-low-4');
+      expect(openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_LOW')?.id).toBe(
+        first!.id,
+      );
+    });
+  });
+
+  describe('ENGINE_OIL_LEVEL_HIGH lifecycle', () => {
+    it('OPEN → idempotent → RESOLVE → REOPEN', async () => {
+      const active = sourcesFromEnvelope([quietLimp(), oilHighActive()]);
+      await sync(active, 'run-high-1');
+      const first = openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_HIGH');
+      expect(first).toBeDefined();
+
+      await sync(active, 'run-high-2');
+      expect(
+        openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_HIGH')?.id,
+      ).toBe(first!.id);
+
+      await sync(sourcesFromEnvelope([quietLimp(), quietOil()]), 'run-high-3');
+      expect(notifications.get(first!.id)?.status).toBe(NotificationStatus.RESOLVED);
+
+      const resolvedRow = notifications.get(first!.id);
+      if (resolvedRow) {
+        resolvedRow.resolvedAt = new Date(Date.now() - 20 * 60_000);
+        notifications.set(first!.id, resolvedRow);
+      }
+
+      await sync(active, 'run-high-4');
+      expect(openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_HIGH')?.id).toBe(
+        first!.id,
+      );
     });
   });
 
@@ -328,6 +406,89 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
 
       await sync([], 'run-2');
       expect(notifications.get(low!.id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('oil LOW active → provider_error preserves OPEN (projected unevaluable)', async () => {
+      await sync(sourcesFromEnvelope([quietLimp(), oilLowActive()]), 'run-1');
+      const low = openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_LOW');
+      const unevaluable = projectVehicleAlertNotifications(
+        VEH_A,
+        LABEL_A,
+        buildVehicleAlertsTestEnvelope([quietLimp(), oilLowActive()], {
+          connectionStatus: 'provider_error',
+          freshness: 'error',
+        }),
+      );
+      expect(unevaluable).toHaveLength(0);
+      await sync(unevaluable, 'run-2');
+      expect(notifications.get(low!.id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('oil LOW active → stale preserves OPEN (projected unevaluable)', async () => {
+      await sync(sourcesFromEnvelope([quietLimp(), oilLowActive()]), 'run-1');
+      const low = openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_LOW');
+      const unevaluable = projectVehicleAlertNotifications(
+        VEH_A,
+        LABEL_A,
+        buildVehicleAlertsTestEnvelope([
+          { ...limpActive(), state: 'stale', isCurrentActive: false, freshness: 'stale' },
+          { ...oilLowActive(), state: 'stale', isCurrentActive: false, freshness: 'stale' },
+        ]),
+      );
+      expect(unevaluable).toHaveLength(0);
+      await sync(unevaluable, 'run-2');
+      expect(notifications.get(low!.id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('oil HIGH active → provider_error preserves OPEN (projected unevaluable)', async () => {
+      await sync(sourcesFromEnvelope([quietLimp(), oilHighActive()]), 'run-1');
+      const high = openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_HIGH');
+      await sync(
+        projectVehicleAlertNotifications(
+          VEH_A,
+          LABEL_A,
+          buildVehicleAlertsTestEnvelope([quietLimp(), oilHighActive()], {
+            connectionStatus: 'provider_error',
+            freshness: 'error',
+          }),
+        ),
+        'run-2',
+      );
+      expect(notifications.get(high!.id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('oil HIGH active → stale preserves OPEN (projected unevaluable)', async () => {
+      await sync(sourcesFromEnvelope([quietLimp(), oilHighActive()]), 'run-1');
+      const high = openNotifications().find((n) => n.eventType === 'ENGINE_OIL_LEVEL_HIGH');
+      await sync(
+        projectVehicleAlertNotifications(
+          VEH_A,
+          LABEL_A,
+          buildVehicleAlertsTestEnvelope([
+            quietLimp(),
+            { ...oilHighActive(), state: 'stale', isCurrentActive: false, freshness: 'stale' },
+          ]),
+        ),
+        'run-2',
+      );
+      expect(notifications.get(high!.id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('not_connected does not resolve existing limp cause', async () => {
+      await sync(sourcesFromEnvelope([limpActive(), quietOil()]), 'run-1');
+      const limp = openNotifications()[0];
+      await sync(
+        projectVehicleAlertNotifications(
+          VEH_A,
+          LABEL_A,
+          buildVehicleAlertsTestEnvelope([limpActive(), quietOil()], {
+            connectionStatus: 'not_connected',
+            supportStatus: 'not_connected',
+          }),
+        ),
+        'run-2',
+      );
+      expect(notifications.get(limp.id)?.status).toBe(NotificationStatus.OPEN);
     });
   });
 
@@ -379,6 +540,16 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
         'LIMP_MODE_ACTIVE',
       ]);
     });
+
+    it('limp + oil HIGH produce two OPEN notifications', async () => {
+      await sync(sourcesFromEnvelope([limpActive(), oilHighActive()]), 'run-1');
+      const open = openNotifications();
+      expect(open).toHaveLength(2);
+      expect(open.map((n) => n.eventType).sort()).toEqual([
+        'ENGINE_OIL_LEVEL_HIGH',
+        'LIMP_MODE_ACTIVE',
+      ]);
+    });
   });
 
   describe('tenant isolation', () => {
@@ -408,6 +579,94 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       );
       expect(openB).toHaveLength(1);
       expect(openB[0].entityId).toBe(VEH_B);
+    });
+
+    it('same org: vehicle A resolve does not affect vehicle B limp', async () => {
+      await sync(
+        projectVehicleAlertNotifications(
+          VEH_A,
+          LABEL_A,
+          buildVehicleAlertsTestEnvelope([limpActive(), quietOil()]),
+        ),
+        'run-1',
+      );
+      await sync(
+        projectVehicleAlertNotifications(
+          VEH_B,
+          LABEL_B,
+          buildVehicleAlertsTestEnvelope([limpActive(), quietOil()]),
+        ),
+        'run-1',
+      );
+
+      await sync(
+        projectVehicleAlertNotifications(
+          VEH_A,
+          LABEL_A,
+          buildVehicleAlertsTestEnvelope([quietLimp(), quietOil()]),
+        ),
+        'run-2',
+      );
+
+      const openB = [...notifications.values()].filter(
+        (n) =>
+          n.organizationId === ORG_A &&
+          n.entityId === VEH_B &&
+          n.status === NotificationStatus.OPEN,
+      );
+      expect(openB).toHaveLength(1);
+      expect(openB[0].eventType).toBe('LIMP_MODE_ACTIVE');
+    });
+  });
+
+  describe('active fingerprint pagination', () => {
+    it('considers all paginated active fingerprints before CLEARED ingest', async () => {
+      const targetFingerprint = vehicleAlertsSourceFingerprint(ORG_A, {
+        eventType: 'LIMP_MODE_ACTIVE',
+        vehicleId: VEH_A,
+      });
+
+      const pagedRows = Array.from({ length: 500 }, (_, index) => ({
+        id: `ntf-page-${index}`,
+        organizationId: ORG_A,
+        fingerprint: `org-a|OTHER|VEHICLE|veh-x-${index}|other|v1`,
+        status: NotificationStatus.OPEN,
+        entityType: NotificationEntityType.VEHICLE,
+        eventType: 'ENGINE_OIL_LEVEL_LOW',
+        entityId: `veh-x-${index}`,
+        lifecycleGeneration: 1,
+        version: 1,
+        lastSeenAt: new Date(),
+      }));
+      pagedRows.push({
+        id: 'ntf-target',
+        organizationId: ORG_A,
+        fingerprint: targetFingerprint,
+        status: NotificationStatus.OPEN,
+        entityType: NotificationEntityType.VEHICLE,
+        eventType: 'LIMP_MODE_ACTIVE',
+        entityId: VEH_A,
+        lifecycleGeneration: 1,
+        version: 1,
+        lastSeenAt: new Date(),
+      } as any);
+      activeByFingerprint.set(`${ORG_A}:${targetFingerprint}`, 'ntf-target');
+      notifications.set('ntf-target', pagedRows[500]);
+
+      (repository.listNotifications as jest.Mock).mockImplementation(
+        async (filter: { offset?: number; limit?: number }) => {
+          const offset = filter.offset ?? 0;
+          const limit = filter.limit ?? pagedRows.length;
+          return pagedRows.slice(offset, offset + limit);
+        },
+      );
+
+      await sync(sourcesFromEnvelope([quietLimp(), quietOil()]), 'run-page');
+
+      expect((repository.listNotifications as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(
+        2,
+      );
+      expect(notifications.get('ntf-target')?.status).toBe(NotificationStatus.RESOLVED);
     });
   });
 

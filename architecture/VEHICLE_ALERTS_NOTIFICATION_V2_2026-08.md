@@ -73,9 +73,17 @@ NotificationEvaluationService
 
 Independent of Business Insights policy enablement.
 
+**Failure isolation (cross-domain):** Vehicle alerts projection runs in its own try/catch path. DTC, rental health, service compliance, tire, or brake projection failures do not suppress vehicle alerts. DWL failure only affects vehicle alerts (UNEVALUABLE).
+
+**Sync-stage isolation:** `syncVehicleHealthWarnings`, `syncServiceComplianceWarnings`, and `syncVehicleAlertsWarnings` are each attempted independently; a failure in one domain does not skip the others. The run still fails after all attempts if any stage threw.
+
+**DI:** `DashboardWarningLightsService` is a **required** dependency (exported by `VehicleIntelligenceModule` via `forwardRef`). Silent `[]` when DWL is unwired is not acceptable.
+
 ## 7. Sync / reconciliation
 
 `syncVehicleAlertsWarnings()` ingests only explicit ACTIVE/CLEARED adapter sources.
+
+Before ingesting **CLEARED** sources, loads active fingerprints for the three event types via bounded pagination (`VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE=500`). CLEARED without a matching active fingerprint is a **no-op** — no Core recovery call, no false "No active notification to resolve" failures on healthy vehicles.
 
 **No absent-fingerprint sweep** (unlike service compliance / battery / DTC). UNEVALUABLE projections emit no sources, so existing OPEN rows persist until confirmed recovery.
 
@@ -99,6 +107,10 @@ Does not emit `BLOCKED_VEHICLE`, `VEHICLE_NOT_READY`, or connectivity aggregate 
 ## 12. Future dashboard projection
 
 Fleet Readiness UI cutover remains separate (audit YELLOW). Notifications are materialized; dashboard attention split is not in P2.2B scope.
+
+## 13. i18n
+
+All eight supported rental locales (`en`, `de`, `fr`, `nl`, `es`, `it`, `pl`, `cs`) provide native title/body keys for the three vehicle-alert notification events. Validated by `vehicle-alerts-notification-i18n.test.ts`.
 
 ## Snapshot loading note
 

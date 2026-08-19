@@ -55,4 +55,10 @@ export const es: Record<TranslationKey, string> = {
   'damages.totalDamages': 'Total danos', 'damages.activeDamages': 'Danos activos', 'damages.vehicleDamageMap': 'Mapa de danos vehiculo', 'damages.damageHistory': 'Historial de danos',
   'documents.vehicleDocuments': 'Documentos del vehiculo', 'documents.monthlyFixedCosts': 'Costes fijos mensuales',
   'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente', 'customerDetail.drivingScore': 'Puntuacion de conduccion',
+  'notification.title.limpModeActive': 'Modo de emergencia activo — {label}',
+  'notification.body.limpModeActive': '{label} está en modo de emergencia y no está listo para alquiler.',
+  'notification.title.engineOilLevelLow': 'Nivel de aceite críticamente bajo — {label}',
+  'notification.body.engineOilLevelLow': 'El nivel de aceite de {label} es críticamente bajo.',
+  'notification.title.engineOilLevelHigh': 'Nivel de aceite alto — {label}',
+  'notification.body.engineOilLevelHigh': 'El nivel de aceite de {label} es alto y debe comprobarse.',
 };
