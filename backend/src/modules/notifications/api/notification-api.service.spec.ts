@@ -15,6 +15,7 @@ import {
   NotificationStatus,
 } from '@prisma/client';
 import { NotificationApiService } from './notification-api.service';
+import { getNotificationEventTypesByAttentionScope } from '../registry/notification-event-registry';
 import { NotificationCoreService } from '../notification-core.service';
 import { NotificationEngineConfig } from '../notification-engine.config';
 import { NotificationRepository } from '../notification.repository';
@@ -29,6 +30,28 @@ const STATION = 'station-1';
 const STATION_B = 'station-b';
 const VEH = 'veh-1';
 const NOTIF_ID = 'notif-1';
+
+function findEventTypeFilter(where: Record<string, unknown>): unknown {
+  if (where.eventType) return where.eventType;
+  const and = where.AND;
+  if (!Array.isArray(and)) return undefined;
+  for (const clause of and) {
+    if (clause && typeof clause === 'object') {
+      const nested = findEventTypeFilter(clause as Record<string, unknown>);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
+}
+
+function containsOrClause(where: unknown): boolean {
+  if (!where || typeof where !== 'object') return false;
+  const record = where as Record<string, unknown>;
+  if (Array.isArray(record.OR)) return true;
+  const and = record.AND;
+  if (!Array.isArray(and)) return false;
+  return and.some((clause) => containsOrClause(clause));
+}
 
 function buildRow(overrides: Record<string, unknown> = {}) {
   const now = new Date('2026-07-11T12:00:00.000Z');
@@ -377,6 +400,89 @@ describe('NotificationApiService', () => {
     it('rejects users without active membership', async () => {
       membership = null as any;
       await expect(service.getById(ORG, { id: USER }, NOTIF_ID)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('attentionScope projection', () => {
+    it('list with FLEET_READINESS filters to fleet registry event types only', async () => {
+      await service.list(ORG, { id: USER, membershipRole: MembershipRole.ORG_ADMIN }, {
+        attentionScope: 'FLEET_READINESS',
+      });
+
+      const whereArg = (repository.listNotificationsWhere as jest.Mock).mock.calls[0][0];
+      const fleetTypes = getNotificationEventTypesByAttentionScope('FLEET_READINESS');
+      expect(findEventTypeFilter(whereArg)).toEqual({ in: fleetTypes });
+      expect(fleetTypes).toContain('VEHICLE_NOT_READY');
+      expect(fleetTypes).not.toContain('LOW_UTILIZATION');
+    });
+
+    it('list with OPERATIONS filters to operations registry event types only', async () => {
+      await service.list(ORG, { id: USER, membershipRole: MembershipRole.ORG_ADMIN }, {
+        attentionScope: 'OPERATIONS',
+      });
+
+      const whereArg = (repository.listNotificationsWhere as jest.Mock).mock.calls[0][0];
+      const opsTypes = getNotificationEventTypesByAttentionScope('OPERATIONS');
+      expect(findEventTypeFilter(whereArg)).toEqual({ in: opsTypes });
+      expect(opsTypes).toContain('LOW_UTILIZATION');
+      expect(opsTypes).not.toContain('VEHICLE_NOT_READY');
+    });
+
+    it('counts with FLEET_READINESS applies scope to active count query', async () => {
+      await service.getCounts(ORG, { id: USER, membershipRole: MembershipRole.ORG_ADMIN }, {
+        attentionScope: 'FLEET_READINESS',
+      });
+
+      const activeWhere = (repository.countNotificationsWhere as jest.Mock).mock.calls[0][0];
+      expect(findEventTypeFilter(activeWhere)).toEqual({
+        in: getNotificationEventTypesByAttentionScope('FLEET_READINESS'),
+      });
+    });
+
+    it('counts with OPERATIONS applies scope to active count query', async () => {
+      await service.getCounts(ORG, { id: USER, membershipRole: MembershipRole.ORG_ADMIN }, {
+        attentionScope: 'OPERATIONS',
+      });
+
+      const activeWhere = (repository.countNotificationsWhere as jest.Mock).mock.calls[0][0];
+      expect(findEventTypeFilter(activeWhere)).toEqual({
+        in: getNotificationEventTypesByAttentionScope('OPERATIONS'),
+      });
+    });
+
+    it('attentionScope intersects with station scope for worker', async () => {
+      membership = { role: MembershipRole.WORKER, stationScope: STATION };
+      await service.list(ORG, { id: USER, membershipRole: MembershipRole.WORKER }, {
+        attentionScope: 'FLEET_READINESS',
+      });
+
+      const whereArg = (repository.listNotificationsWhere as jest.Mock).mock.calls[0][0];
+      expect(findEventTypeFilter(whereArg)).toEqual({
+        in: getNotificationEventTypesByAttentionScope('FLEET_READINESS'),
+      });
+      expect(containsOrClause(whereArg)).toBe(true);
+    });
+
+    it('attentionScope intersects with preference suppression', async () => {
+      preferences = [
+        {
+          category: 'DAMAGE_MISUSE',
+          inApp: false,
+          email: true,
+          push: false,
+          sms: false,
+          criticalOnly: false,
+        },
+      ];
+      await service.list(ORG, { id: USER, membershipRole: MembershipRole.ORG_ADMIN }, {
+        attentionScope: 'FLEET_READINESS',
+      });
+
+      const whereArg = (repository.listNotificationsWhere as jest.Mock).mock.calls[0][0];
+      expect(findEventTypeFilter(whereArg)).toEqual({
+        in: getNotificationEventTypesByAttentionScope('FLEET_READINESS'),
+      });
+      expect(Array.isArray(whereArg.AND) && whereArg.AND.length).toBeGreaterThan(1);
     });
   });
 });

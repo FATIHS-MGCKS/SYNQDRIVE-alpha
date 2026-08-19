@@ -1,8 +1,8 @@
 # Fleet Readiness ↔ Notification V2 Parity Audit
 
-**Date:** 2026-08-19 (P2.5 dashboard cutover backend gate)  
+**Date:** 2026-08-19 (P2.5 dashboard cutover backend gate — acceptance gaps closed)  
 **Scope:** P1.1 attentionScope; P2.1–P2.4 readiness/compliance/alerts; **P2.5** attentionScope API, damage cause, technical observation live, fail-safe recovery, fleet summary  
-**Code baseline:** `main` @ P2.4 merge (#1071) + P2.5 PR `cursor/fleet-readiness-dashboard-cutover-p25-dcd7`
+**Code baseline:** P2.5 PR `cursor/fleet-readiness-dashboard-cutover-p25-dcd7` (post acceptance-gap fixes)
 
 ---
 
@@ -44,7 +44,7 @@
 | 4 | Compliance blocker parity | **PASS** (P2.1) |
 | 5 | Vehicle alerts parity | **PASS** (P2.2B) |
 | 6 | Registry-driven `attentionScope` API projection | **PASS** — `GET .../notifications?attentionScope=` + counts |
-| 7 | No false resolve from unevaluable/provider failure | **PASS** — positive recovery evidence required |
+| 7 | No false resolve from unevaluable/provider failure | **PASS** — positive recovery evidence required (TRACKED+non-overdue for service; remainingDays for TÜV/BOKraft; explicit damage query success) |
 | 8 | No recovery sweep pagination starvation | **PASS** — eventType-filtered paginated sweeps |
 | 9 | Cause + aggregate coexistence | **PASS** — tests + architecture |
 | 10 | No rental-blocking Fleet cause shadow-only | **PASS** — gate: rental-blocking causes only |
@@ -64,7 +64,7 @@
 ### VEHICLE_DAMAGE_BLOCKING
 - Shared policy: `damage-rental-health.policy.ts` (`OPEN` + `BLOCK_RENTAL|SAFETY_CRITICAL`)
 - Producer: `VehicleDamageNotificationAdapter` + fleet sync sweep
-- Failure semantics: query failure → preserve existing OPEN rows
+- Failure semantics: query failure / undefined evaluation → preserve existing OPEN rows (`damageQuerySucceeded !== true`)
 - i18n: de, en, fr, nl, es, it, pl, cs
 
 ### TECHNICAL_OBSERVATION_ACTIVE
@@ -74,9 +74,16 @@
 ### Fail-safe recovery
 - `vehicle-health-recovery.policy.ts` — positive evidence only
 - Battery/tires/brakes: `state === 'good'` only; DTC: successful query + code absent
-- Service compliance: evaluation succeeded + condition cleared; `NOT_TRACKED` ≠ healthy
+- **Service compliance (P2.5 corrected):**
+  - `SERVICE_OVERDUE` recovery eligible **iff** `nextService.trackingStatus === 'TRACKED'` **and** `serviceOverdue === false`
+  - `NO_TRACKING`, `STALE`, evaluation failure, or missing evaluation → **preserve** OPEN rows
+  - `TUV_OVERDUE` recovery eligible **iff** `tuvRemainingDays != null` **and** `tuvOverdue === false`
+  - `BOKRAFT_OVERDUE` recovery eligible **iff** `bokraftRemainingDays != null` **and** `bokraftOverdue === false`
+  - Missing next-date data never counts as positive recovery
+- **Legacy `SERVICE_OVERDUE` reconciliation:** vehicle-scoped fail-safe — legacy rows resolve only when canonical `SERVICE_OVERDUE` is active for the same vehicle **or** confirmed tracked recovery evidence exists
+- **Damage recovery:** `damageQuerySucceeded === true` required (explicit success only; `false` / missing map entry → preserve)
 - DTC-only RentalHealth stub uses `unknown` modules (not `good`) — no false module recovery
-- Paginated sweeps for health (500/page) and compliance (existing)
+- Paginated sweeps for health (500/page), compliance, and damage (500/page)
 
 ### Full Fleet Readiness Summary
 - `GET /organizations/:orgId/rental-health/fleet/summary`
