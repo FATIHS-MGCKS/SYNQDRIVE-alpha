@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DEFAULT_PRODUCT_LOCALE } from '../../../i18n/locales';
 import { api } from '../../../lib/api';
+import {
+  parseTaskAutomationApiError,
+  taskAutomationMissingOrgError,
+} from './automation-i18n';
 import type {
   TaskAutomationOverridePayload,
   TaskAutomationRulesOverviewDto,
 } from './task-automation.types';
-import { parseApiError } from './task-automation.utils';
 
-export function useTaskAutomationCenter(orgId: string | null) {
+export function useTaskAutomationCenter(orgId: string | null, locale = DEFAULT_PRODUCT_LOCALE) {
   const [overview, setOverview] = useState<TaskAutomationRulesOverviewDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +27,11 @@ export function useTaskAutomationCenter(orgId: string | null) {
       const data = await api.taskAutomation.listRules(orgId);
       setOverview(data);
     } catch (e: unknown) {
-      setError(parseApiError(e));
+      setError(parseTaskAutomationApiError(locale, e));
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, locale]);
 
   useEffect(() => {
     void load();
@@ -42,32 +46,32 @@ export function useTaskAutomationCenter(orgId: string | null) {
         await load();
         return result;
       } catch (e: unknown) {
-        const message = parseApiError(e);
+        const message = parseTaskAutomationApiError(locale, e);
         setError(message);
         throw e;
       } finally {
         setActionRuleId(null);
       }
     },
-    [load],
+    [load, locale],
   );
 
   const saveOverride = useCallback(
     (ruleId: string, payload: TaskAutomationOverridePayload) => {
-      if (!orgId) return Promise.reject(new Error('Organisation fehlt'));
+      if (!orgId) return Promise.reject(new Error(taskAutomationMissingOrgError(locale)));
       return runAction(ruleId, () => api.taskAutomation.upsertOverride(orgId, ruleId, payload));
     },
-    [orgId, runAction],
+    [orgId, runAction, locale],
   );
 
   const resetOverride = useCallback(
     (ruleId: string, expectedVersion?: number) => {
-      if (!orgId) return Promise.reject(new Error('Organisation fehlt'));
+      if (!orgId) return Promise.reject(new Error(taskAutomationMissingOrgError(locale)));
       return runAction(ruleId, () =>
         api.taskAutomation.resetOverride(orgId, ruleId, expectedVersion),
       );
     },
-    [orgId, runAction],
+    [orgId, runAction, locale],
   );
 
   return {

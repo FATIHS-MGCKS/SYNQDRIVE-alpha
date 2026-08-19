@@ -1,54 +1,46 @@
 import type {
   TaskAutomationChecklistOverrideForm,
-  TaskAutomationConfigSource,
   TaskAutomationFieldProvenance,
   TaskAutomationOverrideFormState,
   TaskAutomationOverridePayload,
   TaskAutomationPlatformDefaults,
   TaskAutomationRuleDto,
 } from './task-automation.types';
+import {
+  at,
+  formatTaskAutomationAuditTimestamp,
+  formatTaskAutomationOffsetMinutes,
+  labelTaskAutomationAssignment,
+  labelTaskAutomationPriority,
+  labelTaskAutomationSource,
+  parseTaskAutomationApiError,
+  summarizeTaskAutomationChecklistState,
+} from './automation-i18n';
 
-const PRIORITY_LABELS_DE: Record<string, string> = {
-  LOW: 'Niedrig',
-  NORMAL: 'Normal',
-  HIGH: 'Hoch',
-  CRITICAL: 'Kritisch',
-};
-
-const ASSIGNMENT_LABELS_DE: Record<string, string> = {
-  UNASSIGNED: 'Nicht zugewiesen',
-  STATION_FROM_BOOKING: 'Station der Buchung',
-  INHERIT_FROM_CONTEXT: 'Aus Kontext übernehmen',
-};
-
-export function labelTaskAutomationSourceDe(source: TaskAutomationConfigSource | null | undefined): string {
-  if (source === 'ORG_OVERRIDE') return 'Eigene Anpassung';
-  return 'SynqDrive-Standard';
+export function labelTaskAutomationSourceForLocale(
+  locale: string,
+  source: import('./task-automation.types').TaskAutomationConfigSource | null | undefined,
+): string {
+  return labelTaskAutomationSource(locale, source);
 }
 
-export function labelPriorityDe(priority: string | null | undefined): string {
-  if (!priority) return '—';
-  return PRIORITY_LABELS_DE[priority] ?? priority;
+export function labelPriorityForLocale(locale: string, priority: string | null | undefined): string {
+  return labelTaskAutomationPriority(locale, priority);
 }
 
-export function labelAssignmentDe(strategy: string | null | undefined): string {
-  if (!strategy) return '—';
-  return ASSIGNMENT_LABELS_DE[strategy] ?? strategy;
+export function labelAssignmentForLocale(locale: string, strategy: string | null | undefined): string {
+  return labelTaskAutomationAssignment(locale, strategy);
 }
 
-export function formatOffsetMinutesDe(minutes: number | null | undefined): string {
-  if (minutes == null || minutes === 0) return 'Zum Standardzeitpunkt';
-  const abs = Math.abs(minutes);
-  const sign = minutes < 0 ? 'früher' : 'später';
-  if (abs % 1440 === 0) {
-    const days = abs / 1440;
-    return `${days} Tag${days === 1 ? '' : 'e'} ${sign}`;
-  }
-  if (abs % 60 === 0) {
-    const hours = abs / 60;
-    return `${hours} Stunde${hours === 1 ? '' : 'n'} ${sign}`;
-  }
-  return `${abs} Minute${abs === 1 ? '' : 'n'} ${sign}`;
+export function formatOffsetMinutesForLocale(
+  locale: string,
+  minutes: number | null | undefined,
+): string {
+  return formatTaskAutomationOffsetMinutes(locale, minutes);
+}
+
+export function parseApiError(locale: string, error: unknown): string {
+  return parseTaskAutomationApiError(locale, error);
 }
 
 export function isFieldOverridden(
@@ -59,16 +51,6 @@ export function isFieldOverridden(
 
 export function countOverriddenFields(rule: TaskAutomationRuleDto): number {
   return Object.values(rule.fieldProvenance).filter((field) => field.source === 'ORG_OVERRIDE').length;
-}
-
-export function parseApiError(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const maybe = error as { message?: string; error?: string };
-    if (maybe.message) return maybe.message;
-    if (maybe.error) return maybe.error;
-  }
-  if (typeof error === 'string') return error;
-  return 'Ein unerwarteter Fehler ist aufgetreten.';
 }
 
 export function buildFormStateFromRule(rule: TaskAutomationRuleDto): TaskAutomationOverrideFormState {
@@ -175,41 +157,28 @@ export function buildOverridePayload(
   return payload;
 }
 
-export function formatAuditTimestamp(value: string | null): string {
-  if (!value) return '—';
-  try {
-    return new Intl.DateTimeFormat('de-DE', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
+export function formatAuditTimestamp(locale: string, value: string | null): string {
+  return formatTaskAutomationAuditTimestamp(locale, value);
 }
 
-export function summarizeChecklistState(rule: TaskAutomationRuleDto): string {
-  if (!rule.checklist.allowsOverride || rule.checklist.usesSynqDriveStandard) {
-    return rule.checklistTemplateLabelDe;
-  }
-  const hiddenCount = rule.checklist.platformItems.filter((item) => item.hidden).length;
-  const addedCount = rule.checklist.effectiveItems.filter((item) => item.source === 'ORG_OVERRIDE').length;
-  const parts = ['Eigene Anpassung'];
-  if (hiddenCount > 0) parts.push(`${hiddenCount} optional ausgeblendet`);
-  if (addedCount > 0) parts.push(`${addedCount} zusätzlich`);
-  return parts.join(' · ');
+export function summarizeChecklistState(locale: string, rule: TaskAutomationRuleDto): string {
+  return summarizeTaskAutomationChecklistState(locale, rule);
 }
 
 export function effectiveFieldValue(
+  locale: string,
   defaults: TaskAutomationPlatformDefaults,
   field: keyof TaskAutomationPlatformDefaults,
 ): string {
   const value = defaults[field];
   if (value == null) return '—';
-  if (field === 'priority') return labelPriorityDe(String(value));
-  if (field === 'assignmentStrategy') return labelAssignmentDe(String(value));
-  if (field === 'enabled') return value ? 'Aktiv' : 'Inaktiv';
+  if (field === 'priority') return labelTaskAutomationPriority(locale, String(value));
+  if (field === 'assignmentStrategy') return labelTaskAutomationAssignment(locale, String(value));
+  if (field === 'enabled') {
+    return at(locale, value ? 'taskAutomation.enabled.true' : 'taskAutomation.enabled.false');
+  }
   if (field === 'activationOffsetMinutes' || field === 'dueOffsetMinutes') {
-    return formatOffsetMinutesDe(Number(value));
+    return formatTaskAutomationOffsetMinutes(locale, Number(value));
   }
   return String(value);
 }

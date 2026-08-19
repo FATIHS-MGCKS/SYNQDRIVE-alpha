@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-automation-p2-2-5-2026-08-19',
+    version: '4.9.925',
+    title: 'Rental i18n — P2.2.5 Workflow + Task Automation',
+    summary: [
+      'Workflow Automation legacy builder shell and Task Automation tab (rules, drawer, simulation) migrated to canonical `frontend/src/i18n`.',
+      'Scanner P2.2.5 enforce-clean zone reports 0 findings (108→0); +339 EN+DE keys (5926→6265); helper `automation-i18n.ts` (`at`, label maps); `automation-workflow.{en,de}.ts` split; reused `tasks.filter.priority.*`, `workflowAutomation.*` runtime keys.',
+      'Git: 23 tracked modified + 4 untracked (27 status paths); WorkflowAutomationView shim→canonical; rental shim 31→30; Workflow Automation module 108→0; no commit/push.',
+    ],
+    reason: 'Workflow automation and task automation surfaces still carried 108 in-scope hardcoded strings and `de-DE` literals in utils.',
+    previousBehavior: 'Inline DE/EN copy in WorkflowAutomationView constants, task-automation.utils hardcoded labels, `../i18n/` shim on WorkflowAutomationView.',
+    details:
+      'frontend/src/rental/components/WorkflowAutomationView.tsx; workflow-automation/**; automation-i18n.ts; automation-workflow translations; rental-automation-localization.test.tsx; architecture/I18N_RENTAL_AUTOMATION_P2_2_5_2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-19T14:15:00.000Z',
+  },
+  {
     id: 'i18n-rental-tasks-settings-p2-2-4-2026-08-19',
     version: '4.9.924',
     title: 'Rental i18n — P2.2.4 Tasks + Settings',

@@ -5,10 +5,24 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../lib/api';
 import type { WorkflowListItemDto } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { EmptyState } from '../../components/patterns';
 import { TaskAutomationRulesSection } from './workflow-automation/TaskAutomationRulesSection';
 import { WorkflowOverviewSection } from './workflow-automation/WorkflowOverviewSection';
+import {
+  at,
+  automationFormattingLocaleOrDefault,
+  formatLegacyRelativeTime,
+  legacyActionTypeLabel,
+  legacyCategoryLabel,
+  legacyConditionFieldLabel,
+  legacyConditionOperatorLabel,
+  legacyRunStatusLabel,
+  legacyScopeLabel,
+  legacyTriggerLabel,
+  legacyWorkflowStatusLabel,
+  labelTaskAutomationPriority,
+} from './workflow-automation/automation-i18n';
 
 // ─── Types ───────────────────────────────────────
 
@@ -110,9 +124,9 @@ function workflowRequiresActivationApproval(wf: {
   );
 }
 
-function promptActivationReason(actionLabel: string): string | null {
+function promptActivationReason(locale: string, actionLabel: string): string | null {
   const reason = window.prompt(
-    `${actionLabel} requires four-eyes approval. Enter reason for the activation request:`,
+    at(locale, 'workflowAutomation.legacy.prompt.activationReason', { action: actionLabel }),
   );
   if (!reason?.trim()) return null;
   return reason.trim();
@@ -127,79 +141,78 @@ interface Props {
 // ─── Constants ───────────────────────────────────
 
 const CATEGORIES = [
-  { key: 'vehicle_return', label: 'Return & Readiness', icon: Car, color: 'blue' },
-  { key: 'geofencing', label: 'Territory & Geofencing', icon: MapPin, color: 'green' },
-  { key: 'cleaning', label: 'Cleaning & Preparation', icon: Sparkles, color: 'cyan' },
-  { key: 'maintenance', label: 'Maintenance & Compliance', icon: Wrench, color: 'orange' },
-  { key: 'finance', label: 'Fines & Invoices', icon: CreditCard, color: 'red' },
-  { key: 'ai_permissions', label: 'AI Actions & Permissions', icon: Bot, color: 'purple' },
-  { key: 'support', label: 'Support & Escalation', icon: Headphones, color: 'yellow' },
+  { key: 'vehicle_return', icon: Car, color: 'blue' },
+  { key: 'geofencing', icon: MapPin, color: 'green' },
+  { key: 'cleaning', icon: Sparkles, color: 'cyan' },
+  { key: 'maintenance', icon: Wrench, color: 'orange' },
+  { key: 'finance', icon: CreditCard, color: 'red' },
+  { key: 'ai_permissions', icon: Bot, color: 'purple' },
+  { key: 'support', icon: Headphones, color: 'yellow' },
 ] as const;
 
 const TRIGGER_TYPES = [
-  { key: 'booking.returned', label: 'Booking returned (canonical)', category: 'vehicle_return' },
-  { key: 'booking.completed', label: 'Booking completed', category: 'vehicle_return' },
-  { key: 'vehicle_returned', label: 'Vehicle returned (legacy — deprecated)', category: 'vehicle_return' },
-  { key: 'vehicle.health.warning', label: 'Vehicle health warning', category: 'maintenance' },
-  { key: 'vehicle.health.critical', label: 'Vehicle health critical', category: 'maintenance' },
-  { key: 'health_threshold', label: 'Health threshold reached', category: 'maintenance' },
-  { key: 'vehicle.dtc.critical', label: 'Critical DTC detected', category: 'maintenance' },
-  { key: 'invoice_overdue', label: 'Invoice overdue', category: 'finance' },
-  { key: 'invoice.overdue', label: 'Invoice overdue (canonical)', category: 'finance' },
-  { key: 'fine_created', label: 'Customer complaint / fine', category: 'finance' },
-  { key: 'customer.complaint.created', label: 'Customer complaint created', category: 'support' },
-  { key: 'manual', label: 'Manual / test trigger', category: 'vehicle_return' },
-  { key: 'manual.test', label: 'Manual test', category: 'vehicle_return' },
+  { key: 'booking.returned', category: 'vehicle_return' },
+  { key: 'booking.completed', category: 'vehicle_return' },
+  { key: 'vehicle_returned', category: 'vehicle_return' },
+  { key: 'vehicle.health.warning', category: 'maintenance' },
+  { key: 'vehicle.health.critical', category: 'maintenance' },
+  { key: 'health_threshold', category: 'maintenance' },
+  { key: 'vehicle.dtc.critical', category: 'maintenance' },
+  { key: 'invoice_overdue', category: 'finance' },
+  { key: 'invoice.overdue', category: 'finance' },
+  { key: 'fine_created', category: 'finance' },
+  { key: 'customer.complaint.created', category: 'support' },
+  { key: 'manual', category: 'vehicle_return' },
+  { key: 'manual.test', category: 'vehicle_return' },
 ] as const;
 
 const ACTION_TYPES = [
-  { key: 'create_alert', label: 'Create alert', icon: Bell, mvp: true },
-  { key: 'create_task', label: 'Create task', icon: ClipboardList, mvp: true },
-  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car, mvp: true },
-  { key: 'send_notification', label: 'Prepare notification (draft only)', icon: Bell, mvp: true },
-  { key: 'ai_suggest', label: 'AI: Suggest action (approval required)', icon: Bot, mvp: true },
-  { key: 'request_approval', label: 'Request approval', icon: Shield, mvp: true },
-  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles, mvp: false, comingSoon: true },
-  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap, mvp: false, comingSoon: true },
-  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot, mvp: false, comingSoon: true },
-  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar, mvp: false, comingSoon: true },
-  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck, mvp: false, comingSoon: true },
+  { key: 'create_alert', icon: Bell, mvp: true },
+  { key: 'create_task', icon: ClipboardList, mvp: true },
+  { key: 'change_vehicle_status', icon: Car, mvp: true },
+  { key: 'send_notification', icon: Bell, mvp: true },
+  { key: 'ai_suggest', icon: Bot, mvp: true },
+  { key: 'request_approval', icon: Shield, mvp: true },
+  { key: 'change_cleaning_status', icon: Sparkles, mvp: false, comingSoon: true },
+  { key: 'ai_execute', icon: Zap, mvp: false, comingSoon: true },
+  { key: 'ai_send_message', icon: Bot, mvp: false, comingSoon: true },
+  { key: 'ai_book_appointment', icon: Calendar, mvp: false, comingSoon: true },
+  { key: 'assign_vendor', icon: Truck, mvp: false, comingSoon: true },
 ] as const;
 
 const CONDITION_FIELDS = [
-  { key: 'vehicle_status', label: 'Vehicle status' },
-  { key: 'cleaning_status', label: 'Cleaning status' },
-  { key: 'health_score', label: 'Health score' },
-  { key: 'mileage', label: 'Mileage (km)' },
-  { key: 'booking_type', label: 'Booking type' },
-  { key: 'vehicle_group', label: 'Vehicle group' },
-  { key: 'station', label: 'Station' },
-  { key: 'days_since_last_service', label: 'Days since last service' },
-  { key: 'invoice_amount', label: 'Invoice amount (€)' },
-  { key: 'overdue_days', label: 'Overdue days' },
-  { key: 'damage_severity', label: 'Damage severity' },
+  { key: 'vehicle_status' },
+  { key: 'cleaning_status' },
+  { key: 'health_score' },
+  { key: 'mileage' },
+  { key: 'booking_type' },
+  { key: 'vehicle_group' },
+  { key: 'station' },
+  { key: 'days_since_last_service' },
+  { key: 'invoice_amount' },
+  { key: 'overdue_days' },
+  { key: 'damage_severity' },
 ] as const;
 
 const CONDITION_OPERATORS = [
-  { key: 'equals', label: 'equals' },
-  { key: 'not_equals', label: 'not equals' },
-  { key: 'greater_than', label: 'greater than' },
-  { key: 'less_than', label: 'less than' },
-  { key: 'contains', label: 'contains' },
-  { key: 'is_true', label: 'is true' },
-  { key: 'is_false', label: 'is false' },
+  { key: 'equals' },
+  { key: 'not_equals' },
+  { key: 'greater_than' },
+  { key: 'less_than' },
+  { key: 'contains' },
+  { key: 'is_true' },
+  { key: 'is_false' },
 ] as const;
 
 const SCOPE_TYPES = [
-  { key: 'organization', label: 'Entire organization' },
-  { key: 'station', label: 'Selected stations' },
-  { key: 'vehicle', label: 'Selected vehicles' },
-  { key: 'territory', label: 'Selected territory / geofence' },
+  { key: 'organization' },
+  { key: 'station' },
+  { key: 'vehicle' },
+  { key: 'territory' },
 ] as const;
 
 interface StarterTemplate {
-  name: string;
-  description: string;
+  templateKey: string;
   category: string;
   trigger: TriggerDef;
   conditions: ConditionDef[];
@@ -209,8 +222,7 @@ interface StarterTemplate {
 
 const STARTER_TEMPLATES: StarterTemplate[] = [
   {
-    name: 'Return Damage Check',
-    description: 'Create a damage inspection task for every vehicle return.',
+    templateKey: 'returnDamageCheck',
     category: 'vehicle_return',
     trigger: { type: 'booking.returned' },
     conditions: [],
@@ -218,8 +230,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Return Admin Notification',
-    description: 'Prepare an internal notification draft when a booking is returned.',
+    templateKey: 'returnAdminNotification',
     category: 'vehicle_return',
     trigger: { type: 'booking.returned' },
     conditions: [],
@@ -227,8 +238,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Critical Health → Out of Service',
-    description: 'Block vehicle and create repair task when critical health is detected.',
+    templateKey: 'criticalHealth',
     category: 'maintenance',
     trigger: { type: 'vehicle.health.critical' },
     conditions: [],
@@ -240,8 +250,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Health Warning Alert',
-    description: 'Alert when vehicle health drops below threshold.',
+    templateKey: 'healthWarning',
     category: 'maintenance',
     trigger: { type: 'health_threshold', config: { metric: 'overall', threshold: 60 } },
     conditions: [],
@@ -252,8 +261,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Fine Processing Task',
-    description: 'Create a handling task when a fine or complaint is recorded.',
+    templateKey: 'fineProcessing',
     category: 'finance',
     trigger: { type: 'fine_created' },
     conditions: [],
@@ -261,8 +269,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Invoice Overdue Escalation',
-    description: 'Escalate when invoice is overdue for 14+ days.',
+    templateKey: 'invoiceOverdue',
     category: 'finance',
     trigger: { type: 'invoice_overdue', config: { overdueDays: 14 } },
     conditions: [{ field: 'overdue_days', operator: 'greater_than', value: 14 }],
@@ -273,8 +280,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'AI: Suggest Action (Approval)',
-    description: 'AI suggests an operational action — never auto-executes without approval.',
+    templateKey: 'aiSuggest',
     category: 'ai_permissions',
     trigger: { type: 'manual' },
     conditions: [],
@@ -288,59 +294,45 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
 function getCategoryMeta(key: string) {
   return CATEGORIES.find((c) => c.key === key) || CATEGORIES[0];
 }
-function getTriggerLabel(key: string) {
-  return TRIGGER_TYPES.find((t) => t.key === key)?.label || key;
+function getTriggerLabel(locale: string, key: string) {
+  return legacyTriggerLabel(locale, key);
 }
-function getActionLabel(key: string) {
-  return ACTION_TYPES.find((a) => a.key === key)?.label || key;
+function getActionLabel(locale: string, key: string) {
+  return legacyActionTypeLabel(locale, key);
 }
 function getActionIcon(key: string) {
   const a = ACTION_TYPES.find((t) => t.key === key);
   return a?.icon || Zap;
 }
-function getFieldLabel(key: string) {
-  return CONDITION_FIELDS.find((f) => f.key === key)?.label || key;
+function getFieldLabel(locale: string, key: string) {
+  return legacyConditionFieldLabel(locale, key);
 }
-function getOperatorLabel(key: string) {
-  return CONDITION_OPERATORS.find((o) => o.key === key)?.label || key;
-}
-function relativeTime(dateStr: string | null) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  return d.toLocaleDateString('de-DE');
+function getOperatorLabel(locale: string, key: string) {
+  return legacyConditionOperatorLabel(locale, key);
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: string; textClass: string }> = {
-  ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
-  DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
-  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
-  INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
-  PENDING_ACTIVATION: { label: 'Pending approval', color: 'purple', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
+const STATUS_TONES: Record<string, { color: string; bgClass: string; textClass: string }> = {
+  ACTIVE: { color: 'green', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
+  DRAFT: { color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
+  DISABLED: { color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  INVALID: { color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
+  PENDING_ACTIVATION: { color: 'purple', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
 };
 
-const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
-  SUCCESS: { label: 'Success', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
-  FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
-  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
-  WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
-  RUNNING: { label: 'Running', bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
-  PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
+const RUN_STATUS_TONES: Record<string, { bgClass: string; textClass: string }> = {
+  SUCCESS: { bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
+  FAILED: { bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
+  SKIPPED: { bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  WAITING_APPROVAL: { bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
+  RUNNING: { bgClass: 'bg-status-info-soft', textClass: 'text-status-info' },
+  PENDING: { bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
 };
 
 // ─── Main Component ──────────────────────────────
 
 export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = true }: Props) {
   const { orgId } = useRentalOrg();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [view, setView] = useState<'list' | 'detail' | 'builder'>('list');
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowListItemDto | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -372,7 +364,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     const enabling = wf.status !== 'ACTIVE';
     let activationReason: string | undefined;
     if (enabling && workflowRequiresActivationApproval(wf)) {
-      const reason = promptActivationReason('Activating this workflow');
+      const reason = promptActivationReason(locale, at(locale, 'workflowAutomation.legacy.prompt.activatingWorkflow'));
       if (!reason) return;
       activationReason = reason;
     }
@@ -390,7 +382,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   };
 
   const handleDelete = async (wf: WorkflowListItemDto) => {
-    if (!orgId || !confirm(`Delete workflow "${wf.name}"? This cannot be undone.`)) return;
+    if (!orgId || !confirm(t('workflowAutomation.legacy.prompt.deleteConfirm', { name: wf.name }))) return;
     try {
       await api.workflows.remove(orgId, wf.id);
       if (view === 'detail') setView('list');
@@ -402,8 +394,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
   const openBuilder = (wf?: WorkflowListItemDto | Workflow | null, template?: StarterTemplate) => {
     if (template) {
       setBuilderData({
-        name: template.name,
-        description: template.description,
+        name: t(`workflowAutomation.legacy.template.${template.templateKey}.name` as import('../../i18n/translations/en').TranslationKey),
+        description: t(`workflowAutomation.legacy.template.${template.templateKey}.description` as import('../../i18n/translations/en').TranslationKey),
         category: template.category,
         trigger: template.trigger,
         conditions: template.conditions,
@@ -433,7 +425,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
     const activating = (builderData.status || 'DRAFT') === 'ACTIVE';
     let activationReason: string | undefined;
     if (activating && workflowRequiresActivationApproval(builderData)) {
-      const reason = promptActivationReason('Publishing this workflow');
+      const reason = promptActivationReason(locale, at(locale, 'workflowAutomation.legacy.prompt.publishingWorkflow'));
       if (!reason) return;
       activationReason = reason;
     }
@@ -509,14 +501,14 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="min-w-0 break-words font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
-              Workflow Automation
+              {t('workflowAutomation.legacy.page.title')}
             </h1>
             <span className="shrink-0 rounded-full bg-status-info-soft px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-status-info">
-              Beta Runtime
+              {t('workflowAutomation.legacy.page.beta')}
             </span>
           </div>
           <p className={`mt-0.5 text-xs ${textSecondary}`}>
-            Tenant-scoped automation with real execution logs — manual test and booking return hooks active
+            {t('workflowAutomation.legacy.page.subtitle')}
           </p>
         </div>
         {canWrite && mainTab === 'workflows' && (
@@ -527,7 +519,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
               aria-expanded={showTemplates}
             >
               <Icon name="layers" className="h-4 w-4 shrink-0" />
-              Templates
+              {t('workflowAutomation.legacy.page.templates')}
               {showTemplates ? <Icon name="chevron-up" className="h-3 w-3" /> : <Icon name="chevron-down" className="h-3 w-3" />}
             </button>
             <button
@@ -535,7 +527,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
               className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand-hover"
             >
               <Icon name="plus" className="h-4 w-4 shrink-0" />
-              New Workflow
+              {t('workflowAutomation.legacy.page.newWorkflow')}
             </button>
           </div>
         )}
@@ -579,9 +571,9 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Icon name="sparkles" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-              <span className={`text-sm font-semibold ${textPrimary}`}>Starter Templates</span>
+              <span className={`text-sm font-semibold ${textPrimary}`}>{t('workflowAutomation.legacy.page.starterTemplates')}</span>
               <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-                {STARTER_TEMPLATES.length} ready
+                {t('workflowAutomation.legacy.page.templatesReady', { count: STARTER_TEMPLATES.length })}
               </span>
             </div>
             <button onClick={() => setShowTemplates(false)} className={`p-1 rounded ${hoverBg}`}>
@@ -589,30 +581,32 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
             </button>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {STARTER_TEMPLATES.map((t, i) => {
-              const cat = getCategoryMeta(t.category);
+            {STARTER_TEMPLATES.map((template, i) => {
+              const cat = getCategoryMeta(template.category);
               const CatIcon = cat.icon;
               const catColors: Record<string, string> = {
                 blue: 'text-status-info', green: 'text-green-500', cyan: 'text-cyan-500',
                 orange: 'text-orange-500', red: 'text-red-500', purple: 'text-purple-500', yellow: 'text-yellow-500',
               };
+              const templateName = t(`workflowAutomation.legacy.template.${template.templateKey}.name` as import('../../i18n/translations/en').TranslationKey);
+              const templateDescription = t(`workflowAutomation.legacy.template.${template.templateKey}.description` as import('../../i18n/translations/en').TranslationKey);
               return (
                 <button
                   key={i}
-                  onClick={() => openBuilder(null, t)}
+                  onClick={() => openBuilder(null, template)}
                   className={`text-left p-3 rounded-lg border ${cardBorder} ${hoverBg} transition-colors group`}
                 >
                   <div className="flex items-start gap-2">
                     <CatIcon className={`w-4 h-4 mt-0.5 shrink-0 ${catColors[cat.color] || 'text-gray-500'}`} />
                     <div className="min-w-0">
-                      <p className={`text-xs font-semibold ${textPrimary} truncate group-hover:text-status-info transition-colors`}>{t.name}</p>
-                      <p className={`mt-0.5 text-xs ${textSecondary} line-clamp-2`}>{t.description}</p>
+                      <p className={`text-xs font-semibold ${textPrimary} truncate group-hover:text-status-info transition-colors`}>{templateName}</p>
+                      <p className={`mt-0.5 text-xs ${textSecondary} line-clamp-2`}>{templateDescription}</p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1">
                         <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
-                          {cat.label}
+                          {legacyCategoryLabel(locale, cat.key)}
                         </span>
                         <span className={`rounded-full px-1.5 py-0.5 text-xs ${isDarkMode ? 'bg-white/5 text-gray-400' : 'bg-muted text-muted-foreground'}`}>
-                          {t.actions.length} action{t.actions.length !== 1 ? 's' : ''}
+                          {t('workflowAutomation.legacy.page.actionCount', { count: template.actions.length })}
                         </span>
                       </div>
                     </div>
@@ -637,6 +631,8 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   onBack: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
   onRefresh: () => void;
 }) {
+  const { t, locale } = useLanguage();
+  const formattingLocale = automationFormattingLocaleOrDefault(locale);
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
   const [testing, setTesting] = useState(false);
@@ -665,7 +661,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
 
   const handleApproveRequest = async (request: WorkflowChangeRequest) => {
     if (!orgId) return;
-    const reason = window.prompt('Approval reason (required):');
+    const reason = window.prompt(t('workflowAutomation.legacy.prompt.approvalReason'));
     if (!reason?.trim()) return;
     setDecisionBusy(request.id);
     try {
@@ -685,7 +681,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
 
   const handleRejectRequest = async (request: WorkflowChangeRequest) => {
     if (!orgId) return;
-    const reason = window.prompt('Rejection reason (required):');
+    const reason = window.prompt(t('workflowAutomation.legacy.prompt.rejectionReason'));
     if (!reason?.trim()) return;
     setDecisionBusy(request.id);
     try {
@@ -714,18 +710,19 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       if (result.runs?.length) {
         setRuns((prev) => [...(result.runs as WorkflowRun[]), ...prev]);
       } else {
-        setTestError(result.message || 'Workflow was skipped (conditions/scope)');
+        setTestError(result.message || t('workflowAutomation.legacy.error.testSkipped'));
       }
       onRefresh();
     } catch (e) {
-      setTestError(e instanceof Error ? e.message : 'Test failed');
+      setTestError(e instanceof Error ? e.message : t('workflowAutomation.legacy.error.testFailed'));
     } finally {
       setTesting(false);
     }
   };
   const cat = getCategoryMeta(wf.category);
   const CatIcon = cat.icon;
-  const st = STATUS_CONFIG[wf.status] || STATUS_CONFIG.DRAFT;
+  const st = STATUS_TONES[wf.status] || STATUS_TONES.DRAFT;
+  const statusLabel = legacyWorkflowStatusLabel(locale, wf.status);
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
@@ -759,11 +756,11 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
             <div className="flex items-center gap-2">
               <h2 className={`text-lg font-bold ${textPrimary}`}>{wf.name}</h2>
               {isAi && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>AI</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>{t('workflowAutomation.legacy.detail.aiBadge')}</span>
               )}
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.bgClass} ${st.textClass}`}>{st.label}</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${st.bgClass} ${st.textClass}`}>{statusLabel}</span>
             </div>
-            <p className={`text-xs ${textSecondary}`}>{wf.description || 'No description'}</p>
+            <p className={`text-xs ${textSecondary}`}>{wf.description || t('workflowAutomation.legacy.detail.noDescription')}</p>
           </div>
         </div>
         {canWrite && (
@@ -774,13 +771,13 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
             >
               <Icon name="play" className="w-3.5 h-3.5 text-status-info" />
-              {testing ? 'Testing…' : 'Test workflow'}
+              {testing ? t('workflowAutomation.legacy.detail.testing') : t('workflowAutomation.legacy.detail.testWorkflow')}
             </button>
             <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
+              {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> {t('workflowAutomation.legacy.detail.disable')}</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> {t('workflowAutomation.legacy.detail.enable')}</>}
             </button>
             <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover">
-              <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
+              <Icon name="edit-3" className="w-3.5 h-3.5" /> {t('workflowAutomation.legacy.detail.edit')}
             </button>
             <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
               <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
@@ -797,11 +794,11 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
         <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-200'}`}>
           <Icon name="shield" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
           <div>
-            <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Permission Workflow</p>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>{t('workflowAutomation.legacy.detail.aiWarningTitle')}</p>
             <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
-              This workflow grants AI special execution rights. Actions involving customer communication or booking require approval gating.
+              {t('workflowAutomation.legacy.detail.aiWarningBody')}
               {wf.actions?.some((a: ActionDef) => a.type === 'request_approval') &&
-                ' Approval step is configured.'}
+                t('workflowAutomation.legacy.detail.aiWarningApproval')}
             </p>
           </div>
         </div>
@@ -817,12 +814,12 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
           <div className="flex items-center gap-2 mb-3">
             <Shield className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-            <p className={`text-xs font-semibold ${textPrimary}`}>Four-eyes activation control</p>
+            <p className={`text-xs font-semibold ${textPrimary}`}>{t('workflowAutomation.legacy.detail.fourEyesTitle')}</p>
           </div>
           {changeRequestsLoading ? (
-            <p className={`text-xs ${textSecondary}`}>Loading approval requests…</p>
+            <p className={`text-xs ${textSecondary}`}>{t('workflowAutomation.legacy.detail.loadingApprovals')}</p>
           ) : changeRequests.length === 0 ? (
-            <p className={`text-xs ${textSecondary}`}>No change requests recorded yet.</p>
+            <p className={`text-xs ${textSecondary}`}>{t('workflowAutomation.legacy.detail.noChangeRequests')}</p>
           ) : (
             <div className="space-y-3">
               {changeRequests.map((request) => (
@@ -841,21 +838,23 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                       <span className={`text-[10px] ${textSecondary}`}>{request.operation}</span>
                     </div>
                     <span className={`text-[10px] ${textSecondary}`}>
-                      Expires {new Date(request.expiresAt).toLocaleString('de-DE')}
-                      {request.expired ? ' (expired)' : ''}
+                      {t('workflowAutomation.legacy.detail.expires', {
+                        date: new Date(request.expiresAt).toLocaleString(formattingLocale),
+                      })}
+                      {request.expired ? t('workflowAutomation.legacy.detail.expired') : ''}
                     </span>
                   </div>
                   <div className={`mt-2 grid grid-cols-2 gap-2 text-[11px] ${textSecondary}`}>
-                    <div><span className={labelClass}>Maker</span><p className={valueClass}>{request.makerUserId.slice(0, 8)}…</p></div>
-                    <div><span className={labelClass}>Checker</span><p className={valueClass}>{request.checkerUserId ? `${request.checkerUserId.slice(0, 8)}…` : '—'}</p></div>
-                    <div className="col-span-2"><span className={labelClass}>Maker reason</span><p className={valueClass}>{request.makerReason}</p></div>
+                    <div><span className={labelClass}>{t('workflowAutomation.legacy.detail.maker')}</span><p className={valueClass}>{request.makerUserId.slice(0, 8)}…</p></div>
+                    <div><span className={labelClass}>{t('workflowAutomation.legacy.detail.checker')}</span><p className={valueClass}>{request.checkerUserId ? `${request.checkerUserId.slice(0, 8)}…` : '—'}</p></div>
+                    <div className="col-span-2"><span className={labelClass}>{t('workflowAutomation.legacy.detail.makerReason')}</span><p className={valueClass}>{request.makerReason}</p></div>
                     {request.checkerReason && (
-                      <div className="col-span-2"><span className={labelClass}>Checker reason</span><p className={valueClass}>{request.checkerReason}</p></div>
+                      <div className="col-span-2"><span className={labelClass}>{t('workflowAutomation.legacy.detail.checkerReason')}</span><p className={valueClass}>{request.checkerReason}</p></div>
                     )}
                   </div>
                   {request.diff && request.diff.length > 0 && (
                     <div className="mt-2">
-                      <p className={`${labelClass} mb-1`}>Diff</p>
+                      <p className={`${labelClass} mb-1`}>{t('workflowAutomation.legacy.detail.diff')}</p>
                       <div className="space-y-1">
                         {request.diff.map((entry) => (
                           <p key={entry.field} className={`text-[10px] ${textSecondary}`}>
@@ -873,7 +872,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                         onClick={() => handleApproveRequest(request)}
                         className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                       >
-                        Approve
+                        {t('workflowAutomation.legacy.detail.approve')}
                       </button>
                       <button
                         type="button"
@@ -881,7 +880,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                         onClick={() => handleRejectRequest(request)}
                         className={`px-2.5 py-1 rounded-md text-[10px] font-medium border ${cardBorder} ${textPrimary}`}
                       >
-                        Reject
+                        {t('workflowAutomation.legacy.detail.reject')}
                       </button>
                     </div>
                   )}
@@ -895,28 +894,28 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       <div className="grid grid-cols-2 gap-4">
         {/* Metadata */}
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
-          <p className={`text-xs font-semibold ${textPrimary} mb-3`}>Details</p>
+          <p className={`text-xs font-semibold ${textPrimary} mb-3`}>{t('workflowAutomation.legacy.detail.details')}</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-            <div><p className={labelClass}>Category</p><p className={valueClass}>{cat.label}</p></div>
-            <div><p className={labelClass}>Status</p><p className={valueClass}>{st.label}</p></div>
-            <div><p className={labelClass}>Scope</p><p className={valueClass}>{SCOPE_TYPES.find((s) => s.key === wf.scope?.type)?.label || wf.scope?.type}</p></div>
-            <div><p className={labelClass}>Triggered</p><p className={valueClass}>{wf.triggerCount}×</p></div>
-            <div><p className={labelClass}>Created by</p><p className={valueClass}>{wf.createdByName || '—'}</p></div>
-            <div><p className={labelClass}>Created</p><p className={valueClass}>{new Date(wf.createdAt).toLocaleDateString('de-DE')}</p></div>
-            <div><p className={labelClass}>Last updated</p><p className={valueClass}>{relativeTime(wf.updatedAt)}</p></div>
-            <div><p className={labelClass}>Last triggered</p><p className={valueClass}>{relativeTime(wf.lastTriggeredAt)}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.category')}</p><p className={valueClass}>{legacyCategoryLabel(locale, cat.key)}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.status')}</p><p className={valueClass}>{statusLabel}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.scope')}</p><p className={valueClass}>{legacyScopeLabel(locale, wf.scope?.type ?? '')}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.triggered')}</p><p className={valueClass}>{t('workflowAutomation.legacy.detail.triggeredCount', { count: wf.triggerCount })}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.createdBy')}</p><p className={valueClass}>{wf.createdByName || '—'}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.created')}</p><p className={valueClass}>{new Date(wf.createdAt).toLocaleDateString(formattingLocale)}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.lastUpdated')}</p><p className={valueClass}>{formatLegacyRelativeTime(locale, wf.updatedAt)}</p></div>
+            <div><p className={labelClass}>{t('workflowAutomation.legacy.detail.lastTriggered')}</p><p className={valueClass}>{formatLegacyRelativeTime(locale, wf.lastTriggeredAt)}</p></div>
           </div>
         </div>
 
         {/* Logic Summary */}
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
-          <p className={`text-xs font-semibold ${textPrimary} mb-3`}>Workflow Logic</p>
+          <p className={`text-xs font-semibold ${textPrimary} mb-3`}>{t('workflowAutomation.legacy.detail.workflowLogic')}</p>
           {/* Trigger */}
           <div className={`flex items-start gap-2 mb-3 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
             <Icon name="target" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
             <div>
-              <p className={labelClass}>Trigger</p>
-              <p className={`text-xs font-medium ${textPrimary}`}>{getTriggerLabel(wf.trigger?.type)}</p>
+              <p className={labelClass}>{t('workflowAutomation.legacy.detail.trigger')}</p>
+              <p className={`text-xs font-medium ${textPrimary}`}>{getTriggerLabel(locale, wf.trigger?.type)}</p>
               {wf.trigger?.config && Object.keys(wf.trigger.config).length > 0 && (
                 <p className={`text-[10px] mt-0.5 ${textSecondary}`}>
                   {Object.entries(wf.trigger.config).map(([k, v]) => `${k}: ${v}`).join(', ')}
@@ -927,24 +926,24 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
           {/* Conditions */}
           {wf.conditions && wf.conditions.length > 0 && (
             <div className="mb-3">
-              <p className={`${labelClass} mb-1`}>Conditions</p>
+              <p className={`${labelClass} mb-1`}>{t('workflowAutomation.legacy.detail.conditions')}</p>
               {wf.conditions.map((c: ConditionDef, i: number) => (
                 <div key={i} className={`flex items-center gap-1.5 text-[11px] ${textSecondary} mb-0.5`}>
                   <Icon name="filter" className="w-3 h-3" />
-                  <span>{getFieldLabel(c.field ?? c.path ?? '')} {getOperatorLabel(c.operator)} <strong className={textPrimary}>{String(c.value)}</strong></span>
+                  <span>{getFieldLabel(locale, c.field ?? c.path ?? '')} {getOperatorLabel(locale, c.operator)} <strong className={textPrimary}>{String(c.value)}</strong></span>
                 </div>
               ))}
             </div>
           )}
           {/* Actions */}
-          <p className={`${labelClass} mb-1`}>Actions ({wf.actions?.length || 0})</p>
+          <p className={`${labelClass} mb-1`}>{t('workflowAutomation.legacy.detail.actions', { count: wf.actions?.length || 0 })}</p>
           {wf.actions?.map((a: ActionDef, i: number) => {
             const Icon = getActionIcon(a.type);
             return (
               <div key={i} className={`flex items-start gap-2 mb-1.5 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
                 <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${a.type.startsWith('ai_') ? (isDarkMode ? 'text-purple-400' : 'text-purple-600') : (isDarkMode ? 'text-green-400' : 'text-green-600')}`} />
                 <div>
-                  <p className={`text-xs font-medium ${textPrimary}`}>{getActionLabel(a.type)}</p>
+                  <p className={`text-xs font-medium ${textPrimary}`}>{getActionLabel(locale, a.type)}</p>
                   {a.config && Object.keys(a.config).length > 0 && (
                     <p className={`text-[10px] ${textSecondary}`}>
                       {Object.entries(a.config).map(([k, v]) => `${k}: ${String(v)}`).join(', ')}
@@ -960,28 +959,29 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
       {/* Execution history */}
       <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
         <div className="flex items-center justify-between mb-3">
-          <p className={`text-xs font-semibold ${textPrimary}`}>Execution history</p>
-          <span className={`text-[10px] ${textSecondary}`}>{wf.triggerCount} total triggers</span>
+          <p className={`text-xs font-semibold ${textPrimary}`}>{t('workflowAutomation.legacy.detail.executionHistory')}</p>
+          <span className={`text-[10px] ${textSecondary}`}>{t('workflowAutomation.legacy.detail.totalTriggers', { count: wf.triggerCount })}</span>
         </div>
         {runsLoading ? (
-          <p className={`text-xs ${textSecondary}`}>Loading runs…</p>
+          <p className={`text-xs ${textSecondary}`}>{t('workflowAutomation.legacy.detail.loadingRuns')}</p>
         ) : runs.length === 0 ? (
-          <p className={`text-xs ${textSecondary}`}>Noch keine Ausführungen vorhanden.</p>
+          <p className={`text-xs ${textSecondary}`}>{t('workflowAutomation.legacy.detail.noRuns')}</p>
         ) : (
           <div className="space-y-2">
             {runs.map((run) => {
-              const rs = RUN_STATUS_CONFIG[run.status] || RUN_STATUS_CONFIG.PENDING;
+              const rs = RUN_STATUS_TONES[run.status] || RUN_STATUS_TONES.PENDING;
+              const runStatusLabel = legacyRunStatusLabel(locale, run.status);
               return (
                 <div key={run.id} className={`p-2.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-gray-50'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${rs.bgClass} ${rs.textClass}`}>{rs.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${rs.bgClass} ${rs.textClass}`}>{runStatusLabel}</span>
                       <span className={`text-xs font-medium truncate ${textPrimary}`}>{run.eventType}</span>
                       {run.entityId && (
                         <span className={`text-[10px] truncate ${textSecondary}`}>{run.entityType}:{run.entityId.slice(0, 8)}…</span>
                       )}
                     </div>
-                    <span className={`text-[10px] shrink-0 ${textSecondary}`}>{relativeTime(run.createdAt)}</span>
+                    <span className={`text-[10px] shrink-0 ${textSecondary}`}>{formatLegacyRelativeTime(locale, run.createdAt)}</span>
                   </div>
                   {run.errorMessage && (
                     <p className={`text-[10px] mt-1 text-red-500`}>{run.errorMessage}</p>
@@ -989,10 +989,11 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
                   {run.actionRuns && run.actionRuns.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {run.actionRuns.map((ar) => {
-                        const ars = RUN_STATUS_CONFIG[ar.status] || RUN_STATUS_CONFIG.PENDING;
+                        const ars = RUN_STATUS_TONES[ar.status] || RUN_STATUS_TONES.PENDING;
+                        const arLabel = legacyRunStatusLabel(locale, ar.status);
                         return (
                           <span key={ar.id} className={`text-[9px] px-1.5 py-0.5 rounded ${ars.bgClass} ${ars.textClass}`}>
-                            {ar.actionType} — {ars.label}
+                            {ar.actionType} — {arLabel}
                           </span>
                         );
                       })}
@@ -1014,6 +1015,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
   data: Partial<Workflow>; setData: (d: Partial<Workflow> | null) => void;
   isDarkMode: boolean; saving: boolean; onSave: () => void; onCancel: () => void;
 }) {
+  const { t, locale } = useLanguage();
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
   const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
@@ -1065,27 +1067,27 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           <button onClick={onCancel} className={`p-1.5 rounded-lg ${hoverBg}`}>
             <Icon name="arrow-left" className={`w-4 h-4 ${textSecondary}`} />
           </button>
-          <h2 className={`text-lg font-bold ${textPrimary}`}>{data.id ? 'Edit Workflow' : 'Create Workflow'}</h2>
+          <h2 className={`text-lg font-bold ${textPrimary}`}>{data.id ? t('workflowAutomation.legacy.builder.editTitle') : t('workflowAutomation.legacy.builder.createTitle')}</h2>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={onCancel} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${textSecondary} ${hoverBg}`}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <select
             value={data.status || 'DRAFT'}
             onChange={(e) => update({ status: e.target.value })}
             className={`px-2 py-1.5 rounded-lg text-xs border ${inputBg} focus:outline-none`}
           >
-            <option value="DRAFT">Save as Draft</option>
-            <option value="ACTIVE">Save & Activate</option>
-            <option value="DISABLED">Save as Disabled</option>
+            <option value="DRAFT">{t('workflowAutomation.legacy.builder.saveDraft')}</option>
+            <option value="ACTIVE">{t('workflowAutomation.legacy.builder.saveActivate')}</option>
+            <option value="DISABLED">{t('workflowAutomation.legacy.builder.saveDisabled')}</option>
           </select>
           <button
             onClick={onSave}
             disabled={saving || !data.name}
             className="px-4 py-1.5 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Workflow'}
+            {saving ? t('common.saving') : t('workflowAutomation.legacy.builder.saveWorkflow')}
           </button>
         </div>
       </div>
@@ -1095,9 +1097,9 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
         <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-200'}`}>
           <Icon name="shield" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
           <div>
-            <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Actions Detected</p>
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>{t('workflowAutomation.legacy.builder.aiDetectedTitle')}</p>
             <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
-              This workflow includes AI-powered actions. For customer-facing actions (messaging, bookings), consider adding an "Request approval" action first.
+              {t('workflowAutomation.legacy.builder.aiDetectedBody')}
             </p>
           </div>
         </div>
@@ -1107,48 +1109,48 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
         {/* Left: Basic info */}
         <div className="space-y-4">
           <div className={sectionClass}>
-            <p className={`text-xs font-semibold ${textPrimary} mb-3`}>Basic Information</p>
+            <p className={`text-xs font-semibold ${textPrimary} mb-3`}>{t('workflowAutomation.legacy.builder.basicInfo')}</p>
             <div className="space-y-3">
               <div>
-                <label className={labelClass}>Workflow Name</label>
+                <label className={labelClass}>{t('workflowAutomation.legacy.builder.workflowName')}</label>
                 <input
                   value={data.name || ''}
                   onChange={(e) => update({ name: e.target.value })}
-                  placeholder="e.g. Auto-Clean on Return"
+                  placeholder={t('workflowAutomation.legacy.builder.workflowNamePlaceholder')}
                   className={`w-full px-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none focus:ring-1 focus:ring-blue-500`}
                 />
               </div>
               <div>
-                <label className={labelClass}>Description</label>
+                <label className={labelClass}>{t('workflowAutomation.legacy.builder.description')}</label>
                 <textarea
                   value={data.description || ''}
                   onChange={(e) => update({ description: e.target.value })}
-                  placeholder="Describe what this workflow does..."
+                  placeholder={t('workflowAutomation.legacy.builder.descriptionPlaceholder')}
                   rows={2}
                   className={`w-full px-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none`}
                 />
               </div>
               <div>
-                <label className={labelClass}>Category</label>
+                <label className={labelClass}>{t('workflowAutomation.legacy.builder.category')}</label>
                 <select
                   value={data.category || 'vehicle_return'}
                   onChange={(e) => update({ category: e.target.value })}
                   className={`w-full px-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none`}
                 >
                   {CATEGORIES.map((c) => (
-                    <option key={c.key} value={c.key}>{c.label}</option>
+                    <option key={c.key} value={c.key}>{legacyCategoryLabel(locale, c.key)}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Scope</label>
+                <label className={labelClass}>{t('workflowAutomation.legacy.builder.scope')}</label>
                 <select
                   value={(data.scope as ScopeDef)?.type || 'organization'}
                   onChange={(e) => update({ scope: { type: e.target.value } as ScopeDef })}
                   className={`w-full px-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none`}
                 >
                   {SCOPE_TYPES.map((s) => (
-                    <option key={s.key} value={s.key}>{s.label}</option>
+                    <option key={s.key} value={s.key}>{legacyScopeLabel(locale, s.key)}</option>
                   ))}
                 </select>
               </div>
@@ -1159,20 +1161,22 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           <div className={sectionClass}>
             <div className="flex items-center gap-2 mb-3">
               <Icon name="target" className={`w-4 h-4 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
-              <p className={`text-xs font-semibold ${textPrimary}`}>Trigger</p>
+              <p className={`text-xs font-semibold ${textPrimary}`}>{t('workflowAutomation.legacy.builder.trigger')}</p>
             </div>
             <select
               value={(data.trigger as TriggerDef)?.type || 'booking.returned'}
               onChange={(e) => update({ trigger: { type: e.target.value, config: (data.trigger as TriggerDef)?.config || {} } })}
               className={`w-full px-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none`}
             >
-              {TRIGGER_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>{t.label} ({getCategoryMeta(t.category).label})</option>
+              {TRIGGER_TYPES.map((trigger) => (
+                <option key={trigger.key} value={trigger.key}>
+                  {getTriggerLabel(locale, trigger.key)} ({legacyCategoryLabel(locale, trigger.category)})
+                </option>
               ))}
             </select>
             <TriggerConfigEditor
               trigger={(data.trigger as TriggerDef) || { type: 'booking.returned' }}
-              onChange={(t) => update({ trigger: t })}
+              onChange={(triggerPatch) => update({ trigger: triggerPatch })}
               isDarkMode={isDarkMode}
             />
           </div>
@@ -1185,26 +1189,26 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Icon name="filter" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                <p className={`text-xs font-semibold ${textPrimary}`}>Conditions</p>
-                <span className={`text-[9px] ${textSecondary}`}>optional</span>
+                <p className={`text-xs font-semibold ${textPrimary}`}>{t('workflowAutomation.legacy.builder.conditions')}</p>
+                <span className={`text-[9px] ${textSecondary}`}>{t('workflowAutomation.legacy.builder.conditionsOptional')}</span>
               </div>
               <button onClick={addCondition} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-brand hover:bg-brand-soft' : 'text-brand hover:bg-brand-soft'}`}>
-                <Icon name="plus" className="w-3 h-3" /> Add
+                <Icon name="plus" className="w-3 h-3" /> {t('workflowAutomation.legacy.builder.add')}
               </button>
             </div>
             {((data.conditions || []) as ConditionDef[]).length === 0 ? (
-              <p className={`text-[11px] ${textSecondary} text-center py-3`}>No conditions — workflow triggers for all matching events</p>
+              <p className={`text-[11px] ${textSecondary} text-center py-3`}>{t('workflowAutomation.legacy.builder.noConditions')}</p>
             ) : (
               <div className="space-y-2">
                 {((data.conditions || []) as ConditionDef[]).map((c: ConditionDef, i: number) => (
                   <div key={i} className={`flex items-center gap-1.5 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
                     <select value={c.field} onChange={(e) => updateCondition(i, { field: e.target.value })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-                      {CONDITION_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                      {CONDITION_FIELDS.map((f) => <option key={f.key} value={f.key}>{getFieldLabel(locale, f.key)}</option>)}
                     </select>
                     <select value={c.operator} onChange={(e) => updateCondition(i, { operator: e.target.value })} className={`px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-                      {CONDITION_OPERATORS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                      {CONDITION_OPERATORS.map((o) => <option key={o.key} value={o.key}>{getOperatorLabel(locale, o.key)}</option>)}
                     </select>
-                    <input value={String(c.value)} onChange={(e) => updateCondition(i, { value: e.target.value })} placeholder="Value" className={`w-24 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+                    <input value={String(c.value)} onChange={(e) => updateCondition(i, { value: e.target.value })} placeholder={t('workflowAutomation.legacy.builder.conditionValue')} className={`w-24 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
                     <button onClick={() => removeCondition(i)} className="p-0.5"><Icon name="x" className="w-3 h-3 text-red-400" /></button>
                   </div>
                 ))}
@@ -1217,14 +1221,14 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Icon name="zap" className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                <p className={`text-xs font-semibold ${textPrimary}`}>Actions</p>
+                <p className={`text-xs font-semibold ${textPrimary}`}>{t('workflowAutomation.legacy.builder.actions')}</p>
               </div>
               <button onClick={addAction} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-brand hover:bg-brand-soft' : 'text-brand hover:bg-brand-soft'}`}>
-                <Icon name="plus" className="w-3 h-3" /> Add
+                <Icon name="plus" className="w-3 h-3" /> {t('workflowAutomation.legacy.builder.add')}
               </button>
             </div>
             {((data.actions || []) as ActionDef[]).length === 0 ? (
-              <p className={`text-[11px] ${textSecondary} text-center py-3`}>Add at least one action</p>
+              <p className={`text-[11px] ${textSecondary} text-center py-3`}>{t('workflowAutomation.legacy.builder.addActionHint')}</p>
             ) : (
               <div className="space-y-2">
                 {((data.actions || []) as ActionDef[]).map((a: ActionDef, i: number) => {
@@ -1234,9 +1238,9 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                         <select value={a.type} onChange={(e) => updateAction(i, { type: e.target.value, config: {} })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-                          {ACTION_TYPES.map((at) => (
-                            <option key={at.key} value={at.key} disabled={'comingSoon' in at && at.comingSoon}>
-                              {at.label}{'comingSoon' in at && at.comingSoon ? ' (Coming soon)' : ''}
+                          {ACTION_TYPES.map((actionType) => (
+                            <option key={actionType.key} value={actionType.key} disabled={'comingSoon' in actionType && actionType.comingSoon}>
+                              {getActionLabel(locale, actionType.key)}{'comingSoon' in actionType && actionType.comingSoon ? t('workflowAutomation.legacy.actionType.comingSoon') : ''}
                             </option>
                           ))}
                         </select>
@@ -1260,6 +1264,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
 function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
   trigger: TriggerDef; onChange: (t: TriggerDef) => void; isDarkMode: boolean;
 }) {
+  const { t } = useLanguage();
   const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900';
   const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
   const labelClass = `text-[10px] ${textSecondary} mb-0.5 block mt-2`;
@@ -1272,14 +1277,14 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
     case 'geofence_exit':
       return (
         <div>
-          <label className={labelClass}>Territory name</label>
-          <input value={trigger.config?.territoryName || ''} onChange={(e) => updateConfig('territoryName', e.target.value)} placeholder="e.g. City Center" className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.territoryName')}</label>
+          <input value={trigger.config?.territoryName || ''} onChange={(e) => updateConfig('territoryName', e.target.value)} placeholder={t('workflowAutomation.legacy.triggerConfig.territoryPlaceholder')} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'geofence_dwell':
       return (
         <div>
-          <label className={labelClass}>Duration outside territory (minutes)</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.dwellDuration')}</label>
           <input type="number" value={trigger.config?.durationMinutes || 120} onChange={(e) => updateConfig('durationMinutes', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
@@ -1287,17 +1292,17 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Metric</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.metric')}</label>
             <select value={trigger.config?.metric || 'overall'} onChange={(e) => updateConfig('metric', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="overall">Overall health</option>
-              <option value="tires">Tires</option>
-              <option value="brakes">Brakes</option>
-              <option value="engine">Engine</option>
-              <option value="battery">Battery</option>
+              <option value="overall">{t('workflowAutomation.legacy.triggerConfig.metric.overall')}</option>
+              <option value="tires">{t('workflowAutomation.legacy.triggerConfig.metric.tires')}</option>
+              <option value="brakes">{t('workflowAutomation.legacy.triggerConfig.metric.brakes')}</option>
+              <option value="engine">{t('workflowAutomation.legacy.triggerConfig.metric.engine')}</option>
+              <option value="battery">{t('workflowAutomation.legacy.triggerConfig.metric.battery')}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Threshold (%)</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.threshold')}</label>
             <input type="number" value={trigger.config?.threshold || 60} onChange={(e) => updateConfig('threshold', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
@@ -1306,16 +1311,16 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Compliance type</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.complianceType')}</label>
             <select value={trigger.config?.type || 'tuev'} onChange={(e) => updateConfig('type', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="tuev">TÜV</option>
-              <option value="bokraft">BOKraft</option>
-              <option value="insurance">Insurance</option>
-              <option value="permit">Permit</option>
+              <option value="tuev">{t('workflowAutomation.legacy.triggerConfig.compliance.tuev')}</option>
+              <option value="bokraft">{t('workflowAutomation.legacy.triggerConfig.compliance.bokraft')}</option>
+              <option value="insurance">{t('workflowAutomation.legacy.triggerConfig.compliance.insurance')}</option>
+              <option value="permit">{t('workflowAutomation.legacy.triggerConfig.compliance.permit')}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Days before expiry</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.daysBeforeExpiry')}</label>
             <input type="number" value={trigger.config?.daysBefore || 30} onChange={(e) => updateConfig('daysBefore', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
@@ -1323,46 +1328,46 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
     case 'invoice_overdue':
       return (
         <div>
-          <label className={labelClass}>Overdue threshold (days)</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.overdueThreshold')}</label>
           <input type="number" value={trigger.config?.overdueDays || 14} onChange={(e) => updateConfig('overdueDays', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'support_escalation':
       return (
         <div>
-          <label className={labelClass}>Hours unanswered</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.hoursUnanswered')}</label>
           <input type="number" value={trigger.config?.hoursUnanswered || 4} onChange={(e) => updateConfig('hoursUnanswered', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'task_escalation':
       return (
         <div>
-          <label className={labelClass}>Hours until escalation</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.hoursUntilEscalation')}</label>
           <input type="number" value={trigger.config?.hoursUntilEscalation || 24} onChange={(e) => updateConfig('hoursUntilEscalation', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'ai_action_request':
       return (
         <div>
-          <label className={labelClass}>AI action type</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.aiActionType')}</label>
           <select value={trigger.config?.actionType || 'create_task'} onChange={(e) => updateConfig('actionType', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-            <option value="create_task">Create task</option>
-            <option value="send_message">Send customer message</option>
-            <option value="book_appointment">Book appointment</option>
-            <option value="update_status">Update vehicle status</option>
-            <option value="contact_vendor">Contact vendor</option>
+            <option value="create_task">{t('workflowAutomation.legacy.triggerConfig.ai.create_task')}</option>
+            <option value="send_message">{t('workflowAutomation.legacy.triggerConfig.ai.send_message')}</option>
+            <option value="book_appointment">{t('workflowAutomation.legacy.triggerConfig.ai.book_appointment')}</option>
+            <option value="update_status">{t('workflowAutomation.legacy.triggerConfig.ai.update_status')}</option>
+            <option value="contact_vendor">{t('workflowAutomation.legacy.triggerConfig.ai.contact_vendor')}</option>
           </select>
         </div>
       );
     case 'schedule':
       return (
         <div>
-          <label className={labelClass}>Schedule interval</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.triggerConfig.scheduleInterval')}</label>
           <select value={trigger.config?.interval || 'daily'} onChange={(e) => updateConfig('interval', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-            <option value="hourly">Hourly</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
+            <option value="hourly">{t('workflowAutomation.legacy.triggerConfig.schedule.hourly')}</option>
+            <option value="daily">{t('workflowAutomation.legacy.triggerConfig.schedule.daily')}</option>
+            <option value="weekly">{t('workflowAutomation.legacy.triggerConfig.schedule.weekly')}</option>
+            <option value="monthly">{t('workflowAutomation.legacy.triggerConfig.schedule.monthly')}</option>
           </select>
         </div>
       );
@@ -1376,6 +1381,7 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
 function ActionConfigEditor({ action, onChange, isDarkMode }: {
   action: ActionDef; onChange: (a: Partial<ActionDef>) => void; isDarkMode: boolean;
 }) {
+  const { t, locale } = useLanguage();
   const inputBg = isDarkMode ? 'bg-[#2a2a3e] border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900';
   const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
   const labelClass = `text-[10px] ${textSecondary} mb-0.5 block`;
@@ -1389,16 +1395,16 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Task title</label>
-            <input value={action.config?.title || ''} onChange={(e) => updateConfig('title', e.target.value)} placeholder="Task title" className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.taskTitle')}</label>
+            <input value={action.config?.title || ''} onChange={(e) => updateConfig('title', e.target.value)} placeholder={t('workflowAutomation.legacy.actionConfig.taskTitlePlaceholder')} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
           <div>
-            <label className={labelClass}>Priority</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.priority')}</label>
             <select value={action.config?.priority || 'NORMAL'} onChange={(e) => updateConfig('priority', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="LOW">Low</option>
-              <option value="NORMAL">Normal</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
+              <option value="LOW">{labelTaskAutomationPriority(locale, 'LOW')}</option>
+              <option value="NORMAL">{labelTaskAutomationPriority(locale, 'NORMAL')}</option>
+              <option value="HIGH">{labelTaskAutomationPriority(locale, 'HIGH')}</option>
+              <option value="CRITICAL">{labelTaskAutomationPriority(locale, 'CRITICAL')}</option>
             </select>
           </div>
         </div>
@@ -1407,40 +1413,40 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Severity</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.severity')}</label>
             <select value={action.config?.severity || 'warning'} onChange={(e) => updateConfig('severity', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="info">Info</option>
-              <option value="warning">Warning</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
+              <option value="info">{t('workflowAutomation.legacy.actionConfig.severity.info')}</option>
+              <option value="warning">{t('workflowAutomation.legacy.actionConfig.severity.warning')}</option>
+              <option value="high">{t('workflowAutomation.legacy.actionConfig.severity.high')}</option>
+              <option value="critical">{t('workflowAutomation.legacy.actionConfig.severity.critical')}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Message</label>
-            <input value={action.config?.message || ''} onChange={(e) => updateConfig('message', e.target.value)} placeholder="Alert message" className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.message')}</label>
+            <input value={action.config?.message || ''} onChange={(e) => updateConfig('message', e.target.value)} placeholder={t('workflowAutomation.legacy.actionConfig.alertPlaceholder')} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
       );
     case 'change_cleaning_status':
       return (
         <div>
-          <label className={labelClass}>Set status to</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.setStatusTo')}</label>
           <select value={action.config?.status || 'NEEDS_CLEANING'} onChange={(e) => updateConfig('status', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-            <option value="NEEDS_CLEANING">Needs Cleaning</option>
-            <option value="CLEAN">Clean</option>
+            <option value="NEEDS_CLEANING">{t('workflowAutomation.legacy.actionConfig.cleaning.needs')}</option>
+            <option value="CLEAN">{t('workflowAutomation.legacy.actionConfig.cleaning.clean')}</option>
           </select>
         </div>
       );
     case 'change_vehicle_status':
       return (
         <div>
-          <label className={labelClass}>Set status to</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.setStatusTo')}</label>
           <select value={action.config?.status || 'OUT_OF_SERVICE'} onChange={(e) => updateConfig('status', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-            <option value="AVAILABLE">Available</option>
-            <option value="RENTED">Rented</option>
-            <option value="IN_SERVICE">In Service</option>
-            <option value="OUT_OF_SERVICE">Out of Service</option>
-            <option value="RESERVED">Reserved</option>
+            <option value="AVAILABLE">{t('workflowAutomation.legacy.actionConfig.vehicle.AVAILABLE')}</option>
+            <option value="RENTED">{t('workflowAutomation.legacy.actionConfig.vehicle.RENTED')}</option>
+            <option value="IN_SERVICE">{t('workflowAutomation.legacy.actionConfig.vehicle.IN_SERVICE')}</option>
+            <option value="OUT_OF_SERVICE">{t('workflowAutomation.legacy.actionConfig.vehicle.OUT_OF_SERVICE')}</option>
+            <option value="RESERVED">{t('workflowAutomation.legacy.actionConfig.vehicle.RESERVED')}</option>
           </select>
         </div>
       );
@@ -1448,16 +1454,16 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Target</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.target')}</label>
             <select value={action.config?.target || 'admin'} onChange={(e) => updateConfig('target', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="admin">Organization Admin</option>
-              <option value="assignee">Assigned User</option>
-              <option value="all">All Users</option>
+              <option value="admin">{t('workflowAutomation.legacy.actionConfig.target.admin')}</option>
+              <option value="assignee">{t('workflowAutomation.legacy.actionConfig.target.assignee')}</option>
+              <option value="all">{t('workflowAutomation.legacy.actionConfig.target.all')}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Message</label>
-            <input value={action.config?.message || ''} onChange={(e) => updateConfig('message', e.target.value)} placeholder="Notification text" className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.message')}</label>
+            <input value={action.config?.message || ''} onChange={(e) => updateConfig('message', e.target.value)} placeholder={t('workflowAutomation.legacy.actionConfig.notificationPlaceholder')} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
       );
@@ -1465,19 +1471,19 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Permission</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.permission')}</label>
             <select value={action.config?.permission || 'create_task'} onChange={(e) => updateConfig('permission', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="create_task">Create task</option>
-              <option value="update_status">Update vehicle status</option>
-              <option value="send_message">Send message</option>
-              <option value="book_appointment">Book appointment</option>
+              <option value="create_task">{t('workflowAutomation.legacy.triggerConfig.ai.create_task')}</option>
+              <option value="update_status">{t('workflowAutomation.legacy.triggerConfig.ai.update_status')}</option>
+              <option value="send_message">{t('workflowAutomation.legacy.triggerConfig.ai.send_message')}</option>
+              <option value="book_appointment">{t('workflowAutomation.legacy.triggerConfig.ai.book_appointment')}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Require approval</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.requireApproval')}</label>
             <select value={action.config?.requireApproval ? 'true' : 'false'} onChange={(e) => updateConfig('requireApproval', e.target.value === 'true')} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="false">No — execute immediately</option>
-              <option value="true">Yes — require approval first</option>
+              <option value="false">{t('workflowAutomation.legacy.actionConfig.executeImmediately')}</option>
+              <option value="true">{t('workflowAutomation.legacy.actionConfig.requireApprovalFirst')}</option>
             </select>
           </div>
         </div>
@@ -1485,11 +1491,11 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
     case 'ai_send_message':
       return (
         <div>
-          <label className={labelClass}>Channel</label>
+          <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.channel')}</label>
           <select value={action.config?.channel || 'whatsapp'} onChange={(e) => updateConfig('channel', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="email">Email</option>
-            <option value="sms">SMS</option>
+            <option value="whatsapp">{t('workflowAutomation.legacy.actionConfig.channel.whatsapp')}</option>
+            <option value="email">{t('workflowAutomation.legacy.actionConfig.channel.email')}</option>
+            <option value="sms">{t('workflowAutomation.legacy.actionConfig.channel.sms')}</option>
           </select>
         </div>
       );
@@ -1497,15 +1503,15 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
       return (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={labelClass}>Approver role</label>
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.approverRole')}</label>
             <select value={action.config?.approverRole || 'ORG_ADMIN'} onChange={(e) => updateConfig('approverRole', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-              <option value="ORG_ADMIN">Organization Admin</option>
-              <option value="SUB_ADMIN">Sub Admin</option>
+              <option value="ORG_ADMIN">{t('workflowAutomation.legacy.actionConfig.role.orgAdmin')}</option>
+              <option value="SUB_ADMIN">{t('workflowAutomation.legacy.actionConfig.role.subAdmin')}</option>
             </select>
           </div>
           <div>
-            <label className={labelClass}>Approval message</label>
-            <input value={action.config?.message || ''} onChange={(e) => updateConfig('message', e.target.value)} placeholder="What needs approval?" className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+            <label className={labelClass}>{t('workflowAutomation.legacy.actionConfig.approvalMessage')}</label>
+            <input value={action.config?.message || ''} onChange={(e) => updateConfig('message', e.target.value)} placeholder={t('workflowAutomation.legacy.actionConfig.approvalPlaceholder')} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
       );

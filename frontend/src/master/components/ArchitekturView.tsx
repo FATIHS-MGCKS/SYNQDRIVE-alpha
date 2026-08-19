@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Workflow Automation (P2.2.5 — V4.9.925)', icon: Globe,
+    endpoint: 'Workflow Automation shell (legacy builder + runtime drawers) and Task Automation rules/drawer/simulation.',
+    service: '**Helper:** `automation-i18n.ts` (`at`, label maps, `automationFormattingLocaleOrDefault`); React uses `useLanguage()`. **Keys:** +339 EN+DE (`taskAutomation.*`, `workflowAutomation.legacy.*`; 5926→6265); reused `tasks.filter.priority.*`, existing `workflowAutomation.*` runtime (226). **Guardrails:** P2.2.5 enforce-clean — 0 findings (108→0); Workflow Automation scanner module 108→0. **Shim:** WorkflowAutomationView `../i18n/`→`../../i18n/`; rental compat 31→30; 0 new compat. **Enums:** task automation API values unchanged.',
+    dataSource: 'architecture/I18N_RENTAL_AUTOMATION_P2_2_5_2026-08-19.md; docs/audits/i18n-production-hardening-baseline-2026-08.md' },
   { name: 'Platform i18n Rental Tasks & Settings (P2.2.4 — V4.9.924)', icon: Globe,
     endpoint: 'Rental Tasks page + Settings administration (account, company, data-authorization, email, rental-rules).',
     service: '**Helpers:** `tasks-i18n.ts` (`tt`, label maps) + `settings-i18n.ts` (`st`); React uses `useLanguage()`. **Keys:** 808 raw candidates / 790 net EN+DE (5136→5926); 21 duplicate reviews (18 SAME-SEMANTIC, 3 DIFFERENT-SEMANTIC); `settings-admin.{en,de}.ts`; reused `common.*`, `adminTab.*`, `email.*`. **Guardrails:** P2.2.4 enforce-clean — 0 findings; SettingsView→Settings; StationsTab extracted (A). **Shim:** 32→31; 0 new compat. **Scanner:** Tasks 114→17; Automation +26 reclass. **Enums:** task API values unchanged.',

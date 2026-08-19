@@ -111,28 +111,29 @@
     }
   },
   "summary": {
-    "total": 2320,
+    "total": 2212,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 998,
+      "RENTAL": 890,
       "SHARED": 35,
       "SHELL": 38
     },
     "byCategory": {
-      "ARIA": 90,
-      "TITLE": 319,
-      "TEXT": 1609,
-      "LABEL": 136,
-      "PLACEHOLDER": 158,
+      "ARIA": 89,
+      "TITLE": 317,
+      "TEXT": 1531,
+      "LABEL": 119,
+      "PLACEHOLDER": 148,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 556,
+      "other Rental areas": 474,
       "Stations": 57,
       "Finance/Billing": 131,
-      "Automation": 209,
+      "WhatsApp": 72,
       "Tasks": 17,
+      "Voice Assistant": 111,
       "Support": 19,
       "Documents": 8,
       "App / routing shell": 1
@@ -380,7 +381,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1452,
+      "line": 1456,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -408,7 +409,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23245,
+      "line": 23262,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -660,7 +661,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27130,
+      "line": 27147,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1651,7 +1652,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27075,
+      "line": 27092,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1792,7 +1793,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 923,
+      "line": 927,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1806,7 +1807,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23549,
+      "line": 23566,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1848,7 +1849,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1542,
+      "line": 1546,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2773,7 +2774,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1663,
+      "line": 1667,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2857,7 +2858,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 972,
+      "line": 976,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3151,7 +3152,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1553,
+      "line": 1557,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3477,7 +3478,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1457,
+      "line": 1461,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3533,7 +3534,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1611,
+      "line": 1615,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3547,7 +3548,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1613,
+      "line": 1617,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4152,7 +4153,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24517,
+      "line": 24534,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4181,7 +4182,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1437,
+      "line": 1441,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4195,7 +4196,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1581,
+      "line": 1585,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4686,7 +4687,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27065,
+      "line": 27082,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4897,7 +4898,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1661,
+      "line": 1665,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5206,7 +5207,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 21858,
+      "line": 21875,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5654,7 +5655,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23159,
+      "line": 23176,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6285,7 +6286,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1500,
+      "line": 1504,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6300,7 +6301,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 940,
+      "line": 944,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7765,7 +7766,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1516,
+      "line": 1520,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7989,7 +7990,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1506,
+      "line": 1510,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8031,7 +8032,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27100,
+      "line": 27117,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8326,7 +8327,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23225,
+      "line": 23242,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8564,7 +8565,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1493,
+      "line": 1497,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9098,7 +9099,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27087,
+      "line": 27104,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9112,7 +9113,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27104,
+      "line": 27121,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9533,7 +9534,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26781,
+      "line": 26798,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10197,7 +10198,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1481,
+      "line": 1485,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10715,7 +10716,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1617,
+      "line": 1621,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10729,7 +10730,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1614,
+      "line": 1618,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10743,7 +10744,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1610,
+      "line": 1614,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11640,7 +11641,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1514,
+      "line": 1518,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11850,7 +11851,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1664,
+      "line": 1668,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12480,7 +12481,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1415,
+      "line": 1419,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13070,7 +13071,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27054,
+      "line": 27071,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13084,7 +13085,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1211,
+      "line": 1215,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13182,7 +13183,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1554,
+      "line": 1558,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13759,7 +13760,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1411,
+      "line": 1415,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13857,7 +13858,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1544,
+      "line": 1548,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13943,7 +13944,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1459,
+      "line": 1463,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14125,7 +14126,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24519,
+      "line": 24536,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14167,7 +14168,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23245,
+      "line": 23262,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14195,7 +14196,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1415,
+      "line": 1419,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14209,7 +14210,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1416,
+      "line": 1420,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14252,7 +14253,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1358,
+      "line": 1362,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14266,7 +14267,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1382,
+      "line": 1386,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14308,7 +14309,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1541,
+      "line": 1545,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14660,7 +14661,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23285,
+      "line": 23302,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14828,7 +14829,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1664,
+      "line": 1668,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -17942,7 +17943,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 148,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Access tokens stored server-side only — never in this UI",
       "severity": "debt",
@@ -18006,20 +18007,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1227,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add at least one action",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -18194,7 +18181,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 262,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Agent not provisioned",
       "severity": "debt",
@@ -18208,7 +18195,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 244,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Agent provisioning",
       "severity": "debt",
@@ -18247,52 +18234,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1347,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "AI action type",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1347,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "AI action type",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1098,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "AI Actions Detected",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 88,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "AI assistance",
       "severity": "debt",
@@ -18306,7 +18251,7 @@
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 122,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "AI assistance summary",
       "severity": "debt",
@@ -18320,7 +18265,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 249,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "AI context",
       "severity": "debt",
@@ -18328,20 +18273,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 800,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "AI Permission Workflow",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -18362,7 +18293,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 59,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "AI suggestion — review before sending",
       "severity": "debt",
@@ -18376,7 +18307,7 @@
       "file": "rental/components/voice-assistant/VoiceCommandHeader.tsx",
       "line": 128,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "AI Voice Command Center",
       "severity": "debt",
@@ -18514,24 +18445,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1420,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Alert message",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 264,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "All calls",
       "severity": "debt",
@@ -18545,7 +18462,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 229,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "All directions",
       "severity": "debt",
@@ -18573,7 +18490,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 238,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "All outcomes",
       "severity": "debt",
@@ -18581,34 +18498,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceConversationsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1455,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "All Users",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 751,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Alle eigenen Anpassungen für diese Regel werden entfernt. Bereits aktive Aufgaben bleiben unverändert.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {
@@ -18786,48 +18675,6 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 528,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Änderungsgrund (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 525,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "LABEL",
-      "sample": "Änderungsgrund (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 469,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Änderungshistorie",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillableVehiclesDrawer.tsx",
       "line": 85,
       "surface": "RENTAL",
@@ -18873,7 +18720,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 346,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Any additional restrictions…",
       "severity": "debt",
@@ -18881,132 +18728,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceAssistantBuilder.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1507,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Approval message",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1507,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Approval message",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1500,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Approver role",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1500,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Approver role",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1454,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Assigned User",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 421,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Auf SynqDrive-Standard zurücksetzen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 750,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Auf SynqDrive-Standard zurücksetzen?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
-      "line": 223,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TITLE",
-      "sample": "Aufgaben-Automationen konnten nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRulesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
-      "line": 219,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Aufgaben-Automationen werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRulesSection.tsx"
       ]
     },
     {
@@ -19054,20 +18775,6 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx",
-      "line": 28,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Auswirkungsschätzung wird berechnet…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/HandoverProtocolDialog.tsx",
       "line": 652,
       "surface": "RENTAL",
@@ -19099,7 +18806,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 152,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Avg Duration",
       "severity": "debt",
@@ -19135,20 +18842,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1110,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Basic Information",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -19197,7 +18890,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 278,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Behavior rules",
       "severity": "debt",
@@ -19323,20 +19016,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 514,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Beta Runtime",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinesView.tsx",
       "line": 479,
       "surface": "RENTAL",
@@ -19451,20 +19130,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1351,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Book appointment",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WhatsAppBusinessView.tsx",
       "line": 601,
       "surface": "RENTAL",
@@ -19482,7 +19147,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 403,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Booking link API coming soon",
       "severity": "debt",
@@ -19538,7 +19203,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 99,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Business display name",
       "severity": "debt",
@@ -19552,7 +19217,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 42,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Business name",
       "severity": "debt",
@@ -19566,7 +19231,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 90,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Business phone number *",
       "severity": "debt",
@@ -19650,7 +19315,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 172,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Calls by outcome",
       "severity": "debt",
@@ -19720,7 +19385,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 468,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Changes are saved to your organization&apos;s voice assistant configuration.",
       "severity": "debt",
@@ -19728,20 +19393,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceAssistantBuilder.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 853,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Checker reason",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -19875,7 +19526,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 237,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Company knowledge",
       "severity": "debt",
@@ -19942,38 +19593,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1309,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Compliance type",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1309,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Compliance type",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 117,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Confirm autonomous",
       "severity": "debt",
@@ -20015,7 +19638,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 275,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Connect the provider first.",
       "severity": "debt",
@@ -20097,20 +19720,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1353,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Contact vendor",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 1018,
       "surface": "RENTAL",
@@ -20128,7 +19737,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 72,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Control what the voice assistant may do during calls.",
       "severity": "debt",
@@ -20142,7 +19751,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 173,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Conversation Logs",
       "severity": "debt",
@@ -20198,7 +19807,7 @@
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 38,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "Could not load WhatsApp",
       "severity": "debt",
@@ -20240,7 +19849,7 @@
       "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
       "line": 81,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Create first template",
       "severity": "debt",
@@ -20294,38 +19903,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1349,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Create task",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 904,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Created by",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 299,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Critical guardrails for rental operations. Recommended rules are pre-defined for fleet safety.",
       "severity": "debt",
@@ -20339,7 +19920,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 304,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Current test scenario",
       "severity": "debt",
@@ -20353,7 +19934,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 411,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Customer link API coming soon",
       "severity": "debt",
@@ -20367,7 +19948,7 @@
       "file": "rental/components/whatsapp/WhatsAppQuickActions.tsx",
       "line": 72,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Customer opted out — outbound reminders blocked.",
       "severity": "debt",
@@ -20381,7 +19962,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 174,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Customer service & booking help",
       "severity": "debt",
@@ -20591,7 +20172,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 257,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Data integrations",
       "severity": "debt",
@@ -20616,34 +20197,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1318,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Days before expiry",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1318,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Days before expiry",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/BusinessInsightsBox.tsx",
       "line": 955,
       "surface": "RENTAL",
@@ -20652,7 +20205,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 90,
+      "occurrences": 86,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
@@ -20664,7 +20217,6 @@
         "rental/components/ScheduleBox.tsx",
         "rental/components/VehicleInsightsCard.tsx",
         "rental/components/VendorDetailView.tsx",
-        "rental/components/WorkflowAutomationView.tsx",
         "rental/components/billing/billing.utils.ts",
         "rental/components/booking-detail/bookingDetailUtils.ts",
         "rental/components/booking-payment/BookingPaymentCard.tsx",
@@ -20694,7 +20246,6 @@
         "rental/components/vendors/VendorOperationalTasks.tsx",
         "rental/components/voice-assistant/VoiceUsageAnalyticsPanel.tsx",
         "rental/components/voice-assistant/VoiceWizardPlanStep.tsx",
-        "rental/components/workflow-automation/task-automation.utils.ts",
         "rental/components/workflow-automation/workflow-runtime.utils.ts",
         "rental/lib/ai-chat/fleet-chat-response-display.ts",
         "rental/lib/customer-list-ui.ts",
@@ -20780,20 +20331,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1126,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Describe what this workflow does...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
       "line": 149,
       "surface": "RENTAL",
@@ -20839,7 +20376,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 165,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Dev / test only",
       "severity": "debt",
@@ -21093,62 +20630,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1282,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Duration outside territory (minutes)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1282,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Duration outside territory (minutes)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1117,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "e.g. Auto-Clean on Return",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1276,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "e.g. City Center",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateDamageDialog.tsx",
       "line": 332,
       "surface": "RENTAL",
@@ -21166,7 +20647,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 160,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "e.g. SynqDrive Rental Assistant",
       "severity": "debt",
@@ -21180,7 +20661,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 363,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Edit escalation",
       "severity": "debt",
@@ -21194,7 +20675,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 121,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Edit in composer",
       "severity": "debt",
@@ -21476,7 +20957,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 104,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Enable autonomous mode?",
       "severity": "debt",
@@ -21490,7 +20971,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 387,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Enable outbound telephony?",
       "severity": "debt",
@@ -21600,24 +21081,10 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 729,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Es gibt ungespeicherte Anpassungen an dieser Aufgaben-Automation. Möchten Sie den Drawer wirklich schließen?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 321,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Escalate when",
       "severity": "debt",
@@ -21631,7 +21098,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 265,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Escalated only",
       "severity": "debt",
@@ -21645,7 +21112,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 354,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Escalation behavior",
       "severity": "debt",
@@ -21659,7 +21126,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 120,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Escalation enabled for sensitive topics",
       "severity": "debt",
@@ -21673,7 +21140,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 164,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Escalation Rate",
       "severity": "debt",
@@ -21687,7 +21154,7 @@
       "file": "rental/components/voice-assistant/VoiceOnboardingWizard.tsx",
       "line": 353,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Europe/Berlin",
       "severity": "debt",
@@ -21754,24 +21221,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 963,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Execution history",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 313,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Expected behavior",
       "severity": "debt",
@@ -21799,7 +21252,7 @@
       "file": "rental/components/whatsapp/WhatsAppConversationInbox.tsx",
       "line": 49,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "f.needsIntent ?",
       "severity": "debt",
@@ -22113,7 +21566,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 176,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Filter, review, and prepare follow-ups from synced calls.",
       "severity": "debt",
@@ -22197,7 +21650,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 298,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Forbidden actions",
       "severity": "debt",
@@ -22208,24 +21661,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 820,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Four-eyes activation control",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 276,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "ARIA",
       "sample": "From date",
       "severity": "debt",
@@ -22408,7 +21847,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 142,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "Get AI suggestion",
       "severity": "debt",
@@ -22464,7 +21903,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 235,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "Handover / return",
       "severity": "debt",
@@ -22506,7 +21945,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 355,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Handover triggers and fallback messages are configured in the Escalation tab.",
       "severity": "debt",
@@ -22520,7 +21959,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 266,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Has transcript",
       "severity": "debt",
@@ -22534,7 +21973,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 228,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Hello! Welcome to our rental team. How can I help you today?",
       "severity": "debt",
@@ -22699,62 +22138,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1333,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Hours unanswered",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1333,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Hours unanswered",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1340,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Hours until escalation",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1340,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Hours until escalation",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorManagementView.tsx",
       "line": 850,
       "surface": "RENTAL",
@@ -22772,7 +22155,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 118,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Human handover",
       "severity": "debt",
@@ -22786,7 +22169,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 255,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Human review required for this thread.",
       "severity": "debt",
@@ -22814,7 +22197,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 398,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "I understand — enable outbound",
       "severity": "debt",
@@ -22822,20 +22205,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 567,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Ich verstehe die Auswirkungen und möchte die Regel dennoch deaktivieren.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {
@@ -22853,24 +22222,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1441,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "In Service",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 330,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Inbound calls",
       "severity": "debt",
@@ -22884,7 +22239,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 356,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Inbound enabled",
       "severity": "debt",
@@ -23024,7 +22379,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 259,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Intent:",
       "severity": "debt",
@@ -23571,20 +22926,6 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
-      "line": 226,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TITLE",
-      "sample": "Keine Regeln gefunden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRulesSection.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/CreateUserWizard.tsx",
       "line": 214,
       "surface": "RENTAL",
@@ -23758,7 +23099,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 214,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Knowledge gaps",
       "severity": "debt",
@@ -23772,7 +23113,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 415,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Knowledge snippets",
       "severity": "debt",
@@ -23822,20 +23163,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillingOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 559,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Kritische operative Regel — Deaktivierung kann Lücken im Tagesgeschäft verursachen.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {
@@ -23966,38 +23293,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 907,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Last triggered",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 906,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Last updated",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceLaunchChecklist.tsx",
       "line": 19,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Launch checklist",
       "severity": "debt",
@@ -24011,7 +23310,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 408,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Leave empty to auto-build from identity, company context, rules, and snippets…",
       "severity": "debt",
@@ -24137,7 +23436,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 405,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Link to booking",
       "severity": "debt",
@@ -24151,7 +23450,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 413,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Link to customer",
       "severity": "debt",
@@ -24193,7 +23492,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 347,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Live session",
       "severity": "debt",
@@ -24207,7 +23506,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 60,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Loading analytics…",
       "severity": "debt",
@@ -24218,24 +23517,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 823,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Loading approval requests…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 304,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Loading conversations…",
       "severity": "debt",
@@ -24291,7 +23576,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 280,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Loading provider numbers…",
       "severity": "debt",
@@ -24299,20 +23584,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 967,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Loading runs…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -24333,7 +23604,7 @@
       "file": "rental/components/voice-assistant/VoiceSelectorField.tsx",
       "line": 51,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Loading voices from ElevenLabs…",
       "severity": "debt",
@@ -24376,7 +23647,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 92,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Low risk",
       "severity": "debt",
@@ -24429,24 +23700,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 851,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Maker reason",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 64,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Manual configuration",
       "severity": "debt",
@@ -24460,7 +23717,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 37,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Manual Meta Cloud API configuration — embedded signup pending.",
       "severity": "debt",
@@ -24474,7 +23731,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 392,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Manual override active",
       "severity": "debt",
@@ -24530,7 +23787,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 113,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Mark for human review",
       "severity": "debt",
@@ -24600,7 +23857,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 374,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Master switch for phone live mode.",
       "severity": "debt",
@@ -24642,7 +23899,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 152,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Message retention follows org policy and Meta requirements",
       "severity": "debt",
@@ -24656,7 +23913,7 @@
       "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
       "line": 55,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Message templates",
       "severity": "debt",
@@ -24670,7 +23927,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 70,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Meta Embedded Signup not yet available — configure provider fields manually.",
       "severity": "debt",
@@ -24684,7 +23941,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 209,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Microphone not supported in this browser — live voice testing may be unavailable.",
       "severity": "debt",
@@ -24740,7 +23997,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 251,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Mode:",
       "severity": "debt",
@@ -24891,20 +24148,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1429,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Needs Cleaning",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageWorkQueue.tsx",
       "line": 269,
       "surface": "RENTAL",
@@ -25020,7 +24263,7 @@
       "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
       "line": 65,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "New draft",
       "severity": "debt",
@@ -25070,20 +24313,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 537,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "New Workflow",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -25143,20 +24372,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1479,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No — execute immediately",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 709,
       "surface": "RENTAL",
@@ -25188,7 +24403,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 377,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "No active session",
       "severity": "debt",
@@ -25216,7 +24431,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 253,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "No agent provisioned yet. Complete readiness checks and activate the assistant from the command center header.",
       "severity": "debt",
@@ -25230,7 +24445,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 81,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "No analytics yet",
       "severity": "debt",
@@ -25244,7 +24459,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 201,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No booking documents to show",
       "severity": "debt",
@@ -25269,20 +24484,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 825,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No change requests recorded yet.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 1026,
       "surface": "RENTAL",
@@ -25297,24 +24498,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1196,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No conditions — workflow triggers for all matching events",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppConversationInbox.tsx",
       "line": 69,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "No conversations",
       "severity": "debt",
@@ -25328,7 +24515,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 311,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "No conversations match",
       "severity": "debt",
@@ -25342,7 +24529,7 @@
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 97,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "No conversations yet",
       "severity": "debt",
@@ -25385,7 +24572,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 245,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No handover context",
       "severity": "debt",
@@ -25497,7 +24684,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 141,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No linked booking yet",
       "severity": "debt",
@@ -25511,7 +24698,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 122,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No linked customer yet",
       "severity": "debt",
@@ -25525,7 +24712,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 231,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No linked tasks",
       "severity": "debt",
@@ -25539,7 +24726,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 157,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No linked vehicle yet",
       "severity": "debt",
@@ -25567,7 +24754,7 @@
       "file": "rental/components/whatsapp/WhatsAppChatPanel.tsx",
       "line": 114,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "No messages yet",
       "severity": "debt",
@@ -25609,7 +24796,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 184,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No payment context linked",
       "severity": "debt",
@@ -25623,7 +24810,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 283,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "No phone numbers found in your ElevenLabs account. Import or purchase numbers in ElevenLabs, then refresh.",
       "severity": "debt",
@@ -25721,7 +24908,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 168,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No station context",
       "severity": "debt",
@@ -25735,7 +24922,7 @@
       "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
       "line": 73,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "No templates yet",
       "severity": "debt",
@@ -25749,7 +24936,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 459,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "No transcript available",
       "severity": "debt",
@@ -25763,7 +24950,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 213,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "No vehicle damages",
       "severity": "debt",
@@ -25855,20 +25042,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillingOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 969,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Noch keine Ausführungen vorhanden.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -25985,20 +25158,6 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 481,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Noch keine org-spezifischen Anpassungen protokolliert.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingInvoiceSection.tsx",
       "line": 131,
       "surface": "RENTAL",
@@ -26073,7 +25232,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 209,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Not enough call data yet",
       "severity": "debt",
@@ -26115,7 +25274,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 415,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Notes: what worked, what failed, escalation issues…",
       "severity": "debt",
@@ -26137,20 +25296,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1460,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Notification text",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -26396,7 +25541,7 @@
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 92,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Open inbox",
       "severity": "debt",
@@ -26410,7 +25555,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 269,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Open launch checklist",
       "severity": "debt",
@@ -26452,7 +25597,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 446,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Open Test Center",
       "severity": "debt",
@@ -26480,7 +25625,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 118,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Opted out",
       "severity": "debt",
@@ -26547,20 +25692,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1453,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Organization Admin",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinesView.tsx",
       "line": 500,
       "surface": "RENTAL",
@@ -26575,24 +25706,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1442,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Out of Service",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 381,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Outbound calls",
       "severity": "debt",
@@ -26606,7 +25723,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 423,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Outbound enabled",
       "severity": "debt",
@@ -26620,7 +25737,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 165,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Outbound messages require server-side access token before they leave SynqDrive.",
       "severity": "debt",
@@ -26634,7 +25751,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 212,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Outbound telephony is disabled. Customer and vendor contact cannot be set to autonomous until enabled in Telephony.",
       "severity": "debt",
@@ -26642,48 +25759,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoicePermissionsMatrix.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1292,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Overall health",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1326,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Overdue threshold (days)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1326,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Overdue threshold (days)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -26774,7 +25849,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 172,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "Payment / deposit",
       "severity": "debt",
@@ -26858,7 +25933,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 261,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Phone number",
       "severity": "debt",
@@ -26872,7 +25947,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 46,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Phone number",
       "severity": "debt",
@@ -26886,7 +25961,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 50,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Phone number ID",
       "severity": "debt",
@@ -26900,7 +25975,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 116,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Phone Number ID (Meta)",
       "severity": "debt",
@@ -26914,7 +25989,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 162,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Phone Number ID configured",
       "severity": "debt",
@@ -27083,7 +26158,7 @@
       "file": "rental/components/voice-assistant/VoiceLaunchChecklist.tsx",
       "line": 20,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Pre-flight validation before activating your voice assistant.",
       "severity": "debt",
@@ -27293,7 +26368,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 437,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Prompt preview",
       "severity": "debt",
@@ -27307,7 +26382,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 231,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Provider connection",
       "severity": "debt",
@@ -27349,7 +26424,7 @@
       "file": "rental/components/voice-assistant/VoiceSelectorField.tsx",
       "line": 83,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Provider: ElevenLabs",
       "severity": "debt",
@@ -27363,7 +26438,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 277,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Provision the agent before assigning a number.",
       "severity": "debt",
@@ -27388,20 +26463,6 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 693,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Punkt hinzufügen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 627,
       "surface": "RENTAL",
@@ -27410,17 +26471,16 @@
       "sample": "Quelle:",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 4,
+      "occurrences": 1,
       "files": [
-        "rental/components/DocumentsView.tsx",
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
+        "rental/components/DocumentsView.tsx"
       ]
     },
     {
       "file": "rental/components/whatsapp/WhatsAppQuickActions.tsx",
       "line": 48,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Quick actions",
       "severity": "debt",
@@ -27434,7 +26494,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 146,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Readiness gaps",
       "severity": "debt",
@@ -27448,7 +26508,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 348,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Real-time transcript and tool-policy decisions will appear here when live integration is enabled.",
       "severity": "debt",
@@ -27518,7 +26578,7 @@
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 87,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Recent activity",
       "severity": "debt",
@@ -27731,7 +26791,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 386,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Record your operator verdict locally. Results are not saved to the server yet.",
       "severity": "debt",
@@ -27759,7 +26819,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 224,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Refresh status",
       "severity": "debt",
@@ -27767,34 +26827,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
-      "line": 181,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "ARIA",
-      "sample": "Regeln durchsuchen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRulesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
-      "line": 180,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "PLACEHOLDER",
-      "sample": "Regeln durchsuchen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRulesSection.tsx"
       ]
     },
     {
@@ -27857,7 +26889,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 266,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "Rental knowledge",
       "severity": "debt",
@@ -27941,7 +26973,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 159,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "Request human handover",
       "severity": "debt",
@@ -27949,34 +26981,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1477,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Require approval",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1477,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Require approval",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -28053,7 +27057,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 158,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Review your setup:",
       "severity": "debt",
@@ -28061,20 +27065,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 473,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Revisionen werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {
@@ -28222,7 +27212,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 437,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Run a signed test session in the Test Center — no phone charges apply.",
       "severity": "debt",
@@ -28233,52 +27223,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1080,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Save & Activate",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1081,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Save as Disabled",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1079,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Save as Draft",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 127,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Save before activating or leaving this tab.",
       "severity": "debt",
@@ -28292,7 +27240,7 @@
       "file": "rental/components/voice-assistant/VoiceCommandHeader.tsx",
       "line": 228,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Save changes",
       "severity": "debt",
@@ -28320,7 +27268,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 85,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Save permissions",
       "severity": "debt",
@@ -28370,34 +27318,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/handover/HandoverProtocolDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1360,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Schedule interval",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1360,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Schedule interval",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -28489,7 +27409,7 @@
       "file": "rental/components/whatsapp/WhatsAppConversationInbox.tsx",
       "line": 40,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "PLACEHOLDER",
       "sample": "Search name, phone, message…",
       "severity": "debt",
@@ -28531,7 +27451,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 221,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Search summary, transcript, number…",
       "severity": "debt",
@@ -28601,7 +27521,7 @@
       "file": "rental/components/whatsapp/WhatsAppChatPanel.tsx",
       "line": 66,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TITLE",
       "sample": "Select a conversation",
       "severity": "debt",
@@ -28615,7 +27535,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 81,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Select a conversation to see linked SynqDrive context.",
       "severity": "debt",
@@ -28629,7 +27549,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 308,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Select a phone number",
       "severity": "debt",
@@ -28671,7 +27591,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 280,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Select a scenario to define expected behavior. No automated simulation — use it as an operator script.",
       "severity": "debt",
@@ -28714,7 +27634,7 @@
       "file": "rental/components/voice-assistant/VoiceSelectorField.tsx",
       "line": 72,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Select a voice",
       "severity": "debt",
@@ -28798,7 +27718,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 104,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Send AI reply",
       "severity": "debt",
@@ -28806,20 +27726,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1350,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Send customer message",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -28834,20 +27740,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1472,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Send message",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -28868,7 +27760,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 113,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Server-side tokens are set via environment variables. Enter Meta IDs for webhook routing.",
       "severity": "debt",
@@ -28923,38 +27815,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1427,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Set status to",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1427,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Set status to",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 55,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Setup checklist",
       "severity": "debt",
@@ -28976,20 +27840,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRulesSection.tsx",
-      "line": 160,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Sie haben nur Lesezugriff. Änderungen erfordern Workflow-Automatisierungs-Schreibrechte.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRulesSection.tsx"
       ]
     },
     {
@@ -29024,7 +27874,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 167,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Simulate inbound messages without Meta webhooks. Not available in production.",
       "severity": "debt",
@@ -29047,20 +27897,6 @@
       "files": [
         "rental/components/WhatsAppBusinessView.tsx",
         "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx",
-      "line": 38,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Simulation nicht verfügbar",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationSimulationPanel.tsx"
       ]
     },
     {
@@ -29193,7 +28029,7 @@
       "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
       "line": 79,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Start setup wizard",
       "severity": "debt",
@@ -29201,20 +28037,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 582,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Starter Templates",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -29361,7 +28183,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 233,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Stop / reset",
       "severity": "debt",
@@ -29375,7 +28197,7 @@
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 144,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "STOP / STOPP / Abmelden processed server-side as opt-out",
       "severity": "debt",
@@ -29431,7 +28253,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 424,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Strongly recommended only with suggest-only contact permissions and monitoring.",
       "severity": "debt",
@@ -29453,20 +28275,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantPricingBreakdownSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1503,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Sub Admin",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -29557,7 +28365,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 73,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Suggest only",
       "severity": "debt",
@@ -29599,7 +28407,7 @@
       "file": "rental/components/whatsapp/WhatsAppMessageBubble.tsx",
       "line": 32,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "SynqDrive AI",
       "severity": "debt",
@@ -29613,7 +28421,7 @@
       "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
       "line": 89,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "SynqDrive context",
       "severity": "debt",
@@ -29627,7 +28435,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 104,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "PLACEHOLDER",
       "sample": "SynqDrive Rental",
       "severity": "debt",
@@ -29655,7 +28463,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 387,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TITLE",
       "sample": "System prompt",
       "severity": "debt",
@@ -29778,48 +28586,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1393,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Task title",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1392,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Task title",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1392,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Task title",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/EntityTasksSection.tsx",
       "line": 118,
       "surface": "RENTAL",
@@ -29921,7 +28687,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 373,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Telephony enabled",
       "severity": "debt",
@@ -29935,7 +28701,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 212,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Telephony setup",
       "severity": "debt",
@@ -29974,52 +28740,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 518,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Tenant-scoped automation with real execution logs — manual test and booking return hooks active",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1275,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Territory name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1275,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Territory name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceCommandHeader.tsx",
       "line": 207,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Test call",
       "severity": "debt",
@@ -30033,7 +28757,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 129,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Test Center",
       "severity": "debt",
@@ -30047,7 +28771,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 385,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Test result",
       "severity": "debt",
@@ -30061,7 +28785,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 279,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Test scenarios",
       "severity": "debt",
@@ -30075,7 +28799,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 252,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Test session expired. Start a new session to continue testing.",
       "severity": "debt",
@@ -30083,48 +28807,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1099,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "This workflow includes AI-powered actions. For customer-facing actions (messaging, bookings), consider adding an \"Reques",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1300,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Threshold (%)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1300,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Threshold (%)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -30268,24 +28950,10 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 702,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "PLACEHOLDER",
-      "sample": "Titel des zusätzlichen Punkts",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 283,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "ARIA",
       "sample": "To date",
       "severity": "debt",
@@ -30299,7 +28967,7 @@
       "file": "rental/components/voice-assistant/VoicePermissionsMatrix.tsx",
       "line": 71,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Tool & rights matrix",
       "severity": "debt",
@@ -30327,7 +28995,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 192,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Top escalation reasons",
       "severity": "debt",
@@ -30355,7 +29023,7 @@
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 140,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Total Talk Time",
       "severity": "debt",
@@ -30369,7 +29037,7 @@
       "file": "rental/components/voice-assistant/VoiceConversationsPanel.tsx",
       "line": 368,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Training example",
       "severity": "debt",
@@ -30422,24 +29090,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1311,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "TÜV",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
       "line": 174,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "PLACEHOLDER",
       "sample": "Type a message…",
       "severity": "debt",
@@ -30502,10 +29156,9 @@
       "sample": "Übersicht",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/DocumentsView.tsx",
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
+        "rental/components/DocumentsView.tsx"
       ]
     },
     {
@@ -30554,7 +29207,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 298,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Unassign number",
       "severity": "debt",
@@ -30565,24 +29218,10 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 728,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Ungespeicherte Änderungen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 126,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Unsaved changes",
       "severity": "debt",
@@ -30604,20 +29243,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/handover/SignaturePad.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1352,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Update vehicle status",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -30652,7 +29277,7 @@
       "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
       "line": 56,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Use approved templates outside the 24h service window. Meta approval required for production.",
       "severity": "debt",
@@ -30752,7 +29377,7 @@
       "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
       "line": 130,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Validate greeting, tone, escalation, and permissions before going live on phone.",
       "severity": "debt",
@@ -30990,7 +29615,7 @@
       "file": "rental/components/voice-assistant/VoiceSectionNav.tsx",
       "line": 16,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "ARIA",
       "sample": "Voice assistant sections",
       "severity": "debt",
@@ -31061,7 +29686,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 120,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "WABA ID",
       "severity": "debt",
@@ -31089,7 +29714,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 213,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "Warm, professional, solution-oriented",
       "severity": "debt",
@@ -31103,7 +29728,7 @@
       "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
       "line": 343,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "TEXT",
       "sample": "Warning: inbound is enabled but no phone number is assigned.",
       "severity": "debt",
@@ -31145,7 +29770,7 @@
       "file": "rental/components/voice-assistant/VoiceAssistantBuilder.tsx",
       "line": 251,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "Voice Assistant",
       "category": "PLACEHOLDER",
       "sample": "We are a vehicle rental company operating in… Our services include short-term rentals, fleet management…",
       "severity": "debt",
@@ -31159,7 +29784,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 129,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "Webhook endpoint",
       "severity": "debt",
@@ -31167,20 +29792,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 734,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Weiter bearbeiten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {
@@ -31254,24 +29865,10 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1508,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "What needs approval?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppOperationsHeader.tsx",
       "line": 35,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "WhatsApp Operations Center",
       "severity": "debt",
@@ -31285,7 +29882,7 @@
       "file": "rental/components/whatsapp/WhatsAppSectionNav.tsx",
       "line": 16,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "ARIA",
       "sample": "WhatsApp sections",
       "severity": "debt",
@@ -31299,7 +29896,7 @@
       "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
       "line": 67,
       "surface": "RENTAL",
-      "module": "Automation",
+      "module": "WhatsApp",
       "category": "TEXT",
       "sample": "WhatsApp setup wizard",
       "severity": "debt",
@@ -31366,62 +29963,6 @@
       ]
     },
     {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 511,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Workflow Automation",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 913,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Workflow Logic",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1113,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Workflow Name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1113,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Workflow Name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
       "line": 170,
       "surface": "RENTAL",
@@ -31461,20 +30002,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WorkflowAutomationView.tsx",
-      "line": 1480,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Yes — require approval first",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WorkflowAutomationView.tsx"
       ]
     },
     {
@@ -31531,20 +30058,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 537,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. Pickup-Fenster für Station Nord verkürzen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {
@@ -31754,20 +30267,6 @@
       ]
     },
     {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 757,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Zurücksetzen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/HandoverProtocolDialog.tsx",
       "line": 934,
       "surface": "RENTAL",
@@ -31794,20 +30293,6 @@
       "files": [
         "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
-      "line": 692,
-      "surface": "RENTAL",
-      "module": "Automation",
-      "category": "TEXT",
-      "sample": "Zusätzliche Punkte",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
       ]
     },
     {

@@ -5,7 +5,8 @@ import {
   buildOverridePayload,
   countOverriddenFields,
   isFieldOverridden,
-  labelTaskAutomationSourceDe,
+  labelTaskAutomationSourceForLocale,
+  parseApiError,
   parseChecklistOverrideForm,
 } from './task-automation.utils';
 
@@ -83,9 +84,10 @@ const baseRule: TaskAutomationRuleDto = {
 };
 
 describe('task-automation.utils', () => {
-  it('labels provenance in German', () => {
-    expect(labelTaskAutomationSourceDe('PLATFORM_DEFAULT')).toBe('SynqDrive-Standard');
-    expect(labelTaskAutomationSourceDe('ORG_OVERRIDE')).toBe('Eigene Anpassung');
+  it('labels provenance via canonical i18n', () => {
+    expect(labelTaskAutomationSourceForLocale('de', 'PLATFORM_DEFAULT')).toBe('SynqDrive-Standard');
+    expect(labelTaskAutomationSourceForLocale('de', 'ORG_OVERRIDE')).toBe('Eigene Anpassung');
+    expect(labelTaskAutomationSourceForLocale('en', 'PLATFORM_DEFAULT')).toBe('SynqDrive default');
   });
 
   it('detects overridden fields', () => {
@@ -114,5 +116,10 @@ describe('task-automation.utils', () => {
     const form = buildFormStateFromRule(baseRule);
     const payload = buildOverridePayload(baseRule, { ...form, enabled: false });
     expect(payload.enabled).toBe(false);
+  });
+
+  it('localizes parseApiError fallback', () => {
+    expect(parseApiError('en', null)).toMatch(/unexpected error/i);
+    expect(parseApiError('de', null)).toMatch(/unerwarteter Fehler/i);
   });
 });

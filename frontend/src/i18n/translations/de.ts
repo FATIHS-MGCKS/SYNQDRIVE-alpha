@@ -1,5 +1,6 @@
 import type { CompleteTranslationDictionary } from '../dictionary-types';
 import type { TranslationKey } from './en';
+import { automationWorkflowDe } from './automation-workflow.de';
 import { legalDocumentsDe } from './legal-documents.de';
 import { settingsAdminDe } from './settings-admin.de';
 
@@ -5372,4 +5373,5 @@ export const de: Record<TranslationKey, string> = {
 
   ...legalDocumentsDe,
   ...settingsAdminDe,
+  ...automationWorkflowDe,
 } satisfies CompleteTranslationDictionary;

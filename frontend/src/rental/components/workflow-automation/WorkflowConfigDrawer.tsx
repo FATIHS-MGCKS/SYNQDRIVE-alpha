@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { DetailDrawer, ErrorState, StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { WorkflowCatalogDto, WorkflowConfigFormState } from './workflow-config.types';
 import {

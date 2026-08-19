@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Layers, Pencil, Play, Plus, RefreshCw, Search } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, PageHeader, StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WorkflowListItemDto } from '../../../lib/api';
 import { WorkflowConfigDrawer } from './WorkflowConfigDrawer';
 import type { WorkflowRuntimeFilter } from './workflow-runtime.types';
@@ -175,7 +175,7 @@ export function WorkflowOverviewSection({ canWrite = false }: WorkflowOverviewSe
     actionWorkflowId,
     reload,
     toggleWorkflow,
-  } = useWorkflowRuntimeCenter(orgId);
+  } = useWorkflowRuntimeCenter(orgId, locale);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkflowRuntimeFilter>('all');

@@ -104,6 +104,14 @@ const P24_ENFORCE_CLEAN_PREFIXES = [
   'rental/lib/taskBulkActions.utils.ts',
 ];
 
+const P25_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/WorkflowAutomationView.tsx',
+]);
+
+const P25_ENFORCE_CLEAN_PREFIXES = [
+  'rental/components/workflow-automation/',
+];
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -281,11 +289,12 @@ function classifyRentalModule(relPath) {
   if (relPath === 'rental/components/SettingsView.tsx') return 'Settings';
   if (
     relPath.includes('workflow-automation') ||
-    relPath.includes('voice-assistant') ||
-    relPath.includes('whatsapp')
+    relPath === 'rental/components/WorkflowAutomationView.tsx'
   ) {
-    return 'Automation';
+    return 'Workflow Automation';
   }
+  if (relPath.includes('voice-assistant')) return 'Voice Assistant';
+  if (relPath.includes('whatsapp')) return 'WhatsApp';
   if (
     (relPath.includes('task') || relPath.includes('Task')) &&
     !relPath.includes('fleet-health-service') &&
@@ -317,6 +326,11 @@ function isP24EnforceCleanPath(relPath) {
   return P24_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
+function isP25EnforceCleanPath(relPath) {
+  if (P25_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
+  return P25_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -339,6 +353,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (surface === 'RENTAL' && isP22EnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP23EnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP24EnforceCleanPath(relPath)) return true;
+  if (surface === 'RENTAL' && isP25EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -347,6 +362,7 @@ function migrationPhaseFor(relPath, surface) {
     return surface === 'LOGIN' || surface === 'SHELL' ? 'P2.1' : surface === 'RENTAL' ? 'P2.2' : 'P2.3';
   }
   if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
+  if (isP25EnforceCleanPath(relPath)) return 'P2.2.5';
   if (isP24EnforceCleanPath(relPath)) return 'P2.2.4';
   if (
     relPath.startsWith('rental/components/dashboard/') ||

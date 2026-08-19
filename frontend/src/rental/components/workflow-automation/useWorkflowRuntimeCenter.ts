@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DEFAULT_PRODUCT_LOCALE } from '../../../i18n/locales';
 import { api } from '../../../lib/api';
 import type { WorkflowListItemDto } from '../../../lib/api';
+import {
+  workflowMissingOrgError,
+  workflowRuntimeApiError,
+} from './automation-i18n';
 import type { WorkflowRuntimeStats } from './workflow-runtime.types';
-import { parseApiError } from './workflow-runtime.utils';
 
-export function useWorkflowRuntimeCenter(orgId: string | null) {
+export function useWorkflowRuntimeCenter(orgId: string | null, locale = DEFAULT_PRODUCT_LOCALE) {
   const [items, setItems] = useState<WorkflowListItemDto[]>([]);
   const [stats, setStats] = useState<WorkflowRuntimeStats>({
     total: 0,
@@ -39,11 +43,11 @@ export function useWorkflowRuntimeCenter(orgId: string | null) {
         archived: statsRes.archived ?? 0,
       });
     } catch (e: unknown) {
-      setError(parseApiError(e));
+      setError(workflowRuntimeApiError(locale, e));
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, locale]);
 
   useEffect(() => {
     void load();
@@ -58,40 +62,40 @@ export function useWorkflowRuntimeCenter(orgId: string | null) {
         await load();
         return result;
       } catch (e: unknown) {
-        const message = parseApiError(e);
+        const message = workflowRuntimeApiError(locale, e);
         setError(message);
         throw e;
       } finally {
         setActionWorkflowId(null);
       }
     },
-    [load],
+    [load, locale],
   );
 
   const toggleWorkflow = useCallback(
     (workflowId: string, activationReason?: string) => {
-      if (!orgId) return Promise.reject(new Error('Organization missing'));
+      if (!orgId) return Promise.reject(new Error(workflowMissingOrgError(locale)));
       return runAction(workflowId, () =>
         api.workflows.toggle(orgId, workflowId, activationReason ? { activationReason } : undefined),
       );
     },
-    [orgId, runAction],
+    [orgId, runAction, locale],
   );
 
   const duplicateWorkflow = useCallback(
     (workflowId: string) => {
-      if (!orgId) return Promise.reject(new Error('Organization missing'));
+      if (!orgId) return Promise.reject(new Error(workflowMissingOrgError(locale)));
       return runAction(workflowId, () => api.workflows.duplicate(orgId, workflowId));
     },
-    [orgId, runAction],
+    [orgId, runAction, locale],
   );
 
   const archiveWorkflow = useCallback(
     (workflowId: string) => {
-      if (!orgId) return Promise.reject(new Error('Organization missing'));
+      if (!orgId) return Promise.reject(new Error(workflowMissingOrgError(locale)));
       return runAction(workflowId, () => api.workflows.remove(orgId, workflowId));
     },
-    [orgId, runAction],
+    [orgId, runAction, locale],
   );
 
   return {

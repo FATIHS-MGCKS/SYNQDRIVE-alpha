@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { WorkflowListItemDto } from '../../../lib/api';
 import type { WorkflowRuntimeFilter } from './workflow-runtime.types';
 

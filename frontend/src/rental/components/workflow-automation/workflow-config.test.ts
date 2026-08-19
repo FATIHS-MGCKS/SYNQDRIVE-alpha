@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 import {
   buildWorkflowPayload,
   createEmptyWorkflowConfigForm,
