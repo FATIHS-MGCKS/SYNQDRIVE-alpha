@@ -205,6 +205,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
   } as unknown as NotificationRepository;
 
   let core: NotificationCoreService;
+  let router: NotificationProducerRouter;
   let ingest: NotificationProducerIngestService;
 
   beforeEach(() => {
@@ -228,7 +229,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       recordCandidate: jest.fn(),
       recordCandidateRejected: jest.fn(),
     };
-    const router = new NotificationProducerRouter(
+    const routerInstance = new NotificationProducerRouter(
       core,
       engineConfig,
       ingestObservability as any,
@@ -242,8 +243,9 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleReadinessEvaluabilityNotificationAdapter(),
       new VehicleDamageNotificationAdapter(),
     );
+    router = routerInstance;
     ingest = new NotificationProducerIngestService(
-      router,
+      routerInstance,
       repository,
       new DrivingAssessmentNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
@@ -777,6 +779,117 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       expect(canonical).toBeDefined();
       expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
       expect(open.filter((n) => n.eventType === 'SERVICE_OVERDUE')).toHaveLength(1);
+    });
+
+    it('legacy OPEN + canonical SERVICE_OVERDUE ingest failure → legacy preserved, no canonical row', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-ingest-fail';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      jest.spyOn(router, 'ingestFromAdapter').mockRejectedValueOnce(new Error('canonical ingest failed'));
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-ingest-fail', overdue);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
+      const canonicalFp = serviceComplianceSourceFingerprint(ORG_A, {
+        eventType: 'SERVICE_OVERDUE',
+        vehicleId: VEH_A,
+      });
+      expect(openNotifications().some((n) => n.fingerprint === canonicalFp)).toBe(false);
+    });
+
+    it('legacy OPEN + canonical repeat success → legacy retired, single canonical identity', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-repeat';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-repeat-1', overdue);
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-repeat-2', overdue);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
+      const serviceOverdueOpen = openNotifications().filter((n) => n.eventType === 'SERVICE_OVERDUE');
+      expect(serviceOverdueOpen).toHaveLength(1);
+      expect(serviceOverdueOpen[0]?.fingerprint).toBe(
+        serviceComplianceSourceFingerprint(ORG_A, { eventType: 'SERVICE_OVERDUE', vehicleId: VEH_A }),
+      );
+    });
+
+    it('legacy OPEN + cleared SERVICE_OVERDUE ingest success does not retire legacy', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-cleared';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-cleared-only', [
+        {
+          eventType: 'SERVICE_OVERDUE',
+          vehicleId: VEH_A,
+          label: PLATE_A,
+          cleared: true,
+          severity: 'warning',
+          blocksRental: false,
+        },
+      ]);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
     });
 
     it('legacy OPEN + canonical recovered → legacy resolves without creating canonical row', async () => {

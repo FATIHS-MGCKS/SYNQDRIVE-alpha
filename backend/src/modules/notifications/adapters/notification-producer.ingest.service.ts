@@ -22,6 +22,7 @@ import {
   SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES,
   legacyServiceOverdueFingerprint,
   serviceComplianceSourceFingerprint,
+  type ServiceComplianceIngestOutcome,
 } from './service-compliance-notification.projector';
 import {
   VEHICLE_ALERTS_NOTIFICATION_EVENT_TYPES,
@@ -548,12 +549,12 @@ export class NotificationProducerIngestService {
       }
     }
 
-    await this.ingestServiceComplianceSources(organizationId, runId, sources);
+    const ingestOutcomes = await this.ingestServiceComplianceSources(organizationId, runId, sources);
 
     await this.reconcileLegacyServiceOverdueFingerprints(
       organizationId,
       runId,
-      sources,
+      ingestOutcomes,
       recoveryEligibilityByVehicleId,
     );
 
@@ -609,20 +610,39 @@ export class NotificationProducerIngestService {
     organizationId: string,
     runId: string,
     sources: ServiceComplianceAdapterSource[],
-  ): Promise<void> {
+  ): Promise<ServiceComplianceIngestOutcome[]> {
+    const outcomes: ServiceComplianceIngestOutcome[] = [];
+
     for (const source of sources) {
+      const fingerprint = serviceComplianceSourceFingerprint(organizationId, source);
       try {
         await this.router.ingestFromAdapter(
           this.serviceComplianceAdapter,
           source,
           this.adapterContext(organizationId, runId, runId),
         );
+        outcomes.push({
+          fingerprint,
+          vehicleId: source.vehicleId,
+          eventType: source.eventType,
+          cleared: source.cleared ?? false,
+          success: true,
+        });
       } catch (err) {
         this.logger.warn(
           `Service compliance V2 ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
         );
+        outcomes.push({
+          fingerprint,
+          vehicleId: source.vehicleId,
+          eventType: source.eventType,
+          cleared: source.cleared ?? false,
+          success: false,
+        });
       }
     }
+
+    return outcomes;
   }
 
   /**
@@ -1137,19 +1157,24 @@ export class NotificationProducerIngestService {
   /**
    * Idempotent reconciliation for pre-P2.1 SERVICE_OVERDUE rows using legacy `overdue` fingerprint.
    *
-   * A) legacy OPEN + canonical SERVICE_OVERDUE active → legacy resolves, canonical remains
-   * B) legacy OPEN + canonical recovered → legacy resolves, no canonical row created
+   * A) legacy OPEN + canonical SERVICE_OVERDUE successfully materialized → legacy resolves
+   * B) legacy OPEN + canonical ingest failure → legacy preserved
+   * C) legacy OPEN + confirmed positive recovery evidence → legacy resolves
    */
   private async reconcileLegacyServiceOverdueFingerprints(
     organizationId: string,
     _runId: string,
-    sources: ServiceComplianceAdapterSource[],
+    ingestOutcomes: ServiceComplianceIngestOutcome[],
     recoveryEligibilityByVehicleId: ServiceComplianceRecoveryEligibilityByVehicle,
   ): Promise<void> {
-    const canonicalServiceOverdueActiveByVehicle = new Set<string>();
-    for (const source of sources) {
-      if (!source.cleared && source.eventType === 'SERVICE_OVERDUE') {
-        canonicalServiceOverdueActiveByVehicle.add(source.vehicleId);
+    const canonicalServiceOverdueMaterializedByVehicle = new Set<string>();
+    for (const outcome of ingestOutcomes) {
+      if (
+        outcome.success
+        && outcome.eventType === 'SERVICE_OVERDUE'
+        && !outcome.cleared
+      ) {
+        canonicalServiceOverdueMaterializedByVehicle.add(outcome.vehicleId);
       }
     }
 
@@ -1157,11 +1182,11 @@ export class NotificationProducerIngestService {
 
     for (const legacy of legacyActives) {
       const vehicleId = legacy.entityId;
-      const canonicalActive = canonicalServiceOverdueActiveByVehicle.has(vehicleId);
+      const canonicalMaterialized = canonicalServiceOverdueMaterializedByVehicle.has(vehicleId);
       const recoveryEligible =
         recoveryEligibilityByVehicleId.get(vehicleId)?.SERVICE_OVERDUE === true;
 
-      if (!canonicalActive && !recoveryEligible) continue;
+      if (!canonicalMaterialized && !recoveryEligible) continue;
 
       try {
         await this.core.resolveNotificationByFingerprint({

@@ -80,7 +80,7 @@
   - `TUV_OVERDUE` recovery eligible **iff** `tuvRemainingDays != null` **and** `tuvOverdue === false`
   - `BOKRAFT_OVERDUE` recovery eligible **iff** `bokraftRemainingDays != null` **and** `bokraftOverdue === false`
   - Missing next-date data never counts as positive recovery
-- **Legacy `SERVICE_OVERDUE` reconciliation:** vehicle-scoped fail-safe — legacy rows resolve only when canonical `SERVICE_OVERDUE` is active for the same vehicle **or** confirmed tracked recovery evidence exists
+- **Legacy `SERVICE_OVERDUE` reconciliation:** vehicle-scoped fail-safe — legacy rows resolve only when canonical `SERVICE_OVERDUE` was successfully materialized for the same vehicle **or** confirmed positive recovery evidence exists
 - **Damage recovery:** `damageQuerySucceeded === true` required (explicit success only; `false` / missing map entry → preserve)
 - DTC-only RentalHealth stub uses `unknown` modules (not `good`) — no false module recovery
 - Paginated sweeps for health (500/page), compliance, and damage (500/page)

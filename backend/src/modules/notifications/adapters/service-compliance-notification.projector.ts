@@ -15,6 +15,14 @@ export const SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES = [
 export type ServiceComplianceNotificationEventType =
   (typeof SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES)[number];
 
+export type ServiceComplianceIngestOutcome = {
+  fingerprint: string;
+  vehicleId: string;
+  eventType: ServiceComplianceNotificationEventType;
+  cleared: boolean;
+  success: boolean;
+};
+
 /** Legacy DashboardInsight backfill conditionCode before P2.1 registry alignment. */
 export const LEGACY_SERVICE_OVERDUE_CONDITION_CODE = 'overdue';
 
