@@ -43,6 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Neuer kanonischer Aggregate-Producer: `VEHICLE_READINESS_UNEVALUABLE` aus `rental_readiness=unevaluable`.',
       '`projectVehicleReadinessEvaluability()` + Adapter + `syncVehicleReadinessEvaluabilityAggregate()` — gleicher RentalHealth-Snapshot wie P2.3.',
       'UNEVALUABLE → OPEN; EVALUABLE (ready/not_ready) → RESOLVE mit active-fingerprint pre-check; first-run no-op.',
+      'NO_ASSERTION: fehlendes `rental_readiness` → keine Source (kein `?? ready` Fail-open); bestehende OPEN bleiben.',
       'P2.3 `VEHICLE_NOT_READY` unverändert — NOT_READY bleibt bei UNEVALUABLE OPEN (fail-safe).',
       'Registry +1: 70/27/43. Connectivity-Events bleiben Causes. Audit: YELLOW — UI cutover weiter offen.',
     ],
