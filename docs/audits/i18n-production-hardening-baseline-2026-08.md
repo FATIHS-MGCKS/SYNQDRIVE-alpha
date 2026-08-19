@@ -866,3 +866,24 @@ Presentation/i18n only — booking/customer business rules and API contracts unc
 - `rental-bookings-customers-localization.test.tsx` — pass
 - `npm test` — 7 pre-existing Fleet Health failures unchanged
 - `npm run build` — pass
+
+---
+
+## P2.2.6 checkpoint — Rental Stations (2026-08-19)
+
+| Metric | P2.2.5 checkpoint | P2.2.6 final |
+|--------|------------------:|-------------:|
+| Stations module findings | 57 | **0** |
+| P2.2.6 enforce-clean | — | **0** |
+| Global findings | 2212 | **2155** |
+| Rental findings | 890 | **833** |
+| Canonical keys | 6265 | **6363** (+98) |
+| Compat shim total | 30 | **30** (prod 19) |
+
+**Scope:** `StationsTab.tsx`, `StationSelectFields.tsx`, `stations-i18n.ts`, `stations-tab.{en,de}.ts`; four station shells shim→canonical.
+
+**Category C:** 0. **Business logic:** unchanged.
+
+**Validation:** `rental-stations-localization.test.tsx`, `i18n:check`, `build`, `git diff --check` — all pass.
+
+See `architecture/I18N_RENTAL_STATIONS_P2_2_6_2026-08-19.md`.
