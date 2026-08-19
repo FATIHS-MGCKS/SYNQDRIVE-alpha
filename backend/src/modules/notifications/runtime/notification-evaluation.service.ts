@@ -106,6 +106,8 @@ export class NotificationEvaluationService {
     this.observability.logLockAcquired(job.organizationId, job.runId);
     this.startLockHeartbeat(lockKey, lockResult.handle);
 
+    let terminalErrorObserved = false;
+
     try {
       const coalescedEvents = await this.drainPendingEvents(job.organizationId, job.coalescedEvents);
       const triggerType = this.buildTriggerType(job.triggerType, coalescedEvents);
@@ -169,6 +171,7 @@ export class NotificationEvaluationService {
           'error',
           result.durationMs ?? Date.now() - startedAt.getTime(),
         );
+        terminalErrorObserved = true;
         if (insightsError) throw insightsError;
         throw fleetSyncError;
       }
@@ -183,13 +186,15 @@ export class NotificationEvaluationService {
       );
       return result;
     } catch (err) {
-      stats.failureCount++;
-      this.evaluationsObservability?.observeEvaluationJob(
-        evalCtx,
-        job.triggerClass,
-        'error',
-        Date.now() - startedAt.getTime(),
-      );
+      if (!terminalErrorObserved) {
+        stats.failureCount++;
+        this.evaluationsObservability?.observeEvaluationJob(
+          evalCtx,
+          job.triggerClass,
+          'error',
+          Date.now() - startedAt.getTime(),
+        );
+      }
       throw err;
     } finally {
       this.stopLockHeartbeat(lockKey);
