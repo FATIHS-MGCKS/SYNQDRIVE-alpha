@@ -390,7 +390,21 @@ Severity: overdue sources always `critical` → CRITICAL.
 
 **Hardening (2026-08-19):** per-signal stale with group fresh; `getAiHealthCareRawState` reject → provider_error envelope → RH `unknown`; stale historical active never `isCurrentActive`.
 
-**Verdict:** **NOT READY FOR MERGE** until hardening verified in CI. **READY FOR P2.2B** after merge. **NOT READY FOR UI CUTOVER**.
+**CI closure (2026-08-19):**
+
+| Check | `main` (`d936b785`) | PR (`f2326b63`) | Δ |
+|-------|---------------------|-----------------|----|
+| `npx tsc --noEmit -p tsconfig.json` | 5 errors | 5 errors | **0** |
+| `test:vehicle-detail:verify:unit` | 1 failed suite / 11 passed / 56 tests | 1 failed suite / 11 passed / 56 tests | **0** |
+| P2.2A targeted Jest | — | parsing 10/10, service 23/23, projector 17/17, blocking-parity 7/7, registry 25/25 | — |
+
+**Typecheck baseline (both branches, identical):**
+
+1. `billing.controller.security.characterization.spec.ts:184` — `BillingController` ctor **22/23 args** (missing `operationalSubscriptionsService`; pre-existing on `main`, not P2.2A)
+2. `vehicles-security-negative.spec.ts:367,533,569` — ctor arity mismatch (pre-existing)
+3. `vehicles.controller.status-patch.spec.ts:25` — `undefined` vs `VehiclesOperationalService` (pre-existing; sole failing vehicle-detail suite)
+
+**Verdict:** **P2.2A: READY FOR MERGE.** **P2.2B: READY TO START AFTER MERGE.** **Overall: YELLOW / NOT READY FOR UI CUTOVER** (notification producer + aggregate gaps remain).
 
 ### P2.1 final verdict
 

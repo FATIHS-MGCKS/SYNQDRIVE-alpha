@@ -44,7 +44,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Pure Projector: `projectVehicleAlertsToRentalHealth()` → ModuleHealth + strukturierte `VehicleAlertBlockingCause[]`.',
       'Fail-safe: missing/stale/unsupported/historical-active ≠ confirmed healthy; Provider-Fehler → `unknown`.',
       'Keine Notification-V2-Registry-Änderung (66/23/43 unverändert) — P2.2B folgt.',
-      'Audit: YELLOW — NOT READY FOR UI CUTOVER.',
+      'CI-Closure: tsc 5/5/0 vs main; vehicle-detail 1 failed suite baseline; P2.2A Jest grün.',
+      'Audit: P2.2A READY FOR MERGE; YELLOW — NOT READY FOR UI CUTOVER.',
     ],
     reason:
       'Source-of-truth-Bereinigung vor P2.2B Notification Producer — keine dritte parallele Limp/Oil-Interpretation.',
