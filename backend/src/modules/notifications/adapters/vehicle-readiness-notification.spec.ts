@@ -14,6 +14,7 @@ import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
+import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -228,6 +229,7 @@ describe('VehicleReadinessNotificationAdapter + lifecycle (P2.3)', () => {
       new ServiceComplianceNotificationAdapter(),
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
+      new VehicleReadinessEvaluabilityNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -240,6 +242,7 @@ describe('VehicleReadinessNotificationAdapter + lifecycle (P2.3)', () => {
       new ServiceComplianceNotificationAdapter(),
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
+      new VehicleReadinessEvaluabilityNotificationAdapter(),
       core,
     );
   });

@@ -63,4 +63,7 @@ export const it: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelHigh': 'Il livello dell\'olio motore di {label} e alto e dovrebbe essere controllato.',
   'notification.title.vehicleNotReady': 'Veicolo non pronto — {label}',
   'notification.body.vehicleNotReady': '{label} non e attualmente pronto per il noleggio. Controllare gli avvisi del veicolo.',
+  'notification.title.vehicleReadinessUnevaluable': 'Disponibilita non valutabile — {label}',
+  'notification.body.vehicleReadinessUnevaluable':
+    'SynqDrive non puo valutare in modo affidabile la disponibilita di {label} al momento. Controllare i dati veicolo disponibili.',
 };

@@ -15,6 +15,7 @@ import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
+import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -244,6 +245,7 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       new ServiceComplianceNotificationAdapter(),
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
+      new VehicleReadinessEvaluabilityNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -256,6 +258,7 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       new ServiceComplianceNotificationAdapter(),
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
+      new VehicleReadinessEvaluabilityNotificationAdapter(),
       core,
     );
   });
@@ -674,9 +677,9 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
   });
 
   describe('registry regression', () => {
-    it('adds exactly +3 FLEET_READINESS events (69 / 26 / 43)', () => {
-      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(69);
-      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(26);
+    it('adds exactly +3 FLEET_READINESS events from P2.2B baseline (70 / 27 / 43)', () => {
+      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(70);
+      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(27);
       expect(getNotificationDefinitionsByAttentionScope('OPERATIONS').length).toBe(43);
     });
 

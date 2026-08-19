@@ -12,10 +12,12 @@ import { projectVehicleHealthWarnings } from './rental-health-notification.proje
 import { projectServiceComplianceOverdueNotifications } from './service-compliance-notification.projector';
 import { projectVehicleAlertNotifications } from './vehicle-alerts-notification.projector';
 import { projectVehicleReadinessAggregate } from './vehicle-readiness-notification.projector';
+import { projectVehicleReadinessEvaluability } from './vehicle-readiness-evaluability-notification.projector';
 import type { VehicleHealthAdapterSource } from './notification-adapter.types';
 import type { ServiceComplianceAdapterSource } from './notification-adapter.types';
 import type { VehicleAlertsNotificationAdapterSource } from './notification-adapter.types';
 import type { VehicleReadinessNotificationAdapterSource } from './notification-adapter.types';
+import type { VehicleReadinessEvaluabilityNotificationAdapterSource } from './notification-adapter.types';
 
 const VEHICLE_BATCH_SIZE = 10;
 
@@ -24,6 +26,7 @@ type ProjectVehicleResult = {
   compliance: ServiceComplianceAdapterSource[];
   vehicleAlerts: VehicleAlertsNotificationAdapterSource[];
   readinessAggregate: VehicleReadinessNotificationAdapterSource[];
+  evaluabilityAggregate: VehicleReadinessEvaluabilityNotificationAdapterSource[];
 };
 
 /**
@@ -72,6 +75,8 @@ export class VehicleHealthNotificationSyncService {
     const allComplianceSources: ServiceComplianceAdapterSource[] = [];
     const allVehicleAlertSources: VehicleAlertsNotificationAdapterSource[] = [];
     const allReadinessAggregateSources: VehicleReadinessNotificationAdapterSource[] = [];
+    const allEvaluabilityAggregateSources: VehicleReadinessEvaluabilityNotificationAdapterSource[] =
+      [];
 
     for (let i = 0; i < vehicles.length; i += VEHICLE_BATCH_SIZE) {
       const slice = vehicles.slice(i, i + VEHICLE_BATCH_SIZE);
@@ -83,6 +88,7 @@ export class VehicleHealthNotificationSyncService {
         allComplianceSources.push(...result.compliance);
         allVehicleAlertSources.push(...result.vehicleAlerts);
         allReadinessAggregateSources.push(...result.readinessAggregate);
+        allEvaluabilityAggregateSources.push(...result.evaluabilityAggregate);
       }
     }
 
@@ -123,6 +129,16 @@ export class VehicleHealthNotificationSyncService {
         organizationId,
         runId,
         allReadinessAggregateSources,
+      );
+    } catch (err) {
+      failures.push(err instanceof Error ? err : new Error(String(err)));
+    }
+
+    try {
+      await this.notificationIngest.syncVehicleReadinessEvaluabilityAggregate(
+        organizationId,
+        runId,
+        allEvaluabilityAggregateSources,
       );
     } catch (err) {
       failures.push(err instanceof Error ? err : new Error(String(err)));
@@ -249,7 +265,11 @@ export class VehicleHealthNotificationSyncService {
       ? projectVehicleReadinessAggregate(vehicle.id, label, rentalHealth)
       : [];
 
-    return { health, compliance, vehicleAlerts, readinessAggregate };
+    const evaluabilityAggregate = rentalHealth
+      ? projectVehicleReadinessEvaluability(vehicle.id, label, rentalHealth)
+      : [];
+
+    return { health, compliance, vehicleAlerts, readinessAggregate, evaluabilityAggregate };
   }
 
   private emptyVehicleHealthForDtcOnly(

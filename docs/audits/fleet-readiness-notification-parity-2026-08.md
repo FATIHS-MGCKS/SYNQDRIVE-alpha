@@ -54,8 +54,8 @@ Vehicle telemetry / health domains / operational state
 
 ## 3. Attention Scope Matrix
 
-**Total registered event types:** 69  
-**FLEET_READINESS:** 26  
+**Total registered event types:** 70  
+**FLEET_READINESS:** 27  
 **OPERATIONS:** 43
 
 Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotificationDefinitionsByAttentionScope(scope)`, `getNotificationAttentionScope(eventType)`.
@@ -205,6 +205,7 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 - `ServiceComplianceNotificationAdapter` — TUV_OVERDUE, BOKRAFT_OVERDUE, SERVICE_OVERDUE (full, P2.1)
 - `VehicleAlertsNotificationAdapter` — LIMP_MODE_ACTIVE, ENGINE_OIL_LEVEL_LOW/HIGH (full, P2.2B)
 - `VehicleReadinessNotificationAdapter` — VEHICLE_NOT_READY aggregate (full, P2.3)
+- `VehicleReadinessEvaluabilityNotificationAdapter` — VEHICLE_READINESS_UNEVALUABLE (full, P2.4)
 - `ConnectivityAlertService` — 9 vehicle connectivity types (full)
 - `TechnicalObservationNotificationAdapter` — TECHNICAL_OBSERVATION_ACTIVE (shadow)
 
@@ -232,7 +233,7 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 | `availability: unavailable` | All modules stubbed unknown | `PIPELINE_UNAVAILABLE` degradation — no notification |
 | Module `unknown` (DTC stale) | May not block | No ACTIVE_DTC, no pipeline-degraded notification |
 | `CONNECTIVITY_STATE_UNKNOWN` | Vehicle connectivity unevaluable | V2 producer exists (full) when runtime projects it |
-| `rental_readiness: unevaluable` | Canonical health field | **Not mirrored** as notification — gap for dashboard split |
+| `rental_readiness: unevaluable` | Canonical health field | **P2.4:** `VEHICLE_READINESS_UNEVALUABLE` live aggregate |
 
 ---
 
@@ -423,7 +424,21 @@ Severity: overdue sources always `critical` → CRITICAL.
 
 **Architecture:** ONE aggregate (`VEHICLE_NOT_READY`). Causes answer why; aggregate answers whether vehicle is rentable.
 
-**Verdict:** **P2.3: NOT READY FOR MERGE until PR base = `main` (#1069 merged).** Aggregate scope complete with fail-safe legacy reconcile. **Overall: YELLOW / NOT READY FOR UI CUTOVER** (P2.4 unevaluable aggregate + UI cutover remain).
+**Verdict:** **P2.3: merged (#1070).** **Overall: YELLOW / NOT READY FOR UI CUTOVER** (P2.4 unevaluable aggregate + UI cutover remain).
+
+### P2.4 — Fleet Readiness UNEVALUABLE Aggregate (2026-08-19)
+
+| Layer | Status |
+|-------|--------|
+| Canonical source | `VehicleHealth.rental_readiness === 'unevaluable'` (same snapshot as P2.3) |
+| Evaluability projector | `projectVehicleReadinessEvaluability()` — UNEVALUABLE / EVALUABLE |
+| Adapter / sync | `VehicleReadinessEvaluabilityNotificationAdapter` + `syncVehicleReadinessEvaluabilityAggregate()` |
+| Registry delta | **+1** (70/27/43) |
+| P2.3 interaction | `VEHICLE_NOT_READY` preserved on UNEVALUABLE — fail-safe unchanged |
+| Load failure | `rentalHealth === null` → no new aggregate (preserve existing OPEN) |
+| Connectivity | Cause events independent — no semantic reuse of `DATA_COVERAGE_INSUFFICIENT` |
+
+**Verdict:** **P2.4: READY FOR MERGE** (evaluability aggregate scope). **Overall: YELLOW / NOT READY FOR UI CUTOVER** (dashboard split remains).
 
 ### P2.2B — Vehicle alerts Notification V2 (2026-08-19)
 

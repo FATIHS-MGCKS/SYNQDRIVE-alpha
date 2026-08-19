@@ -1143,6 +1143,9 @@ export const de: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelHigh': 'Der Motorölstand von {label} ist zu hoch und sollte geprüft werden.',
   'notification.title.vehicleNotReady': 'Fahrzeug nicht einsatzbereit — {label}',
   'notification.body.vehicleNotReady': '{label} ist aktuell nicht einsatzbereit. Prüfen Sie die Fahrzeugmeldungen.',
+  'notification.title.vehicleReadinessUnevaluable': 'Einsatzbereitschaft nicht bewertbar — {label}',
+  'notification.body.vehicleReadinessUnevaluable':
+    'SynqDrive kann die Einsatzbereitschaft von {label} aktuell nicht zuverlässig bewerten. Prüfen Sie die verfügbaren Fahrzeugdaten.',
   'notification.title.tireCritical': 'Reifen prüfen — {label}',
   'notification.title.serviceOverdue': 'Service überfällig — {label}',
   'notification.issue.activeDtc': 'Fehlercode {code}',

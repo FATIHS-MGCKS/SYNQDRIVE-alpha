@@ -63,4 +63,7 @@ export const cs: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelHigh': 'Hladina motoroveho oleje vozidla {label} je vysoka a mela by byt zkontrolovana.',
   'notification.title.vehicleNotReady': 'Vozidlo neni pripraveno — {label}',
   'notification.body.vehicleNotReady': '{label} neni aktualne pripraveno k pronajmu. Zkontrolujte upozorneni vozidla.',
+  'notification.title.vehicleReadinessUnevaluable': 'Pripravenost nelze vyhodnotit — {label}',
+  'notification.body.vehicleReadinessUnevaluable':
+    'SynqDrive nemuze v tuto chvili spolehlive vyhodnotit pripravenost vozidla {label}. Zkontrolujte dostupna data vozidla.',
 };
