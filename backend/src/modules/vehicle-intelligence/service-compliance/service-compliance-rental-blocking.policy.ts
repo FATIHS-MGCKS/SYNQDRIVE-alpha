@@ -21,8 +21,8 @@ export interface ServiceComplianceRentalBlockingDecision {
 export function evaluateServiceComplianceRentalBlocking(
   evaluation: ServiceComplianceEvaluation,
 ): ServiceComplianceRentalBlockingDecision {
-  const tuvOverdue = evaluation.tuvBokraft.tuvOverdue;
-  const bokraftOverdue = evaluation.tuvBokraft.bokraftOverdue;
+  const tuvOverdue = evaluation.tuvBokraft?.tuvOverdue ?? false;
+  const bokraftOverdue = evaluation.tuvBokraft?.bokraftOverdue ?? false;
   const serviceOverdue = isHmServiceOverdue(evaluation);
   const serviceOverdueBlocksRental =
     serviceOverdue && !tuvOverdue && !bokraftOverdue;
@@ -36,7 +36,8 @@ export function evaluateServiceComplianceRentalBlocking(
 }
 
 /** True when HM/OEM next service is canonically overdue (CRITICAL), not merely due soon. */
-export function isHmServiceOverdue(evaluation: ServiceComplianceEvaluation): boolean {
+export function isHmServiceOverdue(evaluation: ServiceComplianceEvaluation | null | undefined): boolean {
+  if (!evaluation?.nextService) return false;
   return (
     evaluation.nextService.trackingStatus === 'TRACKED' &&
     evaluation.nextService.severity === 'CRITICAL'
