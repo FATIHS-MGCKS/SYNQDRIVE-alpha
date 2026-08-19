@@ -60,6 +60,13 @@ export function projectVehicleReadinessAggregate(
   ];
 }
 
+export type VehicleReadinessIngestOutcome = {
+  vehicleId: string;
+  fingerprint: string;
+  condition: 'NOT_READY' | 'READY';
+  success: boolean;
+};
+
 export function vehicleReadinessSourceFingerprint(
   organizationId: string,
   source: Pick<VehicleReadinessNotificationAdapterSource, 'vehicleId'>,

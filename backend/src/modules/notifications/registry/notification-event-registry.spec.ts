@@ -369,5 +369,15 @@ describe('NotificationEventRegistry', () => {
       });
       expect(candidate).not.toHaveProperty('attentionScope');
     });
+
+    it('VEHICLE_NOT_READY producerModule reflects OPERATIONS domain taxonomy (fingerprint unchanged)', () => {
+      const def = requireEventTypeDefinition('VEHICLE_NOT_READY');
+      expect(def.producerModule).toBe('operations');
+      expect(def.conditionCode).toBe('vehicle_not_ready');
+      expect(def.fingerprintVersion).toBe(1);
+      expect(buildRegistryFingerprint('org-golden', 'VEHICLE_NOT_READY', 'veh-golden-1').canonical).toBe(
+        'org-golden|VEHICLE_NOT_READY|VEHICLE|veh-golden-1|vehicle_not_ready|v1',
+      );
+    });
   });
 });

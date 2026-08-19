@@ -29,6 +29,7 @@ import {
   LEGACY_AGGREGATE_EVENT_TYPES,
   VEHICLE_READINESS_AGGREGATE_EVENT_TYPE,
   vehicleReadinessSourceFingerprint,
+  type VehicleReadinessIngestOutcome,
 } from './vehicle-readiness-notification.projector';
 import type {
   VehicleHealthAdapterSource,
@@ -655,7 +656,8 @@ export class NotificationProducerIngestService {
   /**
    * Materialize canonical aggregate fleet readiness (VEHICLE_NOT_READY) from RentalHealth.
    * READY resolves only when an active canonical fingerprint exists (healthy no-op otherwise).
-   * Retires legacy BLOCKED_VEHICLE / MAINTENANCE_REQUIRED active rows when present.
+   * Retires legacy BLOCKED_VEHICLE / MAINTENANCE_REQUIRED per vehicle only when reconciliation
+   * is safe: confirmed READY recovery, or NOT_READY with successful canonical ingest.
    */
   async syncVehicleReadinessAggregate(
     organizationId: string,
@@ -676,28 +678,62 @@ export class NotificationProducerIngestService {
       }
     }
 
-    await this.ingestVehicleReadinessSources(organizationId, runId, sourcesToIngest);
-    await this.reconcileLegacyAggregateNotifications(organizationId);
+    const ingestOutcomes = await this.ingestVehicleReadinessSources(
+      organizationId,
+      runId,
+      sourcesToIngest,
+    );
+    const vehicleIdsToReconcile = this.buildLegacyReconcileVehicleIds(sources, ingestOutcomes);
+    await this.reconcileLegacyAggregateNotifications(organizationId, vehicleIdsToReconcile);
   }
 
   async ingestVehicleReadinessSources(
     organizationId: string,
     runId: string,
     sources: VehicleReadinessNotificationAdapterSource[],
-  ): Promise<void> {
+  ): Promise<VehicleReadinessIngestOutcome[]> {
+    const outcomes: VehicleReadinessIngestOutcome[] = [];
+
     for (const source of sources) {
+      const fingerprint = vehicleReadinessSourceFingerprint(organizationId, source);
+      const condition = source.cleared ? 'READY' : 'NOT_READY';
       try {
         await this.router.ingestFromAdapter(
           this.vehicleReadinessAdapter,
           source,
           this.adapterContext(organizationId, runId, runId),
         );
+        outcomes.push({ vehicleId: source.vehicleId, fingerprint, condition, success: true });
       } catch (err) {
         this.logger.warn(
           `Vehicle readiness aggregate ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
         );
+        outcomes.push({ vehicleId: source.vehicleId, fingerprint, condition, success: false });
       }
     }
+
+    return outcomes;
+  }
+
+  private buildLegacyReconcileVehicleIds(
+    sources: VehicleReadinessNotificationAdapterSource[],
+    ingestOutcomes: VehicleReadinessIngestOutcome[],
+  ): Set<string> {
+    const vehicleIds = new Set<string>();
+
+    for (const source of sources) {
+      if (source.condition === 'READY') {
+        vehicleIds.add(source.vehicleId);
+      }
+    }
+
+    for (const outcome of ingestOutcomes) {
+      if (outcome.condition === 'NOT_READY' && outcome.success) {
+        vehicleIds.add(outcome.vehicleId);
+      }
+    }
+
+    return vehicleIds;
   }
 
   vehicleReadinessFingerprint(
@@ -732,10 +768,16 @@ export class NotificationProducerIngestService {
     return fingerprints;
   }
 
-  private async reconcileLegacyAggregateNotifications(organizationId: string): Promise<void> {
+  private async reconcileLegacyAggregateNotifications(
+    organizationId: string,
+    vehicleIdsToReconcile: Set<string>,
+  ): Promise<void> {
+    if (vehicleIdsToReconcile.size === 0) return;
+
     const legacyActives = await this.listAllActiveLegacyAggregateNotifications(organizationId);
 
     for (const legacy of legacyActives) {
+      if (!vehicleIdsToReconcile.has(legacy.entityId)) continue;
       try {
         await this.core.resolveNotificationByFingerprint({
           organizationId,

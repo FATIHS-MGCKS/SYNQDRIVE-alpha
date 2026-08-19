@@ -43,7 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Erster kanonischer Aggregate-Producer: `VEHICLE_NOT_READY` aus `VehicleHealth.rental_readiness` (kein zweiter RentalHealth-Call).',
       '`projectVehicleReadinessAggregate()` + `VehicleReadinessNotificationAdapter` + `syncVehicleReadinessAggregate()`.',
       'NOT_READY → OPEN; READY → RESOLVE (nur mit aktivem Fingerprint); UNEVALUABLE → preserve OPEN.',
-      'Kein Live-Producer für `BLOCKED_VEHICLE` / `MAINTENANCE_REQUIRED` — Legacy-Reconcile retiriert aktive Rows.',
+      'Legacy-Reconcile vehicle-scoped (fail-safe): nur bei READY oder NOT_READY+ingest-success.',
       'Registry unverändert (69/26/43). Audit: YELLOW — NOT READY FOR UI CUTOVER (P2.4 unevaluable).',
     ],
     reason:

@@ -32,6 +32,7 @@ import {
   maxSeverity,
   isStale,
   resolveRentalBlockedState,
+  deriveRentalReadiness,
   toIso,
   type RentalHealthModuleKey,
 } from './rental-health.types';
@@ -283,12 +284,7 @@ export class RentalHealthService {
 
     const evaluatedAt = new Date().toISOString();
     const rental_blocked = resolveRentalBlockedState(availability, blocking_reasons);
-    const rental_readiness: VehicleHealth['rental_readiness'] =
-      availability !== 'ready' || rental_blocked === null
-        ? 'unevaluable'
-        : rental_blocked
-          ? 'not_ready'
-          : 'ready';
+    const rental_readiness = deriveRentalReadiness(availability, rental_blocked);
 
     const health: VehicleHealth = {
       vehicle_id: vehicleId,
