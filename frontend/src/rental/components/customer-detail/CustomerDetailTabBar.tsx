@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { cn } from '../../../components/ui/utils';
 import type { CustomerDetailTab } from './customerDetailTypes';
 import { cdv } from './customer-detail-ui';
@@ -24,6 +25,7 @@ function tabCountSuffix(count?: number): string {
 }
 
 export function CustomerDetailTabBar({ tabs, activeTab, onTabChange }: CustomerDetailTabBarProps) {
+  const { t } = useLanguage();
   const tabRefs = useRef<Partial<Record<CustomerDetailTab, HTMLButtonElement | null>>>({});
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function CustomerDetailTabBar({ tabs, activeTab, onTabChange }: CustomerD
 
   return (
     <div className={cdv.tabBarShell}>
-      <div className={cdv.tabBarRail} role="tablist" aria-label="Kundendetail Bereiche">
+      <div className={cdv.tabBarRail} role="tablist" aria-label={t('customers.detail.tabBarAria')}>
         <div className={cdv.tabBarScroller}>
           {tabs.map((tab) => {
             const active = activeTab === tab.key;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
-import { Car, CheckCircle, IdCard, Upload, User } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { customersFormattingLocaleOrDefault } from './bookings-customers/customers-i18n';
 import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 import { AddCustomerDocumentsStep } from './add-customer/AddCustomerDocumentsStep';
@@ -16,7 +17,7 @@ import {
   validateAddCustomerDocumentsStep,
   addCustomerFormToPayload,
 } from '../lib/add-customer-wizard';
-import { documentEligibilityLabelDe } from '../lib/customer-verification';
+import { documentEligibilityLabel } from '../lib/customer-verification';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import {
@@ -24,8 +25,8 @@ import {
   customerStatusUiToApi,
   customerRiskUiToApi,
   customerTypeUiToApi,
-  customerStatusUiLabelDe,
-  customerRiskUiLabelDe,
+  customerStatusUiLabel,
+  customerRiskUiLabel,
   uploadPendingCustomerDocuments,
   type PendingCustomerDocumentFiles,
 } from '../lib/entityMappers';
@@ -78,7 +79,7 @@ const EM_DASH = '\u2014';
 
 type CustomerSegmentFilter = 'all' | 'active' | 'suspended' | 'attention';
 
-function mapApiCustomer(c: CustomerApiRecord): Customer {
+function mapApiCustomer(c: CustomerApiRecord, formattingLocale: string): Customer {
   const row = mapApiCustomerToListRow(c);
   return {
     ...row,
@@ -88,11 +89,11 @@ function mapApiCustomer(c: CustomerApiRecord): Customer {
     totalDistanceKm: typeof c.totalDistanceKm === 'number' ? c.totalDistanceKm : undefined,
     joinDate:
       (typeof c.joinDate === 'string' ? c.joinDate : null) ??
-      (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : EM_DASH),
+      (c.createdAt ? new Date(c.createdAt).toLocaleDateString(formattingLocale) : EM_DASH),
     licenseExpiry: c.licenseExpiry
       ? typeof c.licenseExpiry === 'string' && !c.licenseExpiry.includes('T')
         ? c.licenseExpiry
-        : new Date(c.licenseExpiry).toLocaleDateString('de-DE')
+        : new Date(c.licenseExpiry).toLocaleDateString(formattingLocale)
       : EM_DASH,
     accidents: typeof c.accidents === 'number' ? c.accidents : 0,
     violations: typeof c.violations === 'number' ? c.violations : 0,
@@ -119,6 +120,7 @@ function customerAvatarTone(status: Customer['status']): string {
 }
 
 export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }: CustomersViewProps) {
+  const { t, locale, formattingLocale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerStats, setCustomerStats] = useState<Record<string, number> | null>(null);
@@ -160,7 +162,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       .then((res) => {
         if (generation !== listFetchGeneration.current) return;
         const list = Array.isArray(res) ? res : res?.data ?? [];
-        setCustomers(list.map(mapApiCustomer));
+        setCustomers(list.map((c) => mapApiCustomer(c, formattingLocale)));
       })
       .catch(() => {
         if (generation !== listFetchGeneration.current) return;
@@ -171,7 +173,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           setIsListLoading(false);
         }
       });
-  }, [orgId, debouncedSearch, statusFilter, riskFilter, typeFilter]);
+  }, [orgId, debouncedSearch, statusFilter, riskFilter, typeFilter, formattingLocale]);
 
   const loadStats = useCallback(() => {
     if (!orgId) return;
@@ -307,16 +309,16 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       }
       await uploadPendingCustomerDocuments(orgId, customerId, pendingDocFiles);
       const saved = await api.customers.get(orgId, customerId);
-      const mapped = mapApiCustomer(saved);
+      const mapped = mapApiCustomer(saved, formattingLocale);
       setCustomers(prev => [mapped, ...prev.filter(c => c.id !== mapped.id)]);
-      toast.success('Kunde angelegt', {
+      toast.success(t('customers.wizard.createdToast'), {
         description: `${mapped.name}${mapped.email ? ' · ' + mapped.email : ''}`,
         duration: 3000,
       });
       closeAddCustomer();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Fehler beim Anlegen';
-      toast.error('Kunde konnte nicht angelegt werden', { description: String(msg), duration: 5000 });
+      const msg = err?.response?.data?.message || err?.message || t('customers.wizard.createError');
+      toast.error(t('customers.wizard.createFailed'), { description: String(msg), duration: 5000 });
     } finally {
       setIsSavingCustomer(false);
     }
@@ -361,7 +363,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     () => [
       {
         key: 'name',
-        header: 'Name',
+        header: t('customers.table.name'),
         cell: (customer) => (
           <div className="flex items-center gap-3">
             <div
@@ -378,14 +380,14 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'company',
-        header: 'Firma',
+        header: t('customers.table.company'),
         cell: (customer) => (
           <span className="text-xs text-muted-foreground">{customer.company || '—'}</span>
         ),
       },
       {
         key: 'contact',
-        header: 'Kontakt',
+        header: t('customers.table.contact'),
         cell: (customer) => (
           <div>
             <p className="text-xs text-foreground">{customer.email}</p>
@@ -395,56 +397,59 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'lastTrip',
-        header: 'Letzte Buchung',
+        header: t('customers.table.lastBooking'),
         cell: (customer) => (
           <span className="text-xs text-muted-foreground">{customer.lastTrip}</span>
         ),
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('customers.table.status'),
         cell: (customer) => (
           <StatusChip tone={customerStatusTone(customer.status)}>
-            {customerStatusUiLabelDe(customer.status)}
+            {customerStatusUiLabel(customer.status, locale)}
           </StatusChip>
         ),
       },
       {
         key: 'verification',
-        header: 'Verifikation',
+        header: t('customers.table.verification'),
         cell: (customer) =>
           customer.idVerified ? (
             <StatusChip tone="success" dot>
-              Verifiziert
+              {t('customers.verification.verified')}
             </StatusChip>
           ) : (
             <StatusChip tone="warning" dot>
-              Offen
+              {t('customers.verification.open')}
             </StatusChip>
           ),
       },
       {
         key: 'risk',
-        header: 'Risiko',
+        header: t('customers.table.risk'),
         cell: (customer) => (
           <StatusChip tone={customerRiskTone(customer.riskLevel)}>
-            {customerRiskUiLabelDe(customer.riskLevel)}
+            {customerRiskUiLabel(customer.riskLevel, locale)}
           </StatusChip>
         ),
       },
       {
         key: 'driving',
-        header: 'Fahrbelastung',
+        header: t('customers.table.drivingLoad'),
         cell: (customer) => {
           const display = formatStressScore(customer.drivingStressScore, {
             hasEnoughData: customer.hasEnoughData ?? true,
             level: customer.stressLevel ?? undefined,
           });
+          const drivingTitle = display.isMissing
+            ? display.label
+            : `${display.outOf100} ${t('customers.table.drivingLoad')}`;
           return (
             <StatusChip
               tone={scoreToneFromDisplay(display.tone)}
               icon={<Icon name="gauge" className="w-3 h-3" />}
-              title={display.isMissing ? display.label : `${display.outOf100} Fahrbelastung`}
+              title={drivingTitle}
             >
               {display.isMissing ? display.compact : display.label}
             </StatusChip>
@@ -453,7 +458,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'bookings',
-        header: 'Buchungen',
+        header: t('customers.table.bookings'),
         numeric: true,
         cell: (customer) => (
           <span className="text-xs font-semibold text-foreground">{customer.totalBookings}</span>
@@ -461,7 +466,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'revenue',
-        header: 'Umsatz',
+        header: t('customers.table.revenue'),
         cell: (customer) => (
           <span className="text-xs font-semibold text-[color:var(--status-positive)]">
             {customer.totalRevenue}
@@ -469,7 +474,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         ),
       },
     ],
-    [],
+    [t, locale],
   );
 
   return (
@@ -477,20 +482,20 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       <div className="space-y-5">
       {/* Header */}
       <PageHeader
-        title="Kunden & Fahrer"
+        title={t('customers.title')}
         className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <Button type="button" size="sm" variant="primary" onClick={openAddCustomer}>
             <Icon name="plus" className="size-3.5" />
-            <span className="hidden min-[380px]:inline">Kunde anlegen</span>
-            <span className="min-[380px]:hidden">Anlegen</span>
+            <span className="hidden min-[380px]:inline">{t('customers.addCustomer')}</span>
+            <span className="min-[380px]:hidden">{t('customers.addCustomerShort')}</span>
           </Button>
         )}
       />
 
       <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-4">
         <CustomerKpiCard
-          label="Gesamt"
+          label={t('customers.kpi.total')}
           value={totalDrivers}
           filterKey="all"
           isActive={cardFilter === 'all'}
@@ -498,7 +503,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           icon="users"
         />
         <CustomerKpiCard
-          label="Aktiv"
+          label={t('customers.kpi.active')}
           value={activeDrivers}
           filterKey="active"
           isActive={cardFilter === 'active'}
@@ -508,7 +513,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           subdued={activeDrivers === 0}
         />
         <CustomerKpiCard
-          label="Gesperrt"
+          label={t('customers.kpi.suspended')}
           value={suspendedDrivers}
           filterKey="suspended"
           isActive={cardFilter === 'suspended'}
@@ -518,7 +523,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           subdued={suspendedDrivers === 0}
         />
         <CustomerKpiCard
-          label="Aufmerksamkeit"
+          label={t('customers.kpi.attention')}
           value={attentionNeeded}
           filterKey="attention"
           isActive={cardFilter === 'attention'}
@@ -554,7 +559,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       {filtered.length === 0 && !isListLoading ? (
         <EmptyState
           icon={<Icon name="users" className="w-5 h-5" />}
-          title="Keine Kunden für diese Filter"
+          title={t('customers.emptyFiltered')}
           compact
         />
       ) : (
@@ -580,7 +585,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         empty={(
           <EmptyState
             icon={<Icon name="users" className="w-5 h-5" />}
-            title="Keine Kunden für diese Filter"
+            title={t('customers.emptyFiltered')}
             compact
           />
         )}
@@ -598,19 +603,19 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         open={isAddCustomerOpen}
         onOpenChange={(open) => { if (!open) closeAddCustomer(); }}
         maxWidthClassName="sm:max-w-[680px]"
-        title="Neuen Kunden anlegen"
-        description="Alle Pflichtfelder ausfüllen & Dokumente hochladen"
+        title={t('customers.createCustomer')}
+        description={t('customers.createDescription')}
         bodyClassName="p-0 flex flex-col"
         footer={(
           <div className="flex w-full items-center justify-between">
             <button type="button" onClick={closeAddCustomer} className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-medium">
-              Abbrechen
+              {t('common.cancel')}
             </button>
             <div className="flex items-center gap-2.5">
               {addStep > 0 && (
                 <button type="button" onClick={() => setAddStep(addStep - 1)} className="sq-3d-btn sq-3d-btn--neutral flex items-center gap-1.5 px-3 py-2 text-xs font-medium">
                   <Icon name="chevron-left" className="w-3.5 h-3.5" />
-                  Zurück
+                  {t('customers.wizard.back')}
                 </button>
               )}
               {addStep < 3 ? (
@@ -625,12 +630,12 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                   ) : (
                     <Icon name="chevron-right" className="w-3.5 h-3.5" />
                   )}
-                  {isEnsuringDraft ? 'Vorbereitet…' : 'Weiter'}
+                  {isEnsuringDraft ? t('customers.wizard.preparing') : t('customers.wizard.next')}
                 </button>
               ) : (
                 <button type="button" onClick={handleSubmitCustomer} disabled={isSavingCustomer} className={`sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-50 ${isSavingCustomer ? 'opacity-50' : ''}`}>
                   {isSavingCustomer ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check-circle" className="w-3.5 h-3.5" />}
-                  {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
+                  {isSavingCustomer ? t('customers.wizard.saving') : t('customers.wizard.submit')}
                 </button>
               )}
             </div>
@@ -639,10 +644,10 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       >
         {(() => {
         const steps = [
-          { label: 'Persönliche Daten', icon: User },
-          { label: 'ID & Führerschein', icon: IdCard },
-          { label: 'Dokumente', icon: Upload },
-          { label: 'Zusammenfassung', icon: CheckCircle },
+          { label: t('customers.wizard.step.personal'), icon: User },
+          { label: t('customers.wizard.step.idLicense'), icon: IdCard },
+          { label: t('customers.wizard.step.documents'), icon: Upload },
+          { label: t('customers.wizard.step.summary'), icon: CheckCircle },
         ];
         const sectionTitle = (icon: any, title: string) => {
           const SectionIcon = icon;
@@ -698,36 +703,36 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
               <div className="max-h-[min(60vh,100dvh-14rem)] flex-1 overflow-y-auto px-5 py-3">
                 {addStep === 0 && (
                   <div className="space-y-4">
-                    {sectionTitle(User, 'Persönliche Daten')}
+                    {sectionTitle(User, t('customers.wizard.personalData'))}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className={labelClass}>Vorname *</label>
-                        <input type="text" placeholder="Max" value={newCustomer.firstName}
+                        <label className={labelClass}>{t('customers.wizard.firstNameRequired')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.firstName')} value={newCustomer.firstName}
                           onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })} className={inputClass} />
                         {formErrors.firstName && <p className="text-[11px] text-red-500 mt-1">{formErrors.firstName}</p>}
                       </div>
                       <div>
-                        <label className={labelClass}>Nachname *</label>
-                        <input type="text" placeholder="Mustermann" value={newCustomer.lastName}
+                        <label className={labelClass}>{t('customers.wizard.lastNameRequired')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.lastName')} value={newCustomer.lastName}
                           onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })} className={inputClass} />
                         {formErrors.lastName && <p className="text-[11px] text-red-500 mt-1">{formErrors.lastName}</p>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className={labelClass}>E-Mail *</label>
+                        <label className={labelClass}>{t('customers.wizard.emailRequired')}</label>
                         <div className="relative">
                           <Icon name="mail" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                          <input type="email" placeholder="max@beispiel.de" value={newCustomer.email}
+                          <input type="email" placeholder={t('customers.wizard.placeholder.email')} value={newCustomer.email}
                             onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className={`${inputClass} pl-9`} />
                         </div>
                         {formErrors.email && <p className="text-[11px] text-red-500 mt-1">{formErrors.email}</p>}
                       </div>
                       <div>
-                        <label className={labelClass}>Telefon *</label>
+                        <label className={labelClass}>{t('customers.wizard.phoneRequired')}</label>
                         <div className="relative">
                           <Icon name="phone" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                          <input type="text" placeholder="+49 176 1234 5678" value={newCustomer.phone}
+                          <input type="text" placeholder={t('customers.wizard.placeholder.phone')} value={newCustomer.phone}
                             onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className={`${inputClass} pl-9`} />
                         </div>
                         {formErrors.phone && <p className="text-[11px] text-red-500 mt-1">{formErrors.phone}</p>}
@@ -735,42 +740,42 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className={labelClass}>Straße</label>
-                        <input type="text" placeholder="Musterstraße 1" value={newCustomer.street}
+                        <label className={labelClass}>{t('customers.wizard.street')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.street')} value={newCustomer.street}
                           onChange={(e) => setNewCustomer({ ...newCustomer, street: e.target.value })} className={inputClass} />
                       </div>
                       <div>
-                        <label className={labelClass}>PLZ</label>
-                        <input type="text" placeholder="34117" value={newCustomer.zip}
+                        <label className={labelClass}>{t('customers.wizard.zip')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.zip')} value={newCustomer.zip}
                           onChange={(e) => setNewCustomer({ ...newCustomer, zip: e.target.value })} className={inputClass} />
                       </div>
                       <div>
-                        <label className={labelClass}>Stadt *</label>
-                        <input type="text" placeholder="Kassel" value={newCustomer.city}
+                        <label className={labelClass}>{t('customers.wizard.cityRequired')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.city')} value={newCustomer.city}
                           onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className={inputClass} />
                         {formErrors.city && <p className="text-[11px] text-red-500 mt-1">{formErrors.city}</p>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className={labelClass}>Kundentyp</label>
+                        <label className={labelClass}>{t('customers.wizard.customerType')}</label>
                         <div className="flex gap-2">
-                          {(['Individual', 'Corporate'] as const).map(t => (
-                            <button key={t} type="button" onClick={() => setNewCustomer({ ...newCustomer, type: t })}
+                          {(['Individual', 'Corporate'] as const).map((customerType) => (
+                            <button key={customerType} type="button" onClick={() => setNewCustomer({ ...newCustomer, type: customerType })}
                               className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
-                                newCustomer.type === t
+                                newCustomer.type === customerType
                                   ? 'bg-[color:var(--brand)] text-white border-[color:var(--brand)] shadow-md'
                                   : 'border-border surface-premium text-muted-foreground hover:border-[color:var(--brand)]/40 hover:bg-muted'
                               }`}>
-                              {t === 'Individual' ? 'Privat' : 'Firma'}
+                              {customerType === 'Individual' ? t('customers.type.individual') : t('customers.type.corporate')}
                             </button>
                           ))}
                         </div>
                       </div>
                       {newCustomer.type === 'Corporate' && (
                         <div>
-                          <label className={labelClass}>Firmenname *</label>
-                          <input type="text" placeholder="Firma GmbH" value={newCustomer.company}
+                          <label className={labelClass}>{t('customers.wizard.companyNameRequired')}</label>
+                          <input type="text" placeholder={t('customers.wizard.placeholder.company')} value={newCustomer.company}
                             onChange={(e) => setNewCustomer({ ...newCustomer, company: e.target.value })} className={inputClass} />
                           {formErrors.company && <p className="text-[11px] text-red-500 mt-1">{formErrors.company}</p>}
                         </div>
@@ -781,28 +786,28 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
 
                 {addStep === 1 && (
                   <div className="space-y-5">
-                    {sectionTitle(Car, 'Führerschein')}
+                    {sectionTitle(Car, t('customers.wizard.license'))}
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <div>
-                        <label className={labelClass}>Führerscheinnr. *</label>
-                        <input type="text" placeholder="B072RRE2I55" value={newCustomer.licenseNumber}
+                        <label className={labelClass}>{t('customers.wizard.licenseNumberRequired')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.licenseNumber')} value={newCustomer.licenseNumber}
                           onChange={(e) => setNewCustomer({ ...newCustomer, licenseNumber: e.target.value })} className={inputClass} />
                         {formErrors.licenseNumber && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseNumber}</p>}
                       </div>
                       <div>
-                        <label className={labelClass}>Ausstellungsdatum *</label>
+                        <label className={labelClass}>{t('customers.wizard.licenseIssuedRequired')}</label>
                         <input type="date" value={newCustomer.licenseIssuedAt}
                           onChange={(e) => setNewCustomer({ ...newCustomer, licenseIssuedAt: e.target.value })} className={inputClass} />
                         {formErrors.licenseIssuedAt && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseIssuedAt}</p>}
                       </div>
                       <div>
-                        <label className={labelClass}>Gültig bis *</label>
+                        <label className={labelClass}>{t('customers.wizard.licenseValidRequired')}</label>
                         <input type="date" value={newCustomer.licenseExpiry}
                           onChange={(e) => setNewCustomer({ ...newCustomer, licenseExpiry: e.target.value })} className={inputClass} />
                         {formErrors.licenseExpiry && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseExpiry}</p>}
                       </div>
                       <div>
-                        <label className={labelClass}>Klasse</label>
+                        <label className={labelClass}>{t('customers.wizard.licenseClass')}</label>
                         <select value={newCustomer.licenseClass}
                           onChange={(e) => setNewCustomer({ ...newCustomer, licenseClass: e.target.value })} className={inputClass}>
                           {['AM', 'A1', 'A2', 'A', 'B', 'BE', 'C', 'CE', 'C1', 'C1E', 'D', 'DE'].map(c => (
@@ -814,32 +819,32 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
 
                     <div className="h-px my-2 bg-border" />
 
-                    {sectionTitle(IdCard, 'Ausweisdokument (ID-Verifikation)')}
+                    {sectionTitle(IdCard, t('customers.wizard.idVerification'))}
                     <div className="rounded-lg p-3.5 mb-3 sq-tone-warning border border-current/20">
                       <div className="flex items-start gap-2.5">
                         <Icon name="shield" className="w-5 h-5 mt-0.5 shrink-0" />
                         <p className="text-xs">
-                          Zur Identitätsprüfung wird ein gültiger Personalausweis oder Reisepass benötigt. Die Daten werden gemäß DSGVO verarbeitet.
+                          {t('customers.wizard.idGdprNotice')}
                         </p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className={labelClass}>Dokumenttyp</label>
+                        <label className={labelClass}>{t('customers.wizard.documentType')}</label>
                         <select value={newCustomer.idType}
                           onChange={(e) => setNewCustomer({ ...newCustomer, idType: e.target.value as any })} className={inputClass}>
-                          <option value="Personalausweis">Personalausweis</option>
-                          <option value="Reisepass">Reisepass</option>
+                          <option value="Personalausweis">{t('customers.wizard.idCard')}</option>
+                          <option value="Reisepass">{t('customers.wizard.passport')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className={labelClass}>Ausweisnummer *</label>
-                        <input type="text" placeholder="L01X00T47" value={newCustomer.idNumber}
+                        <label className={labelClass}>{t('customers.wizard.idNumberRequired')}</label>
+                        <input type="text" placeholder={t('customers.wizard.placeholder.idNumber')} value={newCustomer.idNumber}
                           onChange={(e) => setNewCustomer({ ...newCustomer, idNumber: e.target.value })} className={inputClass} />
                         {formErrors.idNumber && <p className="text-[11px] text-red-500 mt-1">{formErrors.idNumber}</p>}
                       </div>
                       <div>
-                        <label className={labelClass}>Gültig bis *</label>
+                        <label className={labelClass}>{t('customers.wizard.idValidRequired')}</label>
                         <input type="date" value={newCustomer.idExpiry}
                           onChange={(e) => setNewCustomer({ ...newCustomer, idExpiry: e.target.value })} className={inputClass} />
                         {formErrors.idExpiry && <p className="text-[11px] text-red-500 mt-1">{formErrors.idExpiry}</p>}
@@ -850,7 +855,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                       plan={verificationPlan}
                       onChange={setVerificationPlan}
                       sectionTitle={sectionTitle}
-                      licensePickupWarning="Hinweis: Wenn Ihre Mietfreigabe den Führerschein bereits für die Buchungsbestätigung verlangt, blockiert „Beim Pickup prüfen“ die Bestätigung bis zur Prüfung."
+                      licensePickupWarning={t('customers.wizard.licensePickupWarning')}
                     />
                   </div>
                 )}
@@ -876,48 +881,55 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
 
                 {addStep === 3 && (
                   <div className="space-y-5">
-                    {sectionTitle(CheckCircle, 'Zusammenfassung & Prüfung')}
+                    {sectionTitle(CheckCircle, t('customers.wizard.summaryTitle'))}
                     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-0 divide-y divide-border">
-                      <SummaryRow label="Name" value={`${newCustomer.firstName} ${newCustomer.lastName}`} />
-                      <SummaryRow label="E-Mail" value={newCustomer.email} />
-                      <SummaryRow label="Telefon" value={newCustomer.phone} />
-                      <SummaryRow label="Adresse" value={[newCustomer.street, `${newCustomer.zip} ${newCustomer.city}`].filter(Boolean).join(', ')} />
-                      <SummaryRow label="Typ" value={newCustomer.type === 'Corporate' ? `Firma — ${newCustomer.company}` : 'Privatkunde'} />
+                      <SummaryRow label={t('customers.wizard.summaryName')} value={`${newCustomer.firstName} ${newCustomer.lastName}`} />
+                      <SummaryRow label={t('customers.email')} value={newCustomer.email} />
+                      <SummaryRow label={t('customers.phone')} value={newCustomer.phone} />
+                      <SummaryRow label={t('customers.wizard.summaryAddress')} value={[newCustomer.street, `${newCustomer.zip} ${newCustomer.city}`].filter(Boolean).join(', ')} />
+                      <SummaryRow
+                        label={t('customers.wizard.summaryType')}
+                        value={
+                          newCustomer.type === 'Corporate'
+                            ? t('customers.wizard.summaryCompanyPrefix', { company: newCustomer.company })
+                            : t('customers.wizard.summaryPrivate')
+                        }
+                      />
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-0 divide-y divide-border">
-                      <SummaryRow label="Führerscheinnr." value={newCustomer.licenseNumber} />
-                      <SummaryRow label="Ausstellungsdatum" value={newCustomer.licenseIssuedAt} />
-                      <SummaryRow label="Klasse" value={newCustomer.licenseClass} />
-                      <SummaryRow label="FS gültig bis" value={newCustomer.licenseExpiry} />
-                      <SummaryRow label="Ausweistyp" value={newCustomer.idType} />
-                      <SummaryRow label="Ausweisnr." value={newCustomer.idNumber} />
-                      <SummaryRow label="Ausweis gültig bis" value={newCustomer.idExpiry} />
+                      <SummaryRow label={t('customers.wizard.summaryLicenseNumber')} value={newCustomer.licenseNumber} />
+                      <SummaryRow label={t('customers.wizard.summaryLicenseIssued')} value={newCustomer.licenseIssuedAt} />
+                      <SummaryRow label={t('customers.wizard.summaryLicenseClass')} value={newCustomer.licenseClass} />
+                      <SummaryRow label={t('customers.wizard.summaryLicenseValid')} value={newCustomer.licenseExpiry} />
+                      <SummaryRow label={t('customers.wizard.summaryIdType')} value={newCustomer.idType} />
+                      <SummaryRow label={t('customers.wizard.summaryIdNumber')} value={newCustomer.idNumber} />
+                      <SummaryRow label={t('customers.wizard.summaryIdValid')} value={newCustomer.idExpiry} />
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-xs text-muted-foreground">Ausweis (Didit)</span>
+                        <span className="text-xs text-muted-foreground">{t('customers.wizard.summaryIdDidit')}</span>
                         <span className="text-xs font-medium text-foreground">
                           {wizardEligibility
-                            ? documentEligibilityLabelDe(wizardEligibility.idDocument)
+                            ? documentEligibilityLabel(wizardEligibility.idDocument, locale)
                             : '—'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-xs text-muted-foreground">Führerschein (Didit)</span>
+                        <span className="text-xs text-muted-foreground">{t('customers.wizard.summaryLicenseDidit')}</span>
                         <span className="text-xs font-medium text-foreground">
                           {wizardEligibility
-                            ? documentEligibilityLabelDe(wizardEligibility.drivingLicense)
+                            ? documentEligibilityLabel(wizardEligibility.drivingLicense, locale)
                             : '—'}
                         </span>
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Dokumente</span>
+                        <span className="text-xs text-muted-foreground">{t('customers.wizard.summaryDocuments')}</span>
                         <div className="flex items-center gap-3">
                           {[
-                            { label: 'Ausweis VS', ok: Boolean(pendingDocFiles.ID_FRONT) },
-                            { label: 'Ausweis RS', ok: Boolean(pendingDocFiles.ID_BACK) },
-                            { label: 'FS VS', ok: Boolean(pendingDocFiles.LICENSE_FRONT) },
-                            { label: 'FS RS', ok: Boolean(pendingDocFiles.LICENSE_BACK) },
+                            { label: t('customers.wizard.docIdFront'), ok: Boolean(pendingDocFiles.ID_FRONT) },
+                            { label: t('customers.wizard.docIdBack'), ok: Boolean(pendingDocFiles.ID_BACK) },
+                            { label: t('customers.wizard.docLicenseFront'), ok: Boolean(pendingDocFiles.LICENSE_FRONT) },
+                            { label: t('customers.wizard.docLicenseBack'), ok: Boolean(pendingDocFiles.LICENSE_BACK) },
                           ].map(d => (
                             <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${
                               d.ok ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'
@@ -930,8 +942,8 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>Notizen (optional)</label>
-                      <textarea rows={2} placeholder="Zusätzliche Informationen zum Kunden..."
+                      <label className={labelClass}>{t('customers.wizard.notesOptional')}</label>
+                      <textarea rows={2} placeholder={t('customers.wizard.notesPlaceholder')}
                         value={newCustomer.notes}
                         onChange={(e) => setNewCustomer({ ...newCustomer, notes: e.target.value })}
                         className={`${inputClass} resize-none`} />

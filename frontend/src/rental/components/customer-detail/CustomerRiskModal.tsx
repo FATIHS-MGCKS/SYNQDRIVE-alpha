@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
-import { customerRiskUiLabelDe, customerRiskUiToApi } from '../../lib/entityMappers';
+import { customerRiskUiLabel, customerRiskUiToApi } from '../../lib/entityMappers';
 import type { CustomerListRow } from './customerDetailTypes';
 
 export type CustomerRiskChoice = CustomerListRow['riskLevel'];
@@ -27,6 +28,7 @@ export function CustomerRiskModal({
   onClose,
   onConfirm,
 }: CustomerRiskModalProps) {
+  const { t, locale } = useLanguage();
   const [nextRisk, setNextRisk] = useState<CustomerRiskChoice>(currentRisk);
   const [reason, setReason] = useState('');
 
@@ -38,17 +40,17 @@ export function CustomerRiskModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
       <div className="w-full max-w-md rounded-xl border border-border surface-premium shadow-xl p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">Risikostufe setzen</h3>
+          <h3 className="text-sm font-bold text-foreground">{t('customers.detail.riskModal.title')}</h3>
           <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-muted">
             <Icon name="x" className="w-4 h-4" />
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Aktuell: <strong>{customerRiskUiLabelDe(currentRisk)}</strong>
+          {t('customers.detail.riskModal.current')} <strong>{customerRiskUiLabel(currentRisk, locale)}</strong>
         </p>
         <div>
           <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Risikostufe
+            {t('customers.detail.riskModal.level')}
           </label>
           <select
             value={nextRisk}
@@ -57,14 +59,14 @@ export function CustomerRiskModal({
           >
             {RISK_OPTIONS.map((r) => (
               <option key={r} value={r}>
-                {customerRiskUiLabelDe(r)}
+                {customerRiskUiLabel(r, locale)}
               </option>
             ))}
           </select>
         </div>
         <div>
           <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Grund {needReason ? '(Pflicht)' : ''}
+            {needReason ? t('customers.detail.riskModal.reasonRequired') : ''}
           </label>
           <textarea
             value={reason}
@@ -72,7 +74,11 @@ export function CustomerRiskModal({
             rows={3}
             disabled={!needReason}
             className="mt-1 w-full text-xs px-3 py-2 rounded-lg border border-border surface-premium resize-none disabled:opacity-50"
-            placeholder={needReason ? 'Begründung für die Risikoeinstufung…' : 'Bei „Keine Risikobewertung“ kein Grund nötig'}
+            placeholder={
+              needReason
+                ? t('customers.detail.riskModal.reasonPlaceholder')
+                : t('customers.detail.riskModal.reasonNotNeeded')
+            }
           />
         </div>
         <div className="flex justify-end gap-2">
@@ -81,17 +87,15 @@ export function CustomerRiskModal({
             onClick={onClose}
             className="px-3 py-2 text-xs font-semibold rounded-lg border border-border"
           >
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
             disabled={saving || (needReason && !reason.trim())}
-            onClick={() =>
-              onConfirm(nextRisk, needReason ? reason.trim() : undefined)
-            }
+            onClick={() => onConfirm(nextRisk, reason.trim() || undefined)}
             className="px-3 py-2 text-xs font-semibold rounded-lg sq-tone-brand disabled:opacity-50"
           >
-            {saving ? 'Speichert…' : 'Risiko speichern'}
+            {saving ? t('customers.detail.noteModal.saving') : t('customers.detail.riskModal.save')}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { FileText, Shield } from 'lucide-react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { DataCard, EmptyState, StatusChip } from '../../../components/patterns';
 import {
   fineStatusApiToUiLabel,
@@ -26,6 +27,7 @@ export function CustomerFinancesTab({
   finesError,
   onOpenInvoice,
 }: CustomerFinancesTabProps) {
+  const { t } = useLanguage();
   const openInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() !== 'PAID');
   const overdueInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() === 'OVERDUE');
   const paidInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() === 'PAID');
@@ -33,49 +35,66 @@ export function CustomerFinancesTab({
   const totalRevenue = invoices.reduce((s, i) => s + (i.totalCents || 0), 0);
   const openAmount = openInvoices.reduce((s, i) => s + (i.totalCents || 0), 0);
 
+  const invoiceHeaders = [
+    t('customers.detail.finances.col.number'),
+    t('customers.detail.finances.col.date'),
+    t('customers.detail.finances.col.title'),
+    t('customers.detail.finances.col.amount'),
+    t('customers.detail.finances.col.status'),
+    t('customers.detail.finances.col.due'),
+  ];
+
+  const fineHeaders = [
+    t('customers.detail.finances.col.date'),
+    t('customers.detail.finances.col.type'),
+    t('customers.detail.finances.col.location'),
+    t('customers.detail.finances.col.amount'),
+    t('common.status'),
+  ];
+
   return (
     <div className="space-y-3">
       <div className={cdv.summaryGrid}>
         <VehicleBookingSummaryCard
-          label="Offene Rechnungen"
+          label={t('customers.detail.finances.openInvoices')}
           value={String(openInvoices.length)}
           valueVariant="numeric"
           subdued={openInvoices.length === 0}
         />
         <VehicleBookingSummaryCard
-          label="Überfällig"
+          label={t('customers.detail.finances.overdue')}
           value={String(overdueInvoices.length)}
           valueVariant="numeric"
           status={overdueInvoices.length > 0 ? 'critical' : undefined}
           subdued={overdueInvoices.length === 0}
         />
         <VehicleBookingSummaryCard
-          label="Bezahlt"
+          label={t('customers.detail.finances.paid')}
           value={String(paidInvoices.length)}
           valueVariant="numeric"
           subdued={paidInvoices.length === 0}
         />
         <VehicleBookingSummaryCard
-          label="Offene Bußgelder"
+          label={t('customers.detail.finances.openFines')}
           value={String(openFines.length)}
           valueVariant="numeric"
           subdued={openFines.length === 0}
         />
         <VehicleBookingSummaryCard
-          label="Gesamtumsatz"
+          label={t('customers.detail.finances.totalRevenue')}
           value={totalRevenue > 0 ? formatCurrencyCents(totalRevenue) : EM_DASH}
           valueVariant="numeric"
           subdued={totalRevenue <= 0}
         />
         <VehicleBookingSummaryCard
-          label="Offener Betrag"
+          label={t('customers.detail.finances.openAmount')}
           value={openAmount > 0 ? formatCurrencyCents(openAmount) : EM_DASH}
           valueVariant="numeric"
           subdued={openAmount <= 0}
         />
       </div>
 
-      <DataCard title="Rechnungen" flush bodyClassName="p-0">
+      <DataCard title={t('customers.detail.finances.invoicesTitle')} flush bodyClassName="p-0">
         {invoicesError ? (
           <p className="px-4 py-3 text-[12px] text-muted-foreground">{invoicesError}</p>
         ) : null}
@@ -83,8 +102,8 @@ export function CustomerFinancesTab({
           <div className="p-4">
             <EmptyState
               icon={<FileText className="size-5" />}
-              title="Keine Rechnungen"
-              description="Rechnungen erscheinen nach abgerechneten Buchungen."
+              title={t('customers.detail.finances.noInvoices')}
+              description={t('customers.detail.finances.noInvoicesHint')}
             />
           </div>
         ) : (
@@ -92,7 +111,7 @@ export function CustomerFinancesTab({
             <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  {['Nr.', 'Datum', 'Titel', 'Betrag', 'Status', 'Fällig'].map((h) => (
+                  {invoiceHeaders.map((h) => (
                     <th
                       key={h}
                       className="px-3 py-2 text-left text-[10px] font-semibold uppercase text-muted-foreground"
@@ -141,7 +160,7 @@ export function CustomerFinancesTab({
         )}
       </DataCard>
 
-      <DataCard title="Bußgelder" flush bodyClassName="p-0">
+      <DataCard title={t('customers.detail.finances.finesTitle')} flush bodyClassName="p-0">
         {finesError ? (
           <p className="px-4 py-3 text-[12px] text-muted-foreground">{finesError}</p>
         ) : null}
@@ -149,8 +168,8 @@ export function CustomerFinancesTab({
           <div className="p-4">
             <EmptyState
               icon={<Shield className="size-5" />}
-              title="Keine Bußgelder"
-              description="Für diesen Kunden sind keine Bußgelder erfasst."
+              title={t('customers.detail.finances.noFines')}
+              description={t('customers.detail.finances.noFinesHint')}
             />
           </div>
         ) : (
@@ -158,7 +177,7 @@ export function CustomerFinancesTab({
             <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  {['Datum', 'Typ', 'Ort', 'Betrag', 'Status'].map((h) => (
+                  {fineHeaders.map((h) => (
                     <th
                       key={h}
                       className="px-3 py-2 text-left text-[10px] font-semibold uppercase text-muted-foreground"

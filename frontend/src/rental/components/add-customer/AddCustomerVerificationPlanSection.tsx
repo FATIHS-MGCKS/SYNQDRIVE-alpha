@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { cn } from '../../../components/ui/utils';
 
 export type IdDocumentVerificationMethod = 'MANUAL' | 'DIDIT' | 'DEFERRED';
@@ -18,65 +20,6 @@ export const DEFAULT_VERIFICATION_PLAN: CustomerVerificationPlanState = {
   proofOfAddress: { method: 'NOT_REQUIRED' },
   autoStartDidit: false,
 };
-
-const ID_OPTIONS: Array<{ value: IdDocumentVerificationMethod; label: string; hint: string }> = [
-  {
-    value: 'MANUAL',
-    label: 'Manuell durch Mitarbeiter prüfen',
-    hint: 'Ein Mitarbeiter prüft den Ausweis im System.',
-  },
-  {
-    value: 'DIDIT',
-    label: 'KYC-Prüfung über Didit starten',
-    hint: 'Didit führt die Ausweisprüfung durch — noch nicht automatisch verifiziert.',
-  },
-  {
-    value: 'DEFERRED',
-    label: 'Später nachreichen',
-    hint: 'Ausweis wird zu einem späteren Zeitpunkt eingereicht.',
-  },
-];
-
-const LICENSE_OPTIONS: Array<{ value: DrivingLicenseVerificationMethod; label: string; hint: string }> = [
-  {
-    value: 'MANUAL',
-    label: 'Manuell durch Mitarbeiter prüfen',
-    hint: 'Ein Mitarbeiter prüft den Führerschein im System.',
-  },
-  {
-    value: 'DIDIT',
-    label: 'KYC-Prüfung über Didit starten',
-    hint: 'Didit führt die Führerscheinprüfung durch.',
-  },
-  {
-    value: 'PICKUP',
-    label: 'Beim Pickup prüfen',
-    hint: 'Prüfung erfolgt bei der Übergabe — blockiert keine Buchung global.',
-  },
-  {
-    value: 'DEFERRED',
-    label: 'Später nachreichen',
-    hint: 'Führerschein wird zu einem späteren Zeitpunkt eingereicht.',
-  },
-];
-
-const POA_OPTIONS: Array<{ value: ProofOfAddressVerificationMethod; label: string; hint: string }> = [
-  {
-    value: 'NOT_REQUIRED',
-    label: 'Nicht erforderlich',
-    hint: 'Adressnachweis wird für diesen Kunden nicht verlangt.',
-  },
-  {
-    value: 'MANUAL',
-    label: 'Manuell durch Mitarbeiter prüfen',
-    hint: 'Ein Mitarbeiter prüft den Adressnachweis.',
-  },
-  {
-    value: 'DEFERRED',
-    label: 'Später nachreichen',
-    hint: 'Adressnachweis wird später eingereicht.',
-  },
-];
 
 interface AddCustomerVerificationPlanSectionProps {
   plan: CustomerVerificationPlanState;
@@ -130,29 +73,96 @@ export function AddCustomerVerificationPlanSection({
   sectionTitle,
   licensePickupWarning,
 }: AddCustomerVerificationPlanSectionProps) {
+  const { t } = useLanguage();
+
+  const idOptions = useMemo(
+    () => [
+      {
+        value: 'MANUAL' as IdDocumentVerificationMethod,
+        label: t('customers.wizard.verification.manual'),
+        hint: t('customers.wizard.verification.manualIdHint'),
+      },
+      {
+        value: 'DIDIT' as IdDocumentVerificationMethod,
+        label: t('customers.wizard.verification.didit'),
+        hint: t('customers.wizard.verification.diditIdHint'),
+      },
+      {
+        value: 'DEFERRED' as IdDocumentVerificationMethod,
+        label: t('customers.wizard.verification.deferred'),
+        hint: t('customers.wizard.verification.deferredIdHint'),
+      },
+    ],
+    [t],
+  );
+
+  const licenseOptions = useMemo(
+    () => [
+      {
+        value: 'MANUAL' as DrivingLicenseVerificationMethod,
+        label: t('customers.wizard.verification.manual'),
+        hint: t('customers.wizard.verification.manualLicenseHint'),
+      },
+      {
+        value: 'DIDIT' as DrivingLicenseVerificationMethod,
+        label: t('customers.wizard.verification.didit'),
+        hint: t('customers.wizard.verification.diditLicenseHint'),
+      },
+      {
+        value: 'PICKUP' as DrivingLicenseVerificationMethod,
+        label: t('customers.wizard.verification.pickup'),
+        hint: t('customers.wizard.verification.pickupHint'),
+      },
+      {
+        value: 'DEFERRED' as DrivingLicenseVerificationMethod,
+        label: t('customers.wizard.verification.deferred'),
+        hint: t('customers.wizard.verification.deferredLicenseHint'),
+      },
+    ],
+    [t],
+  );
+
+  const poaOptions = useMemo(
+    () => [
+      {
+        value: 'NOT_REQUIRED' as ProofOfAddressVerificationMethod,
+        label: t('customers.wizard.verification.poaNotRequired'),
+        hint: t('customers.wizard.verification.poaNotRequiredHint'),
+      },
+      {
+        value: 'MANUAL' as ProofOfAddressVerificationMethod,
+        label: t('customers.wizard.verification.manual'),
+        hint: t('customers.wizard.verification.poaManualHint'),
+      },
+      {
+        value: 'DEFERRED' as ProofOfAddressVerificationMethod,
+        label: t('customers.wizard.verification.deferred'),
+        hint: t('customers.wizard.verification.poaDeferredHint'),
+      },
+    ],
+    [t],
+  );
+
   const diditSelected =
     plan.idDocument.method === 'DIDIT' || plan.drivingLicense.method === 'DIDIT';
 
   return (
     <div className="space-y-4">
       <div className="h-px my-2 bg-border" />
-      {sectionTitle(ShieldCheck, 'Dokumentprüfung')}
-      <p className="text-xs text-muted-foreground">
-        Legen Sie fest, wie Ausweis, Führerschein und ggf. Adressnachweis geprüft werden sollen.
-        Die Auswahl dokumentiert den Prüfweg — sie bedeutet noch keine Verifizierung.
-      </p>
+      {sectionTitle(ShieldCheck, t('customers.wizard.verificationPlanTitle'))}
+      <p className="text-xs text-muted-foreground">{t('customers.wizard.verificationPlanHint')}</p>
 
       <MethodGroup
-        label="Ausweisprüfung"
+        label={t('customers.wizard.verification.idCheck')}
         value={plan.idDocument.method}
-        options={ID_OPTIONS}
+        options={idOptions}
         onSelect={(method) => onChange({ ...plan, idDocument: { ...plan.idDocument, method } })}
       />
 
       <MethodGroup
-        label="Führerscheinprüfung"
+        label={t('customers.wizard.verification.licenseCheck')}
         value={plan.drivingLicense.method}
-        options={LICENSE_OPTIONS}
+        options={licenseOptions}
         onSelect={(method) => onChange({ ...plan, drivingLicense: { ...plan.drivingLicense, method } })}
       />
       {plan.drivingLicense.method === 'PICKUP' && licensePickupWarning ? (
@@ -160,9 +170,9 @@ export function AddCustomerVerificationPlanSection({
       ) : null}
 
       <MethodGroup
-        label="Adressnachweis"
+        label={t('customers.wizard.verification.poaCheck')}
         value={plan.proofOfAddress.method}
-        options={POA_OPTIONS}
+        options={poaOptions}
         onSelect={(method) => onChange({ ...plan, proofOfAddress: { ...plan.proofOfAddress, method } })}
       />
 
@@ -175,9 +185,9 @@ export function AddCustomerVerificationPlanSection({
             className="mt-0.5"
           />
           <span className="text-xs text-foreground">
-            <span className="font-semibold">KYC-Prozess direkt starten</span>
+            <span className="font-semibold">{t('customers.wizard.verification.autoStartDidit')}</span>
             <span className="mt-0.5 block text-muted-foreground">
-              Didit-Sitzung wird nach dem Anlegen des Kunden automatisch gestartet.
+              {t('customers.wizard.verification.autoStartDiditHint')}
             </span>
           </span>
         </label>

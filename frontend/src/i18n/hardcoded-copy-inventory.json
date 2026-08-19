@@ -94,35 +94,35 @@
     }
   },
   "summary": {
-    "total": 2591,
+    "total": 2526,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 1269,
+      "RENTAL": 1204,
       "SHARED": 35,
       "SHELL": 38
     },
     "byCategory": {
-      "ARIA": 104,
-      "TITLE": 364,
-      "TEXT": 1771,
-      "LABEL": 163,
-      "PLACEHOLDER": 181,
+      "ARIA": 102,
+      "TITLE": 348,
+      "TEXT": 1730,
+      "LABEL": 160,
+      "PLACEHOLDER": 178,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 656,
+      "other Rental areas": 607,
       "Tasks": 114,
-      "Settings": 102,
-      "Finance/Billing": 129,
-      "Customers": 50,
+      "Settings": 103,
+      "Finance/Billing": 130,
       "Stations": 7,
       "Automation": 183,
       "Support": 19,
+      "Bookings": 32,
       "Documents": 8,
       "App / routing shell": 1
     },
-    "enforceCleanRemaining": 102
+    "enforceCleanRemaining": 32
   },
   "findings": [
     {
@@ -17825,20 +17825,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDecisionCards.tsx",
-      "line": 124,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "<DecisionCardTitle icon=",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDecisionCards.tsx"
-      ]
-    },
-    {
       "file": "rental/components/settings/email/EmailVersandTab.tsx",
       "line": 293,
       "surface": "RENTAL",
@@ -18344,20 +18330,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-verification/CustomerVerificationPanel.tsx",
-      "line": 172,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Adressnachweis hochladen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-verification/CustomerVerificationPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/settings/company/CompanySections.tsx",
       "line": 479,
       "surface": "RENTAL",
@@ -18773,11 +18745,9 @@
       "sample": "Aktuell:",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 1,
       "files": [
-        "rental/components/SettingsView.tsx",
-        "rental/components/customer-detail/CustomerRiskModal.tsx",
-        "rental/components/customer-detail/CustomerStatusModal.tsx"
+        "rental/components/SettingsView.tsx"
       ]
     },
     {
@@ -18935,20 +18905,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerOverviewTab.tsx",
-      "line": 92,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Alle anzeigen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerOverviewTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx",
       "line": 751,
       "surface": "RENTAL",
@@ -18960,20 +18916,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDocumentsTab.tsx",
-      "line": 242,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Alle erforderlichen Dokumente sind bereits vorhanden.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDocumentsTab.tsx"
       ]
     },
     {
@@ -19586,32 +19528,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 793,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 362,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Ausstellungsdatum *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 793,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 362,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Ausstellungsdatum *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -19645,47 +19585,44 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 896,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 460,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Ausweis (Didit)",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 836,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 405,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Ausweisnummer *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 836,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 405,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Ausweisnummer *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -19760,17 +19697,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 788,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 357,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "PLACEHOLDER",
       "sample": "B072RRE2I55",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -19856,20 +19792,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerStatusModal.tsx",
-      "line": 96,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "PLACEHOLDER",
-      "sample": "Begründung für die Statusänderung…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerStatusModal.tsx"
       ]
     },
     {
@@ -20071,20 +19993,6 @@
       "files": [
         "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDocumentsTab.tsx",
-      "line": 149,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Betriebsdokumente (KI-Upload)",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDocumentsTab.tsx"
       ]
     },
     {
@@ -20393,20 +20301,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerFinancesTab.tsx",
-      "line": 144,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Bußgelder",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerFinancesTab.tsx"
       ]
     },
     {
@@ -21541,10 +21435,9 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 93,
+      "occurrences": 91,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
-        "rental/components/CustomersView.tsx",
         "rental/components/DocumentsView.tsx",
         "rental/components/EntityTasksSection.tsx",
         "rental/components/FinancialInsightsView.tsx",
@@ -21741,20 +21634,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 370,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Details in Vollansicht",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailModal.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 226,
       "surface": "RENTAL",
@@ -21808,20 +21687,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/settings/account/ChangePasswordDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/add-customer/AddCustomerVerificationPlanSection.tsx",
-      "line": 179,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Didit-Sitzung wird nach dem Anlegen des Kunden automatisch gestartet.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/add-customer/AddCustomerVerificationPlanSection.tsx"
       ]
     },
     {
@@ -21981,20 +21846,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 447,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "display.isMissing ? display.label : `$",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomersView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageRentalSections.tsx",
       "line": 160,
       "surface": "RENTAL",
@@ -22053,33 +21904,18 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDocumentsTab.tsx",
-      "line": 223,
+      "file": "rental/components/invoices/InvoiceDocuments.tsx",
+      "line": 322,
       "surface": "RENTAL",
-      "module": "Customers",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Dokumente werden geladen…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 3,
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 2,
       "files": [
-        "rental/components/customer-detail/CustomerDocumentsTab.tsx",
         "rental/components/invoices/InvoiceDocuments.tsx",
         "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-verification/CustomerVerificationPanel.tsx",
-      "line": 80,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Dokumentenprüfung",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-verification/CustomerVerificationPanel.tsx"
       ]
     },
     {
@@ -22153,32 +21989,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 718,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 291,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "E-Mail *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 718,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 291,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "E-Mail *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -22605,21 +22439,18 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 334,
+      "file": "rental/components/SettingsView.tsx",
+      "line": 717,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Erneut laden",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 6,
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 3,
       "files": [
-        "rental/components/CustomerDetailModal.tsx",
-        "rental/components/CustomerDetailView.tsx",
         "rental/components/SettingsView.tsx",
         "rental/components/booking-detail/BookingDossier.tsx",
-        "rental/components/customer-detail/CustomerDecisionCards.tsx",
         "rental/components/tasks/VehicleTaskDetailDrawer.tsx"
       ]
     },
@@ -22947,20 +22778,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 123,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Fahrbelastung (Kunde)",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/RentalStressAnalysisCard.tsx",
       "line": 28,
       "surface": "RENTAL",
@@ -22972,20 +22789,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/RentalStressAnalysisCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 189,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Fahrereignisse gesamt",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
       ]
     },
     {
@@ -23274,20 +23077,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDocumentsTab.tsx",
-      "line": 221,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Fehlende Dokumente hochladen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDocumentsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 381,
       "surface": "RENTAL",
@@ -23476,47 +23265,44 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 773,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 342,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "PLACEHOLDER",
       "sample": "Firma GmbH",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 772,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 341,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Firmenname *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 772,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 341,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Firmenname *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -23605,47 +23391,44 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 904,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 468,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Führerschein (Didit)",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 787,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 356,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Führerscheinnr. *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 787,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 356,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Führerscheinnr. *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -23903,60 +23686,30 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerRiskModal.tsx",
-      "line": 66,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 368,
       "surface": "RENTAL",
-      "module": "Customers",
-      "category": "LABEL",
-      "sample": "Grund {needReason ? '(Pflicht)' : ''}",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerRiskModal.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerStatusModal.tsx",
-      "line": 88,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "LABEL",
-      "sample": "Grund {needReason ? '(Pflicht)' : '(optional)'}",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerStatusModal.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 799,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Gültig bis *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 4,
+      "occurrences": 2,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 799,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 368,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Gültig bis *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 4,
+      "occurrences": 2,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -24213,20 +23966,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 398,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "hohes Risiko",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailModal.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WorkflowAutomationView.tsx",
       "line": 1333,
       "surface": "RENTAL",
@@ -24364,20 +24103,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/workflow-automation/TaskAutomationRuleDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerOverviewTab.tsx",
-      "line": 44,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Identität & Kontakt",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerOverviewTab.tsx"
       ]
     },
     {
@@ -24805,20 +24530,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDocumentUploadBox.tsx",
-      "line": 209,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "JPG, PNG oder PDF (max. 8 MB)",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDocumentUploadBox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
       "line": 115,
       "surface": "RENTAL",
@@ -25114,20 +24825,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerFinancesTab.tsx",
-      "line": 152,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Keine Bußgelder",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerFinancesTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinesView.tsx",
       "line": 359,
       "surface": "RENTAL",
@@ -25184,34 +24881,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerTimelineTab.tsx",
-      "line": 100,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Keine Einträge",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerTimelineTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDecisionCards.tsx",
-      "line": 306,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Keine Fahrdaten vorhanden",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDecisionCards.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillableVehiclesDrawer.tsx",
       "line": 80,
       "surface": "RENTAL",
@@ -25254,34 +24923,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDecisionCards.tsx",
-      "line": 263,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Keine Freigabedaten",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDecisionCards.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 557,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Keine Kunden für diese Filter",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 2,
-      "files": [
-        "rental/components/CustomersView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/insights/InsightsCockpit.tsx",
       "line": 359,
       "surface": "RENTAL",
@@ -25307,20 +24948,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerFinancesTab.tsx",
-      "line": 86,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Keine Rechnungen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerFinancesTab.tsx"
       ]
     },
     {
@@ -25564,20 +25191,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDocumentUploadBox.tsx",
-      "line": 206,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Klicken zum Hochladen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDocumentUploadBox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/voice-assistant/VoiceAnalyticsView.tsx",
       "line": 214,
       "surface": "RENTAL",
@@ -25662,132 +25275,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 485,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Kunde anlegen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomersView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 397,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Kunde ist als",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailModal.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDetailView.tsx",
-      "line": 586,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Kunde konnte nicht geladen werden",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 480,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Kunden & Fahrer",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomersView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-list/CustomerListFilters.tsx",
-      "line": 179,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "ARIA",
-      "sample": "Kunden suchen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-list/CustomerListFilters.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/add-customer/AddCustomerDocumentsStep.tsx",
-      "line": 38,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Kundendaten werden vorbereitet…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/add-customer/AddCustomerDocumentsStep.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDetailTabBar.tsx",
-      "line": 42,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "ARIA",
-      "sample": "Kundendetail Bereiche",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDetailTabBar.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerStatusModal.tsx",
-      "line": 63,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Kundenstatus ändern",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerStatusModal.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 225,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Kundenübersicht",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailModal.tsx"
-      ]
-    },
-    {
       "file": "rental/components/settings/company/CompanySections.tsx",
       "line": 184,
       "surface": "RENTAL",
@@ -25799,20 +25286,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/add-customer/AddCustomerVerificationPlanSection.tsx",
-      "line": 178,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "KYC-Prozess direkt starten",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/add-customer/AddCustomerVerificationPlanSection.tsx"
       ]
     },
     {
@@ -26013,20 +25486,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDocumentsTab.tsx",
-      "line": 214,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Legacy-Dokumente vorhanden (alte URL-Felder). Bitte im neuen Dokumentensystem erneut hochladen.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDocumentsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/SettingsView.tsx",
       "line": 736,
       "surface": "RENTAL",
@@ -26041,20 +25500,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerOverviewTab.tsx",
-      "line": 84,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Letzte Aktivitäten",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerOverviewTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 631,
       "surface": "RENTAL",
@@ -26066,20 +25511,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 177,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Letzte Miet-Auswertung",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
       ]
     },
     {
@@ -26532,20 +25963,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-verification/CustomerVerificationPanel.tsx",
-      "line": 196,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Manuell als geprüft markieren",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-verification/CustomerVerificationPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 287,
       "surface": "RENTAL",
@@ -26571,20 +25988,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-verification/CustomerVerificationPanel.tsx",
-      "line": 191,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Manuelle Prüfung (berechtigte Rollen)",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-verification/CustomerVerificationPanel.tsx"
       ]
     },
     {
@@ -26686,17 +26089,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 721,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 294,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "PLACEHOLDER",
       "sample": "max@beispiel.de",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -26897,17 +26299,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 739,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 312,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "PLACEHOLDER",
       "sample": "Musterstraße 1",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -26940,32 +26341,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 710,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 283,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Nachname *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 710,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 283,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Nachname *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -27082,20 +26481,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-list/CustomerListFilters.tsx",
-      "line": 176,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "PLACEHOLDER",
-      "sample": "Name, E-Mail, Telefon oder Firma…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-list/CustomerListFilters.tsx"
-      ]
-    },
-    {
       "file": "rental/components/tasks/TaskVendorPicker.tsx",
       "line": 124,
       "surface": "RENTAL",
@@ -27107,20 +26492,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/tasks/TaskVendorPicker.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerRiskModal.tsx",
-      "line": 75,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "PLACEHOLDER",
-      "sample": "needReason ?",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerRiskModal.tsx"
       ]
     },
     {
@@ -27236,20 +26607,6 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 601,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Neuen Kunden anlegen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomersView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/HandoverProtocolDialog.tsx",
       "line": 742,
       "surface": "RENTAL",
@@ -27261,34 +26618,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/handover/HandoverProtocolDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerStatusModal.tsx",
-      "line": 72,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Neuer Status",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerStatusModal.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerStatusModal.tsx",
-      "line": 72,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "LABEL",
-      "sample": "Neuer Status",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerStatusModal.tsx"
       ]
     },
     {
@@ -27513,20 +26842,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 159,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Nicht genügend bewertete Trips",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
       ]
     },
     {
@@ -28387,20 +27702,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 95,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Noch keine Fahrdaten",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillableVehiclesDrawer.tsx",
       "line": 96,
       "surface": "RENTAL",
@@ -28526,20 +27827,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerOverviewTab.tsx",
-      "line": 99,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Noch keine Timeline-Einträge.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerOverviewTab.tsx"
       ]
     },
     {
@@ -28683,47 +27970,30 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDetailHeader.tsx",
-      "line": 142,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 495,
       "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Notiz hinzufügen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 2,
-      "files": [
-        "rental/components/customer-detail/CustomerDetailHeader.tsx",
-        "rental/components/customer-detail/CustomerTimelineTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 933,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Notizen (optional)",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 933,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 495,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Notizen (optional)",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -28854,34 +28124,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 229,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Nutzungsauffälligkeiten / Missbrauchs-/Schadensverdacht",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/add-customer/AddCustomerDocumentsStep.tsx",
-      "line": 55,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "oder manuell hochladen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/add-customer/AddCustomerDocumentsStep.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/HandoverProtocolDialog.tsx",
       "line": 920,
       "surface": "RENTAL",
@@ -28960,10 +28202,9 @@
       "sample": "Öffnen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/BusinessInsightsBox.tsx",
-        "rental/components/customer-detail/CustomerBookingsTab.tsx"
+        "rental/components/BusinessInsightsBox.tsx"
       ]
     },
     {
@@ -29119,34 +28360,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerOverviewTab.tsx",
-      "line": 73,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TITLE",
-      "sample": "Operative Kennzahlen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 228,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Operatives Kurzpanel — Status, Verifikation & Kennzahlen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailModal.tsx"
       ]
     },
     {
@@ -29596,20 +28809,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDocumentUploadBox.tsx",
-      "line": 177,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "PDF hochgeladen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDocumentUploadBox.tsx"
       ]
     },
     {
@@ -30515,34 +29714,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerDecisionCards.tsx",
-      "line": 294,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Rechnungen und Gebühren im Überblick",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDecisionCards.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDocumentsTab.tsx",
-      "line": 150,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Rechnungen, Bußgelder und Belege — getrennt von KYC-Dokumenten.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDocumentsTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 155,
       "surface": "RENTAL",
@@ -31006,20 +30177,6 @@
       ]
     },
     {
-      "file": "rental/components/customer-detail/CustomerRiskModal.tsx",
-      "line": 41,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Risikostufe setzen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerRiskModal.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorDetailView.tsx",
       "line": 459,
       "surface": "RENTAL",
@@ -31329,17 +30486,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 238,
+      "file": "rental/components/FinancialInsightsView.tsx",
+      "line": 1045,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "ARIA",
       "sample": "Schließen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 4,
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 3,
       "files": [
-        "rental/components/CustomerDetailModal.tsx",
         "rental/components/FinancialInsightsView.tsx",
         "rental/components/settings/account/ChangePasswordDialog.tsx",
         "rental/components/settings/data-authorization/DataAuthorizationRevokeDialog.tsx"
@@ -31568,20 +30724,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-list/CustomerListFilters.tsx",
-      "line": 155,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Segment ×",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-list/CustomerListFilters.tsx"
       ]
     },
     {
@@ -31849,20 +30991,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerDrivingTab.tsx",
-      "line": 201,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Separat von Fahrbelastung",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerDrivingTab.tsx"
       ]
     },
     {
@@ -32135,32 +31263,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 748,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 321,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Stadt *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 748,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 321,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Stadt *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -32543,32 +31669,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 738,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 311,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Straße",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 738,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 311,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Straße",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -33119,32 +32243,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 727,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 300,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Telefon *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 727,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 300,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Telefon *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -33468,34 +32590,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerTimelineTab.tsx",
-      "line": 90,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Timeline konnte nicht geladen werden.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerTimelineTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-detail/CustomerTimelineTab.tsx",
-      "line": 94,
-      "surface": "RENTAL",
-      "module": "Customers",
-      "category": "TEXT",
-      "sample": "Timeline wird geladen…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/customer-detail/CustomerTimelineTab.tsx"
       ]
     },
     {
@@ -34460,32 +33554,30 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 704,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 277,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Vorname *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 704,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 277,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "LABEL",
       "sample": "Vorname *",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -34823,35 +33915,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/SettingsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDetailModal.tsx",
-      "line": 330,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Wird geladen…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 2,
-      "files": [
-        "rental/components/CustomerDetailModal.tsx",
-        "rental/components/customer-detail/CustomerDecisionCards.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/CustomerDocumentUploadBox.tsx",
-      "line": 162,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Wird hochgeladen…",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDocumentUploadBox.tsx"
       ]
     },
     {
@@ -35374,17 +34437,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 821,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 390,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "TEXT",
       "sample": "Zur Identitätsprüfung wird ein gültiger Personalausweis oder Reisepass benötigt. Die Daten werden gemäß DSGVO verarbeite",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },
@@ -35403,17 +34465,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 612,
+      "file": "rental/components/FinesView.tsx",
+      "line": 457,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Zurück",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 16,
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 15,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/FinesView.tsx",
         "rental/components/billing/BillingInvoiceSection.tsx",
         "rental/components/billing/TenantBillableVehiclesTable.tsx",
@@ -35443,31 +34504,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomerDetailView.tsx",
-      "line": 598,
+      "file": "rental/components/settings/account/AccountNotificationsSection.tsx",
+      "line": 154,
       "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Zurück zur Liste",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 1,
-      "files": [
-        "rental/components/CustomerDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/customer-list/CustomerListFilters.tsx",
-      "line": 161,
-      "surface": "RENTAL",
-      "module": "Customers",
+      "module": "Settings",
       "category": "TEXT",
       "sample": "Zurücksetzen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 5,
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 4,
       "files": [
-        "rental/components/customer-list/CustomerListFilters.tsx",
         "rental/components/settings/account/AccountNotificationsSection.tsx",
         "rental/components/settings/account/AccountPreferencesSection.tsx",
         "rental/components/tasks/TasksFilterPanel.tsx",
@@ -35489,17 +34535,16 @@
       ]
     },
     {
-      "file": "rental/components/CustomersView.tsx",
-      "line": 934,
+      "file": "rental/components/new-booking/CustomerStep.tsx",
+      "line": 496,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Bookings",
       "category": "PLACEHOLDER",
       "sample": "Zusätzliche Informationen zum Kunden...",
       "severity": "enforce-clean",
       "migrationPhase": "P2.2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/CustomersView.tsx",
         "rental/components/new-booking/CustomerStep.tsx"
       ]
     },

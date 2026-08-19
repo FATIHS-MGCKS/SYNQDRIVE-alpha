@@ -1,10 +1,12 @@
 import type { StatusTone } from '../../../components/patterns';
 import {
+  customerRiskUiLabel,
   customerRiskUiLabelDe,
   type CustomerUiRisk,
   type CustomerUiStatus,
   type CustomerUiVerification,
 } from '../../lib/entityMappers';
+import { ct } from '../bookings-customers/customers-i18n';
 
 /** Layout tokens for the full CustomerDetailView page. */
 export const cdv = {
@@ -163,7 +165,12 @@ export function customerDetailTitleClass(): string {
 }
 
 /** User-facing eligibility load failure — technical detail stays in title attribute. */
-export const ELIGIBILITY_LOAD_ERROR_USER = 'Mietfreigabe konnte nicht geladen werden.';
+export function eligibilityLoadErrorUser(locale: string): string {
+  return ct(locale, 'customers.detail.eligibilityLoadError');
+}
+
+/** @deprecated use eligibilityLoadErrorUser(locale) */
+export const ELIGIBILITY_LOAD_ERROR_USER = eligibilityLoadErrorUser('de');
 
 export function customerStatusTone(status: CustomerUiStatus | string): StatusTone {
   switch (status) {
@@ -196,9 +203,14 @@ export function customerRiskTone(risk: CustomerUiRisk | string): StatusTone {
 }
 
 /** Header-only risk label — shorter copy for the hero badge grid. */
+export function customerRiskHeaderLabel(risk: CustomerUiRisk | string, locale: string): string {
+  if (risk === 'Not Assessed') return ct(locale, 'customers.risk.notAssessed');
+  return customerRiskUiLabel(risk, locale);
+}
+
+/** @deprecated use customerRiskHeaderLabel(risk, locale) */
 export function customerRiskHeaderLabelDe(risk: CustomerUiRisk | string): string {
-  if (risk === 'Not Assessed') return 'Keine Bewertung';
-  return customerRiskUiLabelDe(risk);
+  return customerRiskHeaderLabel(risk, 'de');
 }
 
 /** Header-only risk tone — neutral for unassessed customers. */
@@ -222,17 +234,30 @@ export type CustomerStatusAction = {
 
 export function resolveCustomerStatusAction(
   status: CustomerUiStatus,
+  locale = 'de',
 ): CustomerStatusAction | null {
   switch (status) {
     case 'Active':
-      return { label: 'Suspendieren', nextStatus: 'Suspended', variant: 'destructive' };
+      return {
+        label: ct(locale, 'customers.status.action.suspend'),
+        nextStatus: 'Suspended',
+        variant: 'destructive',
+      };
     case 'Suspended':
     case 'Blocked':
     case 'Inactive':
     case 'Archived':
-      return { label: 'Reaktivieren', nextStatus: 'Active', variant: 'success' };
+      return {
+        label: ct(locale, 'customers.status.action.reactivate'),
+        nextStatus: 'Active',
+        variant: 'success',
+      };
     case 'Under Review':
-      return { label: 'Review abschließen', nextStatus: 'Active', variant: 'warning' };
+      return {
+        label: ct(locale, 'customers.status.action.completeReview'),
+        nextStatus: 'Active',
+        variant: 'warning',
+      };
     default:
       return null;
   }

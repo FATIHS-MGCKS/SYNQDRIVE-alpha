@@ -5,12 +5,13 @@ import { toast } from 'sonner';
 import { DataCard, StatusChip } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
 import { api, getErrorMessage } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  customerRiskUiLabelDe,
+  customerRiskUiLabel,
   customerStatusApiToUi,
-  customerStatusUiLabelDe,
+  customerStatusUiLabel,
   customerVerificationApiToUi,
-  customerVerificationUiLabelDe,
+  customerVerificationUiLabel,
 } from '../lib/entityMappers';
 import { changeCustomerStatus } from '../lib/customer-mutations.utils';
 import { formatStressScore, resolveDrivingStressScore, stressToneToStatusTone } from '../lib/scoreFormat';
@@ -105,6 +106,7 @@ export function CustomerDetailModal({
   onUpdateCustomer,
   onOpenDetail,
 }: CustomerDetailModalProps) {
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [statusSaving, setStatusSaving] = useState(false);
   const [detail, setDetail] = useState<ModalDetail | null>(null);
@@ -189,7 +191,7 @@ export function CustomerDetailModal({
 
   const shortId = customer.id.slice(0, 8).toUpperCase();
   const displayName = customer.company || customer.name;
-  const statusAction = resolveCustomerStatusAction(customer.status);
+  const statusAction = resolveCustomerStatusAction(customer.status, locale);
 
   const openInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() !== 'PAID');
   const overdueInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() === 'OVERDUE');
@@ -223,10 +225,10 @@ export function CustomerDetailModal({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pr-10">
               <h2 className="text-[15px] font-bold tracking-[-0.02em] text-foreground">
-                Kundenübersicht
+                {t('customers.modal.overview')}
               </h2>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Operatives Kurzpanel — Status, Verifikation & Kennzahlen
+                {t('customers.modal.shortPanel')}
               </p>
             </div>
             <Button
@@ -235,7 +237,7 @@ export function CustomerDetailModal({
               size="icon"
               className="absolute top-2.5 right-2.5 size-8"
               onClick={onClose}
-              aria-label="Schließen"
+              aria-label={t('customers.modal.closeAria')}
             >
               <X className="size-4" />
             </Button>
@@ -250,20 +252,20 @@ export function CustomerDetailModal({
                 disabled={statusSaving}
                 onClick={() => changeStatus(statusAction.nextStatus)}
               >
-                {statusSaving ? 'Speichert…' : statusAction.label}
+                {statusSaving ? t('customers.modal.saving') : statusAction.label}
               </Button>
             ) : null}
             {customer.phone ? (
               <Button type="button" size="sm" variant="neutral" asChild>
                 <a href={`tel:${customer.phone.replace(/\s/g, '')}`}>
                   <Phone className="size-3.5" />
-                  Kontakt
+                  {t('customers.detail.header.contact')}
                 </a>
               </Button>
             ) : null}
             <Button type="button" size="sm" variant="neutral" onClick={openFullDetail}>
               <ExternalLink className="size-3.5" />
-              Vollansicht
+              {t('customers.modal.fullView')}
             </Button>
           </div>
         </div>
@@ -294,20 +296,20 @@ export function CustomerDetailModal({
                 </p>
                 <div className={`mt-2 ${cdm.badgeRow}`}>
                   <StatusChip tone={customerStatusTone(customer.status)} dot>
-                    {customerStatusUiLabelDe(customer.status)}
+                    {customerStatusUiLabel(customer.status, locale)}
                   </StatusChip>
                   <StatusChip tone={customerRiskTone(customer.riskLevel)} dot>
-                    Risiko: {customerRiskUiLabelDe(customer.riskLevel)}
+                    {t('customers.modal.riskPrefix')} {customerRiskUiLabel(customer.riskLevel, locale)}
                   </StatusChip>
                   <StatusChip tone={customerVerificationTone(idUi)} dot>
-                    Ausweis: {customerVerificationUiLabelDe(idUi)}
+                    {t('customers.modal.idPrefix')} {customerVerificationUiLabel(idUi, locale)}
                   </StatusChip>
                   <StatusChip tone={customerVerificationTone(licenseUi)} dot>
-                    FS: {customerVerificationUiLabelDe(licenseUi)}
+                    {t('customers.modal.licensePrefix')} {customerVerificationUiLabel(licenseUi, locale)}
                   </StatusChip>
                   {eligibility && !eligibilityLoading ? (
                     <StatusChip tone={overallRentalClearanceTone(eligibility)} dot>
-                      Mietfreigabe: {overallRentalClearanceLabel(eligibility)}
+                      {t('customers.detail.header.clearancePrefix')} {overallRentalClearanceLabel(eligibility)}
                     </StatusChip>
                   ) : null}
                 </div>
@@ -325,14 +327,14 @@ export function CustomerDetailModal({
             />
 
             {(eligibilityLoading || eligibilityError || eligibility) && (
-              <DataCard title="Mietfreigabe" bodyClassName="py-3">
+              <DataCard title={t('customers.modal.clearance')} bodyClassName="py-3">
                 {eligibilityLoading ? (
-                  <p className="text-[12px] text-muted-foreground">Wird geladen…</p>
+                  <p className="text-[12px] text-muted-foreground">{t('customers.modal.loading')}</p>
                 ) : eligibilityError ? (
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[12px] text-[color:var(--status-critical)]">{eligibilityError}</p>
                     <Button type="button" size="sm" variant="neutral" onClick={refreshEligibility}>
-                      Erneut laden
+                      {t('customers.modal.reload')}
                     </Button>
                   </div>
                 ) : eligibility ? (
@@ -355,11 +357,15 @@ export function CustomerDetailModal({
             )}
 
             {financeHasIssues ? (
-              <DataCard title="Finanzen" bodyClassName="py-2.5">
+              <DataCard title={t('customers.modal.finances')} bodyClassName="py-2.5">
                 <p className="text-[12px] text-muted-foreground">
-                  {openInvoices.length > 0 ? `${openInvoices.length} offene Rechnungen` : null}
+                  {openInvoices.length > 0
+                    ? t('customers.modal.openInvoicesCount', { count: openInvoices.length })
+                    : null}
                   {openInvoices.length > 0 && overdueInvoices.length > 0 ? ' · ' : null}
-                  {overdueInvoices.length > 0 ? `${overdueInvoices.length} überfällig` : null}
+                  {overdueInvoices.length > 0
+                    ? t('customers.modal.overdueInvoicesCount', { count: overdueInvoices.length })
+                    : null}
                 </p>
                 <Button
                   type="button"
@@ -368,24 +374,24 @@ export function CustomerDetailModal({
                   className="mt-1 h-auto px-0 text-xs"
                   onClick={openFullDetail}
                 >
-                  Details in Vollansicht
+                  {t('customers.modal.openFullView')}
                 </Button>
               </DataCard>
             ) : null}
 
-            <DataCard title="Kontakt" bodyClassName="py-2">
+            <DataCard title={t('customers.modal.contact')} bodyClassName="py-2">
               <CustomerDetailInfoRow
-                label="Telefon"
+                label={t('customers.modal.phone')}
                 value={customer.phone}
                 icon={<Phone />}
               />
               <CustomerDetailInfoRow
-                label="E-Mail"
+                label={t('customers.modal.email')}
                 value={customer.email}
                 icon={<Mail />}
               />
               <CustomerDetailInfoRow
-                label="Ort"
+                label={t('customers.modal.location')}
                 value={detail?.city || customer.city || EM_DASH}
                 icon={<MapPin />}
               />
@@ -395,8 +401,9 @@ export function CustomerDetailModal({
               <div className="surface-premium flex items-start gap-2.5 border-[color:var(--status-critical)]/25 bg-[color:var(--status-critical)]/8 p-3">
                 <span className="mt-0.5 size-2 shrink-0 rounded-full bg-[color:var(--status-critical)]" />
                 <p className="text-[12px] leading-snug text-foreground">
-                  Kunde ist als <span className="font-semibold">hohes Risiko</span> eingestuft — manuelle
-                  Prüfung empfohlen.
+                  {t('customers.modal.customerIs')}{' '}
+                  <span className="font-semibold">{t('customers.modal.highRisk')}</span> —{' '}
+                  {t('customers.modal.highRiskAdvice')}
                 </p>
               </div>
             )}

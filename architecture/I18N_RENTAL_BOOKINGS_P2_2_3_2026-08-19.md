@@ -47,4 +47,4 @@ cd frontend && npx tsc --noEmit
 
 ## Remaining Rental i18n (post P2.2.3)
 
-Customers module (P2.2.3 parallel track), Tasks, Settings, Finance/Billing, Automation — see scanner `Rental by module` breakdown.
+Tasks, Settings, Finance/Billing, Automation — see scanner `Rental by module` breakdown. Customers clean zone completed in parallel (`architecture/I18N_RENTAL_CUSTOMERS_P2_2_3_2026-08-19.md`).

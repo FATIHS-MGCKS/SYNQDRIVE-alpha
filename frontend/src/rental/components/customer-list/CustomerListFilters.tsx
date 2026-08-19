@@ -1,6 +1,11 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Button } from '../../../components/ui/button';
+import {
+  customerRiskUiLabel,
+  customerStatusUiLabel,
+} from '../../lib/entityMappers';
 import { Icon } from '../ui/Icon';
 
 export interface CustomerFilterOption {
@@ -70,28 +75,6 @@ const DropdownFilter = memo(function DropdownFilter({
   );
 });
 
-const STATUS_OPTIONS: CustomerFilterOption[] = [
-  { value: 'all', label: 'Alle Status' },
-  { value: 'Active', label: 'Aktiv' },
-  { value: 'Under Review', label: 'In Prüfung' },
-  { value: 'Suspended', label: 'Suspendiert' },
-  { value: 'Blocked', label: 'Gesperrt' },
-];
-
-const RISK_OPTIONS: CustomerFilterOption[] = [
-  { value: 'all', label: 'Alle Risikostufen' },
-  { value: 'Not Assessed', label: 'Keine Risikobewertung' },
-  { value: 'Low Risk', label: 'Niedrig' },
-  { value: 'Medium Risk', label: 'Mittel' },
-  { value: 'High Risk', label: 'Hoch' },
-];
-
-const TYPE_OPTIONS: CustomerFilterOption[] = [
-  { value: 'all', label: 'Alle Typen' },
-  { value: 'Individual', label: 'Privat' },
-  { value: 'Corporate', label: 'Firma' },
-];
-
 export interface CustomerListFiltersProps {
   searchDraft: string;
   onSearchDraftChange: (value: string) => void;
@@ -135,6 +118,39 @@ export const CustomerListFilters = memo(function CustomerListFilters({
   onClearCardFilter,
   onResetFilters,
 }: CustomerListFiltersProps) {
+  const { t, locale } = useLanguage();
+
+  const statusOptions = useMemo<CustomerFilterOption[]>(
+    () => [
+      { value: 'all', label: t('customers.filter.allStatus') },
+      { value: 'Active', label: customerStatusUiLabel('Active', locale) },
+      { value: 'Under Review', label: customerStatusUiLabel('Under Review', locale) },
+      { value: 'Suspended', label: customerStatusUiLabel('Suspended', locale) },
+      { value: 'Blocked', label: customerStatusUiLabel('Blocked', locale) },
+    ],
+    [t, locale],
+  );
+
+  const riskOptions = useMemo<CustomerFilterOption[]>(
+    () => [
+      { value: 'all', label: t('customers.filter.allRisk') },
+      { value: 'Not Assessed', label: customerRiskUiLabel('Not Assessed', locale) },
+      { value: 'Low Risk', label: customerRiskUiLabel('Low Risk', locale) },
+      { value: 'Medium Risk', label: customerRiskUiLabel('Medium Risk', locale) },
+      { value: 'High Risk', label: customerRiskUiLabel('High Risk', locale) },
+    ],
+    [t, locale],
+  );
+
+  const typeOptions = useMemo<CustomerFilterOption[]>(
+    () => [
+      { value: 'all', label: t('customers.filter.allTypes') },
+      { value: 'Individual', label: t('customers.type.individual') },
+      { value: 'Corporate', label: t('customers.type.corporate') },
+    ],
+    [t],
+  );
+
   const hasActiveFilters =
     statusFilter !== 'all' ||
     riskFilter !== 'all' ||
@@ -145,21 +161,21 @@ export const CustomerListFilters = memo(function CustomerListFilters({
     <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-[12px] font-semibold text-foreground">Filter</h2>
+          <h2 className="text-[12px] font-semibold text-foreground">{t('customers.filter.title')}</h2>
           <p className="text-[11px] text-muted-foreground">
-            {filteredCount} von {totalCount} Kunden
+            {t('customers.filter.count', { filtered: filteredCount, total: totalCount })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {cardFilter !== 'all' ? (
             <Button type="button" size="sm" variant="outline" onClick={onClearCardFilter}>
-              Segment ×
+              {t('customers.filter.segmentClear')}
             </Button>
           ) : null}
           {hasActiveFilters ? (
             <Button type="button" size="sm" variant="ghost" onClick={onResetFilters}>
               <Icon name="x" className="size-3.5" />
-              Zurücksetzen
+              {t('common.reset')}
             </Button>
           ) : null}
         </div>
@@ -173,15 +189,15 @@ export const CustomerListFilters = memo(function CustomerListFilters({
           />
           <input
             type="search"
-            placeholder="Name, E-Mail, Telefon oder Firma…"
+            placeholder={t('customers.filter.searchPlaceholder')}
             value={searchDraft}
             onChange={(e) => onSearchDraftChange(e.target.value)}
-            aria-label="Kunden suchen"
+            aria-label={t('customers.filter.searchAria')}
             className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
           />
         </div>
         <DropdownFilter
-          label="Status"
+          label={t('customers.filter.statusLabel')}
           value={statusFilter}
           isOpen={isStatusOpen}
           onToggle={() => {
@@ -190,10 +206,10 @@ export const CustomerListFilters = memo(function CustomerListFilters({
             onTypeOpenChange(false);
           }}
           onSelect={onStatusFilterChange}
-          options={STATUS_OPTIONS}
+          options={statusOptions}
         />
         <DropdownFilter
-          label="Risiko"
+          label={t('customers.filter.riskLabel')}
           value={riskFilter}
           isOpen={isRiskOpen}
           onToggle={() => {
@@ -202,10 +218,10 @@ export const CustomerListFilters = memo(function CustomerListFilters({
             onTypeOpenChange(false);
           }}
           onSelect={onRiskFilterChange}
-          options={RISK_OPTIONS}
+          options={riskOptions}
         />
         <DropdownFilter
-          label="Typ"
+          label={t('customers.filter.typeLabel')}
           value={typeFilter}
           isOpen={isTypeOpen}
           onToggle={() => {
@@ -214,7 +230,7 @@ export const CustomerListFilters = memo(function CustomerListFilters({
             onRiskOpenChange(false);
           }}
           onSelect={onTypeFilterChange}
-          options={TYPE_OPTIONS}
+          options={typeOptions}
         />
       </div>
     </div>

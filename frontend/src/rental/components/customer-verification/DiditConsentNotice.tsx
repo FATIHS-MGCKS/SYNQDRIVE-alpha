@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { diditConsentText } from '../../lib/customer-verification';
 import { Icon } from '../ui/Icon';
-import { DIDIT_CONSENT_TEXT } from '../../lib/customer-verification';
 
 interface DiditConsentNoticeProps {
   onConfirm: () => void;
@@ -9,6 +10,7 @@ interface DiditConsentNoticeProps {
 }
 
 export function DiditConsentNotice({ onConfirm, onCancel, busy }: DiditConsentNoticeProps) {
+  const { t, locale } = useLanguage();
   const [acknowledged, setAcknowledged] = useState(false);
 
   return (
@@ -18,8 +20,8 @@ export function DiditConsentNotice({ onConfirm, onCancel, busy }: DiditConsentNo
           <Icon name="external-link" className="w-4 h-4" />
         </div>
         <div className="min-w-0">
-          <h4 className="text-xs font-semibold text-foreground">Automatische Dokumentenprüfung</h4>
-          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{DIDIT_CONSENT_TEXT}</p>
+          <h4 className="text-xs font-semibold text-foreground">{t('customers.verification.diditConsentTitle')}</h4>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{diditConsentText(locale)}</p>
         </div>
       </div>
       <label className="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer">
@@ -29,7 +31,7 @@ export function DiditConsentNotice({ onConfirm, onCancel, busy }: DiditConsentNo
           checked={acknowledged}
           onChange={(e) => setAcknowledged(e.target.checked)}
         />
-        <span>Ich habe den Hinweis gelesen und möchte die Prüfung bei Didit starten.</span>
+        <span>{t('customers.verification.diditAcknowledge')}</span>
       </label>
       <div className="flex flex-wrap gap-2">
         <button
@@ -39,14 +41,14 @@ export function DiditConsentNotice({ onConfirm, onCancel, busy }: DiditConsentNo
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[color:var(--brand)] text-white disabled:opacity-50"
         >
           {busy ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="shield" className="w-3.5 h-3.5" />}
-          Weiter zu Didit
+          {t('customers.verification.continueDidit')}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="px-3 py-2 rounded-lg text-xs font-medium border border-border surface-premium"
         >
-          Abbrechen
+          {t('common.cancel')}
         </button>
       </div>
     </div>
