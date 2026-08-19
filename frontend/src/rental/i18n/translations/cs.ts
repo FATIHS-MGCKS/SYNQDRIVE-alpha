@@ -55,4 +55,12 @@ export const cs: Record<TranslationKey, string> = {
   'damages.totalDamages': 'Celkem poskozeni', 'damages.activeDamages': 'Aktivni poskozeni', 'damages.vehicleDamageMap': 'Mapa poskozeni vozidla', 'damages.damageHistory': 'Historie poskozeni',
   'documents.vehicleDocuments': 'Dokumenty vozidla', 'documents.monthlyFixedCosts': 'Mesicni fixni naklady',
   'customerDetail.title': 'Detail zakaznika', 'customerDetail.customerDocuments': 'Dokumenty zakaznika', 'customerDetail.customerAlerts': 'Upozorneni zakaznika', 'customerDetail.customerNotes': 'Poznamky zakaznika', 'customerDetail.drivingScore': 'Skore jizdy',
+  'notification.title.limpModeActive': 'Nouzovy rezim aktivni — {label}',
+  'notification.body.limpModeActive': '{label} je v nouzovem rezimu a neni pripraveno k pronajmu.',
+  'notification.title.engineOilLevelLow': 'Hladina motoroveho oleje kriticky nizka — {label}',
+  'notification.body.engineOilLevelLow': 'Hladina motoroveho oleje vozidla {label} je kriticky nizka.',
+  'notification.title.engineOilLevelHigh': 'Hladina motoroveho oleje vysoka — {label}',
+  'notification.body.engineOilLevelHigh': 'Hladina motoroveho oleje vozidla {label} je vysoka a mela by byt zkontrolovana.',
+  'notification.title.vehicleNotReady': 'Vozidlo neni pripraveno — {label}',
+  'notification.body.vehicleNotReady': '{label} neni aktualne pripraveno k pronajmu. Zkontrolujte upozorneni vozidla.',
 };

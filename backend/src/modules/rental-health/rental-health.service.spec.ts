@@ -1,5 +1,5 @@
 import { RentalHealthService } from './rental-health.service';
-import { computeOverallState } from './rental-health.types';
+import { computeOverallState, deriveRentalReadiness } from './rental-health.types';
 import { BATTERY_V2_READINESS_ENABLED_ENV } from '@config/battery-health-v2.config';
 import { normalizeDtcSeverityBand } from '../vehicle-intelligence/dtc/dtc-severity.util';
 
@@ -976,6 +976,41 @@ describe('RentalHealthService (unit)', () => {
       expect(health.availability).toBe('ready');
       expect(health.rental_blocked).toBe(false);
       expect(health.rental_readiness).toBe('ready');
+    });
+  });
+
+  describe('rental_readiness production contract (P2.3)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockHealthyVehicleModules();
+    });
+
+    it('getVehicleHealth rental_readiness matches deriveRentalReadiness helper', async () => {
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+      expect(health.rental_readiness).toBe(
+        deriveRentalReadiness(health.availability, health.rental_blocked),
+      );
+    });
+
+    it('provider_error path yields unevaluable rental_readiness via same helper', async () => {
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'HIGH_MOBILITY',
+        connectionStatus: 'provider_error',
+        supportStatus: 'supported',
+        freshness: 'error',
+        overallStatus: 'unknown',
+        lastObservedAt: null,
+        message: 'HM raw fetch failed',
+        rentalHealthReady: false,
+        lights: [],
+      });
+
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+      expect(health.rental_readiness).toBe('unevaluable');
+      expect(health.rental_readiness).toBe(
+        deriveRentalReadiness(health.availability, health.rental_blocked),
+      );
     });
   });
 });

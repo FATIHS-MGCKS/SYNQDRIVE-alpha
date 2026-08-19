@@ -55,4 +55,12 @@ export const pl: Record<TranslationKey, string> = {
   'damages.totalDamages': 'Uszkodzenia lacznie', 'damages.activeDamages': 'Aktywne uszkodzenia', 'damages.vehicleDamageMap': 'Mapa uszkodzen pojazdu', 'damages.damageHistory': 'Historia uszkodzen',
   'documents.vehicleDocuments': 'Dokumenty pojazdu', 'documents.monthlyFixedCosts': 'Miesieczne koszty stale',
   'customerDetail.title': 'Szczegoly klienta', 'customerDetail.customerDocuments': 'Dokumenty klienta', 'customerDetail.customerAlerts': 'Alerty klienta', 'customerDetail.customerNotes': 'Notatki klienta', 'customerDetail.drivingScore': 'Wynik jazdy',
+  'notification.title.limpModeActive': 'Tryb awaryjny aktywny — {label}',
+  'notification.body.limpModeActive': '{label} jest w trybie awaryjnym i nie jest gotowy do wynajmu.',
+  'notification.title.engineOilLevelLow': 'Poziom oleju krytycznie niski — {label}',
+  'notification.body.engineOilLevelLow': 'Poziom oleju silnikowego {label} jest krytycznie niski.',
+  'notification.title.engineOilLevelHigh': 'Poziom oleju za wysoki — {label}',
+  'notification.body.engineOilLevelHigh': 'Poziom oleju silnikowego {label} jest za wysoki i wymaga sprawdzenia.',
+  'notification.title.vehicleNotReady': 'Pojazd niegotowy — {label}',
+  'notification.body.vehicleNotReady': '{label} nie jest obecnie gotowy do wynajmu. Sprawdz alerty pojazdu.',
 };

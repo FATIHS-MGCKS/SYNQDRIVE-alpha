@@ -252,6 +252,18 @@ export function resolveRentalBlockedState(
   return blockingReasons.length > 0;
 }
 
+/**
+ * Canonical rental_readiness ternary shared by RentalHealthService and notification
+ * aggregate projection. Keeps availability / rental_blocked semantics in one place.
+ */
+export function deriveRentalReadiness(
+  availability: RentalHealthAvailabilityState,
+  rentalBlocked: boolean | null,
+): NonNullable<VehicleHealth['rental_readiness']> {
+  if (availability !== 'ready' || rentalBlocked === null) return 'unevaluable';
+  return rentalBlocked ? 'not_ready' : 'ready';
+}
+
 export function isRentalBlockedConfirmed(
   rentalBlocked: boolean | null | undefined,
 ): rentalBlocked is true {

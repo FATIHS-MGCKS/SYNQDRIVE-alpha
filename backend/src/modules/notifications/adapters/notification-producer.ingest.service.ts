@@ -10,6 +10,8 @@ import { StationShortageNotificationAdapter } from './station-shortage-notificat
 import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
+import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
+import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
@@ -19,9 +21,21 @@ import {
   legacyServiceOverdueFingerprint,
   serviceComplianceSourceFingerprint,
 } from './service-compliance-notification.projector';
+import {
+  VEHICLE_ALERTS_NOTIFICATION_EVENT_TYPES,
+  vehicleAlertsSourceFingerprint,
+} from './vehicle-alerts-notification.projector';
+import {
+  LEGACY_AGGREGATE_EVENT_TYPES,
+  VEHICLE_READINESS_AGGREGATE_EVENT_TYPE,
+  vehicleReadinessSourceFingerprint,
+  type VehicleReadinessIngestOutcome,
+} from './vehicle-readiness-notification.projector';
 import type {
   VehicleHealthAdapterSource,
   ServiceComplianceAdapterSource,
+  VehicleAlertsNotificationAdapterSource,
+  VehicleReadinessNotificationAdapterSource,
 } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
@@ -52,6 +66,10 @@ const DEFERRABLE_HEALTH_SEVERITIES = new Set<NotificationSeverity>([
 ]);
 
 const SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
+
+const VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE = 500;
+
+const VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE = 500;
 
 const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
   Math.max(
@@ -98,6 +116,8 @@ export class NotificationProducerIngestService {
     private readonly lowUtilizationAdapter: LowUtilizationNotificationAdapter,
     private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
     private readonly serviceComplianceAdapter: ServiceComplianceNotificationAdapter,
+    private readonly vehicleAlertsAdapter: VehicleAlertsNotificationAdapter,
+    private readonly vehicleReadinessAdapter: VehicleReadinessNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
 
@@ -558,6 +578,246 @@ export class NotificationProducerIngestService {
         );
       }
     }
+  }
+
+  /**
+   * Materialize canonical vehicle alert causes (limp, oil low, oil high) as V2 notifications.
+   * Cause-aware only: explicit CLEARED resolves an existing active fingerprint;
+   * healthy CLEARED without a prior OPEN is a no-op (no Core recovery call).
+   * UNEVALUABLE preserves existing lifecycle. No absent-fingerprint sweep.
+   */
+  async syncVehicleAlertsWarnings(
+    organizationId: string,
+    runId: string,
+    sources: VehicleAlertsNotificationAdapterSource[],
+  ): Promise<void> {
+    const activeFingerprints = await this.listAllActiveVehicleAlertFingerprints(organizationId);
+    const sourcesToIngest: VehicleAlertsNotificationAdapterSource[] = [];
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        sourcesToIngest.push(source);
+        continue;
+      }
+      const fingerprint = vehicleAlertsSourceFingerprint(organizationId, source);
+      if (activeFingerprints.has(fingerprint)) {
+        sourcesToIngest.push(source);
+      }
+    }
+
+    await this.ingestVehicleAlertsSources(organizationId, runId, sourcesToIngest);
+  }
+
+  private async listAllActiveVehicleAlertFingerprints(
+    organizationId: string,
+  ): Promise<Set<string>> {
+    const fingerprints = new Set<string>();
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [...VEHICLE_ALERTS_NOTIFICATION_EVENT_TYPES],
+        limit: VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE,
+        offset,
+      });
+      for (const notification of page) {
+        fingerprints.add(notification.fingerprint);
+      }
+      if (page.length < VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE) break;
+      offset += VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE;
+    }
+
+    return fingerprints;
+  }
+
+  async ingestVehicleAlertsSources(
+    organizationId: string,
+    runId: string,
+    sources: VehicleAlertsNotificationAdapterSource[],
+  ): Promise<void> {
+    for (const source of sources) {
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleAlertsAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Vehicle alerts V2 ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Materialize canonical aggregate fleet readiness (VEHICLE_NOT_READY) from RentalHealth.
+   * READY resolves only when an active canonical fingerprint exists (healthy no-op otherwise).
+   * Retires legacy BLOCKED_VEHICLE / MAINTENANCE_REQUIRED per vehicle only when reconciliation
+   * is safe: confirmed READY recovery, or NOT_READY with successful canonical ingest.
+   */
+  async syncVehicleReadinessAggregate(
+    organizationId: string,
+    runId: string,
+    sources: VehicleReadinessNotificationAdapterSource[],
+  ): Promise<void> {
+    const activeFingerprints = await this.listAllActiveVehicleReadinessFingerprints(organizationId);
+    const sourcesToIngest: VehicleReadinessNotificationAdapterSource[] = [];
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        sourcesToIngest.push(source);
+        continue;
+      }
+      const fingerprint = vehicleReadinessSourceFingerprint(organizationId, source);
+      if (activeFingerprints.has(fingerprint)) {
+        sourcesToIngest.push(source);
+      }
+    }
+
+    const ingestOutcomes = await this.ingestVehicleReadinessSources(
+      organizationId,
+      runId,
+      sourcesToIngest,
+    );
+    const vehicleIdsToReconcile = this.buildLegacyReconcileVehicleIds(sources, ingestOutcomes);
+    await this.reconcileLegacyAggregateNotifications(organizationId, vehicleIdsToReconcile);
+  }
+
+  async ingestVehicleReadinessSources(
+    organizationId: string,
+    runId: string,
+    sources: VehicleReadinessNotificationAdapterSource[],
+  ): Promise<VehicleReadinessIngestOutcome[]> {
+    const outcomes: VehicleReadinessIngestOutcome[] = [];
+
+    for (const source of sources) {
+      const fingerprint = vehicleReadinessSourceFingerprint(organizationId, source);
+      const condition = source.cleared ? 'READY' : 'NOT_READY';
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleReadinessAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+        outcomes.push({ vehicleId: source.vehicleId, fingerprint, condition, success: true });
+      } catch (err) {
+        this.logger.warn(
+          `Vehicle readiness aggregate ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
+        );
+        outcomes.push({ vehicleId: source.vehicleId, fingerprint, condition, success: false });
+      }
+    }
+
+    return outcomes;
+  }
+
+  private buildLegacyReconcileVehicleIds(
+    sources: VehicleReadinessNotificationAdapterSource[],
+    ingestOutcomes: VehicleReadinessIngestOutcome[],
+  ): Set<string> {
+    const vehicleIds = new Set<string>();
+
+    for (const source of sources) {
+      if (source.condition === 'READY') {
+        vehicleIds.add(source.vehicleId);
+      }
+    }
+
+    for (const outcome of ingestOutcomes) {
+      if (outcome.condition === 'NOT_READY' && outcome.success) {
+        vehicleIds.add(outcome.vehicleId);
+      }
+    }
+
+    return vehicleIds;
+  }
+
+  vehicleReadinessFingerprint(
+    organizationId: string,
+    source: Pick<VehicleReadinessNotificationAdapterSource, 'vehicleId'>,
+  ): string {
+    return vehicleReadinessSourceFingerprint(organizationId, source);
+  }
+
+  private async listAllActiveVehicleReadinessFingerprints(
+    organizationId: string,
+  ): Promise<Set<string>> {
+    const fingerprints = new Set<string>();
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [VEHICLE_READINESS_AGGREGATE_EVENT_TYPE],
+        limit: VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE,
+        offset,
+      });
+      for (const notification of page) {
+        fingerprints.add(notification.fingerprint);
+      }
+      if (page.length < VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE) break;
+      offset += VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE;
+    }
+
+    return fingerprints;
+  }
+
+  private async reconcileLegacyAggregateNotifications(
+    organizationId: string,
+    vehicleIdsToReconcile: Set<string>,
+  ): Promise<void> {
+    if (vehicleIdsToReconcile.size === 0) return;
+
+    const legacyActives = await this.listAllActiveLegacyAggregateNotifications(organizationId);
+
+    for (const legacy of legacyActives) {
+      if (!vehicleIdsToReconcile.has(legacy.entityId)) continue;
+      try {
+        await this.core.resolveNotificationByFingerprint({
+          organizationId,
+          fingerprint: legacy.fingerprint,
+        });
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Legacy aggregate reconcile failed for ${legacy.entityId}/${legacy.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  private async listAllActiveLegacyAggregateNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [...LEGACY_AGGREGATE_EVENT_TYPES],
+        limit: VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE,
+        offset,
+      });
+      results.push(...page);
+      if (page.length < VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE) break;
+      offset += VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE;
+    }
+
+    return results;
+  }
+
+  vehicleAlertsFingerprint(
+    organizationId: string,
+    source: Pick<VehicleAlertsNotificationAdapterSource, 'eventType' | 'vehicleId'>,
+  ): string {
+    return vehicleAlertsSourceFingerprint(organizationId, source);
   }
 
   serviceComplianceFingerprint(

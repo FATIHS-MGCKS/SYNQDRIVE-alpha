@@ -184,6 +184,9 @@ describe('NotificationEventRegistry', () => {
       'TIRE_CRITICAL',
       'TUV_OVERDUE',
       'VEHICLE_NOT_READY',
+      'LIMP_MODE_ACTIVE',
+      'ENGINE_OIL_LEVEL_LOW',
+      'ENGINE_OIL_LEVEL_HIGH',
     ] as const;
 
     it('assigns a valid attentionScope to every registered event type', () => {
@@ -287,6 +290,26 @@ describe('NotificationEventRegistry', () => {
         attentionScope: 'FLEET_READINESS',
       },
       {
+        eventType: 'LIMP_MODE_ACTIVE',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical: 'org-golden|LIMP_MODE_ACTIVE|VEHICLE|veh-golden-1|limp_mode_active|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'ENGINE_OIL_LEVEL_LOW',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical:
+          'org-golden|ENGINE_OIL_LEVEL_LOW|VEHICLE|veh-golden-1|engine_oil_level_low|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
+        eventType: 'ENGINE_OIL_LEVEL_HIGH',
+        entityId: GOLDEN_VEHICLE_ENTITY_ID,
+        canonical:
+          'org-golden|ENGINE_OIL_LEVEL_HIGH|VEHICLE|veh-golden-1|engine_oil_level_high|v1',
+        attentionScope: 'FLEET_READINESS',
+      },
+      {
         eventType: 'TELEMETRY_OFFLINE',
         entityId: GOLDEN_VEHICLE_ENTITY_ID,
         canonical: 'org-golden|TELEMETRY_OFFLINE|VEHICLE|veh-golden-1|telemetry_offline|v1',
@@ -345,6 +368,16 @@ describe('NotificationEventRegistry', () => {
         templateParams: { label: 'WOB L 7503' },
       });
       expect(candidate).not.toHaveProperty('attentionScope');
+    });
+
+    it('VEHICLE_NOT_READY producerModule reflects OPERATIONS domain taxonomy (fingerprint unchanged)', () => {
+      const def = requireEventTypeDefinition('VEHICLE_NOT_READY');
+      expect(def.producerModule).toBe('operations');
+      expect(def.conditionCode).toBe('vehicle_not_ready');
+      expect(def.fingerprintVersion).toBe(1);
+      expect(buildRegistryFingerprint('org-golden', 'VEHICLE_NOT_READY', 'veh-golden-1').canonical).toBe(
+        'org-golden|VEHICLE_NOT_READY|VEHICLE|veh-golden-1|vehicle_not_ready|v1',
+      );
     });
   });
 });

@@ -55,4 +55,12 @@ export const it: Record<TranslationKey, string> = {
   'damages.totalDamages': 'Totale danni', 'damages.activeDamages': 'Danni attivi', 'damages.vehicleDamageMap': 'Mappa danni veicolo', 'damages.damageHistory': 'Storico danni',
   'documents.vehicleDocuments': 'Documenti veicolo', 'documents.monthlyFixedCosts': 'Costi fissi mensili',
   'customerDetail.title': 'Dettagli cliente', 'customerDetail.customerDocuments': 'Documenti cliente', 'customerDetail.customerAlerts': 'Avvisi cliente', 'customerDetail.customerNotes': 'Note cliente', 'customerDetail.drivingScore': 'Punteggio di guida',
+  'notification.title.limpModeActive': 'Modalita emergenza attiva — {label}',
+  'notification.body.limpModeActive': '{label} e in modalita emergenza e non e pronto per il noleggio.',
+  'notification.title.engineOilLevelLow': 'Livello olio motore critico — {label}',
+  'notification.body.engineOilLevelLow': 'Il livello dell\'olio motore di {label} e criticamente basso.',
+  'notification.title.engineOilLevelHigh': 'Livello olio motore alto — {label}',
+  'notification.body.engineOilLevelHigh': 'Il livello dell\'olio motore di {label} e alto e dovrebbe essere controllato.',
+  'notification.title.vehicleNotReady': 'Veicolo non pronto — {label}',
+  'notification.body.vehicleNotReady': '{label} non e attualmente pronto per il noleggio. Controllare gli avvisi del veicolo.',
 };

@@ -1,8 +1,8 @@
 # Fleet Readiness ↔ Notification V2 Parity Audit
 
-**Date:** 2026-08-18 (updated P2.2A 2026-08-19)  
-**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit; **P2.1** — service/compliance live V2 producers; **P2.2A** — vehicle_alerts canonical source migration (no Notification V2)  
-**Code baseline:** `main` + `cursor/vehicle-alerts-canonical-source-p22a-dcd7`
+**Date:** 2026-08-19 (P2.3 governance hardening)  
+**Scope:** P1.1 attentionScope foundation; **P2.1** service/compliance V2; **P2.2A/B** vehicle_alerts canonical + V2; **P2.3** fleet readiness aggregate (`VEHICLE_NOT_READY`)  
+**Code baseline:** `main` + P2.2B (#1069) + P2.3 (#1070)
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Question | Rating | Rationale |
 |----------|--------|-----------|
-| Can vehicle messages be losslessly extracted from the general Operations notification box today? | **YELLOW** | Registry routing (`attentionScope`) is complete. **P2.1** closes live V2 ingest for TÜV/BOKraft/HM service overdue (`TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE`). Remaining gaps: `vehicle_alerts`, aggregate readiness, unevaluable states, shadow producers. |
+| Can vehicle messages be losslessly extracted from the general Operations notification box today? | **YELLOW** | **P2.1–P2.3** close compliance, vehicle_alerts, and aggregate readiness producers. Remaining P0: **unevaluable / data-availability** aggregate parity (P2.4), shadow producers, pipeline-degraded notifications. |
 
 **Verdict:** **NOT READY FOR PHASE 2** (dashboard UI split). Routing metadata is ready; notification materialization is not yet lossless for fleet readiness.
 
@@ -54,8 +54,8 @@ Vehicle telemetry / health domains / operational state
 
 ## 3. Attention Scope Matrix
 
-**Total registered event types:** 66  
-**FLEET_READINESS:** 23  
+**Total registered event types:** 69  
+**FLEET_READINESS:** 26  
 **OPERATIONS:** 43
 
 Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotificationDefinitionsByAttentionScope(scope)`, `getNotificationAttentionScope(eventType)`.
@@ -65,7 +65,7 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | ACTIVE_DTC | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | Active fault code on vehicle |
 | AUTHORIZATION_REQUIRED | SECURITY | VEHICLE | dimo | FLEET_READINESS | Per-vehicle authorization required for data access |
 | BATTERY_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Battery health affects vehicle readiness |
-| BLOCKED_VEHICLE | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate rental-blocking state |
+| BLOCKED_VEHICLE | OPERATIONS | VEHICLE | operations | FLEET_READINESS | **Legacy only** — no live producer (P2.3) |
 | BOKRAFT_OVERDUE | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | BOKraft overdue blocks rental |
 | BOOKING_CREATED | BOOKINGS | BOOKING | bookings | OPERATIONS | Booking workflow event |
 | BOOKING_UPDATED | BOOKINGS | BOOKING | bookings | OPERATIONS | Booking workflow event |
@@ -105,7 +105,7 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | LEGAL_TECH_STORAGE_OBJECT_MISSING | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
 | LEGAL_TECH_UNMAPPED_DOCUMENT_TYPE | SYSTEM | ORGANIZATION | documents | OPERATIONS | Legal document platform technical issue (org-wide) |
 | LOW_UTILIZATION | OPERATIONS | VEHICLE | business-insights | OPERATIONS | Fleet utilization operations (not readiness) |
-| MAINTENANCE_REQUIRED | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Maintenance blocks deployment readiness |
+| MAINTENANCE_REQUIRED | OPERATIONS | VEHICLE | operations | FLEET_READINESS | **Legacy only** — maintenance grouping is UI taxonomy |
 | MISUSE_DETECTED | DRIVING_ANALYSIS | TRIP | vehicle-intelligence | OPERATIONS | Driving analysis misuse detection |
 | PAYMENT_FAILED | BILLING | INVOICE | billing | OPERATIONS | Billing payment failure |
 | PICKUP_DUE | HANDOVERS | BOOKING | bookings | OPERATIONS | Handover pickup due |
@@ -126,7 +126,7 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | TIRE_CRITICAL | VEHICLE_HEALTH | VEHICLE | business-insights | FLEET_READINESS | Tire safety/readiness |
 | TRIP_ANALYSIS_COMPLETED | DRIVING_ANALYSIS | TRIP | vehicle-intelligence | OPERATIONS | Driving analysis trip event |
 | TUV_OVERDUE | VEHICLE_HEALTH | VEHICLE | vehicle-intelligence | FLEET_READINESS | TÜV overdue blocks rental |
-| VEHICLE_NOT_READY | OPERATIONS | VEHICLE | operations | FLEET_READINESS | Aggregate vehicle readiness-not-ready state |
+| VEHICLE_NOT_READY | OPERATIONS | VEHICLE | operations | FLEET_READINESS | **Live canonical aggregate** from `rental_readiness` (P2.3) |
 | WEBHOOK_FAILURE | SYSTEM | ORGANIZATION | webhooks | OPERATIONS | Org-wide webhook failure |
 
 **Explicit boundary cases (verified in tests):**
@@ -157,11 +157,11 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | **service_compliance** | HM no tracking | evaluability | HM_SERVICE_NO_TRACKING | resolve-only in V2 | **Resolve only** | Yes | **Yes** | Never ingested open in V2 |
 | **complaints** | blocksRental=true | blocks rental | TECHNICAL_OBSERVATION_ACTIVE | `TechnicalObservationsService` | Shadow only | Yes | **Yes (P1)** | Shadow gate limits production visibility |
 | **complaints** | critical urgency, no block | no block | TECHNICAL_OBSERVATION_ACTIVE | shadow | Shadow | Yes | Medium | Semantic split |
-| **vehicle_alerts** | limp mode | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | **P2.2A:** canonical source `DashboardWarningLights`; RH projection wired; Notification V2 **P2.2B** |
-| **vehicle_alerts** | oil minimum | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Same — source parity closed in P2.2A |
-| **vehicle_alerts** | oil high warning | no block | — | — | No | — | Low | P2.2A: warning module, no hard block |
+| **vehicle_alerts** | limp mode | blocks rental | `LIMP_MODE_ACTIVE` | `VehicleAlertsNotificationAdapter` | **Yes** | Yes | **No P0** | **P2.2B:** V2 wired; explicit clear resolution; UNEVALUABLE ≠ CLEARED |
+| **vehicle_alerts** | oil minimum | blocks rental | `ENGINE_OIL_LEVEL_LOW` | `VehicleAlertsNotificationAdapter` | **Yes** | Yes | **No P0** | **P2.2B:** V2 wired; separate fingerprint from HIGH |
+| **vehicle_alerts** | oil high warning | no block | `ENGINE_OIL_LEVEL_HIGH` | `VehicleAlertsNotificationAdapter` | **Yes** | Yes | Low | **P2.2B:** WARNING; no hard block; explicit clear |
 | **overall_state** | warning/critical transition | indirect | vehicle.health.* workflow | `VehicleHealthWorkflowEmitter` | Workflow only | N/A | **Yes** | Not a V2 notification |
-| **rental_blocked** | true (any cause) | aggregate | BLOCKED_VEHICLE / VEHICLE_NOT_READY | — | **Unwired** | — | **Yes (P0)** | Aggregate readiness not materialized |
+| **rental_blocked** | true (any cause) | aggregate | `VEHICLE_NOT_READY` | `VehicleReadinessNotificationAdapter` | **Yes** | Yes | **No P0** | **P2.3:** ONE canonical aggregate from `rental_readiness=not_ready`; no `BLOCKED_VEHICLE` |
 | **availability** | partial/unavailable | `rental_readiness=unevaluable` | CONNECTIVITY_STATE_UNKNOWN? | partial (connectivity only) | Partial | Partial | **Yes** | Health pipeline failure under-notified |
 | **vehicle_damage** | OPEN + BLOCK_RENTAL | blocks rental | — | — | No | — | **Yes** | Outside health modules |
 
@@ -173,14 +173,14 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 
 | Pattern | Cause notification(s) | Aggregate notification(s) | UI treatment (future) |
 |---------|----------------------|---------------------------|----------------------|
-| Tire issue + not ready | `TIRE_CRITICAL` | `VEHICLE_NOT_READY`, `BLOCKED_VEHICLE` | Child cause vs parent readiness status |
-| Service overdue + maintenance | `SERVICE_OVERDUE`, `TUV_OVERDUE` | `MAINTENANCE_REQUIRED`, `VEHICLE_NOT_READY` | Compliance cause vs ops aggregate |
-| DTC + blocked | `ACTIVE_DTC:{code}` | `BLOCKED_VEHICLE` | Per-code fault vs rental gate |
+| Tire issue + not ready | `TIRE_CRITICAL` | `VEHICLE_NOT_READY` | Child cause vs parent readiness status |
+| Service overdue + maintenance | `SERVICE_OVERDUE`, `TUV_OVERDUE` | `VEHICLE_NOT_READY` (causes remain separate) | Compliance cause vs aggregate; maintenance grouping is UI taxonomy |
+| DTC + blocked | `ACTIVE_DTC:{code}` | `VEHICLE_NOT_READY` | Per-code fault vs rental gate |
 | Battery + not ready | `BATTERY_CRITICAL` | `VEHICLE_NOT_READY` | Module cause vs aggregate |
-| Technical observation + blocked | `TECHNICAL_OBSERVATION_ACTIVE:{id}` | `BLOCKED_VEHICLE` | Observation vs gate |
-| Connectivity + unevaluable | `TELEMETRY_OFFLINE`, `DATA_COVERAGE_INSUFFICIENT` | `rental_readiness=unevaluable` (health only today) | Data gap vs readiness null state |
+| Technical observation + blocked | `TECHNICAL_OBSERVATION_ACTIVE:{id}` | `VEHICLE_NOT_READY` | Observation vs gate |
+| Connectivity + unevaluable | `TELEMETRY_OFFLINE`, `DATA_COVERAGE_INSUFFICIENT` | `rental_readiness=unevaluable` (health only; P2.4 aggregate TBD) | Data gap vs readiness null state |
 
-**Rule:** Cause notifications retain specific `conditionCode` variants; aggregates use stable single fingerprints per vehicle.
+**Rule:** Cause notifications retain specific `conditionCode` variants; **one** aggregate fingerprint per vehicle (`VEHICLE_NOT_READY`). `BLOCKED_VEHICLE` and `MAINTENANCE_REQUIRED` are legacy/compatibility only — no live producer in P2.3.
 
 ---
 
@@ -189,8 +189,8 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 | Priority | Gap | Detail |
 |----------|-----|--------|
 | ~~**P0**~~ | ~~Compliance notifications not live-ingested~~ | **Closed in P2.1** — `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE` via `ServiceComplianceNotificationAdapter` |
-| **P0** | `vehicle_alerts` (limp/oil) | Blocks rental in health; no registry event or producer |
-| **P0** | `BLOCKED_VEHICLE` / `VEHICLE_NOT_READY` | Registered, no producer wired to `rental_blocked` transitions |
+| ~~**P0**~~ | ~~`vehicle_alerts` (limp/oil)~~ | **Closed in P2.2B** |
+| ~~**P0**~~ | ~~`BLOCKED_VEHICLE` / `VEHICLE_NOT_READY`~~ | **Closed in P2.3** — `VEHICLE_NOT_READY` live; `BLOCKED_VEHICLE` legacy-only |
 | **P1** | `TECHNICAL_OBSERVATION_ACTIVE` | Shadow-only (`shadowModeEnabled: true`) |
 | **P1** | `STATION_SHORTAGE` | Shadow-only (correctly OPERATIONS) |
 | **P1** | `DRIVING_ASSESSMENT_DEVICE_QUALITY` | Shadow-only (correctly OPERATIONS) |
@@ -203,6 +203,8 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 **Live V2 producers today (fleet-relevant):**
 - `VehicleHealthNotificationAdapter` — ACTIVE_DTC, BATTERY_CRITICAL, TIRE_CRITICAL, BRAKE_CRITICAL (full)
 - `ServiceComplianceNotificationAdapter` — TUV_OVERDUE, BOKRAFT_OVERDUE, SERVICE_OVERDUE (full, P2.1)
+- `VehicleAlertsNotificationAdapter` — LIMP_MODE_ACTIVE, ENGINE_OIL_LEVEL_LOW/HIGH (full, P2.2B)
+- `VehicleReadinessNotificationAdapter` — VEHICLE_NOT_READY aggregate (full, P2.3)
 - `ConnectivityAlertService` — 9 vehicle connectivity types (full)
 - `TechnicalObservationNotificationAdapter` — TECHNICAL_OBSERVATION_ACTIVE (shadow)
 
@@ -213,7 +215,7 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 | Scenario | Risk | Detail |
 |----------|------|--------|
 | Health recovers, notification stale | Medium | Fleet sweep + 6h grace on health notifications; realtime ingest without sweep may leave stale OPEN |
-| `rental_blocked` clears | High | No aggregate producer → no auto-resolve for BLOCKED_VEHICLE/VEHICLE_NOT_READY |
+| `rental_blocked` clears | ~~High~~ **Mitigated (P2.3)** | `VEHICLE_NOT_READY` live producer resolves on `rental_readiness=ready`; legacy `BLOCKED_VEHICLE` rows reconciled vehicle-scoped |
 | Compliance resolved | ~~High~~ **Mitigated (P2.1)** | Live V2 ingest + fleet sweep resolve for TUV/BOKraft/SERVICE; DashboardInsight legacy path coexists |
 | Shadow producers | Medium | TECHNICAL_OBSERVATION_ACTIVE may not appear in production inbox depending on flags |
 | HM_SERVICE_NO_TRACKING | Low | Active resolve without corresponding open notification |
@@ -238,11 +240,11 @@ Multiple notifications for the same vehicle are **intentional** — different fi
 
 ### P0 — Correctness (before UI split)
 
-1. ~~Wire compliance producers: `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `SERVICE_OVERDUE`~~ — **Done (P2.1)**
-2. Register + produce notifications for `vehicle_alerts` (limp mode, oil minimum) OR map to existing types with explicit condition codes.
-3. Wire `BLOCKED_VEHICLE` / `VEHICLE_NOT_READY` producers from `rental_blocked` / `rental_readiness` transitions (aggregate only — do not replace cause notifications).
-4. Add pipeline-degraded notification path for `availability !== ready` (or ensure connectivity types cover all cases).
-5. ~~Fix `insight-candidate.mapper` `SERVICE_OVERDUE` conditionCode mismatch~~ — **Done (P2.1)**; monitor legacy `overdue` fingerprints from prior backfill
+1. ~~Wire compliance producers~~ — **Done (P2.1)**
+2. ~~Vehicle alerts notifications (limp/oil)~~ — **Done (P2.2B)**
+3. ~~Aggregate readiness producer~~ — **Done (P2.3)** — `VEHICLE_NOT_READY` only; `BLOCKED_VEHICLE`/`MAINTENANCE_REQUIRED` legacy-only
+4. Add pipeline-degraded / unevaluable aggregate notification path for `availability !== ready` (**P2.4**)
+5. ~~Fix `insight-candidate.mapper` SERVICE_OVERDUE conditionCode~~ — **Done (P2.1)**
 
 ### P1 — Producer parity
 
@@ -268,7 +270,7 @@ All must be machine/test verifiable before splitting Operations + Fleet Readines
 | # | Gate | Verification |
 |---|------|--------------|
 | 1 | Every `FLEET_READINESS` event type with rental-blocking semantics has a live (non-shadow) V2 producer | Integration test per event type |
-| 2 | `rental_blocked: true` emits `BLOCKED_VEHICLE` or `VEHICLE_NOT_READY`; clears resolve them | E2E health → notification test |
+| 2 | `rental_readiness=not_ready` emits `VEHICLE_NOT_READY`; `ready` resolves it | `vehicle-readiness-notification.spec.ts` lifecycle tests |
 | 3 | All `service_compliance` blockers emit TUV/BOKraft/SERVICE notifications | Parity test vs `blocking_reasons` |
 | 4 | `vehicle_alerts` blockers emit notifications | New producer tests |
 | 5 | `attentionScope` lookup drives API filter — no hardcoded event lists in controller/frontend | Lint/grep gate |
@@ -288,7 +290,7 @@ All must be machine/test verifiable before splitting Operations + Fleet Readines
 | `vehicle-intelligence` | ACTIVE_DTC | Live (DTC processor) |
 | `vehicle-complaints` | TECHNICAL_OBSERVATION_ACTIVE | Shadow |
 | `dimo` | Connectivity types | Live |
-| `operations` | BLOCKED_VEHICLE, VEHICLE_NOT_READY, MAINTENANCE_REQUIRED | Unwired |
+| `operations` | `BLOCKED_VEHICLE`, `MAINTENANCE_REQUIRED` (legacy only), `VEHICLE_NOT_READY` (live P2.3) | Legacy reconcile + live aggregate |
 | `rental-health` | Workflow events only | Not V2 |
 
 ---
@@ -375,7 +377,7 @@ Severity: overdue sources always `critical` → CRITICAL.
 ### Remaining risks / tech debt
 
 - Duplicate `evaluateCompliance` per vehicle (inside `getVehicleHealth` + sync) — performance follow-up
-- Other P0 gaps unchanged (`vehicle_alerts` notification producer, aggregates, unevaluable)
+- Other P0 gaps: **unevaluable aggregate (P2.4)**, pipeline-degraded notifications
 
 ### P2.2A — Vehicle alerts canonical source (2026-08-19)
 
@@ -383,8 +385,8 @@ Severity: overdue sources always `critical` → CRITICAL.
 |-------|--------|
 | Canonical detailed source | `DashboardWarningLightsService` / telltale read model |
 | Rental Health projection | **wired** — `projectVehicleAlertsToRentalHealth()` |
-| Notification V2 | **still missing** — P2.2B |
-| Registry count | **66 / 23 / 43** — unchanged |
+| Notification V2 | **Done (P2.2B)** — `VehicleAlertsNotificationAdapter` |
+| Registry count | **69 / 26 / 43** (+3 from P2.2B) |
 
 **Tests:** `vehicle-alerts-rental-health.projector.spec.ts`, `vehicle-alerts-rental-health-blocking-parity.spec.ts`, `dashboard-warning-lights.*`, `rental-health.service.spec.ts`
 
@@ -406,7 +408,39 @@ Severity: overdue sources always `critical` → CRITICAL.
 2. `vehicles-security-negative.spec.ts:367,533,569` — ctor arity mismatch (pre-existing)
 3. `vehicles.controller.status-patch.spec.ts:25` — `undefined` vs `VehiclesOperationalService` (pre-existing; sole failing vehicle-detail suite)
 
-**Verdict:** **P2.2A: READY FOR MERGE.** **P2.2B: READY TO START AFTER MERGE.** **Overall: YELLOW / NOT READY FOR UI CUTOVER** (notification producer + aggregate gaps remain).
+**Verdict:** **P2.2B: merged on branch / pending main (#1069).** **P2.3:** see below. **Overall: YELLOW / NOT READY FOR UI CUTOVER** (unevaluable aggregate parity remains — P2.4).
+
+### P2.3 — Fleet Readiness Aggregate Notification (2026-08-19)
+
+| Layer | Status |
+|-------|--------|
+| Canonical source | `VehicleHealth.rental_readiness` (from existing `getVehicleHealth` snapshot — no second evaluation) |
+| Aggregate projector | `projectVehicleReadinessAggregate()` — NOT_READY / READY / UNEVALUABLE |
+| Adapter / sync | `VehicleReadinessNotificationAdapter` + `syncVehicleReadinessAggregate()` |
+| Registry delta | **unchanged** (69/26/43 — no new event types) |
+| Legacy | `BLOCKED_VEHICLE`, `MAINTENANCE_REQUIRED` — compatibility only; **vehicle-scoped** paginated reconcile when safe |
+| Lifecycle | READY no-op without active fingerprint; UNEVALUABLE preserves OPEN; ingest-failure preserves legacy |
+
+**Architecture:** ONE aggregate (`VEHICLE_NOT_READY`). Causes answer why; aggregate answers whether vehicle is rentable.
+
+**Verdict:** **P2.3: NOT READY FOR MERGE until PR base = `main` (#1069 merged).** Aggregate scope complete with fail-safe legacy reconcile. **Overall: YELLOW / NOT READY FOR UI CUTOVER** (P2.4 unevaluable aggregate + UI cutover remain).
+
+### P2.2B — Vehicle alerts Notification V2 (2026-08-19)
+
+| Layer | Status |
+|-------|--------|
+| Canonical source | `DashboardWarningLightsService` (unchanged from P2.2A) |
+| Notification projector | `projectVehicleAlertNotifications()` — ACTIVE/CLEARED/UNEVALUABLE |
+| Adapter / sync | `VehicleAlertsNotificationAdapter` + `syncVehicleAlertsWarnings()` via `VehicleHealthNotificationSyncService` |
+| Registry delta | **66/23/43 → 69/26/43** (+3 FLEET_READINESS) |
+| Reconciliation | Cause-aware only — **no absent-fingerprint sweep**; stale/provider_error preserve OPEN |
+| Failure isolation | Vehicle alerts projection isolated from DTC/compliance/rental-health/tire/brake; sync stages attempted independently |
+| Healthy CLEARED | Active-fingerprint pre-check — CLEARED without OPEN row is no-op (no false recovery failures) |
+| i18n | All 8 rental locales (`en`–`cs`) with native title/body keys |
+
+**Lifecycle rule:** UNEVALUABLE does not equal CLEARED. Stale/provider_error/not_connected do not resolve existing cause notifications.
+
+**Verdict:** **P2.2B: READY FOR MERGE** (notification scope). **Overall: YELLOW / NOT READY FOR UI CUTOVER**.
 
 ### P2.1 final verdict
 

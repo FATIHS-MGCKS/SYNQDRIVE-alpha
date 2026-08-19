@@ -56,4 +56,12 @@ export const nl: Record<TranslationKey, string> = {
   'damages.totalDamages': 'Totaal schades', 'damages.activeDamages': 'Actieve schades', 'damages.vehicleDamageMap': 'Voertuig schadekaart', 'damages.damageHistory': 'Schadegeschiedenis',
   'documents.vehicleDocuments': 'Voertuigdocumenten', 'documents.monthlyFixedCosts': 'Maandelijkse vaste kosten',
   'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities', 'customerDetail.drivingScore': 'Rijscore',
+  'notification.title.limpModeActive': 'Noodloop actief — {label}',
+  'notification.body.limpModeActive': '{label} staat in noodloop en is niet verhuurklaar.',
+  'notification.title.engineOilLevelLow': 'Motorolie kritiek laag — {label}',
+  'notification.body.engineOilLevelLow': 'Het motorolieniveau van {label} is kritiek laag.',
+  'notification.title.engineOilLevelHigh': 'Motorolieniveau te hoog — {label}',
+  'notification.body.engineOilLevelHigh': 'Het motorolieniveau van {label} is te hoog en moet worden gecontroleerd.',
+  'notification.title.vehicleNotReady': 'Voertuig niet verhuurklaar — {label}',
+  'notification.body.vehicleNotReady': '{label} is momenteel niet verhuurklaar. Controleer de voertuigmeldingen.',
 };
