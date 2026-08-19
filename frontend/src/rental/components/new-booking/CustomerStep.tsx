@@ -15,6 +15,7 @@ import { formatStressScore, stressToneToStatusTone } from '../../lib/scoreFormat
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
 import type { CustomerStepProps } from './types';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export function CustomerStep({
   orgId,
@@ -51,17 +52,18 @@ export function CustomerStep({
   onSubmitNewCustomer,
   isSavingCustomer,
 }: CustomerStepProps) {
+  const { t } = useLanguage();
   return (
     <>
       <BookingStepCard>
         <div className="p-4 flex flex-col min-h-[calc(100vh-340px)]">
-          <SectionHeader title="Kunde auswählen" className="mb-3" />
+          <SectionHeader title={t('bookings.wizard.selectCustomer')} className="mb-3" />
           {/* Search */}
           <div className="relative mb-3">
             <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Name, E-Mail oder Telefonnummer suchen..."
+              placeholder={t('bookings.wizard.searchCustomer')}
               value={customerSearch}
               onChange={(e) => onCustomerSearchChange(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border text-xs outline-none transition-all ${ 'bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]' }`}
@@ -82,7 +84,7 @@ export function CustomerStep({
               <EmptyState
                 compact
                 icon={<Icon name="users" className="w-5 h-5" />}
-                title="Keine Kunden gefunden"
+                title={t('bookings.wizard.noCustomers')}
                 description="Lege einen neuen Kunden an."
               />
             )}
@@ -131,7 +133,7 @@ export function CustomerStep({
                 <button
                   onClick={(e) => { e.stopPropagation(); onOpenCustomerDetail(c); }}
                   className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all opacity-0 group-hover/card:opacity-100 ${ 'hover:bg-muted text-muted-foreground hover:text-foreground' }`}
-                  title="Kundendetails anzeigen"
+                  title={t('bookings.wizard.showCustomerDetails')}
                 >
                   <Icon name="eye" className="w-5 h-5" />
                 </button>
@@ -183,7 +185,7 @@ export function CustomerStep({
             onClick={onOpenAddCustomer}
             className={`w-full mt-4 p-3 rounded-lg border-2 border-dashed text-xs flex items-center justify-center gap-2 transition-all ${ 'border-border text-muted-foreground hover:border-[color:var(--brand)] hover:text-[color:var(--brand)]' }`}>
             <Icon name="plus" className="w-5 h-5" />
-            Neuen Kunden anlegen
+            {t('bookings.wizard.createNewCustomer')}
           </button>
 
           {/* Customer Detail Modal */}
@@ -235,8 +237,8 @@ export function CustomerStep({
               {/* Header */}
               <div className="flex items-center justify-between px-7 py-3 border-b shrink-0 border-border">
                 <div>
-                  <h2 className="text-lg text-foreground">Neuen Kunden anlegen</h2>
-                  <p className="text-xs mt-0.5 text-muted-foreground">Alle Pflichtfelder ausfüllen & Dokumente hochladen</p>
+                  <h2 className="text-lg text-foreground">{t('bookings.wizard.createNewCustomer')}</h2>
+                  <p className="text-xs mt-0.5 text-muted-foreground">{t('bookings.wizard.completeRequiredFields')}</p>
                 </div>
                 <button onClick={onCloseAddCustomer}
                   className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${ 'hover:bg-muted text-muted-foreground' }`}>

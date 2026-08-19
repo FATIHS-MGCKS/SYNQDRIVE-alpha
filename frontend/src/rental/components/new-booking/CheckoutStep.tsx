@@ -297,20 +297,20 @@ export function CheckoutStep({
           <h2 className="mb-3 text-lg text-muted-foreground">{t('newBooking.confirmations.title')}</h2>
           {wizardEligibilityPreview?.status === 'MANUAL_APPROVAL_REQUIRED' && (
             <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-              <p className="text-xs font-medium text-foreground">Manuelle Freigabe erforderlich</p>
+              <p className="text-xs font-medium text-foreground">{t('bookings.wizard.manualApprovalRequired')}</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Die finale Buchungsfreigabe erfolgt serverseitig beim Abschluss. Bei Ausnahmen bitte eine Begründung hinterlegen.
+                {t('bookings.wizard.manualApprovalHint')}
               </p>
               {canOverrideEligibility ? (
                 <textarea
                   value={eligibilityOverrideReason}
                   onChange={(e) => onEligibilityOverrideReasonChange?.(e.target.value)}
-                  placeholder="Begründung für manuelle Freigabe"
+                  placeholder={t('bookings.wizard.overridePlaceholder')}
                   className="w-full min-h-[72px] rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground"
                 />
               ) : (
                 <p className="text-xs text-[color:var(--status-watch)]">
-                  Keine Berechtigung für Eligibility-Ausnahmen — die Buchung kann nur als offene Anfrage gespeichert werden, sofern erlaubt.
+                  {t('bookings.wizard.noOverridePermission')}
                 </p>
               )}
             </div>

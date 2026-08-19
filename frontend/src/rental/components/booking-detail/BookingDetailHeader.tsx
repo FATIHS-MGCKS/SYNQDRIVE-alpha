@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { SupportContextButton } from '../../../components/support/SupportContextButton';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingDetailDto } from '../../../lib/api';
 import {
   BookingStatusBadge,
@@ -37,6 +38,7 @@ export function BookingDetailHeader({
   onNoShow,
   sticky = true,
 }: BookingDetailHeaderProps) {
+  const { t } = useLanguage();
   const uiStatus = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   const primaryDisabled = primary.key === 'none';
   const primaryReason =
@@ -49,6 +51,7 @@ export function BookingDetailHeader({
           : primary.key === 'edit'
             ? matrix.edit.reason
             : undefined;
+  const primaryDisabledTitle = primaryDisabled ? primaryReason : undefined;
 
   return (
     <div
@@ -60,7 +63,7 @@ export function BookingDetailHeader({
             type="button"
             onClick={onBack}
             className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
-            aria-label="Zurück"
+            aria-label={t('bookings.detail.backAria')}
           >
             <Icon name="arrow-left" className="w-5 h-5" />
           </button>
@@ -107,7 +110,7 @@ export function BookingDetailHeader({
           <button
             type="button"
             disabled={primaryDisabled}
-            title={primaryDisabled ? primaryReason : undefined}
+            title={primaryDisabledTitle}
             onClick={onPrimaryAction}
             className={`sq-press px-4 py-2 rounded-lg text-xs font-semibold ${
               primaryDisabled
@@ -163,11 +166,12 @@ function MenuItem({
   reason?: string;
   onClick?: () => void;
 }) {
+  const disabledTitle = disabled ? reason : undefined;
   return (
     <button
       type="button"
       disabled={disabled || !onClick}
-      title={disabled ? reason : undefined}
+      title={disabledTitle}
       onClick={onClick}
       className={`w-full text-left px-3 py-2 text-xs ${
         disabled ? 'text-muted-foreground opacity-50 cursor-not-allowed' : 'hover:bg-muted text-foreground'

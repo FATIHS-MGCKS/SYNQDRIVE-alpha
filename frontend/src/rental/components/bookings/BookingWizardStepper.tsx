@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Calendar, Car, Check, CreditCard, Star, User } from 'lucide-react';
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export const BOOKING_WIZARD_STEPS = [
   { id: 1, label: 'Fahrzeug', icon: Car },
@@ -28,6 +29,7 @@ export function BookingWizardStepper({
   onStepSelect,
   className,
 }: BookingWizardStepperProps) {
+  const { t } = useLanguage();
   const totalSteps = BOOKING_WIZARD_STEPS.length;
   const activeStep = BOOKING_WIZARD_STEPS.find((s) => s.id === currentStep) ?? BOOKING_WIZARD_STEPS[0];
   const progressPercent = Math.min(100, Math.max(0, (currentStep / totalSteps) * 100));
@@ -54,7 +56,7 @@ export function BookingWizardStepper({
           aria-valuemin={1}
           aria-valuemax={totalSteps}
           aria-valuenow={currentStep}
-          aria-label={`Buchungsfortschritt: Schritt ${currentStep} von ${totalSteps}`}
+          aria-label={t('bookings.wizard.progressAria', { current: currentStep, total: totalSteps })}
         >
           <div
             className="h-full rounded-full bg-[color:var(--brand)] transition-[width] duration-300 ease-out"

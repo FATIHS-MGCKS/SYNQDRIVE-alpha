@@ -2,6 +2,7 @@ import type { BookingDetailDto } from '../../../lib/api';
 import { BookingDocumentsSection } from '../BookingDocumentsSection';
 import { BookingPaymentCard } from '../booking-payment/BookingPaymentCard';
 import { DocumentIntakeLaunchAiButton } from '../documents/DocumentIntakeLaunchButton';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { EM_DASH, formatCurrencyCents, parseBookingExtras, paymentStatusLabel, depositStatusLabel } from './bookingDetailUtils';
 
 import { bd } from './booking-detail-ui';
@@ -21,6 +22,7 @@ export function BookingFinanceDocumentsTab({
   onRefresh,
   onRecordManualPayment,
 }: BookingFinanceDocumentsTabProps) {
+  const { t } = useLanguage();
   const f = detail.finance;
   const extras = parseBookingExtras(detail.core.extras);
   const currency = detail.core.currency || 'EUR';
@@ -30,9 +32,9 @@ export function BookingFinanceDocumentsTab({
       <div className={bd.card}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-xs font-bold">Dokumente per KI-Upload</h3>
+            <h3 className="text-xs font-bold">{t('bookings.detail.aiUploadTitle')}</h3>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Kanonischer Document-Intake-Flow mit Buchungskontext (noch nicht bestätigt).
+              {t('bookings.detail.aiUploadDescription')}
             </p>
           </div>
           <DocumentIntakeLaunchAiButton
@@ -60,9 +62,9 @@ export function BookingFinanceDocumentsTab({
       />
 
       <div className={bd.card}>
-        <h3 className="text-xs font-bold mb-4">Rechnungsübersicht</h3>
+        <h3 className="text-xs font-bold mb-4">{t('bookings.detail.invoiceOverview')}</h3>
         {!f.computed ? (
-          <p className="text-sm text-muted-foreground">Noch nicht berechnet — keine verlässlichen Beträge vorhanden.</p>
+          <p className="text-sm text-muted-foreground">{t('bookings.detail.notCalculated')}</p>
         ) : (
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-2 text-xs">
             <FinRow label="Mietpreis" value={formatCurrencyCents(f.basePriceCents, currency)} />
@@ -87,7 +89,7 @@ export function BookingFinanceDocumentsTab({
       <div className={bd.card}>
         <h3 className="text-xs font-bold mb-3">Extras</h3>
         {extras.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Keine strukturierten Extras hinterlegt.</p>
+          <p className="text-xs text-muted-foreground">{t('bookings.detail.noStructuredExtras')}</p>
         ) : (
           <div className="space-y-2 sm:hidden">
             {extras.map((ex, i) => (

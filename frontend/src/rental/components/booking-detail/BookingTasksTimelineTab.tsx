@@ -1,6 +1,7 @@
 import { api } from '../../../lib/api';
 import { EntityTasksSection } from '../EntityTasksSection';
 import type { BookingDetailDto } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatDateTime, EM_DASH } from './bookingDetailUtils';
 import { bd } from './booking-detail-ui';
 
@@ -11,6 +12,7 @@ interface BookingTasksTimelineTabProps {
 }
 
 export function BookingTasksTimelineTab({ orgId, detail, isDarkMode }: BookingTasksTimelineTabProps) {
+  const { t } = useLanguage();
   const bookingId = detail.core.bookingId;
 
   return (
@@ -23,7 +25,7 @@ export function BookingTasksTimelineTab({ orgId, detail, isDarkMode }: BookingTa
 
       <EntityTasksSection
         isDark={isDarkMode}
-        title="Aufgaben zur Buchung"
+        title={t('bookings.detail.tasksTitle')}
         emptyHint="Keine Aufgaben mit dieser Buchung verknüpft."
         fetchTasks={() => api.tasks.forBooking(orgId, bookingId)}
         deps={[orgId, bookingId]}
@@ -32,7 +34,7 @@ export function BookingTasksTimelineTab({ orgId, detail, isDarkMode }: BookingTa
       <div className={bd.card}>
         <h3 className="text-xs font-bold mb-3">Verlauf</h3>
         {detail.activity.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Keine Audit-Einträge für diese Buchung.</p>
+          <p className="text-xs text-muted-foreground">{t('bookings.detail.noAuditEntries')}</p>
         ) : (
           <ul className="space-y-3">
             {detail.activity.map((ev) => (

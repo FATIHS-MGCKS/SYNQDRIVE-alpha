@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { EmptyState, StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingRow } from './customerDetailTypes';
 import {
   bookingStatusLabelDe,
@@ -9,6 +10,7 @@ import {
   formatDate,
 } from './customerDetailUtils';
 import { bookingStatusTone } from './customerOverviewTabUtils';
+import { bookingsFormattingLocaleOrDefault } from '../bookings-customers/bookings-i18n';
 
 interface CustomerBookingsTabProps {
   bookings: BookingRow[];
@@ -23,11 +25,14 @@ export function CustomerBookingsTab({
   totalKmDriven,
   onOpenBooking,
 }: CustomerBookingsTabProps) {
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
+
   if (bookings.length === 0) {
     return (
       <EmptyState
         icon={<Icon name="calendar" className="w-6 h-6" />}
-        title="Noch keine Buchungen für diesen Kunden"
+        title={t('bookings.customerTab.emptyTitle')}
         description="Legen Sie eine neue Buchung an, um die Historie hier zu sehen."
       />
     );
@@ -37,13 +42,15 @@ export function CustomerBookingsTab({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-border surface-premium text-xs">
         <span>
-          Buchungen: <strong>{bookings.length}</strong>
+          {t('bookings.customerTab.bookingsCount')} <strong>{bookings.length}</strong>
         </span>
         <span>
-          Kilometer: <strong>{totalKmDriven > 0 ? `${totalKmDriven.toLocaleString('de-DE')} km` : EM_DASH}</strong>
+          {t('bookings.customerTab.km')}{' '}
+          <strong>{totalKmDriven > 0 ? `${totalKmDriven.toLocaleString(fmtLocale)} km` : EM_DASH}</strong>
         </span>
         <span className="ml-auto">
-          Umsatz: <strong className="text-[color:var(--status-success)]">{formatCurrencyCents(totalRevenueCents)}</strong>
+          {t('bookings.customerTab.revenue')}{' '}
+          <strong className="text-[color:var(--status-success)]">{formatCurrencyCents(totalRevenueCents)}</strong>
         </span>
       </div>
 

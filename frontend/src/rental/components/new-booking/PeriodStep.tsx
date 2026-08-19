@@ -1,5 +1,6 @@
 import { SectionHeader } from '../../../components/patterns';
 import { StationSelectFields } from '../stations/StationSelectFields';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
 import type { PeriodBlockedDayInfo, PeriodStepProps } from './types';
@@ -163,12 +164,13 @@ export function PeriodStep({
   onHoveredDayChange,
   onCalendarDayClick,
 }: PeriodStepProps) {
+  const { t } = useLanguage();
   const todayMin = new Date().toISOString().slice(0, 10);
 
   return (
     <BookingStepCard>
       <div className="p-4">
-        <SectionHeader title="Zeitraum & Abholung" className="mb-3" />
+        <SectionHeader title={t('bookings.wizard.periodTitle')} className="mb-3" />
 
         <div className="mb-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
@@ -233,7 +235,7 @@ export function PeriodStep({
           </div>
 
           <div className="min-w-0">
-            <label className="mb-1.5 block text-xs text-muted-foreground">Rückgabe</label>
+            <label className="mb-1.5 block text-xs text-muted-foreground">{t('bookings.wizard.return')}</label>
             <div className="flex min-w-0 gap-2">
               <input
                 type="date"
@@ -319,7 +321,7 @@ export function PeriodStep({
               }`}
             >
               <Icon name="calendar" className="mx-auto mb-1 h-3.5 w-3.5" />
-              Abholdatum wählen
+              {t('bookings.wizard.selectPickupDate')}
             </button>
             <button
               type="button"
@@ -331,7 +333,7 @@ export function PeriodStep({
               }`}
             >
               <Icon name="calendar" className="mx-auto mb-1 h-3.5 w-3.5" />
-              Rückgabedatum wählen
+              {t('bookings.wizard.selectReturnDate')}
             </button>
           </div>
 
@@ -453,7 +455,7 @@ export function PeriodStep({
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded bg-green-600" />
-              <span className="text-xs text-muted-foreground">Rückgabe</span>
+              <span className="text-xs text-muted-foreground">{t('bookings.wizard.return')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded sq-tone-brand" />
@@ -473,7 +475,7 @@ export function PeriodStep({
             <div className="mt-3 flex items-center gap-2 rounded-lg border border-border px-3 py-2 sq-tone-info">
               <Icon name="alert-circle" className="h-3.5 w-3.5 shrink-0 text-[color:var(--status-info)]" />
               <span className="text-xs text-[color:var(--status-info)]">
-                Bitte wählen Sie zuerst ein Fahrzeug, um die Verfügbarkeit zu sehen.
+                {t('bookings.wizard.selectVehicleFirst')}
               </span>
             </div>
           )}
@@ -481,7 +483,7 @@ export function PeriodStep({
             <div className="mt-3 flex items-center gap-2 rounded-lg border border-border px-3 py-2 sq-tone-critical">
               <Icon name="alert-circle" className="h-3.5 w-3.5 shrink-0 text-[color:var(--status-critical)]" />
               <span className="text-xs text-[color:var(--status-critical)]">
-                Der gewählte Zeitraum überschneidet sich mit einer bestehenden Reservierung oder Wartung. Bitte wählen Sie einen anderen Zeitraum.
+                {t('bookings.wizard.rangeConflict')}
               </span>
             </div>
           )}

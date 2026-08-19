@@ -73,7 +73,7 @@ export function CheckoutDocumentsPanel({
       {loading && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Dokumente werden vorbereitet…
+          {t('bookings.documents.preparing')}
         </div>
       )}
       {error && <p className="text-xs text-[color:var(--status-critical)]">{error}</p>}
@@ -86,6 +86,9 @@ export function CheckoutDocumentsPanel({
         const label = emailDocTypeLabel(t, type);
         const ready = doc && isEmailSendableDocument(doc.status);
         const sent = doc?.status === 'SENT';
+        const emailButtonTitle = customerEmail
+          ? t('bookings.documents.sendEmail')
+          : t('bookings.documents.missingCustomerEmail');
         return (
           <div
             key={type}
@@ -117,7 +120,7 @@ export function CheckoutDocumentsPanel({
                 type="button"
                 disabled={!ready || !bookingId}
                 onClick={() => doc && api.documents.open(orgId, doc.id)}
-                title="Drucken / Öffnen"
+                title={t('bookings.documents.printOpen')}
                 className="rounded-md p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Icon name="printer" className="h-3.5 w-3.5" />
@@ -126,7 +129,7 @@ export function CheckoutDocumentsPanel({
                 type="button"
                 disabled={!ready || !bookingId || !customerEmail}
                 onClick={() => doc && openSend(doc)}
-                title={customerEmail ? 'Per E-Mail senden' : 'Kunden-E-Mail fehlt'}
+                title={emailButtonTitle}
                 className="rounded-md p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Icon name="send" className="h-3.5 w-3.5" />

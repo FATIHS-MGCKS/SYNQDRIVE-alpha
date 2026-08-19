@@ -37,6 +37,7 @@ import {
   type CustomerVerificationPlanState,
 } from '../lib/add-customer-wizard';
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
 import type { BookingWizardEligibilityPreview } from '../lib/booking-wizard-eligibility.types';
 import {
@@ -135,6 +136,7 @@ export function NewBookingView({
   onBookingCreated,
   initialCustomerId = null,
 }: NewBookingViewProps) {
+  const { t } = useLanguage();
   const isDarkMode = useDocumentDark();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
@@ -1465,7 +1467,7 @@ export function NewBookingView({
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:space-y-5">
       <PageHeader
-        title="Neue Buchung"
+        title={t('bookings.newBooking')}
         icon={<Icon name="calendar" className="w-4 h-4" />}
         className="min-w-0 w-full max-w-full"
         titleClassName="break-words"

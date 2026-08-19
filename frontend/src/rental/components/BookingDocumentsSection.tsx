@@ -22,6 +22,7 @@ import { emailDocTypeLabel, outboundEmailStatusLabel } from '../../lib/email-i18
 import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
+import { bookingsFormattingLocaleOrDefault } from './bookings-customers/bookings-i18n';
 
 interface BookingDocumentsSectionProps {
   orgId: string;
@@ -70,11 +71,11 @@ const BUNDLE_BADGE: Record<DocumentBundleStatus, { label: string; cls: (d: boole
   FAILED: { label: 'Fehlgeschlagen', cls: (d) => (d ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-red-50 text-red-700 border-red-200') },
 };
 
-function fmtDate(iso: string | null): string {
+function fmtDate(iso: string | null, formattingLocale: string): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return d.toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function BookingDocumentsSection({
@@ -84,7 +85,8 @@ export function BookingDocumentsSection({
   customerEmail,
   bookingNumber,
 }: BookingDocumentsSectionProps) {
-  const { t } = useLanguage();
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
   const { userRole } = useRentalOrg();
   const canManage = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
 
@@ -219,7 +221,7 @@ export function BookingDocumentsSection({
               type="button"
               onClick={() => void handleGenerate()}
               disabled={generating}
-              title="Buchungsdokumente generieren"
+              title={t('bookings.documents.generateTitle')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
                 isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:surface-premium'
               } disabled:opacity-50`}
@@ -265,7 +267,7 @@ export function BookingDocumentsSection({
 
       {loading ? (
         <div className={`flex items-center gap-2 text-xs ${subtle}`}>
-          <Loader2 className="w-4 h-4 animate-spin" /> Lädt…
+          <Loader2 className="w-4 h-4 animate-spin" /> {t('common.loading')}
         </div>
       ) : (
         <div className="space-y-4">
@@ -295,7 +297,7 @@ export function BookingDocumentsSection({
                           </div>
                           <div className={`text-[11px] truncate ${subtle}`}>
                             {doc
-                              ? [doc.documentNumber || doc.fileName, doc.legalVersionLabel ? `v${doc.legalVersionLabel}` : null, fmtDate(doc.generatedAt || doc.createdAt)]
+                              ? [doc.documentNumber || doc.fileName, doc.legalVersionLabel ? `v${doc.legalVersionLabel}` : null, fmtDate(doc.generatedAt || doc.createdAt, fmtLocale)]
                                   .filter(Boolean)
                                   .join(' · ')
                               : isLegalMissing
@@ -314,7 +316,7 @@ export function BookingDocumentsSection({
                             )}
                             <button
                               type="button"
-                              title="Herunterladen / Ansehen"
+                              title={t('bookings.documents.downloadView')}
                               onClick={() => void api.documents.open(orgId, doc.id)}
                               className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-info' : 'hover:bg-muted text-muted-foreground hover:text-brand'}`}
                             >
@@ -333,7 +335,7 @@ export function BookingDocumentsSection({
                             {canManage && REGENERABLE.has(type) && (
                               <button
                                 type="button"
-                                title="Neu generieren"
+                                title={t('bookings.documents.regenerate')}
                                 disabled={busyType === type}
                                 onClick={() => void handleRegenerate(type)}
                                 className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-attention' : 'hover:bg-gray-100 text-gray-500 hover:text-amber-600'} disabled:opacity-50`}

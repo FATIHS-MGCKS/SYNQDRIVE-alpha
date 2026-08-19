@@ -1,4 +1,5 @@
 import { SectionHeader } from '../../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   formatOptionGrossLabel,
   formatPriceCents,
@@ -26,6 +27,7 @@ export function ExtrasStep({
   onToggleInsurance,
   onToggleExtra,
 }: ExtrasStepProps) {
+  const { t } = useLanguage();
   const ccy = pricingCurrency;
   const fmtCents = (cents: number) => (ccy ? formatPriceCents(cents, ccy) : '—');
   const hasSelection =
@@ -42,7 +44,7 @@ export function ExtrasStep({
             <SectionHeader title="Kilometerpakete" />
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Zusätzliche Kilometer für die Buchung. Es kann nur ein Paket gewählt werden.
+            {t('bookings.wizard.kmPackageHint')}
           </p>
           {!hasResolvedPricing ? (
             <div className="py-6 text-center">
@@ -102,7 +104,7 @@ export function ExtrasStep({
             </div>
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              Keine Kilometerpakete für dieses Fahrzeug verfügbar.
+              {t('bookings.wizard.noKmPackages')}
             </p>
           )}
         </div>
@@ -117,7 +119,7 @@ export function ExtrasStep({
             <SectionHeader title="Versicherungspakete" />
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Zusätzliche Versicherungsdeckung für den Mietzeitraum wählen.
+            {t('bookings.wizard.insuranceHint')}
           </p>
           {insuranceOptions.length > 0 ? (
             <div className="space-y-3">
@@ -173,7 +175,7 @@ export function ExtrasStep({
             </div>
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              Keine Versicherungsoptionen für dieses Fahrzeug verfügbar.
+              {t('bookings.wizard.noInsurance')}
             </p>
           )}
         </div>
@@ -188,7 +190,7 @@ export function ExtrasStep({
             <SectionHeader title="Extras" />
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Optionales Zubehör und Services zur Buchung hinzufügen.
+            {t('bookings.wizard.extrasHint')}
           </p>
           {extraOptions.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
@@ -240,7 +242,7 @@ export function ExtrasStep({
             </div>
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              Keine Extras für dieses Fahrzeug verfügbar.
+              {t('bookings.wizard.noExtras')}
             </p>
           )}
         </div>

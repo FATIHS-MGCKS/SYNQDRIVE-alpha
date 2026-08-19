@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { DataTable, EmptyState } from '../../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import { BookingStatusBadge } from './bookingStatus';
@@ -20,6 +21,7 @@ export function BookingsTableView({
   onEdit,
   onCancel,
 }: BookingsTableViewProps) {
+  const { t } = useLanguage();
   const columns = useMemo(
     () => [
       {
@@ -136,7 +138,7 @@ export function BookingsTableView({
           <EmptyState
             compact
             icon={<Icon name="calendar" className="w-5 h-5" />}
-            title="Keine Buchungen für die aktuellen Filter"
+            title={t('bookings.planner.emptyTitle')}
           />
         }
       />

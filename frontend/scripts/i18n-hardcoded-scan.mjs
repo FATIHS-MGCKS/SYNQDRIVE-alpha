@@ -59,6 +59,34 @@ const P22_ENFORCE_CLEAN_EXACT = new Set([
   'rental/rental-health-ui.ts',
 ]);
 
+const P23_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/BookingsView.tsx',
+  'rental/components/NewBookingView.tsx',
+  'rental/components/BookingDocumentsSection.tsx',
+  'rental/components/CustomersView.tsx',
+  'rental/components/CustomerDetailView.tsx',
+  'rental/components/CustomerDetailModal.tsx',
+  'rental/components/CustomerDocumentUploadBox.tsx',
+]);
+
+const P23_ENFORCE_CLEAN_PREFIXES = [
+  'rental/components/bookings/',
+  'rental/components/booking-detail/',
+  'rental/components/new-booking/',
+  'rental/components/booking-payment/',
+  'rental/components/customer-list/',
+  'rental/components/customer-detail/',
+  'rental/components/customer-verification/',
+  'rental/components/add-customer/',
+  'rental/components/customer/',
+  'rental/components/bookings-customers/',
+  'rental/lib/booking-',
+  'rental/lib/bookingHandoverGates.ts',
+  'rental/lib/stationBookingUtils.ts',
+  'rental/lib/customer-',
+  'rental/lib/add-customer-wizard.ts',
+];
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -267,6 +295,11 @@ function isP22EnforceCleanPath(relPath) {
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
+function isP23EnforceCleanPath(relPath) {
+  if (P23_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
+  return P23_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
+}
+
 function isEnforcedCleanSurface(surface, relPath) {
   if (surface === 'LOGIN') return true;
   if (relPath === 'i18n/components/LanguageSelector.tsx') return true;
@@ -277,7 +310,22 @@ function isEnforcedCleanSurface(surface, relPath) {
     return true;
   }
   if (surface === 'RENTAL' && isP22EnforceCleanPath(relPath)) return true;
+  if (surface === 'RENTAL' && isP23EnforceCleanPath(relPath)) return true;
   return false;
+}
+
+function migrationPhaseFor(relPath, surface) {
+  if (!isEnforcedCleanSurface(surface, relPath)) {
+    return surface === 'LOGIN' || surface === 'SHELL' ? 'P2.1' : surface === 'RENTAL' ? 'P2.2' : 'P2.3';
+  }
+  if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
+  if (
+    relPath.startsWith('rental/components/dashboard/') ||
+    P21_ENFORCE_CLEAN_EXACT.has(relPath)
+  ) {
+    return 'P2.2.1';
+  }
+  return 'P2.2.2';
 }
 
 function collectFiles(target, files = []) {
@@ -330,17 +378,7 @@ function collectFindings(filePath, source) {
         category,
         sample: sample.slice(0, 120),
         severity: isEnforcedCleanSurface(surface, relPath) ? 'enforce-clean' : 'debt',
-        migrationPhase:
-          isEnforcedCleanSurface(surface, relPath)
-            ? relPath.startsWith('rental/components/dashboard/') ||
-              P21_ENFORCE_CLEAN_EXACT.has(relPath)
-              ? 'P2.2.1'
-              : 'P2.2.2'
-            : surface === 'LOGIN' || surface === 'SHELL'
-              ? 'P2.1'
-              : surface === 'RENTAL'
-                ? 'P2.2'
-                : 'P2.3',
+        migrationPhase: migrationPhaseFor(relPath, surface),
       });
     }
   }
@@ -402,6 +440,10 @@ const inventory = {
     P22: {
       enforceCleanExact: [...P22_ENFORCE_CLEAN_EXACT],
       enforceCleanPrefixes: [...P22_ENFORCE_CLEAN_PREFIXES],
+    },
+    P23: {
+      enforceCleanExact: [...P23_ENFORCE_CLEAN_EXACT],
+      enforceCleanPrefixes: [...P23_ENFORCE_CLEAN_PREFIXES],
     },
   },
   summary,

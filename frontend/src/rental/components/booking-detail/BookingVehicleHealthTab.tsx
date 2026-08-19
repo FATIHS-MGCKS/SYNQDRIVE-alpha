@@ -2,6 +2,8 @@ import { StatusChip } from '../../../components/patterns';
 import type { BookingDetailDto } from '../../../lib/api';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
 import { useVehicleHealth } from '../../hooks/useVehicleHealth';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { bookingsFormattingLocaleOrDefault } from '../bookings-customers/bookings-i18n';
 import { EM_DASH } from './bookingDetailUtils';
 import { bd } from './booking-detail-ui';
 
@@ -12,6 +14,8 @@ interface BookingVehicleHealthTabProps {
 }
 
 export function BookingVehicleHealthTab({ orgId, detail, onOpenVehicle }: BookingVehicleHealthTabProps) {
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
   const v = detail.vehicle;
   const { data: health, loading } = useVehicleHealth(orgId, v.vehicleId);
 
@@ -26,7 +30,7 @@ export function BookingVehicleHealthTab({ orgId, detail, onOpenVehicle }: Bookin
               onClick={() => onOpenVehicle(v.vehicleId)}
               className="text-xs font-semibold text-[color:var(--brand)] hover:underline"
             >
-              Fahrzeug öffnen
+              {t('bookings.detail.openVehicle')}
             </button>
           )}
         </div>
@@ -37,15 +41,15 @@ export function BookingVehicleHealthTab({ orgId, detail, onOpenVehicle }: Bookin
           <Row label="Status" value={v.vehicleStatus ?? EM_DASH} />
           <Row
             label="Kilometerstand"
-            value={v.odometerKm != null ? `${v.odometerKm.toLocaleString('de-DE')} km` : EM_DASH}
+            value={v.odometerKm != null ? `${v.odometerKm.toLocaleString(fmtLocale)} km` : EM_DASH}
           />
         </dl>
       </div>
 
       <div className={bd.card}>
-        <h3 className="text-xs font-bold mb-3">Rental Health</h3>
+        <h3 className="text-xs font-bold mb-3">{t('bookings.detail.rentalHealth')}</h3>
         {loading && !health ? (
-          <p className="text-xs text-muted-foreground">Lade Health-Daten…</p>
+          <p className="text-xs text-muted-foreground">{t('bookings.detail.loadingHealth')}</p>
         ) : health ? (
           <div className="space-y-3">
             <RentalHealthBadge health={health} size="md" showBlockingLabel />
