@@ -17,6 +17,7 @@ const ISSUE_HEADLINE_KEYS: Record<string, TranslationKey> = {
   STATION_SHORTAGE: 'notification.issue.stationShortage',
   DRIVING_ASSESSMENT_DEVICE_QUALITY: 'notification.issue.drivingAssessment',
   TECHNICAL_OBSERVATION_ACTIVE: 'notification.issue.technicalObservation',
+  VEHICLE_DAMAGE_BLOCKING: 'notification.issue.vehicleDamageBlocking',
   HM_SERVICE_NO_TRACKING: 'notification.issue.hmServiceNoTracking',
 };
 

@@ -16,6 +16,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import {
   ListNotificationsQueryDto,
+  NotificationCountsQueryDto,
   SnoozeNotificationDto,
 } from './dto/notification-api.dto';
 import { NotificationApiService } from './notification-api.service';
@@ -56,8 +57,12 @@ export class NotificationsController {
   }
 
   @Get('counts')
-  counts(@Param('orgId') orgId: string, @Req() req: NotificationAuthRequest) {
-    return this.api.getCounts(orgId, req.user ?? {});
+  counts(
+    @Param('orgId') orgId: string,
+    @Query() query: NotificationCountsQueryDto,
+    @Req() req: NotificationAuthRequest,
+  ) {
+    return this.api.getCounts(orgId, req.user ?? {}, query);
   }
 
   @Get('audit-events')

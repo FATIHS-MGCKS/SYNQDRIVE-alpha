@@ -64,6 +64,9 @@ export const cs: Record<TranslationKey, string> = {
   'notification.title.vehicleNotReady': 'Vozidlo neni pripraveno — {label}',
   'notification.body.vehicleNotReady': '{label} neni aktualne pripraveno k pronajmu. Zkontrolujte upozorneni vozidla.',
   'notification.title.vehicleReadinessUnevaluable': 'Pripravenost nelze vyhodnotit — {label}',
+  'notification.title.vehicleDamageBlocking': 'Poškození blokuje připravenost — {label}',
+  'notification.body.vehicleDamageBlocking': '{label}: otevřené poškození blokuje provozní připravenost.',
+  'notification.issue.vehicleDamageBlocking': 'Poškození blokuje připravenost',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive nemuze v tuto chvili spolehlive vyhodnotit pripravenost vozidla {label}. Zkontrolujte dostupna data vozidla.',
 };

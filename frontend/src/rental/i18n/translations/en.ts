@@ -1044,6 +1044,9 @@ export const en = {
   'notification.title.vehicleNotReady': 'Vehicle not ready — {label}',
   'notification.body.vehicleNotReady': '{label} is currently not ready for rental. Check vehicle alerts.',
   'notification.title.vehicleReadinessUnevaluable': 'Readiness not evaluable — {label}',
+  'notification.title.vehicleDamageBlocking': 'Damage blocks readiness — {label}',
+  'notification.body.vehicleDamageBlocking': '{label}: Open damage is blocking fleet readiness.',
+  'notification.issue.vehicleDamageBlocking': 'Damage blocks readiness',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive cannot reliably evaluate the readiness of {label} right now. Check available vehicle data.',
   'notification.title.tireCritical': 'Tires need attention — {label}',

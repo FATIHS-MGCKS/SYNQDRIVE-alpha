@@ -13,6 +13,7 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
   vehicleHealthSourceFingerprint,
@@ -36,12 +37,23 @@ import {
   vehicleReadinessSourceFingerprint,
   type VehicleReadinessIngestOutcome,
 } from './vehicle-readiness-notification.projector';
+import {
+  VEHICLE_DAMAGE_BLOCKING_EVENT_TYPE,
+  vehicleDamageBlockingSourceFingerprint,
+} from './vehicle-damage-notification.projector';
+import type {
+  VehicleHealthNotificationEventType,
+} from './rental-health-notification.projector';
+import type {
+  ServiceComplianceNotificationEventType,
+} from './service-compliance-notification.projector';
 import type {
   VehicleHealthAdapterSource,
   ServiceComplianceAdapterSource,
   VehicleAlertsNotificationAdapterSource,
   VehicleReadinessNotificationAdapterSource,
   VehicleReadinessEvaluabilityNotificationAdapterSource,
+  VehicleDamageNotificationAdapterSource,
 } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
@@ -76,6 +88,20 @@ const SERVICE_COMPLIANCE_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
 const VEHICLE_ALERTS_ACTIVE_FINGERPRINT_PAGE_SIZE = 500;
 
 const VEHICLE_READINESS_ACTIVE_FINGERPRINT_PAGE_SIZE = 500;
+
+const VEHICLE_HEALTH_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
+
+const VEHICLE_DAMAGE_NOTIFICATION_SWEEP_PAGE_SIZE = 500;
+
+export type VehicleHealthRecoveryEligibilityByVehicle = Map<
+  string,
+  Record<VehicleHealthNotificationEventType, boolean>
+>;
+
+export type ServiceComplianceRecoveryEligibilityByVehicle = Map<
+  string,
+  Record<ServiceComplianceNotificationEventType, boolean>
+>;
 
 const VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT = Math.min(
   Math.max(
@@ -125,6 +151,7 @@ export class NotificationProducerIngestService {
     private readonly vehicleAlertsAdapter: VehicleAlertsNotificationAdapter,
     private readonly vehicleReadinessAdapter: VehicleReadinessNotificationAdapter,
     private readonly vehicleReadinessEvaluabilityAdapter: VehicleReadinessEvaluabilityNotificationAdapter,
+    private readonly vehicleDamageAdapter: VehicleDamageNotificationAdapter,
     private readonly core: NotificationCoreService,
   ) {}
 
@@ -409,6 +436,7 @@ export class NotificationProducerIngestService {
     organizationId: string,
     runId: string,
     sources: VehicleHealthAdapterSource[],
+    recoveryEligibilityByVehicleId: VehicleHealthRecoveryEligibilityByVehicle = new Map(),
   ): Promise<void> {
     const activeFingerprints = new Set<string>();
 
@@ -420,12 +448,7 @@ export class NotificationProducerIngestService {
 
     await this.ingestVehicleHealthSources(organizationId, runId, sources);
 
-    const activeNotifications = await this.repository.listNotifications({
-      organizationId,
-      status: ACTIVE_NOTIFICATION_STATUSES,
-      entityType: NotificationEntityType.VEHICLE,
-      limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_LIMIT,
-    });
+    const activeNotifications = await this.listAllActiveVehicleHealthNotifications(organizationId);
 
     for (const notification of activeNotifications) {
       if (
@@ -436,6 +459,10 @@ export class NotificationProducerIngestService {
         continue;
       }
       if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const eventType = notification.eventType as VehicleHealthNotificationEventType;
+      const vehicleEligibility = recoveryEligibilityByVehicleId.get(notification.entityId);
+      if (!vehicleEligibility?.[eventType]) continue;
 
       const withinClearGrace =
         vehicleHealthNotificationClearGraceMs() > 0 &&
@@ -511,6 +538,7 @@ export class NotificationProducerIngestService {
     organizationId: string,
     runId: string,
     sources: ServiceComplianceAdapterSource[],
+    recoveryEligibilityByVehicleId: ServiceComplianceRecoveryEligibilityByVehicle = new Map(),
   ): Promise<void> {
     const activeFingerprints = new Set<string>();
 
@@ -530,6 +558,11 @@ export class NotificationProducerIngestService {
 
     for (const notification of activeNotifications) {
       if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const eventType =
+        notification.eventType as ServiceComplianceNotificationEventType;
+      const vehicleEligibility = recoveryEligibilityByVehicleId.get(notification.entityId);
+      if (!vehicleEligibility?.[eventType]) continue;
 
       const withinClearGrace =
         vehicleHealthNotificationClearGraceMs() > 0 &&
@@ -911,6 +944,144 @@ export class NotificationProducerIngestService {
     source: Pick<ServiceComplianceAdapterSource, 'eventType' | 'vehicleId'>,
   ): string {
     return serviceComplianceSourceFingerprint(organizationId, source);
+  }
+
+  /**
+   * Materialize blocking vehicle damage causes as V2 notifications.
+   * Preserves existing rows when damage query failed for a vehicle.
+   */
+  async syncVehicleDamageBlockingWarnings(
+    organizationId: string,
+    runId: string,
+    sources: VehicleDamageNotificationAdapterSource[],
+    damageQuerySucceededByVehicleId: Map<string, boolean> = new Map(),
+  ): Promise<void> {
+    const activeFingerprints = new Set<string>();
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        activeFingerprints.add(vehicleDamageBlockingSourceFingerprint(organizationId, source));
+      }
+    }
+
+    await this.ingestVehicleDamageSources(organizationId, runId, sources);
+
+    const activeNotifications = await this.listAllActiveVehicleDamageNotifications(organizationId);
+
+    for (const notification of activeNotifications) {
+      if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      if (damageQuerySucceededByVehicleId.get(notification.entityId) === false) continue;
+
+      const withinClearGrace =
+        vehicleHealthNotificationClearGraceMs() > 0 &&
+        DEFERRABLE_HEALTH_SEVERITIES.has(
+          notification.severity as NotificationSeverity,
+        ) &&
+        Date.now() - notification.lastSeenAt.getTime() <
+          vehicleHealthNotificationClearGraceMs();
+      if (withinClearGrace) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+      const damageId =
+        typeof params.damageId === 'string'
+          ? params.damageId
+          : notification.fingerprint.split('|')[4]?.split(':')[1];
+
+      if (!damageId) continue;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleDamageAdapter,
+          {
+            eventType: VEHICLE_DAMAGE_BLOCKING_EVENT_TYPE,
+            vehicleId: notification.entityId,
+            label,
+            damageId,
+            rentalImpact: 'BLOCK_RENTAL',
+            severity: 'warning',
+            cleared: true,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Vehicle damage V2 resolve failed for ${notification.entityId}/${damageId}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  async ingestVehicleDamageSources(
+    organizationId: string,
+    runId: string,
+    sources: VehicleDamageNotificationAdapterSource[],
+  ): Promise<void> {
+    for (const source of sources) {
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleDamageAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Vehicle damage V2 ingest failed for ${source.vehicleId}/${source.damageId}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  vehicleDamageFingerprint(
+    organizationId: string,
+    source: Pick<VehicleDamageNotificationAdapterSource, 'vehicleId' | 'damageId'>,
+  ): string {
+    return vehicleDamageBlockingSourceFingerprint(organizationId, source);
+  }
+
+  private async listAllActiveVehicleHealthNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [...VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES],
+        limit: VEHICLE_HEALTH_NOTIFICATION_SWEEP_PAGE_SIZE,
+        offset,
+      });
+      results.push(...page);
+      if (page.length < VEHICLE_HEALTH_NOTIFICATION_SWEEP_PAGE_SIZE) break;
+      offset += VEHICLE_HEALTH_NOTIFICATION_SWEEP_PAGE_SIZE;
+    }
+
+    return results;
+  }
+
+  private async listAllActiveVehicleDamageNotifications(organizationId: string) {
+    const results: Awaited<ReturnType<NotificationRepository['listNotifications']>> = [];
+    let offset = 0;
+
+    while (true) {
+      const page = await this.repository.listNotifications({
+        organizationId,
+        status: ACTIVE_NOTIFICATION_STATUSES,
+        entityType: NotificationEntityType.VEHICLE,
+        eventTypes: [VEHICLE_DAMAGE_BLOCKING_EVENT_TYPE],
+        limit: VEHICLE_DAMAGE_NOTIFICATION_SWEEP_PAGE_SIZE,
+        offset,
+      });
+      results.push(...page);
+      if (page.length < VEHICLE_DAMAGE_NOTIFICATION_SWEEP_PAGE_SIZE) break;
+      offset += VEHICLE_DAMAGE_NOTIFICATION_SWEEP_PAGE_SIZE;
+    }
+
+    return results;
   }
 
   drivingAssessmentFingerprint(organizationId: string, vehicleId: string): string {

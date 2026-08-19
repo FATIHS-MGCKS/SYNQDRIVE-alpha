@@ -14,6 +14,7 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -21,7 +22,10 @@ import {
   legacyServiceOverdueFingerprint,
   LEGACY_SERVICE_OVERDUE_CONDITION_CODE,
   serviceComplianceSourceFingerprint,
+  SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES,
+  type ServiceComplianceNotificationEventType,
 } from './service-compliance-notification.projector';
+import type { ServiceComplianceRecoveryEligibilityByVehicle } from './notification-producer.ingest.service';
 import type { ServiceComplianceEvaluation } from '@modules/vehicle-intelligence/service-compliance/service-compliance.types';
 import { buildRegistryFingerprint } from '../registry/notification-event-registry';
 import {
@@ -48,6 +52,19 @@ const VEH_A = 'veh-a';
 const VEH_B = 'veh-b';
 const PLATE_A = 'WOB A 1001';
 const PLATE_B = 'WOB B 2002';
+
+function complianceRecoveryAll(
+  vehicleIds: string[],
+): ServiceComplianceRecoveryEligibilityByVehicle {
+  const eligibility = Object.fromEntries(
+    SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES.map((eventType) => [eventType, true]),
+  ) as Record<ServiceComplianceNotificationEventType, boolean>;
+  const map: ServiceComplianceRecoveryEligibilityByVehicle = new Map();
+  for (const vehicleId of vehicleIds) {
+    map.set(vehicleId, { ...eligibility });
+  }
+  return map;
+}
 
 const baseVehicle = {
   id: VEH_A,
@@ -213,6 +230,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -226,6 +244,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
       core,
     );
   });
@@ -366,7 +385,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     expect(openNotifications()[0].id).toBe(first.id);
     expect(openNotifications()[0].occurrenceCount).toBeGreaterThanOrEqual(2);
 
-    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-4', []);
+    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-4', [], complianceRecoveryAll([VEH_A]));
     expect(notifications.get(first.id)?.status).toBe(NotificationStatus.RESOLVED);
 
     const resolvedRow = notifications.get(first.id);
@@ -618,7 +637,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       });
       activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
 
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-recovered', []);
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-recovered', [], complianceRecoveryAll([VEH_A]));
 
       expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
       expect(openNotifications()).toHaveLength(0);
@@ -639,7 +658,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
       expect(openNotifications()).toHaveLength(2);
 
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', []);
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', [], complianceRecoveryAll([VEH_A, VEH_B]));
       expect(openNotifications()).toHaveLength(0);
 
       const listCalls = (repository.listNotifications as jest.Mock).mock.calls;
@@ -696,7 +715,12 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       );
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
 
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', sourcesB);
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-2',
+        sourcesB,
+        complianceRecoveryAll([VEH_A]),
+      );
       const open = openNotifications();
       expect(open).toHaveLength(1);
       expect(open[0].entityId).toBe(VEH_B);
@@ -704,9 +728,9 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
   });
 
   describe('registry regression', () => {
-    it('attentionScope partition unchanged (70 / 27 / 43)', () => {
-      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(70);
-      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(27);
+    it('attentionScope partition after P2.5 (71 / 28 / 43)', () => {
+      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(71);
+      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(28);
       expect(getNotificationDefinitionsByAttentionScope('OPERATIONS').length).toBe(43);
     });
   });

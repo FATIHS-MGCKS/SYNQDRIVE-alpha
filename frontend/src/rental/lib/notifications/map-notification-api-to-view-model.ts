@@ -127,6 +127,7 @@ const LEGACY_FALLBACK_TITLE_KEYS: Record<string, TranslationKey> = {
   ENGINE_OIL_LEVEL_HIGH: 'notification.title.engineOilLevelHigh',
   VEHICLE_NOT_READY: 'notification.title.vehicleNotReady',
   VEHICLE_READINESS_UNEVALUABLE: 'notification.title.vehicleReadinessUnevaluable',
+  VEHICLE_DAMAGE_BLOCKING: 'notification.title.vehicleDamageBlocking',
 };
 
 const LEGACY_FALLBACK_BODY_KEYS: Record<string, TranslationKey> = {
@@ -139,6 +140,7 @@ const LEGACY_FALLBACK_BODY_KEYS: Record<string, TranslationKey> = {
   ENGINE_OIL_LEVEL_HIGH: 'notification.body.engineOilLevelHigh',
   VEHICLE_NOT_READY: 'notification.body.vehicleNotReady',
   VEHICLE_READINESS_UNEVALUABLE: 'notification.body.vehicleReadinessUnevaluable',
+  VEHICLE_DAMAGE_BLOCKING: 'notification.body.vehicleDamageBlocking',
 };
 
 function resolveTitleKey(

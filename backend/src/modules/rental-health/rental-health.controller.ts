@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, Req, UnauthorizedException, UseGuards, O
 import { Throttle } from '@nestjs/throttler';
 import { FleetHealthObservabilityService } from '@modules/fleet-health-observability/fleet-health-observability.service';
 import { RentalHealthService } from './rental-health.service';
-import { RentalHealthFleetService } from './rental-health-fleet.service';
+import { RentalHealthFleetService, type FleetReadinessSummary } from './rental-health-fleet.service';
 import { RentalHealthSummaryService } from './rental-health-summary.service';
 import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
 import { BrakeRentalHealthReviewService } from './brake-rental-health-review.service';
@@ -74,6 +74,36 @@ export class RentalHealthController {
       this.fleetHealthObservability?.observeRentalHealthRequest(
         'vehicle_detail',
         err instanceof NotFoundException ? 'not_found' : 'error',
+        (performance.now() - started) / 1000,
+      );
+      throw err;
+    }
+  }
+
+  @Get('rental-health/fleet/summary')
+  @RequirePermission('fleet', 'read')
+  async getFleetReadinessSummary(
+    @Param('orgId') orgId: string,
+    @Query() query: FleetRentalHealthQueryDto,
+    @Req() req: { user?: { id?: string } },
+  ): Promise<FleetReadinessSummary> {
+    const started = performance.now();
+    try {
+      const result = await this.rentalHealthFleet.getFleetReadinessSummary(
+        orgId,
+        req.user?.id,
+        query,
+      );
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'fleet_page',
+        'success',
+        (performance.now() - started) / 1000,
+      );
+      return result;
+    } catch (err) {
+      this.fleetHealthObservability?.observeRentalHealthRequest(
+        'fleet_page',
+        'error',
         (performance.now() - started) / 1000,
       );
       throw err;

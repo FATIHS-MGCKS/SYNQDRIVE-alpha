@@ -80,4 +80,26 @@ describe('buildNotificationWhereInput', () => {
     });
     expect(where.id).toBe('__none__');
   });
+
+  it('filters by FLEET_READINESS attentionScope using registry event types', () => {
+    const where = buildNotificationWhereInput({
+      ...base,
+      attentionScope: 'FLEET_READINESS',
+    });
+    expect(where.eventType).toEqual({
+      in: expect.arrayContaining(['VEHICLE_NOT_READY', 'ACTIVE_DTC', 'VEHICLE_DAMAGE_BLOCKING']),
+    });
+    expect((where.eventType as { in: string[] }).in).not.toContain('LOW_UTILIZATION');
+  });
+
+  it('filters by OPERATIONS attentionScope using registry complement', () => {
+    const where = buildNotificationWhereInput({
+      ...base,
+      attentionScope: 'OPERATIONS',
+    });
+    expect(where.eventType).toEqual({
+      in: expect.arrayContaining(['LOW_UTILIZATION', 'PICKUP_OVERDUE']),
+    });
+    expect((where.eventType as { in: string[] }).in).not.toContain('VEHICLE_NOT_READY');
+  });
 });

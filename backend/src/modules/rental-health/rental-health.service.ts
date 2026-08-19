@@ -19,6 +19,10 @@ import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/servic
 import { ServiceComplianceService } from '../vehicle-intelligence/service-compliance/service-compliance.service';
 import { evaluateServiceComplianceRentalBlocking } from '../vehicle-intelligence/service-compliance/service-compliance-rental-blocking.policy';
 import {
+  buildDamageRentalBlockingReasons,
+  buildRentalBlockingDamagesWhere,
+} from './damage-rental-health.policy';
+import {
   dtcBandToHealthState,
   isSafetyCriticalDtcBand,
   type DtcSeverityBand,
@@ -180,12 +184,7 @@ export class RentalHealthService {
         nextBokraftDate: vehicle.nextBokraftDate,
       }),
       this.prisma.vehicleDamage.findMany({
-        where: {
-          vehicleId,
-          organizationId: orgId,
-          status: 'OPEN',
-          rentalImpact: { in: ['BLOCK_RENTAL', 'SAFETY_CRITICAL'] },
-        },
+        where: buildRentalBlockingDamagesWhere(orgId, vehicleId),
         select: { id: true, description: true, rentalImpact: true },
         take: 10,
       }),
@@ -692,7 +691,7 @@ export class RentalHealthService {
     }
 
     if (rentalBlockingDamages.length > 0) {
-      reasons.push('Schaden blockiert Vermietung');
+      reasons.push(...buildDamageRentalBlockingReasons(rentalBlockingDamages));
     }
 
     reasons.push(...vehicleAlertBlockingCausesToReasons(vehicleAlertBlockingCauses));
