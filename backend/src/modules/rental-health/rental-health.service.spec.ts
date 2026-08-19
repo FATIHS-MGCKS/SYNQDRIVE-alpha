@@ -32,6 +32,20 @@ describe('RentalHealthService (unit)', () => {
     createOverride: jest.fn(),
     revokeOverride: jest.fn(),
   };
+  const dashboardWarningLights = {
+    getDashboardWarningLights: jest.fn().mockResolvedValue({
+      vehicleId: 'v1',
+      provider: 'NONE',
+      connectionStatus: 'not_connected',
+      supportStatus: 'not_connected',
+      freshness: 'no_data',
+      overallStatus: 'unknown',
+      lastObservedAt: null,
+      message: '',
+      rentalHealthReady: true,
+      lights: [],
+    }),
+  };
 
   const svc = new RentalHealthService(
     prisma as any,
@@ -43,6 +57,10 @@ describe('RentalHealthService (unit)', () => {
     serviceCompliance as any,
     tireRentalReview as any,
     brakeRentalReview as any,
+    undefined,
+    undefined,
+    undefined,
+    dashboardWarningLights as any,
   );
 
   const evaluateBattery = (summary: any, hmAi: any = null, dtcSummary: any = null) =>
@@ -111,20 +129,24 @@ describe('RentalHealthService (unit)', () => {
   const collectBlockingReasons = (
     modules: any,
     complaints: any[],
-    hmAi: any,
+    vehicleAlertBlockingCauses: any[] = [],
     complianceEval: any,
     dtcSummary: any,
     brakeSummary: any,
     batterySummary: any = null,
+    rentalBlockingDamages: any[] = [],
+    hmAi: any = null,
   ) =>
     (svc as any).collectBlockingReasons(
       modules,
       complaints,
-      hmAi,
+      vehicleAlertBlockingCauses,
       complianceEval,
       dtcSummary,
       brakeSummary,
       batterySummary,
+      rentalBlockingDamages,
+      hmAi,
     );
 
   beforeEach(() => {
@@ -332,7 +354,7 @@ describe('RentalHealthService (unit)', () => {
       const reasons = collectBlockingReasons(
         modules,
         [],
-        null,
+        [],
         { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
         null,
         {
@@ -373,7 +395,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -409,7 +431,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -445,7 +467,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -471,11 +493,13 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      { dashboardLights: { battery_low_warning: 'on' } },
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
       summary,
+      [],
+      { dashboardLights: { battery_low_warning: 'on' } },
     );
     expect(reasons.some((r: string) => /Batterie:/i.test(r))).toBe(true);
   });
@@ -514,7 +538,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -539,7 +563,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       {
         tuvBokraft: {
           tuvOverdue: true,
@@ -567,7 +591,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       {
         tuvBokraft: { tuvOverdue: false, bokraftOverdue: false },
         nextService: { trackingStatus: 'NO_TRACKING' },
@@ -588,7 +612,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [{ blocksRental: true }],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -606,7 +630,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [{ urgency: 'CRITICAL', blocksRental: false, impact: 'SAFETY' }],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -705,7 +729,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -756,7 +780,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
@@ -807,7 +831,7 @@ describe('RentalHealthService (unit)', () => {
     const reasons = collectBlockingReasons(
       modules,
       [],
-      null,
+      [],
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,

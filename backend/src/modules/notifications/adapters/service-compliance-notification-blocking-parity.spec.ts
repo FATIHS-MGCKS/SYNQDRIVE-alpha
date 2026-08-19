@@ -66,10 +66,12 @@ function collectComplianceBlockingReasons(
   return (svc as any).collectBlockingReasons(
     modules,
     [],
-    null,
+    [],
     evaluation,
     null,
     null,
+    null,
+    [],
     null,
   );
 }

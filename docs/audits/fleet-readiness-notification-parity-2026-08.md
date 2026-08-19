@@ -1,8 +1,8 @@
 # Fleet Readiness ↔ Notification V2 Parity Audit
 
-**Date:** 2026-08-18 (updated P2.1)  
-**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit; **P2.1** — service/compliance live V2 producers  
-**Code baseline:** `main` + `cursor/service-compliance-notification-p21-dcd7`
+**Date:** 2026-08-18 (updated P2.2A 2026-08-19)  
+**Scope:** Phase 1.1 — canonical `attentionScope` routing foundation + producer/lifecycle parity audit; **P2.1** — service/compliance live V2 producers; **P2.2A** — vehicle_alerts canonical source migration (no Notification V2)  
+**Code baseline:** `main` + `cursor/vehicle-alerts-canonical-source-p22a-dcd7`
 
 ---
 
@@ -157,9 +157,9 @@ Lookup API: `getNotificationEventTypesByAttentionScope(scope)`, `getNotification
 | **service_compliance** | HM no tracking | evaluability | HM_SERVICE_NO_TRACKING | resolve-only in V2 | **Resolve only** | Yes | **Yes** | Never ingested open in V2 |
 | **complaints** | blocksRental=true | blocks rental | TECHNICAL_OBSERVATION_ACTIVE | `TechnicalObservationsService` | Shadow only | Yes | **Yes (P1)** | Shadow gate limits production visibility |
 | **complaints** | critical urgency, no block | no block | TECHNICAL_OBSERVATION_ACTIVE | shadow | Shadow | Yes | Medium | Semantic split |
-| **vehicle_alerts** | limp mode | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Blocks rental, zero notification type |
-| **vehicle_alerts** | oil minimum | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Same |
-| **vehicle_alerts** | oil high warning | no block | — | — | No | — | Low | |
+| **vehicle_alerts** | limp mode | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | **P2.2A:** canonical source `DashboardWarningLights`; RH projection wired; Notification V2 **P2.2B** |
+| **vehicle_alerts** | oil minimum | blocks rental | — (none registered) | — | No | — | **Yes (P0)** | Same — source parity closed in P2.2A |
+| **vehicle_alerts** | oil high warning | no block | — | — | No | — | Low | P2.2A: warning module, no hard block |
 | **overall_state** | warning/critical transition | indirect | vehicle.health.* workflow | `VehicleHealthWorkflowEmitter` | Workflow only | N/A | **Yes** | Not a V2 notification |
 | **rental_blocked** | true (any cause) | aggregate | BLOCKED_VEHICLE / VEHICLE_NOT_READY | — | **Unwired** | — | **Yes (P0)** | Aggregate readiness not materialized |
 | **availability** | partial/unavailable | `rental_readiness=unevaluable` | CONNECTIVITY_STATE_UNKNOWN? | partial (connectivity only) | Partial | Partial | **Yes** | Health pipeline failure under-notified |
