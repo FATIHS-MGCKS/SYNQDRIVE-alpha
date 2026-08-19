@@ -4,6 +4,7 @@ import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
 import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
 import tellTaleBatteryWarningIcon from '../../assets/icons/telltale/battery.svg';
 import type { DashboardWarningLightsResponse } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from './ui/Icon';
 import { StatusChip } from '../../components/patterns';
 import {
@@ -44,6 +45,7 @@ export function DashboardWarningLightsQuickView({
   loading = false,
   onViewDetails,
 }: DashboardWarningLightsQuickViewProps) {
+  const { t } = useLanguage();
   const presentation = resolveTelltalePanelPresentation(telltales);
   const freshness = telltales?.freshness ?? 'no_data';
   const lastUpdateLabel = formatRelativeObservedAt(telltales?.lastObservedAt ?? null);
@@ -56,7 +58,7 @@ export function DashboardWarningLightsQuickView({
       key,
       label,
       tone,
-      text: light ? telltaleShortTextFromLight(light, telltales?.freshness) : loading ? '…' : 'Unbekannt',
+      text: light ? telltaleShortTextFromLight(light, telltales?.freshness) : loading ? '…' : t('health.warningLights.unknown'),
       icon: iconForKey(key),
     };
   });
@@ -64,10 +66,10 @@ export function DashboardWarningLightsQuickView({
   return (
     <div className="mb-2">
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <span className="text-[10px] font-semibold text-foreground">Tacho Warnleuchten</span>
+        <span className="text-[10px] font-semibold text-foreground">{t('health.warningLights.title')}</span>
         {loading && !telltales ? (
           <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium border border-border text-muted-foreground">
-            Laden …
+            {t('health.warningLights.loading')}
           </span>
         ) : (
           <StatusChip tone={presentation.badgeTone} className="!text-[9px] !py-0 !px-1.5">
@@ -77,7 +79,7 @@ export function DashboardWarningLightsQuickView({
         {freshness === 'stale' && (
           <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-[color:var(--status-watch)]">
             <Icon name="alert-triangle" className="w-2.5 h-2.5" />
-            Datenstand verzögert
+            {t('health.warningLights.dataDelayed')}
           </span>
         )}
         {lastUpdateLabel && freshness !== 'stale' && (
@@ -132,7 +134,7 @@ export function DashboardWarningLightsQuickView({
       </div>
       {!loading && presentation.activeCount > 0 && (
         <p className="mt-1.5 text-[9px] text-[color:var(--status-watch)] font-medium">
-          {presentation.activeCount} aktive Warnleuchte{presentation.activeCount === 1 ? '' : 'n'}
+          {presentation.activeCount === 1 ? t('health.warningLights.activeCount', { count: presentation.activeCount }) : t('health.warningLights.activeCountPlural', { count: presentation.activeCount })}
         </p>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail, Wallet } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useStationsV2FeatureFlags } from '../hooks/useStationsV2FeatureFlags';
 import type { FleetTab, FleetTabInput } from './fleet-health-service/fleet-health-service.types';
@@ -343,6 +343,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2.5 rounded-md transition-all duration-150 hover:bg-accent text-muted-foreground"
+            aria-label={mobileMenuOpen ? t('nav.closeMobileMenu') : t('nav.openMobileMenu')}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -522,7 +523,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           <button
             onClick={onToggleCollapse}
             className={`sq-sidebar-footer__toggle ${isCollapsed ? 'sq-sidebar-footer__toggle--icon-only relative group' : ''}`}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
           >
             <span className="sq-sidebar-footer__icon">
               {isCollapsed ? (
@@ -531,8 +532,8 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
                 <PanelLeftClose className="w-4 h-4" />
               )}
             </span>
-            {!isCollapsed && <span className="sq-sidebar-footer__label">Collapse</span>}
-            {isCollapsed && <CollapsedTooltip label="Expand sidebar" />}
+            {!isCollapsed && <span className="sq-sidebar-footer__label">{t('nav.collapseSidebar')}</span>}
+            {isCollapsed && <CollapsedTooltip label={t('nav.expandSidebar')} />}
           </button>
         </div>
       </div>

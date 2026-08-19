@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { StatusDot } from '../../components/patterns';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
-function formatSyncTime(iso: string | null): string {
+function formatSyncTime(iso: string | null, locale: string): string {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   } catch {
     return '';
   }
@@ -16,19 +17,22 @@ function formatSyncTime(iso: string | null): string {
 export function OperatorHeader() {
   const { orgName, loading: orgLoading } = useRentalOrg();
   const { syncState, triggerRefresh } = useOperatorShell();
+  const { formattingLocale, localeMetadata } = useLanguage();
 
   const syncLabel = syncState.loading
     ? 'Sync…'
     : syncState.error
       ? 'Sync-Fehler'
       : syncState.lastSyncAt
-        ? formatSyncTime(syncState.lastSyncAt)
+        ? formatSyncTime(syncState.lastSyncAt, formattingLocale)
         : '—';
 
   return (
     <header
       className="sticky top-0 z-20 border-b border-border/50 surface-frosted"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+      aria-label={`Operator — ${localeMetadata.nativeName}`}
+      lang={formattingLocale}
     >
       <div className="flex items-center gap-3 px-4 pb-3 pt-1">
         <div className="min-w-0 flex-1">

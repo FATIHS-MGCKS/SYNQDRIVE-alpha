@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { LiquidGlassLens } from '../../../components/surface';
 import { cn } from '../../../components/ui/utils';
 import { tv } from './trips-view-ui';
@@ -16,6 +17,7 @@ interface TripEventPopoverProps {
 }
 
 export function TripEventPopover({ event, x, y, onClose, onShowInDetails }: TripEventPopoverProps) {
+  const { t } = useLanguage();
   const severity = classificationToSeverity(event.classification, event.eventCategory);
   const toneClass =
     severity === 'critical' || severity === 'abuse'
@@ -32,7 +34,7 @@ export function TripEventPopover({ event, x, y, onClose, onShowInDetails }: Trip
       <button
         type="button"
         className="absolute inset-0 z-30 bg-transparent"
-        aria-label="Popover schließen"
+        aria-label={t('trips.closePopover')}
         onClick={onClose}
       />
       <div
@@ -104,7 +106,7 @@ export function TripEventPopover({ event, x, y, onClose, onShowInDetails }: Trip
                   }}
                   className={`liquid-glass-lens__panel-action ${tv.focusRing}`}
                 >
-                  <span className="liquid-glass-lens__panel-action__label">In Details anzeigen</span>
+                  <span className="liquid-glass-lens__panel-action__label">{t('trips.showInDetails')}</span>
                 </button>
               </LiquidGlassLens>
             )}

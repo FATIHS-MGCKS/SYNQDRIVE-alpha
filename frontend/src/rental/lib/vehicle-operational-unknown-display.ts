@@ -1,4 +1,5 @@
 import type { VehicleOperationalReadModel } from './vehicle-operational-state';
+import { getFormattingLocale } from '../../i18n/locales';
 import {
   selectIsStatusReliable,
   selectOperationalState,
@@ -140,7 +141,7 @@ function formatDerivedAt(
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return null;
   try {
-    return new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-US', {
+    return new Intl.DateTimeFormat(getFormattingLocale(locale === 'de' ? 'de' : 'en'), {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date);

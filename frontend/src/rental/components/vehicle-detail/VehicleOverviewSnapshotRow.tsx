@@ -5,6 +5,7 @@ import { navigateOverviewQuickCardTab } from '../../lib/vehicle-overview-navigat
 import { useVehicleRentalRequirements } from '../../hooks/useVehicleRentalRequirements';
 import { deriveRequirementsStatus } from '../../lib/vehicle-rental-requirements.utils';
 import { overviewCardIcon, vo } from './vehicle-overview-ui';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { VehicleOverviewQuickCard } from './VehicleOverviewQuickCard';
 import { VehicleRentalRequirementsQuickCard } from './VehicleRentalRequirementsQuickCard';
 
@@ -19,7 +20,7 @@ const CARD_ORDER = ['trips', 'bookings', 'tasks', 'damages', 'documents'] as con
 
 /**
  * @deprecated Removed from the Vehicle Overview — it was a redundant second
- * navigation layer (Quick navigation cards) duplicating the tab bar. Kept for
+ * navigation layer ({t('vehicle.overview.quickNavigation')} cards) duplicating the tab bar. Kept for
  * potential reuse only; do not re-add to the Overview.
  */
 export function VehicleOverviewSnapshotRow({
@@ -28,6 +29,7 @@ export function VehicleOverviewSnapshotRow({
   orgId,
   vehicleId,
 }: VehicleOverviewSnapshotRowProps) {
+  const { t } = useLanguage();
   const rentalEnabled = Boolean(orgId && vehicleId);
   const { effective, requirements, orgDefaults, loading, error, reload } =
     useVehicleRentalRequirements(orgId ?? null, vehicleId ?? null, rentalEnabled);
@@ -44,7 +46,7 @@ export function VehicleOverviewSnapshotRow({
   return (
     <section className={vo.snapshotSection} aria-labelledby="vehicle-overview-snapshot-label">
       <p id="vehicle-overview-snapshot-label" className={vo.snapshotLabel}>
-        Quick navigation
+        {t('vehicle.overview.quickNavigation')}
       </p>
       <div className={vo.cardScroll} role="list">
         {rentalEnabled && (

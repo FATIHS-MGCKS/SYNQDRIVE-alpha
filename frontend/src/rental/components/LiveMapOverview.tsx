@@ -7,6 +7,7 @@ import { createSedanMarkerEl, updateSedanRotation, shortestRotation } from '../.
 import { LiquidGlassLens } from '../../components/surface';
 import { cn } from '../../components/ui/utils';
 import { recordVehicleDetailClientSignal } from '../lib/vehicle-detail-observability';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const MAPBOX_STYLE = import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/light-v11';
@@ -79,6 +80,7 @@ export function LiveMapOverview({
   operatorHint = null,
   operatorHintSub = null,
 }: LiveMapOverviewProps) {
+  const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
@@ -290,7 +292,7 @@ export function LiveMapOverview({
   if (!MAPBOX_TOKEN) {
     return (
       <div className={`flex items-center justify-center bg-muted text-muted-foreground text-xs ${className}`}>
-        Mapbox token not configured
+        {t('fleet.map.mapboxTokenMissing')}
       </div>
     );
   }
@@ -307,7 +309,7 @@ export function LiveMapOverview({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <span className="text-xs font-medium text-muted-foreground">Loading map...</span>
+            <span className="text-xs font-medium text-muted-foreground">{t('fleet.map.loadingMap')}</span>
           </div>
         </div>
       )}
@@ -315,14 +317,14 @@ export function LiveMapOverview({
         <div className="sq-map-liquid-overlay rounded-lg">
           <div className="sq-map-liquid-empty mx-3 max-w-[17.5rem]">
             <p className="text-xs font-semibold text-foreground">
-              {operatorHint ?? 'No coordinates available'}
+              {operatorHint ?? t('fleet.map.noCoordinates')}
             </p>
             {(operatorHintSub ?? !operatorHint) && (
               <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                 {operatorHintSub ??
                   (isLiveTracking
-                    ? 'Waiting for live GPS signal'
-                    : 'Connect vehicle telematics for live location')}
+                    ? t('fleet.map.waitingGps')
+                    : t('fleet.map.connectTelematics'))}
               </p>
             )}
           </div>

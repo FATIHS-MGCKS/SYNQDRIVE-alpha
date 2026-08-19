@@ -65,7 +65,6 @@ import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { recordVehicleDetailClientSignal } from './lib/vehicle-detail-observability';
-import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
 import { AIAssistantView } from './components/AIAssistantView';
@@ -1285,7 +1284,6 @@ function RentalAppContent() {
 
 export default function App() {
   return (
-    <LanguageProvider>
       <RentalProvider>
         <FleetProvider>
           <DashboardInsightsProvider>
@@ -1298,6 +1296,5 @@ export default function App() {
           </DashboardInsightsProvider>
         </FleetProvider>
       </RentalProvider>
-    </LanguageProvider>
   );
 }

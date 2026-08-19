@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { VehicleRequirementsTab } from './VehicleRequirementsTab';
 
 vi.mock('../../hooks/useVehicleRentalRequirements', () => ({
@@ -27,6 +30,11 @@ const vehicle = {
   year: 2024,
 } as const;
 
+function renderDe(ui: React.ReactElement) {
+  window.localStorage.setItem('synqdrive.locale', 'de');
+  return renderToStaticMarkup(createElement(LanguageProvider, null, ui));
+}
+
 describe('Vehicle detail permission-based UI', () => {
   it('shows access denied when rental rules cannot be read', () => {
     vi.mocked(useRentalRulesPermissions).mockReturnValue({
@@ -39,7 +47,7 @@ describe('Vehicle detail permission-based UI', () => {
       canOverrideEligibility: false,
     });
 
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <VehicleRequirementsTab selectedVehicle={vehicle as never} orgId="org-1" />,
     );
     expect(html).toContain('Kein Zugriff');
@@ -57,7 +65,7 @@ describe('Vehicle detail permission-based UI', () => {
       canOverrideEligibility: false,
     });
 
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <VehicleRequirementsTab selectedVehicle={vehicle as never} orgId="org-1" />,
     );
     expect(html).toContain('Mietvoraussetzungen');

@@ -1,4 +1,5 @@
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   enrichAgendaBooking,
   getVehicleAgendaSafeActions,
@@ -19,6 +20,7 @@ import {
 import { bookingRef, formatCents } from '../bookings/bookingUtils';
 import { Icon } from '../ui/Icon';
 import { vb, vbActionClass } from './vehicle-bookings-ui';
+import { vehicleFormattingLocale } from '../vehicle/vehicle-i18n';
 
 interface VehicleBookingsAgendaProps {
   bookings: VehicleAgendaBooking[];
@@ -98,6 +100,7 @@ function AgendaBookingCard({
   hints: BookingAgendaRiskHint[];
   onSelectBooking?: (bookingId: string) => void;
 }) {
+  const { t, locale } = useLanguage();
   const icon = bookingStatusIcon(booking.status);
   const tone = bookingStatusTone(booking.status);
   const ref = booking.id ? bookingRef(booking.id) : null;
@@ -133,13 +136,13 @@ function AgendaBookingCard({
                 <BookingStatusBadge status={booking.status} />
                 {booking.isOverdue && (
                   <StatusChip tone="critical" className="text-[9px]">
-                    Überfällig
+                    {t('vehicle.overview.overdue')}
                   </StatusChip>
                 )}
               </div>
               <p className="text-[13px] font-semibold text-foreground truncate mt-1">{booking.customerName}</p>
               <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
-                {formatAgendaDateTime(booking.startDate)} – {formatAgendaDateTime(booking.endDate)}
+                {formatAgendaDateTime(booking.startDate, locale)} – {formatAgendaDateTime(booking.endDate, locale)}
                 <span className="mx-1.5 text-border">·</span>
                 {booking.days} {booking.days === 1 ? 'Tag' : 'Tage'}
               </p>
@@ -150,13 +153,13 @@ function AgendaBookingCard({
             <p className="text-[12px] font-semibold tabular-nums text-foreground">
               {booking.totalPriceCents != null ? formatCents(booking.totalPriceCents) : '—'}
             </p>
-            <p className="text-[9px] text-muted-foreground">Gebuchter Betrag</p>
+            <p className="text-[9px] text-muted-foreground">{t('vehicle.bookings.bookedAmount')}</p>
           </div>
         </div>
 
         <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
-          <MetaRow icon="map-pin" label="Pickup" value={booking.pickupLocation} />
-          <MetaRow icon="map-pin" label="Return" value={booking.returnLocation} />
+          <MetaRow icon="map-pin" label={t('dashboard.label.pickup')} value={booking.pickupLocation} />
+          <MetaRow icon="map-pin" label={t('dashboard.label.return')} value={booking.returnLocation} />
         </div>
 
         {handover && (
@@ -250,10 +253,11 @@ function toneTileClass(tone: ReturnType<typeof bookingStatusTone>): string {
   }
 }
 
-function formatAgendaDateTime(date: Date): string {
+function formatAgendaDateTime(date: Date, locale: string): string {
+  const fmtLocale = vehicleFormattingLocale(locale);
   return (
-    date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) +
+    date.toLocaleDateString(fmtLocale, { day: '2-digit', month: '2-digit' }) +
     ' ' +
-    date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+    date.toLocaleTimeString(fmtLocale, { hour: '2-digit', minute: '2-digit' })
   );
 }

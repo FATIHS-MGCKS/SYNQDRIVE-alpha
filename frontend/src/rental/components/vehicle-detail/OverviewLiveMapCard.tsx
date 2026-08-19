@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { LiquidGlassLens } from '../../../components/surface';
 import { cn } from '../../../components/ui/utils';
 import { useShallow } from 'zustand/react/shallow';
@@ -43,6 +44,7 @@ export function OverviewLiveMapCard({
   orgId,
   isDarkMode,
 }: OverviewLiveMapCardProps) {
+  const { formattingLocale } = useLanguage();
   const liveTelemetry = useVehicleLiveMapStore(
     useShallow((state) => ({
       boundVehicleId: state.boundVehicleId,
@@ -103,7 +105,7 @@ export function OverviewLiveMapCard({
     : null;
   const odometerValue =
     odometerRaw != null
-      ? Math.round(odometerRaw).toLocaleString('de-DE', {
+      ? Math.round(odometerRaw).toLocaleString(formattingLocale, {
           maximumFractionDigits: 0,
           minimumFractionDigits: 0,
         })

@@ -8,6 +8,7 @@ import type {
   DashboardWarningLightsResponse,
   OilLevelDisplay,
 } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from './ui/Icon';
 import { StatusChip, SkeletonCard } from '../../components/patterns';
 import {
@@ -75,6 +76,7 @@ export function DashboardWarningLightsPanel({
   onOpenBooking,
   onOpenTrips,
 }: DashboardWarningLightsPanelProps) {
+  const { t } = useLanguage();
   const [detailOpen, setDetailOpen] = useState(false);
 
   if (loading && !telltales) {
@@ -115,7 +117,7 @@ export function DashboardWarningLightsPanel({
               <Icon name="alert-triangle" className="w-3.5 h-3.5" aria-hidden="true" />
             </div>
             <h3 id="tacho-warnleuchten-title" className="text-[10px] font-bold tracking-tight text-foreground">
-              Tacho Warnleuchten
+              {t('health.warningLights.title')}
             </h3>
             <StatusChip tone={presentation.badgeTone} className="!text-[9px] !py-0 !px-1.5">
               {presentation.badgeLabel}
@@ -132,7 +134,7 @@ export function DashboardWarningLightsPanel({
           id="tacho-warnleuchten-summary"
           className="text-[10px] leading-snug text-muted-foreground mb-2 line-clamp-2 relative z-10"
         >
-          {syncErrorMessage && presentation.badgeLabel === 'Unbekannt'
+          {syncErrorMessage && presentation.badgeLabel === t('health.warningLights.unknown')
             ? 'Warnleuchtenstatus aktuell nicht verfügbar.'
             : presentation.summaryText}
         </p>

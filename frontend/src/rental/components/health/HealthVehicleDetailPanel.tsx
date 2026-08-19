@@ -46,8 +46,8 @@ import { segmentFromHealthState } from '../../lib/health-segment-display';
 import { buildBatteryLvSummaryVm } from '../../lib/battery-lv-view-model';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
 import { formatVolts } from '../../lib/battery-ui-formatters';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   brakeOverviewLabel,
   brakeRemainingKmLabel,
@@ -120,7 +120,7 @@ export function HealthVehicleDetailPanel({
   className,
 }: HealthVehicleDetailPanelProps) {
   const { orgId } = useRentalOrg();
-  const { t } = useLanguage();
+  const {t, locale, formattingLocale } = useLanguage();
   const [activeTab, setActiveTab] = useState<HealthDetailTab>(initialTab);
   const { data, loading, aiLoading, triggerAiAnalysis } = useHealthVehicleDetailData(
     vehicle.id,
@@ -128,8 +128,8 @@ export function HealthVehicleDetailPanel({
     activeTab,
   );
   const batteryLvVm = useMemo(
-    () => buildBatteryLvSummaryVm(data.battery),
-    [data.battery],
+    () => buildBatteryLvSummaryVm(data.battery, undefined, locale),
+    [data.battery, locale],
   );
 
   useEffect(() => {
@@ -163,7 +163,7 @@ export function HealthVehicleDetailPanel({
     if (activeTab === 'overview') {
       return (
         <div className="space-y-4">
-          <DetailSection title="Module status">
+          <DetailSection title={t('health.detail.moduleStatus')}>
             <div className="grid grid-cols-1 gap-2">
               {moduleChips.map((chip) => (
                 <button
@@ -198,7 +198,7 @@ export function HealthVehicleDetailPanel({
           </DetailSection>
 
           {health && health.blocking_reasons.length > 0 && (
-            <DetailSection title="Blocking reasons">
+            <DetailSection title={t('health.detail.blockingReasons')}>
               <ul className="space-y-1.5">
                 {health.blocking_reasons.map((reason) => (
                   <li
@@ -213,7 +213,7 @@ export function HealthVehicleDetailPanel({
             </DetailSection>
           )}
 
-          <DetailSection title="Empfohlene Maßnahmen">
+          <DetailSection title={t('health.detail.recommendedActions')}>
             <ul className="space-y-1.5 mb-3">
               {actions.map((action) => (
                 <li key={action} className="text-[12px] text-foreground flex gap-2">
@@ -241,22 +241,22 @@ export function HealthVehicleDetailPanel({
             </div>
           </DetailSection>
 
-          <DetailSection title="Data trust">
+          <DetailSection title={t('health.detail.dataTrust')}>
             <div className="grid grid-cols-2 gap-2">
               <div className="surface-premium rounded-lg px-3 py-2">
-                <div className="text-[10px] text-muted-foreground">Fresh</div>
+                <div className="text-[10px] text-muted-foreground">{t('health.detail.fresh')}</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.fresh}</div>
               </div>
               <div className="surface-premium rounded-lg px-3 py-2">
-                <div className="text-[10px] text-muted-foreground">Delayed data</div>
+                <div className="text-[10px] text-muted-foreground">{t('health.detail.delayedData')}</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.stale}</div>
               </div>
               <div className="surface-premium rounded-lg px-3 py-2">
-                <div className="text-[10px] text-muted-foreground">No tracking</div>
+                <div className="text-[10px] text-muted-foreground">{t('health.detail.noTracking')}</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.noTracking}</div>
               </div>
               <div className="surface-premium rounded-lg px-3 py-2">
-                <div className="text-[10px] text-muted-foreground">Estimated</div>
+                <div className="text-[10px] text-muted-foreground">{t('health.detail.estimated')}</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.estimated}</div>
               </div>
             </div>
@@ -275,7 +275,7 @@ export function HealthVehicleDetailPanel({
       return (
         <div className="space-y-3">
         <HealthModuleCard
-          title="Tires"
+          title={t('health.tires')}
           icon={CircleDot}
           rentalModule={health?.modules.tires}
           keyValues={[
@@ -285,7 +285,7 @@ export function HealthVehicleDetailPanel({
             {
               label: 'Last tread measurement',
               value: s?.lastActualMeasurementAt ?? s?.lastMeasurementAt
-                ? new Date(s.lastActualMeasurementAt ?? s.lastMeasurementAt!).toLocaleDateString('de-DE')
+                ? new Date(s.lastActualMeasurementAt ?? s.lastMeasurementAt!).toLocaleDateString(formattingLocale)
                 : '—',
             },
             { label: 'Confidence', value: s?.confidence ?? '—' },
@@ -328,7 +328,7 @@ export function HealthVehicleDetailPanel({
       return (
         <div className="space-y-3">
         <HealthModuleCard
-          title="Brakes"
+          title={t('health.brakes')}
           icon={Disc}
           rentalModule={health?.modules.brakes}
           keyValues={[
@@ -445,7 +445,7 @@ export function HealthVehicleDetailPanel({
       return (
         <div className="space-y-3">
         <HealthModuleCard
-          title="Diagnostic trouble codes"
+          title={t('health.detail.dtc')}
           icon={AlertCircle}
           rentalModule={mod}
           keyValues={[
@@ -486,7 +486,7 @@ export function HealthVehicleDetailPanel({
       return (
         <div className="space-y-3">
           <HealthModuleCard
-            title="Service & compliance"
+            title={t('health.detail.serviceCompliance')}
             icon={Wrench}
             rentalModule={health?.modules.service_compliance}
             keyValues={[
@@ -513,7 +513,7 @@ export function HealthVehicleDetailPanel({
       const mod = health?.modules.complaints;
       return (
         <HealthModuleCard
-          title="Technische Beobachtungen"
+          title={t('health.detail.technicalObservations')}
           icon={MessageSquare}
           rentalModule={mod}
           keyValues={[{ label: 'Status', value: mod?.reason ?? '—' }]}
@@ -526,7 +526,7 @@ export function HealthVehicleDetailPanel({
       const countMatch = mod?.reason?.match(/(\d+)/);
       return (
         <HealthModuleCard
-          title="OEM alerts"
+          title={t('health.detail.oemAlerts')}
           icon={Bell}
           rentalModule={mod}
           keyValues={[
@@ -540,7 +540,7 @@ export function HealthVehicleDetailPanel({
     if (activeTab === 'evidence') {
       if (!health) {
         return (
-          <p className="text-[12px] text-muted-foreground">No rental health payload available.</p>
+          <p className="text-[12px] text-muted-foreground">{t('health.detail.noRentalHealth')}</p>
         );
       }
       return (
@@ -561,7 +561,7 @@ export function HealthVehicleDetailPanel({
                   <span>{mod.evidence_type ?? '—'}</span>
                   <span className="text-muted-foreground">Updated</span>
                   <span>{mod.last_updated_at ? fresh : '—'}</span>
-                  <span className="text-muted-foreground">Delayed data</span>
+                  <span className="text-muted-foreground">{t('health.detail.delayedData')}</span>
                   <span>{mod.data_stale ? 'Yes' : 'No'}</span>
                 </div>
               </div>
@@ -598,7 +598,7 @@ export function HealthVehicleDetailPanel({
             type="button"
             onClick={onClose}
             className="sq-press flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70"
-            aria-label="Close detail"
+            aria-label={t('health.detail.close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -633,7 +633,7 @@ export function HealthVehicleDetailPanel({
 
       <div className="shrink-0 border-b border-border bg-muted/20 px-4 py-3">
         <h3 className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-          Why this status?
+          {t('health.detail.whyStatus')}
         </h3>
         <p className="mt-1.5 text-[12px] leading-relaxed text-foreground">{explanation}</p>
         {affected > 0 && (
@@ -671,9 +671,9 @@ export function HealthVehicleDetailPanel({
               <Sparkles className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <h4 className="text-[12px] font-semibold text-foreground">AI-assisted explanation</h4>
+              <h4 className="text-[12px] font-semibold text-foreground">{t('health.detail.aiExplanation')}</h4>
               <p className="text-[10px] text-muted-foreground">
-                Explains patterns and suggests checks — does not override rental health status.
+                {t('health.detail.aiExplanationHint')}
               </p>
               {data.aiResult ? (
                 <p className="mt-2 text-[11px] text-foreground leading-relaxed">

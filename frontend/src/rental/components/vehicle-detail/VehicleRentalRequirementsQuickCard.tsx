@@ -1,3 +1,4 @@
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { VehicleDetailTab } from '../../lib/vehicle-overview.types';
 import type { VehicleRequirementsQuickSummary } from '../../lib/vehicle-rental-requirements.utils';
@@ -24,6 +25,7 @@ export function VehicleRentalRequirementsQuickCard({
   onNavigate,
   onRetry,
 }: VehicleRentalRequirementsQuickCardProps) {
+  const { t } = useLanguage();
   const cardStatus = loading ? 'neutral' : error ? 'critical' : summary.cardStatus;
 
   if (error) {
@@ -33,8 +35,10 @@ export function VehicleRentalRequirementsQuickCard({
         role="listitem"
       >
         <div className={`${vo.cardInner} items-start`}>
-          <p className={vo.cardLabel}>Rental requirements</p>
-          <p className={`${vo.cardHeadline} mt-1 text-[color:var(--status-critical)]`}>Unavailable</p>
+          <p className={vo.cardLabel}>{t('vehicle.overview.rentalRequirements')}</p>
+          <p className={`${vo.cardHeadline} mt-1 text-[color:var(--status-critical)]`}>
+            {t('vehicle.overview.rentalRequirementsUnavailable')}
+          </p>
           <p className={`${vo.cardSubline} mt-0.5`}>{error}</p>
           {onRetry ? (
             <button
@@ -42,7 +46,7 @@ export function VehicleRentalRequirementsQuickCard({
               className="sq-btn sq-btn-ghost mt-2 h-7 px-2 text-[11px]"
               onClick={onRetry}
             >
-              Retry
+              {t('common.retry')}
             </button>
           ) : null}
         </div>
@@ -56,7 +60,7 @@ export function VehicleRentalRequirementsQuickCard({
       className={`group ${vo.card} ${cardStatusAccentBorder(cardStatus)} ${vo.hover} ${vo.active} ${vo.focusRing} cursor-pointer disabled:cursor-wait disabled:opacity-80 w-[10.75rem] sm:w-full min-h-[4.75rem] snap-start shrink-0 sm:shrink`}
       onClick={() => onNavigate('vehicle-requirements')}
       disabled={loading}
-      aria-label={`Rental requirements. Minimum age ${summary.minimumAgeLabel}. Open requirements tab.`}
+      aria-label={t('vehicle.overview.rentalRequirementsAria', { age: summary.minimumAgeLabel })}
       aria-busy={loading}
     >
       <div className={vo.cardInner}>
@@ -70,7 +74,7 @@ export function VehicleRentalRequirementsQuickCard({
         </div>
 
         <div className="min-w-0 flex-1 text-left">
-          <p className={vo.cardLabel}>Rental requirements</p>
+          <p className={vo.cardLabel}>{t('vehicle.overview.rentalRequirements')}</p>
           {loading ? (
             <div className="mt-1 space-y-1.5 animate-pulse motion-reduce:animate-none" aria-hidden>
               <div className="h-3.5 w-[82%] rounded bg-muted/80" />
@@ -79,10 +83,16 @@ export function VehicleRentalRequirementsQuickCard({
           ) : (
             <>
               <p className={`${vo.cardHeadline} mt-0.5`}>
-                Age {summary.minimumAgeLabel} · Deposit {summary.depositLabel}
+                {t('vehicle.overview.rentalRequirementsSummary', {
+                  age: summary.minimumAgeLabel,
+                  deposit: summary.depositLabel,
+                })}
               </p>
               <p className={`${vo.cardSubline} mt-0.5`}>
-                License {summary.licenseLabel} · Card {summary.creditCardLabel}
+                {t('vehicle.overview.rentalRequirementsLicense', {
+                  license: summary.licenseLabel,
+                  card: summary.creditCardLabel,
+                })}
               </p>
               <p className={`${vo.cardSubline} mt-0.5 text-muted-foreground/80`}>
                 {summary.sourceLabel}

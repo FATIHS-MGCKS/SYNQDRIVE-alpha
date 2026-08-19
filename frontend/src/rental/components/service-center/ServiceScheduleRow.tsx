@@ -1,4 +1,5 @@
 import { ChevronRight, Clock, User, Wrench } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { PriorityBadge, StatusChip } from '../../../components/patterns';
 import type { ApiTask } from '../../../lib/api';
 import {
@@ -42,6 +43,7 @@ export function ServiceScheduleRow({
   assigneeName,
   onOpen,
 }: ServiceScheduleRowProps) {
+  const { t } = useLanguage();
   const Icon = taskTypeIcon(task.type);
   const appointment = taskScheduledAppointment(task);
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
@@ -96,7 +98,7 @@ export function ServiceScheduleRow({
             <StatusChip tone={statusTone(vehicleTaskStatusTone(displayStatus, task.isOverdue))}>
               {vehicleTaskStatusLabel(displayStatus, task.isOverdue)}
             </StatusChip>
-            {task.isOverdue && <StatusChip tone="critical">Überfällig</StatusChip>}
+            {task.isOverdue && <StatusChip tone="critical">{t('dashboard.operations.status.overdue')}</StatusChip>}
           </div>
         </div>
         <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />

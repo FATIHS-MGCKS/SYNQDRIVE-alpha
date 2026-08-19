@@ -62,11 +62,28 @@ const backButtonClassName =
   'sq-press shrink-0 rounded-xl border border-border/60 bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ' +
   VEHICLE_DETAIL_BACK_BUTTON_CLASS;
 
+function operationalStatusLabel(
+  status: VehicleOperationalUiStatus,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  if (status === 'Manual Block') return t('status.manualBlock');
+  if (status === 'Maintenance') return t('status.maintenance');
+  return t('status.available');
+}
+
+function cleaningStatusLabel(
+  status: VehicleCleaningUiStatus,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  return status === 'Clean' ? t('status.clean') : t('status.needsCleaning');
+}
+
 function readinessChipFromDisplay(
   vehicleStatus: VehicleOperationalUiStatus,
   vehicle: VehicleData,
   rentalHealth: ReturnType<typeof useEffectiveHealth>['health'],
   locale: string,
+  t: ReturnType<typeof useLanguage>['t'],
 ): {
   label: string;
   tone: StatusTone;
@@ -77,7 +94,7 @@ function readinessChipFromDisplay(
 } {
   if (vehicleStatus === 'Manual Block') {
     return {
-      label: 'Manual Block',
+      label: t('status.manualBlock'),
       tone: 'critical',
       icon: <Icon name="x-circle" className="h-3 w-3" />,
       supplement: null,
@@ -87,7 +104,7 @@ function readinessChipFromDisplay(
   }
   if (vehicleStatus === 'Maintenance') {
     return {
-      label: 'Maintenance',
+      label: t('status.maintenance'),
       tone: 'warning',
       icon: <Icon name="wrench" className="h-3 w-3" />,
       supplement: null,
@@ -138,10 +155,10 @@ export function VehicleDetailHeader({
   onRefreshOperationalStatus,
 }: VehicleDetailHeaderProps) {
   const isDarkMode = useDocumentDark();
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
-  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale);
+  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale, t);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const hasLicense = Boolean(vehicle.license);
@@ -149,12 +166,12 @@ export function VehicleDetailHeader({
   const [statusAnnouncement, setStatusAnnouncement] = useState('');
 
   useEffect(() => {
-    setStatusAnnouncement(`Vehicle status updated to ${vehicleStatus}`);
-  }, [vehicleStatus]);
+    setStatusAnnouncement(t('vehicleDetail.header.statusUpdated', { status: operationalStatusLabel(vehicleStatus, t) }));
+  }, [vehicleStatus, t]);
 
   useEffect(() => {
-    setStatusAnnouncement(`Cleaning status updated to ${cleaningStatus}`);
-  }, [cleaningStatus]);
+    setStatusAnnouncement(t('vehicleDetail.header.cleaningUpdated', { status: cleaningStatusLabel(cleaningStatus, t) }));
+  }, [cleaningStatus, t]);
 
   return (
     <div
@@ -173,8 +190,8 @@ export function VehicleDetailHeader({
                 type="button"
                 onClick={onBack}
                 className={`${backButtonClassName} sm:hidden`}
-                title="Back to Fleet"
-                aria-label="Back to Fleet"
+                title={t('vehicle.backToFleet')}
+                aria-label={t('vehicle.backToFleet')}
               >
                 <Icon name="arrow-left" className="h-4 w-4" />
               </button>
@@ -200,7 +217,7 @@ export function VehicleDetailHeader({
                   </MetaItem>
                 ) : null}
                 {!hasLicense && !hasStation ? (
-                  <span className="truncate text-[11px] font-medium text-muted-foreground">Vehicle</span>
+                  <span className="truncate text-[11px] font-medium text-muted-foreground">{t('vehicleDetail.header.vehicleLabel')}</span>
                 ) : null}
               </div>
             </div>
@@ -227,7 +244,7 @@ export function VehicleDetailHeader({
                     type="button"
                     data-testid="vehicle-detail-status-trigger"
                     className={`sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${VEHICLE_DETAIL_CHIP_TRIGGER_CLASS}`}
-                    aria-label={`Vehicle readiness status, currently ${readinessChip.label}`}
+                    aria-label={t('vehicleDetail.header.readinessAria', { status: readinessChip.label })}
                   >
                     <StatusChip tone={readinessChip.tone} icon={readinessChip.icon}>
                       {readinessChip.label}
@@ -243,21 +260,21 @@ export function VehicleDetailHeader({
                     onClick={() => onVehicleStatusChange('Available')}
                   >
                     <Icon name="check-circle" className="h-3.5 w-3.5 text-[color:var(--status-positive)]" />
-                    Available
+                    {t('status.available')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium"
                     onClick={() => onVehicleStatusChange('Manual Block')}
                   >
                     <Icon name="x-circle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                    Manual Block
+                    {t('status.manualBlock')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium"
                     onClick={() => onVehicleStatusChange('Maintenance')}
                   >
                     <Icon name="wrench" className="h-3.5 w-3.5 text-[color:var(--status-attention)]" />
-                    Maintenance
+                    {t('status.maintenance')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -268,13 +285,13 @@ export function VehicleDetailHeader({
                     type="button"
                     data-testid="vehicle-detail-cleaning-trigger"
                     className={`sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${VEHICLE_DETAIL_CHIP_TRIGGER_CLASS}`}
-                    aria-label={`Cleaning status, currently ${cleaningStatus}`}
+                    aria-label={t('vehicleDetail.header.cleaningAria', { status: cleaningStatusLabel(cleaningStatus, t) })}
                   >
                     <StatusChip
                       tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
                       icon={<Icon name="sparkles" className="h-3 w-3" />}
                     >
-                      {cleaningStatus}
+                      {cleaningStatusLabel(cleaningStatus, t)}
                     </StatusChip>
                   </button>
                 </DropdownMenuTrigger>
@@ -287,14 +304,14 @@ export function VehicleDetailHeader({
                     onClick={() => onCleaningStatusChange('Clean')}
                   >
                     <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-info)]" />
-                    Clean
+                    {t('status.clean')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium"
                     onClick={() => onCleaningStatusChange('Needs Cleaning')}
                   >
                     <Icon name="alert-triangle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                    Needs Cleaning
+                    {t('status.needsCleaning')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -333,8 +350,8 @@ export function VehicleDetailHeader({
           type="button"
           onClick={onBack}
           className={`${backButtonClassName} hidden sm:inline-flex`}
-          title="Back to Fleet"
-          aria-label="Back to Fleet"
+          title={t('vehicle.backToFleet')}
+          aria-label={t('vehicle.backToFleet')}
         >
           <Icon name="arrow-left" className="h-4 w-4" />
         </button>

@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { SUMMARY_COPY, TIMELINE_COPY, tv } from './trips-view-ui';
 import type { TripsPeriodSummary } from './utils/tripSummary';
 import { formatSelectedPeriodHeaderDate } from './utils/tripSummary';
@@ -54,7 +55,8 @@ export function TripsOverviewCard({
   onCheckMissing,
   disabled,
 }: TripsOverviewCardProps) {
-  const periodDate = formatSelectedPeriodHeaderDate(selectedDate);
+  const { locale, formattingLocale } = useLanguage();
+  const periodDate = formatSelectedPeriodHeaderDate(selectedDate, locale);
   const busy = loading || syncing;
   const showKpis = summary.tripCount > 0 || (loading && tripCount === 0);
 

@@ -9,6 +9,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { getFormattingLocale } from '../../../i18n/locales';
 import { useMemo, useState } from 'react';
 import {
   DataTable,
@@ -230,7 +231,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
 
   const snapshotLabel = data?.generatedAt
     ? t('fleetConnectivity.snapshot', {
-        time: new Date(data.generatedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB'),
+        time: new Date(data.generatedAt).toLocaleString(getFormattingLocale(locale === 'de' ? 'de' : 'en')),
       })
     : null;
 

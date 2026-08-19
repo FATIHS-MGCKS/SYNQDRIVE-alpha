@@ -133,7 +133,7 @@ export function VehicleOverrideEditorDrawer({
         open={open}
         onOpenChange={onOpenChange}
         eyebrow="Vehicle overrides"
-        title="Edit requirement overrides"
+        title={t('vehicleDetail.requirements.overrideTitle')}
         description="Leave override disabled to inherit organization and category rules."
         widthClassName="sm:max-w-xl"
         footer={
@@ -152,14 +152,14 @@ export function VehicleOverrideEditorDrawer({
               </button>
             </>
           ) : (
-            <p className="text-[12px] text-muted-foreground">Read-only access</p>
+            <p className="text-[12px] text-muted-foreground">{t('vehicle.override.readOnlyAccess')}</p>
           )
         }
       >
         <div className="mb-4 rounded-xl border border-border/60 bg-muted/15 p-3.5">
           <label className="flex cursor-pointer items-center justify-between gap-3">
             <div>
-              <p className="text-[13px] font-semibold text-foreground">Override for this vehicle</p>
+              <p className="text-[13px] font-semibold text-foreground">{t('vehicleDetail.requirements.overrideForVehicle')}</p>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {enabled
                   ? 'Vehicle-specific values replace inherited rules.'

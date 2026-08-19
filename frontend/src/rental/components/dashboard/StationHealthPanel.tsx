@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -28,10 +29,11 @@ interface StationHealthPanelProps {
 }
 
 function severityLabel(severity: StationHealthSummary['statusSeverity'], de: boolean): string {
-  if (severity === 'healthy') return de ? 'Stabil' : 'Stable';
-  if (severity === 'attention') return de ? 'Beobachten' : 'Watch';
-  if (severity === 'warning') return de ? 'Engpass' : 'Squeeze';
-  return de ? 'Kritisch' : 'Critical';
+  const locale = de ? 'de' : 'en';
+  if (severity === 'healthy') return dt(locale, 'dashboard.label.stable');
+  if (severity === 'attention') return dt(locale, 'dashboard.label.watch');
+  if (severity === 'warning') return dt(locale, 'dashboard.label.squeeze');
+  return dt(locale, 'dashboard.label.critical');
 }
 
 function stationCardAccent(severity: StationHealthSummary['statusSeverity']): string {
@@ -100,6 +102,7 @@ function StationCommandCard({
   vm: DashboardViewModel;
   onSelect?: () => void;
 }) {
+  const locale = de ? 'de' : 'en';
   const onMetric = (metric: StationDrilldownMetric) => {
     openStationMetric(vm, station.stationId, metric);
   };
@@ -118,11 +121,11 @@ function StationCommandCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-semibold text-foreground">{station.stationName}</p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
-            {station.vehicleCount} {de ? 'Fahrzeuge' : 'vehicles'}
+            {station.vehicleCount} {dt(locale, 'dashboard.count.vehicles')}
             {station.capacityGap > 0 ? (
               <span className="text-[color:var(--status-watch)]">
                 {' '}
-                · {de ? `Engpass +${station.capacityGap}` : `squeeze +${station.capacityGap}`}
+                · {dt(locale, 'dashboard.station.squeezeGap', { count: station.capacityGap })}
               </span>
             ) : null}
           </p>
@@ -132,7 +135,7 @@ function StationCommandCard({
             {severityLabel(station.statusSeverity, de)}
           </StatusChip>
           <StatusChip tone={stationDataFreshnessTone(station.dataFreshness)}>
-            {stationDataFreshnessLabel(station.dataFreshness, de ? 'de' : 'en')}
+            {stationDataFreshnessLabel(station.dataFreshness, locale)}
           </StatusChip>
         </div>
       </div>
@@ -144,48 +147,48 @@ function StationCommandCard({
         role="presentation"
       >
         <MetricPill
-          label={de ? 'Bereit' : 'Ready'}
+          label={dt(locale, 'dashboard.label.ready')}
           value={station.readyCount}
           tone="success"
           onClick={() => onMetric('ready')}
         />
         <MetricPill
-          label={de ? 'Nicht bereit' : 'Not ready'}
+          label={dt(locale, 'dashboard.label.notReady')}
           value={station.availableNotReadyCount ?? 0}
           tone="watch"
           onClick={() => onMetric('ready')}
         />
         <MetricPill
-          label={de ? 'Vermietet' : 'Rented'}
+          label={dt(locale, 'dashboard.rented')}
           value={station.rentedCount}
           onClick={() => onMetric('rented')}
         />
         <MetricPill
-          label={de ? 'Heute' : 'Due'}
+          label={dt(locale, 'dashboard.label.due')}
           value={station.dueTodayCount}
           tone="info"
           onClick={() => onMetric('due-today')}
         />
         <MetricPill
-          label={de ? 'Überfällig' : 'Overdue'}
+          label={dt(locale, 'dashboard.label.overdue')}
           value={station.overdueCount}
           tone="critical"
           onClick={() => onMetric('overdue')}
         />
         <MetricPill
-          label={de ? 'Blockiert' : 'Blocked'}
+          label={dt(locale, 'dashboard.label.blocked')}
           value={station.blockedCount}
           tone="watch"
           onClick={() => onMetric('blocked')}
         />
         <MetricPill
-          label={de ? 'Kritisch' : 'Critical'}
+          label={dt(locale, 'dashboard.label.critical')}
           value={station.criticalAlerts}
           tone="critical"
           onClick={() => onMetric('critical')}
         />
         <MetricPill
-          label={de ? 'Soft/Off' : 'Soft/Off'}
+          label={dt(locale, 'dashboard.label.softOff')}
           value={(station.softOfflineCount ?? 0) + (station.offlineCount ?? 0)}
           tone={(station.offlineCount ?? 0) > 0 ? 'critical' : 'watch'}
         />
@@ -247,10 +250,11 @@ function HandoverMiniList({
   de: boolean;
   onOpenBooking?: (id: string) => void;
 }) {
+  const locale = de ? 'de' : 'en';
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border/50 px-2.5 py-2 text-[12px] text-muted-foreground">
-        {de ? 'Keine Einträge' : 'No items'}
+        {dt(locale, 'dashboard.station.noItems')}
       </div>
     );
   }
@@ -271,7 +275,7 @@ function HandoverMiniList({
               <span className="min-w-0 flex-1 truncate font-medium text-foreground">{item.plate}</span>
               {item.isOverdue ? (
                 <StatusChip tone="critical">
-                  {de ? 'Überfällig' : 'Overdue'}
+                  {dt(locale, 'dashboard.label.overdue')}
                 </StatusChip>
               ) : null}
             </button>
@@ -297,6 +301,7 @@ function StationDetailView({
   onOpenVehicleById?: (id: string) => void;
   onOpenBookingById?: (id: string) => void;
 }) {
+  const locale = de ? 'de' : 'en';
   const s = detail.station;
   const onMetric = (metric: StationDrilldownMetric) => {
     openStationMetric(vm, s.stationId, metric);
@@ -308,14 +313,14 @@ function StationDetailView({
         <div className="min-w-0">
           <p className="text-[16px] font-semibold text-foreground">{s.stationName}</p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
-            {s.vehicleCount} {de ? 'Fahrzeuge' : 'vehicles'} · {s.readyCount}{' '}
-            {de ? 'bereit' : 'ready'} · {s.dueTodayCount} {de ? 'heute fällig' : 'due today'}
+            {s.vehicleCount} {dt(locale, 'dashboard.count.vehicles')} · {s.readyCount}{' '}
+            {dt(locale, 'dashboard.station.readyShort')} · {dt(locale, 'dashboard.station.dueTodayCount', { count: s.dueTodayCount })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusChip tone={stationSeverityTone(s.statusSeverity)}>{severityLabel(s.statusSeverity, de)}</StatusChip>
           <StatusChip tone={stationDataFreshnessTone(s.dataFreshness)}>
-            {stationDataFreshnessLabel(s.dataFreshness, de ? 'de' : 'en')}
+            {stationDataFreshnessLabel(s.dataFreshness, locale)}
           </StatusChip>
           {onClearStation ? (
             <button
@@ -323,27 +328,27 @@ function StationDetailView({
               onClick={onClearStation}
               className="sq-btn sq-btn-secondary min-h-9 px-2.5 text-[12px]"
             >
-              {de ? 'Alle Stationen' : 'All stations'}
+              {dt(locale, 'dashboard.station.allStations')}
             </button>
           ) : null}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-        <MetricPill label={de ? 'Bereit' : 'Ready'} value={s.readyCount} tone="success" onClick={() => onMetric('ready')} />
-        <MetricPill label={de ? 'Nicht bereit' : 'Not ready'} value={s.availableNotReadyCount ?? 0} tone="watch" onClick={() => onMetric('ready')} />
-        <MetricPill label={de ? 'Vermietet' : 'Rented'} value={s.rentedCount} onClick={() => onMetric('rented')} />
-        <MetricPill label={de ? 'Überfällig' : 'Overdue'} value={s.overdueCount} tone="critical" onClick={() => onMetric('overdue')} />
-        <MetricPill label={de ? 'Blockiert' : 'Blocked'} value={s.blockedCount} tone="watch" onClick={() => onMetric('blocked')} />
-        <MetricPill label={de ? 'Kritisch' : 'Critical'} value={s.criticalAlerts} tone="critical" onClick={() => onMetric('critical')} />
+        <MetricPill label={dt(locale, 'dashboard.label.ready')} value={s.readyCount} tone="success" onClick={() => onMetric('ready')} />
+        <MetricPill label={dt(locale, 'dashboard.label.notReady')} value={s.availableNotReadyCount ?? 0} tone="watch" onClick={() => onMetric('ready')} />
+        <MetricPill label={dt(locale, 'dashboard.rented')} value={s.rentedCount} onClick={() => onMetric('rented')} />
+        <MetricPill label={dt(locale, 'dashboard.label.overdue')} value={s.overdueCount} tone="critical" onClick={() => onMetric('overdue')} />
+        <MetricPill label={dt(locale, 'dashboard.label.blocked')} value={s.blockedCount} tone="watch" onClick={() => onMetric('blocked')} />
+        <MetricPill label={dt(locale, 'dashboard.label.critical')} value={s.criticalAlerts} tone="critical" onClick={() => onMetric('critical')} />
         <MetricPill label="Soft Offline" value={s.softOfflineCount ?? 0} tone="watch" />
         <MetricPill label="Offline" value={s.offlineCount ?? 0} tone="critical" />
-        <MetricPill label={de ? 'Engpass' : 'Gap'} value={s.capacityGap} tone="watch" onClick={() => onMetric('due-today')} />
+        <MetricPill label={dt(locale, 'dashboard.label.gap')} value={s.capacityGap} tone="watch" onClick={() => onMetric('due-today')} />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <HandoverMiniList
-          title={de ? 'Pickups heute' : 'Pickups today'}
+          title={dt(locale, 'dashboard.station.pickupsToday')}
           de={de}
           onOpenBooking={onOpenBookingById}
           items={detail.pickups.map((p) => ({
@@ -355,7 +360,7 @@ function StationDetailView({
           }))}
         />
         <HandoverMiniList
-          title={de ? 'Returns heute' : 'Returns today'}
+          title={dt(locale, 'dashboard.station.returnsToday')}
           de={de}
           onOpenBooking={onOpenBookingById}
           items={detail.returns.map((r) => ({
@@ -370,19 +375,19 @@ function StationDetailView({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <VehicleChipRow
-          title={de ? 'Bereit' : 'Ready'}
+          title={dt(locale, 'dashboard.label.ready')}
           items={detail.readyVehicles}
           tone="success"
           onOpenVehicle={onOpenVehicleById}
         />
         <VehicleChipRow
-          title={de ? 'Blockiert / Wartung' : 'Blocked / maint.'}
+          title={dt(locale, 'dashboard.station.blockedMaint')}
           items={detail.blockedVehicles}
           tone="watch"
           onOpenVehicle={onOpenVehicleById}
         />
         <VehicleChipRow
-          title={de ? 'Kritische Alerts' : 'Critical alerts'}
+          title={dt(locale, 'dashboard.station.criticalAlerts')}
           items={detail.criticalVehicles}
           tone="critical"
           onOpenVehicle={onOpenVehicleById}
@@ -391,11 +396,11 @@ function StationDetailView({
 
       <div className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {de ? 'Nächste 24h' : 'Next 24h'}
+          {dt(locale, 'dashboard.station.next24h')}
         </p>
         {detail.timelineItems.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">
-            {de ? 'Keine anstehenden Ereignisse' : 'No upcoming events'}
+            {dt(locale, 'dashboard.station.noUpcomingEvents')}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -417,11 +422,11 @@ function StationDetailView({
 
       <div className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {de ? 'Stations-Aktionen' : 'Station actions'}
+          {dt(locale, 'dashboard.station.actions')}
         </p>
         {detail.actionItems.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">
-            {de ? 'Keine dringenden Aktionen für diese Station' : 'No urgent actions for this station'}
+            {dt(locale, 'dashboard.station.noUrgentActions')}
           </p>
         ) : (
           <ul className="space-y-1.5">
@@ -450,6 +455,7 @@ function UnassignedFleetBanner({
   de: boolean;
   onOpenVehicleById?: (id: string) => void;
 }) {
+  const locale = de ? 'de' : 'en';
   const { unassignedFleet } = vm;
   if (unassignedFleet.count === 0) return null;
 
@@ -498,15 +504,15 @@ export function StationHealthPanel({
   return (
     <section
       className={panelShellClass('secondary')}
-      aria-label={de ? 'Stations-Kommando' : 'Station command'}
+      aria-label={dt(locale, 'dashboard.station.commandAria')}
     >
       <DashboardPanelHeader
         icon={<Icon name="map-pin" className="h-4 w-4" />}
         iconToneClass="sq-tone-brand"
-        title={de ? 'Stations-Kommando' : 'Station command'}
+        title={dt(locale, 'dashboard.station.command')}
         subtitle={
           selectedStationId
-            ? stationCommandDetail?.station.stationName ?? (de ? 'Unbekannte Station' : 'Unknown station')
+            ? stationCommandDetail?.station.stationName ?? dt(locale, 'dashboard.station.unknown')
             : de
               ? 'Alle Stationen · kritische zuerst'
               : 'All stations · critical first'
@@ -518,7 +524,7 @@ export function StationHealthPanel({
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <Icon name="map-pin" className="h-8 w-8 text-muted-foreground/50" />
             <p className="text-[13px] font-semibold text-foreground">
-              {de ? 'Keine Stationen konfiguriert' : 'No stations configured'}
+              {dt(locale, 'dashboard.station.noConfigured')}
             </p>
             <p className="max-w-xs text-[12px] text-muted-foreground text-pretty">
               {de

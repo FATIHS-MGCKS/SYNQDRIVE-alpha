@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -6,8 +7,6 @@ import {
   DASHBOARD_KPI_NUMBER_CLASS,
   DASHBOARD_KPI_TITLE_CLASS,
 } from './dashboardShell';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import {
   getKpiCardSurfaceClass,
@@ -88,20 +87,19 @@ function kpiCardClass(
 }
 
 function readyKpiLabels(locale?: string) {
-  const de = locale === 'de';
+  const resolved = locale ?? 'en';
   return {
-    vehiclesReady: de ? 'Fahrzeuge bereit' : 'vehicles ready',
-    available: de ? 'Verfügbar' : 'Available',
-    notReady: de ? 'Nicht bereit' : 'Not ready',
+    vehiclesReady: dt(resolved, 'dashboard.control.vehiclesReady'),
+    available: dt(resolved, 'dashboard.available'),
+    notReady: dt(resolved, 'dashboard.control.notReady'),
   };
 }
 
 function operationsKpiLabels(locale?: string) {
-  const dict = locale === 'de' ? de : en;
   return {
-    activeRentals: dict['dashboard.todaysOperations.activeRentalsKpi'],
-    pickupsToday: dict['dashboard.todaysOperations.pickupsKpi'],
-    returnsToday: dict['dashboard.todaysOperations.returnsKpi'],
+    activeRentals: dt(locale ?? 'en', 'dashboard.todaysOperations.activeRentalsKpi'),
+    pickupsToday: dt(locale ?? 'en', 'dashboard.todaysOperations.pickupsKpi'),
+    returnsToday: dt(locale ?? 'en', 'dashboard.todaysOperations.returnsKpi'),
   };
 }
 

@@ -77,7 +77,7 @@ describe('Document Intake V2 full-flow contract', () => {
 
   it('includes i18n keys for de/en/fr lifecycle states', () => {
     for (const locale of ['en.ts', 'de.ts', 'fr.ts']) {
-      const src = read(`i18n/translations/${locale}`);
+      const src = read(`../i18n/translations/${locale}`);
       expect(src).toContain('docUpload.tab.upload');
       expect(src).toContain('docUpload.tab.review');
       expect(src).toContain('docUpload.tab.archive');

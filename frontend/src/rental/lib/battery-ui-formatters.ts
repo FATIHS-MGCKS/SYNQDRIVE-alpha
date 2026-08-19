@@ -1,27 +1,34 @@
 import type { SohPublicationState } from '../../lib/api';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 
 export type BatteryVoltageContext = 'live' | 'under_load' | 'charging' | 'resting';
 
-export function formatBatteryAgeShort(ageMs: number | null | undefined, locale = 'de-DE'): string | null {
+export function formatBatteryAgeShort(
+  ageMs: number | null | undefined,
+  formattingLocale = vehicleFormattingLocaleOrDefault(),
+): string | null {
   if (ageMs == null || !Number.isFinite(ageMs) || ageMs < 0) return null;
-  if (ageMs < 60_000) return locale.startsWith('de') ? 'vor <1 Min.' : '<1 min ago';
+  if (ageMs < 60_000) return formattingLocale.startsWith('de') ? 'vor <1 Min.' : '<1 min ago';
   if (ageMs < 3_600_000) {
     const mins = Math.floor(ageMs / 60_000);
-    return locale.startsWith('de') ? `vor ${mins} Min.` : `${mins} min ago`;
+    return formattingLocale.startsWith('de') ? `vor ${mins} Min.` : `${mins} min ago`;
   }
   if (ageMs < 86_400_000) {
     const hrs = Math.floor(ageMs / 3_600_000);
-    return locale.startsWith('de') ? `vor ${hrs} Std.` : `${hrs} h ago`;
+    return formattingLocale.startsWith('de') ? `vor ${hrs} Std.` : `${hrs} h ago`;
   }
   const days = Math.floor(ageMs / 86_400_000);
-  return locale.startsWith('de') ? `vor ${days} Tg.` : `${days} d ago`;
+  return formattingLocale.startsWith('de') ? `vor ${days} Tg.` : `${days} d ago`;
 }
 
-export function formatIsoRelative(iso: string | null | undefined, locale = 'de-DE'): string | null {
+export function formatIsoRelative(
+  iso: string | null | undefined,
+  formattingLocale = vehicleFormattingLocaleOrDefault(),
+): string | null {
   if (!iso) return null;
   const ts = new Date(iso).getTime();
   if (!Number.isFinite(ts)) return null;
-  return formatBatteryAgeShort(Date.now() - ts, locale);
+  return formatBatteryAgeShort(Date.now() - ts, formattingLocale);
 }
 
 export function publicationStateI18nKey(state: SohPublicationState | null | undefined): string {

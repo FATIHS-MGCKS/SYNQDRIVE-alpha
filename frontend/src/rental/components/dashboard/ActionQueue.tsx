@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { useMemo, useState, memo } from 'react';
 import { Icon } from '../ui/Icon';
 import { SkeletonRows } from '../../../components/patterns';
@@ -17,7 +18,7 @@ import {
 import { AttentionItemRow, AttentionRowAction } from './AttentionItemRow';
 import { DataTrustHint } from './DataTrustHint';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
 import { sectionTrustHint } from './dataTrustBuilder';
 import {
@@ -71,14 +72,14 @@ const COLLAPSED_PREVIEW_COUNT = 3;
 const ENTRY_LIST_CLASS = 'flex flex-col gap-1 px-1 pb-1.5 sm:px-2';
 const ENTRY_LIST_ITEM_CLASS = 'list-none';
 
-function ctaLabelLegacy(cta: ActionQueueCta, de: boolean): string {
-  if (cta === 'open-vehicle' || cta === 'open-vehicle-module') return de ? 'Fahrzeug öffnen' : 'Open vehicle';
-  if (cta === 'open-booking') return de ? 'Buchung öffnen' : 'Open booking';
-  if (cta === 'start-handover-pickup') return de ? 'Übergabe starten' : 'Start handover';
-  if (cta === 'start-handover-return') return de ? 'Rückgabe starten' : 'Start return';
-  if (cta === 'open-stations') return de ? 'Stationen öffnen' : 'Open stations';
-  if (cta === 'open-price-tariffs') return de ? 'Preise & Tarife öffnen' : 'Open price tariffs';
-  return de ? 'Vermietung öffnen' : 'Open rental';
+function ctaLabelLegacy(cta: ActionQueueCta, locale: string): string {
+  if (cta === 'open-vehicle' || cta === 'open-vehicle-module') return dt(locale, 'notification.cta.openVehicle');
+  if (cta === 'open-booking') return dt(locale, 'notification.cta.openBooking');
+  if (cta === 'start-handover-pickup') return dt(locale, 'notification.cta.startPickup');
+  if (cta === 'start-handover-return') return dt(locale, 'notification.cta.startReturn');
+  if (cta === 'open-stations') return dt(locale, 'notification.cta.openStation');
+  if (cta === 'open-price-tariffs') return dt(locale, 'notification.cta.openPriceTariffs');
+  return dt(locale, 'notification.cta.openRental');
 }
 
 function displaySeverity(item: ActionQueueItem): NotificationSeverity | ReturnType<typeof toChildSeverity> {
@@ -95,7 +96,7 @@ function resolveCtaLabel(
   if (item.queue?.actionType) {
     return t(notificationCtaLabelKey(item.queue.actionType));
   }
-  return ctaLabelLegacy(item.cta, de);
+  return ctaLabelLegacy(item.cta, de ? 'de' : 'en');
 }
 
 function tabLabelI18n(tab: ActionQueueFilterTab, t: ReturnType<typeof useLanguage>['t']): string {
@@ -267,7 +268,7 @@ function ActionQueueChildRow({
         module={child.module}
         copy={copy}
         timeLabel={child.timeLabel}
-        ctaLabel={child.ctaLabel ?? ctaLabelLegacy(child.cta, de)}
+        ctaLabel={child.ctaLabel ?? ctaLabelLegacy(child.cta, de ? 'de' : 'en')}
         de={de}
         nested
         onRowClick={() => vm.openDrilldown({ type: 'action-item', itemId: child.itemId })}
@@ -292,6 +293,7 @@ function ActionQueueGroupRow({
   obdPlugByVehicleId: Map<string, boolean | null>;
   t: ReturnType<typeof useLanguage>['t'];
 }) {
+  const locale = de ? 'de' : 'en';
   const criticalLike = group.severity === 'critical' || group.severity === 'overdue';
   const [expanded, setExpanded] = useState(false);
   const groupContentId = `aq-group-${group.id}`;
@@ -314,7 +316,7 @@ function ActionQueueGroupRow({
           onRowClick={() => setExpanded((value) => !value)}
           trailing={(
             <AttentionRowAction
-              label={expanded ? (de ? 'Einklappen' : 'Collapse') : (de ? 'Details' : 'Details')}
+              label={expanded ? dt(locale, 'dashboard.actionQueue.collapse') : dt(locale, 'common.details')}
               icon="chevron-down"
               expanded={expanded}
               ariaExpanded={expanded}
@@ -445,8 +447,9 @@ function ActionQueueCollapsedPreview({
 }
 
 function ActionQueueSkeleton({ de }: { de: boolean }) {
+  const locale = de ? 'de' : 'en';
   return (
-    <div className="px-3 py-2" aria-busy aria-label={de ? 'Meldungen laden' : 'Loading alerts'}>
+    <div className="px-3 py-2" aria-busy aria-label={dt(locale, 'dashboard.actionQueue.loading')}>
       <SkeletonRows rows={3} />
     </div>
   );
@@ -463,10 +466,10 @@ function ActionQueueEmpty({ vm }: { vm: DashboardViewModel }) {
       </div>
       <div className="space-y-1">
         <p className="text-[13px] font-semibold text-foreground">
-          {de ? 'Keine offenen Meldungen' : 'No open alerts'}
+          {dt(locale, 'dashboard.actionQueue.noAlerts')}
         </p>
         <p className="text-[12px] text-muted-foreground">
-          {de ? 'Alles im grünen Bereich' : 'Everything looks clear'}
+          {dt(locale, 'dashboard.actionQueue.clear')}
         </p>
       </div>
       {summary.readyCount > 0 ? (
@@ -570,7 +573,7 @@ function ActionQueueHeader({
   const { locale, operatorFocusMode } = vm;
   const de = locale === 'de';
   const title = operatorFocusMode
-    ? de ? 'Kritische Aktionen' : 'Critical actions'
+    ? dt(locale, 'dashboard.actionQueue.critical')
     : t('notification.panelTitle');
 
   return (
@@ -602,7 +605,7 @@ function ActionQueueHeader({
             aria-controls={controlsId}
             className="sq-press inline-flex min-h-8 shrink-0 items-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
           >
-            {attentionExpandLabel(totalCount, de, isExpanded)}
+            {attentionExpandLabel(totalCount, locale, isExpanded)}
           </button>
         ) : null}
       </div>

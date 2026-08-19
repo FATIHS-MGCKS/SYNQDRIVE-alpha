@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { StatusChip } from '../../../components/patterns';
 import { api, type TripDeviceConnectionEvidenceItem } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
@@ -19,6 +20,7 @@ export function TripDeviceConnectionEvidence({
   vehicleId,
   tripId,
 }: TripDeviceConnectionEvidenceProps) {
+  const { t } = useLanguage();
   const [events, setEvents] = useState<TripDeviceConnectionEvidenceItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +51,7 @@ export function TripDeviceConnectionEvidence({
     return (
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-        Telematik-Evidenz wird geladen…
+        {t('trips.telematicsEvidenceLoading')}
       </div>
     );
   }
@@ -64,7 +66,7 @@ export function TripDeviceConnectionEvidence({
           className="w-4 h-4 text-[color:var(--status-critical)]"
         />
         <h4 className="text-[12px] font-semibold text-foreground">
-          Telematik / OBD-Verbindung
+          {t('trips.telematicsConnection')}
         </h4>
       </div>
       <ul className="space-y-3">

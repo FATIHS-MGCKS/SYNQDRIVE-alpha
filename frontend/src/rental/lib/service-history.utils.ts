@@ -1,4 +1,6 @@
 import type { ApiTask, ApiTaskType } from '../../lib/api';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import { SERVICE_MAINTENANCE_TYPES } from './service-task-semantics';
 
 const MS_DAY = 24 * 60 * 60 * 1000;
@@ -62,7 +64,7 @@ export function taskCompletedTimestamp(task: ApiTask): number {
 export function completedDateKey(task: ApiTask): string {
   const ts = taskCompletedTimestamp(task);
   if (!ts) return 'Unbekanntes Datum';
-  return new Date(ts).toLocaleDateString('de-DE', {
+  return new Date(ts).toLocaleDateString(vehicleFormattingLocaleOrDefault(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import type { VehicleData } from '../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type {
@@ -39,13 +40,13 @@ export function persistOperatorFocusModePreference(enabled: boolean): void {
 function notReadyReason(v: VehicleData, locale: string, readyOptions: ReadyToRentOptions): string {
   const de = locale === 'de';
   const status = selectOperationalStatus(v);
-  if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return de ? 'Wartung' : 'Maintenance';
-  if (v.cleaningStatus !== 'Clean') return de ? 'Reinigung ausstehend' : 'Cleaning pending';
-  if (readyOptions.blockedVehicleIds?.has(v.id)) return de ? 'Vermietblockiert' : 'Rental blocked';
-  if (readyOptions.healthRiskVehicleIds?.has(v.id)) return de ? 'Health-Risiko' : 'Health risk';
-  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return de ? 'Reserviert · nicht bereit' : 'Reserved · not ready';
-  if (status === VEHICLE_OPERATIONAL_STATUS.UNKNOWN) return de ? 'Status unbekannt' : 'Unknown status';
-  return de ? 'Nicht vermietbereit' : 'Not rent-ready';
+  if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return dt(locale, 'dashboard.label.maintenance');
+  if (v.cleaningStatus !== 'Clean') return dt(locale, 'dashboard.focusReason.cleaningPending');
+  if (readyOptions.blockedVehicleIds?.has(v.id)) return dt(locale, 'dashboard.focusReason.rentalBlocked');
+  if (readyOptions.healthRiskVehicleIds?.has(v.id)) return dt(locale, 'dashboard.focusReason.healthRisk');
+  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return dt(locale, 'dashboard.focusReason.reservedNotReady');
+  if (status === VEHICLE_OPERATIONAL_STATUS.UNKNOWN) return dt(locale, 'dashboard.focusReason.unknownStatus');
+  return dt(locale, 'dashboard.focusReason.notRentReady');
 }
 
 function runtimeReasonLabel(reasons: RuntimeReason[], fallback: string): string {
@@ -61,10 +62,10 @@ export function getFocusNotReadyVehiclesFromRuntime(
     .filter((state) => state.operationalStatus !== 'active_rented' && !state.isReadyToRent)
     .map((state) => {
       const fallback = state.isMaintenance
-        ? de ? 'Wartung' : 'Maintenance'
+        ? dt(locale, 'dashboard.label.maintenance')
         : state.isBlocked
-          ? de ? 'Vermietblockiert' : 'Rental blocked'
-          : de ? 'Nicht vermietbereit' : 'Not rent-ready';
+          ? dt(locale, 'dashboard.focusReason.rentalBlocked')
+          : dt(locale, 'dashboard.focusReason.notRentReady');
       return {
         vehicleId: state.vehicleId,
         label: state.license || state.displayName,
@@ -187,13 +188,13 @@ export function dataFreshnessWarningMessage(
       : 'At least one data source reports errors — verify figures before acting.';
   }
   if (input.dataFreshness.insightsError) {
-    return de ? 'Insights nicht verfügbar — Daten können unvollständig sein.' : 'Insights unavailable — data may be incomplete.';
+    return dt(locale, 'dashboard.dataTrust.insightsUnavailable');
   }
   if (input.syncStatus === 'offline') {
-    return de ? 'Sync offline — vor kritischen Aktionen Daten prüfen.' : 'Sync offline — verify data before critical actions.';
+    return dt(locale, 'dashboard.dataTrust.syncOffline');
   }
   if (input.syncStatus === 'stale' || input.dataFreshness.insightsStale) {
-    return de ? 'Daten verzögert — Refresh empfohlen.' : 'Data is delayed — refresh recommended.';
+    return dt(locale, 'dashboard.dataTrust.dataDelayed');
   }
   if (input.telemetry.offlineCount > 0) {
     return de
@@ -206,5 +207,5 @@ export function dataFreshnessWarningMessage(
       ? `${softOfflineCount} Fahrzeug(e) Soft Offline · seit 24h kein Signal.`
       : `${softOfflineCount} vehicle(s) soft offline · no signal for 24h.`;
   }
-  return de ? 'Datenaktualität eingeschränkt.' : 'Data freshness limited.';
+  return dt(locale, 'dashboard.dataTrust.limitedHint');
 }

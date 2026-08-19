@@ -1,5 +1,6 @@
 import { ClipboardList, ExternalLink, Wrench } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { StatusChip } from '../../../components/patterns';
 import { api, type ApiTask, type ComplianceTaskSignal, type RentalHealthModule, type Vendor } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
@@ -44,6 +45,7 @@ export function HealthServiceActions({
   compact = false,
   className = '',
 }: HealthServiceActionsProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [openTasks, setOpenTasks] = useState<ApiTask[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -120,14 +122,14 @@ export function HealthServiceActions({
     <div className={`space-y-2 ${className}`}>
       {!compact && (
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Service-Aktionen
+          {t('health.service.actions')}
         </p>
       )}
 
       {duplicate && (
         <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch-soft)] px-3 py-2 space-y-2">
           <p className="text-[11px] text-foreground">
-            Offene Service-Aufgabe existiert bereits: <span className="font-semibold">{duplicate.title}</span>
+            {t('health.service.existingTask')} <span className="font-semibold">{duplicate.title}</span>
           </p>
           {onOpenExistingTask && (
             <button
@@ -136,7 +138,7 @@ export function HealthServiceActions({
               className={`${btnClass} border-[color:var(--brand)]/25 surface-premium hover:bg-muted/40`}
             >
               <ExternalLink className="w-3 h-3" />
-              Bestehende Aufgabe öffnen
+              {t('health.service.openExisting')}
             </button>
           )}
         </div>
@@ -155,7 +157,7 @@ export function HealthServiceActions({
               className={`${btnClass} border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]`}
             >
               <ClipboardList className="w-3 h-3" />
-              Service-Aufgabe anlegen
+              {t('health.service.createTask')}
             </button>
           )}
           {onOpenServiceCenter && (
@@ -165,7 +167,7 @@ export function HealthServiceActions({
               className={`${btnClass} border-border/60 hover:bg-muted/40`}
             >
               <Wrench className="w-3 h-3" />
-              Service Center
+              {t('health.service.openCenter')}
             </button>
           )}
           {rentalModule?.state && (

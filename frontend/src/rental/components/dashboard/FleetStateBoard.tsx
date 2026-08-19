@@ -1,3 +1,5 @@
+import { dt } from './dashboard-i18n';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { SkeletonRows } from '../../../components/patterns';
@@ -23,23 +25,19 @@ interface FleetStateBoardProps {
 }
 
 function FleetBoardEmpty({ locale, stationName }: { locale: string; stationName?: string | null }) {
-  const de = locale === 'de';
+  
   return (
     <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
       <div className="sq-tone-neutral flex h-10 w-10 items-center justify-center rounded-xl bg-muted/40">
         <Icon name="car" className="h-5 w-5 text-muted-foreground" />
       </div>
       <p className="text-[13px] font-semibold text-foreground">
-        {de ? 'Keine Fahrzeuge im Scope' : 'No vehicles in scope'}
+        {dt(locale, 'dashboard.fleet.noVehiclesInScope')}
       </p>
       <p className="max-w-[280px] text-[12px] text-muted-foreground text-pretty">
         {stationName
-          ? de
-            ? `${stationName} hat aktuell keine Fahrzeuge in der Flotte.`
-            : `${stationName} has no fleet vehicles right now.`
-          : de
-            ? 'Es sind keine Fahrzeuge geladen oder der Filter ist leer.'
-            : 'No vehicles are loaded or the current filter is empty.'}
+          ? dt(locale, 'dashboard.fleet.noVehiclesAtStation', { station: stationName })
+          : dt(locale, 'dashboard.fleet.noVehiclesLoaded')}
       </p>
     </div>
   );
@@ -64,6 +62,7 @@ function MinimalFleetHeader({
   onToggle: () => void;
   controlsId: string;
 }) {
+  const locale = de ? 'de' : 'en';
   return (
     <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -87,11 +86,11 @@ function MinimalFleetHeader({
           <>
             {criticalCount > 0 ? (
               <span className="text-[11px] font-medium tabular-nums text-[color:var(--status-critical)]">
-                {criticalCount} {de ? 'kritisch' : 'critical'}
+                {criticalCount} {dt(locale, 'dashboard.count.critical')}
               </span>
             ) : null}
             <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-              {totalCount} {de ? 'Fahrzeuge' : 'vehicles'}
+              {totalCount} {dt(locale, 'dashboard.count.vehicles')}
             </span>
           </>
         ) : null}
@@ -102,7 +101,7 @@ function MinimalFleetHeader({
           aria-controls={controlsId}
           className="sq-press inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
         >
-          {isExpanded ? (de ? 'Zu' : 'Close') : (de ? 'Auf' : 'Open')}
+          {isExpanded ? dt(locale, 'dashboard.fleet.close') : dt(locale, 'dashboard.fleet.open')}
           <Icon
             name="chevron-down"
             className={cn('h-3 w-3 transition-transform duration-200', !isExpanded && '-rotate-90')}
@@ -122,24 +121,24 @@ interface RuntimeBoardSection {
   rows: DashboardSliceRow[];
 }
 
-function sectionLabel(sliceId: DashboardSliceId, de: boolean): string {
-  const labels: Record<DashboardSliceId, [string, string]> = {
-    'ready-to-rent': ['Ready', 'Bereit'],
-    'active-rented': ['Active / Rented', 'Aktiv / Vermietet'],
-    'due-soon': ['Due Soon', 'Bald fällig'],
-    'overdue-returns': ['Overdue Returns', 'Überfällige Rückgaben'],
-    'overdue-pickups': ['Overdue Pickups', 'Überfällige Übergaben'],
-    'blocked-maintenance': ['Blocked / Maintenance', 'Blockiert / Wartung'],
-    'critical-alerts': ['Critical Alerts', 'Kritische Alerts'],
+function sectionLabel(sliceId: DashboardSliceId, locale: string): string {
+  const map: Record<DashboardSliceId, Parameters<typeof dt>[1]> = {
+    'ready-to-rent': 'dashboard.label.ready',
+    'active-rented': 'dashboard.fleet.sectionActiveRented',
+    'due-soon': 'dashboard.slice.dueSoon',
+    'overdue-returns': 'dashboard.slice.overdueReturns',
+    'overdue-pickups': 'dashboard.slice.overduePickups',
+    'blocked-maintenance': 'dashboard.slice.blockedMaintenance',
+    'critical-alerts': 'dashboard.slice.criticalAlerts',
   };
-  return de ? labels[sliceId][1] : labels[sliceId][0];
+  return dt(locale, map[sliceId]);
 }
 
 function availableButNotReadyRows(runtime: DashboardRuntimeModel): DashboardSliceRow[] {
   return readyToRentNotReadyRows(runtime.slices['ready-to-rent']);
 }
 
-function buildSections(runtime: DashboardRuntimeModel, de: boolean): RuntimeBoardSection[] {
+function buildSections(runtime: DashboardRuntimeModel, locale: string): RuntimeBoardSection[] {
   const readySlice = runtime.slices['ready-to-rent'];
   const activeSlice = runtime.slices['active-rented'];
   const dueSoonSlice = runtime.slices['due-soon'];
@@ -152,56 +151,56 @@ function buildSections(runtime: DashboardRuntimeModel, de: boolean): RuntimeBoar
     {
       id: 'ready-to-rent',
       sliceId: 'ready-to-rent',
-      title: sectionLabel('ready-to-rent', de),
-      subtitle: readySlice.hint ?? (de ? 'Echte mietbereite Fahrzeuge' : 'Truly ready vehicles'),
+      title: sectionLabel('ready-to-rent', locale),
+      subtitle: readySlice.hint ?? (dt(locale, 'dashboard.fleet.sliceReadyHint')),
       count: readySlice.count ?? readySlice.rows.length,
       rows: readySlice.rows,
     },
     {
       id: 'available-but-not-ready',
       sliceId: 'ready-to-rent',
-      title: de ? 'Nicht bereit' : 'Not ready',
-      subtitle: de ? 'Verfügbar, aber nicht mietbereit' : 'Available but not rent-ready',
+      title: dt(locale, 'dashboard.fleet.sliceNotReady'),
+      subtitle: dt(locale, 'dashboard.fleet.sliceNotReadyHint'),
       count: notReadyRows.length,
       rows: notReadyRows,
     },
     {
       id: 'active-rented',
       sliceId: 'active-rented',
-      title: sectionLabel('active-rented', de),
-      subtitle: activeSlice.hint ?? (de ? 'Aktive Mietvorgänge' : 'Active rental operations'),
+      title: sectionLabel('active-rented', locale),
+      subtitle: activeSlice.hint ?? (dt(locale, 'dashboard.fleet.sliceActiveHint')),
       count: activeSlice.count ?? activeSlice.rows.length,
       rows: activeSlice.rows,
     },
     {
       id: 'due-soon',
       sliceId: 'due-soon',
-      title: sectionLabel('due-soon', de),
-      subtitle: dueSoonSlice.hint ?? (de ? 'Pickups und Returns im Zeitfenster' : 'Pickups and returns in the window'),
+      title: sectionLabel('due-soon', locale),
+      subtitle: dueSoonSlice.hint ?? (dt(locale, 'dashboard.fleet.sliceDueSoonHint')),
       count: dueSoonSlice.count ?? dueSoonSlice.rows.length,
       rows: dueSoonSlice.rows,
     },
     {
       id: 'overdue-returns',
       sliceId: 'overdue-returns',
-      title: sectionLabel('overdue-returns', de),
-      subtitle: overdueSlice.hint ?? (de ? 'Nur überfällige Rückgaben' : 'Only overdue returns'),
+      title: sectionLabel('overdue-returns', locale),
+      subtitle: overdueSlice.hint ?? (dt(locale, 'dashboard.fleet.sliceOverdueHint')),
       count: overdueSlice.count ?? overdueSlice.rows.length,
       rows: overdueSlice.rows,
     },
     {
       id: 'blocked-maintenance',
       sliceId: 'blocked-maintenance',
-      title: sectionLabel('blocked-maintenance', de),
-      subtitle: blockedSlice.hint ?? (de ? 'Blockaden, Wartung und nicht verfügbare Fahrzeuge' : 'Blocks, maintenance, and unavailable vehicles'),
+      title: sectionLabel('blocked-maintenance', locale),
+      subtitle: blockedSlice.hint ?? (dt(locale, 'dashboard.fleet.sliceBlockedHint')),
       count: blockedSlice.count ?? blockedSlice.rows.length,
       rows: blockedSlice.rows,
     },
     {
       id: 'critical-alerts',
       sliceId: 'critical-alerts',
-      title: sectionLabel('critical-alerts', de),
-      subtitle: criticalSlice.hint ?? (de ? 'Deduplizierte Problem-Items' : 'Deduplicated issue items'),
+      title: sectionLabel('critical-alerts', locale),
+      subtitle: criticalSlice.hint ?? (dt(locale, 'dashboard.fleet.sliceCriticalHint')),
       count: criticalSlice.count ?? criticalSlice.rows.length,
       rows: criticalSlice.rows,
     },
@@ -211,12 +210,12 @@ function buildSections(runtime: DashboardRuntimeModel, de: boolean): RuntimeBoar
 function SectionHeader({
   section,
   active,
-  de,
+  locale,
   onSelect,
 }: {
   section: RuntimeBoardSection;
   active: boolean;
-  de: boolean;
+  locale: string;
   onSelect?: (sliceId: DashboardSliceId) => void;
 }) {
   return (
@@ -241,16 +240,17 @@ function SectionHeader({
       <span className="rounded-lg bg-background/55 px-2 py-1 text-[11px] font-semibold tabular-nums text-foreground">
         {section.count}
       </span>
-      <span className="sr-only">{de ? 'Slice öffnen' : 'Open slice'}</span>
+      <span className="sr-only">{dt(locale, 'dashboard.fleet.openSlice')}</span>
     </button>
   );
 }
 
 function SectionEmpty({ de }: { de: boolean }) {
+  const locale = de ? 'de' : 'en';
   return (
     <div className="rounded-xl border border-dashed border-border/45 bg-muted/10 px-3 py-4 text-center">
       <p className="text-[11.5px] font-medium text-muted-foreground">
-        {de ? 'Keine Einträge in diesem Bereich' : 'No items in this section'}
+        {dt(locale, 'dashboard.fleet.noItemsInSection')}
       </p>
     </div>
   );
@@ -273,7 +273,7 @@ export function FleetStateBoard({
   const de = locale === 'de';
   const [isExpanded, setIsExpanded] = useState(true);
   const contentId = 'dashboard-fleet-state-content';
-  const sections = useMemo(() => buildSections(dashboardRuntime, de), [dashboardRuntime, de]);
+  const sections = useMemo(() => buildSections(dashboardRuntime, locale), [dashboardRuntime, locale]);
   const runtimeStateByVehicleId = useMemo(() => {
     const states = new Map<string, VehicleRuntimeState>();
     for (const state of dashboardRuntime.vehicleStates) states.set(state.vehicleId, state);
@@ -286,12 +286,12 @@ export function FleetStateBoard({
   return (
     <section
       className={panelShellClass('tertiary')}
-      aria-label={de ? 'Flottenstatus' : 'Fleet status'}
+      aria-label={dt(locale, 'dashboard.fleet.boardAria')}
     >
       <MinimalFleetHeader
-        title={de ? 'Flottensteuerung' : 'Fleet State Board'}
+        title={dt(locale, 'dashboard.fleet.boardTitle')}
         subtitle={
-          `${totalCount} ${de ? 'Fahrzeuge' : 'vehicles'}` +
+          `${totalCount} ${dt(locale, 'dashboard.count.vehicles')}` +
           (stationName ? ` · ${stationName}` : '')
         }
         totalCount={totalCount}
@@ -309,7 +309,7 @@ export function FleetStateBoard({
                 key={section.id}
                 section={section}
                 active={activeTargetId === section.sliceId}
-                de={de}
+                locale={locale}
                 onSelect={onSelectSlice}
               />
             ))}

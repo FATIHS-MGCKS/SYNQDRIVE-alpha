@@ -6,6 +6,8 @@ import type {
   BatteryRuntimeStatus,
 } from '../../lib/api';
 import { normalizeLvBatteryVoltage } from './battery-display.utils';
+import type { SupportedLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import {
   formatBatteryAgeShort,
   formatIsoRelative,
@@ -113,8 +115,9 @@ export function resolveLvVoltageContext(summary: BatteryHealthSummary | null | u
 export function buildBatteryLvSummaryVm(
   summary: BatteryHealthSummary | null | undefined,
   liveMapVoltage?: number | null,
-  locale = 'de-DE',
+  locale?: SupportedLocale,
 ): BatteryLvSummaryVm {
+  const formattingLocale = vehicleFormattingLocaleOrDefault(locale);
   const unsupported = isLvBatteryUnsupported(summary);
   const pub = summary?.lv?.publicationState ?? summary?.currentState?.publicationState;
   const runtimeStatus = resolveLvRuntimeStatus(summary);
@@ -178,7 +181,7 @@ export function buildBatteryLvSummaryVm(
       context,
       contextKey: voltageContextI18nKey(context),
       observedAt,
-      ageLabel: formatBatteryAgeShort(ageMs, locale) ?? formatIsoRelative(observedAt, locale),
+      ageLabel: formatBatteryAgeShort(ageMs, formattingLocale) ?? formatIsoRelative(observedAt, formattingLocale),
       isStale: summary?.lv?.freshness?.isFresh === false,
     },
     resting: {
@@ -187,11 +190,11 @@ export function buildBatteryLvSummaryVm(
       batteryTypeLabel,
       measurementContext: resting?.measurementContext ?? null,
       observedAt: resting?.dataQuality?.observedAt ?? observedAt,
-      ageLabel: formatIsoRelative(resting?.dataQuality?.observedAt ?? observedAt, locale),
+      ageLabel: formatIsoRelative(resting?.dataQuality?.observedAt ?? observedAt, formattingLocale),
       dataQualityStatus: resting?.dataQualityStatus ?? resting?.dataQuality?.status ?? summary?.dataQuality?.slices.lvRestingVoltage.status ?? null,
     },
     aggregateDataQuality: summary?.dataQuality?.status ?? null,
-    lastCheckedLabel: formatIsoRelative(lc, locale),
+    lastCheckedLabel: formatIsoRelative(lc, formattingLocale),
     condition,
   };
 }
@@ -202,9 +205,10 @@ export function buildBatteryLvDetailVm(
   options?: {
     liveMapVoltage?: number | null;
     exteriorAmbient?: { value: string; hint: string | null };
-    locale?: string;
+    locale?: SupportedLocale;
   },
 ): BatteryLvDetailVm {
+  const formattingLocale = vehicleFormattingLocaleOrDefault(options?.locale);
   const base = buildBatteryLvSummaryVm(summary, options?.liveMapVoltage, options?.locale);
   const startProxy = summary?.lv?.telemetry?.startProxy;
   const latestMeasurement = startProxy?.measurements?.[0] ?? null;
@@ -221,7 +225,7 @@ export function buildBatteryLvDetailVm(
         latestMeasurement?.numericValue != null
           ? `${latestMeasurement.numericValue}${latestMeasurement.unit ? ` ${latestMeasurement.unit}` : ''}`
           : null,
-      ageLabel: formatBatteryAgeShort(latestMeasurement?.measurementAgeMs ?? null, options?.locale),
+      ageLabel: formatBatteryAgeShort(latestMeasurement?.measurementAgeMs ?? null, formattingLocale),
       unsupportedReason:
         availability === 'UNSUPPORTED'
           ? startProxy.availabilityLabelDe

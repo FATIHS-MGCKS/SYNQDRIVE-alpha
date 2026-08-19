@@ -18,6 +18,7 @@ import {
 } from '../../lib/vehicle-service-tasks.utils';
 import { taskTypeLabel } from '../../lib/service-task-semantics';
 import { ServiceTaskCreateModal } from '../service-center/ServiceTaskCreateModal';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface VehicleServiceContextPanelProps {
   vehicleId: string;
@@ -89,6 +90,7 @@ export function VehicleServiceContextPanel({
   onOpenServiceCenter,
   onOpenTask,
 }: VehicleServiceContextPanelProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -123,11 +125,11 @@ export function VehicleServiceContextPanel({
   // Only escalated states earn a badge; plain open tasks let the rows speak.
   const headerBadge: { tone: 'critical' | 'warning'; label: string } | null =
     summary.blockingCount > 0
-      ? { tone: 'critical', label: 'Vermietung blockiert' }
+      ? { tone: 'critical', label: t('vehicle.overview.rentalBlocked') }
       : summary.overdueCount > 0
-        ? { tone: 'critical', label: 'Überfällig' }
+        ? { tone: 'critical', label: t('vehicle.overview.overdue') }
         : summary.criticalCount > 0
-          ? { tone: 'critical', label: 'Kritisch' }
+          ? { tone: 'critical', label: t('vehicle.overview.critical') }
           : null;
 
   const openTask = (taskId: string) => {
@@ -153,7 +155,7 @@ export function VehicleServiceContextPanel({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">
-              Service & Wartung
+              {t('vehicle.overview.serviceMaintenance')}
             </h3>
             {headerBadge && (
               <StatusChip tone={headerBadge.tone} className="text-[9px] py-0">
@@ -172,7 +174,7 @@ export function VehicleServiceContextPanel({
           className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--brand-ink)] sq-press"
         >
           <ClipboardList className="w-3 h-3" />
-          Service-Aufgabe erstellen
+          {t('vehicle.overview.createServiceTask')}
         </button>
       </div>
 
@@ -187,7 +189,7 @@ export function VehicleServiceContextPanel({
               onClick={() => onOpenServiceCenter({ tab: 'tasks', vehicleId })}
               className="w-full text-center text-[10px] font-semibold text-[color:var(--brand-ink)] py-1 sq-press"
             >
-              Alle {summary.openCount} im Service Center
+              {t('vehicle.overview.allTasksInServiceCenter', { count: summary.openCount })}
             </button>
           )}
         </div>

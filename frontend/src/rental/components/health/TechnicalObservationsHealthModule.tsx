@@ -9,6 +9,8 @@ import {
   type TechnicalObservationSeverity,
   type RentalHealthModule,
 } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { getFormattingLocale } from '../../../i18n/locales';
 import { Icon } from '../ui/Icon';
 import { SkeletonCard } from '../../../components/patterns';
 import {
@@ -48,11 +50,11 @@ export interface TechnicalObservationsHealthModuleProps {
   quickCardFooterClass: string;
 }
 
-function formatDeDateTime(iso: string | null | undefined): string {
+function formatDeDateTime(iso: string | null | undefined, locale: string): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return '—';
-  return d.toLocaleString('de-DE', {
+  return d.toLocaleString(getFormattingLocale(locale === 'de' ? 'de' : 'en'), {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
@@ -74,6 +76,7 @@ export function TechnicalObservationsHealthModule({
   quickCardBodyClass,
   quickCardFooterClass,
 }: TechnicalObservationsHealthModuleProps) {
+  const { t, locale } = useLanguage();
   const [open, setOpen] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -230,12 +233,12 @@ export function TechnicalObservationsHealthModule({
             </span>
             {obs.blocksRental && (
               <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide sq-chip-critical">
-                Vermietung blockiert
+                {t('health.observation.rentalBlocked')}
               </span>
             )}
           </div>
           <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-            {formatDeDateTime(obs.createdAt)}
+            {formatDeDateTime(obs.createdAt, locale)}
           </span>
         </div>
 
@@ -283,7 +286,7 @@ export function TechnicalObservationsHealthModule({
                 checked={editDraft.blocksRental}
                 onChange={(e) => setEditDraft((d) => ({ ...d, blocksRental: e.target.checked }))}
               />
-              Vermietung blockieren
+              {t('health.observation.blockRental')}
             </label>
             <div className="flex gap-2">
               <button
@@ -315,8 +318,8 @@ export function TechnicalObservationsHealthModule({
               )}
               {obs.region && <span>Region: {obs.region}</span>}
               <span>Quelle: {observationSourceLabel(obs.source)}</span>
-              {obs.bookingId && <span>Buchung verknüpft</span>}
-              {obs.customerId && <span>Kunde verknüpft</span>}
+              {obs.bookingId && <span>{t('health.observation.bookingLinked')}</span>}
+              {obs.customerId && <span>{t('health.observation.customerLinked')}</span>}
             </div>
           </>
         )}
@@ -329,7 +332,7 @@ export function TechnicalObservationsHealthModule({
                 onClick={() => onOpenExistingTask(obs.convertedToTaskId!)}
                 className="text-[10px] font-semibold text-[color:var(--status-info)] hover:underline"
               >
-                Aufgabe öffnen
+                {t('health.observation.openTask')}
               </button>
             )}
             {obs.linkedDamageId && (
@@ -348,7 +351,7 @@ export function TechnicalObservationsHealthModule({
                 onClick={() => onOpenExistingTask(obs.linkedServiceTaskId!)}
                 className="text-[10px] font-semibold text-[color:var(--status-info)] hover:underline"
               >
-                Service-Aufgabe öffnen
+                {t('health.observation.openServiceTask')}
               </button>
             )}
           </div>
@@ -356,7 +359,7 @@ export function TechnicalObservationsHealthModule({
 
         {observationClosedAt(obs) && (
           <p className="mt-1 text-[10px] text-[color:var(--status-positive)]">
-            Abgeschlossen: {formatDeDateTime(observationClosedAt(obs))}
+            Abgeschlossen: {formatDeDateTime(observationClosedAt(obs), locale)}
           </p>
         )}
 
@@ -475,7 +478,7 @@ export function TechnicalObservationsHealthModule({
             <div className={`p-1.5 rounded-lg shrink-0 ${quickAccent}`}>
               <Icon name="clipboard-list" className="w-3.5 h-3.5" />
             </div>
-            <h3 className={`${quickCardTitleClass} truncate`}>Mängelliste</h3>
+            <h3 className={`${quickCardTitleClass} truncate`}>{t('health.observation.title')}</h3>
           </div>
           <Icon name="chevron-right" className="w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 shrink-0" />
         </div>
@@ -484,9 +487,9 @@ export function TechnicalObservationsHealthModule({
             <SkeletonCard className="w-full" />
           ) : loadError ? (
             <>
-              <div className="text-[11px] font-semibold text-muted-foreground">Nicht geladen</div>
+              <div className="text-[11px] font-semibold text-muted-foreground">{t('health.observation.notLoaded')}</div>
               <p className="text-[10px] mt-1 text-muted-foreground/80 text-center">
-                Beobachtungen konnten nicht geladen werden
+                {t('health.observation.loadError')}
               </p>
             </>
           ) : (
@@ -502,9 +505,9 @@ export function TechnicalObservationsHealthModule({
                 activeCount > 0 ? 'sq-chip-watch' : 'sq-chip-success'
               }`}>
                 {activeCount === 0 ? (
-                  <><Icon name="check-circle" className="w-2.5 h-2.5" /> In Ordnung</>
+                  <><Icon name="check-circle" className="w-2.5 h-2.5" /> {t('health.observation.ok')}</>
                 ) : hasRentalBlock ? (
-                  <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> Vermietung blockiert</>
+                  <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> {t('health.observation.rentalBlocked')}</>
                 ) : (
                   <><Icon name="alert-circle" className="w-2.5 h-2.5" /> Offen</>
                 )}
@@ -514,7 +517,7 @@ export function TechnicalObservationsHealthModule({
         </div>
         <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
           <p className="text-[10px] font-medium text-muted-foreground truncate">
-            Hinterlegte Mängel
+            {t('health.observation.storedDefects')}
           </p>
         </div>
       </div>
@@ -546,9 +549,9 @@ export function TechnicalObservationsHealthModule({
               </button>
 
               <div className="mb-4 pr-10">
-                <h2 className="text-base font-semibold text-foreground">Mängelliste</h2>
+                <h2 className="text-base font-semibold text-foreground">{t('health.observation.title')}</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Hinterlegte Mängel aus Rückgabe, Übergabe und Fahrzeugkontrolle.
+                  {t('health.observation.storedDefectsDesc')}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${moduleSummary.chipClass}`}>
@@ -563,18 +566,18 @@ export function TechnicalObservationsHealthModule({
 
               <div className="rounded-lg p-4 mb-5 bg-muted">
                 <p className="text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground">
-                  Neue Beobachtung
+                  {t('health.observation.new')}
                 </p>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Beobachtung beschreiben, z. B. Scheibenwischer verschlissen, Licht defekt, Knopf kaputt …"
+                  placeholder={t('health.observation.descriptionPlaceholder')}
                   rows={3}
                   className="w-full rounded-xl px-3 py-2 text-sm border outline-none mb-2 bg-background border-border text-foreground placeholder:text-muted-foreground"
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                   <label className="block">
-                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 block">Kategorie *</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 block">{t('health.observation.category')}</span>
                     <select
                       value={form.category}
                       onChange={(e) =>
@@ -591,7 +594,7 @@ export function TechnicalObservationsHealthModule({
                     </select>
                   </label>
                   <label className="block">
-                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 block">Schweregrad *</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 block">{t('health.observation.severity')}</span>
                     <select
                       value={form.severity}
                       onChange={(e) =>
@@ -608,7 +611,7 @@ export function TechnicalObservationsHealthModule({
                     </select>
                   </label>
                   <label className="block sm:col-span-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 block">Betroffener Bereich</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground mb-1 block">{t('health.observation.affectedArea')}</span>
                     <select
                       value={form.affectedArea}
                       onChange={(e) =>
@@ -634,12 +637,12 @@ export function TechnicalObservationsHealthModule({
                     onChange={(e) => setForm((f) => ({ ...f, blocksRental: e.target.checked }))}
                   />
                   <span>
-                    Vermietung blockieren — nur aktivieren, wenn das Fahrzeug aus Sicherheitsgründen nicht vermietet werden darf.
+                    {t('health.observation.blockRentalHint')}
                   </span>
                 </label>
                 {formError && <p className="text-[11px] text-[color:var(--status-critical)] mb-2">{formError}</p>}
                 {formSuccess && (
-                  <p className="text-[11px] text-[color:var(--status-positive)] mb-2">Beobachtung gespeichert.</p>
+                  <p className="text-[11px] text-[color:var(--status-positive)] mb-2">{t('health.observation.saved')}</p>
                 )}
                 <button
                   type="button"
@@ -662,9 +665,9 @@ export function TechnicalObservationsHealthModule({
               <h3 className="text-sm font-semibold mb-3 text-foreground">Aktiv</h3>
               <div className="space-y-2 mb-5">
                 {loadError ? (
-                  <p className="text-[11px] text-muted-foreground">Beobachtungen konnten nicht geladen werden.</p>
+                  <p className="text-[11px] text-muted-foreground">{t('health.observation.loadErrorDot')}</p>
                 ) : active.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Keine aktiven Beobachtungen</p>
+                  <p className="text-sm text-muted-foreground">{t('health.observation.noActive')}</p>
                 ) : (
                   active.map((obs) => renderObservationCard(obs, false))
                 )}
@@ -673,7 +676,7 @@ export function TechnicalObservationsHealthModule({
               <h3 className="text-sm font-semibold mb-3 text-foreground">Verlauf</h3>
               <div className="space-y-2">
                 {history.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Noch keine abgeschlossenen Einträge</p>
+                  <p className="text-sm text-muted-foreground">{t('health.observation.noClosed')}</p>
                 ) : (
                   history.map((obs) => renderObservationCard(obs, true))
                 )}

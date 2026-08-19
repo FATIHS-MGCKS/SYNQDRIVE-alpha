@@ -1,4 +1,5 @@
 import type { TripBehaviorEvent } from './timeline.types';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TripTimelineTrip } from './timeline.types';
 import {
   countCriticalEvents,
@@ -19,6 +20,7 @@ interface TripBehaviorSummaryProps {
 }
 
 export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) {
+  const { t } = useLanguage();
   const hasNative = hasNativeBehaviorEvents(events);
   const assessability = deriveTripAssessability({
     enrichmentStatus: trip.behaviorEnrichmentStatus,
@@ -53,7 +55,7 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
     >
       {deviceQualityWarning ? (
         <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
-          Fahrdaten eingeschränkt — Telematik-Gerät sendet unzuverlässige native Events
+          {t('trips.limitedDrivingData')}
         </p>
       ) : null}
       <div className="space-y-1">

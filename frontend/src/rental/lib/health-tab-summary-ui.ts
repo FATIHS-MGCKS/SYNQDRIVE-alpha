@@ -1,4 +1,6 @@
 import type { ServiceComplianceModuleState, VehicleHealthTabSummaryDto } from '../../lib/api';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 
 export type HealthTabSummaryLoadState = 'idle' | 'loading' | 'loaded' | 'endpoint_error';
 
@@ -266,7 +268,7 @@ export function formatComplianceDueDate(iso: string | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('de-DE');
+  return d.toLocaleDateString(vehicleFormattingLocaleOrDefault());
 }
 
 export function oemFreshnessLabel(freshness: string): string {

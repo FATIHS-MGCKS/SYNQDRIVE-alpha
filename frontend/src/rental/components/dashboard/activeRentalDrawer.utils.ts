@@ -1,4 +1,5 @@
 import { formatFleetDateTime } from '../../../lib/formatVehicleDisplay';
+import { dashboardFormattingLocale, dt } from './dashboard-i18n';
 
 export function kmProgressPercent(
   driven: number | null | undefined,
@@ -24,11 +25,11 @@ export function formatFreeKmLabel(
 ): string {
   if (typeof driven !== 'number' || typeof included !== 'number') return '—';
   const remaining = Math.round(included - driven);
-  const formatted = Math.abs(remaining).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US');
+  const formatted = Math.abs(remaining).toLocaleString(dashboardFormattingLocale(locale));
   if (remaining < 0) {
-    return locale === 'de' ? `Frei: +${formatted} km` : `Free: +${formatted} km`;
+    return dt(locale, 'dashboard.drilldown.freeKmOver', { km: formatted });
   }
-  return locale === 'de' ? `Frei: ${formatted} km` : `Free: ${formatted} km`;
+  return dt(locale, 'dashboard.drilldown.freeKmRemaining', { km: formatted });
 }
 
 /** @deprecated Use formatFreeKmLabel */
@@ -66,7 +67,6 @@ export function activeRentalRentedTillText(
   returnAt: string | null | undefined,
   locale: string,
 ): string {
-  const prefix = locale === 'de' ? 'Bis:' : 'Until:';
-  const when = formatFleetDateTime(returnAt, locale === 'de' ? 'de-DE' : 'en-US');
-  return `${prefix} ${when}`;
+  const when = formatFleetDateTime(returnAt, dashboardFormattingLocale(locale));
+  return dt(locale, 'dashboard.drilldown.rentedUntil', { when });
 }

@@ -12,6 +12,7 @@ import {
   shouldShowVehicleDeviceConnection,
   sortDeviceConnectionEvents,
 } from '../../lib/device-connection-ui';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { recordVehicleDetailClientSignal } from '../../lib/vehicle-detail-observability';
 
 export interface VehicleDeviceConnectionCardProps {
@@ -23,6 +24,7 @@ export function VehicleDeviceConnectionCard({
   orgId,
   vehicleId,
 }: VehicleDeviceConnectionCardProps) {
+  const { t } = useLanguage();
   const [summary, setSummary] = useState<DeviceConnectionSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,19 +64,19 @@ export function VehicleDeviceConnectionCard({
   return (
     <section
       className="surface-premium rounded-2xl border border-border/70 p-4 space-y-3"
-      aria-label="DIMO Geräteverbindung"
+      aria-label={t('vehicle.telemetry.deviceConnectionAria')}
     >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-muted-foreground shrink-0" />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Konnektivität
+              {t('vehicle.telemetry.connectivity')}
             </p>
             <p className="text-sm font-semibold text-foreground">
               {summary?.lteR1Capable
                 ? DEVICE_CONNECTION_LABELS.lteR1Connected
-                : 'DIMO Geräteverbindung'}
+                : t('vehicle.telemetry.dimoDeviceConnection')}
             </p>
           </div>
         </div>
@@ -89,7 +91,7 @@ export function VehicleDeviceConnectionCard({
 
       <div className="grid gap-2 sm:grid-cols-2 text-[12px]">
         <div className="rounded-xl border border-border/60 px-3 py-2">
-          <p className="text-muted-foreground">Status (Webhook)</p>
+          <p className="text-muted-foreground">{t('vehicle.telemetry.statusWebhook')}</p>
           <p className="font-medium mt-0.5 flex items-center gap-1.5">
             {summary?.currentDeviceConnectionStatus === 'unplugged' ? (
               <Plug className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
@@ -102,7 +104,7 @@ export function VehicleDeviceConnectionCard({
           </p>
         </div>
         <div className="rounded-xl border border-border/60 px-3 py-2">
-          <p className="text-muted-foreground">Offene Unterbrechung</p>
+          <p className="text-muted-foreground">{t('vehicle.telemetry.openInterruption')}</p>
           <p className="font-medium mt-0.5">
             {summary?.openUnpluggedEpisode
               ? `${formatDeviceConnectionTimestamp(summary.openUnpluggedSince)} · ${formatDurationMs(summary.openUnpluggedDurationMs)}`

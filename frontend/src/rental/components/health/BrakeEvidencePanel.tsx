@@ -1,4 +1,5 @@
 import type { BrakeHealthSummary } from '../../../lib/api';
+import { getFormattingLocale } from '../../../i18n/locales';
 import { StatusDot } from '../../../components/patterns';
 import {
   brakeActiveDataQuality,
@@ -42,7 +43,7 @@ export interface BrakeEvidencePanelProps {
 function formatDate(iso: string | null | undefined, locale: BrakeUiLocale): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-GB');
+    return new Date(iso).toLocaleDateString(getFormattingLocale(locale === 'de' ? 'de' : 'en'));
   } catch {
     return '—';
   }

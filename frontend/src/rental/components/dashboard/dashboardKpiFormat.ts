@@ -1,3 +1,6 @@
+import { getFormattingLocale } from '../../../i18n/locales';
+import { resolveDashboardProductLocale } from './dashboard-i18n';
+
 function isIntlLocaleSupported(tag: string): boolean {
   try {
     return Intl.NumberFormat.supportedLocalesOf([tag], { localeMatcher: 'lookup' }).length > 0;
@@ -15,18 +18,19 @@ export function resolveDashboardNumberFormatLocale(
 
   // SynqDrive finance KPIs use EUR; European convention is symbol after amount (0 €).
   if (normalizedCurrency === 'EUR') {
-    return 'de-DE';
+    return getFormattingLocale('de');
   }
 
   const trimmed = (locale ?? '').trim();
   const normalized = trimmed.toLowerCase().replace(/_/g, '-');
 
   if (!normalized) {
-    return 'en-US';
+    return getFormattingLocale('en');
   }
 
-  if (normalized.startsWith('de')) return 'de-DE';
-  if (normalized.startsWith('en')) return 'en-US';
+  if (normalized.startsWith('de') || normalized.startsWith('en')) {
+    return getFormattingLocale(resolveDashboardProductLocale(normalized.startsWith('de') ? 'de' : 'en'));
+  }
 
   const bcp47 = trimmed.replace(/_/g, '-');
   if (bcp47 && isIntlLocaleSupported(bcp47)) {
@@ -36,7 +40,7 @@ export function resolveDashboardNumberFormatLocale(
     return normalized;
   }
 
-  return 'en-US';
+  return getFormattingLocale('en');
 }
 
 export function formatDashboardMoney(cents: number, currency: string, locale: string): string {

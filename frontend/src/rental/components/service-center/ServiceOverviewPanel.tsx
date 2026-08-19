@@ -17,6 +17,7 @@ import {
   selectUpcomingTasks,
   selectVendorWaitingTasks,
 } from './service-center.utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { ServiceOverviewTaskRow } from './ServiceOverviewTaskRow';
 
 interface ServiceOverviewPanelProps {
@@ -40,6 +41,7 @@ export function ServiceOverviewPanel({
   onCreateTask,
   onReload,
 }: ServiceOverviewPanelProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const [localTasks, setLocalTasks] = useState(activeTasks);
@@ -196,10 +198,10 @@ export function ServiceOverviewPanel({
       <section className={sc.panel}>
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>
-            <p className={sc.sectionEyebrow}>Sofort handeln</p>
-            <h3 className={sc.sectionTitle}>Handlungsbedarf</h3>
+            <p className={sc.sectionEyebrow}>{t('serviceCenter.overview.actionRequired.eyebrow')}</p>
+            <h3 className={sc.sectionTitle}>{t('serviceCenter.overview.actionRequired.title')}</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Überfällig, kritisch, blockierend oder bald fällig — nur operative Aufgaben
+              {t('serviceCenter.overview.actionRequired.subtitle')}
             </p>
           </div>
           {onOpenTasks && (
@@ -208,18 +210,18 @@ export function ServiceOverviewPanel({
               onClick={onOpenTasks}
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--brand-ink)] hover:underline"
             >
-              Alle Aufgaben
+              {t('serviceCenter.overview.allTasks')}
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
         {loading && actionRequired.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground animate-pulse">Aufgaben werden geladen…</p>
+          <p className="text-[11px] text-muted-foreground animate-pulse">{t('serviceCenter.overview.tasksLoading')}</p>
         ) : actionRequired.length === 0 ? (
           <EmptyState
-            title="Keine überfälligen Service-Aufgaben"
-            description="Aktuell gibt es keinen dringenden Handlungsbedarf in der Service-Warteschlange."
+            title={t('serviceCenter.overview.noOverdueTasks')}
+            description={t('serviceCenter.overview.noOverdueTasksDesc')}
             action={
               onCreateTask ? (
                 <button
@@ -227,7 +229,7 @@ export function ServiceOverviewPanel({
                   onClick={onCreateTask}
                   className="text-[11px] font-semibold px-3 py-2 rounded-xl border border-border surface-premium hover:bg-muted/40"
                 >
-                  Aufgabe anlegen
+                  {t('serviceCenter.overview.createTask')}
                 </button>
               ) : undefined
             }
@@ -256,8 +258,8 @@ export function ServiceOverviewPanel({
         <section className={sc.panel}>
           <div className="flex items-center justify-between gap-2 mb-3">
             <div>
-              <p className={sc.sectionEyebrow}>Terminplan</p>
-              <h3 className={sc.sectionTitle}>Geplante Termine</h3>
+              <p className={sc.sectionEyebrow}>{t('serviceCenter.overview.schedule.eyebrow')}</p>
+              <h3 className={sc.sectionTitle}>{t('serviceCenter.overview.schedule.title')}</h3>
             </div>
             {onOpenSchedule && (
               <button
@@ -265,17 +267,17 @@ export function ServiceOverviewPanel({
                 onClick={onOpenSchedule}
                 className="text-[11px] font-semibold text-[color:var(--brand-ink)] hover:underline"
               >
-                Vollansicht
+                {t('serviceCenter.overview.fullView')}
               </button>
             )}
           </div>
 
           {loading && upcoming.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground animate-pulse">Termine werden geladen…</p>
+            <p className="text-[11px] text-muted-foreground animate-pulse">{t('serviceCenter.overview.scheduleLoading')}</p>
           ) : upcoming.length === 0 ? (
             <EmptyState
-              title="Keine anstehenden Termine"
-              description="Offene Aufgaben haben aktuell kein nahes Fälligkeitsdatum."
+              title={t('serviceCenter.overview.noUpcoming')}
+              description={t('serviceCenter.overview.noUpcomingDesc')}
             />
           ) : (
             <div className="space-y-3">
@@ -308,19 +310,19 @@ export function ServiceOverviewPanel({
 
         <section className={sc.panel}>
           <div className="mb-3">
-            <p className={sc.sectionEyebrow}>Partner</p>
-            <h3 className={sc.sectionTitle}>Wartet Partner</h3>
+            <p className={sc.sectionEyebrow}>{t('serviceCenter.overview.vendor.eyebrow')}</p>
+            <h3 className={sc.sectionTitle}>{t('serviceCenter.overview.vendor.title')}</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Wartet auf Rückmeldung oder Abschluss durch Partner
+              {t('serviceCenter.overview.vendor.subtitle')}
             </p>
           </div>
 
           {loading && vendorWaiting.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground animate-pulse">Partner-Aufgaben laden…</p>
+            <p className="text-[11px] text-muted-foreground animate-pulse">{t('serviceCenter.overview.vendorLoading')}</p>
           ) : vendorWaiting.length === 0 ? (
             <EmptyState
-              title="Keine wartenden Partner-Fälle"
-              description="Derzeit warten keine Aufgaben auf einen Dienstleister."
+              title={t('serviceCenter.overview.noVendorWaiting')}
+              description={t('serviceCenter.overview.noVendorWaitingDesc')}
             />
           ) : (
             <div className="space-y-2">
@@ -345,16 +347,16 @@ export function ServiceOverviewPanel({
 
       <section className={sc.panel}>
         <div className="mb-3">
-          <p className={sc.sectionEyebrow}>Verlauf</p>
-          <h3 className={sc.sectionTitle}>Kürzlich erledigt</h3>
+          <p className={sc.sectionEyebrow}>{t('serviceCenter.overview.history.eyebrow')}</p>
+          <h3 className={sc.sectionTitle}>{t('serviceCenter.overview.recentlyCompleted')}</h3>
         </div>
 
         {loading && recentlyCompleted.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground animate-pulse">Verlauf wird geladen…</p>
+          <p className="text-[11px] text-muted-foreground animate-pulse">{t('serviceCenter.overview.historyLoading')}</p>
         ) : recentlyCompleted.length === 0 ? (
           <EmptyState
-            title="Noch keine abgeschlossenen Fälle"
-            description="Erledigte Service-, Reparatur- und Prüfaufgaben erscheinen hier."
+            title={t('serviceCenter.overview.noCompleted')}
+            description={t('serviceCenter.overview.noCompletedDesc')}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">

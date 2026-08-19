@@ -1,8 +1,10 @@
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type {
   VehicleOverviewCardStatus,
   VehicleOverviewQuickCardId,
   VehicleOverviewReadinessTone,
 } from '../../lib/vehicle-overview.types';
+import { vt } from '../vehicle/vehicle-i18n';
 
 /** Shared surface tokens — Vehicle Detail Overview quick view. */
 export const vo = {
@@ -63,20 +65,19 @@ export function overviewCardIcon(id: VehicleOverviewQuickCardId): string {
   return CARD_ICONS[id];
 }
 
-export function cardStatusShortLabel(status: VehicleOverviewCardStatus): string {
-  switch (status) {
-    case 'clear':
-      return 'Clear';
-    case 'attention':
-      return 'Watch';
-    case 'critical':
-      return 'Critical';
-    case 'active':
-      return 'Live';
-    case 'neutral':
-    default:
-      return 'Idle';
-  }
+const CARD_STATUS_KEYS: Record<VehicleOverviewCardStatus, TranslationKey> = {
+  clear: 'vehicle.overview.card.clear',
+  attention: 'vehicle.overview.card.watch',
+  critical: 'vehicle.overview.card.critical',
+  active: 'vehicle.overview.card.live',
+  neutral: 'vehicle.overview.card.idle',
+};
+
+export function cardStatusShortLabel(
+  status: VehicleOverviewCardStatus,
+  locale: string,
+): string {
+  return vt(locale, CARD_STATUS_KEYS[status] ?? CARD_STATUS_KEYS.neutral);
 }
 
 export function cardStatusAccentBorder(status: VehicleOverviewCardStatus): string {
@@ -170,30 +171,30 @@ export function readinessToneClass(tone: VehicleOverviewReadinessTone): {
 }
 
 export function readinessDisplayTitle(
+  locale: string,
   readinessStatus: 'ready' | 'attention' | 'blocked' | 'unknown',
   title: string,
 ): string {
   if (readinessStatus === 'unknown' && title.toLowerCase().includes('checking')) {
     return title;
   }
-  if (readinessStatus === 'unknown') return 'Status unknown';
+  if (readinessStatus === 'unknown') {
+    return vt(locale, 'vehicle.overview.readiness.statusUnknown');
+  }
   return title;
 }
 
 export function readinessStatusBadgeLabel(
+  locale: string,
   readinessStatus: 'ready' | 'attention' | 'blocked' | 'unknown',
 ): string {
-  switch (readinessStatus) {
-    case 'ready':
-      return 'Ready';
-    case 'attention':
-      return 'Attention';
-    case 'blocked':
-      return 'Blocked';
-    case 'unknown':
-    default:
-      return 'Unknown';
-  }
+  const keys: Record<typeof readinessStatus, TranslationKey> = {
+    ready: 'vehicle.overview.readiness.ready',
+    attention: 'vehicle.overview.readiness.attention',
+    blocked: 'vehicle.overview.readiness.blocked',
+    unknown: 'vehicle.overview.readiness.unknown',
+  };
+  return vt(locale, keys[readinessStatus]);
 }
 
 export function readinessIconName(

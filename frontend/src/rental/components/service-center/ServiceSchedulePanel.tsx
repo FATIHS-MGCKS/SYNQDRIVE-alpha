@@ -12,6 +12,7 @@ import { buildVehicleLabel } from '../../lib/service-task-semantics';
 import { sc } from './service-center-ui';
 import { ServiceScheduleRow } from './ServiceScheduleRow';
 import { useServiceTaskLookups } from './useServiceTaskLookups';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { VehicleTaskDetailDrawer } from '../tasks/VehicleTaskDetailDrawer';
 
 interface ServiceSchedulePanelProps {
@@ -27,6 +28,7 @@ export function ServiceSchedulePanel({
   loading,
   onSelectTask,
 }: ServiceSchedulePanelProps) {
+  const { t } = useLanguage();
   const lookups = useServiceTaskLookups(vendors);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -52,12 +54,10 @@ export function ServiceSchedulePanel({
 
   return (
     <div className={sc.panel}>
-      <p className={sc.sectionEyebrow}>Fälligkeitsplan</p>
-      <h3 className={`${sc.sectionTitle} mb-1`}>Anstehende Wartung & Service</h3>
+      <p className={sc.sectionEyebrow}>{t('serviceCenter.schedule.eyebrow')}</p>
+      <h3 className={`${sc.sectionTitle} mb-1`}>{t('serviceCenter.schedule.title')}</h3>
       <p className="text-[11px] text-muted-foreground mb-4 max-w-2xl leading-relaxed">
-        Gruppiert nach <strong className="font-semibold text-foreground/80">Fälligkeitsdatum</strong> offener
-        Aufgaben — kein separater Werkstatt-Kalender. Exakte Termine erscheinen nur, wenn sie in der Aufgabe
-        hinterlegt sind.
+        {t('serviceCenter.schedule.subtitle')}
       </p>
 
       {loading && scheduled.length === 0 ? (
@@ -67,7 +67,7 @@ export function ServiceSchedulePanel({
         </div>
       ) : withDue.length === 0 && withoutDue.length === 0 ? (
         <EmptyState
-          title="Keine anstehenden Aufgaben"
+          title={t('serviceCenter.schedule.empty')}
           description="Offene Service-, Reparatur- und Inspektionsaufgaben mit Fälligkeit erscheinen hier."
         />
       ) : (

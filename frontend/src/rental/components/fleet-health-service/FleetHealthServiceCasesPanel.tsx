@@ -1,4 +1,5 @@
 import type { ApiServiceCase, Vendor } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { DashboardSectionLabel } from '../dashboard/dashboardShell';
 import { FleetHealthServiceCaseList } from './FleetHealthServiceCaseList';
 import { fhs } from './fleet-health-service-shell';
@@ -20,13 +21,14 @@ export function FleetHealthServiceCasesPanel({
   error,
   onReload,
 }: FleetHealthServiceCasesPanelProps) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-3">
       <div className={fhs.panel}>
         <div className={fhs.panelBody}>
-          <DashboardSectionLabel className="mb-1">Servicefälle</DashboardSectionLabel>
+          <DashboardSectionLabel className="mb-1">{t('fleetHealthService.cases.title')}</DashboardSectionLabel>
           <p className={fhs.meta}>
-            Kanonische Wartungs- und Reparaturfälle — getrennt von einzelnen Aufgaben.
+            {t('fleetHealthService.cases.subtitle')}
           </p>
         </div>
       </div>

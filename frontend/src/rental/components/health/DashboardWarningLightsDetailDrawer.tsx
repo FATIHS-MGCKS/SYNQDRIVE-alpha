@@ -1,4 +1,5 @@
 import tellTaleOilIcon from '../../../assets/icons/telltale/oil.svg';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import tellTaleCelIcon from '../../../assets/icons/telltale/cel.svg';
 import tellTaleBrakePadIcon from '../../../assets/icons/telltale/brake-pad.svg';
 import tellTaleTirePressureIcon from '../../../assets/icons/telltale/tire-pressure.svg';
@@ -88,6 +89,7 @@ function LightDetailCard({
   bookings: ReturnType<typeof useTelltaleDetailContext>['bookings'];
   trips: ReturnType<typeof useTelltaleDetailContext>['trips'];
 }) {
+  const { t } = useLanguage();
   const category = deriveTelltaleDisplayCategory(light, envelopeFreshness);
   const tone = telltaleToneFromLight(light);
   const contextInstant = resolveTelltaleContextInstant(light);
@@ -168,12 +170,12 @@ function LightDetailCard({
                 onClick={() => onOpenBooking(booking.id)}
                 className="text-[10px] font-medium text-[color:var(--brand)] hover:underline shrink-0"
               >
-                Buchung öffnen
+                {t('health.telltales.openBooking')}
               </button>
             )}
           </div>
         ) : (
-          <p className="text-[10px] text-muted-foreground">Keiner Buchung zugeordnet</p>
+          <p className="text-[10px] text-muted-foreground">{t('health.telltales.noBooking')}</p>
         )}
 
         {trip ? (
@@ -185,12 +187,12 @@ function LightDetailCard({
                 onClick={() => onOpenTrips(trip.startTime)}
                 className="text-[10px] font-medium text-[color:var(--brand)] hover:underline shrink-0"
               >
-                Fahrt prüfen
+                {t('health.telltales.reviewTrip')}
               </button>
             )}
           </div>
         ) : (
-          <p className="text-[10px] text-muted-foreground">Kein Fahrtenkontext verfügbar</p>
+          <p className="text-[10px] text-muted-foreground">{t('health.telltales.noTripContext')}</p>
         )}
       </div>
     </div>
@@ -205,6 +207,7 @@ export function DashboardWarningLightsDetailDrawer({
   onOpenBooking,
   onOpenTrips,
 }: DashboardWarningLightsDetailDrawerProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const presentation = resolveTelltalePanelPresentation(telltales);
   const { bookings, trips, loading: contextLoading, error: contextError } = useTelltaleDetailContext({
@@ -226,7 +229,7 @@ export function DashboardWarningLightsDetailDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Tacho Warnleuchten"
+      title={t('health.telltales.title')}
       eyebrow="Fahrzeug · Health"
       description={presentation.summaryText}
       status={
@@ -259,18 +262,18 @@ export function DashboardWarningLightsDetailDrawer({
           {envelopeFreshness === 'stale' && (
             <p className="text-[10px] text-[color:var(--status-watch)] flex items-center gap-1">
               <Icon name="alert-triangle" className="w-3 h-3" />
-              Datenstand verzögert — keine Aktiv-Zählung ohne frische Bestätigung.
+              {t('health.telltales.delayedNoCount')}
             </p>
           )}
           {!presentation.isConnected && (
             <p className="text-[10px] text-muted-foreground">
-              Fahrzeug nicht mit HM/OEM Health verbunden oder Telltales nicht unterstützt.
+              {t('health.telltales.notConnected')}
             </p>
           )}
         </div>
 
         {contextLoading && (
-          <p className="text-[10px] text-muted-foreground">Buchungs- und Fahrtkontext wird geladen …</p>
+          <p className="text-[10px] text-muted-foreground">{t('health.telltales.contextLoading')}</p>
         )}
         {contextError && (
           <p className="text-[10px] text-[color:var(--status-watch)]">{contextError}</p>
@@ -278,7 +281,7 @@ export function DashboardWarningLightsDetailDrawer({
 
         <div className="space-y-2.5">
           {lights.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">Keine Warnleuchten-Daten verfügbar.</p>
+            <p className="text-[11px] text-muted-foreground">{t('health.telltales.noData')}</p>
           ) : (
             lights.map((light) => (
               <LightDetailCard

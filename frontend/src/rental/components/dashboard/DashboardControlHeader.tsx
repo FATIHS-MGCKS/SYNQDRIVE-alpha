@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
@@ -16,8 +17,8 @@ function headerCopy(locale: string, orgName: string) {
   const de = locale === 'de';
   const trimmed = orgName.trim();
   return {
-    title: trimmed || (de ? 'Dashboard' : 'Dashboard'),
-    noStations: de ? 'Keine Standorte verfügbar' : 'No stations available',
+    title: trimmed || (dt(locale, 'dashboard.title')),
+    noStations: dt(locale, 'dashboard.control.noStations'),
   };
 }
 

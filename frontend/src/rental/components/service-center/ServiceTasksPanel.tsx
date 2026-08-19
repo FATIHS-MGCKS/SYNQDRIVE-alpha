@@ -24,6 +24,7 @@ import type { ServiceTaskFilter } from './service-center.types';
 import { ServiceTaskCard } from './ServiceTaskCard';
 import { ServiceTaskCreateModal } from './ServiceTaskCreateModal';
 import { ServiceTasksBoard } from './ServiceTasksBoard';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { ServiceTasksCalendar } from './ServiceTasksCalendar';
 
 interface ServiceTasksPanelProps {
@@ -57,6 +58,7 @@ export function ServiceTasksPanel({
   focusTaskId,
   initialAdvancedFilters,
 }: ServiceTasksPanelProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const [localTasks, setLocalTasks] = useState(tasks);
@@ -211,7 +213,7 @@ export function ServiceTasksPanel({
 
   if (error) {
     return (
-      <ErrorState title="Aufgaben konnten nicht geladen werden" description={error} onRetry={onReload} />
+      <ErrorState title={t('serviceCenter.tasks.loadError')} description={error} onRetry={onReload} />
     );
   }
 
@@ -220,8 +222,8 @@ export function ServiceTasksPanel({
       <div className={`${sc.panel} space-y-3`}>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div>
-            <p className={sc.sectionEyebrow}>Instandhaltung</p>
-            <h3 className={sc.sectionTitle}>Service- & Wartungsaufgaben</h3>
+            <p className={sc.sectionEyebrow}>{t('serviceCenter.tasks.eyebrow')}</p>
+            <h3 className={sc.sectionTitle}>{t('serviceCenter.tasks.title')}</h3>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-lg border border-border/50 p-0.5 bg-muted/20">
@@ -258,7 +260,7 @@ export function ServiceTasksPanel({
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]"
             >
               <Plus className="w-3.5 h-3.5" />
-              Aufgabe anlegen
+              {t('serviceCenter.overview.createTask')}
             </button>
           </div>
         </div>
@@ -271,8 +273,8 @@ export function ServiceTasksPanel({
             }
             className={selectClass}
           >
-            <option value="ACTIVE">Status: Aktiv</option>
-            <option value="ALL">Status: Alle</option>
+            <option value="ACTIVE">{t('serviceCenter.tasks.filter.statusActive')}</option>
+            <option value="ALL">{t('serviceCenter.tasks.filter.statusAll')}</option>
             {(Object.keys(TASK_STATUS_LABEL_DE) as ApiTaskStatus[]).map((s) => (
               <option key={s} value={s}>{TASK_STATUS_LABEL_DE[s]}</option>
             ))}
@@ -284,7 +286,7 @@ export function ServiceTasksPanel({
             }
             className={selectClass}
           >
-            <option value="ALL">Priorität: Alle</option>
+            <option value="ALL">{t('serviceCenter.tasks.filter.priorityAll')}</option>
             {(Object.keys(TASK_PRIORITY_LABEL_DE) as ApiTaskPriority[]).map((p) => (
               <option key={p} value={p}>{TASK_PRIORITY_LABEL_DE[p]}</option>
             ))}
@@ -296,7 +298,7 @@ export function ServiceTasksPanel({
             }
             className={selectClass}
           >
-            <option value="ALL">Typ: Alle</option>
+            <option value="ALL">{t('serviceCenter.tasks.filter.typeAll')}</option>
             {SERVICE_MAINTENANCE_TYPES.map((t) => (
               <option key={t} value={t}>{TASK_TYPE_LABEL_DE[t]}</option>
             ))}
@@ -306,7 +308,7 @@ export function ServiceTasksPanel({
             onChange={(e) => setAdvanced((p) => ({ ...p, vehicleId: e.target.value }))}
             className={selectClass}
           >
-            <option value="ALL">Fahrzeug: Alle</option>
+            <option value="ALL">{t('serviceCenter.tasks.filter.vehicleAll')}</option>
             {fleetVehicles.map((v) => (
               <option key={v.id} value={v.id}>{v.license}</option>
             ))}
@@ -316,7 +318,7 @@ export function ServiceTasksPanel({
             onChange={(e) => setAdvanced((p) => ({ ...p, vendorId: e.target.value }))}
             className={selectClass}
           >
-            <option value="ALL">Partner: Alle</option>
+            <option value="ALL">{t('serviceCenter.tasks.filter.vendorAll')}</option>
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>{v.name}</option>
             ))}
@@ -326,7 +328,7 @@ export function ServiceTasksPanel({
             onChange={(e) => setAdvanced((p) => ({ ...p, assignedUserId: e.target.value }))}
             className={selectClass}
           >
-            <option value="ALL">Zugewiesen: Alle</option>
+            <option value="ALL">{t('serviceCenter.tasks.filter.assignedAll')}</option>
             {orgMembers.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
@@ -337,7 +339,7 @@ export function ServiceTasksPanel({
               onChange={(e) => setAdvanced((p) => ({ ...p, stationId: e.target.value }))}
               className={selectClass}
             >
-              <option value="ALL">Station: Alle</option>
+              <option value="ALL">{t('serviceCenter.tasks.filter.stationAll')}</option>
               {Array.from(stations.entries()).map(([id, name]) => (
                 <option key={id} value={id}>{name}</option>
               ))}
@@ -352,7 +354,7 @@ export function ServiceTasksPanel({
               checked={advanced.overdueOnly}
               onChange={(e) => setAdvanced((p) => ({ ...p, overdueOnly: e.target.checked }))}
             />
-            Überfällig
+            {t('serviceCenter.tasks.filter.overdue')}
           </label>
           <label className="inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground cursor-pointer">
             <input
@@ -360,7 +362,7 @@ export function ServiceTasksPanel({
               checked={advanced.dueSoonOnly}
               onChange={(e) => setAdvanced((p) => ({ ...p, dueSoonOnly: e.target.checked }))}
             />
-            Bald fällig
+            {t('serviceCenter.tasks.filter.dueSoon')}
           </label>
           <label className="inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground cursor-pointer">
             <input
@@ -368,7 +370,7 @@ export function ServiceTasksPanel({
               checked={advanced.urgentOnly}
               onChange={(e) => setAdvanced((p) => ({ ...p, urgentOnly: e.target.checked }))}
             />
-            Kritisch / Blockiert
+            {t('serviceCenter.tasks.filter.urgent')}
           </label>
           {filter !== 'all' && (
             <button
@@ -376,7 +378,7 @@ export function ServiceTasksPanel({
               onClick={() => onFilterChange('all')}
               className="text-[10px] font-semibold text-[color:var(--brand-ink)] hover:underline"
             >
-              KPI-Filter zurücksetzen
+              {t('serviceCenter.tasks.filter.resetKpi')}
             </button>
           )}
         </div>
@@ -384,18 +386,18 @@ export function ServiceTasksPanel({
         <input
           value={advanced.search}
           onChange={(e) => setAdvanced((p) => ({ ...p, search: e.target.value }))}
-          placeholder="Suchen nach Titel, Fahrzeug, Typ…"
+          placeholder={t('serviceCenter.tasks.searchPlaceholder')}
           className="w-full rounded-xl border border-border bg-[color:var(--input-background)] px-3 py-2 text-[12px] outline-none focus:border-[color:var(--brand)]"
         />
       </div>
 
       <div className={viewMode === 'board' ? '' : sc.panel}>
         {loading && filtered.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground animate-pulse p-4">Aufgaben werden geladen…</p>
+          <p className="text-[11px] text-muted-foreground animate-pulse p-4">{t('serviceCenter.overview.tasksLoading')}</p>
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="Keine Aufgaben in dieser Ansicht"
-            description="Passen Sie die Filter an oder legen Sie eine neue Serviceaufgabe an."
+            title={t('serviceCenter.tasks.empty')}
+            description={t('serviceCenter.tasks.emptyDesc')}
           />
         ) : viewMode === 'board' ? (
           <ServiceTasksBoard

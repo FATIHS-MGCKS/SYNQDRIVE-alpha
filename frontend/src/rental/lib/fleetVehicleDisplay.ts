@@ -1,4 +1,5 @@
 import type { StatusTone } from '../../components/patterns';
+import { getFormattingLocale } from '../../i18n/locales';
 import type { RentalHealthModule, VehicleHealthResponse } from '../../lib/api';
 import { isLegalComplianceBlockingText } from '../components/dashboard/runtime/dashboardRuntimeReasons';
 import type { VehicleData } from '../data/vehicles';
@@ -172,7 +173,7 @@ export function fleetSignalAgeMs(
 
 function formatOdometer(km: number | null | undefined, de: boolean): string | null {
   if (km == null || !Number.isFinite(km)) return null;
-  return `${Math.floor(km).toLocaleString(de ? 'de-DE' : 'en-US')} km`;
+  return `${Math.floor(km).toLocaleString(getFormattingLocale(de ? 'de' : 'en'))} km`;
 }
 
 function hasNonServiceCriticalModule(

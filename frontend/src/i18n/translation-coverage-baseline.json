@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "canonicalKeyCount": 3960,
+  "baselineCanonicalKeyCount": 3525,
+  "locales": {
+    "de": { "ownedCount": 3960, "status": "complete" },
+    "en": { "ownedCount": 3960, "status": "complete" },
+    "pl": { "ownedCount": 493, "status": "partial" },
+    "fr": { "ownedCount": 786, "status": "partial" },
+    "cs": { "ownedCount": 493, "status": "partial" },
+    "nl": { "ownedCount": 493, "status": "partial" },
+    "es": { "ownedCount": 493, "status": "partial" },
+    "tr": { "ownedCount": 0, "status": "fallback-only" },
+    "it": { "ownedCount": 493, "status": "partial" }
+  }
+}

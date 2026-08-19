@@ -1,5 +1,6 @@
 
 import { Activity, AlertTriangle, Gauge, Snowflake, Sun, Thermometer, Wind, Wrench, Zap } from 'lucide-react';
+import { getFormattingLocale } from '../../i18n/locales';
 import { Icon } from './ui/Icon';
 import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
@@ -77,7 +78,7 @@ import {
 } from '../rental-health-ui';
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
 import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useHealthTabBatteryData } from '../hooks/useHealthTabBatteryData';
 import { invalidateRentalHealthForVehicle } from '../lib/rental-health-query';
 import type { HealthDetailTab } from '../lib/health-detail-utils';
@@ -213,9 +214,10 @@ const BRAKE_CONFIDENCE_LABEL: Record<string, string> = {
 function formatBrakeKmRange(
   min: number | null | undefined,
   max: number | null | undefined,
+  formattingLocale: string,
 ): string | null {
   if (min == null && max == null) return null;
-  const fmt = (n: number) => Math.round(n).toLocaleString('de-DE');
+  const fmt = (n: number) => Math.round(n).toLocaleString(formattingLocale);
   if (min != null && max != null) {
     return min === max ? `${fmt(min)} km` : `${fmt(min)}–${fmt(max)} km`;
   }
@@ -276,7 +278,7 @@ export function HealthErrorsView({
     batteryLoading,
     retryBattery,
   } = batteryQueryState;
-  const { t } = useLanguage();
+  const {t, locale, formattingLocale } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
 
@@ -395,7 +397,7 @@ export function HealthErrorsView({
   const [editSetupForm, setEditSetupForm] = useState({ frontDimension: '', rearDimension: '', brandModelFront: '', brandModelRear: '', tireSeason: '', treadFL: '', treadFR: '', treadBL: '', treadBR: '', tireCondition: '' as '' | 'NEW_INSTALLED' | 'ALREADY_MOUNTED', loadIndex: '', speedIndex: '' });
   const [submittingEditSetup, setSubmittingEditSetup] = useState(false);
 
-  // ── AI Tire Spec fetch state ──
+  // ── AI {t('health.tire.spec')} fetch state ──
   const [aiTireLoading, setAiTireLoading] = useState(false);
   const [aiTireSteps, setAiTireSteps] = useState<AgentStep[]>([]);
   const [aiTireLiveStep, setAiTireLiveStep] = useState('');
@@ -508,7 +510,7 @@ export function HealthErrorsView({
     [vehicleId],
   );
 
-  // Load DTC detail lazily when the Error Codes modal opens
+  // Load DTC detail lazily when the {t('health.errorCodes')} modal opens
   useEffect(() => {
     if (!showErrorCodes || !vehicleId) return;
     dtcPollCountRef.current = 0;
@@ -566,7 +568,7 @@ export function HealthErrorsView({
       RENTABLE: 'Vermietbar',
       CHECK_BEFORE_NEXT_RENTAL: 'Vor nächster Vermietung prüfen',
       BLOCK_UNTIL_INSPECTED: 'Sperren bis geprüft',
-      DO_NOT_RENT: 'Nicht vermieten',
+      DO_NOT_RENT: t('health.doNotRent'),
       UNKNOWN: 'Unbekannt',
     };
     const urgCls = (u?: string) =>
@@ -589,7 +591,7 @@ export function HealthErrorsView({
     const wrap = (inner: ReactNode) => (
       <div className={`mt-3 ml-5 pt-3 border-t ${'border-border'}`}>
         <p className={`text-[9px] uppercase tracking-widest font-bold mb-2 ${'text-[color:var(--brand)]'}`}>
-          AI-Einschätzung · DTC Knowledge
+          {t('health.dtc.aiAssessment')}
         </p>
         {inner}
       </div>
@@ -600,8 +602,8 @@ export function HealthErrorsView({
         <div className="flex items-center gap-2">
           <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
           <div>
-            <p className="text-xs font-medium text-foreground/80">AI-Erklärung wird vorbereitet …</p>
-            <p className="text-[11px] text-muted-foreground">Der Fehlercode bleibt sichtbar; die Erklärung wird im Hintergrund ergänzt.</p>
+            <p className="text-xs font-medium text-foreground/80">{t('health.dtc.explanationPreparing')}</p>
+            <p className="text-[11px] text-muted-foreground">{t('health.dtc.codeRemainsVisible')}</p>
           </div>
         </div>,
       );
@@ -612,7 +614,7 @@ export function HealthErrorsView({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AlertTriangle className={`w-3.5 h-3.5 ${'text-[color:var(--status-watch)]'}`} />
-            <p className="text-xs text-muted-foreground">Erklärung konnte noch nicht erstellt werden.</p>
+            <p className="text-xs text-muted-foreground">{t('health.dtc.explanationFailed')}</p>
           </div>
           {isOrgAdmin && (
             <button
@@ -621,7 +623,7 @@ export function HealthErrorsView({
               disabled={!!dtcRetrying[dtc.code]}
               className={`text-[11px] px-2 py-1 rounded-md font-medium ${'bg-muted text-foreground hover:bg-muted/80'} disabled:opacity-50`}
             >
-              {dtcRetrying[dtc.code] ? 'Wird erneut versucht …' : 'Erneut versuchen'}
+              {dtcRetrying[dtc.code] ? t('health.dtc.retrying') : t('health.dtc.retry')}
             </button>
           )}
         </div>,
@@ -629,7 +631,7 @@ export function HealthErrorsView({
     }
 
     if (k.status === 'MISSING') {
-      return wrap(<p className="text-xs text-muted-foreground">Noch keine Erklärung vorhanden.</p>);
+      return wrap(<p className="text-xs text-muted-foreground">{t('health.dtc.noExplanationYet')}</p>);
     }
 
     // READY
@@ -641,12 +643,12 @@ export function HealthErrorsView({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 flex-wrap">
             <Wrench className={`w-3.5 h-3.5 ${'text-[color:var(--brand)]'}`} />
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">SynqDrive DTC Knowledge Base</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{t('health.dtc.knowledgeBase')}</span>
             {k.source === 'VEHICLE_SPECIFIC' && (
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${'sq-tone-brand'}`}>Fahrzeugspezifisch</span>
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${'sq-tone-brand'}`}>{t('health.dtc.vehicleSpecific')}</span>
             )}
             {k.needsReview && (
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${'sq-chip-watch'}`}>Prüfung empfohlen</span>
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${'sq-chip-watch'}`}>{t('health.dtc.reviewRecommended')}</span>
             )}
           </div>
           <button
@@ -654,7 +656,7 @@ export function HealthErrorsView({
             onClick={() => setExpandedErrorIndex(isExpanded ? null : index)}
             className={`text-[11px] font-medium shrink-0 ${'text-[color:var(--brand)] hover:opacity-80'}`}
           >
-            {isExpanded ? 'Weniger' : 'Mehr anzeigen'}
+            {isExpanded ? t('health.dtc.less') : t('health.dtc.showMore')}
           </button>
         </div>
 
@@ -663,13 +665,13 @@ export function HealthErrorsView({
 
         <div className="flex flex-wrap items-center gap-2">
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${recCls(k.rentalRecommendation)}`}>
-            Vermietung: {recDe[k.rentalRecommendation ?? 'UNKNOWN']}
+            {t('health.dtc.rental')} {recDe[k.rentalRecommendation ?? 'UNKNOWN']}
           </span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${urgCls(k.technicalUrgency)}`}>
-            AI technisch: {urgDe[k.technicalUrgency ?? 'UNKNOWN']}
+            {t('health.dtc.aiTechnical')} {urgDe[k.technicalUrgency ?? 'UNKNOWN']}
           </span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${urgCls(k.rentalUrgency)}`}>
-            AI Rental: {urgDe[k.rentalUrgency ?? 'UNKNOWN']}
+            {t('health.dtc.aiRental')} {urgDe[k.rentalUrgency ?? 'UNKNOWN']}
           </span>
         </div>
 
@@ -677,7 +679,7 @@ export function HealthErrorsView({
           <div className="mt-3 space-y-3">
             {causes.length > 0 && (
               <div>
-                {label('Mögliche Ursachen')}
+                {label(t('health.dtc.possibleCauses'))}
                 <ul className="list-disc list-inside space-y-0.5">
                   {causes.map((c, ci) => (
                     <li key={ci} className="text-xs text-foreground/80">{c}</li>
@@ -703,7 +705,7 @@ export function HealthErrorsView({
             )}
             {sources.length > 0 && (
               <div>
-                {label('Quellen')}
+                {label(t('health.dtc.sources'))}
                 <ul className="space-y-0.5">
                   {sources.map((s, si) => (
                     <li key={si} className="text-xs">
@@ -721,7 +723,7 @@ export function HealthErrorsView({
             )}
             {k.lastVerifiedAt && (
               <p className="text-[10px] text-muted-foreground/70">
-                Zuletzt geprüft: {new Date(k.lastVerifiedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                Zuletzt geprüft: {new Date(k.lastVerifiedAt).toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })}
               </p>
             )}
             {isOrgAdmin && (
@@ -946,7 +948,7 @@ export function HealthErrorsView({
     setSubmittingEditSetup(false);
   };
 
-  // ── AI Tire Spec fetch logic ────────────────────────────────────────────────
+  // ── AI {t('health.tire.spec')} fetch logic ────────────────────────────────────────────────
 
   const aiTireSpecFieldsReady = Boolean(
     editSetupForm.brandModelFront.trim() &&
@@ -1019,7 +1021,7 @@ export function HealthErrorsView({
         } else if (evt.event === 'error') {
           if (aiTireCountdownRef.current) clearInterval(aiTireCountdownRef.current);
           setAiTireCountdown(0);
-          setAiTireError(evt.data.message || 'AI Tire Spec fetch failed');
+          setAiTireError(evt.data.message || t('health.tire.specFetchFailed'));
           setAiTireLoading(false);
         }
       },
@@ -1173,15 +1175,15 @@ export function HealthErrorsView({
     ? dtcList.map((d: any) => {
         const ts = d.firstSeenAt ?? d.lastSeenAt ?? d.createdAt;
         return {
-          date: ts ? new Date(ts).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—',
+          date: ts ? new Date(ts).toLocaleDateString(formattingLocale, { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—',
           code: d.dtcCode ?? d.code ?? '',
-          time: ts ? new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '',
+          time: ts ? new Date(ts).toLocaleTimeString(formattingLocale, { hour: '2-digit', minute: '2-digit' }) : '',
           severity: ((d.severity ?? 'WARNING').toLowerCase() === 'warning' ? 'medium' : (d.severity ?? 'medium').toLowerCase()) as 'low' | 'medium' | 'high' | 'critical',
           system: d.description ?? d.dtcCode ?? '',
           description: d.description ?? `DTC ${d.dtcCode ?? ''}`,
           mileage: '—',
           resolution: d.clearedAt ? 'Cleared' : '—',
-          resolvedDate: d.clearedAt ? new Date(d.clearedAt).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—',
+          resolvedDate: d.clearedAt ? new Date(d.clearedAt).toLocaleDateString(formattingLocale, { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—',
           technician: '—',
           workshop: '—',
           isActive: d.isActive ?? false,
@@ -1216,7 +1218,7 @@ export function HealthErrorsView({
     ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedLvHealthScore ?? null)
     : null;
   const batteryCondition = bSummary?.lv?.condition ?? bSummary?.condition ?? 'good';
-  // LV "Estimated Battery Health" — behaviour-derived 3-bar indicator. The 12V
+  // LV "Estimated {t('health.batteryHealth')}" — behaviour-derived 3-bar indicator. The 12V
   // battery is never shown as a workshop-verified SOH %. We read the canonical
   // estimatedHealth block and fall back to the legacy condition only when the
   // (older) API shape is in play.
@@ -1304,21 +1306,22 @@ export function HealthErrorsView({
   const exteriorAmbient = resolveExteriorAmbientTemperature(batteryRecentTrips, tripProfile);
   const exteriorAmbientDisplay = formatExteriorAmbientDisplay(exteriorAmbient);
   const batteryLvSummaryVm = useMemo(
-    () => buildBatteryLvSummaryVm(bSummary, batteryLatest?.voltageV ?? null),
-    [bSummary, batteryLatest?.voltageV],
+    () => buildBatteryLvSummaryVm(bSummary, batteryLatest?.voltageV ?? null, locale),
+    [bSummary, batteryLatest?.voltageV, locale],
   );
   const batteryLvDetailVm = useMemo(
     () =>
       buildBatteryLvDetailVm(batteryDetail, bSummary, {
         liveMapVoltage: batteryLatest?.voltageV ?? null,
         exteriorAmbient: exteriorAmbientDisplay,
+        locale,
       }),
-    [batteryDetail, bSummary, batteryLatest?.voltageV, exteriorAmbientDisplay],
+    [batteryDetail, bSummary, batteryLatest?.voltageV, exteriorAmbientDisplay, locale],
   );
-  const batteryHvSummaryVm = useMemo(() => buildBatteryHvSummaryVm(bSummary), [bSummary]);
+  const batteryHvSummaryVm = useMemo(() => buildBatteryHvSummaryVm(bSummary, locale), [bSummary, locale]);
   const batteryHvDetailVm = useMemo(
-    () => buildBatteryHvDetailVm(batteryDetail, bSummary),
-    [batteryDetail, bSummary],
+    () => buildBatteryHvDetailVm(batteryDetail, bSummary, locale),
+    [batteryDetail, bSummary, locale],
   );
   const batteryMeasurementRows = buildBatteryMeasurementRows(batteryDetail, bSummary);
   const batteryRestingChartPoints = buildRestingVoltageTrendPoints(
@@ -1374,7 +1377,7 @@ export function HealthErrorsView({
 
         {/* ─── Right Column: Quick Cards ─── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 h-fit auto-rows-fr">
-        {/* ─── Error Codes card ─── */}
+        {/* ─── {t('health.errorCodes')} card ─── */}
         {(() => {
           const s = dtcSummary;
           const dtcStatus = s?.status ?? (activeDtcCount > 0 ? 'active_faults' : lastDtcChecked ? 'clean' : 'unavailable');
@@ -1391,7 +1394,7 @@ export function HealthErrorsView({
                   <div className={`p-1.5 rounded-lg ${accent.iconBox}`}>
                     <Icon name="alert-circle" className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className={quickCardTitleClass}>Error Codes</h3>
+                  <h3 className={quickCardTitleClass}>{t('health.errorCodes')}</h3>
                 </div>
                 <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
               </div>
@@ -1399,7 +1402,7 @@ export function HealthErrorsView({
                 {dtcStatus === 'unavailable' && (
                   <>
                     <span className={`text-3xl mb-1 text-muted-foreground/60`}>—</span>
-                    <p className={`text-[10px] font-medium text-center text-muted-foreground`}>Noch nicht geprüft</p>
+                    <p className={`text-[10px] font-medium text-center text-muted-foreground`}>{t('health.dtc.notCheckedYet')}</p>
                   </>
                 )}
                 {dtcStatus === 'stale' && (
@@ -1407,7 +1410,7 @@ export function HealthErrorsView({
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${'sq-tone-watch ring-1 ring-border'}`}>
                       <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
                     </div>
-                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Datenstand verzögert / Abruf fehlgeschlagen</p>
+                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>{t('health.dtc.dataDelayed')}</p>
                   </>
                 )}
                 {(dtcStatus === 'clean' || dtcStatus === 'active_faults') && (
@@ -1415,7 +1418,7 @@ export function HealthErrorsView({
                     <div className={`text-[40px] font-black tracking-tighter leading-none ${faultCount > 0 ? accent.countText : 'text-foreground'}`}>{faultCount}</div>
                     {faultCount === 0 && (
                       <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${'sq-chip-success'}`}>
-                        <Icon name="check-circle" className="w-2.5 h-2.5" /> Keine Fehler
+                        <Icon name="check-circle" className="w-2.5 h-2.5" /> {t('health.dtc.noErrors')}
                       </div>
                     )}
                     {faultCount > 0 && (
@@ -1453,7 +1456,7 @@ export function HealthErrorsView({
               aiHealthCare?.indicators?.batteryWarningLight,
             ) ? (
               <span
-                title="Dashboard-Warnleuchte leuchtet — Lichtmaschine und Ladezustand prüfen"
+                title={t('health.telltales.batteryWarning')}
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border animate-pulse sq-chip-watch border-border"
               >
                 <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3 h-3 object-contain" />
@@ -1463,7 +1466,7 @@ export function HealthErrorsView({
           }
         />
 
-        {/* ─── Nächster Service (HM/OEM) + TÜV/BOKraft ─── */}
+        {/* ─── {t('health.nextService')} (HM/OEM) + {t('health.tuv')}/BOKraft ─── */}
         {(() => {
           const si = serviceInfo;
           const nsDisplay = buildNextServiceDisplay(si, {
@@ -1487,7 +1490,7 @@ export function HealthErrorsView({
             ? {
                 validTill: formatComplianceDueDate(serviceComplianceModule.tuev.dueDate),
                 tone: nextServiceSummaryTone(serviceComplianceModule.tuev.state),
-                label: 'TÜV',
+                label: t('health.tuv'),
                 status: serviceComplianceModule.tuev.state === 'unknown' ? 'no_data' as const : 'ok' as const,
                 detail: complianceDateStateLabel(serviceComplianceModule.tuev.state),
                 blocksRentalHint: serviceComplianceModule.tuev.state === 'critical',
@@ -1526,7 +1529,7 @@ export function HealthErrorsView({
                   <div className={`p-1.5 rounded-lg ${serviceAccent.iconBox}`}>
                     <Icon name="wrench" className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className={quickCardTitleClass}>Nächster Service</h3>
+                  <h3 className={quickCardTitleClass}>{t('health.nextService')}</h3>
                   {!useCanonicalService && nsDisplay.badge && (
                     <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border ${
                       nsDisplay.tone === 'critical'
@@ -1540,7 +1543,7 @@ export function HealthErrorsView({
                   )}
                   {useCanonicalService && serviceComplianceModule.state === 'no_tracking' && (
                     <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border bg-muted text-muted-foreground border-border">
-                      No Tracking
+                      {t('health.noTracking')}
                     </span>
                   )}
                 </div>
@@ -1553,14 +1556,14 @@ export function HealthErrorsView({
               )}
               <div className="flex flex-col justify-between flex-1 gap-3 relative z-10">
                 <div>
-                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>HM/OEM-Tracking</p>
+                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>{t('health.hmOemTracking')}</p>
                   <p className={`text-[10px] font-bold ${nextColor}`}>{canonicalPrimaryLine}</p>
                   {!useCanonicalService && nsDisplay.sourceLine && (
                     <p className="text-[9px] text-muted-foreground/80 mt-0.5">{nsDisplay.sourceLine}</p>
                   )}
                 </div>
                 <div>
-                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>TÜV</p>
+                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>{t('health.tuv')}</p>
                   <p className={`text-[10px] font-bold ${nextServiceToneClass(tuv.tone)}`}>
                     {tuv.validTill ?? '—'}
                   </p>
@@ -1568,7 +1571,7 @@ export function HealthErrorsView({
                     {tuv.label}{tuv.status !== 'no_data' ? ` · ${tuv.detail}` : ''}
                   </p>
                   {tuv.blocksRentalHint && (
-                    <p className="text-[10px] mt-1 font-bold text-red-600 dark:text-red-400">Nicht vermieten</p>
+                    <p className="text-[10px] mt-1 font-bold text-red-600 dark:text-red-400">{t('health.doNotRent')}</p>
                   )}
                 </div>
                 <div>
@@ -1580,7 +1583,7 @@ export function HealthErrorsView({
                     {bok.label}{bok.status !== 'no_data' ? ` · ${bok.detail}` : ''}
                   </p>
                   {bok.blocksRentalHint && (
-                    <p className="text-[10px] mt-1 font-bold text-red-600 dark:text-red-400">Nicht vermieten</p>
+                    <p className="text-[10px] mt-1 font-bold text-red-600 dark:text-red-400">{t('health.doNotRent')}</p>
                   )}
                 </div>
                 {( !useCanonicalService && (nsDisplay.showHmOverdueHint || nsDisplay.showHmDueSoonHint)) && (
@@ -1622,7 +1625,7 @@ export function HealthErrorsView({
                   <div className={`p-1.5 rounded-lg ${brakeAccent.iconBox}`}>
                     <Icon name="disc" className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className={quickCardTitleClass}>Brake Health</h3>
+                  <h3 className={quickCardTitleClass}>{t('health.brakeHealth')}</h3>
                   {openAlerts.length > 0 && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
                 </div>
                 <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
@@ -1647,13 +1650,13 @@ export function HealthErrorsView({
                     </p>
                     {nextInspection != null && (
                       <p className="text-[10px] font-medium text-muted-foreground">
-                        Inspection in: <span className="font-bold text-foreground tabular-nums">{Math.round(nextInspection).toLocaleString('de-DE')} km</span>
+                        {t('health.inspectionIn')} <span className="font-bold text-foreground tabular-nums">{Math.round(nextInspection).toLocaleString(formattingLocale)} km</span>
                       </p>
                     )}
                   </div>
                 ) : (
                   <p className="text-[10px] text-muted-foreground">
-                    Bremszustand wird ermittelt, sobald eine Werkstatt-Messung, ein Dokument oder ein Brems-Signal verfügbar ist.
+                    {t('health.brakeStatusPending')}
                   </p>
                 )}
               </div>
@@ -1728,14 +1731,14 @@ export function HealthErrorsView({
                 <div className={quickCardBodyClass}>
                   <div className="mb-1 flex items-center gap-1.5">
                     <span className={`text-sm font-bold tracking-tight text-foreground`}>
-                      No active Tracking
+                      {t('health.noActiveTracking')}
                     </span>
                   </div>
                   {activeSetup && (
                     <p className={`text-[10px] mb-1 font-medium text-muted-foreground`}>{activeSetup.brandModelFront ?? activeSetup.frontDimension ?? 'Setup'}</p>
                   )}
                   <p className={`text-[10px] text-muted-foreground`}>
-                    Bitte Reifeninformationen hinterlegen, um die Reifenüberwachung zu aktivieren.
+                    {t('health.tireInfoRequired')}
                   </p>
                 </div>
               )}
@@ -1761,9 +1764,9 @@ export function HealthErrorsView({
                     hmTirePressure.overallStatus === 'ISSUE' ? ('sq-chip-watch') :
                     ('bg-muted text-muted-foreground')
                   }`}>
-                    {hmTirePressure.overallStatus === 'OK' ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> Pressure OK</> :
-                     hmTirePressure.overallStatus === 'ISSUE' ? <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> Pressure Warning</> :
-                     'No data'}
+                    {hmTirePressure.overallStatus === 'OK' ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> {t('health.pressureOk')}</> :
+                     hmTirePressure.overallStatus === 'ISSUE' ? <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> {t('health.pressureWarning')}</> :
+                     t('health.tire.noData')}
                   </div>
                 </div>
               )}
@@ -1802,7 +1805,7 @@ export function HealthErrorsView({
           MODALS
          ═══════════════════════════════════════════════════════════════ */}
 
-      {/* ─── Error Codes Modal ─── */}
+      {/* ─── {t('health.errorCodes')} Modal ─── */}
       {showErrorCodes && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowErrorCodes)}>
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
@@ -1812,7 +1815,7 @@ export function HealthErrorsView({
             {/* Modal header — title + single last-check meta only */}
             <div className="mb-4 pr-10">
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-                <h2 className="text-base font-semibold text-foreground">Error Codes</h2>
+                <h2 className="text-base font-semibold text-foreground">{t('health.errorCodes')}</h2>
                 {(() => {
                   const lastCheck =
                     dtcDetail?.monitoring?.lastSuccessfulCheckAt ??
@@ -1855,17 +1858,17 @@ export function HealthErrorsView({
 
               return (
                 <>
-                  {/* Current Fault Status */}
+                  {/* {t('health.dtc.currentFaultStatus')} */}
                   <div className="mb-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest mb-3 text-muted-foreground">
-                      Current Fault Status
+                      {t('health.dtc.currentFaultStatus')}
                     </h3>
 
                     {(!d || d.currentFaults.status === 'unavailable') && (
                       <EmptyState
                         compact
                         icon={<Icon name="clock" className="w-5 h-5" />}
-                        title="No DTC data available"
+                        title={t('health.dtc.noData')}
                         description="The first DTC poll runs every 3 hours — no check has been performed yet"
                         className="rounded-lg border bg-muted border-border py-6"
                       />
@@ -1876,10 +1879,10 @@ export function HealthErrorsView({
                         <Icon name="alert-triangle" className="w-5 h-5 shrink-0 text-[color:var(--status-watch)]" />
                         <div>
                           <p className="text-sm font-semibold text-[color:var(--status-watch)]">
-                            Current DTC status is outdated
+                            {t('health.dtc.statusOutdated')}
                           </p>
                           <p className="text-xs text-[color:var(--status-watch)]">
-                            The displayed DTC state may not reflect the actual vehicle condition. Wait for the next successful check.
+                            {t('health.dtc.statusOutdatedHint')}
                           </p>
                         </div>
                       </div>
@@ -1890,10 +1893,10 @@ export function HealthErrorsView({
                         <Icon name="check-circle" className="w-5 h-5 shrink-0 text-[color:var(--status-positive)]" />
                         <div>
                           <p className="text-sm font-semibold text-[color:var(--status-positive)]">
-                            No active fault codes
+                            {t('health.dtc.noActiveFaults')}
                           </p>
                           <p className="text-xs text-[color:var(--status-positive)]">
-                            Vehicle diagnostics are clear as of the last successful check
+                            {t('health.dtc.diagnosticsClear')}
                           </p>
                         </div>
                       </div>
@@ -1915,10 +1918,10 @@ export function HealthErrorsView({
                               <span className={`text-xs flex-1 font-medium text-foreground min-w-[120px]`}>{dtc.label}</span>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${rentalStatePillClasses(
                                 rentalHealth?.modules.error_codes.state,
-                              )}`} title="Fleet Health Modulstatus">
+                              )}`} title={t('health.dtc.fleetHealthModule')}>
                                 Betrieb: {rentalStateLabelDe(rentalHealth?.modules.error_codes.state)}
                               </span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize ${sevCls(dtc.severity)}`} title="Roh-Severity aus DTC-Poll">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize ${sevCls(dtc.severity)}`} title={t('health.dtc.rawSeverity')}>
                                 DTC: {dtc.severity}
                               </span>
                             </div>
@@ -1928,12 +1931,12 @@ export function HealthErrorsView({
                                 <p className="text-xs text-foreground/80">{dtc.category}</p>
                               </div>
                               <div>
-                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">First Seen</p>
-                                <p className="text-xs text-foreground/80">{dtc.firstSeenAt ? new Date(dtc.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">{t('health.dtc.firstSeen')}</p>
+                                <p className="text-xs text-foreground/80">{dtc.firstSeenAt ? new Date(dtc.firstSeenAt).toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                               </div>
                               <div>
-                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">Last Seen</p>
-                                <p className="text-xs text-foreground/80">{dtc.lastSeenAt ? new Date(dtc.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">{t('health.dtc.lastSeen')}</p>
+                                <p className="text-xs text-foreground/80">{dtc.lastSeenAt ? new Date(dtc.lastSeenAt).toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                               </div>
                             </div>
                             {renderDtcKnowledge(dtc, i)}
@@ -1945,14 +1948,14 @@ export function HealthErrorsView({
                     )}
                   </div>
 
-                  {/* Historical Fault Codes */}
+                  {/* {t('health.dtc.historicalCodes')} */}
                   <div className="mb-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest mb-3 text-muted-foreground">
-                      Historical Fault Codes
+                      {t('health.dtc.historicalCodes')}
                     </h3>
 
                     {(!d || d.history.length === 0) ? (
-                      <p className="text-sm text-muted-foreground/70">No historical DTC records yet</p>
+                      <p className="text-sm text-muted-foreground/70">{t('health.dtc.noHistorical')}</p>
                     ) : (
                       <div className="rounded-lg border overflow-x-auto border-border">
                         {/* Table header */}
@@ -1960,8 +1963,8 @@ export function HealthErrorsView({
                           <span>Code</span>
                           <span>Label</span>
                           <span>Category</span>
-                          <span>First Seen</span>
-                          <span>Last Seen</span>
+                          <span>{t('health.dtc.firstSeen')}</span>
+                          <span>{t('health.dtc.lastSeen')}</span>
                           <span>Status</span>
                         </div>
                         {/* Table rows */}
@@ -1970,8 +1973,8 @@ export function HealthErrorsView({
                             <span className="font-bold font-mono text-[11px] text-[color:var(--brand)]">{item.code}</span>
                             <span className="truncate text-foreground/80">{item.label}</span>
                             <span className="text-[10px] text-muted-foreground">{item.category}</span>
-                            <span className="text-[10px] tabular-nums text-muted-foreground">{item.firstSeenAt ? new Date(item.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
-                            <span className="text-[10px] tabular-nums text-muted-foreground">{item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
+                            <span className="text-[10px] tabular-nums text-muted-foreground">{item.firstSeenAt ? new Date(item.firstSeenAt).toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
+                            <span className="text-[10px] tabular-nums text-muted-foreground">{item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${item.isActive ? ('sq-chip-critical') : item.clearedAt ? ('sq-chip-success') : ('sq-chip-neutral')}`}>
                               {item.isActive ? 'Active' : item.clearedAt ? 'Cleared' : 'Historical'}
                             </span>
@@ -1991,7 +1994,7 @@ export function HealthErrorsView({
                     </span>
                     {d?.monitoring?.pollError && (
                       <span className="text-[color:var(--status-critical)]" title={d.monitoring.pollError}>
-                        Letzter Abruf fehlgeschlagen
+                        {t('health.dtc.lastFetchFailed')}
                       </span>
                     )}
                   </div>
@@ -2025,7 +2028,7 @@ export function HealthErrorsView({
 
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
-              <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Battery Health</h2>
+              <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>{t('health.batteryHealth')}</h2>
               {batteryError ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-chip-critical">
                   Fehler
@@ -2034,11 +2037,11 @@ export function HealthErrorsView({
                 <BatteryDataQualityBadge status={bSummary.dataQuality.status} />
               ) : null}
               {lvNoBatteryDetected ? (
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${'sq-chip-neutral'}`}>Not detected</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${'sq-chip-neutral'}`}>{t('health.notDetected')}</span>
               ) : lvIsCalibrating ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-status-info-soft text-status-info">Calibrating</span>
               ) : lvIsStabilizing ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700">Estimated · Stabilizing</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700">{t('health.estimatedStabilizing')}</span>
               ) : (
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                   batteryCondition === 'good' ? 'bg-green-100 text-green-700' : batteryCondition === 'watch' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
@@ -2110,12 +2113,12 @@ export function HealthErrorsView({
                     </LineChart>
                   </ResponsiveContainer>
                   <p className="text-[9px] text-center text-muted-foreground mt-2">
-                    Nur qualifizierte Ruhespannungs-Messungen — keine Lade- oder Live-Spannung.
+                    {t('health.restingVoltageOnly')}
                   </p>
                 </>
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-8 px-2">
-                  Noch nicht genug Ruhespannungs-Messungen für einen Verlauf.
+                  {t('health.noRestingMeasurements')}
                 </p>
               )}
             </div>
@@ -2170,9 +2173,9 @@ export function HealthErrorsView({
               </div>
             </div>
 
-            {/* Detailed Readings */}
+            {/* {t('health.dtc.detailedReadings')} */}
             <div className={`rounded-lg p-4 mb-4 bg-muted`}>
-              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Detailed Readings</p>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>{t('health.dtc.detailedReadings')}</p>
               {lvStartProxy && lvStartProxy.availability !== 'SUPPORTED' && (
                 <p className="text-xs text-muted-foreground mb-3">
                   {lvStartProxy.uiLabelDe}: {lvStartProxy.availabilityLabelDe}
@@ -2240,7 +2243,7 @@ export function HealthErrorsView({
                   ))}
                 </div>
               ) : (
-                <p className={`text-xs text-muted-foreground/70`}>Noch keine Messungen verfügbar</p>
+                <p className={`text-xs text-muted-foreground/70`}>{t('health.noMeasurementsYet')}</p>
               )}
             </div>
 
@@ -2266,7 +2269,7 @@ export function HealthErrorsView({
           <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out surface-premium border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
-            <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>Service & Compliance</h2>
+            <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>{t('health.serviceCompliance')}</h2>
 
             {(() => {
               const nsDisplay = buildNextServiceDisplay(serviceInfo, {
@@ -2293,7 +2296,7 @@ export function HealthErrorsView({
             {vehicleId && serviceInfo?.taskSignals && serviceInfo.taskSignals.length > 0 && (
               <div className="mb-5">
                 <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
-                  Aufgaben & Vorschläge
+                  {t('health.tasksAndSuggestions')}
                 </p>
                 <ComplianceTaskActions vehicleId={vehicleId} signals={serviceInfo.taskSignals} />
               </div>
@@ -2319,7 +2322,7 @@ export function HealthErrorsView({
                   ))}
                 </div>
                 <p className="text-[10px] mt-2.5 text-amber-700/80 dark:text-amber-300/70">
-                  Sichtbar unter Task Management — wird automatisch geschlossen, sobald der Termin erledigt ist.
+                  {t('health.taskManagementHint')}
                 </p>
               </div>
             )}
@@ -2329,12 +2332,12 @@ export function HealthErrorsView({
                 const tuv = buildTuvComplianceDisplay(serviceInfo);
                 return (
                   <div className={`rounded-lg p-4 border bg-muted border-border`}>
-                    <h3 className="text-sm font-semibold mb-3 text-foreground">TÜV</h3>
+                    <h3 className="text-sm font-semibold mb-3 text-foreground">{t('health.tuv')}</h3>
                     <p className={`text-lg font-bold ${nextServiceToneClass(tuv.tone)}`}>{tuv.label}</p>
                     <p className="text-xs text-muted-foreground mt-1">Gültig bis: {tuv.validTill ?? '—'}</p>
                     <p className={`text-xs mt-1 font-medium ${nextServiceToneClass(tuv.tone)}`}>{tuv.detail}</p>
                     {tuv.blocksRentalHint && (
-                      <p className="text-xs mt-2 font-bold text-red-600 dark:text-red-400">Nicht vermieten — TÜV abgelaufen</p>
+                      <p className="text-xs mt-2 font-bold text-red-600 dark:text-red-400">{t('health.doNotRent')} — {t('health.tuv')} abgelaufen</p>
                     )}
                   </div>
                 );
@@ -2348,7 +2351,7 @@ export function HealthErrorsView({
                     <p className="text-xs text-muted-foreground mt-1">Gültig bis: {bok.validTill ?? '—'}</p>
                     <p className={`text-xs mt-1 font-medium ${nextServiceToneClass(bok.tone)}`}>{bok.detail}</p>
                     {bok.blocksRentalHint && (
-                      <p className="text-xs mt-2 font-bold text-red-600 dark:text-red-400">Nicht vermieten — BOKraft abgelaufen</p>
+                      <p className="text-xs mt-2 font-bold text-red-600 dark:text-red-400">{t('health.doNotRent')} — BOKraft abgelaufen</p>
                     )}
                   </div>
                 );
@@ -2365,8 +2368,8 @@ export function HealthErrorsView({
                       <div className="shrink-0 min-w-0 flex-1">
                         <p className={`text-sm font-semibold text-foreground`}>{formatServiceEventTypeDe(item.eventType)}</p>
                         <p className={`text-xs text-muted-foreground`}>
-                          {new Date(item.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                          {item.odometerKm != null ? ` · ${item.odometerKm.toLocaleString('de-DE')} km` : ''}
+                          {new Date(item.date).toLocaleDateString(formattingLocale, { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {item.odometerKm != null ? ` · ${item.odometerKm.toLocaleString(formattingLocale)} km` : ''}
                           {item.workshopName ? ` · ${item.workshopName}` : ''}
                         </p>
                       </div>
@@ -2375,7 +2378,7 @@ export function HealthErrorsView({
                   ))}
                 </div>
               ) : (
-                <p className={`text-xs text-muted-foreground/70`}>Noch keine Serviceereignisse dokumentiert</p>
+                <p className={`text-xs text-muted-foreground/70`}>{t('health.noServiceEvents')}</p>
               )}
             </div>
           </div>
@@ -2422,7 +2425,7 @@ export function HealthErrorsView({
                 <>
                   {/* ── A) Header ── */}
                   <div className="flex items-center gap-3 mb-1">
-                    <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Brake Health</h2>
+                    <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>{t('health.brakeHealth')}</h2>
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusBadgeCls}`}>{statusLabel}</span>
                     {bhs?.confidence && (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -2459,9 +2462,9 @@ export function HealthErrorsView({
                   {!v2 && (
                     <>
                       <div className={`rounded-xl p-4 mb-4 border 'sq-tone-watch border border-border'`}>
-                        <h3 className={`text-sm font-bold mb-2 'text-[color:var(--status-watch)]'`}>Brake tracking not initialized</h3>
+                        <h3 className={`text-sm font-bold mb-2 'text-[color:var(--status-watch)]'`}>{t('health.brake.trackingNotInitialized')}</h3>
                         <p className={`text-xs leading-relaxed mb-3 'text-[color:var(--status-watch)]'`}>
-                          Brake wear estimation starts after a documented brake service or confirmed workshop report. Without a known starting pad/disc thickness, no reliable estimation is possible. Pre-anchor driving data is being collected but will NOT be used retroactively — tracking starts clean from the service anchor odometer.
+                          {t('health.brake.trackingHint')}
                         </p>
                         {(bhs?.baselineWarnings?.length ?? 0) > 0 && (
                           <div className="mb-3 space-y-1">
@@ -2471,16 +2474,16 @@ export function HealthErrorsView({
                           </div>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3.5 h-3.5" /> Add Brake Service</button>
-                          <button onClick={openHealthDocumentIntake} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3.5 h-3.5" /> AI Upload Report</button>
+                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3.5 h-3.5" /> {t('health.brake.addService')}</button>
+                          <button onClick={openHealthDocumentIntake} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3.5 h-3.5" /> {t('health.brake.aiUploadReport')}</button>
                         </div>
                       </div>
-                      <p className={`text-[10px] mb-4 text-muted-foreground/70`}>Driving and braking behavior is already being collected via the Driving Impact Engine and will be available once brake tracking is initialized.</p>
+                      <p className={`text-[10px] mb-4 text-muted-foreground/70`}>{t('health.brake.drivingImpactHint')}</p>
                     </>
                   )}
 
                   {v2 && bhd?.distanceSinceAnchorKm != null && (
-                    <p className={`text-[10px] mb-4 text-muted-foreground/70`}>{bhd.distanceSinceAnchorKm.toLocaleString('de-DE')} km since anchor service</p>
+                    <p className={`text-[10px] mb-4 text-muted-foreground/70`}>{bhd.distanceSinceAnchorKm.toLocaleString(formattingLocale)} km since anchor service</p>
                   )}
 
                   {/* ── INITIALIZED: Alerts ── */}
@@ -2499,13 +2502,13 @@ export function HealthErrorsView({
                     </div>
                   )}
 
-                  {/* ── C) Brake System Information ── */}
+                  {/* ── C) {t('health.brake.systemInfo')} ── */}
                   {(bhd?.specs || bhd?.brakeBiasInfo) && (
                     <div className="mb-4">
-                      <h3 className={hSec}>Brake System Information</h3>
+                      <h3 className={hSec}>{t('health.brake.systemInfo')}</h3>
                       <div className="grid grid-cols-2 gap-3">
                         <div className={`rounded-xl p-4 ${cardBg}`}>
-                          <p className={`${lbl} mb-2.5`}>Front Axle</p>
+                          <p className={`${lbl} mb-2.5`}>{t('health.brake.frontAxle')}</p>
                           <div className="space-y-2">
                             {[
                               { l: 'Rotor Diameter', v: bhd?.specs?.frontRotorDiameter },
@@ -2520,7 +2523,7 @@ export function HealthErrorsView({
                           </div>
                         </div>
                         <div className={`rounded-xl p-4 ${cardBg}`}>
-                          <p className={`${lbl} mb-2.5`}>Rear Axle</p>
+                          <p className={`${lbl} mb-2.5`}>{t('health.brake.rearAxle')}</p>
                           <div className="space-y-2">
                             {[
                               { l: 'Rotor Diameter', v: bhd?.specs?.rearRotorDiameter },
@@ -2538,7 +2541,7 @@ export function HealthErrorsView({
                       {bhd?.brakeBiasInfo && (
                         <div className={`rounded-xl p-3 mt-3 ${cardBg}`}>
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs text-muted-foreground`}>Brake Force Distribution</span>
+                            <span className={`text-xs text-muted-foreground`}>{t('health.brake.forceDistribution')}</span>
                             <span className={val}>{bhd.brakeBiasInfo.front}% / {bhd.brakeBiasInfo.rear}%</span>
                           </div>
                           <p className={`text-[9px] mt-1 text-muted-foreground/70`}>{bhd.brakeBiasInfo.source}{bhd.brakeBiasInfo.source.includes('EBD') ? ' — actual distribution is managed by the vehicle EBD system; this is used as a modeling fallback' : ''}</p>
@@ -2547,9 +2550,9 @@ export function HealthErrorsView({
                     </div>
                   )}
 
-                  {/* ── D) Brake History ── */}
+                  {/* ── D) {t('health.brake.history')} ── */}
                   <div className="mb-4">
-                    <h3 className={hSec}>Brake History</h3>
+                    <h3 className={hSec}>{t('health.brake.history')}</h3>
                     {(bhd?.history ?? []).length > 0 ? (
                       <div className={`rounded-xl overflow-hidden 'surface-premium'`}>
                         {(bhd?.history ?? []).map((item: any, i: number, arr: any[]) => (
@@ -2559,17 +2562,17 @@ export function HealthErrorsView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className={`text-xs font-semibold text-foreground`}>{item.serviceKind ? String(item.serviceKind).replace(/_/g, ' ') : 'Brake Service'}</p>
-                              <p className={`text-[10px] text-muted-foreground`}>{new Date(item.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}{item.workshopName ? ` · ${item.workshopName}` : ''}</p>
+                              <p className={`text-[10px] text-muted-foreground`}>{new Date(item.date).toLocaleDateString(formattingLocale, { day: 'numeric', month: 'long', year: 'numeric' })}{item.workshopName ? ` · ${item.workshopName}` : ''}</p>
                               {item.notes && <p className={`text-[9px] mt-0.5 'text-muted-foreground'`}>{item.notes}</p>}
                             </div>
-                            {item.odometerKm != null && <span className={`text-[10px] font-medium mr-2 text-muted-foreground`}>{item.odometerKm.toLocaleString('de-DE')} km</span>}
+                            {item.odometerKm != null && <span className={`text-[10px] font-medium mr-2 text-muted-foreground`}>{item.odometerKm.toLocaleString(formattingLocale)} km</span>}
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold 'sq-chip-success'`}>Serviced</span>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className={`rounded-xl p-5 text-center 'surface-premium'`}>
-                        <p className={`text-xs text-muted-foreground`}>No brake service events recorded yet.</p>
+                        <p className={`text-xs text-muted-foreground`}>{t('health.brake.noServiceEvents')}</p>
                       </div>
                     )}
                   </div>
@@ -2579,15 +2582,15 @@ export function HealthErrorsView({
                     <h3 className={hSec}>Actions</h3>
                     {!showBrakeEntry && (
                       <div className="flex gap-2 mb-3">
-                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3 h-3" /> Add Brake Service</button>
-                        <button onClick={openHealthDocumentIntake} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3 h-3" /> AI Upload Report</button>
+                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3 h-3" /> {t('health.brake.addService')}</button>
+                        <button onClick={openHealthDocumentIntake} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3 h-3" /> {t('health.brake.aiUploadReport')}</button>
                       </div>
                     )}
                     {showBrakeEntry && brakeEntryMode === 'manual' && (
                       <div className={`rounded-xl p-4 ${cardBg}`}>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
-                            <label className={`block ${lbl} mb-1`}>Service type</label>
+                            <label className={`block ${lbl} mb-1`}>{t('health.brake.serviceType')}</label>
                             <select
                               value={brakeForm.kind}
                               onChange={(e) => setBrakeForm((p) => ({
@@ -2627,10 +2630,10 @@ export function HealthErrorsView({
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div><label className={`block ${lbl} mb-1`}>Date *</label><input type="date" value={brakeForm.date} onChange={e => setBrakeForm(p => ({ ...p, date: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground'`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Odometer (km)</label><input type="number" value={brakeForm.odometerKm} onChange={e => setBrakeForm(p => ({ ...p, odometerKm: e.target.value }))} placeholder="Current mileage" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>{t('health.brake.date')}</label><input type="date" value={brakeForm.date} onChange={e => setBrakeForm(p => ({ ...p, date: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>{t('health.brake.odometer')}</label><input type="number" value={brakeForm.odometerKm} onChange={e => setBrakeForm(p => ({ ...p, odometerKm: e.target.value }))} placeholder={t('health.brake.currentMileage')} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                           <div><label className={`block ${lbl} mb-1`}>Workshop</label><input type="text" value={brakeForm.workshopName} onChange={e => setBrakeForm(p => ({ ...p, workshopName: e.target.value }))} placeholder="Optional" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Notes</label><input type="text" value={brakeForm.notes} onChange={e => setBrakeForm(p => ({ ...p, notes: e.target.value }))} placeholder="e.g. Front pads + discs" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Notes</label><input type="text" value={brakeForm.notes} onChange={e => setBrakeForm(p => ({ ...p, notes: e.target.value }))} placeholder={t('health.brake.workDescription')} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                         </div>
                         <p className={`${lbl} mt-2 mb-2`}>
                           {brakeServiceScopeResetsComponent(brakeForm.kind)
@@ -2639,10 +2642,10 @@ export function HealthErrorsView({
                         </p>
                         {brakeServiceScopeResetsComponent(brakeForm.kind) && (
                         <div className="grid grid-cols-4 gap-3 mb-3">
-                          <div><label className={`block ${lbl} mb-1`}>Front Pad mm</label><input type="number" step="0.1" value={brakeForm.frontPadMm} onChange={e => setBrakeForm(p => ({ ...p, frontPadMm: e.target.value }))} placeholder="12" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Rear Pad mm</label><input type="number" step="0.1" value={brakeForm.rearPadMm} onChange={e => setBrakeForm(p => ({ ...p, rearPadMm: e.target.value }))} placeholder="10" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Front Rotor W mm</label><input type="number" step="0.1" value={brakeForm.frontRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, frontRotorWidthMm: e.target.value }))} placeholder="28" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Rear Rotor W mm</label><input type="number" step="0.1" value={brakeForm.rearRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, rearRotorWidthMm: e.target.value }))} placeholder="22" disabled={!brakeForm.scope.includes('rear_discs')} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground disabled:opacity-50'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>{t('health.brake.frontPadMm')}</label><input type="number" step="0.1" value={brakeForm.frontPadMm} onChange={e => setBrakeForm(p => ({ ...p, frontPadMm: e.target.value }))} placeholder="12" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>{t('health.brake.rearPadMm')}</label><input type="number" step="0.1" value={brakeForm.rearPadMm} onChange={e => setBrakeForm(p => ({ ...p, rearPadMm: e.target.value }))} placeholder="10" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>{t('health.brake.frontRotorMm')}</label><input type="number" step="0.1" value={brakeForm.frontRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, frontRotorWidthMm: e.target.value }))} placeholder="28" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>{t('health.brake.rearRotorMm')}</label><input type="number" step="0.1" value={brakeForm.rearRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, rearRotorWidthMm: e.target.value }))} placeholder="22" disabled={!brakeForm.scope.includes('rear_discs')} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground disabled:opacity-50'`} /></div>
                         </div>
                         )}
                         <div className="flex items-center gap-2">
@@ -2654,17 +2657,17 @@ export function HealthErrorsView({
                     {showBrakeEntry && brakeEntryMode === 'upload' && (
                       <div className={`rounded-xl p-5 text-center ${cardBg}`}>
                         <Icon name="upload" className={`w-6 h-6 mx-auto mb-2 'text-[color:var(--status-info)]'`} />
-                        <p className={`text-xs font-semibold mb-1 text-foreground`}>Upload Brake Service Document</p>
-                        <p className={`text-[10px] mb-3 text-muted-foreground`}>Go to the AI Upload page to upload a brake service invoice or workshop report. Extracted data will be reviewed and confirmed before being applied.</p>
+                        <p className={`text-xs font-semibold mb-1 text-foreground`}>{t('health.brake.uploadDocument')}</p>
+                        <p className={`text-[10px] mb-3 text-muted-foreground`}>{t('health.brake.uploadHint')}</p>
                         <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'text-muted-foreground hover:text-foreground'`}>Close</button>
                       </div>
                     )}
                   </div>
 
-                  {/* ── F) Estimate Quality ── */}
+                  {/* ── F) {t('health.brake.estimateQuality')} ── */}
                   {v2 && bhd && (
                     <div className="mb-2">
-                      <h3 className={hSec}>Estimate Quality</h3>
+                      <h3 className={hSec}>{t('health.brake.estimateQuality')}</h3>
                       <div className={`rounded-xl p-4 ${cardBg}`}>
                         <div className="grid grid-cols-3 gap-3">
                           <div>
@@ -2672,12 +2675,12 @@ export function HealthErrorsView({
                             <p className={`text-lg font-bold mt-1 text-foreground`}>{bhs?.confidence?.score ?? 0}<span className={`text-xs font-normal text-muted-foreground`}>/100</span></p>
                           </div>
                           <div>
-                            <p className={lbl}>DI Engine</p>
-                            <p className={`text-xs font-semibold mt-1.5 ${bhd.drivingImpactAvailable ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'}`}>{bhd.drivingImpactAvailable ? 'Connected' : 'No data'}</p>
+                            <p className={lbl}>{t('health.brake.diEngine')}</p>
+                            <p className={`text-xs font-semibold mt-1.5 ${bhd.drivingImpactAvailable ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'}`}>{bhd.drivingImpactAvailable ? 'Connected' : t('health.tire.noData')}</p>
                           </div>
                           <div>
                             <p className={lbl}>Model</p>
-                            <p className={`text-xs font-semibold mt-1.5 'text-muted-foreground'`}>Anchor-based V2</p>
+                            <p className={`text-xs font-semibold mt-1.5 'text-muted-foreground'`}>{t('health.brake.anchorV2')}</p>
                           </div>
                         </div>
                       </div>
@@ -2715,7 +2718,7 @@ export function HealthErrorsView({
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Tire Health</h2>
+              <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>{t('health.tire.health')}</h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-tone-ai">
                 {tireForecastBadgeLabel(tireDetail?.summary ?? tireHealth)}
               </span>
@@ -2775,7 +2778,7 @@ export function HealthErrorsView({
               );
             })()}
 
-            {/* Estimate Quality Badge */}
+            {/* {t('health.brake.estimateQuality')} Badge */}
             {(() => {
               const conf = tireDetail?.summary ?? tireHealth;
               if (!conf) return null;
@@ -2799,7 +2802,7 @@ export function HealthErrorsView({
               <div className={`rounded-xl p-4 mb-5 border ${'sq-tone-ai border border-border'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">HM</span>
-                  <h4 className="text-xs font-semibold text-foreground">Live Tire Pressure</h4>
+                  <h4 className="text-xs font-semibold text-foreground">{t('health.tire.livePressure')}</h4>
                   {hmTirePressure.lastUpdatedAt && (
                     <span className="text-[10px] text-muted-foreground ml-auto">
                       {(() => {
@@ -2850,7 +2853,7 @@ export function HealthErrorsView({
             {tireHealth?.actionState && (
               <div className={`rounded-xl px-4 py-3 mb-5 ${'bg-muted/50 border border-border'}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Operational Action</span>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{t('health.tire.operationalAction')}</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     tireHealth.actionState === 'REPLACE'
                       ? 'sq-chip-critical'
@@ -2895,10 +2898,10 @@ export function HealthErrorsView({
                   if (!active) return (
                     <div className={`rounded-lg p-4 text-center mb-5 border-2 border-dashed ${'sq-tone-watch border border-border'}`}>
                       <Icon name="circle" className={`w-8 h-8 mx-auto mb-2 ${'text-[color:var(--status-watch)]/60'}`} />
-                      <p className={`text-sm font-semibold mb-1 ${'text-[color:var(--status-watch)]'}`}>No active Tracking</p>
-                      <p className={`text-xs text-muted-foreground`}>please provide Tire Information</p>
+                      <p className={`text-sm font-semibold mb-1 ${'text-[color:var(--status-watch)]'}`}>{t('health.noActiveTracking')}</p>
+                      <p className={`text-xs text-muted-foreground`}>{t('health.tire.provideInfo')}</p>
                       <button onClick={handleOpenEditSetup} className={`mt-3 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${'sq-tone-info hover:opacity-90'}`}>
-                        <Icon name="pen-tool" className="w-3 h-3 inline -mt-0.5 mr-1" />Add Tire Setup
+                        <Icon name="pen-tool" className="w-3 h-3 inline -mt-0.5 mr-1" />{t('health.tire.addSetup')}
                       </button>
                     </div>
                   );
@@ -2909,9 +2912,9 @@ export function HealthErrorsView({
                           <div className="w-5 h-5 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
                             <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                           </div>
-                          <h3 className={`text-xs font-bold uppercase tracking-wider text-foreground`}>Active Set</h3>
+                          <h3 className={`text-xs font-bold uppercase tracking-wider text-foreground`}>{t('health.tire.activeSet')}</h3>
                           {active.tireSeason && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info'}`}>{active.tireSeason.replace('_', ' ')}</span>}
-                          {tireHealth?.totalKmOnSet ? <span className={`text-[10px] text-muted-foreground`}>{Math.round(tireHealth.totalKmOnSet).toLocaleString('de-DE')} km on set</span> : null}
+                          {tireHealth?.totalKmOnSet ? <span className={`text-[10px] text-muted-foreground`}>{Math.round(tireHealth.totalKmOnSet).toLocaleString(formattingLocale)} km on set</span> : null}
                           {hasIncomplete && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-watch'}`}>Incomplete</span>}
                         </div>
                         <button onClick={handleOpenEditSetup} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${'text-[color:var(--status-info)] hover:bg-muted'}`}>
@@ -2924,37 +2927,37 @@ export function HealthErrorsView({
                             <div><p className={`text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground`}>Front</p><p className={`text-xs font-semibold text-foreground`}>{active.brandModelFront || '—'}</p><p className={`text-[10px] text-muted-foreground`}>{active.frontDimension || '—'}</p></div>
                             <div><p className={`text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground`}>Rear</p><p className={`text-xs font-semibold text-foreground`}>{active.brandModelRear || active.brandModelFront || '—'}</p><p className={`text-[10px] text-muted-foreground`}>{active.rearDimension || active.frontDimension || '—'}</p></div>
                           </div>
-                          {active.installedAt && <p className={`text-[10px] mt-2 text-muted-foreground/60`}>Installed {new Date(active.installedAt).toLocaleDateString('de-DE')}{active.installedOdometerKm ? ` at ${Math.round(active.installedOdometerKm).toLocaleString('de-DE')} km` : ''}</p>}
+                          {active.installedAt && <p className={`text-[10px] mt-2 text-muted-foreground/60`}>Installed {new Date(active.installedAt).toLocaleDateString(formattingLocale)}{active.installedOdometerKm ? ` at ${Math.round(active.installedOdometerKm).toLocaleString(formattingLocale)} km` : ''}</p>}
                         </>
                       ) : (
                         <div className="space-y-3 mt-1">
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Front Brand / Model</label>
-                              <input type="text" value={editSetupForm.brandModelFront} onChange={e => setEditSetupForm(p => ({ ...p, brandModelFront: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. Continental PremiumContact 6" />
+                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.tire.frontBrandModel')}</label>
+                              <input type="text" value={editSetupForm.brandModelFront} onChange={e => setEditSetupForm(p => ({ ...p, brandModelFront: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder={t('health.tire.dimensionPlaceholder')} />
                             </div>
                             <div>
-                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Rear Brand / Model</label>
-                              <input type="text" value={editSetupForm.brandModelRear} onChange={e => setEditSetupForm(p => ({ ...p, brandModelRear: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="Same as front if identical" />
+                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.tire.rearBrandModel')}</label>
+                              <input type="text" value={editSetupForm.brandModelRear} onChange={e => setEditSetupForm(p => ({ ...p, brandModelRear: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder={t('health.tire.sameAsFront')} />
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Front Dimension</label>
+                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.tire.frontDimension')}</label>
                               <input type="text" value={editSetupForm.frontDimension} onChange={e => setEditSetupForm(p => ({ ...p, frontDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. 225/45 R17" />
                             </div>
                             <div>
-                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Rear Dimension</label>
-                              <input type="text" value={editSetupForm.rearDimension} onChange={e => setEditSetupForm(p => ({ ...p, rearDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="Same as front if identical" />
+                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.tire.rearDimension')}</label>
+                              <input type="text" value={editSetupForm.rearDimension} onChange={e => setEditSetupForm(p => ({ ...p, rearDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder={t('health.tire.sameAsFront')} />
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Load Index</label>
+                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.tire.loadIndex')}</label>
                               <input type="text" value={editSetupForm.loadIndex} onChange={e => setEditSetupForm(p => ({ ...p, loadIndex: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. 94" />
                             </div>
                             <div>
-                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Speed Index</label>
+                              <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.tire.speedIndex')}</label>
                               <input type="text" value={editSetupForm.speedIndex} onChange={e => setEditSetupForm(p => ({ ...p, speedIndex: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. V" />
                             </div>
                           </div>
@@ -2969,7 +2972,7 @@ export function HealthErrorsView({
                             </div>
                           </div>
                           <div>
-                            <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1.5 text-muted-foreground`}>Tire Condition</label>
+                            <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1.5 text-muted-foreground`}>{t('health.tire.condition')}</label>
                             <div className="flex gap-2">
                               {[{ val: 'NEW_INSTALLED' as const, label: 'Newly Installed' }, { val: 'ALREADY_MOUNTED' as const, label: 'Already Mounted (Used)' }].map(opt => (
                                 <button key={opt.val} onClick={() => setEditSetupForm(p => ({ ...p, tireCondition: p.tireCondition === opt.val ? '' : opt.val }))} className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold border-2 transition-all ${editSetupForm.tireCondition === opt.val ? 'border-[color:var(--brand)] sq-tone-brand' : 'border-border text-muted-foreground hover:border-border/80'}`}>
@@ -2978,7 +2981,7 @@ export function HealthErrorsView({
                               ))}
                             </div>
                             {editSetupForm.tireCondition === 'ALREADY_MOUNTED' && (
-                              <p className={`text-[9px] mt-1 ${'text-[color:var(--status-watch)]'}`}>Used tires: please enter current per-wheel tread depths below for accurate estimates.</p>
+                              <p className={`text-[9px] mt-1 ${'text-[color:var(--status-watch)]'}`}>{t('health.tire.usedTiresHint')}</p>
                             )}
                           </div>
                           <div>
@@ -2992,12 +2995,12 @@ export function HealthErrorsView({
                               ))}
                             </div>
                           </div>
-                          {/* ── AI Tire Spec Fetch ─────────────────────────────── */}
+                          {/* ── AI {t('health.tire.spec')} Fetch ─────────────────────────────── */}
                           <div className={`rounded-xl p-3 border bg-muted border-border`}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <Icon name="bot" className={`w-4 h-4 ${'text-[color:var(--status-ai)]'}`} />
-                                <span className={`text-[10px] font-bold uppercase tracking-wider text-muted-foreground`}>AI Tire Intelligence</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider text-muted-foreground`}>{t('health.tire.aiIntelligence')}</span>
                               </div>
                               {!aiTireLoading && !aiTireResult && (
                                 <div className="relative group">
@@ -3010,11 +3013,11 @@ export function HealthErrorsView({
                                         : 'bg-muted text-muted-foreground cursor-not-allowed'
                                     }`}
                                   >
-                                    <Icon name="sparkles" className="w-3 h-3" />Fetch AI Tire Spec
+                                    <Icon name="sparkles" className="w-3 h-3" />{t('health.tire.fetchAiSpec')}
                                   </button>
                                   {!aiTireSpecFieldsReady && (
                                     <div className={`absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 ${'bg-popover text-popover-foreground'}`}>
-                                      Fill Brand/Model, Dimension, Load &amp; Speed Index first
+                                      {t('health.tire.fillFieldsFirst')}
                                     </div>
                                   )}
                                 </div>
@@ -3027,14 +3030,14 @@ export function HealthErrorsView({
                                 <div className="flex items-center gap-2 mb-2">
                                   <Icon name="loader-2" className="w-4 h-4 animate-spin text-purple-500" />
                                   <span className={`text-xs font-semibold ${'text-[color:var(--status-ai)]'}`}>
-                                    {aiTireCountdown > 0 ? 'Fetching AI Tire Spec...' : 'Taking longer than expected...'}
+                                    {aiTireCountdown > 0 ? t('health.tire.specFetching') : t('health.tire.specTakingLonger')}
                                   </span>
                                 </div>
                                 {aiTireCountdown > 0 && (
                                   <p className={`text-[10px] mb-2 text-muted-foreground`}>Estimated time remaining: {aiTireCountdown}s</p>
                                 )}
                                 {aiTireCountdown === 0 && aiTireLoading && (
-                                  <p className={`text-[10px] mb-2 ${'text-[color:var(--status-watch)]'}`}>Still processing — please wait...</p>
+                                  <p className={`text-[10px] mb-2 ${'text-[color:var(--status-watch)]'}`}>{t('health.tire.stillProcessing')}</p>
                                 )}
                                 <div className={`w-full h-1.5 rounded-full overflow-hidden bg-muted`}>
                                   <div className="h-full bg-purple-500 rounded-full transition-all duration-1000" style={{ width: `${Math.max(5, aiTireCountdown > 0 ? ((30 - aiTireCountdown) / 30) * 90 : 95)}%` }} />
@@ -3058,7 +3061,7 @@ export function HealthErrorsView({
                               <div className={`rounded-lg p-3 ${'sq-tone-critical border border-border'}`}>
                                 <div className="flex items-center gap-2 mb-1">
                                   <Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500" />
-                                  <span className={`text-xs font-semibold ${'text-[color:var(--status-critical)]'}`}>Fetch failed</span>
+                                  <span className={`text-xs font-semibold ${'text-[color:var(--status-critical)]'}`}>{t('health.tire.fetchFailed')}</span>
                                 </div>
                                 <p className={`text-[10px] mb-2 ${'text-[color:var(--status-critical)]'}`}>{aiTireError}</p>
                                 <div className="flex gap-2">
@@ -3074,7 +3077,7 @@ export function HealthErrorsView({
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <Icon name="sparkles" className={`w-3.5 h-3.5 ${'text-[color:var(--status-ai)]'}`} />
-                                    <span className={`text-xs font-semibold ${'text-[color:var(--status-ai)]'}`}>AI Tire Spec Result</span>
+                                    <span className={`text-xs font-semibold ${'text-[color:var(--status-ai)]'}`}>{t('health.tire.aiSpecResult')}</span>
                                   </div>
                                   {(() => {
                                     const conf = typeof aiTireResult.confidenceScore === 'number' ? aiTireResult.confidenceScore : null;
@@ -3088,10 +3091,10 @@ export function HealthErrorsView({
                                   })()}
                                 </div>
                                 {aiTireDegraded && (
-                                  <p className={`text-[9px] mb-2 ${'text-[color:var(--status-watch)]'}`}>Partial result — some fields could not be determined.</p>
+                                  <p className={`text-[9px] mb-2 ${'text-[color:var(--status-watch)]'}`}>{t('health.tire.partialResult')}</p>
                                 )}
                                 {typeof aiTireResult.confidenceScore === 'number' && (aiTireResult.confidenceScore as number) < 50 && (
-                                  <p className={`text-[9px] mb-2 ${'text-[color:var(--status-watch)]'}`}>Low confidence match — review carefully before applying.</p>
+                                  <p className={`text-[9px] mb-2 ${'text-[color:var(--status-watch)]'}`}>{t('health.tire.lowConfidence')}</p>
                                 )}
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                   {[
@@ -3119,8 +3122,8 @@ export function HealthErrorsView({
                                 </div>
                                 {Boolean(aiTireResult.manufacturerSourceUrl || aiTireResult.labelSourceUrl) && (
                                   <div className={`mt-2 pt-2 border-t border-border`}>
-                                    {Boolean(aiTireResult.manufacturerSourceUrl) && <a href={String(aiTireResult.manufacturerSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-status-info hover:underline block truncate">Manufacturer source</a>}
-                                    {Boolean(aiTireResult.labelSourceUrl) && <a href={String(aiTireResult.labelSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-status-info hover:underline block truncate">Label source</a>}
+                                    {Boolean(aiTireResult.manufacturerSourceUrl) && <a href={String(aiTireResult.manufacturerSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-status-info hover:underline block truncate">{t('health.tire.manufacturerSource')}</a>}
+                                    {Boolean(aiTireResult.labelSourceUrl) && <a href={String(aiTireResult.labelSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-status-info hover:underline block truncate">{t('health.tire.labelSource')}</a>}
                                   </div>
                                 )}
                                 <div className="flex gap-2 mt-3">
@@ -3138,7 +3141,7 @@ export function HealthErrorsView({
                             {/* Idle hint when no action taken yet */}
                             {!aiTireLoading && !aiTireResult && !aiTireError && (
                               <p className={`text-[9px] text-muted-foreground/60`}>
-                                Fetch model-specific tire intelligence for accurate wear modeling.
+                                {t('health.tire.fetchHint')}
                               </p>
                             )}
                           </div>
@@ -3168,16 +3171,16 @@ export function HealthErrorsView({
                         {pct != null ? (<>
                           <p className={`text-2xl font-bold mb-1 text-foreground tabular-nums`}>{pct}%</p>
                           <div className={`w-full h-2 rounded-full overflow-hidden mb-2 bg-muted`}><div className={`h-full ${barFg} rounded-full transition-all`} style={{ width: `${pct}%` }} /></div>
-                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>Estimated remaining tread life</p>
+                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>{t('health.tire.estimatedRemaining')}</p>
                           <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>{TIRE_TREAD_LIFE_SCORE_HINT}</p>
-                          {remKm != null && <p className={`text-[11px] mt-1 text-muted-foreground tabular-nums`}>ca. {remKm.toLocaleString('de-DE')} km remaining</p>}
+                          {remKm != null && <p className={`text-[11px] mt-1 text-muted-foreground tabular-nums`}>ca. {remKm.toLocaleString(formattingLocale)} km remaining</p>}
                           {tireDetail?.summary.wearRateMmPer1000km != null && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>Wear: {tireDetail.summary.wearRateMmPer1000km.toFixed(2)} mm / 1000 km</p>}
                           {tireWear && <div className="mt-3 flex gap-3">
                             <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground tabular-nums`}>{tireWear.frontPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Front</p></div>
                             <div className={`w-px bg-muted`} />
                             <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground tabular-nums`}>{tireWear.rearPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Rear</p></div>
                           </div>}
-                        </>) : (<div className="text-center py-3"><p className={`text-xs font-semibold text-muted-foreground`}>No wear analysis yet</p></div>)}
+                        </>) : (<div className="text-center py-3"><p className={`text-xs font-semibold text-muted-foreground`}>{t('health.tire.noWearAnalysis')}</p></div>)}
                       </div>
                     );
                   })()}
@@ -3189,7 +3192,7 @@ export function HealthErrorsView({
                       : undefined;
                     return (
                       <div className={`rounded-lg p-4 bg-muted`}>
-                        <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Tread Depth per Wheel</p>
+                        <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>{t('health.tire.treadPerWheel')}</p>
                         <div className="grid grid-cols-2 gap-2">
                           {WHEEL_POSITIONS.map((pos) => {
                             const wheel = resolveWheelByPosition(tireDetail?.wheels, pos, wearFallback);
@@ -3223,7 +3226,7 @@ export function HealthErrorsView({
                                     )}
                                   </>
                                 ) : (
-                                  <p className="text-xs text-muted-foreground">No data</p>
+                                  <p className="text-xs text-muted-foreground">{t('health.tire.noData')}</p>
                                 )}
                               </div>
                             );
@@ -3251,9 +3254,9 @@ export function HealthErrorsView({
                 {/* Usage Split */}
                 {tireDetail && tireDetail.usageSplit && (tireDetail.usageSplit.city > 0 || tireDetail.usageSplit.highway > 0 || tireDetail.usageSplit.rural > 0) && (
                   <div className={`rounded-lg p-4 mb-5 bg-muted`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Usage Distribution</p>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>{t('health.usageDistribution')}</p>
                     {(tireHealth?.totalKmOnSet ?? tireDetail?.summary?.totalKmOnSet) ? (
-                      <p className="text-[10px] text-muted-foreground/70 mb-3">Based on active set mileage</p>
+                      <p className="text-[10px] text-muted-foreground/70 mb-3">{t('health.tire.basedOnMileage')}</p>
                     ) : (
                       <div className="mb-3" />
                     )}
@@ -3282,16 +3285,16 @@ export function HealthErrorsView({
                 {/* Actions: Measurement */}
                 <div className={`rounded-lg p-5 mb-5 bg-muted`}>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Manual Measurement</h3>
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>{t('health.tire.manualMeasurement')}</h3>
                     {!showMeasurement && <button onClick={() => { setShowMeasurement(true); setMeasurementMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-status-info hover:bg-brand text-brand-foreground transition-colors"><Icon name="plus" className="w-3.5 h-3.5" /> Record</button>}
                   </div>
                   {showMeasurement && !measurementMode && (
                     <div className="flex gap-3">
                       <button onClick={() => setMeasurementMode('manual')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--brand)] hover:bg-muted/50'}`}>
-                        <Icon name="ruler" className={`w-6 h-6 ${'text-[color:var(--status-info)]'}`} /><p className={`text-xs font-semibold text-foreground`}>Manual Entry</p><p className={`text-[10px] text-center text-muted-foreground`}>Enter measured tread values</p>
+                        <Icon name="ruler" className={`w-6 h-6 ${'text-[color:var(--status-info)]'}`} /><p className={`text-xs font-semibold text-foreground`}>{t('health.tire.manualEntry')}</p><p className={`text-[10px] text-center text-muted-foreground`}>{t('health.tire.enterTreadValues')}</p>
                       </button>
                       <button onClick={openHealthDocumentIntake} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--status-ai)] hover:bg-muted/50'}`}>
-                        <Icon name="upload" className={`w-6 h-6 ${'text-[color:var(--status-ai)]'}`} /><p className={`text-xs font-semibold text-foreground`}>AI Upload</p><p className={`text-[10px] text-center text-muted-foreground`}>Upload checkup sheet</p>
+                        <Icon name="upload" className={`w-6 h-6 ${'text-[color:var(--status-ai)]'}`} /><p className={`text-xs font-semibold text-foreground`}>{t('health.tire.aiUpload')}</p><p className={`text-[10px] text-center text-muted-foreground`}>{t('health.tire.uploadCheckup')}</p>
                       </button>
                     </div>
                   )}
@@ -3303,8 +3306,8 @@ export function HealthErrorsView({
                         ))}
                       </div>
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label><input type="number" value={manualMeasurement.odometer} onChange={e => setManualMeasurement(prev => ({ ...prev, odometer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder="Current odometer" /></div>
-                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Workshop</label><input type="text" value={manualMeasurement.workshop} onChange={e => setManualMeasurement(prev => ({ ...prev, workshop: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder="Workshop name (optional)" /></div>
+                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.brake.odometer')}</label><input type="number" value={manualMeasurement.odometer} onChange={e => setManualMeasurement(prev => ({ ...prev, odometer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder={t('health.tire.currentOdometer')} /></div>
+                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Workshop</label><input type="text" value={manualMeasurement.workshop} onChange={e => setManualMeasurement(prev => ({ ...prev, workshop: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder={t('health.tire.workshopName')} /></div>
                       </div>
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
@@ -3315,11 +3318,11 @@ export function HealthErrorsView({
                   {showMeasurement && measurementMode === 'upload' && (
                     <div className={`text-center py-6 border-2 border-dashed rounded-xl ${'border-border'}`}>
                       <Icon name="upload" className={`w-8 h-8 mx-auto mb-2 text-muted-foreground`} />
-                      <p className={`text-xs font-semibold mb-1 text-foreground`}>Use Document Upload for AI extraction</p>
-                      <p className={`text-[10px] mb-3 text-muted-foreground`}>This tire modal no longer performs direct file upload.</p>
+                      <p className={`text-xs font-semibold mb-1 text-foreground`}>{t('health.tire.useDocUpload')}</p>
+                      <p className={`text-[10px] mb-3 text-muted-foreground`}>{t('health.tire.noDirectUpload')}</p>
                       <div className="flex gap-2 justify-center">
                         <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground`}>Cancel</button>
-                        <button onClick={() => setMeasurementMode('manual')} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-500 hover:bg-purple-600 text-white">Back to Manual</button>
+                        <button onClick={() => setMeasurementMode('manual')} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-500 hover:bg-purple-600 text-white">{t('health.tire.backToManual')}</button>
                       </div>
                     </div>
                   )}
@@ -3329,7 +3332,7 @@ export function HealthErrorsView({
                 {/* Rotation Dialog */}
                 {showRotation && (
                   <div className={`rounded-lg p-5 mb-5 border-2 ${'surface-premium border border-border'}`}>
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-info)]'}`}>Rotate Tires</h3>
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-info)]'}`}>{t('health.tire.rotate')}</h3>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {[
                         { val: 'front_to_rear', label: 'Front ↔ Rear', desc: 'Swap front and rear axles' },
@@ -3344,8 +3347,8 @@ export function HealthErrorsView({
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label><input type="number" value={rotationOdometer} onChange={e => setRotationOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Current odometer" /></div>
-                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label><input type="text" value={rotationNotes} onChange={e => setRotationNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Optional notes" /></div>
+                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.brake.odometer')}</label><input type="number" value={rotationOdometer} onChange={e => setRotationOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder={t('health.tire.currentOdometer')} /></div>
+                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label><input type="text" value={rotationNotes} onChange={e => setRotationNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder={t('health.tire.optionalNotes')} /></div>
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => setShowRotation(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
@@ -3357,7 +3360,7 @@ export function HealthErrorsView({
                 {/* Tire Change Dialog */}
                 {showTireChange && (
                   <div className={`rounded-lg p-5 mb-5 border-2 ${'surface-premium border border-border'}`}>
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-critical)]'}`}>Tire Replacement & Stored Sets</h3>
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-critical)]'}`}>{t('health.tire.replacementStored')}</h3>
 
                     <div className="grid grid-cols-3 gap-2 mb-4">
                       {([
@@ -3413,7 +3416,7 @@ export function HealthErrorsView({
                               : 'border-border text-foreground'
                           }`}
                         >
-                          Front axle
+                          {t('health.tire.frontAxle')}
                         </button>
                         <button
                           onClick={() => setTireChangePositions(['REAR_AXLE'])}
@@ -3423,19 +3426,19 @@ export function HealthErrorsView({
                               : 'border-border text-foreground'
                           }`}
                         >
-                          Rear axle
+                          {t('health.tire.rearAxle')}
                         </button>
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div>
-                        <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label>
-                        <input type="number" value={tireChangeOdometer} onChange={e => setTireChangeOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Current odometer" />
+                        <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{t('health.brake.odometer')}</label>
+                        <input type="number" value={tireChangeOdometer} onChange={e => setTireChangeOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder={t('health.tire.currentOdometer')} />
                       </div>
                       <div>
                         <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label>
-                        <input type="text" value={tireChangeNotes} onChange={e => setTireChangeNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Optional workshop notes" />
+                        <input type="text" value={tireChangeNotes} onChange={e => setTireChangeNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder={t('health.tire.workshopNotes')} />
                       </div>
                     </div>
 
@@ -3461,7 +3464,7 @@ export function HealthErrorsView({
                       if (storedSetups.length === 0) return null;
                       return (
                         <div className={`pt-4 border-t ${'border-border'}`}>
-                          <p className="text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground">Activate Stored Set</p>
+                          <p className="text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground">{t('health.tire.activateStoredSet')}</p>
                           <div className="space-y-2 mb-3">
                             {storedSetups.map((s: any) => (
                               <button
@@ -3474,7 +3477,7 @@ export function HealthErrorsView({
                                 }`}
                               >
                                 <p className="font-semibold text-foreground">{s.name ?? s.brandModelFront ?? 'Stored set'}</p>
-                                <p className="text-[10px] text-muted-foreground">{s.tireSeason ?? 'Season n/a'} · {s.removedAt ? `stored since ${new Date(s.removedAt).toLocaleDateString('de-DE')}` : 'stored'}</p>
+                                <p className="text-[10px] text-muted-foreground">{s.tireSeason ?? 'Season n/a'} · {s.removedAt ? `stored since ${new Date(s.removedAt).toLocaleDateString(formattingLocale)}` : 'stored'}</p>
                               </button>
                             ))}
                           </div>
@@ -3484,7 +3487,7 @@ export function HealthErrorsView({
                               value={storedActivationOdometer}
                               onChange={(e) => setStoredActivationOdometer(e.target.value)}
                               className={`flex-1 px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`}
-                              placeholder="Odometer for activation"
+                              placeholder={t('health.tire.odometerActivation')}
                             />
                             <button
                               onClick={handleActivateStoredSet}
@@ -3505,7 +3508,7 @@ export function HealthErrorsView({
             {/* ── ROTATION HISTORY TAB ── */}
             {tireModalTab === 'history' && !tireDetailLoading && (
               <div className={`rounded-lg p-5 bg-muted`}>
-                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-5 text-muted-foreground`}>Tire Movement History</h3>
+                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-5 text-muted-foreground`}>{t('health.tire.movementHistory')}</h3>
                 {(tireDetail?.rotationHistory ?? []).length > 0 ? (
                   <div className="space-y-0">
                     {(tireDetail?.rotationHistory ?? []).map((entry: any, i: number) => (
@@ -3516,7 +3519,7 @@ export function HealthErrorsView({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold text-foreground`}>{new Date(entry.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: '2-digit' })}</span>
+                            <span className={`text-sm font-bold text-foreground`}>{new Date(entry.date).toLocaleDateString(formattingLocale, { day: 'numeric', month: 'numeric', year: '2-digit' })}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${entry.changeType === 'ROTATION' ? ('sq-chip-info') : entry.changeType === 'TIRE_CHANGE' ? ('sq-chip-critical') : ('sq-chip-success')}`}>{entry.changeType.replace('_', ' ')}</span>
                             {entry.odometerKm != null && <span className={`text-[10px] text-muted-foreground`}>{entry.odometerKm.toLocaleString()} km</span>}
                           </div>
@@ -3530,21 +3533,21 @@ export function HealthErrorsView({
                 ) : (
                   <div className={`flex flex-col items-center justify-center py-12 text-muted-foreground/70`}>
                     <Icon name="refresh-cw" className="w-8 h-8 mb-3 opacity-40" />
-                    <p className="text-sm font-medium">No rotation or change events recorded</p>
-                    <p className="text-xs mt-1 opacity-60">Use the Rotate or Change actions to log tire movements</p>
+                    <p className="text-sm font-medium">{t('health.tire.noRotationEvents')}</p>
+                    <p className="text-xs mt-1 opacity-60">{t('health.tire.useRotateChange')}</p>
                   </div>
                 )}
 
-                {/* Measurement History */}
+                {/* {t('health.tire.measurementHistory')} */}
                 {(tireDetail?.measurements ?? []).length > 0 && (
                   <div className={`mt-6 pt-5 border-t border-border`}>
-                    <h4 className={`text-xs font-semibold uppercase tracking-wider mb-4 text-muted-foreground`}>Measurement History</h4>
+                    <h4 className={`text-xs font-semibold uppercase tracking-wider mb-4 text-muted-foreground`}>{t('health.tire.measurementHistory')}</h4>
                     <div className="space-y-3">
                       {(tireDetail?.measurements ?? []).map((m: any) => (
                         <div key={m.id} className={`rounded-xl p-3 bg-muted`}>
                           <div className="flex items-center gap-2 mb-2">
                             <Icon name="ruler" className={`w-3.5 h-3.5 ${'text-[color:var(--status-info)]'}`} />
-                            <span className={`text-xs font-semibold text-foreground`}>{new Date(m.date).toLocaleDateString('de-DE')}</span>
+                            <span className={`text-xs font-semibold text-foreground`}>{new Date(m.date).toLocaleDateString(formattingLocale)}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-medium ${'sq-chip-neutral'}`}>{m.source}</span>
                             {m.odometerKm != null && <span className={`text-[10px] text-muted-foreground`}>{m.odometerKm.toLocaleString()} km</span>}
                             {m.workshopName && <span className={`text-[10px] text-muted-foreground`}>{m.workshopName}</span>}
@@ -3565,7 +3568,7 @@ export function HealthErrorsView({
             {/* ── WEAR FACTORS TAB ── */}
             {tireModalTab === 'factors' && !tireDetailLoading && tireDetail && (
               <div className={`rounded-lg p-5 bg-muted`}>
-                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 text-muted-foreground`}>Wear Factor Analysis</h3>
+                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 text-muted-foreground`}>{t('health.tire.wearFactorAnalysis')}</h3>
                 <div className="grid grid-cols-3 gap-x-6 gap-y-4">
                   {[
                     { icon: Activity, label: 'Axle (Front)', val: tireDetail.factors.axleFactorFront, desc: (v: number) => v <= 1.0 ? 'Low load' : v <= 1.1 ? 'Normal' : 'High load', warn: (v: number) => v > 1.15 },
@@ -3597,18 +3600,18 @@ export function HealthErrorsView({
                 {/* Staggered Life Adjustments */}
                 {tireDetail.factors.isStaggered && (
                   <div className={`mt-4 pt-3 border-t border-border`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground`}>Staggered Setup Adjustments</p>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground`}>{t('health.tire.staggeredAdjustments')}</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><p className={`text-[10px] text-muted-foreground`}>Front Life Adj.</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.staggeredLifeAdjustmentFront.toFixed(3)}x</p></div>
-                      <div><p className={`text-[10px] text-muted-foreground`}>Rear Life Adj.</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.staggeredLifeAdjustmentRear.toFixed(3)}x</p></div>
+                      <div><p className={`text-[10px] text-muted-foreground`}>{t('health.tire.frontLifeAdj')}</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.staggeredLifeAdjustmentFront.toFixed(3)}x</p></div>
+                      <div><p className={`text-[10px] text-muted-foreground`}>{t('health.tire.rearLifeAdj')}</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.staggeredLifeAdjustmentRear.toFixed(3)}x</p></div>
                     </div>
                   </div>
                 )}
 
                 <div className={`mt-4 pt-3 border-t border-border grid grid-cols-3 gap-3`}>
-                  <div><p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>k-Factor Front</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.kFactorFront.toFixed(3)}</p></div>
-                  <div><p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>k-Factor Rear</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.kFactorRear.toFixed(3)}</p></div>
-                  <div><p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Wear Rate</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.effectiveWearRate.front.toLocaleString()} / {tireDetail.effectiveWearRate.rear.toLocaleString()} km/mm</p></div>
+                  <div><p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{t('health.tire.kFactorFront')}</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.kFactorFront.toFixed(3)}</p></div>
+                  <div><p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{t('health.tire.kFactorRear')}</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.factors.kFactorRear.toFixed(3)}</p></div>
+                  <div><p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{t('health.tire.wearRate')}</p><p className={`text-xs font-bold text-foreground`}>{tireDetail.effectiveWearRate.front.toLocaleString()} / {tireDetail.effectiveWearRate.rear.toLocaleString()} km/mm</p></div>
                 </div>
 
                 {/* Regression & Calibration Status */}
@@ -3631,7 +3634,7 @@ export function HealthErrorsView({
                   )}
                   {tireDetail.factors.tireArchetype && (
                     <div>
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Tire Archetype</p>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{t('health.tire.archetype')}</p>
                       <p className={`text-xs font-bold capitalize text-foreground`}>{(tireDetail.factors.tireArchetype as string).replace(/_/g, ' ')}</p>
                     </div>
                   )}
@@ -3640,14 +3643,14 @@ export function HealthErrorsView({
                 {/* Explainability / Source Transparency */}
                 {tireDetail.explainability && (
                   <div className={`mt-4 pt-3 border-t border-border`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Data Sources & Intelligence</p>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>{t('health.tire.dataSources')}</p>
                     <div className="grid grid-cols-3 gap-3 mb-3">
-                      <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>Tread Source</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.currentTreadSource.replace(/_/g, ' ')}</p></div>
-                      <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>Ref. New Tread</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.referenceNewTreadSource.replace(/_/g, ' ')}</p></div>
-                      <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>Replace Threshold</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.replacementThresholdSource.replace(/_/g, ' ')}</p></div>
+                      <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>{t('health.tire.treadSource')}</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.currentTreadSource.replace(/_/g, ' ')}</p></div>
+                      <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>{t('health.tire.refNewTread')}</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.referenceNewTreadSource.replace(/_/g, ' ')}</p></div>
+                      <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>{t('health.tire.replaceThreshold')}</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.replacementThresholdSource.replace(/_/g, ' ')}</p></div>
                     </div>
                     {tireDetail.explainability.topWearDrivers.length > 0 && (
-                      <div className="mb-2"><p className={`text-[9px] uppercase text-muted-foreground/70`}>Top Wear Drivers</p><p className={`text-[10px] font-semibold capitalize ${'text-[color:var(--status-watch)]'}`}>{tireDetail.explainability.topWearDrivers.join(', ')}</p></div>
+                      <div className="mb-2"><p className={`text-[9px] uppercase text-muted-foreground/70`}>{t('health.tire.topWearDrivers')}</p><p className={`text-[10px] font-semibold capitalize ${'text-[color:var(--status-watch)]'}`}>{tireDetail.explainability.topWearDrivers.join(', ')}</p></div>
                     )}
                     {tireDetail.explainability.possibleCauseHints.length > 0 && (
                       <div className={`rounded-lg p-2.5 mt-2 ${'sq-tone-watch'}`}>
@@ -3657,7 +3660,7 @@ export function HealthErrorsView({
                       </div>
                     )}
                     {tireDetail.factors.tireSpecMatched && (
-                      <p className={`text-[9px] mt-2 ${'text-[color:var(--status-info)]'}`}>AI Tire Spec matched — model-aware intelligence active (confidence: {tireDetail.explainability.tireSpecConfidence}%)</p>
+                      <p className={`text-[9px] mt-2 ${'text-[color:var(--status-info)]'}`}>AI {t('health.tire.spec')} matched — model-aware intelligence active (confidence: {tireDetail.explainability.tireSpecConfidence}%)</p>
                     )}
                   </div>
                 )}
@@ -3665,11 +3668,11 @@ export function HealthErrorsView({
                 {/* Confidence Dimensions */}
                 {(tireDetail.summary.tireSpecConfidence != null || tireDetail.summary.dataCompletenessConfidence != null || tireDetail.summary.modelConfidence != null) && (
                   <div className={`mt-4 pt-3 border-t border-border`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground`}>Confidence Breakdown</p>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground`}>{t('health.tire.confidenceBreakdown')}</p>
                     <div className="grid grid-cols-3 gap-3">
                       {tireDetail.summary.tireSpecConfidence != null && (
                         <div>
-                          <p className={`text-[9px] uppercase text-muted-foreground/70`}>Tire Spec</p>
+                          <p className={`text-[9px] uppercase text-muted-foreground/70`}>{t('health.tire.spec')}</p>
                           <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1 bg-muted`}>
                             <div className="h-full bg-status-info rounded-full" style={{ width: `${tireDetail.summary.tireSpecConfidence}%` }} />
                           </div>
@@ -3678,7 +3681,7 @@ export function HealthErrorsView({
                       )}
                       {tireDetail.summary.dataCompletenessConfidence != null && (
                         <div>
-                          <p className={`text-[9px] uppercase text-muted-foreground/70`}>Data Quality</p>
+                          <p className={`text-[9px] uppercase text-muted-foreground/70`}>{t('health.tire.dataQuality')}</p>
                           <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1 bg-muted`}>
                             <div className="h-full bg-green-500 rounded-full" style={{ width: `${tireDetail.summary.dataCompletenessConfidence}%` }} />
                           </div>
@@ -3731,8 +3734,8 @@ export function HealthErrorsView({
                     <Icon name="battery-charging" className="w-5 h-5 text-emerald-500" />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-foreground">HV Battery Health</h2>
-                    <p className={`text-xs text-muted-foreground`}>Traction Battery Intelligence</p>
+                    <h2 className="text-base font-semibold text-foreground">HV {t('health.batteryHealth')}</h2>
+                    <p className={`text-xs text-muted-foreground`}>{t('health.tire.tractionBattery')}</p>
                   </div>
                 </div>
                 <button onClick={() => closeModal(setShowHvBattery)} className={`p-2 rounded-xl transition-colors ${'hover:bg-muted text-muted-foreground'}`}><Icon name="x" className="w-5 h-5" /></button>
@@ -3745,11 +3748,11 @@ export function HealthErrorsView({
                 trendChartSlot={
                   (hvBatteryStatus?.recentTrend?.length ?? 0) > 0 ? (
                     <div className={`rounded-lg p-5 bg-muted`}>
-                      <h3 className={`text-sm font-semibold mb-4 text-foreground`}>HV-Zustand Trend</h3>
+                      <h3 className={`text-sm font-semibold mb-4 text-foreground`}>{t('health.hvTrend')}</h3>
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={hvBatteryStatus?.recentTrend?.map((t: any) => ({
-                            date: new Date(t.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+                            date: new Date(t.date).toLocaleDateString(formattingLocale, { day: '2-digit', month: '2-digit' }),
                             soh: t.sohPercent,
                             soc: t.socPercent,
                           }))}>

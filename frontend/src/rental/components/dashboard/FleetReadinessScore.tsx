@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -33,16 +34,17 @@ function BreakdownRow({
   );
 }
 function breakdownRows(b: FleetReadinessBreakdown, de: boolean) {
+  const locale = de ? 'de' : 'en';
   return (
     <>
-      <BreakdownRow label={de ? 'Bereit' : 'Ready'} value={b.ready} tone="success" />
-      <BreakdownRow label={de ? 'Blockiert' : 'Blocked'} value={b.blocked} tone="critical" />
-      <BreakdownRow label={de ? 'Überfällige Returns' : 'Overdue returns'} value={b.overdueReturns} tone="critical" />
-      <BreakdownRow label={de ? 'Kritische Alerts' : 'Critical alerts'} value={b.criticalAlerts} tone="critical" />
-      <BreakdownRow label={de ? 'Reinigung offen' : 'Cleaning pending'} value={b.cleaningNeeded} tone="watch" />
-      <BreakdownRow label={de ? 'Soft Offline' : 'Soft offline'} value={b.softOfflineCount} tone="watch" />
-      <BreakdownRow label={de ? 'Offline' : 'Offline'} value={b.offlineCount} tone="critical" />
-      <BreakdownRow label={de ? 'Konflikte' : 'Conflicts'} value={b.conflicts} tone="watch" />
+      <BreakdownRow label={dt(locale, 'dashboard.label.ready')} value={b.ready} tone="success" />
+      <BreakdownRow label={dt(locale, 'dashboard.label.blocked')} value={b.blocked} tone="critical" />
+      <BreakdownRow label={dt(locale, 'dashboard.fleet.overdueReturns')} value={b.overdueReturns} tone="critical" />
+      <BreakdownRow label={dt(locale, 'dashboard.fleet.criticalAlerts')} value={b.criticalAlerts} tone="critical" />
+      <BreakdownRow label={dt(locale, 'dashboard.fleet.cleaningPending')} value={b.cleaningNeeded} tone="watch" />
+      <BreakdownRow label={dt(locale, 'dashboard.fleet.softOffline')} value={b.softOfflineCount} tone="watch" />
+      <BreakdownRow label={dt(locale, 'dashboard.label.offline')} value={b.offlineCount} tone="critical" />
+      <BreakdownRow label={dt(locale, 'dashboard.label.conflicts')} value={b.conflicts} tone="watch" />
     </>
   );
 }
@@ -56,13 +58,13 @@ export function FleetReadinessScore({ vm }: FleetReadinessScoreProps) {
   return (
     <section
       className={panelShellClass('secondary', 'h-full')}
-      aria-label={de ? 'Flotten-Einsatzbereitschaft' : 'Fleet readiness'}
+      aria-label={dt(locale, 'dashboard.fleet.readinessAria')}
     >
       <DashboardPanelHeader
         icon={<Icon name="gauge" className="h-4 w-4" />}
         iconToneClass="sq-tone-success"
-        title={de ? 'Einsatzbereitschaft' : 'Fleet readiness'}
-        subtitle={de ? 'Nachvollziehbar aus Flottenzustand' : 'Derived from fleet state'}
+        title={dt(locale, 'dashboard.fleet.readinessTitle')}
+        subtitle={dt(locale, 'dashboard.fleet.readinessSubtitle')}
         trailing={
           <StatusChip tone={tone} className="uppercase">
             {statusLabel}
@@ -73,9 +75,9 @@ export function FleetReadinessScore({ vm }: FleetReadinessScoreProps) {
       <div className={cn(PANEL_BODY_CLASS, 'flex flex-1 flex-col gap-3')}>
         {scorePercent != null && hasReliableBasis ? (
           <p className="text-[12.5px] text-muted-foreground text-pretty">
-            {de ? 'Orientierungswert' : 'Orientation'}:{' '}
+            {dt(locale, 'dashboard.label.orientation')}:{' '}
             <span className="text-[15px] font-bold tabular-nums text-foreground">{scorePercent}%</span>{' '}
-            {de ? 'bereit im Scope' : 'ready in scope'}
+            {dt(locale, 'dashboard.label.readyInScope')}
           </p>
         ) : (
           <p className="text-[12.5px] text-muted-foreground text-pretty">

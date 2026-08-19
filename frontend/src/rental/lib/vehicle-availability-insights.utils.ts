@@ -1,4 +1,6 @@
 import type { BookingUiStatus } from '../components/bookings/bookingStatus';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import {
   AVAILABILITY_OCCUPANCY_STATUSES,
   calculateFreeSlots,
@@ -23,7 +25,7 @@ export interface AvailabilityInsight {
 }
 
 function formatShortDate(date: Date): string {
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  return date.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit' });
 }
 
 function findLargestFreeSlot(slots: FreeSlot[]): FreeSlot | null {

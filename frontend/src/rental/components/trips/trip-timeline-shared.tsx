@@ -1,19 +1,21 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { EnergyEvent } from './timeline.types';
 
 export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; isDark: boolean }) {
+  const { formattingLocale } = useLanguage();
   const isRefuel = event.kind === 'REFUEL';
   const date = new Date(event.startTime);
   const end = new Date(event.endTime);
-  const dateLabel = date.toLocaleDateString('de-DE', {
+  const dateLabel = date.toLocaleDateString(formattingLocale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
-  const timeLabel = `${date.toLocaleTimeString('de-DE', {
+  const timeLabel = `${date.toLocaleTimeString(formattingLocale, {
     hour: '2-digit',
     minute: '2-digit',
-  })} – ${end.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  })} – ${end.toLocaleTimeString(formattingLocale, { hour: '2-digit', minute: '2-digit' })}`;
 
   const durationMin = Math.max(1, Math.round(event.durationSeconds / 60));
 

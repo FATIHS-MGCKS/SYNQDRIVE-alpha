@@ -1,4 +1,5 @@
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { VehicleData } from '../../data/vehicles';
 import { formatFreeDurationLabel } from '../../lib/vehicle-availability-intelligence.utils';
 import type { VehicleBookingRiskItem } from '../../lib/vehicle-booking-risk.utils';
@@ -36,6 +37,7 @@ export function VehicleBookingsOperatorHeader({
   horizonDays,
   systemRisks = [],
 }: VehicleBookingsOperatorHeaderProps) {
+  const { t } = useLanguage();
   const snapshot = deriveVehicleBookingOperatorSnapshot(bookings, horizon, vehicle);
 
   const pickupAt =
@@ -67,7 +69,7 @@ export function VehicleBookingsOperatorHeader({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 id="vb-operator-title" className={vb.title}>
-              Buchungen &amp; Verfügbarkeit
+              {t('vehicle.bookings.bookingsAndAvailability')}
             </h2>
             <p className={`${vb.subtitle} mt-0.5 truncate`}>{vehicleLabel}</p>
           </div>
@@ -87,7 +89,7 @@ export function VehicleBookingsOperatorHeader({
       <div className={vb.sectionBody}>
         <div className={vb.gridSummary}>
           <VehicleBookingSummaryCard
-            label="Aktueller Status"
+            label={t('vehicle.currentStatus')}
             value={loading ? '—' : snapshot.operatorNowLabel}
             valueVariant="status"
             status={snapshot.operatorTone}
@@ -96,24 +98,24 @@ export function VehicleBookingsOperatorHeader({
             icon={<Icon name="activity" className="text-muted-foreground" aria-hidden />}
           />
           <HandoverSummaryCard
-            label="Nächster Pickup"
+            label={t('dashboard.label.pickup')}
             booking={snapshot.nextPickup}
             at={pickupAt && Number.isFinite(pickupAt.getTime()) ? pickupAt : null}
             customer={pickupCustomer}
             station={pickupStation}
             loading={loading}
-            emptyLabel="Kein Pickup geplant"
-            emptyHint="Keine anstehende Übergabe im gewählten Zeitraum."
+            emptyLabel={t('dashboard.empty.noPickupsToday')}
+            emptyHint={t('vehicle.bookings.noUpcomingHandover')}
           />
           <HandoverSummaryCard
-            label="Nächste Rückgabe"
+            label={t('dashboard.label.return')}
             booking={snapshot.nextReturn}
             at={returnAt && Number.isFinite(returnAt.getTime()) ? returnAt : null}
             customer={returnCustomer}
             station={returnStation}
             loading={loading}
-            emptyLabel="Keine Rückgabe offen"
-            emptyHint="Keine anstehende Rückgabe im gewählten Zeitraum."
+            emptyLabel={t('dashboard.empty.noReturnsToday')}
+            emptyHint={t('vehicle.bookings.noUpcomingHandover')}
           />
           <RevenueSummaryCard snapshot={snapshot} loading={loading} />
           <VehicleBookingSummaryCard

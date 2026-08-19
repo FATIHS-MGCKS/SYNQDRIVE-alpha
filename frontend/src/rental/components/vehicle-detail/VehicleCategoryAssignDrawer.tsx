@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 import { Layers } from 'lucide-react';
 
@@ -80,6 +81,7 @@ export function VehicleCategoryAssignDrawer({
   onAssigned,
 
 }: VehicleCategoryAssignDrawerProps) {
+  const { t } = useLanguage();
 
   const [categories, setCategories] = useState<RentalVehicleCategoryDto[]>([]);
 
@@ -188,7 +190,7 @@ export function VehicleCategoryAssignDrawer({
 
       eyebrow="Category assignment"
 
-      title="Assign vehicle category"
+      title={t('vehicleDetail.requirements.assignCategory')}
 
       description="Categories define shared rental eligibility rules for groups of vehicles."
 
@@ -242,7 +244,7 @@ export function VehicleCategoryAssignDrawer({
 
           icon={<Layers className="h-5 w-5" />}
 
-          title="No categories yet"
+          title={t('vehicleDetail.requirements.noCategories')}
 
           description="Create a vehicle category in Rental Rules to assign shared requirements."
 
@@ -312,7 +314,7 @@ export function VehicleCategoryAssignDrawer({
 
                       <p className="mt-1 text-[11px] text-[color:var(--status-watch)]">
 
-                        This vehicle will move from <strong>{sourceCategory?.name ?? 'current category'}</strong> to{' '}
+                        {t('vehicleDetail.requirements.moveFrom')} <strong>{sourceCategory?.name ?? 'current category'}</strong> to{' '}
 
                         <strong>{cat.name}</strong>.
 

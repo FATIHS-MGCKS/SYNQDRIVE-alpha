@@ -1,4 +1,5 @@
 import { Activity } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiTask } from '../../../lib/api';
 import { healthContextFromTask } from '../../lib/health-task-bridge.utils';
 
@@ -8,6 +9,7 @@ interface HealthTaskContextPanelProps {
 }
 
 export function HealthTaskContextPanel({ task, onOpenVehicleHealth }: HealthTaskContextPanelProps) {
+  const { t } = useLanguage();
   const ctx = healthContextFromTask(task);
   if (!ctx) return null;
 
@@ -36,7 +38,7 @@ export function HealthTaskContextPanel({ task, onOpenVehicleHealth }: HealthTask
           onClick={onOpenVehicleHealth}
           className="text-[10px] font-semibold text-[color:var(--brand-ink)] hover:underline"
         >
-          Zum Health-Tab des Fahrzeugs →
+          {t('health.taskContext.goToHealthTab')}
         </button>
       )}
     </section>

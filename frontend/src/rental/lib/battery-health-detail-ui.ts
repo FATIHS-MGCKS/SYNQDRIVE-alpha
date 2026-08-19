@@ -7,6 +7,8 @@ import type {
   VehicleTripAnalytics,
 } from '../../lib/api';
 import { normalizeLvBatteryVoltage } from './battery-display.utils';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import {
   ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
   LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
@@ -160,8 +162,8 @@ export function buildRestingVoltageTrendPoints(
       return {
         recordedAt: e.observedAt,
         voltageV,
-        day: d.toLocaleDateString('de-DE', days > 14 ? { day: '2-digit', month: '2-digit' } : { weekday: 'short' }),
-        time: d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        day: d.toLocaleDateString(vehicleFormattingLocaleOrDefault(), days > 14 ? { day: '2-digit', month: '2-digit' } : { weekday: 'short' }),
+        time: d.toLocaleTimeString(vehicleFormattingLocaleOrDefault(), { hour: '2-digit', minute: '2-digit' }),
         status: classifyRestingVoltageForChart(voltageV, batteryType),
       };
     })
@@ -176,7 +178,7 @@ export function restingVoltageChartDomain(batteryType?: string | null): [number,
 function formatEvidenceDate(iso: string): string {
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return '—';
-  return d.toLocaleString('de-DE', {
+  return d.toLocaleString(vehicleFormattingLocaleOrDefault(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

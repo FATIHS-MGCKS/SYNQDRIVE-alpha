@@ -1,8 +1,15 @@
 // @vitest-environment happy-dom
+import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import type { ApiServiceCase } from '../../../lib/api';
 import { FleetHealthServiceCaseList } from './FleetHealthServiceCaseList';
+
+function renderDe(ui: React.ReactElement) {
+  window.localStorage.setItem('synqdrive.locale', 'de');
+  return renderToStaticMarkup(createElement(LanguageProvider, null, ui));
+}
 
 vi.mock('../../FleetContext', () => ({
   useFleetVehicles: () => ({
@@ -52,7 +59,7 @@ const serviceCase: ApiServiceCase = {
 
 describe('FleetHealthServiceCaseList', () => {
   it('renders filter bar and desktop table with resolved vehicle labels', () => {
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <FleetHealthServiceCaseList
         serviceCases={[serviceCase]}
         vendors={[{ id: 'vendor-1', name: 'Werkstatt Nord' } as never]}
@@ -71,7 +78,7 @@ describe('FleetHealthServiceCaseList', () => {
   });
 
   it('renders error state without list content', () => {
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <FleetHealthServiceCaseList
         serviceCases={[]}
         vendors={[]}
@@ -85,7 +92,7 @@ describe('FleetHealthServiceCaseList', () => {
   });
 
   it('renders loading empty copy for mobile cards', () => {
-    const html = renderToStaticMarkup(
+    const html = renderDe(
       <FleetHealthServiceCaseList
         serviceCases={[]}
         vendors={[]}

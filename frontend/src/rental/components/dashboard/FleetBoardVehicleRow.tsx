@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -28,40 +29,40 @@ function severityChipTone(severity: DashboardSliceRow['severity']) {
   return 'neutral';
 }
 
-function telemetryLabel(state: VehicleRuntimeState | undefined, de: boolean): string | null {
+function telemetryLabel(state: VehicleRuntimeState | undefined, locale: string): string | null {
   if (!state) return null;
-  const labels: Record<VehicleRuntimeState['telemetryState'], [string, string]> = {
-    live: ['Live', 'Live'],
-    standby: ['Standby', 'Standby'],
-    soft_offline: ['Soft Offline', 'Soft Offline'],
-    offline: ['Offline', 'Offline'],
-    unknown: ['Unknown', 'Unbekannt'],
+  const map: Record<VehicleRuntimeState['telemetryState'], Parameters<typeof dt>[1]> = {
+    live: 'dashboard.label.live',
+    standby: 'dashboard.label.standby',
+    soft_offline: 'dashboard.label.softOffline',
+    offline: 'dashboard.label.offline',
+    unknown: 'dashboard.label.unknown',
   };
-  return de ? labels[state.telemetryState][1] : labels[state.telemetryState][0];
+  return dt(locale, map[state.telemetryState]);
 }
 
-function runtimeStateLabel(state: VehicleRuntimeState | undefined, de: boolean): string | null {
+function runtimeStateLabel(state: VehicleRuntimeState | undefined, locale: string): string | null {
   if (!state) return null;
-  const readiness: Record<VehicleRuntimeState['rentalReadiness'], [string, string]> = {
-    ready: ['Ready', 'Bereit'],
-    not_ready: ['Not ready', 'Nicht bereit'],
-    blocked: ['Blocked', 'Blockiert'],
+  const readiness: Record<VehicleRuntimeState['rentalReadiness'], Parameters<typeof dt>[1]> = {
+    ready: 'dashboard.label.ready',
+    not_ready: 'dashboard.label.notReady',
+    blocked: 'dashboard.label.blocked',
   };
-  const operational: Record<VehicleRuntimeState['operationalStatus'], [string, string]> = {
-    available: ['Available', 'Verfügbar'],
-    reserved: ['Reserved', 'Reserviert'],
-    active_rented: ['Active rented', 'Aktiv vermietet'],
-    maintenance: ['Maintenance', 'Wartung'],
-    unavailable: ['Unavailable', 'Nicht verfügbar'],
-    unknown: ['Unknown', 'Unbekannt'],
+  const operational: Record<VehicleRuntimeState['operationalStatus'], Parameters<typeof dt>[1]> = {
+    available: 'vehicle.status.available',
+    reserved: 'vehicle.status.reserved',
+    active_rented: 'vehicle.status.activeRented',
+    maintenance: 'vehicle.status.maintenance',
+    unavailable: 'vehicle.status.unavailable',
+    unknown: 'vehicle.status.unknown',
   };
-  const rental = de ? readiness[state.rentalReadiness][1] : readiness[state.rentalReadiness][0];
-  const ops = de ? operational[state.operationalStatus][1] : operational[state.operationalStatus][0];
+  const rental = dt(locale, readiness[state.rentalReadiness]);
+  const ops = dt(locale, operational[state.operationalStatus]);
   return `${ops} · ${rental}`;
 }
 
-function moreReasonsLabel(count: number, de: boolean): string {
-  return de ? `+${count} Gründe` : `+${count} reasons`;
+function moreReasonsLabel(count: number, locale: string): string {
+  return dt(locale, 'dashboard.count.moreReasons', { count });
 }
 
 /**
@@ -72,8 +73,8 @@ function moreReasonsLabel(count: number, de: boolean): string {
 export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: FleetBoardVehicleRowProps) {
   const de = locale === 'de';
   const dimmed = runtimeState?.telemetryState === 'offline';
-  const telemetry = telemetryLabel(runtimeState, de);
-  const stateLabel = runtimeStateLabel(runtimeState, de);
+  const telemetry = telemetryLabel(runtimeState, locale);
+  const stateLabel = runtimeStateLabel(runtimeState, locale);
   const severityText = rowSeverityLabel(row.severity, locale);
   const title = sanitizeUserFacingIssueText(row.title) || row.title;
   const subtitle = sanitizeUserFacingIssueText(row.subtitle);
@@ -131,7 +132,7 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
           {row.stationLabel ? (
             <span className="truncate">{row.stationLabel}</span>
           ) : (
-            <span className="italic">{de ? 'Keine Station' : 'No station'}</span>
+            <span className="italic">{dt(locale, 'dashboard.label.noStation')}</span>
           )}
           {stateLabel ? (
             <>
@@ -178,7 +179,7 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
             ))}
             {remainingReasons > 0 ? (
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {moreReasonsLabel(remainingReasons, de)}
+                {moreReasonsLabel(remainingReasons, locale)}
               </span>
             ) : null}
           </div>
@@ -189,10 +190,10 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
         <button
           type="button"
           onClick={onOpen}
-          aria-label={de ? `Fahrzeug ${row.title} öffnen` : `Open vehicle ${row.title}`}
+          aria-label={dt(locale, 'dashboard.fleet.openVehicleAria', { title: row.title })}
           className="sq-press inline-flex min-h-9 shrink-0 items-center gap-1 self-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
         >
-          {row.primaryActionLabel ?? (de ? 'Öffnen' : 'Open')}
+          {row.primaryActionLabel ?? (dt(locale, 'dashboard.cta.open'))}
           <Icon name="arrow-right" className="h-3 w-3" />
         </button>
       ) : null}

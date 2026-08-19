@@ -1,6 +1,7 @@
 import { AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
 import { Icon } from '../ui/Icon';
 import React from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 import type {
   RentalHealthState,
@@ -30,7 +31,7 @@ interface RentalHealthBadgeProps {
   /** Retained for call-site compatibility; theming is now token-driven. */
   isDarkMode?: boolean;
   size?: 'sm' | 'md';
-  /** When true, shows a compact "Nicht vermietbar" pill instead of the state label. */
+  /** When true, shows a compact rental-blocked pill instead of the state label. */
   showBlockingLabel?: boolean;
   className?: string;
 }
@@ -46,13 +47,15 @@ interface StateVisuals {
 // surface shows the same colour for the same state:
 //   good → success · warning → watch (amber) · critical → critical (red)
 //   unknown → neutral · n_a → no-data (slate)
-const STATE_VISUALS: Record<RentalHealthState, StateVisuals> = {
-  good: { label: 'OK', Icon: CheckCircle, tone: 'sq-tone-success' },
-  warning: { label: 'Warnung', Icon: AlertTriangle, tone: 'sq-tone-watch' },
-  critical: { label: 'Kritisch', Icon: AlertCircle, tone: 'sq-tone-critical' },
-  unknown: { label: 'Unbekannt', Icon: HelpCircle, tone: 'sq-tone-neutral' },
-  n_a: { label: 'N/A', Icon: HelpCircle, tone: 'sq-tone-nodata' },
-};
+function stateVisuals(t: ReturnType<typeof useLanguage>['t']): Record<RentalHealthState, StateVisuals> {
+  return {
+    good: { label: t('health.state.good'), Icon: CheckCircle, tone: 'sq-tone-success' },
+    warning: { label: t('health.state.warning'), Icon: AlertTriangle, tone: 'sq-tone-watch' },
+    critical: { label: t('health.state.critical'), Icon: AlertCircle, tone: 'sq-tone-critical' },
+    unknown: { label: t('health.state.unknown'), Icon: HelpCircle, tone: 'sq-tone-neutral' },
+    n_a: { label: t('health.state.na'), Icon: HelpCircle, tone: 'sq-tone-nodata' },
+  };
+}
 
 export function RentalHealthBadge({
   health,
@@ -60,6 +63,8 @@ export function RentalHealthBadge({
   showBlockingLabel = false,
   className = '',
 }: RentalHealthBadgeProps) {
+  const { t, locale } = useLanguage();
+  const healthLocale = locale === 'de' ? 'de' : 'en';
   if (!health) {
     return null;
   }
@@ -70,11 +75,11 @@ export function RentalHealthBadge({
   if (isHealthPipelineDegraded(health)) {
     return (
       <span
-        title={health.degradation?.message ?? healthUnavailableMessage('de')}
+        title={health.degradation?.message ?? healthUnavailableMessage(healthLocale)}
         className={`inline-flex items-center rounded-md border border-current/15 font-semibold sq-tone-nodata ${sz} ${className}`}
       >
         <HelpCircle className={iconSz} />
-        Unevaluable
+        {t('health.unevaluable')}
       </span>
     );
   }
@@ -89,18 +94,18 @@ export function RentalHealthBadge({
         className={`inline-flex items-center rounded-md border border-current/15 font-semibold sq-tone-critical ${sz} ${className}`}
       >
         <Icon name="ban" className={iconSz} />
-        Nicht vermietbar
+        {t('health.rentalBlocked')}
       </span>
     );
   }
 
-  const visuals = STATE_VISUALS[health.overall_state];
+  const visuals = stateVisuals(t)[health.overall_state];
 
   return (
     <span
       title={
         isRentalBlockedConfirmed(health)
-          ? `Nicht vermietbar: ${health.blocking_reasons.join(' · ')}`
+          ? t('health.rentalBlockedTitle', { reasons: health.blocking_reasons.join(' · ') })
           : visuals.label
       }
       className={`inline-flex items-center rounded-md border border-current/15 font-semibold ${visuals.tone} ${sz} ${className}`}
@@ -130,7 +135,8 @@ export function RentalHealthModuleRow({
   /** Retained for call-site compatibility; theming is now token-driven. */
   isDarkMode?: boolean;
 }) {
-  const visuals = STATE_VISUALS[moduleHealth.state];
+  const { t } = useLanguage();
+  const visuals = stateVisuals(t)[moduleHealth.state];
   return (
     <div
       className={`flex items-start gap-2 px-2 py-1.5 rounded-md border border-current/10 ${visuals.tone}`}
@@ -138,7 +144,7 @@ export function RentalHealthModuleRow({
       <visuals.Icon className="w-3.5 h-3.5 mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {MODULE_LABELS[moduleKey] ?? moduleKey}
+          {moduleLabel(t, moduleKey)}
         </div>
         <div className="text-xs text-foreground">
           {moduleHealth.reason}
@@ -146,7 +152,7 @@ export function RentalHealthModuleRow({
         {moduleHealth.data_stale ? (
           <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
             <Icon name="clock" className="w-2.5 h-2.5" />
-            Datenstand verzögert
+            {t('health.warningLights.dataDelayed')}
           </div>
         ) : null}
       </div>
@@ -154,12 +160,8 @@ export function RentalHealthModuleRow({
   );
 }
 
-const MODULE_LABELS: Record<string, string> = {
-  battery: 'Batterie',
-  tires: 'Reifen',
-  brakes: 'Bremsen',
-  error_codes: 'Fehlercodes',
-  service_compliance: 'Service & Prüfung',
-  complaints: 'Reklamationen',
-  vehicle_alerts: 'OEM-Warnleuchten',
-};
+function moduleLabel(t: ReturnType<typeof useLanguage>['t'], moduleKey: string): string {
+  const keys: Record<string, string> = {"battery":"health.module.battery","tires":"health.module.tires","brakes":"health.module.brakes","error_codes":"health.module.errorCodes","service_compliance":"health.module.serviceCompliance","complaints":"health.module.complaints","vehicle_alerts":"health.module.vehicleAlerts"};
+  const key = keys[moduleKey];
+  return key ? t(key as any) : moduleKey;
+}

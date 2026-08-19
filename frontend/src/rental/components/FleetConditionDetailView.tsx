@@ -3,6 +3,7 @@
  * in FleetConditionView. Kept for reference until module detail sections are fully migrated.
  */
 import { AlertCircle, Battery, Bell, Calendar, CircleDot, Disc, MessageSquare, ShieldCheck, Wrench } from 'lucide-react';
+import { getFormattingLocale } from '../../i18n/locales';
 import { Icon } from './ui/Icon';
 import { useState, useEffect } from 'react';
 
@@ -28,6 +29,9 @@ import {
 } from '../lib/service-info-display';
 import { ComplianceTaskActions } from './ComplianceTaskActions';
 import type { ConditionCategory } from './FleetConditionView';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { vehicleFormattingLocale } from './vehicle/vehicle-i18n';
 import { BrakeEvidencePanel } from './health/BrakeEvidencePanel';
 
 interface FleetConditionDetailViewProps {
@@ -37,39 +41,132 @@ interface FleetConditionDetailViewProps {
   onBack: () => void;
 }
 
-const CATEGORY_META: Record<ConditionCategory, { label: string; tagline: string; icon: typeof CircleDot }> = {
-  tires: { label: 'Tire Condition & Wear Projection', tagline: 'Tread, pressure and estimated remaining life', icon: CircleDot },
-  brakes: { label: 'Brake Condition & Wear Analysis', tagline: 'Pads, discs and wear projection', icon: Disc },
-  battery: { label: 'Battery Health & Degradation', tagline: 'SOH, telemetry and watchpoints', icon: Battery },
-  dtc: { label: 'Error Codes & Diagnostics', tagline: 'Active and historical DTCs across ECUs', icon: AlertCircle },
-  service: { label: 'Service Interval Analysis', tagline: 'Remaining km, time and last service event', icon: Wrench },
-  tuev: { label: 'TÜV Validity & Planning', tagline: 'Validity window and upcoming HU date', icon: ShieldCheck },
-  bokraft: { label: 'BOKraft Validity & Planning', tagline: 'BOKraft inspection status and planning', icon: Calendar },
-  'driver-feedback': { label: 'Driver Feedback', tagline: 'Reports and complaints from drivers', icon: MessageSquare },
-  alerts: { label: 'Alerts & Watchpoints', tagline: 'Aggregated warnings across all subsystems', icon: Bell },
+const CATEGORY_ICON: Record<ConditionCategory, typeof CircleDot> = {
+  tires: CircleDot,
+  brakes: Disc,
+  battery: Battery,
+  dtc: AlertCircle,
+  service: Wrench,
+  tuev: ShieldCheck,
+  bokraft: Calendar,
+  'driver-feedback': MessageSquare,
+  alerts: Bell,
 };
 
-function getProgressColor(v: number) { return v >= 70 ? 'bg-emerald-500' : v >= 40 ? 'bg-amber-500' : 'bg-red-500'; }
-function getProgressTrack(d: boolean) { return d ? 'bg-neutral-700/50' : 'bg-gray-200/80'; }
-function getMetricColor(v: number, d: boolean) { return v >= 70 ? (d ? 'text-emerald-400' : 'text-emerald-500') : v >= 40 ? (d ? 'text-amber-400' : 'text-amber-500') : (d ? 'text-red-400' : 'text-red-500'); }
-function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'; }
-function fmtRemTime(mo: number | null) { if (mo == null) return '—'; if (mo < 0) return 'Overdue'; const m = Math.round(mo); return m >= 12 ? `${Math.floor(m / 12)}y ${m % 12}mo` : `${m} months`; }
-function formatEnumLabel(value: unknown, fallback = '—') { return typeof value === 'string' && value.length > 0 ? value.replace(/_/g, ' ') : fallback; }
-// Canonical tire status (GOOD|WATCH|WARNING|CRITICAL|UNKNOWN) → pill style + label.
-function tireStatusPill(status: string | null | undefined, d: boolean): { cls: string; label: string } {
+const CATEGORY_LABEL_KEYS: Record<ConditionCategory, TranslationKey> = {
+  tires: 'fleetCondition.detail.category.tires.label',
+  brakes: 'fleetCondition.detail.category.brakes.label',
+  battery: 'fleetCondition.detail.category.battery.label',
+  dtc: 'fleetCondition.detail.category.dtc.label',
+  service: 'fleetCondition.detail.category.service.label',
+  tuev: 'fleetCondition.detail.category.tuev.label',
+  bokraft: 'fleetCondition.detail.category.bokraft.label',
+  'driver-feedback': 'fleetCondition.detail.category.driverFeedback.label',
+  alerts: 'fleetCondition.detail.category.alerts.label',
+};
+
+const CATEGORY_TAGLINE_KEYS: Record<ConditionCategory, TranslationKey> = {
+  tires: 'fleetCondition.detail.category.tires.tagline',
+  brakes: 'fleetCondition.detail.category.brakes.tagline',
+  battery: 'fleetCondition.detail.category.battery.tagline',
+  dtc: 'fleetCondition.detail.category.dtc.tagline',
+  service: 'fleetCondition.detail.category.service.tagline',
+  tuev: 'fleetCondition.detail.category.tuev.tagline',
+  bokraft: 'fleetCondition.detail.category.bokraft.tagline',
+  'driver-feedback': 'fleetCondition.detail.category.driverFeedback.tagline',
+  alerts: 'fleetCondition.detail.category.alerts.tagline',
+};
+
+function fmtDate(s: string | null, locale: string) {
+  return s
+    ? new Date(s).toLocaleDateString(vehicleFormattingLocale(locale), {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    : '—';
+}
+
+function fmtRemTime(
+  mo: number | null,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  if (mo == null) return '—';
+  if (mo < 0) return t('fleetCondition.detail.overdue');
+  const m = Math.round(mo);
+  return m >= 12 ? `${Math.floor(m / 12)}y ${m % 12}mo` : t('fleetCondition.detail.months', { count: m });
+}
+
+function formatEnumLabel(value: unknown, fallback = '—') {
+  return typeof value === 'string' && value.length > 0 ? value.replace(/_/g, ' ') : fallback;
+}
+
+function tireStatusPill(
+  status: string | null | undefined,
+  d: boolean,
+  t: ReturnType<typeof useLanguage>['t'],
+): { cls: string; label: string } {
+  const labels: Record<string, TranslationKey> = {
+    GOOD: 'fleetCondition.detail.tireStatus.good',
+    WATCH: 'fleetCondition.detail.tireStatus.watch',
+    WARNING: 'fleetCondition.detail.tireStatus.warning',
+    CRITICAL: 'fleetCondition.detail.tireStatus.critical',
+  };
   switch (status) {
-    case 'GOOD': return { cls: d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700', label: 'Good' };
-    case 'WATCH': return { cls: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700', label: 'Watch' };
-    case 'WARNING': return { cls: d ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-700', label: 'Warning' };
-    case 'CRITICAL': return { cls: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700', label: 'Critical' };
-    default: return { cls: d ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600', label: 'Unknown' };
+    case 'GOOD':
+      return {
+        cls: d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700',
+        label: t(labels.GOOD),
+      };
+    case 'WATCH':
+      return {
+        cls: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700',
+        label: t(labels.WATCH),
+      };
+    case 'WARNING':
+      return {
+        cls: d ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-700',
+        label: t(labels.WARNING),
+      };
+    case 'CRITICAL':
+      return {
+        cls: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700',
+        label: t(labels.CRITICAL),
+      };
+    default:
+      return {
+        cls: d ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600',
+        label: t('fleetCondition.detail.tireStatus.unknown'),
+      };
   }
 }
 
+function getProgressColor(v: number) {
+  return v >= 70 ? 'bg-emerald-500' : v >= 40 ? 'bg-amber-500' : 'bg-red-500';
+}
+function getProgressTrack(d: boolean) {
+  return d ? 'bg-neutral-700/50' : 'bg-gray-200/80';
+}
+function getMetricColor(v: number, d: boolean) {
+  return v >= 70
+    ? d
+      ? 'text-emerald-400'
+      : 'text-emerald-500'
+    : v >= 40
+      ? d
+        ? 'text-amber-400'
+        : 'text-amber-500'
+      : d
+        ? 'text-red-400'
+        : 'text-red-500';
+}
+
 export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBack }: FleetConditionDetailViewProps) {
+  const {t, locale, formattingLocale } = useLanguage();
   const isDark = isDarkMode;
-  const meta = CATEGORY_META[category];
-  const CategoryIcon = meta.icon;
+  const CategoryIcon = CATEGORY_ICON[category];
+  const categoryLabel = t(CATEGORY_LABEL_KEYS[category]);
+  const categoryTagline = t(CATEGORY_TAGLINE_KEYS[category]);
 
   const [loading, setLoading] = useState(true);
   const [tiresSummary, setTiresSummary] = useState<TireHealthSummaryResponse | null>(null);
@@ -140,7 +237,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to Fleet Health"
+          aria-label={t('fleetCondition.backToFleetHealth')}
           className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-muted text-muted-foreground' : 'hover:bg-gray-100 text-gray-500'}`}
         >
           <Icon name="arrow-left" className="w-5 h-5" />
@@ -149,15 +246,15 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           <CategoryIcon className={`w-5 h-5 ${isDark ? 'text-brand' : 'text-brand'}`} />
         </div>
         <div>
-          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{meta.label}</h1>
-          <p className={`text-xs mt-0.5 ${textSecondary}`}>{meta.tagline}</p>
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{categoryLabel}</h1>
+          <p className={`text-xs mt-0.5 ${textSecondary}`}>{categoryTagline}</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24">
           <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${isDark ? 'border-muted-foreground' : 'border-brand'}`} />
-          <p className={`text-xs mt-3 ${textSecondary}`}>Loading analysis data...</p>
+          <p className={`text-xs mt-3 ${textSecondary}`}>{t('fleetCondition.detail.loadingAnalysis')}</p>
         </div>
       ) : (
         <>
@@ -179,8 +276,8 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 <Icon name="sparkles" className={`w-5 h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
               </div>
               <div className="flex-1">
-                <h3 className={`text-sm font-semibold ${textPrimary}`}>AI Predictive Analysis</h3>
-                <p className={`text-[10px] ${textMuted}`}>Analyze wear patterns, behavior impact, and maintenance recommendations</p>
+                <h3 className={`text-sm font-semibold ${textPrimary}`}>{t('fleetCondition.detail.aiPredictive')}</h3>
+                <p className={`text-[10px] ${textMuted}`}>{t('fleetCondition.detail.aiPredictiveHint')}</p>
               </div>
               <button
                 onClick={triggerAiAnalysis}
@@ -197,9 +294,9 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 {aiLoading ? (
                   <span className="flex items-center gap-2">
                     <div className="w-3 h-3 border-2 border-t-transparent border-white rounded-full animate-spin" />
-                    Analyzing...
+                    {t('fleetCondition.detail.analyzing')}
                   </span>
-                ) : aiResult ? 'Re-analyze' : 'Run Analysis'}
+                ) : aiResult ? t('fleetCondition.detail.reAnalyze') : t('fleetCondition.detail.runAnalysis')}
               </button>
             </div>
 
@@ -218,7 +315,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 {/* Future Outlook */}
                 {aiResult.futureOutlook && (
                   <div>
-                    <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${textMuted}`}>Predictive Outlook</h4>
+                    <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${textMuted}`}>{t('fleetCondition.detail.predictiveOutlook')}</h4>
                     <p className={`text-xs ${textSecondary}`}>{aiResult.futureOutlook.summary}</p>
                     {aiResult.futureOutlook.items.length > 0 && (
                       <ul className="mt-1.5 space-y-1">
@@ -236,7 +333,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 {/* Maintenance Focus */}
                 {aiResult.maintenanceFocus.length > 0 && (
                   <div>
-                    <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${textMuted}`}>Maintenance Priority</h4>
+                    <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${textMuted}`}>{t('fleetCondition.detail.maintenancePriority')}</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {aiResult.maintenanceFocus.map((f, i) => (
                         <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
@@ -260,7 +357,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 {/* Recommendations */}
                 {aiResult.preventiveRecommendations.length > 0 && (
                   <div>
-                    <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${textMuted}`}>Preventive Recommendations</h4>
+                    <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${textMuted}`}>{t('fleetCondition.detail.preventiveRecommendations')}</h4>
                     <ul className="space-y-1.5">
                       {aiResult.preventiveRecommendations.map((r, i) => (
                         <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
@@ -274,7 +371,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
 
                 {/* Data Confidence */}
                 <div className="flex items-center gap-2 pt-2 border-t border-dashed border-gray-200 dark:border-border">
-                  <span className={`text-[10px] font-semibold ${textMuted}`}>Data confidence:</span>
+                  <span className={`text-[10px] font-semibold ${textMuted}`}>{t('fleetCondition.detail.dataConfidence')}</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     aiResult.dataConfidence.level === 'high' ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
                     : aiResult.dataConfidence.level === 'medium' ? (isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
@@ -341,9 +438,10 @@ function RecommendationList({ items, isDark, textSecondary }: { items: string[];
 
 /* ─── TIRES ─── */
 function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary: TireHealthSummaryResponse | null; detail: TireHealthDetailResponse | null }) {
+  const {t, locale, formattingLocale } = useLanguage();
   const s = summary;
   const pct = s?.overallPercent ?? 0;
-  const canonPill = tireStatusPill(s?.overallStatus, isDark);
+  const canonPill = tireStatusPill(s?.overallStatus, isDark, t);
   return (
     <>
       {/* Canonical tire status (single source of truth — measured vs estimated honesty) */}
@@ -351,11 +449,11 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
         <div className={`${p.cardClass} p-4 flex flex-wrap items-center gap-x-4 gap-y-2`}>
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${canonPill.cls}`}>{canonPill.label}</span>
-            <span className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Tire Status</span>
+            <span className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>{t('fleetCondition.detail.tireStatus')}</span>
           </div>
           {s.displayTreadMm != null && (
             <p className={`text-xs ${p.textSecondary}`}>
-              Lowest tread: <span className={`font-bold ${p.textPrimary}`}>ca. {s.displayTreadMm.toFixed(1)} mm</span>
+              {t('fleetCondition.detail.lowestTread')} <span className={`font-bold ${p.textPrimary}`}>ca. {s.displayTreadMm.toFixed(1)} mm</span>
               {s.lowestTreadPosition ? <span className={p.textMuted}> · {s.lowestTreadPosition}</span> : null}
             </p>
           )}
@@ -374,7 +472,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
             </span>
           )}
           {s.lastMeasurementAt && (
-            <span className={`text-[10px] ${p.textMuted}`}>Last measured: {fmtDate(s.lastMeasurementAt)}</span>
+            <span className={`text-[10px] ${p.textMuted}`}>Last measured: {fmtDate(s.lastMeasurementAt, locale)}</span>
           )}
         </div>
       )}
@@ -404,7 +502,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
       {s?.actionState && (
         <div className={`${p.cardClass} p-4`}>
           <div className="flex items-center justify-between gap-2">
-            <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Operational Action</p>
+            <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>{t('fleetCondition.detail.operationalAction')}</p>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
               s.actionState === 'REPLACE'
                 ? isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700'
@@ -448,7 +546,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
       {/* Per-wheel */}
       {detail?.wheels && detail.wheels.length > 0 && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-4 ${p.textPrimary}`}>Per-Wheel Condition</h3>
+          <h3 className={`text-sm font-semibold mb-4 ${p.textPrimary}`}>{t('fleetCondition.detail.perWheelCondition')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {detail.wheels.map(w => (
               <div key={w.position} className={`p-3 rounded-xl border ${isDark ? 'surface-premium border-neutral-700/40' : 'bg-white border-gray-200'}`}>
@@ -468,7 +566,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
       {/* Wear Factors */}
       {detail?.factors && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Wear-Promoting Factors</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.wearPromotingFactors')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
               { label: 'Behavior', value: detail.factors.behaviorFactor, desc: detail.factors.behaviorFactor > 1.1 ? 'Elevated — accelerating wear' : 'Normal' },
@@ -489,8 +587,8 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
       {/* Road Type Distribution (per tire setup) */}
       {detail?.usageSplit && (detail.usageSplit.city > 0 || detail.usageSplit.highway > 0 || detail.usageSplit.rural > 0) && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Road Type Distribution</h3>
-          <p className={`text-[10px] mb-3 ${p.textMuted}`}>Aggregated from trip analysis — organized per current tire setup</p>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.roadTypeDistribution')}</h3>
+          <p className={`text-[10px] mb-3 ${p.textMuted}`}>{t('fleetCondition.detail.roadTypeHint')}</p>
           <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden mb-3">
             {detail.usageSplit.city > 0 && <div className={`${isDark ? 'bg-status-info' : 'bg-status-info'} rounded-full`} style={{ width: `${detail.usageSplit.city}%` }} />}
             {detail.usageSplit.highway > 0 && <div className={`${isDark ? 'bg-emerald-500' : 'bg-emerald-400'} rounded-full`} style={{ width: `${detail.usageSplit.highway}%` }} />}
@@ -512,7 +610,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           </div>
           {detail.factors?.usageFactor != null && (
             <p className={`text-[10px] mt-3 ${p.textMuted}`}>
-              Usage wear factor: <span className={`font-semibold ${detail.factors.usageFactor > 1.05 ? (isDark ? 'text-amber-400' : 'text-amber-600') : p.textPrimary}`}>×{detail.factors.usageFactor.toFixed(2)}</span>
+              {t('fleetCondition.detail.usageWearFactor')} <span className={`font-semibold ${detail.factors.usageFactor > 1.05 ? (isDark ? 'text-amber-400' : 'text-amber-600') : p.textPrimary}`}>×{detail.factors.usageFactor.toFixed(2)}</span>
             </p>
           )}
         </div>
@@ -547,6 +645,7 @@ function BrakesDetail({
   detail,
   ...p
 }: DetailProps & { summary: BrakeHealthSummary | null; detail: BrakeHealthDetail | null }) {
+  const {t, locale, formattingLocale } = useLanguage();
   const condition = summary?.overallCondition ?? 'UNKNOWN';
   const condLabel =
     condition === 'UNKNOWN' ? '—' : condition.charAt(0) + condition.slice(1).toLowerCase();
@@ -601,20 +700,20 @@ function BrakesDetail({
           label="Inspection recommended in"
           value={
             summary?.nextInspectionRecommendedInKm != null
-              ? `${Math.round(summary.nextInspectionRecommendedInKm).toLocaleString('de-DE')} km`
+              ? `${Math.round(summary.nextInspectionRecommendedInKm).toLocaleString(formattingLocale)} km`
               : '—'
           }
         />
       </div>
 
       <div className={`${p.cardClass} p-5`}>
-        <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Component Evidence</h3>
+        <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.componentEvidence')}</h3>
         <BrakeEvidencePanel summary={summary} locale="en" showActions={false} compact />
       </div>
 
       {(summary?.openAlerts?.length ?? 0) > 0 && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Open Alerts</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.openAlerts')}</h3>
           <ul className="space-y-2">
             {summary!.openAlerts.map((a, i) => (
               <li key={i} className={`text-xs flex items-start gap-2 ${
@@ -646,7 +745,7 @@ function BrakesDetail({
 
       {summary?.modelCoverage && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Model Coverage</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.modelCoverage')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Coverage</p>
@@ -657,18 +756,18 @@ function BrakesDetail({
               </p>
             </div>
             <div>
-              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Modeled KM</p>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>{t('fleetCondition.detail.modeledKm')}</p>
               <p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>
                 {summary.modelCoverage.modeledDistanceKm != null
-                  ? Math.round(summary.modelCoverage.modeledDistanceKm).toLocaleString('de-DE')
+                  ? Math.round(summary.modelCoverage.modeledDistanceKm).toLocaleString(formattingLocale)
                   : '—'}
               </p>
             </div>
             <div>
-              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Since Anchor</p>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>{t('fleetCondition.detail.sinceAnchor')}</p>
               <p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>
                 {summary.modelCoverage.distanceSinceAnchorKm != null
-                  ? Math.round(summary.modelCoverage.distanceSinceAnchorKm).toLocaleString('de-DE')
+                  ? Math.round(summary.modelCoverage.distanceSinceAnchorKm).toLocaleString(formattingLocale)
                   : '—'}
               </p>
             </div>
@@ -692,9 +791,9 @@ function BrakesDetail({
             {detail!.history.slice(0, 10).map((h) => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
-                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
+                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date, locale)}</span>
                 {h.serviceKind && <span className={`text-[10px] ${p.textMuted}`}>{h.serviceKind}</span>}
-                {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString('de-DE')} km</span>}
+                {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString(formattingLocale)} km</span>}
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
                 {h.notes && <span className={`text-[10px] ${p.textMuted} truncate flex-1`}>{h.notes}</span>}
               </div>
@@ -708,6 +807,7 @@ function BrakesDetail({
 
 /* ─── BATTERY ─── */
 function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: BatteryHealthSummary | null }) {
+  const {t, formattingLocale } = useLanguage();
   const pubState = bat?.lv?.publicationState ?? bat?.currentState?.publicationState;
   const isCalib = pubState === 'INITIAL_CALIBRATION';
   const isStab = pubState === 'STABILIZING';
@@ -739,7 +839,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
         <div className={`${p.cardClass} p-5`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
           <div className="flex items-center gap-2 mb-2">
-            <span className={`text-sm font-semibold ${isDark ? 'text-status-info' : 'text-brand'}`}>Initial calibration in progress</span>
+            <span className={`text-sm font-semibold ${isDark ? 'text-status-info' : 'text-brand'}`}>{t('fleetCondition.detail.initialCalibration')}</span>
             <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDark ? 'bg-status-info' : 'bg-status-info'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
           </div>
           <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-muted-foreground'}`}>Sammelt Ruhe- und Startzyklen für den {ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
@@ -858,6 +958,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
 
 /* ─── DTC ─── */
 function DtcDetail({ isDark, active, all, ...p }: DetailProps & { active: any[]; all: any[] }) {
+  const {t, formattingLocale } = useLanguage();
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -870,7 +971,7 @@ function DtcDetail({ isDark, active, all, ...p }: DetailProps & { active: any[];
 
       {active.length > 0 && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Active Error Codes</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.activeErrorCodes')}</h3>
           <div className="space-y-2">
             {active.map((d: any, i: number) => (
               <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-red-500/5 border border-red-500/20' : 'bg-red-50 border border-red-200/50'}`}>
@@ -888,6 +989,7 @@ function DtcDetail({ isDark, active, all, ...p }: DetailProps & { active: any[];
 
 /* ─── SERVICE (HM/OEM Next Service) ─── */
 function ServiceDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { vehicleId: string; service: ServiceInfoStatus | null }) {
+  const {t, locale, formattingLocale } = useLanguage();
   const nsDisplay = buildNextServiceDisplay(svc);
   const { days, km } = nsDisplay.daysKm;
   const tracked = nsDisplay.trackingStatus === 'TRACKED';
@@ -923,14 +1025,14 @@ function ServiceDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
             {...p}
             isDark={isDark}
             label="Restlaufzeit (km)"
-            value={km != null ? km.toLocaleString('de-DE') : svc?.nextService?.hmDistanceFromOem === false ? 'Nicht geliefert' : '—'}
+            value={km != null ? km.toLocaleString(formattingLocale) : svc?.nextService?.hmDistanceFromOem === false ? 'Nicht geliefert' : '—'}
             sub="Von HM/OEM geliefert"
           />
           <StatBox
             {...p}
             isDark={isDark}
             label="Letzter Vollservice"
-            value={fmtDate(svc?.lastServiceDate ?? null)}
+            value={fmtDate(svc?.lastServiceDate ?? null, locale)}
             sub={svc?.lastServiceWorkshop ?? 'Historie — kein Next-Service-Reset'}
           />
         </div>
@@ -945,8 +1047,8 @@ function ServiceDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{formatServiceEventTypeDe(h.eventType)}</span>
-                <span className={`text-[10px] ${p.textMuted}`}>{fmtDate(h.date)}</span>
-                {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString('de-DE')} km</span>}
+                <span className={`text-[10px] ${p.textMuted}`}>{fmtDate(h.date, locale)}</span>
+                {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString(formattingLocale)} km</span>}
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
               </div>
             ))}
@@ -959,6 +1061,7 @@ function ServiceDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
 
 /* ─── TÜV ─── */
 function TuevDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { vehicleId: string; service: ServiceInfoStatus | null }) {
+  const {t, locale, formattingLocale } = useLanguage();
   const tuv = buildTuvComplianceDisplay(svc);
   const tuvSignals = svc?.taskSignals?.filter((s) => s.category === 'TÜV') ?? [];
   return (
@@ -968,7 +1071,7 @@ function TuevDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { v
         <p className={`text-xs mt-1 ${p.textMuted}`}>Gültig bis: {tuv.validTill ?? '—'}</p>
         <p className={`text-sm font-medium mt-2 ${nextServiceToneClass(tuv.tone)}`}>{tuv.detail}</p>
         {tuv.blocksRentalHint && (
-          <p className="text-sm mt-3 font-bold text-red-600 dark:text-red-400">Nicht vermieten — TÜV abgelaufen</p>
+          <p className="text-sm mt-3 font-bold text-red-600 dark:text-red-400">{t('fleetCondition.detail.doNotRentTuv')}</p>
         )}
         {tuvSignals.length > 0 && (
           <div className="mt-4">
@@ -977,19 +1080,19 @@ function TuevDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { v
         )}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatBox {...p} isDark={isDark} label="Gültig bis" value={fmtDate(svc?.tuvValidTill ?? null)} sub="TÜV-Termin" colorClass={nextServiceToneClass(tuv.tone)} />
+        <StatBox {...p} isDark={isDark} label="Gültig bis" value={fmtDate(svc?.tuvValidTill ?? null, locale)} sub="TÜV-Termin" colorClass={nextServiceToneClass(tuv.tone)} />
         <StatBox {...p} isDark={isDark} label="Status" value={tuv.label} sub={tuv.detail} colorClass={nextServiceToneClass(tuv.tone)} />
-        <StatBox {...p} isDark={isDark} label="Letzter TÜV" value={fmtDate(svc?.tuvLastDate ?? null)} sub="Vorherige Prüfung" />
+        <StatBox {...p} isDark={isDark} label="Letzter TÜV" value={fmtDate(svc?.tuvLastDate ?? null, locale)} sub="Vorherige Prüfung" />
       </div>
 
       {svc?.tuvHistory && svc.tuvHistory.length > 0 && (
         <div className={`${p.cardClass} p-5 mt-4`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>TÜV-Historie</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.tuvHistory')}</h3>
           <div className="space-y-2">
             {svc.tuvHistory.map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
-                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
+                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date, locale)}</span>
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
               </div>
             ))}
@@ -1002,6 +1105,7 @@ function TuevDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { v
 
 /* ─── BOKraft ─── */
 function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { vehicleId: string; service: ServiceInfoStatus | null }) {
+  const {t, locale, formattingLocale } = useLanguage();
   const bok = buildBokraftComplianceDisplay(svc);
   const bokSignals = svc?.taskSignals?.filter((s) => s.category === 'BOKraft') ?? [];
   return (
@@ -1011,7 +1115,7 @@ function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
         <p className={`text-xs mt-1 ${p.textMuted}`}>Gültig bis: {bok.validTill ?? '—'}</p>
         <p className={`text-sm font-medium mt-2 ${nextServiceToneClass(bok.tone)}`}>{bok.detail}</p>
         {bok.blocksRentalHint && (
-          <p className="text-sm mt-3 font-bold text-red-600 dark:text-red-400">Nicht vermieten — BOKraft abgelaufen</p>
+          <p className="text-sm mt-3 font-bold text-red-600 dark:text-red-400">{t('fleetCondition.detail.doNotRentBokraft')}</p>
         )}
         {bokSignals.length > 0 && (
           <div className="mt-4">
@@ -1020,9 +1124,9 @@ function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
         )}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatBox {...p} isDark={isDark} label="Gültig bis" value={fmtDate(svc?.bokraftValidTill ?? null)} sub="BOKraft-Termin" colorClass={nextServiceToneClass(bok.tone)} />
+        <StatBox {...p} isDark={isDark} label="Gültig bis" value={fmtDate(svc?.bokraftValidTill ?? null, locale)} sub="BOKraft-Termin" colorClass={nextServiceToneClass(bok.tone)} />
         <StatBox {...p} isDark={isDark} label="Status" value={bok.label} sub={bok.detail} colorClass={nextServiceToneClass(bok.tone)} />
-        <StatBox {...p} isDark={isDark} label="Letzter BOKraft" value={fmtDate(svc?.bokraftLastDate ?? null)} sub="Vorherige Prüfung" />
+        <StatBox {...p} isDark={isDark} label="Letzter BOKraft" value={fmtDate(svc?.bokraftLastDate ?? null, locale)} sub="Vorherige Prüfung" />
       </div>
 
       {svc?.bokraftHistory && svc.bokraftHistory.length > 0 && (
@@ -1032,7 +1136,7 @@ function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
             {svc.bokraftHistory.map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'surface-premium' : 'bg-gray-50'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
-                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
+                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date, locale)}</span>
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
               </div>
             ))}
@@ -1045,11 +1149,12 @@ function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & 
 
 /* ─── DRIVER FEEDBACK ─── */
 function DriverFeedbackDetail({ isDark, ...p }: DetailProps) {
+  const {t, formattingLocale } = useLanguage();
   return (
     <div className={`${p.cardClass} p-8 text-center`}>
       <Icon name="message-square" className={`w-10 h-10 mx-auto mb-3 ${p.textMuted}`} />
-      <p className={`text-sm font-semibold ${p.textPrimary}`}>No Driver Feedback Recorded</p>
-      <p className={`text-xs mt-1 ${p.textSecondary}`}>Driver feedback will appear here once submitted through the driver app.</p>
+      <p className={`text-sm font-semibold ${p.textPrimary}`}>{t('fleetCondition.detail.noDriverFeedback')}</p>
+      <p className={`text-xs mt-1 ${p.textSecondary}`}>{t('fleetCondition.detail.driverFeedbackHint')}</p>
     </div>
   );
 }
@@ -1062,6 +1167,7 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
   battery: BatteryHealthSummary | null;
   dtcActive: any[];
 }) {
+  const {t, formattingLocale } = useLanguage();
   const allAlerts: { source: string; severity: 'critical' | 'warning' | 'info'; message: string }[] = [];
 
   (tires?.alerts ?? []).forEach(a => allAlerts.push({ source: 'Tires', severity: a.severity, message: a.message }));
@@ -1103,7 +1209,7 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
 
       {allAlerts.length > 0 ? (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>All Alerts</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>{t('fleetCondition.detail.allAlerts')}</h3>
           <div className="space-y-2">
             {allAlerts.map((a, i) => (
               <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${
@@ -1123,8 +1229,8 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
       ) : (
         <div className={`${p.cardClass} p-8 text-center`}>
           <Icon name="check-circle" className={`w-10 h-10 mx-auto mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`} />
-          <p className={`text-sm font-semibold ${p.textPrimary}`}>No Active Alerts</p>
-          <p className={`text-xs mt-1 ${p.textSecondary}`}>All monitored components are within normal parameters.</p>
+          <p className={`text-sm font-semibold ${p.textPrimary}`}>{t('fleetCondition.detail.noActiveAlerts')}</p>
+          <p className={`text-xs mt-1 ${p.textSecondary}`}>{t('fleetCondition.detail.allNormal')}</p>
         </div>
       )}
     </>

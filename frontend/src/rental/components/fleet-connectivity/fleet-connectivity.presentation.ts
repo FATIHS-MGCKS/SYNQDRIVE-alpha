@@ -1,4 +1,5 @@
 import type { StatusTone } from '../../../components/patterns/status-utils';
+import { getFormattingLocale } from '../../../i18n/locales';
 import type {
   ConnectivityAttentionState,
   ConnectivityReasonCode,
@@ -96,7 +97,7 @@ export function formatLastTelemetry(
     return t('fleetConnectivity.lastData.hoursAgo', { count: Math.max(1, hours) });
   }
 
-  return new Date(iso).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB', {
+  return new Date(iso).toLocaleString(getFormattingLocale(locale === 'de' ? 'de' : 'en'), {
     dateStyle: 'short',
     timeStyle: 'short',
   });

@@ -1,4 +1,6 @@
 import type { StatusTone } from '../../components/patterns';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import type { BookingUiStatus } from '../components/bookings/bookingStatus';
 import type { VehicleData } from '../data/vehicles';
 import {
@@ -241,7 +243,7 @@ export function deriveVehicleBookingOperatorSnapshot(
 }
 
 export function formatOperatorDateTime(date: Date): string {
-  return date.toLocaleString('de-DE', {
+  return date.toLocaleString(vehicleFormattingLocaleOrDefault(), {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -250,9 +252,9 @@ export function formatOperatorDateTime(date: Date): string {
 }
 
 export function formatOperatorDate(date: Date): string {
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return date.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 export function formatOperatorTime(date: Date): string {
-  return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(vehicleFormattingLocaleOrDefault(), { hour: '2-digit', minute: '2-digit' });
 }

@@ -396,6 +396,22 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Vehicles & Health (P2.2.2 — V4.9.921)', icon: Globe,
+    endpoint: 'Fleet shell, Vehicle Detail (Overview/Trips/Health), service-center, vehicle-bookings, fleet-health-service presentation.',
+    service: '**Helper:** `vehicle-i18n.ts` — `vt(locale, key)` + `vehicleFormattingLocale(locale)` for non-React vehicle builders. **Keys:** `vehicle.*`, `health.*`, `trips.*`, `serviceCenter.*`, `fleetHealthService.*`, `fleet.stat.*`; reused `vehicle.status.*`, `dashboard.operations.status.*`. **Guardrails:** P2.2.2 enforce-clean paths in `i18n-hardcoded-scan.mjs` — 0 findings. **Formatting:** `getFormattingLocale()` in migrated vehicle lib files.',
+    dataSource: 'architecture/I18N_RENTAL_VEHICLES_HEALTH_P2_2_2_2026-08-19.md; architecture/I18N_RENTAL_NAV_DASHBOARD_P2_2_1_2026-08-19.md' },
+  { name: 'Platform i18n Rental Dashboard (P2.2.1 — V4.9.920)', icon: Globe,
+    endpoint: 'Rental Dashboard — builders (`*Builder.ts`), runtime slice mappers, notification copy, drilldown/drawer React panels.',
+    service: '**Helper:** `dashboard-i18n.ts` exposes `dt(locale, key)` + `dashboardFormattingLocale(locale)` for non-React dashboard code; React uses `useLanguage().t()` where practical. **Keys:** canonical `frontend/src/i18n/translations/{en,de}.ts` — `dashboard.*`, `notification.*`, `vehicle.status.*`; reused `notification.cta.*`, `common.*`, existing `dashboard.slice.*`. **Imports:** touched dashboard files use `../../../i18n/` not `rental/i18n` shim.',
+    dataSource: 'architecture/I18N_DASHBOARD_P2_2_1_2026-08-19.md; architecture/I18N_HARDCODED_COPY_P2_1_2026-08-19.md' },
+  { name: 'Platform i18n Hardcoded Copy Inventory (P2.1 — V4.9.919)', icon: Globe,
+    endpoint: 'N/A — static scan + canonical translation keys.',
+    service: '**Scanner:** `frontend/scripts/i18n-hardcoded-scan.mjs` → `hardcoded-copy-inventory.json` (3339 unique debt items post-P2.1). **Login:** all user copy via `login.*` / `twoFactor.*` / `auth.error.*` keys; `login-copy.ts` removed. **Shell:** `LanguageSelector`, `VerificationDonePage`, default `AppErrorBoundary` use canonical keys. **Guardrails:** enforce-clean surfaces fail `npm run i18n:check` on new hardcoded copy.',
+    dataSource: 'architecture/I18N_HARDCODED_COPY_P2_1_2026-08-19.md; architecture/I18N_TRANSLATION_REGISTRY_P1_2_2026-08-19.md' },
+  { name: 'Platform i18n Translation Registry (P1.2 — V4.9.918)', icon: Globe,
+    endpoint: 'N/A — client-side locale state + dictionary lookup.',
+    service: '**Registry:** `frontend/src/i18n/translation-registry.ts` maps 9 official locales to `complete | partial | fallback-only` status. **Dictionaries:** `en`/`de` satisfy `CompleteTranslationDictionary`; fr/nl/es/it/pl/cs are `PartialTranslationDictionary` without `...en` spread. **Runtime:** `translateKey()` → owned locale value, else English (`fallback-en`), else key (`missing-key`). **Turkish:** empty `tr.ts`, English fallback only. **Coverage:** `translation-coverage-baseline.json` + `npm run i18n:check`. **Legal:** `legal-documents-registry.ts` — DE/EN legally-reviewed only.',
+    dataSource: 'architecture/I18N_TRANSLATION_REGISTRY_P1_2_2026-08-19.md; architecture/I18N_CANONICAL_RUNTIME_P1_2026-08-18.md; docs/audits/i18n-production-hardening-baseline-2026-08.md' },
   { name: 'Auswertungen E9D-DEFER Forecast Runtime Deferred (Phase 3 — V4.9.904)', icon: Layers,
     endpoint: 'E9 runtime deferred — no forecast API/UI in product.',
     service: 'E9D-DEFER: E9A.1 Production read-only certification (5 invoices, 1-day span, 3 daily buckets, 0 rolling origins) → CERTIFIED_INSUFFICIENT. Authority complete; E9B NOT_READY. E8 merge 83b140b5. PR #1059 Ready — not merged.',

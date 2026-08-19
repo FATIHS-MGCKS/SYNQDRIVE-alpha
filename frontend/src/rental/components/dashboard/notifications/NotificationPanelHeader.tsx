@@ -77,7 +77,7 @@ export function NotificationPanelHeader({
               'sq-press inline-flex min-h-11 shrink-0 items-center rounded-md px-2.5 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
             )}
           >
-            {attentionExpandLabel(totalCount, de, isExpanded)}
+            {attentionExpandLabel(totalCount, de ? 'de' : 'en', isExpanded)}
           </button>
         ) : null}
       </div>

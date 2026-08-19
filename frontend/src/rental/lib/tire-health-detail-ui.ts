@@ -1,3 +1,5 @@
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import type {
   TireDisplayMode,
   TireEvidencePresentation,
@@ -158,7 +160,7 @@ export function formatWheelLastMeasured(iso: string | null | undefined): string 
   if (!iso) return null;
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return null;
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return d.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 export const WHEEL_POSITIONS = ['FL', 'FR', 'RL', 'RR'] as const;
@@ -242,7 +244,7 @@ export function tireModelEvidenceLine(
   const ep = tireEvidencePresentation(summary);
   if (!ep) return null;
   const when = ep.modelCalculatedAt
-    ? new Date(ep.modelCalculatedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB')
+    ? new Date(ep.modelCalculatedAt).toLocaleString(getFormattingLocale(locale === 'de' ? 'de' : 'en'))
     : null;
   return locale === 'de'
     ? `Modell ${ep.modelVersion}${when ? ` · ${when}` : ''}`

@@ -5,6 +5,7 @@ import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import {
   VehicleOperationalStatusInlineHint,
 } from '../fleet/VehicleOperationalStatusCallout';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { resolveUnreliableOperationalStatusDisplay } from '../../lib/vehicle-operational-unknown-display';
 
 export interface FleetMapVehicleStatusHudProps {
@@ -20,6 +21,7 @@ export function FleetMapVehicleStatusHud({
   timeZone,
   onRefresh,
 }: FleetMapVehicleStatusHudProps) {
+  const { t } = useLanguage();
   if (!ctx) return null;
 
   const display = resolveFleetVehicleDisplayState(ctx.vehicle, {
@@ -77,7 +79,7 @@ export function FleetMapVehicleStatusHud({
                 >
                   {resolveUnreliableOperationalStatusDisplay(ctx.vehicle, {
                     locale: locale === 'en' ? 'en' : 'de',
-                  })?.refreshLabel ?? 'Refresh'}
+                  })?.refreshLabel ?? t('fleet.shell.refresh')}
                 </button>
               ) : null}
             </div>

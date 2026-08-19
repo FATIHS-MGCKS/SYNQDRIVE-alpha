@@ -10,6 +10,7 @@ import { VehicleDrivingAssessmentQualityOverviewCard } from './VehicleDrivingAss
 import { VehicleOverviewFreshnessHint } from './VehicleOverviewFreshnessHint';
 import { VehicleServiceContextPanel } from './VehicleServiceContextPanel';
 import { vo } from './vehicle-overview-ui';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export interface VehicleOverviewTabProps {
   selectedVehicle: VehicleData | null;
@@ -47,6 +48,7 @@ export function VehicleOverviewTab({
   onOpenVehicleTask,
   tasksRefreshToken,
 }: VehicleOverviewTabProps) {
+  const { t } = useLanguage();
   const vehicleLabel = selectedVehicle
     ? formatVehicleIssueEntityLabel(selectedVehicle)
     : '';
@@ -63,7 +65,7 @@ export function VehicleOverviewTab({
         />
       )}
 
-      <section className={vo.mainSection} aria-label="Live vehicle status">
+      <section className={vo.mainSection} aria-label={t('vehicle.overview.liveStatusAria')}>
         <div className={vo.mainGrid}>
           <div className={vo.mapColumn}>
             <OverviewLiveMapCard

@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -33,27 +34,27 @@ function vehicleStationLabel(v: VehicleData): string {
   return named ?? v.station ?? '';
 }
 
-function runtimeTelemetryLabel(state: VehicleRuntimeState, de: boolean): string {
-  const labels: Record<VehicleRuntimeState['telemetryState'], [string, string]> = {
-    live: ['Live', 'Live'],
-    standby: ['Standby', 'Standby'],
-    soft_offline: ['Soft Offline', 'Soft Offline'],
-    offline: ['Offline', 'Offline'],
-    unknown: ['No signal', 'Kein Signal'],
+function runtimeTelemetryLabel(state: VehicleRuntimeState, locale: string): string {
+  const map: Record<VehicleRuntimeState['telemetryState'], Parameters<typeof dt>[1]> = {
+    live: 'dashboard.label.live',
+    standby: 'dashboard.label.standby',
+    soft_offline: 'dashboard.label.softOffline',
+    offline: 'dashboard.label.offline',
+    unknown: 'dashboard.label.noSignal',
   };
-  return de ? labels[state.telemetryState][1] : labels[state.telemetryState][0];
+  return dt(locale, map[state.telemetryState]);
 }
 
-function runtimeReadinessLabel(state: VehicleRuntimeState, de: boolean): { label: string; tone: StatusTone } {
-  if (state.isBlocked) return { label: de ? 'Blockiert' : 'Blocked', tone: 'critical' };
-  if (state.isReadyToRent) return { label: de ? 'Bereit' : 'Ready', tone: 'success' };
-  return { label: de ? 'Nicht bereit' : 'Not Ready', tone: 'watch' };
+function runtimeReadinessLabel(state: VehicleRuntimeState, locale: string): { label: string; tone: StatusTone } {
+  if (state.isBlocked) return { label: dt(locale, 'dashboard.label.blocked'), tone: 'critical' };
+  if (state.isReadyToRent) return { label: dt(locale, 'dashboard.label.ready'), tone: 'success' };
+  return { label: dt(locale, 'dashboard.label.notReady'), tone: 'watch' };
 }
 
-function runtimeHealthLabel(state: VehicleRuntimeState, de: boolean): { label: string; tone: StatusTone } | null {
-  if (state.isCritical) return { label: de ? 'Kritisch' : 'Critical', tone: 'critical' };
-  if (state.isWarning) return { label: de ? 'Warnung' : 'Warning', tone: 'watch' };
-  if (state.healthSeverity === 'ok') return { label: de ? 'Gut' : 'Good', tone: 'success' };
+function runtimeHealthLabel(state: VehicleRuntimeState, locale: string): { label: string; tone: StatusTone } | null {
+  if (state.isCritical) return { label: dt(locale, 'dashboard.label.critical'), tone: 'critical' };
+  if (state.isWarning) return { label: dt(locale, 'dashboard.label.warning'), tone: 'watch' };
+  if (state.healthSeverity === 'ok') return { label: dt(locale, 'dashboard.good'), tone: 'success' };
   return null;
 }
 
@@ -78,7 +79,7 @@ export function CompactFleetDrawerVehicleRow({
 }: CompactFleetDrawerVehicleRowProps) {
   const de = locale === 'de';
   const canOpen = Boolean(row.vehicleId && onOpenVehicle);
-  const ctaLabel = de ? 'Öffnen' : 'Open';
+  const ctaLabel = dt(locale, 'dashboard.cta.open');
 
   const fleetDisplay = vehicle
     ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health, locale })
@@ -88,12 +89,12 @@ export function CompactFleetDrawerVehicleRow({
   const modelLine = vehicle ? fleetDrawerVehicleTitle(vehicle) : row.subtitle;
   const station = vehicle ? vehicleStationLabel(vehicle) : row.stationLabel ?? runtimeState?.stationLabel;
   const telemetryLabel = fleetDisplay?.telemetryLabel
-    ?? (runtimeState ? runtimeTelemetryLabel(runtimeState, de) : null);
+    ?? (runtimeState ? runtimeTelemetryLabel(runtimeState, locale) : null);
   const telemetryWarns = fleetDisplay?.showTelemetryWarning ?? runtimeState?.telemetryState === 'offline';
   const healthChip = fleetDisplay
     ? { label: fleetDisplay.healthDisplay.label, tone: fleetDisplay.healthDisplay.tone }
     : runtimeState
-      ? runtimeHealthLabel(runtimeState, de)
+      ? runtimeHealthLabel(runtimeState, locale)
       : null;
   const statusChip = fleetDisplay
     ? {
@@ -106,8 +107,8 @@ export function CompactFleetDrawerVehicleRow({
       }
     : runtimeState
       ? {
-          ...runtimeReadinessLabel(runtimeState, de),
-          title: runtimeReadinessLabel(runtimeState, de).label,
+          ...runtimeReadinessLabel(runtimeState, locale),
+          title: runtimeReadinessLabel(runtimeState, locale).label,
         }
       : null;
   const bookingSupplement = fleetDisplay?.bookingSupplement ?? null;

@@ -16,6 +16,7 @@ import {
 import { sc } from './service-center-ui';
 import { ServiceHistoryTimelineRow } from './ServiceHistoryTimelineRow';
 import { useServiceTaskLookups } from './useServiceTaskLookups';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { VehicleTaskDetailDrawer } from '../tasks/VehicleTaskDetailDrawer';
 
 interface ServiceHistoryPanelProps {
@@ -41,6 +42,7 @@ export function ServiceHistoryPanel({
   onOpenVendor,
   initialVehicleId,
 }: ServiceHistoryPanelProps) {
+  const { t } = useLanguage();
   const lookups = useServiceTaskLookups(vendors);
   const [filters, setFilters] = useState<ServiceHistoryFilters>(DEFAULT_SERVICE_HISTORY_FILTERS);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -64,8 +66,8 @@ export function ServiceHistoryPanel({
 
   const vehicleOptions = useMemo(() => {
     const ids = new Set<string>();
-    for (const t of localTasks) {
-      if (t.vehicleId) ids.add(t.vehicleId);
+    for (const task of localTasks) {
+      if (task.vehicleId) ids.add(task.vehicleId);
     }
     return [...ids]
       .map((id) => ({ id, label: buildVehicleLabel(lookups.vehicleMap.get(id) ?? null) }))
@@ -77,17 +79,16 @@ export function ServiceHistoryPanel({
 
   return (
     <div className={sc.panel}>
-      <p className={sc.sectionEyebrow}>Verlauf</p>
-      <h3 className={`${sc.sectionTitle} mb-1`}>Erledigte Wartungsaufgaben</h3>
+      <p className={sc.sectionEyebrow}>{t('serviceCenter.history.eyebrow')}</p>
+      <h3 className={`${sc.sectionTitle} mb-1`}>{t('serviceCenter.history.title')}</h3>
       <p className="text-[11px] text-muted-foreground mb-4 max-w-2xl leading-relaxed">
-        Abgeschlossene Service-, Reparatur- und Inspektionsaufgaben aus dem Task-System — keine separate
-        Service-Case-Historie.
+        {t('serviceCenter.history.subtitle')}
       </p>
 
       <div className="mb-4 rounded-xl border border-border/45 bg-muted/15 p-3 space-y-2">
         <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           <Filter className="w-3 h-3" />
-          Filter
+          {t('serviceCenter.history.filter')}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <select
@@ -95,7 +96,7 @@ export function ServiceHistoryPanel({
             onChange={(e) => setFilters((f) => ({ ...f, vehicleId: e.target.value }))}
             className={selectClass}
           >
-            <option value="ALL">Alle Fahrzeuge</option>
+            <option value="ALL">{t('serviceCenter.history.allVehicles')}</option>
             {vehicleOptions.map((v) => (
               <option key={v.id} value={v.id}>{v.label}</option>
             ))}
@@ -105,19 +106,24 @@ export function ServiceHistoryPanel({
             onChange={(e) => setFilters((f) => ({ ...f, vendorId: e.target.value }))}
             className={selectClass}
           >
-            <option value="ALL">Alle Partner</option>
+            <option value="ALL">{t('serviceCenter.history.allVendors')}</option>
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>{v.name}</option>
             ))}
           </select>
           <select
             value={filters.type}
-            onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value as ServiceHistoryFilters['type'] }))}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                type: e.target.value as ServiceHistoryFilters['type'],
+              }))
+            }
             className={selectClass}
           >
-            <option value="ALL">Alle Typen</option>
-            {HISTORY_TYPES.map((t) => (
-              <option key={t} value={t}>{TASK_TYPE_LABEL_DE[t]}</option>
+            <option value="ALL">{t('serviceCenter.history.allTypes')}</option>
+            {HISTORY_TYPES.map((taskType) => (
+              <option key={taskType} value={taskType}>{TASK_TYPE_LABEL_DE[taskType]}</option>
             ))}
           </select>
           <input
@@ -125,23 +131,25 @@ export function ServiceHistoryPanel({
             value={filters.dateFrom}
             onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
             className={selectClass}
-            aria-label="Von Datum"
+            aria-label={t('serviceCenter.history.dateFrom')}
           />
           <input
             type="date"
             value={filters.dateTo}
             onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
             className={selectClass}
-            aria-label="Bis Datum"
+            aria-label={t('serviceCenter.history.dateTo')}
           />
           <label className="flex items-center gap-2 text-[10px] text-muted-foreground px-1">
             <input
               type="checkbox"
               checked={filters.includeCancelled}
-              onChange={(e) => setFilters((f) => ({ ...f, includeCancelled: e.target.checked }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, includeCancelled: e.target.checked }))
+              }
               className="rounded border-border"
             />
-            Stornierte einbeziehen
+            {t('serviceCenter.history.includeCancelled')}
           </label>
         </div>
       </div>
@@ -153,8 +161,8 @@ export function ServiceHistoryPanel({
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="Noch keine erledigten Wartungsaufgaben"
-          description="Abgeschlossene Service- und Reparaturaufgaben erscheinen hier chronologisch."
+          title={t('serviceCenter.history.empty')}
+          description={t('serviceCenter.history.emptyDesc')}
         />
       ) : (
         <div className="space-y-6">
@@ -193,13 +201,14 @@ export function ServiceHistoryPanel({
         vehicle={
           selectedTaskId
             ? lookups.resolveVehicle(
-                localTasks.find((t) => t.id === selectedTaskId) ?? ({ vehicleId: null } as ApiTask),
+                localTasks.find((task) => task.id === selectedTaskId) ??
+                  ({ vehicleId: null } as ApiTask),
               )
             : null
         }
         orgMembers={lookups.orgMembers}
         onTaskUpdated={(task) => {
-          setLocalTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)));
+          setLocalTasks((prev) => prev.map((row) => (row.id === task.id ? task : row)));
         }}
       />
     </div>

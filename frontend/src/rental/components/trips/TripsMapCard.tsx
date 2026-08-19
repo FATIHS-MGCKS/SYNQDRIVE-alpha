@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
 import { useAddress } from '../../../lib/useAddress';
@@ -55,6 +56,7 @@ export function TripsMapCard({
   onBehaviorEventSelect,
   onMapReady,
 }: TripsMapCardProps) {
+  const {t, formattingLocale } = useLanguage();
   const isDark = isDarkMode;
   const [layers, setLayers] = useState<TripMapLayerState>(DEFAULT_LAYERS);
   const [popover, setPopover] = useState<TripMapPopoverState | null>(null);
@@ -101,6 +103,7 @@ export function TripsMapCard({
     onEventSelect: handleEventSelect,
     selectedBehaviorEventId,
     endpointLabels,
+    formattingLocale,
   });
 
   // Reset matched-route toggle when enrichment arrives
@@ -153,7 +156,7 @@ export function TripsMapCard({
             <h2 className={`${tv.sectionTitle} truncate`}>
               {selectedTrip
                 ? TRIPS_COPY.mapTitleTrip(
-                    new Date(selectedTrip.startTime).toLocaleDateString('de-DE', {
+                    new Date(selectedTrip.startTime).toLocaleDateString(formattingLocale, {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',
@@ -202,7 +205,7 @@ export function TripsMapCard({
               <p className="text-sm font-semibold text-foreground">{TRIPS_COPY.mapUnavailableTitle}</p>
               <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">{TRIPS_COPY.mapUnavailableHint}</p>
               {!hasMapboxToken && import.meta.env.DEV && (
-                <p className="mt-2 text-[9px] font-mono text-muted-foreground/80">VITE_MAPBOX_ACCESS_TOKEN fehlt</p>
+                <p className="mt-2 text-[9px] font-mono text-muted-foreground/80">{t('trips.mapboxTokenMissing')}</p>
               )}
             </div>
           </div>

@@ -29,6 +29,8 @@ import {
 import { FleetMapControls } from './FleetMapControls';
 import { FleetMapVehicleStatusHud } from './fleet-operator/FleetMapVehicleStatusHud';
 import { FleetCommandPanel } from './fleet-operator/FleetCommandPanel';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translateKey } from '../../i18n/LanguageContext';
 import {
   buildFleetVehicleContexts,
   buildStationFilterOptions,
@@ -47,13 +49,13 @@ interface MapSafetyBoundaryState {
 }
 
 class MapSafetyBoundary extends Component<
-  { children: ReactNode; isDarkMode?: boolean },
+  { children: ReactNode; isDarkMode?: boolean; locale: string },
   MapSafetyBoundaryState
 > {
   state: MapSafetyBoundaryState = { hasError: false, errorMessage: null };
 
   static getDerivedStateFromError(error: Error): MapSafetyBoundaryState {
-    return { hasError: true, errorMessage: error?.message ?? 'Map failed' };
+    return { hasError: true, errorMessage: error?.message ?? translateKey('en', 'fleet.map.mapFailed').text };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
@@ -62,10 +64,11 @@ class MapSafetyBoundary extends Component<
 
   render(): ReactNode {
     if (!this.state.hasError) return this.props.children;
+    const locale = this.props.locale === 'de' ? 'de' : 'en';
     return (
       <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-xl">
         <div className="text-center px-4">
-          <p className="text-xs font-semibold text-muted-foreground">Map unavailable</p>
+          <p className="text-xs font-semibold text-muted-foreground">{translateKey(locale, 'fleet.map.mapUnavailable').text}</p>
           {this.state.errorMessage && (
             <p className="mt-1 text-[10px] font-mono text-[color:var(--status-critical)] break-all max-w-xs">
               {this.state.errorMessage}
@@ -85,6 +88,7 @@ interface FleetViewProps {
 const KASSEL_CENTER: [number, number] = [9.4797, 51.3127];
 
 export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps) {
+  const { t, locale } = useLanguage();
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -366,8 +370,8 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
                 </span>
               </div>
               <p className="text-[9.5px] text-muted-foreground mt-0.5">
-                {station.ready} ready
-                {station.attention > 0 ? ` · ${station.attention} attention` : ''}
+                {t('fleet.map.stationReady', { count: station.ready })}
+                {station.attention > 0 ? ` · ${t('fleet.map.stationAttention', { count: station.attention })}` : ''}
               </p>
             </button>
           ))}
@@ -378,11 +382,11 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
 
   return (
     <div className="space-y-5">
-      {!embedded && <PageHeader title="Fleet Overview" />}
+      {!embedded && <PageHeader title={t('fleet.title')} />}
 
       {error && (
         <div className="sq-tone-critical rounded-xl px-3 py-2 text-[12px] font-medium animate-fade-up">
-          Fleet data could not be loaded: {error}
+          {t('fleet.map.loadError', { error })}
         </div>
       )}
 
@@ -391,7 +395,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
           ref={mapRef}
           className="surface-premium rounded-2xl overflow-hidden relative h-[280px] lg:h-[640px] animate-fade-up synq-map-hud-surface"
         >
-          <MapSafetyBoundary isDarkMode={systemDark}>
+          <MapSafetyBoundary isDarkMode={systemDark} locale={locale}>
             <MapboxMap
               ref={mapApiRef}
               center={mapCenter}
@@ -425,15 +429,15 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
           />
           <FleetMapVehicleStatusHud
             ctx={mapHudContext}
-            locale="de"
+            locale={locale}
             onRefresh={handleRefreshNow}
           />
           {filteredVehicles.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
               <div className="sq-map-liquid-empty px-5 py-4 rounded-2xl max-w-[280px] text-center">
-                <p className="text-[12px] font-semibold text-foreground">No vehicles in filter</p>
+                <p className="text-[12px] font-semibold text-foreground">{t('fleet.map.noVehiclesFiltered')}</p>
                 <p className="text-[11px] mt-1 text-muted-foreground">
-                  Adjust the station filter or check fleet assignments
+                  {t('fleet.map.noVehiclesFilteredHint')}
                 </p>
               </div>
             </div>

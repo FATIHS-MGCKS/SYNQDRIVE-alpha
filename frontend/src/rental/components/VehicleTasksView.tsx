@@ -39,6 +39,7 @@ import {
   VehicleTaskActionCenter,
 } from './tasks/VehicleTaskActionCenter';
 import { VehicleTaskDetailDrawer } from './tasks/VehicleTaskDetailDrawer';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from './ui/Icon';
 
 interface VehicleTasksViewProps {
@@ -85,6 +86,7 @@ export function VehicleTasksView({
   onOpenServiceCenter,
   tasksRefreshToken,
 }: VehicleTasksViewProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [filter, setFilter] = useState<VehicleTaskFilter>('all');
   const [rows, setRows] = useState<ApiTask[]>([]);
@@ -245,11 +247,11 @@ export function VehicleTasksView({
   if (error && !loading && tasks.length === 0) {
     return (
       <ErrorState
-        title="Aufgaben konnten nicht geladen werden"
-        description="Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+        title={t('serviceCenter.tasks.loadError')}
+        description={t('vehicle.tasks.loadErrorDescription')}
         error={IS_DEV ? error : undefined}
         onRetry={() => void loadTasks()}
-        retryLabel="Erneut laden"
+        retryLabel={t('common.reload')}
         className="surface-premium rounded-xl shadow-[var(--shadow-1)]"
       />
     );
@@ -264,7 +266,7 @@ export function VehicleTasksView({
         <div className="min-w-0">
           <p className="sq-section-label">Fahrzeugbetrieb</p>
           <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground font-display mt-0.5">
-            Aufgaben &amp; Aktionen
+            {t('vehicle.tasks.title')}
           </h3>
           <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
             {vehicleLabel}
@@ -291,7 +293,7 @@ export function VehicleTasksView({
             className="sm:hidden w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 sq-press"
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
-            Neue Aufgabe erstellen
+            {t('vehicle.tasks.createTask')}
           </button>
         </div>
       </header>
@@ -375,8 +377,8 @@ export function VehicleTasksView({
             <EmptyState
               compact
               icon={<Icon name="car" className="w-5 h-5" />}
-              title="Kein Fahrzeug ausgewählt"
-              description="Wählen Sie ein Fahrzeug aus, um dessen Aufgaben zu sehen."
+              title={t('vehicle.bookings.noVehicleSelected')}
+              description={t('vehicle.tasks.selectVehicleDescription')}
             />
           ) : filteredTasks.length === 0 ? (
             <EmptyState
@@ -405,7 +407,7 @@ export function VehicleTasksView({
                     className="sq-cta inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold"
                   >
                     <Icon name="plus" className="w-3.5 h-3.5" />
-                    Neue Aufgabe erstellen
+                    {t('vehicle.tasks.createTask')}
                   </button>
                 ) : undefined
               }
@@ -471,14 +473,13 @@ export function VehicleTasksView({
               className="mt-3 rounded-lg border border-[color:var(--status-attention)]/30 bg-[color:var(--status-attention-soft)] px-3 py-2 text-[11px] text-foreground"
               role="status"
             >
-              Die Liste konnte nicht aktualisiert werden. Angezeigt werden die zuletzt geladenen
-              Daten.{' '}
+              {t('vehicle.tasks.listRefreshFailed')}{' '}
               <button
                 type="button"
                 onClick={() => void loadTasks()}
                 className="font-semibold underline sq-press"
               >
-                Erneut laden
+                {t('common.reload')}
               </button>
             </div>
           )}
@@ -487,7 +488,7 @@ export function VehicleTasksView({
 
       {!loading && !hasOpenTasks && tasks.length > 0 && filter === 'all' && (
         <p className="text-[11px] text-center text-muted-foreground px-4">
-          Alle Aufgaben abgeschlossen oder storniert — Fahrzeug operativ frei.
+          {t('vehicle.tasks.allComplete')}
         </p>
       )}
 

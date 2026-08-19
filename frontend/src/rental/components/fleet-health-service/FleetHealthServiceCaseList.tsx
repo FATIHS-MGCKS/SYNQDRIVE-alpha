@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiServiceCase, Vendor } from '../../../lib/api';
 import { DataTable, EmptyState, ErrorState, StatusChip } from '../../../components/patterns';
 import {
@@ -61,6 +62,7 @@ function CaseFilterBar({
 }
 
 function CaseMobileCard({ row }: { row: FleetHealthServiceCaseListRow }) {
+  const { t } = useLanguage();
   return (
     <div
       className={`${fhs.interactiveRow} flex-col items-stretch gap-2`}
@@ -73,7 +75,7 @@ function CaseMobileCard({ row }: { row: FleetHealthServiceCaseListRow }) {
         </div>
         <div className="flex flex-wrap justify-end gap-1">
           <StatusChip tone="neutral">{row.statusLabel}</StatusChip>
-          {row.blocksRental ? <StatusChip tone="critical">Mietblockade</StatusChip> : null}
+          {row.blocksRental ? <StatusChip tone="critical">{t('fleetHealthService.cases.rentalBlock')}</StatusChip> : null}
         </div>
       </div>
 
@@ -84,7 +86,7 @@ function CaseMobileCard({ row }: { row: FleetHealthServiceCaseListRow }) {
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
         <div>
-          <dt className="text-muted-foreground">Priorität</dt>
+          <dt className="text-muted-foreground">{t('fleetHealthService.cases.priority')}</dt>
           <dd className="font-medium text-foreground">{row.priorityLabel}</dd>
         </div>
         <div>
@@ -96,11 +98,11 @@ function CaseMobileCard({ row }: { row: FleetHealthServiceCaseListRow }) {
           <dd className="font-medium text-foreground">{row.scheduledAtLabel ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Erw. Fertigstellung</dt>
+          <dt className="text-muted-foreground">{t('fleetHealthService.cases.expectedCompletion')}</dt>
           <dd className="font-medium text-foreground">{row.expectedReadyAtLabel ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Offene Tasks</dt>
+          <dt className="text-muted-foreground">{t('fleetHealthService.cases.openTasks')}</dt>
           <dd className="font-medium tabular-nums text-foreground">{row.openTasksCount}</dd>
         </div>
         <div>
@@ -129,6 +131,7 @@ export function FleetHealthServiceCaseList({
   error,
   onReload,
 }: FleetHealthServiceCaseListProps) {
+  const { t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const [activeFilter, setActiveFilter] = useState<FleetHealthServiceCaseFilter>('open');
 
@@ -184,7 +187,7 @@ export function FleetHealthServiceCaseList({
         },
         {
           key: 'priority',
-          header: 'Priorität',
+          header: t('fleetHealthService.cases.priority'),
           cell: (row: FleetHealthServiceCaseListRow) => row.priorityLabel,
         },
         {
@@ -199,12 +202,12 @@ export function FleetHealthServiceCaseList({
         },
         {
           key: 'expected',
-          header: 'Erw. Fertigstellung',
+          header: t('fleetHealthService.cases.expectedCompletion'),
           cell: (row: FleetHealthServiceCaseListRow) => row.expectedReadyAtLabel ?? '—',
         },
         {
           key: 'tasks',
-          header: 'Offene Tasks',
+          header: t('fleetHealthService.cases.openTasks'),
           align: 'right' as const,
           numeric: true,
           cell: (row: FleetHealthServiceCaseListRow) => row.openTasksCount,
@@ -223,7 +226,7 @@ export function FleetHealthServiceCaseList({
         },
         {
           key: 'rental',
-          header: 'Mietblockade',
+          header: t('fleetHealthService.cases.rentalBlock'),
           cell: (row: FleetHealthServiceCaseListRow) =>
             row.blocksRental ? (
               <StatusChip tone="critical">Ja</StatusChip>
@@ -243,17 +246,17 @@ export function FleetHealthServiceCaseList({
         align?: 'left' | 'right' | 'center';
         numeric?: boolean;
       }>,
-    [],
+    [t],
   );
 
   if (error && !loading) {
     return (
       <ErrorState
         compact
-        title="Servicefälle konnten nicht geladen werden."
+        title={t('fleetHealthService.cases.loadError')}
         description={error}
         onRetry={onReload}
-        retryLabel="Erneut laden"
+        retryLabel={t('common.reload')}
       />
     );
   }
@@ -283,13 +286,13 @@ export function FleetHealthServiceCaseList({
               compact
               title={
                 dataReady
-                  ? 'Keine Servicefälle in diesem Filter'
-                  : 'Servicefälle noch nicht geladen'
+                  ? t('fleetHealthService.cases.emptyFiltered')
+                  : t('fleetHealthService.cases.notLoadedYet')
               }
               description={
                 dataReady
-                  ? 'Passen Sie den Filter an oder legen Sie einen neuen Servicefall an.'
-                  : 'Die Servicefall-Liste wird geladen, sobald die Quelle bereit ist.'
+                  ? t('fleetHealthService.cases.emptyFilteredDesc')
+                  : t('fleetHealthService.cases.notLoadedDesc')
               }
             />
           }
@@ -299,18 +302,20 @@ export function FleetHealthServiceCaseList({
       <div className="space-y-2 md:hidden">
         {loading && rows.length === 0 ? (
           <p className="text-[11px] text-muted-foreground animate-pulse p-4">
-            Servicefälle werden geladen…
+            {t('fleetHealthService.cases.loading')}
           </p>
         ) : rows.length === 0 ? (
           <EmptyState
             compact
             title={
-              dataReady ? 'Keine Servicefälle in diesem Filter' : 'Servicefälle noch nicht geladen'
+              dataReady
+                ? t('fleetHealthService.cases.emptyFiltered')
+                : t('fleetHealthService.cases.notLoadedYet')
             }
             description={
               dataReady
-                ? 'Passen Sie den Filter an oder legen Sie einen neuen Servicefall an.'
-                : 'Die Servicefall-Liste wird geladen, sobald die Quelle bereit ist.'
+                ? t('fleetHealthService.cases.emptyFilteredDesc')
+                : t('fleetHealthService.cases.notLoadedDesc')
             }
           />
         ) : (

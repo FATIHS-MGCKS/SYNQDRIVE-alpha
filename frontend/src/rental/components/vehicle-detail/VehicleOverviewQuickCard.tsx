@@ -4,6 +4,7 @@ import type {
   VehicleOverviewLoadState,
 } from '../../lib/vehicle-overview.types';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   cardStatusAccentBorder,
   cardStatusDotClass,
@@ -40,11 +41,17 @@ export function VehicleOverviewQuickCard({
   targetTab,
   onNavigate,
 }: VehicleOverviewQuickCardProps) {
+  const { t, locale } = useLanguage();
   const isLoading = loadState === 'loading';
   const isUnavailable = loadState === 'unavailable' || loadState === 'error';
-  const statusText = cardStatusShortLabel(status);
+  const statusText = cardStatusShortLabel(status, locale);
   const showSubline = hasVisibleSubline(subline, headline);
-  const ariaLabel = `${label}: ${headline}${showSubline && subline ? `, ${subline}` : ''}. Status ${statusText}. Open ${label} tab.`;
+  const ariaLabel = t('vehicle.overview.openTabAria', {
+    label,
+    headline,
+    subline: showSubline && subline ? `, ${subline}` : '',
+    status: statusText,
+  });
 
   return (
     <button
@@ -100,7 +107,7 @@ export function VehicleOverviewQuickCard({
         ) : null}
 
         {isUnavailable ? (
-          <span className="sr-only">Data temporarily unavailable</span>
+          <span className="sr-only">{t('vehicle.overview.dataUnavailable')}</span>
         ) : null}
       </div>
     </button>

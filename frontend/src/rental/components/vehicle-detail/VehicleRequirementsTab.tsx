@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { ExternalLink, Pencil, RefreshCw, ShieldCheck } from 'lucide-react';
 import type { VehicleData } from '../../data/vehicles';
 import { useVehicleRentalRequirements } from '../../hooks/useVehicleRentalRequirements';
@@ -39,6 +40,7 @@ export function VehicleRequirementsTab({
   orgId,
   onOpenRentalRulesCenter,
 }: VehicleRequirementsTabProps) {
+  const { t } = useLanguage();
   const permissions = useRentalRulesPermissions();
   const canRead = permissions.canRead;
   const canManageOverrides = permissions.canManageOverrides;
@@ -70,8 +72,8 @@ export function VehicleRequirementsTab({
   if (!vehicleId) {
     return (
       <EmptyState
-        title="Kein Fahrzeug ausgewählt"
-        description="Wähle ein Fahrzeug aus der Flotte, um Mietvoraussetzungen anzuzeigen."
+        title={t('vehicle.bookings.noVehicleSelected')}
+        description={t('vehicle.bookings.selectVehicleHint')}
       />
     );
   }
@@ -79,7 +81,7 @@ export function VehicleRequirementsTab({
   if (!canRead) {
     return (
       <ErrorState
-        title="Kein Zugriff auf Mietvoraussetzungen"
+        title={t('vehicleDetail.requirements.noAccess')}
         description="Keine Berechtigung für Mietregeln. Bitte wende dich an einen Administrator."
       />
     );
@@ -96,10 +98,10 @@ export function VehicleRequirementsTab({
   if (error && !effective) {
     return (
       <ErrorState
-        title="Mietvoraussetzungen konnten nicht geladen werden"
+        title={t('vehicleDetail.requirements.loadError')}
         description={error}
         onRetry={() => void reload()}
-        retryLabel="Erneut laden"
+        retryLabel={t('common.reload')}
       />
     );
   }
@@ -156,7 +158,7 @@ export function VehicleRequirementsTab({
                 onClick={() => setOverrideOpen(true)}
               >
                 <Pencil className="h-3.5 w-3.5" />
-                Overrides bearbeiten
+                {t('vehicleDetail.requirements.editOverrides')}
               </button>
             )}
             {onOpenRentalRulesCenter && (
@@ -183,9 +185,9 @@ export function VehicleRequirementsTab({
 
       {incompleteRules && (
         <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 sm:hidden">
-          <p className="text-[12px] font-semibold text-foreground">Mietregeln unvollständig</p>
+          <p className="text-[12px] font-semibold text-foreground">{t('vehicleDetail.requirements.incomplete')}</p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-            Konfiguriere Organisationsregeln oder weise eine Fahrzeugkategorie zu.
+            {t('vehicleDetail.requirements.configureHint')}
           </p>
         </div>
       )}
@@ -193,9 +195,9 @@ export function VehicleRequirementsTab({
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-start">
         <section className="surface-elevated rounded-xl border border-border/70 surface-premium p-3 sm:p-4">
           <div className="mb-2.5">
-            <h3 className="text-[13px] font-semibold text-foreground">Gültige Mietvoraussetzungen</h3>
+            <h3 className="text-[13px] font-semibold text-foreground">{t('vehicleDetail.requirements.validRules')}</h3>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Diese Regeln gelten aktuell für dieses Fahrzeug.
+              {t('vehicleDetail.requirements.validRulesHint')}
             </p>
           </div>
 
@@ -219,7 +221,7 @@ export function VehicleRequirementsTab({
             <EmptyState
               compact
               icon={<ShieldCheck className="h-5 w-5" />}
-              title="Noch keine gültigen Regeln"
+              title={t('vehicleDetail.requirements.noValidRules')}
               description="Richte Mietregeln in der Administration ein, um Anforderungen hier zu sehen."
               action={
                 onOpenRentalRulesCenter ? (
@@ -228,7 +230,7 @@ export function VehicleRequirementsTab({
                     className="sq-btn sq-btn-primary min-h-9 text-[12px]"
                     onClick={onOpenRentalRulesCenter}
                   >
-                    Mietregeln öffnen
+                    {t('vehicleDetail.requirements.openRules')}
                   </button>
                 ) : undefined
               }

@@ -1,6 +1,7 @@
 import type { VehicleOverviewSummary } from '../../lib/vehicle-overview.types';
 import type { NavigateVehicleOverviewTarget } from '../../lib/vehicle-overview-navigation';
 import { vo } from './vehicle-overview-ui';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { VehicleOverviewReadinessStrip } from './VehicleOverviewReadinessStrip';
 import { VehicleOverviewSnapshotRow } from './VehicleOverviewSnapshotRow';
 
@@ -25,8 +26,9 @@ export function VehicleOverviewQuickView({
   orgId,
   vehicleId,
 }: VehicleOverviewQuickViewProps) {
+  const { t } = useLanguage();
   return (
-    <div className={vo.stack} aria-label="Vehicle overview summary">
+    <div className={vo.stack} aria-label={t('vehicle.overview.summaryAria')}>
       <VehicleOverviewReadinessStrip
         readiness={summary.readiness}
         isLoading={summary.isLoading}

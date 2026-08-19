@@ -5,6 +5,8 @@ import type {
   Vendor,
 } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
+import type { SupportedLocale } from '../../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../vehicle/vehicle-i18n';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { formatCostCents, TASK_PRIORITY_LABEL_DE } from '../../lib/service-task-semantics';
 import { isActiveServiceCase } from './fleet-health-service-case.view-model';
@@ -79,11 +81,14 @@ export interface FleetHealthServiceCaseListRow {
   updatedAtLabel: string;
 }
 
-export function formatServiceCaseDateTime(iso: string | null | undefined): string | null {
+export function formatServiceCaseDateTime(
+  iso: string | null | undefined,
+  locale?: SupportedLocale,
+): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString('de-DE', {
+  return date.toLocaleString(vehicleFormattingLocaleOrDefault(locale), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

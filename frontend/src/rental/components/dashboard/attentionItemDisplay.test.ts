@@ -38,9 +38,9 @@ describe('attentionItemDisplay', () => {
   });
 
   it('uses expand labels for collapsed and expanded states', () => {
-    expect(attentionExpandLabel(7, true, false)).toBe('Alle 7 anzeigen');
-    expect(attentionExpandLabel(7, true, true)).toBe('Weniger anzeigen');
-    expect(attentionExpandLabel(7, false, false)).toBe('Show all 7');
+    expect(attentionExpandLabel(7, 'de', false)).toBe('Alle 7 anzeigen');
+    expect(attentionExpandLabel(7, 'de', true)).toBe('Weniger anzeigen');
+    expect(attentionExpandLabel(7, 'en', false)).toBe('Show all 7');
   });
 
   it('enriches offline notifications with OBD unplugged when snapshot is false', () => {

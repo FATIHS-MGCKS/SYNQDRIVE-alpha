@@ -1,4 +1,5 @@
 import type { StatusTone } from '../../components/patterns';
+import { getFormattingLocale } from '../../i18n/locales';
 import { bookingRef } from '../components/bookings/bookingUtils';
 import type { VehicleOperationalReadModel } from './vehicle-operational-state';
 import {
@@ -54,7 +55,7 @@ type ZonedDateParts = {
 };
 
 function resolveLocaleTag(locale: VehicleOperationalDisplayLocale): string {
-  return locale === 'de' ? 'de-DE' : 'en-US';
+  return getFormattingLocale(locale === 'de' ? 'de' : 'en');
 }
 
 function resolveTimeZone(timeZone?: string): string {

@@ -17,10 +17,10 @@ import { fleetCommandReasonChipClass, fleetCommandRowSurfaceClass } from './flee
 import { selectIsCurrentlyAvailable } from '../../lib/vehicle-operational-state';
 import { VehicleOperationalStatusInlineHint } from '../fleet/VehicleOperationalStatusCallout';
 
-function fleetVehicleTitle(v: VehicleData): string {
+function fleetVehicleTitle(v: VehicleData, t: ReturnType<typeof useLanguage>['t']): string {
   const model = typeof v.model === 'string' ? v.model : '';
   const shortModel = model ? getShortModel(model) : '';
-  return [v.make, shortModel, v.year].filter(Boolean).join(' ') || model || 'Unknown vehicle';
+  return [v.make, shortModel, v.year].filter(Boolean).join(' ') || model || t('fleet.shell.unknownVehicle');
 }
 
 function vehicleStationLabel(v: VehicleData): string {
@@ -57,7 +57,7 @@ export function FleetOperatorRow({
   isDarkMode = false,
 }: FleetOperatorRowProps) {
   const { vehicle: v, visual, health } = ctx;
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const display = resolveFleetVehicleDisplayState(v, {
     rentalHealth: health,
     visual,
@@ -121,9 +121,9 @@ export function FleetOperatorRow({
           </span>
           <span
             className="min-w-0 truncate text-[10.5px] leading-snug text-muted-foreground"
-            title={fleetVehicleTitle(v)}
+            title={fleetVehicleTitle(v, t)}
           >
-            {fleetVehicleTitle(v)}
+            {fleetVehicleTitle(v, t)}
           </span>
         </div>
 
@@ -233,10 +233,10 @@ export function FleetOperatorRow({
               onDetailClick(e);
             }
           }}
-          aria-label="Open vehicle details"
+          aria-label={t('fleet.shell.openVehicleDetails')}
           className="sq-press inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
         >
-          Open
+          {t('fleet.shell.open')}
           <Icon name="arrow-right" className="h-3 w-3" />
         </button>
       </div>

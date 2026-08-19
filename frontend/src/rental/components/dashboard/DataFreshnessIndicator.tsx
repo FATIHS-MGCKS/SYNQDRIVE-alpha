@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -24,12 +25,12 @@ export function DataFreshnessIndicator({ vm }: DataFreshnessIndicatorProps) {
   return (
     <section
       className={panelShellClass('secondary', 'h-full')}
-      aria-label={de ? 'Datenvertrauen' : 'Data trust'}
+      aria-label={dt(locale, 'dashboard.dataTrust.title')}
     >
       <DashboardPanelHeader
         icon={<Icon name="shield-check" className="h-4 w-4" />}
         iconToneClass="sq-tone-info"
-        title={de ? 'Datenvertrauen' : 'Data trust'}
+        title={dt(locale, 'dashboard.dataTrust.title')}
         subtitle={
           de
             ? 'Verlässlichkeit der Dashboard-Quellen'
@@ -43,7 +44,7 @@ export function DataFreshnessIndicator({ vm }: DataFreshnessIndicatorProps) {
       />
 
       <div className={cn(PANEL_BODY_CLASS, 'flex flex-1 flex-col gap-3')}>
-        <ul className="divide-y divide-border/40" aria-label={de ? 'Datenbereiche' : 'Data domains'}>
+        <ul className="divide-y divide-border/40" aria-label={dt(locale, 'dashboard.dataTrust.domains')}>
           {dataTrust.domains.map((domain) => (
             <TrustDomainRow key={domain.id} domain={domain} locale={locale} />
           ))}
@@ -52,29 +53,29 @@ export function DataFreshnessIndicator({ vm }: DataFreshnessIndicatorProps) {
         {tlm.totalInScope > 0 && tlm.hasReliableTimestamps ? (
           <div className="rounded-xl border border-border/45 surface-premium/30 px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {de ? 'Telemetrie im Scope' : 'Telemetry in scope'}
+              {dt(locale, 'dashboard.dataTrust.telemetryInScope')}
             </p>
             <div className="mt-2.5 grid grid-cols-5 gap-2">
-              <MiniStat label={de ? 'Live' : 'Live'} value={tlm.liveCount} tone="success" />
-              <MiniStat label={de ? 'Standby' : 'Standby'} value={tlm.standbyCount} />
+              <MiniStat label={dt(locale, 'dashboard.label.live')} value={tlm.liveCount} tone="success" />
+              <MiniStat label={dt(locale, 'dashboard.label.standby')} value={tlm.standbyCount} />
               <MiniStat
-                label={de ? 'Soft Offline' : 'Soft offline'}
+                label={dt(locale, 'dashboard.label.softOffline')}
                 value={tlm.softOfflineCount}
                 tone={tlm.softOfflineCount > 0 ? 'watch' : 'neutral'}
               />
               <MiniStat
-                label={de ? 'Offline' : 'Offline'}
+                label={dt(locale, 'dashboard.label.offline')}
                 value={tlm.offlineCount}
                 tone={tlm.offlineCount > 0 ? 'critical' : 'neutral'}
               />
-              <MiniStat label={de ? 'Unbekannt' : 'Unknown'} value={tlm.unknownCount} />
+              <MiniStat label={dt(locale, 'dashboard.label.unknown')} value={tlm.unknownCount} />
             </div>
           </div>
         ) : null}
 
         <div className="mt-auto border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
           <div className="flex items-center justify-between gap-2">
-            <span>{de ? 'Letzter Refresh' : 'Last refresh'}</span>
+            <span>{dt(locale, 'dashboard.dataTrust.lastRefresh')}</span>
             <span className="font-medium tabular-nums text-foreground">{dataTrust.lastRefreshLabel}</span>
           </div>
         </div>
@@ -102,7 +103,7 @@ function TrustDomainRow({
           </StatusChip>
           {!domain.computable ? (
             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {de ? 'eingeschränkt' : 'limited'}
+              {dt(locale, 'dashboard.label.limited')}
             </span>
           ) : null}
         </div>

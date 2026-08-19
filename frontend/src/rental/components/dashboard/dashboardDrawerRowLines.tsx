@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { cn } from '../../../components/ui/utils';
 import type { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
@@ -94,6 +95,7 @@ export function DrawerCustomerBnrRow({
   de,
   className,
 }: DrawerCustomerBnrRowProps) {
+  const locale = de ? 'de' : 'en';
   const customer = customerName ?? parseDrawerCustomerName(subtitle);
   const bnr = formatDrawerBnrLabel(bookingRef);
   if (!customer && !bnr) return null;
@@ -102,7 +104,7 @@ export function DrawerCustomerBnrRow({
     <span className={cn('inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 text-[10.5px] leading-snug text-muted-foreground', className)}>
       {customer ? (
         <span className="shrink-0">
-          {de ? 'Kunde:' : 'Customer:'} {customer}
+          {dt(locale, 'dashboard.drilldown.customerPrefix')} {customer}
         </span>
       ) : null}
       {bnr ? <span className="shrink-0 whitespace-nowrap tabular-nums">{bnr}</span> : null}

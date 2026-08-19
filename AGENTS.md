@@ -213,3 +213,13 @@ cd frontend && npm test
 - DIMO Segments are canonical trip boundaries; use DIMO MCP for DIMO work.
 - Figma is visual source of truth; codebase is functional source of truth.
 - AI Upload: never auto-apply unconfirmed extraction results.
+
+## Internationalization (i18n)
+
+SynqDrive officially supports **9 product locales**: `de`, `en`, `pl`, `fr`, `cs`, `nl`, `es`, `tr`, `it`.
+
+- Canonical locale registry: `frontend/src/i18n/locales.ts`
+- Mandatory rule for user-facing frontend work: `.cursor/rules/i18n.mdc`
+- New or changed UI copy must use the canonical localization architecture (`frontend/src/rental/i18n/*`); do not add competing i18n frameworks.
+- Agents changing product copy must keep all 9 supported locales in mind; no supported locale may silently disappear.
+- Structural guardrails: `cd frontend && npm run i18n:check`

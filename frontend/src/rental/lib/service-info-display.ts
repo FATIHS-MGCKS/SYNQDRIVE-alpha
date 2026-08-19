@@ -1,4 +1,6 @@
 import type { NextServiceCompliance, ServiceInfoStatus, ServiceTrackingStatus } from '../../lib/api';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 
 export type NextServiceUiTone = 'neutral' | 'good' | 'warning' | 'critical' | 'info';
 export type ComplianceUiStatus = 'no_data' | 'valid' | 'due_soon' | 'overdue';
@@ -61,7 +63,7 @@ export function formatLastUpdatedDe(iso: string | null | undefined): string | nu
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString('de-DE', {
+  return d.toLocaleString(vehicleFormattingLocaleOrDefault(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -83,7 +85,7 @@ function formatTrackedRemaining(days: number | null, km: number | null, overdue:
       parts.push(`${Math.abs(days)} Tage`);
     }
     if (km != null && km < 0) {
-      parts.push(`${Math.abs(km).toLocaleString('de-DE')} km`);
+      parts.push(`${Math.abs(km).toLocaleString(vehicleFormattingLocaleOrDefault())} km`);
     }
     if (parts.length > 0) {
       return `Service laut HM/OEM überfällig (seit ${parts.join(' / ')})`;
@@ -94,13 +96,13 @@ function formatTrackedRemaining(days: number | null, km: number | null, overdue:
   const hasDays = days != null && days >= 0;
   const hasKm = km != null && km >= 0;
   if (hasDays && hasKm) {
-    return `Noch ${days} Tage / ${km.toLocaleString('de-DE')} km bis zum nächsten Service`;
+    return `Noch ${days} Tage / ${km.toLocaleString(vehicleFormattingLocaleOrDefault())} km bis zum nächsten Service`;
   }
   if (hasDays) {
     return `Noch ${days} Tage bis zum nächsten Service`;
   }
   if (hasKm) {
-    return `Noch ${km.toLocaleString('de-DE')} km bis zum nächsten Service`;
+    return `Noch ${km.toLocaleString(vehicleFormattingLocaleOrDefault())} km bis zum nächsten Service`;
   }
   return 'Next Service aktiv (HM/OEM)';
 }
@@ -220,7 +222,7 @@ export function buildTuvComplianceDisplay(si: ServiceInfoStatus | null | undefin
   const days = si?.tuvRemainingDays ?? null;
   const overdue = si?.tuvOverdue === true;
   const validTill = si?.tuvValidTill
-    ? new Date(si.tuvValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    ? new Date(si.tuvValidTill).toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit', year: 'numeric' })
     : null;
 
   if (!si?.tuvValidTill || days == null) {
@@ -267,7 +269,7 @@ export function buildBokraftComplianceDisplay(si: ServiceInfoStatus | null | und
   const days = si?.bokraftRemainingDays ?? null;
   const overdue = si?.bokraftOverdue === true;
   const validTill = si?.bokraftValidTill
-    ? new Date(si.bokraftValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    ? new Date(si.bokraftValidTill).toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit', year: 'numeric' })
     : null;
 
   if (!si?.bokraftValidTill || days == null) {

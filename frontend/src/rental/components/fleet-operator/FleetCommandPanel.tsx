@@ -14,19 +14,21 @@ import {
 } from '../../lib/fleet-operator-panel';
 import { FleetOperatorRow } from './FleetOperatorRow';
 import { CommandCountBadge, PanelStatusChip } from './fleetOperatorUi';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 const COMMAND_TABS: Array<{
   key: FleetCommandTab;
-  label: string;
-  shortLabel?: string;
+  labelKey: TranslationKey;
+  shortLabelKey: TranslationKey;
   tone?: 'success' | 'brand' | 'warning' | 'critical' | 'neutral';
 }> = [
-  { key: 'All', label: 'All', shortLabel: 'All', tone: 'neutral' },
-  { key: 'Available', label: 'Available', shortLabel: 'Avail.', tone: 'success' },
-  { key: 'Reserved', label: 'Reserved', shortLabel: 'Res.', tone: 'warning' },
-  { key: 'Active', label: 'Active Rented', shortLabel: 'Active', tone: 'brand' },
-  { key: 'Maintenance', label: 'Maint./Blocked', shortLabel: 'Maint.', tone: 'critical' },
-  { key: 'Unknown', label: 'Unknown', shortLabel: 'Unk.', tone: 'neutral' },
+  { key: 'All', labelKey: 'fleet.shell.tab.all', shortLabelKey: 'fleet.shell.tab.allShort', tone: 'neutral' },
+  { key: 'Available', labelKey: 'fleet.shell.tab.available', shortLabelKey: 'fleet.shell.tab.availableShort', tone: 'success' },
+  { key: 'Reserved', labelKey: 'fleet.shell.tab.reserved', shortLabelKey: 'fleet.shell.tab.reservedShort', tone: 'warning' },
+  { key: 'Active', labelKey: 'fleet.shell.tab.activeRented', shortLabelKey: 'fleet.shell.tab.activeShort', tone: 'brand' },
+  { key: 'Maintenance', labelKey: 'fleet.shell.tab.maintenance', shortLabelKey: 'fleet.shell.tab.maintenanceShort', tone: 'critical' },
+  { key: 'Unknown', labelKey: 'fleet.shell.tab.unknown', shortLabelKey: 'fleet.shell.tab.unknownShort', tone: 'neutral' },
 ];
 
 export interface FleetCommandPanelProps {
@@ -101,6 +103,7 @@ export function FleetCommandPanel({
   futureBookingOnly = false,
   onFutureBookingOnlyChange,
 }: FleetCommandPanelProps) {
+  const { t } = useLanguage();
   const severityOptions = useMemo<ResolveFleetCommandRowSeverityOptions>(
     () => ({ canonicalCriticalVehicleIds }),
     [canonicalCriticalVehicleIds],
@@ -133,18 +136,18 @@ export function FleetCommandPanel({
     <>
       {attentionStats.critical > 0 && (
         <PanelStatusChip
-          label={`${attentionStats.critical} Critical`}
+          label={t('fleet.shell.criticalCount', { count: attentionStats.critical })}
           tone="critical"
         />
       )}
       {attentionStats.warning > 0 && (
         <PanelStatusChip
-          label={`${attentionStats.warning} Warning`}
+          label={t('fleet.shell.warningCount', { count: attentionStats.warning })}
           tone="warning"
         />
       )}
       {attentionStats.critical === 0 && attentionStats.warning === 0 && (
-        <PanelStatusChip label="No attention" tone="neutral" />
+        <PanelStatusChip label={t('fleet.shell.noAttention')} tone="neutral" />
       )}
     </>
   );
@@ -154,7 +157,7 @@ export function FleetCommandPanel({
       <div className="p-3 pb-0 border-b border-border/40">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground shrink-0">
-            Fleet Command
+            {t('fleet.shell.commandTitle')}
           </h3>
           <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
             {attentionChips}
@@ -173,7 +176,7 @@ export function FleetCommandPanel({
             type="search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Plate, make, model…"
+            placeholder={t('fleet.shell.searchPlaceholder')}
             className="w-full pl-8 pr-3 py-2 rounded-xl border border-border/60 bg-muted/30 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)]"
           />
         </div>
@@ -194,8 +197,8 @@ export function FleetCommandPanel({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <span className="sm:hidden">{tab.shortLabel ?? tab.label}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{t(tab.shortLabelKey)}</span>
+                <span className="hidden sm:inline">{t(tab.labelKey)}</span>
                 <CommandCountBadge count={count} tone={tab.tone} active={isActive} />
               </button>
             );
@@ -211,7 +214,7 @@ export function FleetCommandPanel({
               onChange={(e) => onFutureBookingOnlyChange(e.target.checked)}
               className="h-3.5 w-3.5 rounded border-border accent-[color:var(--brand)]"
             />
-            <span>With future booking</span>
+            <span>{t('fleet.shell.withFutureBooking')}</span>
           </label>
         ) : null}
       </div>
@@ -223,7 +226,7 @@ export function FleetCommandPanel({
               <span className="font-semibold text-foreground">
                 {hiddenSelectedVehicle.vehicle.license}
               </span>{' '}
-              hidden by filter
+              {t('fleet.shell.hiddenByFilter')}
             </p>
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -231,7 +234,7 @@ export function FleetCommandPanel({
                 onClick={onRevealHiddenSelection}
                 className="text-[10px] font-semibold text-[color:var(--brand)] hover:underline"
               >
-                Show
+                {t('fleet.shell.show')}
               </button>
               <span className="text-muted-foreground">·</span>
               <button
@@ -239,7 +242,7 @@ export function FleetCommandPanel({
                 onClick={onClearSelection}
                 className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
               >
-                Clear
+                {t('fleet.shell.clear')}
               </button>
             </div>
           </div>

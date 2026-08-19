@@ -1,4 +1,6 @@
 import type { ApiTask, VehicleTripAnalytics, VehicleTripStats } from '../../lib/api';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import type { VehicleData } from '../data/vehicles';
 import type { DamageStatsResponse } from './damage.types';
 import type { VehicleBookingOperatorInput } from './vehicle-booking-operator.utils';
@@ -34,15 +36,15 @@ function resolveLoadState(
   return 'ready';
 }
 
-function formatClock(date: Date, locale = 'en-GB'): string {
-  return new Intl.DateTimeFormat(locale, {
+function formatClock(date: Date, formattingLocale = vehicleFormattingLocaleOrDefault()): string {
+  return new Intl.DateTimeFormat(formattingLocale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
 }
 
-function formatShortDateTime(date: Date, locale = 'en-GB'): string {
-  return new Intl.DateTimeFormat(locale, {
+function formatShortDateTime(date: Date, formattingLocale = vehicleFormattingLocaleOrDefault()): string {
+  return new Intl.DateTimeFormat(formattingLocale, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',

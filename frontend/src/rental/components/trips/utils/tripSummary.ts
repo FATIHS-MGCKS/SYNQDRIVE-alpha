@@ -1,4 +1,6 @@
 import type { TripBehaviorEvent } from '../../../../lib/api';
+import type { SupportedLocale } from '../../../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../../vehicle/vehicle-i18n';
 import type { TripTimelineTrip } from '../trips.types';
 import { resolveNotableEventCount } from '../behavior-event-count.utils';
 
@@ -64,11 +66,11 @@ export function computeTripsPeriodSummary(
   };
 }
 
-export function formatSelectedPeriodLabel(selectedDate?: string): string {
+export function formatSelectedPeriodLabel(selectedDate?: string, locale?: SupportedLocale): string {
   if (!selectedDate) return 'Gesamter Verlauf';
   const [y, m, d] = selectedDate.split('-').map(Number);
   const date = new Date(y, (m || 1) - 1, d || 1);
-  return date.toLocaleDateString('de-DE', {
+  return date.toLocaleDateString(vehicleFormattingLocaleOrDefault(locale), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -77,11 +79,11 @@ export function formatSelectedPeriodLabel(selectedDate?: string): string {
 }
 
 /** Compact date for the Trips overview card header (title row). */
-export function formatSelectedPeriodHeaderDate(selectedDate?: string): string {
+export function formatSelectedPeriodHeaderDate(selectedDate?: string, locale?: SupportedLocale): string {
   if (!selectedDate) return 'Gesamter Verlauf';
   const [y, m, d] = selectedDate.split('-').map(Number);
   const date = new Date(y, (m || 1) - 1, d || 1);
-  return date.toLocaleDateString('de-DE', {
+  return date.toLocaleDateString(vehicleFormattingLocaleOrDefault(locale), {
     weekday: 'short',
     day: 'numeric',
     month: 'long',

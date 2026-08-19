@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from './dashboard-i18n';
 import type { StatusTone } from '../../../components/patterns';
 import {
   dashboardStationIdToFilter,
@@ -47,23 +48,13 @@ export function kpiToneToStatus(tone: KpiTone): StatusTone {
 }
 
 export function resolveIntlLocale(locale: string): string {
-  const lm: Record<string, string> = {
-    en: 'en-US',
-    de: 'de-DE',
-    fr: 'fr-FR',
-    nl: 'nl-NL',
-    es: 'es-ES',
-    it: 'it-IT',
-    pl: 'pl-PL',
-    cs: 'cs-CZ',
-  };
-  return lm[locale] || 'en-US';
+  return dashboardFormattingLocale(locale);
 }
 
 export function formatApiTime(iso: string | undefined, locale: string): string {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleTimeString(locale === 'de' ? 'de-DE' : 'en-US', {
+    return new Date(iso).toLocaleTimeString(dashboardFormattingLocale(locale), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -429,11 +420,11 @@ export function formatLastSyncLabel(
     .map((iso) => (iso ? Date.parse(iso) : NaN))
     .filter((t) => Number.isFinite(t));
   if (candidates.length === 0) {
-    return locale === 'de' ? 'Kein Sync' : 'No sync yet';
+    return dt(locale, 'dashboard.sync.noSync');
   }
   const latest = Math.max(...candidates);
   const diffMin = Math.round((Date.now() - latest) / 60_000);
-  if (diffMin < 1) return locale === 'de' ? 'Gerade eben' : 'Just now';
+  if (diffMin < 1) return dt(locale, 'dashboard.sync.justNow');
   if (diffMin < 60) return locale === 'de' ? `vor ${diffMin} Min.` : `${diffMin}m ago`;
   const h = Math.floor(diffMin / 60);
   return locale === 'de' ? `vor ${h} Std.` : `${h}h ago`;
@@ -458,7 +449,7 @@ export function buildControlCenterKpis(input: {
   insightsLoaded: boolean;
   readyOptions?: ReadyToRentOptions;
 }): ControlCenterKpi[] {
-  const noData = input.locale === 'de' ? '—' : 'No data';
+  const noData = dt(input.locale, 'dashboard.kpi.noData');
   const ready =
     input.fleetLoaded ? countReadyToRent(input.availableVehicles, input.readyOptions) : null;
   const dueSoon = input.todayBookingsLoaded && !input.todayBookingsError
@@ -476,18 +467,18 @@ export function buildControlCenterKpis(input: {
   return [
     {
       id: 'ready-to-rent',
-      label: input.locale === 'de' ? 'Bereit' : 'Ready',
+      label: dt(input.locale, 'dashboard.kpi.ready'),
       displayValue: ready == null ? noData : String(ready),
       numericValue: ready,
       tone: ready != null && ready > 0 ? 'success' : 'neutral',
       hint:
         input.availableVehicles.length > 0
-          ? `${input.availableVehicles.length} ${input.locale === 'de' ? 'verfügbar' : 'available'}`
+          ? `${input.availableVehicles.length} ${dt(input.locale, 'dashboard.kpi.availableSuffix')}`
           : undefined,
     },
     {
       id: 'active-rented',
-      label: input.locale === 'de' ? 'Aktiv / Vermietet' : 'Active / Rented',
+      label: dt(input.locale, 'dashboard.kpi.activeRented'),
       displayValue: input.fleetLoaded ? String(input.activeRentedCount) : noData,
       numericValue: input.fleetLoaded ? input.activeRentedCount : null,
       tone: input.activeRentedCount > 0 ? 'info' : 'neutral',
@@ -501,7 +492,7 @@ export function buildControlCenterKpis(input: {
     },
     {
       id: 'overdue-returns',
-      label: input.locale === 'de' ? 'Überfällige Rückgaben' : 'Overdue Returns',
+      label: dt(input.locale, 'dashboard.kpi.overdueReturns'),
       displayValue:
         input.todayBookingsLoaded && !input.todayBookingsError
           ? String(input.overdueReturns)
@@ -513,14 +504,14 @@ export function buildControlCenterKpis(input: {
     },
     {
       id: 'blocked-maintenance',
-      label: input.locale === 'de' ? 'Wartung / Blockiert' : 'Blocked / Maintenance',
+      label: dt(input.locale, 'dashboard.kpi.blockedMaintenance'),
       displayValue: input.fleetLoaded ? String(input.maintenanceCount) : noData,
       numericValue: input.fleetLoaded ? input.maintenanceCount : null,
       tone: input.maintenanceCount > 0 ? 'watch' : 'neutral',
     },
     {
       id: 'critical-alerts',
-      label: input.locale === 'de' ? 'Kritische Alerts' : 'Critical Alerts',
+      label: dt(input.locale, 'dashboard.kpi.criticalAlerts'),
       displayValue:
         !input.insightsLoaded || input.criticalAlerts == null
           ? noData

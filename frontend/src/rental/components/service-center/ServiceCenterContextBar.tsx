@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useFleetVehicles } from '../../FleetContext';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
 import { buildVehicleLabel } from '../../lib/service-task-semantics';
@@ -15,6 +16,7 @@ export function ServiceCenterContextBar({
   vendorName,
   onClear,
 }: ServiceCenterContextBarProps) {
+  const { t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const vehicle = context.vehicleId
     ? fleetVehicles.find((v) => v.id === context.vehicleId)
@@ -33,7 +35,7 @@ export function ServiceCenterContextBar({
   return (
     <div className={`${sc.panel} flex flex-wrap items-center justify-between gap-2 py-2.5 px-3`}>
       <p className="text-[10px] text-muted-foreground">
-        <span className="font-semibold text-foreground">Kontext: </span>
+        <span className="font-semibold text-foreground">{t('serviceCenter.context.label')} </span>
         {parts.join(' · ')}
       </p>
       <button
@@ -42,7 +44,7 @@ export function ServiceCenterContextBar({
         className="inline-flex items-center gap-1 rounded-md border border-border/60 px-2 py-1 text-[10px] font-semibold hover:bg-muted/40 sq-press"
       >
         <X className="w-3 h-3" />
-        Filter zurücksetzen
+        {t('serviceCenter.context.resetFilter')}
       </button>
     </div>
   );

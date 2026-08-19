@@ -18,6 +18,7 @@ import {
   unwrapBookingListMeta,
   unwrapBookingListResponse,
 } from './bookings/bookingUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from './ui/Icon';
 import { VehicleAvailabilityTimeline } from './vehicle-bookings/VehicleAvailabilityTimeline';
 import { VehicleBookingQuickDrawer } from './vehicle-bookings/VehicleBookingQuickDrawer';
@@ -103,6 +104,7 @@ export function VehicleBookingsView({
   onOpenBooking,
   onOpenVehicleTasks,
 }: VehicleBookingsViewProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [bookings, setBookings] = useState<VehicleBookingRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -217,10 +219,10 @@ export function VehicleBookingsView({
   if (error && !loading && bookings.length === 0) {
     return (
       <ErrorState
-        title="Buchungsplan nicht verfügbar"
+        title={t('vehicle.bookings.plannerUnavailable')}
         description="Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
         onRetry={() => void loadBookings()}
-        retryLabel="Erneut laden"
+        retryLabel={t('common.reload')}
         className={`${vb.section} ${vb.sectionBody}`}
       />
     );
@@ -240,9 +242,9 @@ export function VehicleBookingsView({
 
       {!vehicle?.id ? (
         <div className={`${vb.section} ${vb.sectionBody} text-center`} role="status">
-          <p className="text-[13px] font-semibold text-foreground">Kein Fahrzeug ausgewählt</p>
+          <p className="text-[13px] font-semibold text-foreground">{t('vehicle.bookings.noVehicleSelected')}</p>
           <p className={`${vb.subtitle} mt-1`}>
-            Wählen Sie ein Fahrzeug, um Buchungen und Verfügbarkeit zu sehen.
+            {t('vehicle.bookings.selectVehicleHint')}
           </p>
         </div>
       ) : (
@@ -277,7 +279,7 @@ export function VehicleBookingsView({
 
       {truncated && !loading && (
         <p className="text-[11px] text-[color:var(--status-attention)] px-1" role="status">
-          Hinweis: Es gibt mehr Buchungen im Zeitraum als geladen werden konnten.
+          {t('vehicle.bookings.truncatedHint')}
         </p>
       )}
 
@@ -292,7 +294,7 @@ export function VehicleBookingsView({
             onClick={() => void loadBookings()}
             className={`font-semibold underline ${vb.focusRing}`}
           >
-            Erneut laden
+            {t('common.reload')}
           </button>
         </div>
       )}
@@ -300,12 +302,12 @@ export function VehicleBookingsView({
       <section className={vb.section} aria-labelledby="vb-agenda-title">
         <header className={`${vb.sectionHeader} flex items-start justify-between gap-3`}>
           <div>
-            <p className="sq-section-label">Historie &amp; Plan</p>
+            <p className="sq-section-label">{t('vehicle.bookings.historyAndPlan')}</p>
             <h3 id="vb-agenda-title" className={vb.titleSm}>
               Buchungsagenda
             </h3>
             <p className={`${vb.subtitle} mt-0.5`}>
-              Gruppiert nach operativem Status im gewählten Zeitraum.
+              {t('vehicle.bookings.groupedByStatus')}
             </p>
           </div>
         </header>
@@ -317,7 +319,7 @@ export function VehicleBookingsView({
             <EmptyState
               compact
               icon={<Icon name="calendar" className="w-5 h-5" aria-hidden />}
-              title="Keine Buchungen im Zeitraum"
+              title={t('vehicle.bookings.noBookingsInPeriod')}
               description="Dieses Fahrzeug ist im gewählten Horizont vollständig frei."
               action={
                 onCreateBooking ? (
@@ -327,7 +329,7 @@ export function VehicleBookingsView({
                     className={`sq-cta mt-2 ${vbActionClass(true)}`}
                   >
                     <Icon name="plus" className="w-3.5 h-3.5" aria-hidden />
-                    Neue Buchung anlegen
+                    {t('vehicle.bookings.createBooking')}
                   </button>
                 ) : undefined
               }

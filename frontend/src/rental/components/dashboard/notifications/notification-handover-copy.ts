@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from '../dashboard-i18n';
 import type { VehicleData } from '../../../data/vehicles';
 import { formatFleetDateTime } from '../../../../lib/formatVehicleDisplay';
 import { bookingRef } from '../../bookings/bookingUtils';
@@ -18,13 +19,24 @@ function parseTimeMs(iso?: string | null): number | null {
 }
 
 function formatOverdueDuration(minutes: number, locale: string): string {
-  const de = locale === 'de';
   const safe = Math.max(0, Math.round(minutes));
   const hours = Math.floor(safe / 60);
   const mins = safe % 60;
   const parts: string[] = [];
-  if (hours > 0) parts.push(de ? `${hours} Std.` : `${hours}h`);
-  if (mins > 0 || hours === 0) parts.push(de ? `${mins} Min.` : `${mins}m`);
+  if (hours > 0) {
+    parts.push(
+      locale === 'de'
+        ? dt(locale, 'dashboard.time.hoursShortDe', { count: hours })
+        : dt(locale, 'dashboard.time.hoursShort', { count: hours }),
+    );
+  }
+  if (mins > 0 || hours === 0) {
+    parts.push(
+      locale === 'de'
+        ? dt(locale, 'dashboard.time.minutesShortDe', { count: mins })
+        : dt(locale, 'dashboard.time.minutesShort', { count: mins }),
+    );
+  }
   return parts.join(' ');
 }
 
@@ -67,23 +79,21 @@ export function buildOverdueHandoverIssueHeadline(
 ): string {
   const kind = resolveHandoverKind(item);
   const duration = formatOverdueDuration(resolveOverdueMinutes(item, referenceNowMs), locale);
-  const de = locale === 'de';
   if (kind === 'return') {
-    return de ? `Rückgabe überfällig seit ${duration}` : `Return overdue since ${duration}`;
+    return dt(locale, 'dashboard.handover.returnOverdueSince', { duration });
   }
-  return de ? `Abholung überfällig seit ${duration}` : `Pickup overdue since ${duration}`;
+  return dt(locale, 'dashboard.handover.pickupOverdueSince', { duration });
 }
 
 export function resolveOverdueHandoverEyebrow(item: ActionQueueItem, locale: string): string {
   const kind = resolveHandoverKind(item);
-  const de = locale === 'de';
   if (kind === 'return') {
-    return de ? 'Überfällige Rückgabe' : 'Overdue return';
+    return dt(locale, 'dashboard.handover.overdueReturn');
   }
   if (kind === 'pickup') {
-    return de ? 'Überfällige Übergabe' : 'Overdue handover';
+    return dt(locale, 'dashboard.handover.overdueHandover');
   }
-  return de ? 'Überfällige Übergabe' : 'Overdue handover';
+  return dt(locale, 'dashboard.handover.overdueHandover');
 }
 
 export function buildHandoverEntityContext(
@@ -111,15 +121,15 @@ export function buildOverdueHandoverDetailFields(
   const bookingNumber = tile.bookingNumber ?? (tile.bookingId ? bookingRef(tile.bookingId) : '');
   const appointmentIso = kind === 'return' ? tile.endDate : tile.startDate;
   const appointmentLabel = kind === 'return'
-    ? (de ? 'Rückgabe-Termin' : 'Return appointment')
-    : (de ? 'Abhol-Termin' : 'Pickup appointment');
+    ? (dt(locale, 'dashboard.handover.returnAppointment'))
+    : (dt(locale, 'dashboard.handover.pickupAppointment'));
 
   const fields: NotificationDetailField[] = [];
   if (bookingNumber) fields.push({ label: 'BNR', value: bookingNumber });
-  if (tile.customer) fields.push({ label: de ? 'Kunde' : 'Customer', value: tile.customer });
-  if (tile.station) fields.push({ label: de ? 'Station' : 'Station', value: tile.station });
+  if (tile.customer) fields.push({ label: dt(locale, 'dashboard.label.customer'), value: tile.customer });
+  if (tile.station) fields.push({ label: dt(locale, 'dashboard.label.station'), value: tile.station });
   if (appointmentIso) {
-    const formatted = formatFleetDateTime(appointmentIso, locale === 'de' ? 'de-DE' : 'en-US');
+    const formatted = formatFleetDateTime(appointmentIso, dashboardFormattingLocale(locale));
     if (formatted) fields.push({ label: appointmentLabel, value: formatted });
   }
   return fields;

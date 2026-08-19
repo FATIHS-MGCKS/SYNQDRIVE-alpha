@@ -12,6 +12,7 @@ import {
   getFleetMapToneHex,
 } from '../lib/fleetVisualState';
 import { formatFleetMapRefreshAgo } from '../lib/fleet-map-sync';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export interface FleetMapControlsProps {
   lastFetchedAt: number | null;
@@ -42,6 +43,7 @@ export function FleetMapControls({
   onLocateSelected,
   onToggleStations,
 }: FleetMapControlsProps) {
+  const { t } = useLanguage();
   const [legendOpen, setLegendOpen] = useState(false);
 
   return (
@@ -55,14 +57,14 @@ export function FleetMapControls({
           className="pointer-events-auto"
         >
           <div className="liquid-glass-lens__panel-copy">
-            <p className="liquid-glass-lens__panel-title">Fleet Map</p>
+            <p className="liquid-glass-lens__panel-title">{t('fleet.map.title')}</p>
             <p className="liquid-glass-lens__panel-meta tabular-nums">
-              Updated {formatFleetMapRefreshAgo(lastFetchedAt)}
+              {t('fleet.map.updated', { ago: formatFleetMapRefreshAgo(lastFetchedAt) })}
             </p>
             <p className="liquid-glass-lens__panel-meta liquid-glass-lens__panel-meta--subtle">
               {loading
-                ? 'Refreshing…'
-                : `Auto-refresh in ${countdownSec}s`}
+                ? t('fleet.map.refreshing')
+                : t('fleet.map.autoRefreshIn', { seconds: countdownSec })}
             </p>
           </div>
           <LiquidGlassLens
@@ -81,7 +83,7 @@ export function FleetMapControls({
                 className={cn('liquid-glass-lens__panel-action__icon shrink-0', loading && 'animate-spin')}
                 aria-hidden
               />
-              <span className="liquid-glass-lens__panel-action__label">Refresh now</span>
+              <span className="liquid-glass-lens__panel-action__label">{t('fleet.map.refreshNow')}</span>
             </button>
           </LiquidGlassLens>
         </LiquidGlassLens>
@@ -106,13 +108,13 @@ export function FleetMapControls({
           >
             <p className="text-[9.5px] font-medium text-foreground leading-snug">
               {vehicleCount === 0
-                ? 'No vehicles in current filter'
-                : `${noLocationCount} without GPS`}
+                ? t('fleet.map.noVehiclesInFilter')
+                : t('fleet.map.withoutGps', { count: noLocationCount })}
             </p>
             {vehicleCount > 0 && noLocationCount > 0 && (
               <p className="text-[9px] text-muted-foreground mt-0.5 flex items-center gap-1">
                 <MapPin className="w-2.5 h-2.5 shrink-0" />
-                Listed in panel, not on map
+                {t('fleet.map.listedNotOnMap')}
               </p>
             )}
           </LiquidGlassLens>
@@ -135,7 +137,7 @@ export function FleetMapControls({
               className="liquid-glass-lens__legend-trigger"
               aria-expanded={legendOpen}
             >
-              <span className="liquid-glass-lens__legend-trigger__label">Legend</span>
+              <span className="liquid-glass-lens__legend-trigger__label">{t('fleet.map.legend')}</span>
               <ChevronDown
                 className={`liquid-glass-lens__legend-trigger__chevron transition-transform ${
                   legendOpen ? 'rotate-180' : ''

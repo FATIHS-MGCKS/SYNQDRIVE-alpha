@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from './dashboard-i18n';
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';
@@ -44,14 +45,23 @@ function formatLastSeen(lastSignal: string | undefined, locale: string): string 
   if (!lastSignal) return null;
   const t = Date.parse(lastSignal);
   if (!Number.isFinite(t)) return null;
-  const de = locale === 'de';
   const diffMin = Math.round((Date.now() - t) / 60_000);
-  if (diffMin < 2) return de ? 'Gerade eben' : 'Just now';
-  if (diffMin < 60) return de ? `vor ${diffMin} Min.` : `${diffMin}m ago`;
+  if (diffMin < 2) return dt(locale, 'dashboard.sync.justNow');
+  if (diffMin < 60) {
+    return locale === 'de'
+      ? dt(locale, 'dashboard.time.agoMinutesDe', { count: diffMin })
+      : dt(locale, 'dashboard.time.agoMinutes', { count: diffMin });
+  }
   const h = Math.floor(diffMin / 60);
-  if (h < 24) return de ? `vor ${h} Std.` : `${h}h ago`;
+  if (h < 24) {
+    return locale === 'de'
+      ? dt(locale, 'dashboard.time.agoHoursDe', { count: h })
+      : dt(locale, 'dashboard.time.agoHours', { count: h });
+  }
   const d = Math.floor(h / 24);
-  return de ? `vor ${d} Tag(en)` : `${d}d ago`;
+  return locale === 'de'
+    ? dt(locale, 'dashboard.time.agoDaysDe', { count: d })
+    : dt(locale, 'dashboard.time.agoDays', { count: d });
 }
 
 function severityRank(s: FleetBoardSeverity): number {
@@ -122,26 +132,24 @@ function statusLabelForLane(
   visualLabel: string,
   locale: string,
 ): string {
-  const de = locale === 'de';
-  const map: Partial<Record<Exclude<FleetBoardLane, 'all'>, [string, string]>> = {
-    critical: ['Critical', 'Kritisch'],
-    blocked: ['Blocked', 'Blockiert'],
-    overdue: ['Overdue', 'Überfällig'],
-    'due-soon': ['Due soon', 'Bald fällig'],
-    attention: ['Attention', 'Hinweise'],
-    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
-    cleaning: ['Cleaning', 'Reinigung'],
-    ready: ['Ready', 'Bereit'],
-    rented: ['Active', 'Aktiv'],
-    reserved: [VEHICLE_OPERATIONAL_STATUS.RESERVED, 'Reserviert'],
+  const map: Partial<Record<Exclude<FleetBoardLane, 'all'>, string>> = {
+    critical: 'dashboard.fleet.lane.critical',
+    blocked: 'dashboard.fleet.lane.blocked',
+    overdue: 'dashboard.fleet.lane.overdue',
+    'due-soon': 'dashboard.fleet.lane.dueSoon',
+    attention: 'dashboard.fleet.lane.attention',
+    maintenance: 'dashboard.operations.type.maintenance',
+    cleaning: 'dashboard.fleet.lane.cleaning',
+    ready: 'dashboard.fleet.lane.ready',
+    rented: 'dashboard.fleet.lane.rented',
+    reserved: 'dashboard.fleet.lane.reserved',
   };
-  const pair = map[lane];
-  if (pair) return de ? pair[1] : pair[0];
-  return visualLabel;
+  const key = map[lane];
+  return key ? dt(locale, key as Parameters<typeof dt>[1]) : visualLabel;
 }
 
 function nextAppointment(v: VehicleData, locale: string): string | undefined {
-  const intl = locale === 'de' ? 'de-DE' : 'en-US';
+  const intl = dashboardFormattingLocale(locale);
   const status = selectOperationalStatus(v);
   const reservedPickupAt = selectFleetReservedPickupAt(v);
   const activeReturnAt = selectFleetActiveReturnAt(v);
@@ -203,21 +211,20 @@ export interface BuildFleetBoardInput {
 }
 
 export function laneLabel(lane: FleetBoardLane, locale: string): string {
-  const de = locale === 'de';
-  const labels: Record<FleetBoardLane, [string, string]> = {
-    all: ['All', 'Alle'],
-    critical: ['Critical', 'Kritisch'],
-    blocked: ['Blocked', 'Blockiert'],
-    overdue: ['Overdue', 'Überfällig'],
-    'due-soon': ['Due soon', 'Bald fällig'],
-    attention: ['Attention', 'Hinweise'],
-    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
-    cleaning: ['Cleaning', 'Reinigung'],
-    ready: ['Ready', 'Bereit'],
-    rented: ['Rented', 'Vermietet'],
-    reserved: [VEHICLE_OPERATIONAL_STATUS.RESERVED, 'Reserviert'],
+  const map: Record<FleetBoardLane, string> = {
+    all: 'dashboard.fleet.lane.all',
+    critical: 'dashboard.fleet.lane.critical',
+    blocked: 'dashboard.fleet.lane.blocked',
+    overdue: 'dashboard.fleet.lane.overdue',
+    'due-soon': 'dashboard.fleet.lane.dueSoon',
+    attention: 'dashboard.fleet.lane.attention',
+    maintenance: 'dashboard.fleet.lane.maintenance',
+    cleaning: 'dashboard.fleet.lane.cleaning',
+    ready: 'dashboard.fleet.lane.ready',
+    rented: 'dashboard.fleet.lane.rented',
+    reserved: 'dashboard.fleet.lane.reserved',
   };
-  return de ? labels[lane][1] : labels[lane][0];
+  return dt(locale, map[lane] as Parameters<typeof dt>[1]);
 }
 
 export const FLEET_BOARD_LANE_ORDER: FleetBoardLane[] = [

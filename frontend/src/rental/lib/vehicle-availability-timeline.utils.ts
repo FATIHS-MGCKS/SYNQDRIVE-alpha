@@ -1,4 +1,6 @@
 import type { BookingUiStatus } from '../components/bookings/bookingStatus';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import {
   calculateFreeSlots,
   formatSlotDurationLabel,
@@ -99,12 +101,12 @@ export function buildTimelineHorizon(anchor: Date, mode: TimelineRangeMode): Tim
       date: day,
       label:
         dayCount <= 14
-          ? day.toLocaleDateString('de-DE', { weekday: 'short' }).toUpperCase()
-          : day.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+          ? day.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { weekday: 'short' }).toUpperCase()
+          : day.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit' }),
       sub:
         dayCount <= 14
-          ? day.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
-          : day.toLocaleDateString('de-DE', { year: '2-digit' }),
+          ? day.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: '2-digit' })
+          : day.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { year: '2-digit' }),
       isToday: day.getTime() === today.getTime(),
     };
   });
@@ -131,7 +133,7 @@ export function shiftTimelineAnchor(
 
 export function formatHorizonRangeLabel(horizon: TimelineHorizon): string {
   const fmt = (d: Date) =>
-    d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+    d.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { day: '2-digit', month: 'short', year: 'numeric' });
   return `${fmt(horizon.start)} – ${fmt(horizon.end)}`;
 }
 

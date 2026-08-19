@@ -1,4 +1,5 @@
 import type { TripBehaviorEvent } from './timeline.types';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   confidenceLabelDisplay,
   contextDisplayClassifications,
@@ -22,6 +23,7 @@ interface TripEventContextBlockProps {
  * UI only labels data the backend already produced.
  */
 export function TripEventContextBlock({ event }: TripEventContextBlockProps) {
+  const { t } = useLanguage();
   const ca = event.contextAssessment;
   if (!shouldRenderContextBlock(ca)) return null;
 
@@ -37,11 +39,11 @@ export function TripEventContextBlock({ event }: TripEventContextBlockProps) {
     <div className="mt-2.5 rounded-xl border border-sky-500/25 bg-sky-500/[0.06] px-3 py-2.5 dark:bg-sky-500/[0.08]">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="rounded-full border border-sky-500/35 bg-sky-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">
-          Kontextbewertung
+          {t('trips.contextAssessment')}
         </span>
         {ca!.status === 'FAILED' && (
           <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
-            Auswertung fehlgeschlagen
+            {t('trips.evaluationFailed')}
           </span>
         )}
       </div>
@@ -95,28 +97,27 @@ export function TripEventContextBlock({ event }: TripEventContextBlockProps) {
 
       {sparseNotes.length > 0 && (
         <p className="mt-1.5 text-[10px] text-amber-700/90 dark:text-amber-300/90">
-          Signalqualität: {sparseNotes.join(' · ')}
+          {t('trips.signalQuality')} {sparseNotes.join(' · ')}
         </p>
       )}
 
       {reasonCodes.length > 0 && !insufficient && (
         <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
-          <span className="font-medium text-foreground/80">Hinweise: </span>
+          <span className="font-medium text-foreground/80">{t('trips.hints')} </span>
           {reasonCodes.join(' · ')}
         </p>
       )}
 
       {insufficient && missingSignals.length > 0 && (
         <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
-          <span className="font-medium text-foreground/80">Fehlende Signale: </span>
+          <span className="font-medium text-foreground/80">{t('trips.missingSignals')} </span>
           {missingSignals.join(' · ')}
         </p>
       )}
 
       {insufficient && (
         <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
-          Das native DIMO-Ereignis ist erkannt; die Kontextanalyse konnte wegen unzureichender
-          Signaldaten keine belastbare Einordnung liefern.
+          {t('trips.contextInsufficient')}
         </p>
       )}
     </div>

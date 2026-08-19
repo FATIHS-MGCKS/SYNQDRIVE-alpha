@@ -1,3 +1,4 @@
+import { dt } from './dashboard-i18n';
 import { useMemo } from 'react';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
 import {
@@ -36,6 +37,7 @@ function MinimalTimelineHeader({
   criticalCount: number;
   de: boolean;
 }) {
+  const locale = de ? 'de' : 'en';
   return (
     <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -58,11 +60,11 @@ function MinimalTimelineHeader({
         <div className="flex shrink-0 items-center gap-2 sm:justify-end">
           {criticalCount > 0 ? (
             <span className="text-[11px] font-medium tabular-nums text-[color:var(--status-critical)]">
-              {criticalCount} {de ? 'kritisch' : 'critical'}
+              {criticalCount} {dt(locale, 'dashboard.count.critical')}
             </span>
           ) : null}
           <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-            {totalCount} {de ? 'Einträge' : 'items'}
+            {totalCount} {dt(locale, 'dashboard.count.items')}
           </span>
         </div>
       ) : null}
@@ -172,10 +174,10 @@ export function NowNextTimeline({
           ? 'h-full shadow-none ring-1 ring-border/30'
           : 'h-full',
       )}
-      aria-label={de ? 'Jetzt & Als Nächstes' : 'Now & Next'}
+      aria-label={dt(locale, 'dashboard.timeline.nowNext')}
     >
       <MinimalTimelineHeader
-        title={de ? 'Jetzt & Als Nächstes' : 'Now & Next'}
+        title={dt(locale, 'dashboard.timeline.nowNext')}
         subtitle={
           operatorFocusMode
             ? de

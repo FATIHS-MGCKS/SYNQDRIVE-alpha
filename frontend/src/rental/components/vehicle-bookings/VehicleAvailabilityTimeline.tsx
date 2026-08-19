@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { chipClassForTone } from '../../../components/patterns';
 import {
   bookingStatusAriaLabel,
@@ -21,6 +22,7 @@ import {
   type TimelineRangeMode,
   type TimelineBookingInput,
 } from '../../lib/vehicle-availability-timeline.utils';
+import { vehicleFormattingLocale } from '../vehicle/vehicle-i18n';
 import { VehicleAvailabilityInsights } from './VehicleAvailabilityInsights';
 import { vb, vbActionClass } from './vehicle-bookings-ui';
 
@@ -52,6 +54,7 @@ export function VehicleAvailabilityTimeline({
   onSelectBooking,
   onCreateBooking,
 }: VehicleAvailabilityTimelineProps) {
+  const { t, locale } = useLanguage();
   const { items, laneCount } = useMemo(
     () => positionAndPackTimelineBookings(bookings, horizon),
     [bookings, horizon],
@@ -76,7 +79,7 @@ export function VehicleAvailabilityTimeline({
             </div>
             <div className="min-w-0">
               <h3 id="vb-timeline-title" className={vb.titleSm}>
-                Verfügbarkeits-Timeline
+                {t('vehicle.bookings.availabilityTimeline')}
               </h3>
               <p className={`${vb.meta} mt-0.5`}>{rangeLabel}</p>
             </div>
@@ -85,7 +88,7 @@ export function VehicleAvailabilityTimeline({
           <div
             className="sq-tab-bar p-0.5 flex items-stretch flex-wrap gap-0.5"
             role="group"
-            aria-label="Zeitraum wählen"
+            aria-label={t('vehicle.bookings.selectPeriod')}
           >
             {TIMELINE_RANGE_PRESETS.map((preset) => (
               <button
@@ -110,31 +113,31 @@ export function VehicleAvailabilityTimeline({
             type="button"
             onClick={() => onNavigate(-1)}
             className={vbActionClass(false, true)}
-            aria-label="Vorheriger Zeitraum"
+            aria-label={t('vehicle.bookings.previousPeriod')}
           >
             <Icon name="chevron-left" className="w-3.5 h-3.5" aria-hidden />
-            Zurück
+            {t('common.back')}
           </button>
           <button
             type="button"
             onClick={() => onNavigate(0)}
             className={`${vbActionClass(false, true)} text-foreground`}
-            aria-label="Heute"
+            aria-label={t('common.today')}
           >
-            Heute
+            {t('common.today')}
           </button>
           <button
             type="button"
             onClick={() => onNavigate(1)}
             className={vbActionClass(false, true)}
-            aria-label="Nächster Zeitraum"
+            aria-label={t('vehicle.bookings.nextPeriod')}
           >
-            Weiter
+            {t('common.next')}
             <Icon name="chevron-right" className="w-3.5 h-3.5" aria-hidden />
           </button>
           {!loading && (
             <span className="ml-auto px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral tabular-nums">
-              {items.length} Buchung{items.length === 1 ? '' : 'en'}
+              {t('dashboard.reservedRevenueCount', { count: items.length })}
             </span>
           )}
         </div>
@@ -154,7 +157,7 @@ export function VehicleAvailabilityTimeline({
           <div className="relative">
             <p className="lg:hidden px-4 pt-2 text-[10px] text-muted-foreground flex items-center gap-1.5">
               <Icon name="more-horizontal" className="w-3 h-3 opacity-70" aria-hidden />
-              Horizontal scrollen für Details
+              {t('vehicle.bookings.horizontalScrollHint')}
             </p>
             <div className="overflow-x-auto overscroll-x-contain scroll-smooth">
               <div className="p-4 pt-2 lg:pt-3" style={{ minWidth: `${minTrackWidth}px` }}>
@@ -181,6 +184,7 @@ export function VehicleAvailabilityTimeline({
                       compact={compact}
                       hasConflict={Boolean(booking.id && conflictBookingIds?.has(booking.id))}
                       onSelectBooking={onSelectBooking}
+                      locale={locale}
                     />
                   ))}
                 </div>
@@ -189,8 +193,8 @@ export function VehicleAvailabilityTimeline({
             </div>
           </div>
 
-          <div className="px-4 pb-4 lg:hidden" aria-label="Buchungsliste kompakt">
-            <p className="sq-section-label mb-2">Kompakt</p>
+          <div className="px-4 pb-4 lg:hidden" aria-label={t('vehicle.bookings.compactList')}>
+            <p className="sq-section-label mb-2">{t('vehicle.bookings.compact')}</p>
             <div className="space-y-2">
               {items.slice(0, 8).map((booking) => (
                 <MobileBookingCard
@@ -198,6 +202,7 @@ export function VehicleAvailabilityTimeline({
                   booking={booking}
                   hasConflict={Boolean(booking.id && conflictBookingIds?.has(booking.id))}
                   onSelectBooking={onSelectBooking}
+                  locale={locale}
                 />
               ))}
             </div>
@@ -265,7 +270,14 @@ function DayGridColumns({ horizon }: { horizon: TimelineHorizon }) {
   );
 }
 
-function FreeSlotPill({ slot, top }: { slot: { leftPct: number; widthPct: number; label: string }; top: number }) {
+function FreeSlotPill({
+  slot,
+  top,
+}: {
+  slot: { leftPct: number; widthPct: number; label: string };
+  top: number;
+}) {
+  const { t } = useLanguage();
   if (slot.widthPct < 3) return null;
   return (
     <div
@@ -274,7 +286,7 @@ function FreeSlotPill({ slot, top }: { slot: { leftPct: number; widthPct: number
       aria-hidden
     >
       <span className="truncate max-w-full px-1.5 py-0.5 rounded-md text-[9px] font-medium text-muted-foreground/70 bg-muted/30 border border-dashed border-border/50">
-        Frei · {slot.label}
+        {t('status.available')} · {slot.label}
       </span>
     </div>
   );
@@ -287,6 +299,7 @@ function TimelineBookingBar({
   compact,
   hasConflict,
   onSelectBooking,
+  locale,
 }: {
   booking: ReturnType<typeof positionAndPackTimelineBookings>['items'][number];
   laneHeight: number;
@@ -294,10 +307,13 @@ function TimelineBookingBar({
   compact: boolean;
   hasConflict?: boolean;
   onSelectBooking?: (bookingId: string) => void;
+  locale: string;
 }) {
+  const { t } = useLanguage();
   const icon = bookingStatusIcon(booking.status);
-  const ref = booking.id ? bookingRef(booking.id) : 'Buchung';
-  const aria = `${ref} · ${bookingStatusAriaLabel(booking.status, booking.customerName)} · ${formatTooltipRange(booking.startDate, booking.endDate)} · Abholung ${booking.pickupLocation} · Rückgabe ${booking.returnLocation}`;
+  const ref = booking.id ? bookingRef(booking.id) : t('vehicle.bookings');
+  const rangeLabel = formatTooltipRange(booking.startDate, booking.endDate, locale);
+  const aria = `${ref} · ${bookingStatusAriaLabel(booking.status, booking.customerName)} · ${rangeLabel} · ${t('dashboard.label.pickup')} ${booking.pickupLocation} · ${t('dashboard.label.return')} ${booking.returnLocation}`;
   const clickable = Boolean(onSelectBooking && booking.id);
   const top = 8 + booking.lane * (laneHeight + laneGap);
   const showText = booking.widthPct > (compact ? 8 : 5);
@@ -319,14 +335,14 @@ function TimelineBookingBar({
       {!booking.clippedLeft && (
         <span
           className="absolute left-0 top-0 bottom-0 w-1 bg-[color:var(--status-positive)] rounded-l-[inherit]"
-          title={`Pickup · ${booking.pickupLocation}`}
+          title={t('vehicle.bookings.pickupMarker', { label: booking.pickupLocation })}
           aria-hidden
         />
       )}
       {!booking.clippedRight && (
         <span
           className="absolute right-0 top-0 bottom-0 w-1 bg-[color:var(--status-attention)] rounded-r-[inherit]"
-          title={`Return · ${booking.returnLocation}`}
+          title={t('vehicle.bookings.returnMarker', { label: booking.returnLocation })}
           aria-hidden
         />
       )}
@@ -362,7 +378,7 @@ function TimelineBookingBar({
         className={barClass}
         style={style}
         aria-label={aria}
-        title={`${bookingStatusLabel(booking.status)} · ${booking.customerName}\n${formatTooltipRange(booking.startDate, booking.endDate)}\n↑ ${booking.pickupLocation} → ${booking.returnLocation}`}
+        title={`${bookingStatusLabel(booking.status)} · ${booking.customerName}\n${rangeLabel}\n↑ ${booking.pickupLocation} → ${booking.returnLocation}`}
         onClick={() => onSelectBooking!(booking.id)}
       >
         {content}
@@ -381,10 +397,12 @@ function MobileBookingCard({
   booking,
   hasConflict,
   onSelectBooking,
+  locale,
 }: {
   booking: ReturnType<typeof positionAndPackTimelineBookings>['items'][number];
   hasConflict?: boolean;
   onSelectBooking?: (bookingId: string) => void;
+  locale: string;
 }) {
   const ref = booking.id ? bookingRef(booking.id) : '—';
   const clickable = Boolean(onSelectBooking && booking.id);
@@ -392,7 +410,7 @@ function MobileBookingCard({
   if (!clickable) {
     return (
       <div className={`${vb.inset} p-3`} aria-label={bookingStatusAriaLabel(booking.status, booking.customerName)}>
-        <MobileBookingCardContent booking={booking} refLabel={ref} />
+        <MobileBookingCardContent booking={booking} refLabel={ref} locale={locale} />
       </div>
     );
   }
@@ -406,7 +424,7 @@ function MobileBookingCard({
       onClick={() => onSelectBooking!(booking.id)}
       aria-label={bookingStatusAriaLabel(booking.status, booking.customerName)}
     >
-      <MobileBookingCardContent booking={booking} refLabel={ref} />
+      <MobileBookingCardContent booking={booking} refLabel={ref} locale={locale} />
     </button>
   );
 }
@@ -414,9 +432,11 @@ function MobileBookingCard({
 function MobileBookingCardContent({
   booking,
   refLabel,
+  locale,
 }: {
   booking: ReturnType<typeof positionAndPackTimelineBookings>['items'][number];
   refLabel: string;
+  locale: string;
 }) {
   return (
     <>
@@ -433,16 +453,17 @@ function MobileBookingCardContent({
         </span>
       </div>
       <p className={`${vb.meta} mt-1`}>
-        {formatTooltipRange(booking.startDate, booking.endDate)}
+        {formatTooltipRange(booking.startDate, booking.endDate, locale)}
       </p>
     </>
   );
 }
 
 function TimelineLegend() {
+  const { t } = useLanguage();
   const items: BookingUiStatus[] = ['active', 'confirmed', 'pending', 'completed', 'no_show', 'cancelled'];
   return (
-    <div className="hidden sm:flex flex-wrap gap-1.5" aria-label="Legende">
+    <div className="hidden sm:flex flex-wrap gap-1.5" aria-label={t('fleet.map.legend')}>
       {items.map((status) => (
         <span
           key={status}
@@ -454,39 +475,41 @@ function TimelineLegend() {
       ))}
       <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium sq-tone-neutral">
         <span className="w-2 h-2 rounded-sm bg-[color:var(--status-positive)]" aria-hidden />
-        Pickup
+        {t('dashboard.label.pickup')}
       </span>
       <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium sq-tone-neutral">
         <span className="w-2 h-2 rounded-sm bg-[color:var(--status-attention)]" aria-hidden />
-        Return
+        {t('dashboard.label.return')}
       </span>
     </div>
   );
 }
 
 function TimelineEmptyState({ onCreateBooking }: { onCreateBooking?: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="min-h-[180px] flex flex-col items-center justify-center px-5 py-10 text-center">
       <div className="sq-tone-neutral w-10 h-10 rounded-xl flex items-center justify-center mb-3">
         <Icon name="calendar" className="w-5 h-5" aria-hidden />
       </div>
-      <p className="text-[13px] font-semibold text-foreground">Zeitraum ohne Buchungen</p>
+      <p className="text-[13px] font-semibold text-foreground">{t('vehicle.bookings.noBookingPeriod')}</p>
       <p className={`${vb.subtitle} mt-1 max-w-[320px]`}>
-        Das Fahrzeug ist im gewählten Horizont frei verfügbar.
+        {t('vehicle.bookings.horizonFullyAvailable')}
       </p>
       {onCreateBooking && (
         <button type="button" onClick={onCreateBooking} className={`sq-cta mt-4 ${vbActionClass(true)}`}>
           <Icon name="plus" className="w-3.5 h-3.5" aria-hidden />
-          Neue Buchung anlegen
+          {t('vehicle.bookings.createBooking')}
         </button>
       )}
     </div>
   );
 }
 
-function formatTooltipRange(start: Date, end: Date): string {
+function formatTooltipRange(start: Date, end: Date, locale: string): string {
+  const fmtLocale = vehicleFormattingLocale(locale);
   const fmt = (d: Date) =>
-    d.toLocaleString('de-DE', {
+    d.toLocaleString(fmtLocale, {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',

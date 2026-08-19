@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../rental/i18n/translations/en';
+import type { TranslationKey } from '../i18n/translations/en';
 
 const DOC_TYPE_KEYS: Record<string, TranslationKey> = {
   BOOKING_INVOICE: 'email.docType.BOOKING_INVOICE',

@@ -1,3 +1,5 @@
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 export type VehicleDocumentUiStatus =
   | 'missing'
   | 'uploaded'
@@ -122,9 +124,9 @@ export interface VehicleFileSummary {
   }>;
 }
 
-export function formatEuroAmount(value: number | null | undefined, locale = 'de-DE'): string {
+export function formatEuroAmount(value: number | null | undefined, formattingLocale = vehicleFormattingLocaleOrDefault()): string {
   if (value == null || Number.isNaN(value)) return '—';
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(formattingLocale, {
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 2,

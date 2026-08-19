@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { TripStatusBadge } from './TripStatusBadge';
 import { RENTAL_COPY } from './trips-view-ui';
 import {
@@ -70,6 +71,7 @@ export function TripEvidencePanel({
   rentalContext,
   behaviorEvents,
 }: TripEvidencePanelProps) {
+  const { t } = useLanguage();
   const hasStart = trip.startLatitude != null && trip.startLongitude != null;
   const hasEnd = trip.endLatitude != null && trip.endLongitude != null;
 
@@ -151,7 +153,7 @@ export function TripEvidencePanel({
             !trip.tripAttribution.customerRelevant &&
             trip.tripAttribution.scope !== 'BOOKING_ASSIGNED' && (
               <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
-                Nicht kundenrelevant
+                {t('trips.notCustomerRelevant')}
               </span>
             )}
         </EvidenceRow>

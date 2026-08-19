@@ -1,3 +1,4 @@
+import { dt, dashboardFormattingLocale } from '../dashboard-i18n';
 import type { VehicleHealthResponse } from '../../../../lib/api';
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
@@ -89,10 +90,6 @@ function isDe(locale: string): boolean {
   return locale === 'de';
 }
 
-function label(locale: string, deText: string, enText: string): string {
-  return isDe(locale) ? deText : enText;
-}
-
 function parseTimeMs(iso: string | undefined): number | null {
   if (!iso) return null;
   const ms = Date.parse(iso);
@@ -181,7 +178,7 @@ function vehicleRow(input: {
       : primary?.title
         ? { meta: primary.title }
         : {}),
-    primaryActionLabel: label(input.locale, 'Fahrzeug öffnen', 'Open vehicle'),
+    primaryActionLabel: dt(input.locale, 'notification.cta.openVehicle'),
   };
 }
 
@@ -206,14 +203,14 @@ function formatOperationDrawerTime(
     if (ms != null) {
       const date = new Date(ms);
       if (de) {
-        return `${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', hour12: false })} Uhr`;
+        return `${date.toLocaleTimeString(dashboardFormattingLocale(locale), { hour: '2-digit', minute: '2-digit', hour12: false })} Uhr`;
       }
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return date.toLocaleTimeString(dashboardFormattingLocale(locale), { hour: 'numeric', minute: '2-digit', hour12: true });
     }
   }
   const trimmed = fallbackTime?.trim();
-  if (trimmed) return de ? `${trimmed} Uhr` : trimmed;
-  return label(locale, 'Abholung', 'Pickup');
+  if (trimmed) return de ? dt(locale, 'dashboard.time.suffixDe', { time: trimmed }) : trimmed;
+  return dt(locale, 'dashboard.label.pickup');
 }
 
 function labeledField(fieldLabel: string, value: string | undefined): string | undefined {
@@ -227,13 +224,21 @@ function formatDurationLabel(minutes: number, overdue: boolean, locale: string):
   const hours = Math.floor(safe / 60);
   const mins = safe % 60;
   const parts: string[] = [];
-  if (hours > 0) parts.push(de ? `${hours} Std.` : `${hours}h`);
-  if (mins > 0 || hours === 0) parts.push(de ? `${mins} Min.` : `${mins}m`);
+  if (hours > 0) {
+    parts.push(de
+      ? dt(locale, 'dashboard.time.hoursShortDe', { count: hours })
+      : dt(locale, 'dashboard.time.hoursShort', { count: hours }));
+  }
+  if (mins > 0 || hours === 0) {
+    parts.push(de
+      ? dt(locale, 'dashboard.time.minutesShortDe', { count: mins })
+      : dt(locale, 'dashboard.time.minutesShort', { count: mins }));
+  }
   const duration = parts.join(' ');
   if (overdue) {
-    return de ? `Seit ${duration}` : `Since ${duration}`;
+    return dt(locale, 'dashboard.time.since', { duration });
   }
-  return `In ${duration}`;
+  return dt(locale, 'dashboard.time.in', { duration });
 }
 
 function minutesUntil(iso: string | undefined, nowMs: number): number | null {
@@ -260,7 +265,7 @@ function buildOperationTimingLabel(
       'minutesOverdue' in item && typeof item.minutesOverdue === 'number' && item.minutesOverdue > 0
         ? item.minutesOverdue
         : minutesOverdueFromIso(scheduledIso, nowMs);
-    return mins > 0 ? formatDurationLabel(mins, true, locale) : label(locale, 'Überfällig', 'Overdue');
+    return mins > 0 ? formatDurationLabel(mins, true, locale) : dt(locale, 'dashboard.label.overdue');
   }
   const until = minutesUntil(scheduledIso, nowMs);
   if (until != null && until > 0) return formatDurationLabel(until, false, locale);
@@ -280,21 +285,21 @@ function operationReadiness(
 ): Pick<DashboardSliceRow, 'readinessLabel' | 'readinessTone'> | undefined {
   if (state) {
     if (state.operationalStatus === 'reserved') {
-      return { readinessLabel: label(locale, 'Reserviert', 'Reserved'), readinessTone: 'info' };
+      return { readinessLabel: dt(locale, 'dashboard.reserved'), readinessTone: 'info' };
     }
     if (state.operationalStatus === 'active_rented') {
-      return { readinessLabel: label(locale, 'Aktiv', 'Active'), readinessTone: 'info' };
+      return { readinessLabel: dt(locale, 'dashboard.label.active'), readinessTone: 'info' };
     }
     if (state.isReadyToRent) {
-      return { readinessLabel: label(locale, 'Bereit', 'Ready'), readinessTone: 'success' };
+      return { readinessLabel: dt(locale, 'dashboard.label.ready'), readinessTone: 'success' };
     }
-    return { readinessLabel: label(locale, 'Nicht bereit', 'Not ready'), readinessTone: 'watch' };
+    return { readinessLabel: dt(locale, 'dashboard.label.notReady'), readinessTone: 'watch' };
   }
   if (kind === 'pickup') {
-    return { readinessLabel: label(locale, 'Reserviert', 'Reserved'), readinessTone: 'info' };
+    return { readinessLabel: dt(locale, 'dashboard.reserved'), readinessTone: 'info' };
   }
   if (kind === 'return' && item.vehicleId) {
-    return { readinessLabel: label(locale, 'Aktiv', 'Active'), readinessTone: 'info' };
+    return { readinessLabel: dt(locale, 'dashboard.label.active'), readinessTone: 'info' };
   }
   return undefined;
 }
@@ -316,7 +321,7 @@ function pickupRow(
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
     title: formatOperationDrawerTime(item.startDate, item.time, locale),
     ...(item.customer
-      ? { subtitle: labeledField(label(locale, 'Kunde', 'Customer'), item.customer) }
+      ? { subtitle: labeledField(dt(locale, 'dashboard.label.customer'), item.customer) }
       : {}),
     ...(ref ? { bookingRef: ref } : {}),
     ...(vehicleLine ? { meta: vehicleLine } : {}),
@@ -324,7 +329,7 @@ function pickupRow(
     severity: variant === 'pickup-overdue' ? 'critical' : 'info',
     ...(timingLabel ? { statusLabel: timingLabel } : {}),
     ...(readiness ?? {}),
-    primaryActionLabel: label(locale, 'Zur Buchung', 'To booking'),
+    primaryActionLabel: dt(locale, 'dashboard.cta.toBooking'),
   };
 }
 
@@ -346,7 +351,7 @@ function returnRow(
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
     title: formatOperationDrawerTime(item.endDate, item.time, locale),
     ...(item.customer
-      ? { subtitle: labeledField(label(locale, 'Kunde', 'Customer'), item.customer) }
+      ? { subtitle: labeledField(dt(locale, 'dashboard.label.customer'), item.customer) }
       : {}),
     ...(ref ? { bookingRef: ref } : {}),
     ...(vehicleLine ? { meta: vehicleLine } : {}),
@@ -355,7 +360,7 @@ function returnRow(
     ...(timingLabel ? { statusLabel: timingLabel } : {}),
     ...(readiness ?? {}),
     ...(reasons.length > 0 ? { reasons, reasonIds: reasons.map((reason) => reason.id) } : {}),
-    primaryActionLabel: label(locale, 'Zur Buchung', 'To booking'),
+    primaryActionLabel: dt(locale, 'dashboard.cta.toBooking'),
   };
 }
 
@@ -435,13 +440,13 @@ function insightVehicleIds(insight: DashboardInsight): string[] {
 
 function buildEmptySlice(id: DashboardSliceId, locale: string): DashboardSlice {
   const titles: Record<DashboardSliceId, string> = {
-    'ready-to-rent': label(locale, 'Bereit zur Vermietung', 'Ready for Renting'),
-    'active-rented': label(locale, 'Heutige Operationen', "Today's Operations"),
-    'due-soon': label(locale, 'Bald fällig', 'Due soon'),
-    'overdue-returns': label(locale, 'Überfällige Rückgaben', 'Overdue returns'),
-    'overdue-pickups': label(locale, 'Überfällige Übergaben', 'Overdue pickups'),
-    'blocked-maintenance': label(locale, 'Blockiert & Wartung', 'Blocked & maintenance'),
-    'critical-alerts': label(locale, 'Kritische Alerts', 'Critical alerts'),
+    'ready-to-rent': dt(locale, 'dashboard.slice.readyForRenting'),
+    'active-rented': dt(locale, 'dashboard.slice.todaysOperations'),
+    'due-soon': dt(locale, 'dashboard.slice.dueSoon'),
+    'overdue-returns': dt(locale, 'dashboard.slice.overdueReturns'),
+    'overdue-pickups': dt(locale, 'dashboard.slice.overduePickups'),
+    'blocked-maintenance': dt(locale, 'dashboard.slice.blockedMaintenance'),
+    'critical-alerts': dt(locale, 'dashboard.slice.criticalAlerts'),
   };
   return { id, title: titles[id], count: 0, tone: 'neutral', rows: [] };
 }
@@ -466,21 +471,17 @@ function buildReadyToRentSlice(states: VehicleRuntimeState[], locale: string): D
     tone: rows.length > 0 ? 'success' : 'neutral',
     rows,
     secondaryRows,
-    hint: label(
-      locale,
-      `${available.length} verfügbar · ${notReady.length} nicht bereit`,
-      `${available.length} available · ${notReady.length} not ready`,
-    ),
+    hint: dt(locale, 'dashboard.slice.readyHint', { available: available.length, notReady: notReady.length }),
     groups: [
-      group('ready-now', label(locale, 'Bereit', 'Ready'), rows),
-      group('available-but-not-ready', label(locale, 'Nicht bereit', 'Not ready'), secondaryRows),
+      group('ready-now', dt(locale, 'dashboard.label.ready'), rows),
+      group('available-but-not-ready', dt(locale, 'dashboard.label.notReady'), secondaryRows),
       group(
         'blocked-excluded',
-        label(locale, 'Blockiert ausgeschlossen', 'Blocked excluded'),
+        dt(locale, 'dashboard.slice.blockedExcluded'),
         blockedExcluded.map((state) => vehicleRow({ state, slice: 'blocked-excluded', locale, reasons: state.blockReasons })),
       ),
     ],
-    emptyTitle: label(locale, 'Keine Fahrzeuge bereit', 'No vehicles ready'),
+    emptyTitle: dt(locale, 'dashboard.slice.noVehiclesReady'),
   };
 }
 
@@ -565,12 +566,8 @@ function buildActiveRentedSlice(
         overdueReturnRows,
       ),
     ],
-    emptyTitle: label(locale, 'Keine Operationen heute', 'No operations today'),
-    emptyDescription: label(
-      locale,
-      'Keine Übergaben, Rückgaben oder aktiven Vermietungen in diesem Bereich.',
-      'No pickups, returns, or active rentals in this scope.',
-    ),
+    emptyTitle: dt(locale, 'dashboard.slice.noOperationsToday'),
+    emptyDescription: dt(locale, 'dashboard.slice.noOperationsTodayHint'),
   };
 }
 
@@ -590,8 +587,8 @@ function buildDueSoonSlice(input: BuildDashboardSlicesInput): DashboardSlice {
     tone: rows.length > 0 ? 'watch' : 'neutral',
     rows,
     groups: [
-      group('pickups-due-soon', label(input.locale, 'Übergaben bald fällig', 'Pickups due soon'), dedupeRows(pickupRows)),
-      group('returns-due-soon', label(input.locale, 'Rückgaben bald fällig', 'Returns due soon'), dedupeRows(returnRows)),
+      group('pickups-due-soon', dt(input.locale, 'dashboard.slice.pickupsDueSoon'), dedupeRows(pickupRows)),
+      group('returns-due-soon', dt(input.locale, 'dashboard.slice.returnsDueSoon'), dedupeRows(returnRows)),
     ],
   };
 }
@@ -611,8 +608,8 @@ function buildOverduePickupsSlice(input: BuildDashboardSlicesInput): DashboardSl
     count: rows.length,
     tone: rows.length > 0 ? 'critical' : 'success',
     rows,
-    groups: [group('overdue-pickups', label(input.locale, 'Überfällige Übergaben', 'Overdue pickups'), rows)],
-    emptyTitle: label(input.locale, 'Keine überfälligen Übergaben', 'No overdue pickups'),
+    groups: [group('overdue-pickups', dt(input.locale, 'dashboard.slice.overduePickups'), rows)],
+    emptyTitle: dt(input.locale, 'dashboard.slice.noOverduePickups'),
   };
 }
 
@@ -629,8 +626,8 @@ function buildOverdueReturnsSlice(input: BuildDashboardSlicesInput): DashboardSl
     count: rows.length,
     tone: rows.length > 0 ? 'critical' : 'success',
     rows,
-    groups: [group('overdue-returns', label(input.locale, 'Überfällige Rückgaben', 'Overdue returns'), rows)],
-    emptyTitle: label(input.locale, 'Keine überfälligen Rückgaben', 'No overdue returns'),
+    groups: [group('overdue-returns', dt(input.locale, 'dashboard.slice.overdueReturns'), rows)],
+    emptyTitle: dt(input.locale, 'dashboard.slice.noOverdueReturns'),
   };
 }
 
@@ -682,12 +679,12 @@ function buildBlockedMaintenanceSlice(states: VehicleRuntimeState[], locale: str
     tone: rows.length > 0 ? 'watch' : 'neutral',
     rows,
     groups: [
-      group('in-maintenance', label(locale, 'In Wartung', 'In maintenance'), maintenanceRows),
-      group('blocked-by-health', label(locale, 'Durch Health blockiert', 'Blocked by health'), healthRows),
-      group('blocked-by-compliance', label(locale, 'Durch Compliance blockiert', 'Blocked by compliance'), complianceRows),
-      group('blocked-by-operations', label(locale, 'Operativ blockiert', 'Blocked by operations'), operationsRows),
-      group('unavailable', label(locale, 'Nicht verfügbar', 'Unavailable'), unavailableRows),
-      group('offline-blocked', label(locale, 'Offline blockiert', 'Offline blocked'), offlineRows),
+      group('in-maintenance', dt(locale, 'dashboard.slice.inMaintenance'), maintenanceRows),
+      group('blocked-by-health', dt(locale, 'dashboard.slice.blockedByHealth'), healthRows),
+      group('blocked-by-compliance', dt(locale, 'dashboard.slice.blockedByCompliance'), complianceRows),
+      group('blocked-by-operations', dt(locale, 'dashboard.slice.blockedByOperations'), operationsRows),
+      group('unavailable', dt(locale, 'dashboard.slice.unavailable'), unavailableRows),
+      group('offline-blocked', dt(locale, 'dashboard.slice.offlineBlocked'), offlineRows),
     ],
   };
 }
@@ -859,14 +856,14 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     tone: rows.length > 0 ? 'critical' : 'success',
     rows,
     groups: [
-      group('health-critical', label(input.locale, 'Health kritisch', 'Health critical'), grouped['health-critical']),
-      group('service-critical', label(input.locale, 'Service kritisch', 'Service critical'), grouped['service-critical']),
-      group('compliance-critical', label(input.locale, 'Compliance kritisch', 'Compliance critical'), grouped['compliance-critical']),
-      group('operations-critical', label(input.locale, 'Operations kritisch', 'Operations critical'), grouped['operations-critical']),
-      group('telemetry-critical', label(input.locale, 'Telemetry kritisch', 'Telemetry critical'), grouped['telemetry-critical']),
-      group('rental-critical', label(input.locale, 'Rental kritisch', 'Rental critical'), grouped['rental-critical']),
+      group('health-critical', dt(input.locale, 'dashboard.slice.healthCritical'), grouped['health-critical']),
+      group('service-critical', dt(input.locale, 'dashboard.slice.serviceCritical'), grouped['service-critical']),
+      group('compliance-critical', dt(input.locale, 'dashboard.slice.complianceCritical'), grouped['compliance-critical']),
+      group('operations-critical', dt(input.locale, 'dashboard.slice.operationsCritical'), grouped['operations-critical']),
+      group('telemetry-critical', dt(input.locale, 'dashboard.slice.telemetryCritical'), grouped['telemetry-critical']),
+      group('rental-critical', dt(input.locale, 'dashboard.slice.rentalCritical'), grouped['rental-critical']),
     ],
-    emptyTitle: label(input.locale, 'Keine kritischen Alerts', 'No critical alerts'),
+    emptyTitle: dt(input.locale, 'dashboard.slice.noCriticalAlerts'),
   };
 }
 

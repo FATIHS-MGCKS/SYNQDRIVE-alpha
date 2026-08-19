@@ -1,4 +1,5 @@
 import { LiquidGlassLens } from '../../../components/surface';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { VehicleStressBadge } from '../VehicleStressPanel';
 import { resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripMapTripData } from './trips-map.types';
@@ -17,6 +18,7 @@ interface TripMapSummaryOverlayProps {
 }
 
 export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayProps) {
+  const { t } = useLanguage();
   const timeRange = `${formatTripTime(trip.startTime)} – ${trip.endTime ? formatTripTime(trip.endTime) : '…'}`;
   const events = countTripEvents(trip);
   const assignment = tripAssignmentLabel(trip);
@@ -48,7 +50,7 @@ export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayPro
             {events == null && trip.behaviorReady === false && (
               <>
                 <span className="mx-1 opacity-40">·</span>
-                Analyse läuft
+                {t('trips.analysisRunning')}
               </>
             )}
           </p>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { StatusChip } from '../../../components/patterns';
 import { api, type RpmCandidateView } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
@@ -19,6 +20,7 @@ export interface TripRpmCandidatesListProps {
 }
 
 export function TripRpmCandidatesList({ vehicleId, tripId }: TripRpmCandidatesListProps) {
+  const { t } = useLanguage();
   const [candidates, setCandidates] = useState<RpmCandidateView[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +51,7 @@ export function TripRpmCandidatesList({ vehicleId, tripId }: TripRpmCandidatesLi
     return (
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-        RPM-Webhook-Evidenz wird geladen…
+        {t('trips.rpmEvidenceLoading')}
       </div>
     );
   }

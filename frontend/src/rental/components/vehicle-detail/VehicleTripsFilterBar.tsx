@@ -6,6 +6,8 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { vehicleFormattingLocale } from '../vehicle/vehicle-i18n';
 import { VEHICLE_DETAIL_SCROLL_ROW_CLASS } from '../../lib/vehicle-detail-mobile-ui';
 
 interface VehicleTripsFilterBarProps {
@@ -19,10 +21,10 @@ interface VehicleTripsFilterBarProps {
   onClearFilters: () => void;
 }
 
-function formatTripDateLabel(selectedDate: string): string {
-  if (!selectedDate) return 'All Time';
+function formatTripDateLabel(selectedDate: string, locale: string): string {
+  if (!selectedDate) return '';
   const [y, m, d] = selectedDate.split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString('en-US', {
+  return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString(vehicleFormattingLocale(locale), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -39,19 +41,20 @@ export function VehicleTripsFilterBar({
   onSelectedDriverChange,
   onClearFilters,
 }: VehicleTripsFilterBarProps) {
-  const dateLabel = formatTripDateLabel(selectedDate);
-  const driverLabel = selectedDriver === 'all' ? 'All Drivers' : selectedDriver;
+  const { t, locale } = useLanguage();
+  const dateLabel = selectedDate ? formatTripDateLabel(selectedDate, locale) : t('trips.filters.allTime');
+  const driverLabel = selectedDriver === 'all' ? t('trips.filters.allDrivers') : selectedDriver;
 
   return (
     <div className="mb-2 min-w-0 max-w-full">
       <div
         className={`rounded-lg border border-border surface-premium px-2.5 py-1 shadow-sm shrink-0 ${VEHICLE_DETAIL_SCROLL_ROW_CLASS}`}
         role="toolbar"
-        aria-label="Trip filters"
+        aria-label={t('trips.filters.toolbarAria')}
       >
         <div className="mr-auto flex shrink-0 items-center gap-2 rounded-xl border border-transparent px-3 py-1.5 sq-tone-info">
           <span className="text-xs font-bold" aria-live="polite" aria-atomic="true">
-            {tripsCount} {tripsCount === 1 ? 'Trip' : 'Trips'}
+            {tripsCount} {tripsCount === 1 ? t('trips.filters.trip', { count: tripsCount }) : t('trips.filters.trips', { count: tripsCount })}
           </span>
         </div>
 
@@ -60,7 +63,7 @@ export function VehicleTripsFilterBar({
             <button
               type="button"
               data-testid="vehicle-trips-date-filter"
-              aria-label={`Filter trips by date, currently ${dateLabel}`}
+              aria-label={t('trips.filters.dateAria', { date: dateLabel })}
               className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-1.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] motion-reduce:transition-none sm:min-h-0 ${
                 selectedDate
                   ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
@@ -83,7 +86,7 @@ export function VehicleTripsFilterBar({
             className="w-auto p-2.5 motion-reduce:animate-none"
           >
             <label htmlFor="vehicle-trips-date-input" className="sr-only">
-              Select trip date
+              {t('trips.filters.selectDate')}
             </label>
             <input
               id="vehicle-trips-date-input"
@@ -100,7 +103,7 @@ export function VehicleTripsFilterBar({
             <button
               type="button"
               data-testid="vehicle-trips-driver-filter"
-              aria-label={`Filter trips by driver, currently ${driverLabel}`}
+              aria-label={t('trips.filters.driverAria', { driver: driverLabel })}
               className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 py-1.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] motion-reduce:transition-none sm:min-h-0 ${
                 selectedDriver !== 'all'
                   ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
@@ -129,7 +132,7 @@ export function VehicleTripsFilterBar({
                 }`}
                 onClick={() => onSelectedDriverChange(driver)}
               >
-                {driver === 'all' ? 'All Drivers' : driver}
+                {driver === 'all' ? t('trips.filters.allDrivers') : driver}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -139,11 +142,11 @@ export function VehicleTripsFilterBar({
           <button
             type="button"
             onClick={onClearFilters}
-            aria-label="Clear trip filters"
+            aria-label={t('trips.filters.clearAria')}
             className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-3 py-1.5 transition-all duration-200 sq-tone-critical hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] motion-reduce:transition-none sm:min-h-0"
           >
             <Icon name="x" className="h-3.5 w-3.5" />
-            <span className="text-xs font-medium">Clear</span>
+            <span className="text-xs font-medium">{t('trips.filters.clear')}</span>
           </button>
         ) : null}
       </div>

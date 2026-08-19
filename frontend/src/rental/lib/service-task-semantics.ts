@@ -1,4 +1,6 @@
 import type { ApiTask, ApiTaskPriority, ApiTaskSource, ApiTaskStatus, ApiTaskType } from '../../lib/api';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import { deriveTaskSourceBadge, taskSourceBadgeLabel } from './task-operator.utils';
 
 /** Service-/Maintenance-fokussierte Task-Typen für Operator-UI. */
@@ -125,7 +127,7 @@ export function checklistProgress(task: ApiTask): { done: number; total: number 
 
 export function formatCostCents(cents: number | null | undefined): string | null {
   if (cents == null || !Number.isFinite(cents)) return null;
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  return new Intl.NumberFormat(vehicleFormattingLocaleOrDefault(), { style: 'currency', currency: 'EUR' }).format(cents / 100);
 }
 
 export function buildVehicleLabel(vehicle: {

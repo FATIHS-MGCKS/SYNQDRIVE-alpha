@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { toast } from 'sonner';
 import { FormDialog } from '../../../components/patterns';
 import { api, type ApiTask, type ApiTaskType, type CreateTaskPayload, type Vendor } from '../../../lib/api';
@@ -35,6 +36,7 @@ export function ServiceTaskCreateModal({
   defaultVendorId,
   healthPrefill,
 }: ServiceTaskCreateModalProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const [title, setTitle] = useState('');
@@ -107,7 +109,7 @@ export function ServiceTaskCreateModal({
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!title.trim()) next.title = 'Titel ist erforderlich';
+    if (!title.trim()) next.title = t('serviceCenter.create.titleRequired');
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -141,11 +143,11 @@ export function ServiceTaskCreateModal({
         checklist: checklist.length ? checklist : undefined,
       };
       const created = await api.tasks.create(orgId, payload);
-      toast.success('Service-Aufgabe angelegt');
+      toast.success(t('serviceCenter.create.success'));
       onCreated?.(created);
       onOpenChange(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Aufgabe konnte nicht erstellt werden');
+      toast.error(err instanceof Error ? err.message : t('serviceCenter.create.failed'));
     } finally {
       setSubmitting(false);
     }
@@ -155,8 +157,8 @@ export function ServiceTaskCreateModal({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Service-Aufgabe anlegen"
-      description="Wartung, Reparatur, TÜV/HU oder Instandhaltung für die Flotte."
+      title={t('serviceCenter.create.title')}
+      description={t('serviceCenter.create.description')}
       maxWidthClassName="sm:max-w-[540px]"
       hideClose={submitting}
       footer={
@@ -167,7 +169,7 @@ export function ServiceTaskCreateModal({
             disabled={submitting}
             className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
           >
-            Abbrechen
+            {t('serviceCenter.create.cancel')}
           </button>
           <button
             type="button"
@@ -175,19 +177,19 @@ export function ServiceTaskCreateModal({
             disabled={submitting || !orgId}
             className="sq-cta px-3 py-2 text-xs font-semibold disabled:opacity-60"
           >
-            {submitting ? 'Wird angelegt…' : 'Anlegen'}
+            {submitting ? t('serviceCenter.create.creating') : t('serviceCenter.create.submit')}
           </button>
         </div>
       }
     >
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
         <div>
-          <label className={labelClass}>Titel *</label>
+          <label className={labelClass}>{t('serviceCenter.create.titleField')}</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className={inputClass}
-            placeholder="z. B. Bremsen vorne prüfen"
+            placeholder={t('serviceCenter.create.titlePlaceholder')}
           />
           {errors.title && <p className="text-[10px] text-red-500 mt-1">{errors.title}</p>}
         </div>
@@ -206,7 +208,7 @@ export function ServiceTaskCreateModal({
             </select>
           </div>
           <div>
-            <label className={labelClass}>Priorität</label>
+            <label className={labelClass}>{t('fleetHealthService.cases.priority')}</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as ApiTaskPriority)}
@@ -232,7 +234,7 @@ export function ServiceTaskCreateModal({
         <div>
           <label className={labelClass}>Fahrzeug</label>
           <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={inputClass}>
-            <option value="">Kein Fahrzeug</option>
+            <option value="">{t('serviceCenter.create.noVehicle')}</option>
             {fleetVehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {[v.license, v.make, v.model].filter(Boolean).join(' · ')}
@@ -250,11 +252,11 @@ export function ServiceTaskCreateModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>Fälligkeitsdatum</label>
+            <label className={labelClass}>{t('serviceCenter.create.dueDateLabel')}</label>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Geschätzte Kosten (€)</label>
+            <label className={labelClass}>{t('serviceCenter.create.estimatedCost')}</label>
             <input
               type="text"
               inputMode="decimal"
@@ -267,13 +269,13 @@ export function ServiceTaskCreateModal({
         </div>
 
         <div>
-          <label className={labelClass}>Zugewiesen an</label>
+          <label className={labelClass}>{t('serviceCenter.create.assignedTo')}</label>
           <select
             value={assignedUserId}
             onChange={(e) => setAssignedUserId(e.target.value)}
             className={inputClass}
           >
-            <option value="">Nicht zugewiesen</option>
+            <option value="">{t('serviceCenter.create.unassigned')}</option>
             {orgMembers.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
@@ -287,12 +289,12 @@ export function ServiceTaskCreateModal({
             onChange={(e) => setBlocksRental(e.target.checked)}
             className="rounded border-border"
           />
-          Blockiert Fahrzeugverfügbarkeit (Miete)
+          {t('serviceCenter.create.blocksRental')}
         </label>
 
         {checklistPreview.length > 0 && (
           <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
-            <p className="text-[10px] font-semibold text-muted-foreground mb-2">Checkliste (Vorlage)</p>
+            <p className="text-[10px] font-semibold text-muted-foreground mb-2">{t('serviceCenter.create.checklistTemplate')}</p>
             <ul className="text-[10px] space-y-0.5 text-muted-foreground">
               {checklistPreview.map((item) => (
                 <li key={item}>• {item}</li>

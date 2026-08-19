@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiTask } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import { formatTaskDueDate } from '../../lib/task-display.utils';
@@ -17,6 +18,7 @@ export function ServiceTasksCalendar({
   resolveVehicle,
   onOpen,
 }: ServiceTasksCalendarProps) {
+  const { t } = useLanguage();
   const withDue = useMemo(
     () => tasks.filter((t) => t.dueDate && t.status !== 'CANCELLED'),
     [tasks],
@@ -26,7 +28,7 @@ export function ServiceTasksCalendar({
   if (withDue.length === 0) {
     return (
       <p className="text-[11px] text-muted-foreground text-center py-8">
-        Keine Aufgaben mit Fälligkeitsdatum für die Kalenderansicht.
+        {t('serviceCenter.tasks.calendarEmpty')}
       </p>
     );
   }

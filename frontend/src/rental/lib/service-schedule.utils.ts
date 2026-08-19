@@ -1,4 +1,6 @@
 import type { ApiTask } from '../../lib/api';
+import { getFormattingLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import { deriveTaskIsOverdue } from '../lib/task-display.utils';
 import { isActiveTask } from '../components/service-center/service-center.utils';
 
@@ -102,13 +104,13 @@ export function formatDueDateLabel(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function formatAppointmentLabel(d: Date): string {
   const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
   if (hasTime) {
-    return d.toLocaleString('de-DE', {
+    return d.toLocaleString(vehicleFormattingLocaleOrDefault(), {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -116,5 +118,5 @@ export function formatAppointmentLabel(d: Date): string {
       minute: '2-digit',
     });
   }
-  return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(vehicleFormattingLocaleOrDefault(), { weekday: 'short', day: 'numeric', month: 'short' });
 }

@@ -13,6 +13,7 @@ import type {
   FleetHealthServiceNavState,
   FleetHealthServiceTab,
   FleetHealthServiceWorkSection,
+  FleetHealthReloadFn,
 } from './fleet-health-service.types';
 import { sanitizeFleetHealthServiceNavState } from './fleet-health-service.types';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -41,7 +42,7 @@ const KPI_HINT_KEYS: Record<string, TranslationKey> = {
 };
 
 interface FleetHealthServiceOverviewPanelProps {
-  vm: FleetHealthServiceViewModel & { reloadAll?: () => void | Promise<unknown> };
+  vm: FleetHealthServiceViewModel & { reloadAll?: FleetHealthReloadFn };
   onNavChange?: (nav: FleetHealthServiceNavState) => void;
   nav?: FleetHealthServiceNavState;
   onNavigateSubTab?: (tab: FleetHealthServiceTab) => void;

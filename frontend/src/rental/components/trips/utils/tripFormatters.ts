@@ -1,21 +1,37 @@
-export function formatTripTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+import {
+  DEFAULT_PRODUCT_LOCALE,
+  getFormattingLocale,
+  isSupportedLocale,
+  type SupportedLocale,
+} from '../../../../i18n/locales';
+
+function tripFormattingLocale(locale?: SupportedLocale | string): string {
+  const code = isSupportedLocale(locale) ? locale : DEFAULT_PRODUCT_LOCALE;
+  return getFormattingLocale(code);
 }
 
-export function formatTripTimeWithSeconds(iso: string): string {
-  return new Date(iso).toLocaleTimeString('de-DE', {
+export function formatTripTime(iso: string, locale?: SupportedLocale | string): string {
+  return new Date(iso).toLocaleTimeString(tripFormattingLocale(locale), { hour: '2-digit', minute: '2-digit' });
+}
+
+export function formatTripTimeWithSeconds(iso: string, locale?: SupportedLocale | string): string {
+  return new Date(iso).toLocaleTimeString(tripFormattingLocale(locale), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
   });
 }
 
-export function formatTripDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+export function formatTripDate(iso: string, locale?: SupportedLocale | string): string {
+  return new Date(iso).toLocaleDateString(tripFormattingLocale(locale), {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
-export function formatTripDateLong(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', {
+export function formatTripDateLong(iso: string, locale?: SupportedLocale | string): string {
+  return new Date(iso).toLocaleDateString(tripFormattingLocale(locale), {
     weekday: 'short',
     day: '2-digit',
     month: 'long',
@@ -23,8 +39,8 @@ export function formatTripDateLong(iso: string): string {
   });
 }
 
-export function formatTripDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('de-DE', {
+export function formatTripDateTime(iso: string, locale?: SupportedLocale | string): string {
+  return new Date(iso).toLocaleString(tripFormattingLocale(locale), {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -37,19 +53,16 @@ export function dateKeyFromIso(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function formatTripDistance(km: number | null | undefined): string {
-  if (km == null) return '—';
-  return `${km.toFixed(1).replace('.', ',')} km`;
+export function formatTripDistance(km: number | null | undefined, locale?: SupportedLocale | string): string {
+  if (typeof km !== 'number' || !Number.isFinite(km)) return '—';
+  return `${km.toLocaleString(tripFormattingLocale(locale), { maximumFractionDigits: 1 })} km`;
 }
 
-export function formatTripDuration(minutes: number | null | undefined): string {
-  if (minutes == null) return '—';
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  return h > 0 ? `${h}h ${m}min` : `${m} min`;
-}
-
-export function formatSpeedKmh(value: number | null | undefined, prefix = ''): string | null {
-  if (value == null) return null;
-  return `${prefix}${Math.round(value)} km/h`;
+export function formatTripDuration(ms: number | null | undefined): string {
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return '—';
+  const totalMinutes = Math.round(ms / 60_000);
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
 }

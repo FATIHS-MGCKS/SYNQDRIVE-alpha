@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { MisuseCasesPanel } from '../MisuseCasesPanel';
 import { VehicleStressPanel } from '../VehicleStressPanel';
@@ -93,6 +94,7 @@ export function TripTimelineExpanded({
   onCenterRoute,
   rentalContext,
 }: TripTimelineExpandedProps) {
+  const { t } = useLanguage();
   const stressScore = resolveDrivingStressScore(trip);
   const stressLevel = trip.stressLevel ?? getStressLevel(stressScore);
   const modelProfile = trip.drivingImpactModelProfile;
@@ -147,13 +149,13 @@ export function TripTimelineExpanded({
         {detailLoading && (
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" />
-            Fahrtdetails werden geladen…
+            {t('trips.detailLoading')}
           </div>
         )}
 
         {detailError && !detailLoading && (
           <p className="text-[11px] text-amber-600 dark:text-amber-400">
-            Zusatzdetails konnten nicht geladen werden. Basisdaten aus der Timeline werden angezeigt.
+            {t('trips.detailLoadFailed')}
           </p>
         )}
 
@@ -164,7 +166,7 @@ export function TripTimelineExpanded({
         ) : (
           <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Gesamtbewertung
+              {t('trips.overallRating')}
             </p>
             <p className="mt-1 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
               {gesamtbewertung.label}
@@ -173,7 +175,7 @@ export function TripTimelineExpanded({
               <p className="mt-0.5 text-[11px] text-muted-foreground">{gesamtbewertung.primaryReason}</p>
             ) : !gesamtbewertung.fromBackend ? (
               <p className="mt-0.5 text-[10px] text-muted-foreground/80">
-                Vorläufige Anzeige — Gesamtbewertung wird nach Detail-Laden aktualisiert.
+                {t('trips.provisionalRating')}
               </p>
             ) : null}
           </div>

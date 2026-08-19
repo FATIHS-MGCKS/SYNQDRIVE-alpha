@@ -1,5 +1,6 @@
 import type { VehicleOverviewReadinessSummary } from '../../lib/vehicle-overview.types';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   readinessDisplayTitle,
   readinessIconName,
@@ -25,10 +26,11 @@ export function VehicleOverviewReadinessStrip({
   readiness,
   isLoading,
 }: VehicleOverviewReadinessStripProps) {
+  const { t, locale } = useLanguage();
   const loading = isLoading || readiness.loadState === 'loading';
   const tone = readinessToneClass(readiness.tone);
-  const title = readinessDisplayTitle(readiness.readinessStatus, readiness.title);
-  const badgeLabel = readinessStatusBadgeLabel(readiness.readinessStatus);
+  const title = readinessDisplayTitle(locale, readiness.readinessStatus, readiness.title);
+  const badgeLabel = readinessStatusBadgeLabel(locale, readiness.readinessStatus);
   const hiddenBlockers = Math.max(0, readiness.totalBlockerCount - MAX_VISIBLE_BLOCKERS);
 
   if (loading) {
@@ -37,7 +39,7 @@ export function VehicleOverviewReadinessStrip({
         className={`${vo.readiness} border-border/50 bg-muted/5 animate-pulse motion-reduce:animate-none`}
         role="status"
         aria-busy="true"
-        aria-label="Loading vehicle readiness"
+        aria-label={t('vehicle.overview.loadingReadiness')}
       >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-muted/80 shrink-0" />
@@ -55,7 +57,7 @@ export function VehicleOverviewReadinessStrip({
       className={`${vo.readiness} ${tone.surface}`}
       role="status"
       aria-live="polite"
-      aria-label={`Vehicle readiness: ${title}. Status ${badgeLabel}.`}
+      aria-label={t('vehicle.overview.readinessAria', { title, badge: badgeLabel })}
     >
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -84,7 +86,7 @@ export function VehicleOverviewReadinessStrip({
         {readiness.blockers.length > 0 ? (
           <div
             className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 shrink-0 max-w-full sm:max-w-[48%]"
-            aria-label="Active blockers"
+            aria-label={t('vehicle.overview.activeBlockers')}
           >
             {readiness.blockers.slice(0, MAX_VISIBLE_BLOCKERS).map((blocker) => (
               <span key={blocker} className={vo.chip} title={blocker}>
@@ -92,7 +94,9 @@ export function VehicleOverviewReadinessStrip({
               </span>
             ))}
             {hiddenBlockers > 0 ? (
-              <span className={`${vo.chip} text-muted-foreground`}>+{hiddenBlockers} more</span>
+              <span className={`${vo.chip} text-muted-foreground`}>
+                {t('vehicle.overview.moreBlockers', { count: hiddenBlockers })}
+              </span>
             ) : null}
           </div>
         ) : null}

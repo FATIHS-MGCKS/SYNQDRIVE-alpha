@@ -1,5 +1,6 @@
 import { Calendar, Check, Clock, Play, User } from 'lucide-react';
 import { PriorityBadge, StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiTask } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import { isTerminalTaskStatus, taskRequiresResolutionNote } from '../../lib/task-detail.utils';
@@ -55,6 +56,7 @@ export function ServiceTaskCard({
   onWaiting,
   onComplete,
 }: ServiceTaskCardProps) {
+  const { t } = useLanguage();
   const overdue = deriveTaskIsOverdue(task);
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
   const terminal = isTerminalTaskStatus(task.status);
@@ -96,7 +98,7 @@ export function ServiceTaskCard({
             </span>
             <TaskSourceBadgePill label={taskSourceLabel(task)} />
             {task.blocksVehicleAvailability && (
-              <StatusChip tone="critical">Blockiert Miete</StatusChip>
+              <StatusChip tone="critical">{t('serviceCenter.blockedRental')}</StatusChip>
             )}
           </div>
 

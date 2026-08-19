@@ -1,3 +1,4 @@
+import { useLanguage } from '../../i18n/LanguageContext';
 import { StatusChip } from '../../components/patterns';
 import {
   formatStressScore,
@@ -92,7 +93,7 @@ function ComponentRow({
 }
 
 export function VehicleStressPanel({
-  title = 'Fahrbelastung',
+  title,
   stressScore,
   stressLevel,
   components,
@@ -105,6 +106,8 @@ export function VehicleStressPanel({
   rollingWindowFootnote,
   stressMissingContext,
 }: VehicleStressPanelProps) {
+  const { t } = useLanguage();
+  const resolvedTitle = title ?? t('vehicle.stress.panelTitle');
   const display = formatStressScore(stressScore, {
     hasEnoughData,
     level: stressLevel ?? undefined,
@@ -117,7 +120,7 @@ export function VehicleStressPanel({
   if (display.isMissing) {
     return (
       <div className="h-full rounded-xl border border-border surface-premium p-4">
-        <h4 className="mb-2 text-[12px] font-semibold text-foreground">{title}</h4>
+        <h4 className="mb-2 text-[12px] font-semibold text-foreground">{resolvedTitle}</h4>
         <p className="text-xs text-muted-foreground">
           {getStressScoreMissingMessage(stressMissingContext)}
         </p>
@@ -145,7 +148,7 @@ export function VehicleStressPanel({
     <div className="flex h-full flex-col rounded-xl border border-border surface-premium p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
-          <h4 className="text-[12px] font-semibold text-foreground">{title}</h4>
+          <h4 className="text-[12px] font-semibold text-foreground">{resolvedTitle}</h4>
           {!compact && (
             <p className="max-w-prose text-[11px] leading-relaxed text-muted-foreground">
               {getMechanicalStressDescription(levelForDonut)}
@@ -212,6 +215,7 @@ export function VehicleStressBadge({
   stressLevel?: StressLevel | null;
   hasEnoughData?: boolean;
 }) {
+  const { t } = useLanguage();
   const display = formatStressScore(stressScore, {
     hasEnoughData,
     level: stressLevel ?? undefined,
@@ -227,7 +231,7 @@ export function VehicleStressBadge({
     <StatusChip
       tone={stressToneToStatusTone(display.tone)}
       className="text-[9px]"
-      title={`Fahrbelastung ${display.outOf100} — ${display.label}`}
+      title={t('vehicle.stress.scoreTitle', { score: display.outOf100, label: display.label })}
     >
       {display.label}
     </StatusChip>

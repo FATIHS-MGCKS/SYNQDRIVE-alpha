@@ -1,5 +1,7 @@
 import { Icon } from './ui/Icon';
+import { getFormattingLocale } from '../../i18n/locales';
 import { useMemo } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 
 import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
@@ -62,13 +64,14 @@ function VehicleAddress({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean
 
 // V4.6.94 — fixed-width percent text + tabular-nums so values like "9%",
 // "47%" and "100%" line up in a column across vehicle rows.
-// V4.7.11 — Mirrors `FleetView > FuelCell`: at <20% the canonical fuel
+// V4.7.11 — Mirrors FleetView fuel display; below 20% the canonical fuel
 // icon picks up the critical tone *and* a soft red drop-shadow halo,
 // the percentage text flips to critical too. Three coherent cues at
 // the most urgent end of the scale (icon glow, bar already red at
 // ≤25%, red number) — static, no animation, so the row is unmissable
 // without distracting from the rest of the list.
 function FuelStripe({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) {
+  const {t, formattingLocale } = useLanguage();
   const value = canonicalFuel(v);
   if (value == null) {
     return (
@@ -81,7 +84,7 @@ function FuelStripe({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) 
   }
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   const isCriticallyLow = pct < 20;
-  const fuelLabel = v.isElectric ? 'SoC' : 'Tank';
+  const fuelLabel = v.isElectric ? t('fleet.stat.soc') : t('fleet.stat.tank');
   const idleIconCls = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const idleTextCls = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const criticalCls =
@@ -169,11 +172,15 @@ function kmProgressPercent(driven: number | null | undefined, included: number |
   return Math.max(0, Math.round((driven / included) * 100));
 }
 
-function formatKmRemainingShort(driven: number | null | undefined, included: number | null | undefined): string {
+function formatKmRemainingShort(
+  driven: number | null | undefined,
+  included: number | null | undefined,
+  formattingLocale: string,
+): string {
   if (typeof driven !== 'number' || typeof included !== 'number') return '—';
   const remaining = Math.round(included - driven);
-  if (remaining < 0) return `+${Math.abs(remaining).toLocaleString('de-DE')} km`;
-  return `${remaining.toLocaleString('de-DE')} km`;
+  if (remaining < 0) return `+${Math.abs(remaining).toLocaleString(formattingLocale)} km`;
+  return `${remaining.toLocaleString(formattingLocale)} km`;
 }
 
 // V4.6.99 — Booking-Reference aus einer Booking-UUID. Spiegelt die
@@ -311,6 +318,7 @@ interface StatInlineDetailProps {
 }
 
 export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSelect, onItemHover, pickupItems, returnItems, pickupNeedsCleaning, pickupAlerts, returnErrors, returnKmExceeded, returnOverdue = 0, returnAlerts, borderColor, hideHeader, onConfirmPickup, onConfirmReturn, onOpenBookingById, stations }: StatInlineDetailProps) {
+  const {t, formattingLocale } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
 
   // V4.7.04/V4.7.06 — Pre-build the byId / byName indices once per
@@ -446,7 +454,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-brand-soft flex items-center justify-center"><Icon name="car" className="w-4 h-4 text-brand" /></div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>Available Vehicles</h3>
+                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{t('fleet.stat.availableVehicles')}</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{vehicles.length} vehicles ready for rental</p>
                 </div>
               </div>
@@ -495,9 +503,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                             ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-status-info-soft text-status-info')
                             : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                         }`}
-                        title={v.cleaningStatus === 'Clean' ? 'Clean' : 'Needs cleaning'}
+                        title={v.cleaningStatus === 'Clean' ? t('fleet.stat.clean') : t('fleet.stat.needsCleaning')}
                       >
-                        {v.cleaningStatus === 'Clean' ? 'Clean' : 'Dirty'}
+                        {v.cleaningStatus === 'Clean' ? t('fleet.stat.clean') : t('fleet.stat.dirty')}
                       </span>
                       <HealthChip vehicleId={v.id} />
                       <span
@@ -508,9 +516,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                               ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
                               : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                         }`}
-                        title={offline ? VEHICLE_OFFLINE_LABEL : !isBlocked ? 'Ready for rental' : 'Not ready — rental blocked'}
+                        title={offline ? VEHICLE_OFFLINE_LABEL : !isBlocked ? t('fleet.stat.readyForRental') : t('fleet.stat.notReadyBlocked')}
                       >
-                        {!offline && !isBlocked ? 'Ready' : 'Not Ready'}
+                        {!offline && !isBlocked ? t('fleet.stat.ready') : t('fleet.stat.notReady')}
                       </span>
                       <Icon name="chevron-right" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-300'}`} />
                     </div>
@@ -575,7 +583,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center"><Icon name="calendar" className="w-4 h-4 text-purple-600" /></div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>Reserved Vehicles</h3>
+                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{t('fleet.stat.reservedVehicles')}</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{vehicles.length} reserved{overdueCount > 0 ? ` · ${overdueCount} überfällig` : ''}</p>
                 </div>
               </div>
@@ -595,7 +603,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                 const pickupShort = formatPickupShort(v.reservedPickupAt);
                 const pickupFull = v.reservedPickupAt ? formatFleetDateTime(v.reservedPickupAt) : null;
                 const stationLabel = v.reservedPickupStationName || v.station || '—';
-                const customerLabel = v.reservedCustomerName || 'Nicht zugeordnet';
+                const customerLabel = v.reservedCustomerName || t('fleet.stat.unassigned');
                 const footerTooltip = [
                   stationLabel,
                   pickupFull ? `Pickup ${pickupFull}` : null,
@@ -741,7 +749,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center"><Icon name="trending-up" className="w-4 h-4 text-green-600" /></div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>Active Rentals</h3>
+                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{t('fleet.stat.activeRentals')}</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{vehicles.length} vehicles currently rented{overdueCount > 0 ? ` · ${overdueCount} überfällig` : ''}</p>
                 </div>
               </div>
@@ -755,7 +763,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                 const isOverdue = !!v.activeIsOverdue;
                 const timePct = timeProgressPercent(v.activeStartAt, v.activeReturnAt);
                 const kmPct = kmProgressPercent(v.activeKmDriven, v.activeKmIncluded);
-                const kmRemainingLabel = formatKmRemainingShort(v.activeKmDriven, v.activeKmIncluded);
+                const kmRemainingLabel = formatKmRemainingShort(v.activeKmDriven, v.activeKmIncluded, formattingLocale);
                 const kmOver = kmPct != null && kmPct > 100;
                 // V4.6.96 — Overdue-Magnitude („+2h 15m") nur wenn isOverdue
                 // UND `activeReturnAt` vorhanden. Wird inline an die Rückgabe-
@@ -770,7 +778,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     onMouseEnter={() => onItemHover?.(v.model)}
                     onMouseLeave={() => onItemHover?.(null)}
                     className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}
-                    title={activeBookingId ? 'Buchung öffnen' : undefined}
+                    title={activeBookingId ? t('fleet.stat.openBooking') : undefined}
                   >
                     {/* Row 1: License + MMY + BlockingBadge | Health / On-Time badges + Chevron */}
                     <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
@@ -840,7 +848,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     <div className="flex items-center gap-2 mb-1.5 min-w-0 text-[10.5px]">
                       <span className={`inline-flex items-center gap-1 truncate min-w-0 ${isOverdue ? 'flex-1' : 'max-w-[55%]'} ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>
                         <Icon name="users" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
-                        <span className="truncate font-medium">{v.activeCustomerName || 'Nicht zugeordnet'}</span>
+                        <span className="truncate font-medium">{v.activeCustomerName || t('fleet.stat.unassigned')}</span>
                       </span>
                       {(() => {
                         const activeBookingId = selectActiveBooking(v)?.bookingId;
@@ -874,7 +882,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       {!isOverdue && (
                         <span
                           className={`ml-auto inline-flex items-center gap-1 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
-                          title="Geplante Rückgabezeit"
+                          title={t('vehicle.bookings.plannedReturn')}
                         >
                           <Icon name="calendar" className="w-3 h-3 shrink-0" />
                           <span className="font-semibold whitespace-nowrap">
@@ -958,7 +966,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center"><Icon name="clock" className="w-4 h-4 text-orange-600" /></div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>Pick Ups Today</h3>
+                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{t('dashboard.pickUpsToday')}</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{pickupItems.filter(p => p.done).length} of {pickupItems.length} completed</p>
                 </div>
               </div>
@@ -1023,7 +1031,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                               isDarkMode ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-rose-100 text-rose-700 border border-rose-200'
                             }`}>
                               <Icon name="clock" className="w-2.5 h-2.5" />
-                              Überfällig · {overdueLabel}
+                              {t('fleet.stat.overdueWithLabel', { label: overdueLabel })}
                             </span>
                           )}
                           {!p.done && !showOverdue && hasAlertOrError && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
@@ -1047,10 +1055,10 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-white transition-colors shadow-sm shrink-0 ${
                             showOverdue ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand hover:bg-brand-hover text-brand-foreground'
                           }`}
-                          title={showOverdue ? 'Pickup jetzt nachtragen' : 'Pickup bestätigen'}
+                          title={showOverdue ? t('fleet.stat.pickupRecordNow') : t('fleet.stat.pickupConfirm')}
                         >
                           <Icon name="file-signature" className="w-3 h-3" />
-                          {showOverdue ? 'Nachtragen' : 'Übergabe'}
+                          {showOverdue ? t('fleet.stat.recordNow') : t('fleet.stat.handover')}
                         </button>
                       ) : (
                         <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground') : (isDarkMode ? 'text-muted-foreground/60' : 'text-gray-200')}`} />
@@ -1072,7 +1080,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center"><Icon name="clock" className="w-4 h-4 text-orange-600" /></div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>Returns Today</h3>
+                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{t('dashboard.returnsToday')}</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{returnItems.filter(r => r.done).length} of {returnItems.length} completed</p>
                 </div>
               </div>
@@ -1123,7 +1131,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                             {r.isOverdue && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700">
                                 <Icon name="clock" className="w-2.5 h-2.5" />
-                                Überfällig
+                                {t('dashboard.operations.status.overdue')}
                               </span>
                             )}
                             {r.returnProtocolStatus && (
@@ -1140,10 +1148,10 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <button
                           onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(r); }}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm shrink-0"
-                          title="Rückgabe bestätigen"
+                          title={t('vehicle.bookings.confirmReturn')}
                         >
                           <Icon name="file-signature" className="w-3 h-3" />
-                          Rückgabe
+                          {t('fleet.stat.return')}
                         </button>
                       ) : (
                         <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground') : (isDarkMode ? 'text-muted-foreground/60' : 'text-gray-200')}`} />
@@ -1157,7 +1165,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
         );
       })()}
 
-      {/* In Maintenance
+      {/* {t('fleet.stat.inMaintenance')}
           V4.6.94 — Symmetric tri-row layout aligned with Available /
           Reserved / Active Rented. Bucket badge: maintenance type
           ("Planned" / "Unplanned" / "Service" when urgency is unknown).
@@ -1176,7 +1184,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center"><Icon name="wrench" className="w-4 h-4 text-red-600" /></div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>In Maintenance</h3>
+                  <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{t('fleet.stat.inMaintenance')}</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{vehicles.length} vehicles in workshop{unplannedCount > 0 ? ` · ${unplannedCount} ungeplant` : ''}</p>
                 </div>
               </div>
@@ -1191,7 +1199,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                 const isPlanned = v.maintenanceUrgency === 'planned';
                 const isUnplanned = v.maintenanceUrgency === 'urgent';
                 const reasonLabel = formatMaintenanceReason(v.maintenanceReasonCode, v.maintenanceReason);
-                const bucketLabel = isPlanned ? 'Planned' : isUnplanned ? 'Unplanned' : 'Service';
+                const bucketLabel = isPlanned ? t('fleet.stat.planned') : isUnplanned ? t('fleet.stat.unplanned') : t('fleet.stat.service');
                 return (
                   <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
                     {/* Row 1: License + MMY + BlockingBadge | Clean / Health / Bucket badges + Chevron */}
@@ -1209,9 +1217,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                               ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-status-info-soft text-status-info')
                               : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                           }`}
-                          title={isClean ? 'Clean' : 'Needs cleaning'}
+                          title={isClean ? t('fleet.stat.clean') : t('fleet.stat.needsCleaning')}
                         >
-                          {isClean ? 'Clean' : 'Dirty'}
+                          {isClean ? t('fleet.stat.clean') : t('fleet.stat.dirty')}
                         </span>
                         <HealthChip vehicleId={v.id} />
                         <span
@@ -1222,7 +1230,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                                 ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                                 : (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
                           }`}
-                          title={isPlanned ? 'Geplante Wartung' : isUnplanned ? 'Ungeplante Wartung / Operational Block' : 'Service ohne Dringlichkeitsangabe'}
+                          title={isPlanned ? t('fleet.stat.plannedMaintenance') : isUnplanned ? t('fleet.stat.unplannedMaintenance') : t('fleet.stat.serviceNoUrgency')}
                         >
                           {bucketLabel}
                         </span>

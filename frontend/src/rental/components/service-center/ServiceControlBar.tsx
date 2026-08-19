@@ -1,6 +1,7 @@
 import { AlertTriangle, CalendarClock, Car, ClipboardList, Shield, Wrench } from 'lucide-react';
 import { sc } from './service-center-ui';
 import { formatKpiValue } from './service-center.utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ServiceKpiSnapshot, ServiceTaskFilter } from './service-center.types';
 
 interface ServiceControlBarProps {
@@ -25,82 +26,83 @@ export function ServiceControlBar({
   activeFilter,
   onFilterSelect,
 }: ServiceControlBarProps) {
+  const { t } = useLanguage();
   const items: KpiDef[] = [
     {
       key: 'overdue',
-      label: 'Überfällig',
-      subtitle: 'Fälligkeit überschritten',
+      label: t('serviceCenter.control.kpi.overdue'),
+      subtitle: t('serviceCenter.control.kpi.overdueHint'),
       value: kpis.overdue,
       icon: AlertTriangle,
       accent: 'critical',
     },
     {
       key: 'due-soon',
-      label: 'Bald fällig',
-      subtitle: 'Nächste 7 Tage',
+      label: t('serviceCenter.control.kpi.dueSoon'),
+      subtitle: t('serviceCenter.control.kpi.dueSoonHint'),
       value: kpis.dueSoon,
       icon: CalendarClock,
       accent: 'watch',
     },
     {
       key: 'in-progress',
-      label: 'In Werkstatt',
-      subtitle: 'Aktiv in Bearbeitung',
+      label: t('serviceCenter.control.kpi.inProgress'),
+      subtitle: t('serviceCenter.control.kpi.inProgressHint'),
       value: kpis.inProgress,
       icon: Wrench,
     },
     {
       key: 'waiting-vendor',
-      label: 'Wartet Partner',
-      subtitle: 'Rückmeldung ausstehend',
+      label: t('serviceCenter.control.kpi.waitingVendor'),
+      subtitle: t('serviceCenter.control.kpi.waitingVendorHint'),
       value: kpis.waitingVendor,
       icon: ClipboardList,
       accent: 'watch',
     },
     {
       key: 'urgent',
-      label: 'Kritisch / Blockiert',
-      subtitle: 'Miete oder Priorität kritisch',
+      label: t('serviceCenter.control.kpi.urgent'),
+      subtitle: t('serviceCenter.control.kpi.urgentHint'),
       value: kpis.urgent,
       icon: Car,
       accent: 'critical',
     },
     {
       key: 'tuv',
-      label: 'TÜV/HU',
-      subtitle: 'Prüfung & Inspektion',
+      label: t('serviceCenter.control.kpi.tuv'),
+      subtitle: t('serviceCenter.control.kpi.tuvHint'),
       value: kpis.tuvDue,
       icon: Shield,
       accent: 'watch',
     },
     {
       key: 'repairs',
-      label: 'Reparaturen',
-      subtitle: 'Offene Reparaturfälle',
+      label: t('serviceCenter.control.kpi.repairs'),
+      subtitle: t('serviceCenter.control.kpi.repairsHint'),
       value: kpis.openRepairs,
       icon: Wrench,
     },
     {
       key: 'service',
-      label: 'Service offen',
-      subtitle: 'Wartung & Checks',
+      label: t('serviceCenter.control.kpi.service'),
+      subtitle: t('serviceCenter.control.kpi.serviceHint'),
       value: kpis.openService,
       icon: Wrench,
     },
   ];
 
   return (
-    <section className={sc.controlBar} aria-label="Service-Kennzahlen">
+    <section className={sc.controlBar} aria-label={t('serviceCenter.control.ariaKpis')}>
       <div className="mb-3 flex items-end justify-between gap-2 flex-wrap">
         <div>
           <p className={sc.sectionEyebrow}>Instandhaltung</p>
-          <h2 className={sc.sectionTitle}>Operative Service-Steuerung</h2>
+          <h2 className={sc.sectionTitle}>{t('serviceCenter.control.title')}</h2>
         </div>
         {loading && (
-          <span className="text-[10px] text-muted-foreground animate-pulse">Wird geladen…</span>
+          <span className="text-[10px] text-muted-foreground animate-pulse">{t('serviceCenter.control.loading')}</span>
         )}
         {!kpis.dataReady && !loading && (
-          <span className="text-[10px] text-muted-foreground">Keine KPI-Daten verfügbar</span>
+          <span className="text-[10px] text-muted-foreground">{t('serviceCenter.control.noKpiData')}</span>
         )}
       </div>
 

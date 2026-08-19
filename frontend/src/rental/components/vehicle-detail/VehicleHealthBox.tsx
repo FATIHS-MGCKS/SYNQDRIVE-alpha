@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { getFormattingLocale } from '../../../i18n/locales';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { StatusChip } from '../../../components/patterns';
 import { DashboardWarningLightsQuickView } from '../DashboardWarningLightsQuickView';
 import type { DashboardWarningLightsResponse } from '../../../lib/api';
@@ -150,7 +152,7 @@ function UntrackedModulesInfo({ untrackedCount }: { untrackedCount: number }) {
   );
 }
 
-function ComplianceGrid({ vm }: { vm: VehicleHealthBoxViewModel }) {
+function ComplianceGrid({ vm, formattingLocale }: { vm: VehicleHealthBoxViewModel; formattingLocale: string }) {
   const nsDisplay = vm.nsDisplay;
   const tuvCompliance = vm.tuvCompliance;
   const bokCompliance = vm.bokCompliance;
@@ -166,12 +168,12 @@ function ComplianceGrid({ vm }: { vm: VehicleHealthBoxViewModel }) {
     if (nsDisplay.showHmOverdueHint) {
       const parts: string[] = [];
       if (days != null && days < 0) parts.push(`${Math.abs(days)} T`);
-      if (km != null && km < 0) parts.push(`${Math.abs(km).toLocaleString('de-DE')} km`);
+      if (km != null && km < 0) parts.push(`${Math.abs(km).toLocaleString(formattingLocale)} km`);
       return parts.length ? `−${parts.join(' / ')}` : 'Überfällig';
     }
     if (days != null && days >= 0 && days <= 90) return `in ${days} T`;
     if (days != null && days > 90) return `in ${Math.round(days / 30)} M`;
-    if (km != null && km >= 0) return `${km.toLocaleString('de-DE')} km`;
+    if (km != null && km >= 0) return `${km.toLocaleString(formattingLocale)} km`;
     return nsDisplay.badge ?? 'HM/OEM';
   })();
 
@@ -180,7 +182,7 @@ function ComplianceGrid({ vm }: { vm: VehicleHealthBoxViewModel }) {
     if (nsDisplay.trackingStatus === 'STALE') return 'HM/OEM veraltet';
     if (nsDisplay.showHmOverdueHint) return 'überfällig';
     const { km } = nsDisplay.daysKm;
-    if (km != null && km >= 0) return `${km.toLocaleString('de-DE')} km`;
+    if (km != null && km >= 0) return `${km.toLocaleString(formattingLocale)} km`;
     return 'Von HM/OEM';
   })();
 
@@ -236,12 +238,13 @@ function ComplianceGrid({ vm }: { vm: VehicleHealthBoxViewModel }) {
 }
 
 function DataBasisSection({ vm }: { vm: VehicleHealthBoxViewModel }) {
+  const {t, formattingLocale } = useLanguage();
   if (!vm.dataBasis) return null;
   const { dataBasis } = vm;
   return (
     <div className="rounded-[10px] border border-border bg-muted/30 px-2 py-2">
       <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] font-semibold text-foreground">Data Basis</span>
+        <span className="text-[10px] font-semibold text-foreground">{t('vehicle.telemetry.dataBasis')}</span>
         <StatusChip tone={dataBasis.levelTone} className="!text-[9px] !py-0 !px-1.5">
           {dataBasis.qualityLabel}
         </StatusChip>
@@ -281,6 +284,7 @@ export function VehicleHealthBox({
   onViewDetails,
   showDataBasis = true,
 }: VehicleHealthBoxProps) {
+  const {t, formattingLocale } = useLanguage();
   const vm = buildVehicleHealthBoxViewModel({
     rentalHealth,
     rentalHealthLoading,
@@ -304,7 +308,7 @@ export function VehicleHealthBox({
     <div className="surface-premium group relative flex h-full flex-col rounded-xl p-3 text-foreground">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">Vehicle Health</h3>
+          <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">{t('vehicle.vehicleHealth')}</h3>
           <span
             title={vm.overallTitle}
             className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold ring-1 ${vm.overallAccentRing}`}
@@ -315,7 +319,7 @@ export function VehicleHealthBox({
           {vm.dataCoverageLabel ? (
             <span
               className="inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[8.5px] font-semibold text-muted-foreground ring-1 ring-border bg-muted/30"
-              title="Data coverage — not a health severity"
+              title={t('vehicle.telemetry.dataCoverageTitle')}
             >
               {vm.dataCoverageLabel}
             </span>
@@ -363,7 +367,7 @@ export function VehicleHealthBox({
       <HealthModuleRows vm={vm} isDarkMode={isDarkMode} />
       <UntrackedModulesInfo untrackedCount={vm.untrackedCount} />
       <div className={vm.untrackedCount <= 0 ? 'mt-2' : undefined}>
-        <ComplianceGrid vm={vm} />
+        <ComplianceGrid vm={vm} formattingLocale={formattingLocale} />
       </div>
 
       {vm.findings.length > 0 && (
@@ -395,7 +399,7 @@ export function VehicleHealthBox({
           onClick={onViewDetails}
           className="group flex w-full items-center justify-between rounded-[12px] px-2.5 py-2 text-[11px] font-bold transition-[background-color,color,transform] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.99] sq-tone-brand hover:opacity-90"
         >
-          <span>View Health Details</span>
+          <span>{t('vehicle.telemetry.viewHealthDetails')}</span>
           <span className="flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:translate-x-0.5 bg-[color:var(--card)]/70">
             <svg
               width="12"

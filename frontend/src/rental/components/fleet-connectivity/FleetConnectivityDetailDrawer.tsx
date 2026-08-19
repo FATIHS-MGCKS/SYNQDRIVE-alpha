@@ -1,4 +1,5 @@
 import { ChevronDown, Info, Loader2 } from 'lucide-react';
+import { getFormattingLocale } from '../../../i18n/locales';
 import { useCallback, useEffect, useState } from 'react';
 import { DetailDrawer, ErrorState, StatusChip } from '../../../components/patterns';
 import { SupportContextButton } from '../../../components/support/SupportContextButton';
@@ -186,18 +187,18 @@ export function FleetConnectivityDetailDrawer({
                     </p>
                     <p className="mt-0.5 text-muted-foreground tabular-nums">
                       {new Date(event.occurredAt).toLocaleString(
-                        locale === 'de' ? 'de-DE' : 'en-GB',
+                        getFormattingLocale(locale === 'de' ? 'de' : 'en'),
                       )}
                     </p>
                     {event.type === 'DEVICE_RECONNECTED' &&
                     (event.processedAt || event.receivedAt) ? (
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         {event.processedAt
-                          ? `${t('fleetConnectivity.detail.recoveryProcessedAt')}: ${new Date(event.processedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB')}`
+                          ? `${t('fleetConnectivity.detail.recoveryProcessedAt')}: ${new Date(event.processedAt).toLocaleString(getFormattingLocale(locale === 'de' ? 'de' : 'en'))}`
                           : null}
                         {event.processedAt && event.receivedAt ? ' · ' : null}
                         {event.receivedAt
-                          ? `${t('fleetConnectivity.detail.recoveryReceivedAt')}: ${new Date(event.receivedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB')}`
+                          ? `${t('fleetConnectivity.detail.recoveryReceivedAt')}: ${new Date(event.receivedAt).toLocaleString(getFormattingLocale(locale === 'de' ? 'de' : 'en'))}`
                           : null}
                       </p>
                     ) : null}
@@ -280,7 +281,7 @@ export function FleetConnectivityDetailDrawer({
                 value={
                   detail.provider.lastSuccessfulFetchAt
                     ? new Date(detail.provider.lastSuccessfulFetchAt).toLocaleString(
-                        locale === 'de' ? 'de-DE' : 'en-GB',
+                        getFormattingLocale(locale === 'de' ? 'de' : 'en'),
                       )
                     : '—'
                 }
@@ -313,14 +314,14 @@ export function FleetConnectivityDetailDrawer({
               <DetailRow
                 label={t('fleetConnectivity.detail.calculatedAt')}
                 value={new Date(detail.timestamps.calculatedAt).toLocaleString(
-                  locale === 'de' ? 'de-DE' : 'en-GB',
+                  getFormattingLocale(locale === 'de' ? 'de' : 'en'),
                 )}
               />
               {detail.timestamps.reconnectedSince ? (
                 <DetailRow
                   label={t('fleetConnectivity.detail.reconnectedSince')}
                   value={new Date(detail.timestamps.reconnectedSince).toLocaleString(
-                    locale === 'de' ? 'de-DE' : 'en-GB',
+                    getFormattingLocale(locale === 'de' ? 'de' : 'en'),
                   )}
                 />
               ) : null}

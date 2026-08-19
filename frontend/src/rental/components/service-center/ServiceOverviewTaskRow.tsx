@@ -1,4 +1,5 @@
 import { Calendar, Check, Clock, ExternalLink, User } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { PriorityBadge, StatusChip } from '../../../components/patterns';
 import type { ApiTask } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
@@ -61,6 +62,7 @@ export function ServiceOverviewTaskRow({
   onComplete,
   onSchedule,
 }: ServiceOverviewTaskRowProps) {
+  const { t } = useLanguage();
   const overdue = deriveTaskIsOverdue(task);
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
   const due = dueTone(task);
@@ -103,7 +105,7 @@ export function ServiceOverviewTaskRow({
               label={vehicleTaskPriorityLabel(mapApiPriority(task.priority))}
             />
             {task.blocksVehicleAvailability && (
-              <StatusChip tone="critical">Blockiert Miete</StatusChip>
+              <StatusChip tone="critical">{t('serviceCenter.row.blocksRental')}</StatusChip>
             )}
           </div>
           <p className="text-[12px] font-semibold text-foreground leading-snug">{task.title}</p>
@@ -153,10 +155,10 @@ export function ServiceOverviewTaskRow({
             disabled={mutating}
             onClick={() => onOpen(task.id)}
             className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold border border-border/60 hover:bg-muted/40 disabled:opacity-50"
-            title="Details öffnen"
+            title={t('serviceCenter.row.openDetails')}
           >
             <ExternalLink className="w-3 h-3" />
-            Öffnen
+            {t('common.open')}
           </button>
           {onSchedule && !terminal && (
             <button

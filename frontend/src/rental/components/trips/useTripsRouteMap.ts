@@ -1,4 +1,5 @@
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { vehicleFormattingLocaleOrDefault } from '../vehicle/vehicle-i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { buildTripsMapGeoJson } from '../../../lib/geospatial';
@@ -25,6 +26,7 @@ export interface UseTripsRouteMapOptions {
   onEventSelect: (state: TripMapPopoverState | null) => void;
   selectedBehaviorEventId?: string | null;
   endpointLabels?: { start?: string | null; end?: string | null };
+  formattingLocale?: string;
 }
 
 export function useTripsRouteMap({
@@ -38,7 +40,9 @@ export function useTripsRouteMap({
   onEventSelect,
   selectedBehaviorEventId,
   endpointLabels,
+  formattingLocale: formattingLocaleOption,
 }: UseTripsRouteMapOptions) {
+  const formattingLocale = formattingLocaleOption ?? vehicleFormattingLocaleOrDefault();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const eventMarkersRef = useRef<mapboxgl.Marker[]>([]);
@@ -342,7 +346,7 @@ export function useTripsRouteMap({
         .setLngLat([startLng, startLat])
         .setPopup(
           new mapboxgl.Popup({ closeButton: false, offset: 12, className: 'trips-map-endpoint-popup' })
-            .setHTML(`<div class="trips-map-endpoint-popup__title">${startSub}</div><div class="trips-map-endpoint-popup__time">${new Date(start?.timestamp ?? selectedTrip.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</div>`),
+            .setHTML(`<div class="trips-map-endpoint-popup__title">${startSub}</div><div class="trips-map-endpoint-popup__time">${new Date(start?.timestamp ?? selectedTrip.startTime).toLocaleTimeString(formattingLocale, { hour: '2-digit', minute: '2-digit' })}</div>`),
         )
         .addTo(map);
       endpointMarkersRef.current.push(marker);
@@ -354,7 +358,7 @@ export function useTripsRouteMap({
         .setLngLat([endLng, endLat])
         .setPopup(
           new mapboxgl.Popup({ closeButton: false, offset: 12, className: 'trips-map-endpoint-popup' })
-            .setHTML(`<div class="trips-map-endpoint-popup__title">${endSub}</div><div class="trips-map-endpoint-popup__time">${new Date(end?.timestamp ?? selectedTrip.endTime ?? selectedTrip.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</div>`),
+            .setHTML(`<div class="trips-map-endpoint-popup__title">${endSub}</div><div class="trips-map-endpoint-popup__time">${new Date(end?.timestamp ?? selectedTrip.endTime ?? selectedTrip.startTime).toLocaleTimeString(formattingLocale, { hour: '2-digit', minute: '2-digit' })}</div>`),
         )
         .addTo(map);
       endpointMarkersRef.current.push(marker);

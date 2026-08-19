@@ -1,3 +1,5 @@
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { dt } from './dashboard-i18n';
 import type { DashboardViewProps } from './dashboardTypes';
 import type { DashboardViewModel } from './dashboardTypes';
 import type { DashboardDrilldownCta, DashboardDrilldownRow } from './dashboardDrilldownTypes';
@@ -11,16 +13,19 @@ export interface DashboardDrilldownHandlers {
   onClose?: () => void;
 }
 
-export function drilldownCtaLabel(cta: DashboardDrilldownCta, de: boolean): string {
-  if (cta === 'open-vehicle') return de ? 'Fahrzeug öffnen' : 'Open vehicle';
-  if (cta === 'open-booking') return de ? 'Buchung öffnen' : 'Open booking';
-  if (cta === 'start-handover-pickup' || cta === 'start-handover-return') {
-    return de ? 'Übergabe starten' : 'Start handover';
-  }
-  if (cta === 'open-invoice') return de ? 'Rechnung öffnen' : 'Open invoice';
-  if (cta === 'open-finance') return de ? 'Finanzen öffnen' : 'Open finance';
-  if (cta === 'open-stations') return de ? 'Stationen öffnen' : 'Open stations';
-  return de ? 'Vermietung öffnen' : 'Open rental';
+const DRILLDOWN_CTA_KEYS: Record<DashboardDrilldownCta, TranslationKey> = {
+  'open-vehicle': 'notification.cta.openVehicle',
+  'open-booking': 'notification.cta.openBooking',
+  'start-handover-pickup': 'notification.cta.startPickup',
+  'start-handover-return': 'notification.cta.startReturn',
+  'open-invoice': 'notification.cta.openInvoice',
+  'open-finance': 'notification.cta.openFinance',
+  'open-stations': 'notification.cta.openStation',
+  'open-rental': 'notification.cta.openRental',
+};
+
+export function drilldownCtaLabel(cta: DashboardDrilldownCta, locale: string): string {
+  return dt(locale, DRILLDOWN_CTA_KEYS[cta] ?? 'notification.cta.openRental');
 }
 
 export function runDrilldownCta(row: DashboardDrilldownRow, handlers: DashboardDrilldownHandlers): void {

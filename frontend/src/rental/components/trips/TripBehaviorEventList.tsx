@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { TripBehaviorEvent } from './timeline.types';
 import {
@@ -25,13 +26,14 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 };
 
 function ProvenanceBadge({ event }: { event: TripBehaviorEvent }) {
+  const { t } = useLanguage();
   if (!event.provenance) return null;
   const isNative = event.provenance === 'NATIVE';
   const confidence = event.confidence ? CONFIDENCE_LABEL[event.confidence] ?? event.confidence : null;
   if (!isNative) {
     return (
       <span
-        title={`Aus 1s-Hochfrequenzdaten rekonstruiert${confidence ? ` · Konfidenz ${confidence}` : ''}`}
+        title={`${t('trips.hfReconstructed')}${confidence ? ` · Konfidenz ${confidence}` : ''}`}
         className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
       >
         Rekonstruiert{confidence ? ` · ${confidence}` : ''}
@@ -81,6 +83,7 @@ export function TripBehaviorEventList({
   onSelectEvent,
   onShowOnMap,
 }: TripBehaviorEventListProps) {
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<BehaviorCategoryFilter>('all');
   const listRef = useRef<HTMLUListElement>(null);
 

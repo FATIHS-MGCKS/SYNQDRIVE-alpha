@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { DetailDrawer, ErrorState, SkeletonCard, StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BookingDetailDto } from '../../../lib/api';
 import { useHandover } from '../../HandoverContext';
 import { useRentalOrg } from '../../RentalContext';
@@ -21,6 +22,7 @@ import { BookingStatusBadge, normalizeBookingStatus } from '../bookings/bookingS
 import { bookingRef, formatCents } from '../bookings/bookingUtils';
 import { Icon } from '../ui/Icon';
 import { vb, vbActionClass } from './vehicle-bookings-ui';
+import { vehicleFormattingLocale } from '../vehicle/vehicle-i18n';
 
 interface VehicleBookingQuickDrawerProps {
   open: boolean;
@@ -37,6 +39,7 @@ export function VehicleBookingQuickDrawer({
   fallback,
   onOpenFullBooking,
 }: VehicleBookingQuickDrawerProps) {
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { openHandover } = useHandover();
   const activeId = open ? bookingId : null;
@@ -48,7 +51,7 @@ export function VehicleBookingQuickDrawer({
     ? normalizeBookingStatus(detail.core.statusEnum, detail.core.status)
     : fallback?.status ?? 'pending';
 
-  const title = detail?.customer.fullName ?? fallback?.customerName ?? 'Buchung';
+  const title = detail?.customer.fullName ?? fallback?.customerName ?? t('vehicle.bookings');
   const refLabel = detail?.core.bookingNumber ?? (fallback?.id ? bookingRef(fallback.id) : '—');
 
   const close = () => onOpenChange(false);
@@ -78,7 +81,7 @@ export function VehicleBookingQuickDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      eyebrow="Vehicle Booking"
+      eyebrow={t('vehicle.rentalBookings')}
       title={title}
       description={refLabel}
       status={<BookingStatusBadge status={uiStatus} />}
@@ -106,19 +109,19 @@ export function VehicleBookingQuickDrawer({
         <div className="space-y-4">
           <ErrorState
             compact
-            title="Detail nicht geladen"
+            title={t('vehicle.bookings.detailNotLoaded')}
             description={error}
             onRetry={refresh}
-            retryLabel="Erneut laden"
+            retryLabel={t('bookings.planner.retry')}
           />
-          {fallback && <FallbackSummary fallback={fallback} />}
+          {fallback && <FallbackSummary fallback={fallback} locale={locale} />}
         </div>
       ) : (
         <div className="space-y-4">
           {detail ? (
             <DetailSummary detail={detail} />
           ) : fallback ? (
-            <FallbackSummary fallback={fallback} />
+            <FallbackSummary fallback={fallback} locale={locale} />
           ) : null}
         </div>
       )}
@@ -127,6 +130,7 @@ export function VehicleBookingQuickDrawer({
 }
 
 function DetailSummary({ detail }: { detail: BookingDetailDto }) {
+  const { t } = useLanguage();
   const uiStatus = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   const hasHealthSignal =
     detail.health.rentalBlocked ||
@@ -138,24 +142,24 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
     <div className="space-y-3 animate-fade-up">
       <SummaryCard
         icon="car"
-        label="Fahrzeug"
+        label={t('bookings.vehicle')}
         value={`${detail.vehicle.displayName}${detail.vehicle.licensePlate ? ` · ${detail.vehicle.licensePlate}` : ''}`}
       />
       <SummaryCard
         icon="calendar"
-        label="Zeitraum"
+        label={t('bookings.period')}
         value={formatDateRange(detail.core.startDate, detail.core.endDate)}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <SummaryCard
           icon="map-pin"
-          label="Pickup"
+          label={t('dashboard.label.pickup')}
           value={detail.core.pickupStationName ?? EM_DASH}
           compact
         />
         <SummaryCard
           icon="map-pin"
-          label="Return"
+          label={t('dashboard.label.return')}
           value={detail.core.returnStationName ?? EM_DASH}
           compact
         />
@@ -163,7 +167,7 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
 
       <SummaryCard
         icon="receipt"
-        label="Finanzen"
+        label={t('bookings.revenue')}
         value={financeShortStatus(detail)}
         hint={
           detail.finance.computed
@@ -199,7 +203,7 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
 
       <SummaryCard
         icon="file-text"
-        label="Dokumente"
+        label={t('vehicle.documents')}
         value={documentsShortStatus(detail)}
         hint={
           detail.documents.warnings.length > 0
@@ -208,12 +212,12 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
         }
       />
 
-      <SummaryCard icon="key" label="Übergabe" value={handoverShortStatus(detail)} />
+      <SummaryCard icon="key" label={t('dashboard.handover.pickupAppointment')} value={handoverShortStatus(detail)} />
 
       {(detail.tasks.openCount > 0 || detail.tasks.overdueCount > 0) && (
         <SummaryCard
           icon="check-square"
-          label="Tasks"
+          label={t('vehicle.tasks')}
           value={`${detail.tasks.openCount} offen${detail.tasks.overdueCount > 0 ? ` · ${detail.tasks.overdueCount} überfällig` : ''}`}
           hint={
             detail.tasks.nextDueAt
@@ -226,11 +230,11 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
       {hasHealthSignal && (
         <SummaryCard
           icon="activity"
-          label="Mietbereitschaft"
+          label={t('dashboard.drilldown.rentalReadiness')}
           value={
             detail.health.rentalBlocked
-              ? 'Vermietung blockiert'
-              : detail.health.overallState ?? 'Hinweise vorhanden'
+              ? t('health.rentalBlocked')
+              : detail.health.overallState ?? t('health.state.warning')
           }
           hint={[...detail.health.blockingReasons, ...detail.health.criticalWarnings]
             .filter(Boolean)
@@ -253,7 +257,7 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
       {detail.activity.length > 0 && (
         <section className="rounded-xl border border-border/70 bg-muted/20 p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            Letzte Aktivität
+            {t('vehicle.bookings.lastActivity')}
           </p>
           <ul className="space-y-2">
             {detail.activity.slice(0, 3).map((item) => (
@@ -264,7 +268,7 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
             ))}
           </ul>
           <p className="text-[10px] text-muted-foreground mt-2">
-            Vollständige Timeline in der Buchungsakte.
+            {t('vehicle.bookings.fullTimelineHint')}
           </p>
         </section>
       )}
@@ -272,24 +276,25 @@ function DetailSummary({ detail }: { detail: BookingDetailDto }) {
   );
 }
 
-function FallbackSummary({ fallback }: { fallback: VehicleAgendaBooking }) {
-  const start = formatListDateTime(fallback.startDate);
-  const end = formatListDateTime(fallback.endDate);
+function FallbackSummary({ fallback, locale }: { fallback: VehicleAgendaBooking; locale: string }) {
+  const { t } = useLanguage();
+  const start = formatListDateTime(fallback.startDate, locale);
+  const end = formatListDateTime(fallback.endDate, locale);
 
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2">
-        Basisdaten aus der Liste — Detail wird nachgeladen.
+        {t('vehicle.bookings.basicDataLoading')}
       </p>
-      <SummaryCard icon="calendar" label="Zeitraum" value={`${start} → ${end}`} />
+      <SummaryCard icon="calendar" label={t('bookings.period')} value={`${start} → ${end}`} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <SummaryCard icon="map-pin" label="Pickup" value={fallback.pickupLocation} compact />
-        <SummaryCard icon="map-pin" label="Return" value={fallback.returnLocation} compact />
+        <SummaryCard icon="map-pin" label={t('dashboard.label.pickup')} value={fallback.pickupLocation} compact />
+        <SummaryCard icon="map-pin" label={t('dashboard.label.return')} value={fallback.returnLocation} compact />
       </div>
       {fallback.totalPriceCents != null && (
         <SummaryCard
           icon="receipt"
-          label="Gebuchter Betrag"
+          label={t('vehicle.bookings.bookedAmount')}
           value={formatCents(fallback.totalPriceCents)}
         />
       )}
@@ -317,6 +322,7 @@ function SummaryCard({
   compact?: boolean;
   tone?: 'neutral' | 'watch' | 'critical';
 }) {
+  const { t } = useLanguage();
   return (
     <div className={`rounded-xl border border-border/50 bg-background/40 ${compact ? 'p-2.5' : 'p-3'}`}>
       <div className="flex items-start gap-2.5">
@@ -329,7 +335,7 @@ function SummaryCard({
           {hint && <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{hint}</p>}
           {tone !== 'neutral' && (
             <StatusChip tone={tone} className="mt-1.5 text-[9px]">
-              {tone === 'critical' ? 'Kritisch' : 'Beachten'}
+              {tone === 'critical' ? t('health.state.critical') : t('health.state.warning')}
             </StatusChip>
           )}
         </div>
@@ -357,10 +363,11 @@ function DrawerFooter({
   onDocuments?: () => void;
   canOpenFull: boolean;
 }) {
+  const { t } = useLanguage();
   return (
-    <div className="flex w-full flex-wrap items-center justify-end gap-2" role="group" aria-label="Drawer-Aktionen">
+    <div className="flex w-full flex-wrap items-center justify-end gap-2" role="group" aria-label={t('vehicle.bookings.handoverActions')}>
       <button type="button" onClick={onClose} className={vbActionClass(false)}>
-        Schließen
+        {t('vehicle.bookings.close')}
       </button>
       {matrix?.pickup.allowed && (
         <button
@@ -369,7 +376,7 @@ function DrawerFooter({
           title={matrix.pickup.reason}
           className={vbActionClass(false)}
         >
-          Pickup starten
+          {t('vehicle.bookings.startPickup')}
         </button>
       )}
       {matrix?.return.allowed && (
@@ -379,25 +386,25 @@ function DrawerFooter({
           title={matrix.return.reason}
           className={vbActionClass(false)}
         >
-          Return starten
+          {t('vehicle.bookings.startReturn')}
         </button>
       )}
       {onDocuments && (
         <button type="button" onClick={onDocuments} className={vbActionClass(false)}>
-          Dokumente öffnen
+          {t('vehicle.bookings.openDocuments')}
         </button>
       )}
       {canOpenFull && bookingId && (
         <button type="button" onClick={onOpenFull} className={vbActionClass(true)}>
-          Booking öffnen
+          {t('vehicle.bookings.openBooking')}
         </button>
       )}
     </div>
   );
 }
 
-function formatListDateTime(date: Date): string {
-  return date.toLocaleString('de-DE', {
+function formatListDateTime(date: Date, locale: string): string {
+  return date.toLocaleString(vehicleFormattingLocale(locale), {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',

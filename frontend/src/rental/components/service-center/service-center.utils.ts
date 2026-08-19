@@ -1,4 +1,6 @@
 import type { ApiTask, ApiTaskSummary } from '../../../lib/api';
+import { getFormattingLocale } from '../../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../vehicle/vehicle-i18n';
 import { deriveTaskIsOverdue } from '../../lib/task-display.utils';
 import { getScheduleBucket } from '../../lib/service-schedule.utils';
 import type { ServiceKpiSnapshot, ServiceTaskFilter } from './service-center.types';
@@ -169,7 +171,7 @@ export function groupTasksByDueDate(tasks: ApiTask[]): Map<string, ApiTask[]> {
   const map = new Map<string, ApiTask[]>();
   for (const task of tasks) {
     const key = task.dueDate
-      ? new Date(task.dueDate).toLocaleDateString('de-DE', {
+      ? new Date(task.dueDate).toLocaleDateString(vehicleFormattingLocaleOrDefault(), {
           weekday: 'short',
           day: 'numeric',
           month: 'short',
@@ -191,7 +193,7 @@ export function groupTasksByDueWeek(tasks: ApiTask[]): Map<string, ApiTask[]> {
 
   for (const task of sorted) {
     const key = task.dueDate
-      ? new Date(task.dueDate).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })
+      ? new Date(task.dueDate).toLocaleDateString(vehicleFormattingLocaleOrDefault(), { weekday: 'long', day: 'numeric', month: 'long' })
       : 'Ohne Termin';
     const list = map.get(key) ?? [];
     list.push(task);

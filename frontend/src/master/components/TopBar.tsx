@@ -2,6 +2,7 @@ import { LogOut, Moon, Plug, Sun } from 'lucide-react';
 import { useMemo } from 'react';
 import { Button } from '../../components/ui/button';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { getStoredUser } from '../../lib/auth';
 import { cn } from '../../components/ui/utils';
 import { tMasterNav } from '../navigation/master-nav-i18n';
@@ -14,6 +15,7 @@ interface TopBarProps {
 export function TopBar({ onNavigate, onLogout }: TopBarProps) {
   const user = getStoredUser();
   const { isDarkMode, cycleThemePreference } = useAppTheme();
+  const { localeMetadata, formattingLocale } = useLanguage();
 
   const welcomeLabel = useMemo(() => {
     const name = user?.name?.trim();
@@ -27,6 +29,8 @@ export function TopBar({ onNavigate, onLogout }: TopBarProps) {
         'sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b px-4 md:px-6',
         'border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80',
       )}
+      aria-label={`Master admin — ${localeMetadata.nativeName}`}
+      lang={formattingLocale}
     >
       <p className="min-w-0 truncate text-sm font-medium text-foreground">{welcomeLabel}</p>
 

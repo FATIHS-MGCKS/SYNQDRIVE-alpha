@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { LiquidGlassLens } from '../../../components/surface';
 import type { TripMapQualityFlags } from './trips-map.types';
 
@@ -36,6 +37,7 @@ function QualityChip({
 }
 
 export function TripMapDataQualityOverlay({ quality, routeLoading }: TripMapDataQualityOverlayProps) {
+  const { formattingLocale } = useLanguage();
   const chips: Array<{ key: string; tone: 'ok' | 'watch' | 'muted' | 'danger'; label: string; icon: string }> = [];
 
   if (routeLoading) {
@@ -89,7 +91,7 @@ export function TripMapDataQualityOverlay({ quality, routeLoading }: TripMapData
           {quality.routeUpdatedAt && (
             <p className="text-[8px] text-muted-foreground tabular-nums pt-0.5 pr-1 text-right w-full">
               Aktualisiert{' '}
-              {new Date(quality.routeUpdatedAt).toLocaleString('de-DE', {
+              {new Date(quality.routeUpdatedAt).toLocaleString(formattingLocale, {
                 day: '2-digit',
                 month: '2-digit',
                 hour: '2-digit',

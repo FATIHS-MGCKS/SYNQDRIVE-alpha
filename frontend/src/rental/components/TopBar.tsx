@@ -7,7 +7,8 @@ import { formatTopBarWelcomeLabel } from '../../lib/topbarUserLabel';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
-import { useLanguage, type Locale } from '../i18n/LanguageContext';
+import { LanguageSelector } from '../../i18n/components/LanguageSelector';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { unwrapTaskListPage } from '../../lib/tasks-pagination';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
@@ -15,18 +16,6 @@ import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useAppTheme } from '../../context/AppThemeContext';
 import type { SettingsTabInput } from './settings/settingsTypes';
-
-// V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
-const languages = [
-  { code: 'en' as Locale, name: 'English', short: 'EN' },
-  { code: 'de' as Locale, name: 'Deutsch', short: 'DE' },
-  { code: 'fr' as Locale, name: 'Français', short: 'FR' },
-  { code: 'nl' as Locale, name: 'Nederlands', short: 'NL' },
-  { code: 'es' as Locale, name: 'Español', short: 'ES' },
-  { code: 'it' as Locale, name: 'Italiano', short: 'IT' },
-  { code: 'pl' as Locale, name: 'Polski', short: 'PL' },
-  { code: 'cs' as Locale, name: 'Čeština', short: 'CS' },
-];
 
 interface TopBarProps {
   onViewChange?: (view: string) => void;
@@ -48,11 +37,9 @@ function formatLoggedInLabel(
 
 export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange }: TopBarProps) {
   const { preference, cycleThemePreference } = useAppTheme();
-  const { locale, setLocale, t } = useLanguage();
+  const { t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
-  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState(() => languages.find(l => l.code === locale) || languages[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -62,7 +49,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
   const profileRef = useRef<HTMLDivElement>(null);
 
   const currentUser = getStoredUser();
-  const currentUserName = currentUser?.name || currentUser?.email || 'User';
+  const currentUserName = currentUser?.name || currentUser?.email || t('common.user');
   const currentUserEmail = currentUser?.email || '';
   const currentUserInitials = useMemo(() => {
     if (currentUser?.name && currentUser.name.trim()) {
@@ -117,18 +104,35 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
     };
   }, [searchQuery, orgId]);
 
-  const navigationItems = [
-    { view: 'dashboard', label: 'Dashboard', icon: Home, category: 'Operations' },
-    { view: 'bookings', label: 'Bookings', icon: Calendar, category: 'Operations' },
-    { view: 'customers', label: 'Customers', icon: Users, category: 'Operations' },
-    { view: 'stations', label: 'Stations', icon: MapPin, category: 'Operations' },
-    { view: 'tasks', label: 'Tasks', icon: ListTodo, category: 'Operations' },
-    { view: 'fleet', label: 'Fleet', icon: Car, category: 'Fleet' },
-    { view: 'financial-insights', label: 'Insights', icon: DollarSign, category: 'Finance' },
-    { view: 'invoices', label: 'Invoices', icon: FileText, category: 'Finance' },
-    { view: 'price-tariffs', label: 'Price Tariffs', icon: Tag, category: 'Finance' },
-    { view: 'settings', label: 'Settings', icon: Settings, category: 'Administration' },
-  ] as const;
+  const navigationItems = useMemo(
+    () =>
+      [
+        { view: 'dashboard', label: t('nav.dashboard'), icon: Home, category: t('category.operations') },
+        { view: 'bookings', label: t('nav.bookings'), icon: Calendar, category: t('category.operations') },
+        { view: 'customers', label: t('nav.customers'), icon: Users, category: t('category.operations') },
+        { view: 'stations', label: t('nav.stations'), icon: MapPin, category: t('category.operations') },
+        { view: 'tasks', label: t('nav.tasks'), icon: ListTodo, category: t('category.operations') },
+        { view: 'fleet', label: t('nav.fleet'), icon: Car, category: t('category.fleet') },
+        { view: 'financial-insights', label: t('nav.insights'), icon: DollarSign, category: t('category.finance') },
+        { view: 'invoices', label: t('nav.invoices'), icon: FileText, category: t('category.finance') },
+        { view: 'price-tariffs', label: t('view.priceTariffs'), icon: Tag, category: t('category.finance') },
+        { view: 'settings', label: t('view.settings'), icon: Settings, category: t('category.administration') },
+      ] as const,
+    [t],
+  );
+
+  const searchCategoryLabels = useMemo(
+    () => ({
+      vehicles: t('topbar.searchCategory.vehicles'),
+      customers: t('topbar.searchCategory.customers'),
+      bookings: t('topbar.searchCategory.bookings'),
+      invoices: t('topbar.searchCategory.invoices'),
+      tasks: t('topbar.searchCategory.tasks'),
+      fines: t('topbar.searchCategory.fines'),
+      pages: t('topbar.searchCategory.pages'),
+    }),
+    [t],
+  );
 
   // Build search results
   type SearchResult = { type: 'vehicle' | 'customer' | 'booking' | 'invoice' | 'task' | 'fine' | 'page'; id: string; title: string; subtitle: string; category: string; data?: any };
@@ -141,7 +145,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
     // Vehicles
     fleetVehicles.forEach(v => {
       if (v.model.toLowerCase().includes(q) || v.license.toLowerCase().includes(q) || v.station.toLowerCase().includes(q)) {
-        results.push({ type: 'vehicle', id: v.id, title: v.model, subtitle: `${v.license} · ${v.status} · ${v.station}`, category: 'Vehicles', data: v });
+        results.push({ type: 'vehicle', id: v.id, title: v.model, subtitle: `${v.license} · ${v.status} · ${v.station}`, category: searchCategoryLabels.vehicles, data: v });
       }
     });
 
@@ -152,7 +156,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
       const license = c.licenseNumber ?? c.license ?? '';
       const haystack = [name, email, license].join(' ').toLowerCase();
       if (haystack.includes(q)) {
-        results.push({ type: 'customer', id: c.id, title: name || email || c.id, subtitle: [email, license].filter(Boolean).join(' · '), category: 'Customers' });
+        results.push({ type: 'customer', id: c.id, title: name || email || c.id, subtitle: [email, license].filter(Boolean).join(' · '), category: searchCategoryLabels.customers });
       }
     });
 
@@ -164,7 +168,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
       const status = b.status ?? '';
       const haystack = [ref, customer, vehicle, status].join(' ').toLowerCase();
       if (haystack.includes(q)) {
-        results.push({ type: 'booking', id: b.id, title: String(ref), subtitle: [customer, vehicle, status].filter(Boolean).join(' · '), category: 'Bookings' });
+        results.push({ type: 'booking', id: b.id, title: String(ref), subtitle: [customer, vehicle, status].filter(Boolean).join(' · '), category: searchCategoryLabels.bookings });
       }
     });
 
@@ -176,41 +180,41 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
       const status = inv.status ?? '';
       const haystack = [String(ref), customer, amount, status].join(' ').toLowerCase();
       if (haystack.includes(q)) {
-        results.push({ type: 'invoice', id: inv.id, title: String(ref), subtitle: [customer, amount, status].filter(Boolean).join(' · '), category: 'Invoices' });
+        results.push({ type: 'invoice', id: inv.id, title: String(ref), subtitle: [customer, amount, status].filter(Boolean).join(' · '), category: searchCategoryLabels.invoices });
       }
     });
 
     // Tasks
-    searchTasks.forEach(t => {
-      const title = t.title ?? '';
-      const priority = t.priority ?? '';
-      const status = t.status ?? '';
-      const haystack = [title, t.id, priority, status].join(' ').toLowerCase();
+    searchTasks.forEach((task) => {
+      const title = task.title ?? '';
+      const priority = task.priority ?? '';
+      const status = task.status ?? '';
+      const haystack = [title, task.id, priority, status].join(' ').toLowerCase();
       if (haystack.includes(q)) {
-        results.push({ type: 'task', id: t.id, title, subtitle: [priority, status].filter(Boolean).join(' · '), category: 'Tasks' });
+        results.push({ type: 'task', id: task.id, title, subtitle: [priority, status].filter(Boolean).join(' · '), category: searchCategoryLabels.tasks });
       }
     });
 
     // Fines
     searchFines.forEach(f => {
-      const reason = f.title ?? f.reason ?? f.offenseType ?? 'Fine';
+      const reason = f.title ?? f.reason ?? f.offenseType ?? t('topbar.fineFallback');
       const vehicle = f.vehicleLabel ?? f.vehicleId ?? '';
       const amount = f.amountCents != null ? `€${(f.amountCents / 100).toFixed(2)}` : '';
       const haystack = [reason, vehicle, f.id].join(' ').toLowerCase();
       if (haystack.includes(q)) {
-        results.push({ type: 'fine', id: f.id, title: reason, subtitle: [vehicle, amount].filter(Boolean).join(' · '), category: 'Fines' });
+        results.push({ type: 'fine', id: f.id, title: reason, subtitle: [vehicle, amount].filter(Boolean).join(' · '), category: searchCategoryLabels.fines });
       }
     });
 
     // Pages/Navigation
     navigationItems.forEach(nav => {
       if (nav.label.toLowerCase().includes(q) || nav.category.toLowerCase().includes(q)) {
-        results.push({ type: 'page', id: nav.view, title: nav.label, subtitle: nav.category, category: 'Pages' });
+        results.push({ type: 'page', id: nav.view, title: nav.label, subtitle: nav.category, category: searchCategoryLabels.pages });
       }
     });
 
     return results.slice(0, 12);
-  }, [searchQuery, fleetVehicles, searchCustomers, searchBookings, searchInvoices, searchTasks, searchFines]);
+  }, [searchQuery, fleetVehicles, searchCustomers, searchBookings, searchInvoices, searchTasks, searchFines, navigationItems, searchCategoryLabels, t]);
 
   const searchResults = getSearchResults();
 
@@ -372,8 +376,8 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
               {searchResults.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <Icon name="search" className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-                  <p className="text-sm font-medium text-muted-foreground">No results for "{searchQuery}"</p>
-                  <p className="text-xs mt-1 text-muted-foreground/60">Try searching for vehicles, customers, bookings...</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('topbar.noResultsFor', { query: searchQuery })}</p>
+                  <p className="text-xs mt-1 text-muted-foreground/60">{t('topbar.searchHint')}</p>
                 </div>
               ) : (
                 <div className="max-h-[380px] overflow-y-auto">
@@ -426,14 +430,18 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
                   })()}
                   {/* Footer */}
                   <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/40">
-                    <span className="text-[10px] text-muted-foreground/60">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {searchResults.length === 1
+                        ? t('topbar.resultCountOne')
+                        : t('topbar.resultCountMany', { count: searchResults.length })}
+                    </span>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
                       <span className="px-1 py-0.5 rounded bg-foreground/5">↑↓</span>
-                      <span>navigate</span>
+                      <span>{t('topbar.keyboardNavigate')}</span>
                       <span className="px-1 py-0.5 rounded bg-foreground/5">↵</span>
-                      <span>select</span>
+                      <span>{t('topbar.keyboardSelect')}</span>
                       <span className="px-1 py-0.5 rounded bg-foreground/5">esc</span>
-                      <span>close</span>
+                      <span>{t('topbar.keyboardClose')}</span>
                     </div>
                   </div>
                 </div>
@@ -450,43 +458,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
 
         <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
 
-        {/* Language Selector — ISO-code pill (V4.6.86: anti-emoji) */}
-        <div className="relative hidden sm:block">
-          <button
-            onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-            className="flex items-center justify-center h-8 min-w-[36px] px-2 rounded-md text-[10.5px] font-semibold tracking-[0.06em] font-mono tabular transition-all duration-200 ease-out text-muted-foreground hover:text-foreground hover:bg-muted sq-press"
-            aria-label={`Language: ${selectedLanguage.name}`}
-          >
-            {selectedLanguage.short}
-          </button>
-
-          {/* Language Dropdown */}
-          {isLanguageOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-44 sq-overlay overflow-hidden z-[9999] animate-fade-up">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setSelectedLanguage(lang);
-                    setLocale(lang.code);
-                    setIsLanguageOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-[12.5px] hover:bg-muted ${
-                    selectedLanguage.code === lang.code ? 'bg-muted' : ''
-                  }`}
-                >
-                  <span className="inline-flex items-center justify-center h-5 min-w-[28px] px-1.5 rounded-sm text-[10px] font-semibold tracking-[0.06em] font-mono tabular bg-muted text-muted-foreground">
-                    {lang.short}
-                  </span>
-                  <span className="text-foreground">{lang.name}</span>
-                  {selectedLanguage.code === lang.code && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand" aria-hidden />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <LanguageSelector variant="topbar-pill" />
 
         {/* Divider */}
         <div className="hidden sm:block w-px h-5 mx-1 bg-border/60" />
@@ -496,7 +468,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
           <button
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-semibold tracking-tight transition-all duration-200 ease-out sq-tone-brand hover:-translate-y-px hover:shadow-[0_4px_12px_-4px_var(--brand-glow)] ring-1 ring-[color:var(--brand-soft)]"
-            aria-label={`Open profile menu for ${currentUserName}`}
+            aria-label={t('topbar.profileMenuFor', { name: currentUserName })}
           >
             {currentUserInitials}
           </button>

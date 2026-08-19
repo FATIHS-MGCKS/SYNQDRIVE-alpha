@@ -4,6 +4,8 @@ import type { OperatorStatusFilter } from '../../lib/fleet-health-control-center
 import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
 import type { ServiceCenterTab, ServiceTaskFilter } from '../service-center/service-center.types';
 
+export type FleetHealthReloadFn = () => void | Promise<unknown>;
+
 /** Top-level Fleet hub tab (after V4.9.182 navigation merge). */
 export type FleetTab = 'status' | 'condition-service' | 'connectivity';
 

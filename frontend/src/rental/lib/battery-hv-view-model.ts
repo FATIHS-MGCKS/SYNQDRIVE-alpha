@@ -6,6 +6,8 @@ import type {
   SohPublicationState,
 } from '../../lib/api';
 import type { BatteryDataQualityStatus } from './battery-data-quality';
+import type { SupportedLocale } from '../../i18n/locales';
+import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import { shouldShowBatteryHealthClaim } from './battery-data-quality';
 import {
   formatConfidenceLabel,
@@ -163,7 +165,8 @@ export function buildBatteryHvSohVm(summary: BatteryHealthSummary | null | undef
   };
 }
 
-export function buildBatteryHvLiveVm(summary: BatteryHealthSummary | null | undefined, locale = 'de-DE'): BatteryHvLiveVm {
+export function buildBatteryHvLiveVm(summary: BatteryHealthSummary | null | undefined, locale?: SupportedLocale): BatteryHvLiveVm {
+  const formattingLocale = vehicleFormattingLocaleOrDefault(locale);
   const hv = summary?.hv?.telemetry;
   const live = summary?.currentTelemetry;
   const canonicalLive = summary?.canonical?.liveState?.hv?.values;
@@ -187,7 +190,7 @@ export function buildBatteryHvLiveVm(summary: BatteryHealthSummary | null | unde
     cableConnected: hv?.chargingCableConnected ?? null,
     chargingPowerKw: hv?.chargingPowerKw ?? live?.chargingPowerKw ?? null,
     chargingStateKey,
-    observedAtLabel: formatIsoRelative(observedAt, locale),
+    observedAtLabel: formatIsoRelative(observedAt, formattingLocale),
   };
 }
 
@@ -224,17 +227,17 @@ export function buildBatteryHvCapacityVm(summary: BatteryHealthSummary | null | 
   };
 }
 
-function mapSession(raw: Record<string, unknown>, index: number): BatteryHvSessionVm {
+function mapSession(raw: Record<string, unknown>, index: number, formattingLocale: string): BatteryHvSessionVm {
   const start = raw.startTime ?? raw.startAt;
   const end = raw.endTime ?? raw.endAt;
   const startDate = start ? new Date(String(start)) : null;
   const label = startDate && Number.isFinite(startDate.getTime())
-    ? startDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+    ? startDate.toLocaleDateString(formattingLocale, { day: 'numeric', month: 'short' })
     : `Session ${index + 1}`;
 
   const timeRange =
     startDate && Number.isFinite(startDate.getTime())
-      ? `${startDate.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })} · ${startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+      ? `${startDate.toLocaleDateString(formattingLocale, { day: 'numeric', month: 'short' })} · ${startDate.toLocaleTimeString(formattingLocale, { hour: '2-digit', minute: '2-digit' })}`
       : '—';
 
   const startSoc = raw.startSoc ?? raw.socStart;
@@ -255,7 +258,8 @@ function mapSession(raw: Record<string, unknown>, index: number): BatteryHvSessi
   };
 }
 
-export function buildBatteryHvSummaryVm(summary: BatteryHealthSummary | null | undefined, locale = 'de-DE'): BatteryHvSummaryVm {
+export function buildBatteryHvSummaryVm(summary: BatteryHealthSummary | null | undefined, locale?: SupportedLocale): BatteryHvSummaryVm {
+  const formattingLocale = vehicleFormattingLocaleOrDefault(locale);
   const hv = summary?.hv;
   const pub = hv?.publicationState ?? 'INITIAL_CALIBRATION';
   return {
@@ -271,8 +275,9 @@ export function buildBatteryHvSummaryVm(summary: BatteryHealthSummary | null | u
 export function buildBatteryHvDetailVm(
   detail: BatteryHealthDetail | null | undefined,
   summary: BatteryHealthSummary | null | undefined,
-  locale = 'de-DE',
+  locale?: SupportedLocale,
 ): BatteryHvDetailVm {
+  const formattingLocale = vehicleFormattingLocaleOrDefault(locale);
   const base = buildBatteryHvSummaryVm(summary, locale);
   const hv = summary?.hv;
   const providerPct = hv?.telemetry?.providerSohPercent ?? summary?.canonical?.hv?.providerSoh.percent ?? null;
@@ -287,10 +292,10 @@ export function buildBatteryHvDetailVm(
   const lastSession = summary?.canonical?.hv?.lastChargeSession ?? null;
 
   const sessions: BatteryHvSessionVm[] = [];
-  if (currentSession) sessions.push(mapSession(currentSession as unknown as Record<string, unknown>, 0));
-  else if (lastSession) sessions.push(mapSession(lastSession as unknown as Record<string, unknown>, 0));
+  if (currentSession) sessions.push(mapSession(currentSession as unknown as Record<string, unknown>, 0, formattingLocale));
+  else if (lastSession) sessions.push(mapSession(lastSession as unknown as Record<string, unknown>, 0, formattingLocale));
   for (const [i, s] of sessionsRaw.entries()) {
-    sessions.push(mapSession(s as Record<string, unknown>, i + 1));
+    sessions.push(mapSession(s as Record<string, unknown>, i + 1, formattingLocale));
   }
 
   return {
@@ -298,7 +303,7 @@ export function buildBatteryHvDetailVm(
     providerSoh: {
       show: showProvider,
       value: formatPercent(providerPct, 1),
-      observedAtLabel: formatIsoRelative(hv?.freshness?.observedAt ?? null, locale),
+      observedAtLabel: formatIsoRelative(hv?.freshness?.observedAt ?? null, formattingLocale),
       dataQualityStatus: summary?.dataQuality?.slices.hvSoh.status ?? null,
     },
     capacity: buildBatteryHvCapacityVm(summary),

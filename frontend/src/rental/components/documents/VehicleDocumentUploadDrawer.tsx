@@ -130,7 +130,7 @@ export function VehicleDocumentUploadDrawer({
           disabled={flow.flow === 'applying'}
           className="sq-press rounded-lg border border-border px-3 py-2 text-[11px] font-semibold text-muted-foreground"
         >
-          Schließen
+          {t('vehicle.documents.close')}
         </button>
         {flow.flow === 'ready' ? (
           <button
@@ -293,7 +293,7 @@ export function VehicleDocumentUploadDrawer({
                     onClick={() => void flow.handleReextract()}
                     className="text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
                   >
-                    Erneut extrahieren
+                    {t('vehicle.documents.reExtract')}
                   </button>
                 ) : null
               }
@@ -327,7 +327,7 @@ export function VehicleDocumentUploadDrawer({
         {flow.flow === 'done' && mode === 'upload' && applyDone && (
           <div className="rounded-xl border border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.06] p-6 text-center">
             <Icon name="check-circle" className="mx-auto mb-2 h-8 w-8 text-[color:var(--status-success)]" />
-            <p className="text-[13px] font-semibold text-foreground">Dokument angewendet</p>
+            <p className="text-[13px] font-semibold text-foreground">{t('vehicle.documents.applied')}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {DOC_TYPE_LABELS[flow.confirmedDocType] || flow.confirmedDocType}
             </p>
@@ -349,9 +349,9 @@ export function VehicleDocumentUploadDrawer({
 
         {flow.flow === 'partially_done' && applyDone && (
           <div className="rounded-xl border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] p-4">
-            <p className="text-[12px] font-semibold text-foreground">Teilweise übernommen</p>
+            <p className="text-[12px] font-semibold text-foreground">{t('vehicle.documents.partiallyApplied')}</p>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Pflichtaktionen sind erledigt. Optionale Schritte können erneut versucht werden.
+              {t('vehicle.documents.requiredDone')}
             </p>
             {orgId ? (
               <div className="mt-3">
