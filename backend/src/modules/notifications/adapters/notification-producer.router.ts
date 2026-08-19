@@ -11,6 +11,7 @@ import { StationShortageNotificationAdapter } from './station-shortage-notificat
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
+import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { NotificationIngestObservabilityService } from '../observability/notification-ingest-observability.service';
 
@@ -31,6 +32,7 @@ export class NotificationProducerRouter {
     vehicleHealth: VehicleHealthNotificationAdapter,
     serviceCompliance: ServiceComplianceNotificationAdapter,
     vehicleAlerts: VehicleAlertsNotificationAdapter,
+    vehicleReadiness: VehicleReadinessNotificationAdapter,
   ) {
     this.adapters = [
       drivingAssessment,
@@ -39,6 +41,7 @@ export class NotificationProducerRouter {
       vehicleHealth,
       serviceCompliance,
       vehicleAlerts,
+      vehicleReadiness,
     ];
   }
 

@@ -61,4 +61,6 @@ export const es: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelLow': 'El nivel de aceite de {label} es críticamente bajo.',
   'notification.title.engineOilLevelHigh': 'Nivel de aceite alto — {label}',
   'notification.body.engineOilLevelHigh': 'El nivel de aceite de {label} es alto y debe comprobarse.',
+  'notification.title.vehicleNotReady': 'Vehículo no listo — {label}',
+  'notification.body.vehicleNotReady': '{label} no está listo para alquiler. Revise las alertas del vehículo.',
 };

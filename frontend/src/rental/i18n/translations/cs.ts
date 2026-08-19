@@ -61,4 +61,6 @@ export const cs: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelLow': 'Hladina motoroveho oleje vozidla {label} je kriticky nizka.',
   'notification.title.engineOilLevelHigh': 'Hladina motoroveho oleje vysoka — {label}',
   'notification.body.engineOilLevelHigh': 'Hladina motoroveho oleje vozidla {label} je vysoka a mela by byt zkontrolovana.',
+  'notification.title.vehicleNotReady': 'Vozidlo neni pripraveno — {label}',
+  'notification.body.vehicleNotReady': '{label} neni aktualne pripraveno k pronajmu. Zkontrolujte upozorneni vozidla.',
 };

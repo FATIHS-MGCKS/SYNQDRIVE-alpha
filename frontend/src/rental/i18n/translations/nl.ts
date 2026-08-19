@@ -62,4 +62,6 @@ export const nl: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelLow': 'Het motorolieniveau van {label} is kritiek laag.',
   'notification.title.engineOilLevelHigh': 'Motorolieniveau te hoog — {label}',
   'notification.body.engineOilLevelHigh': 'Het motorolieniveau van {label} is te hoog en moet worden gecontroleerd.',
+  'notification.title.vehicleNotReady': 'Voertuig niet verhuurklaar — {label}',
+  'notification.body.vehicleNotReady': '{label} is momenteel niet verhuurklaar. Controleer de voertuigmeldingen.',
 };

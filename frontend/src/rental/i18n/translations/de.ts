@@ -1141,6 +1141,8 @@ export const de: Record<TranslationKey, string> = {
   'notification.body.limpModeActive': '{label} befindet sich im Notlauf und ist nicht einsatzbereit.',
   'notification.body.engineOilLevelLow': 'Der Motorölstand von {label} ist kritisch niedrig.',
   'notification.body.engineOilLevelHigh': 'Der Motorölstand von {label} ist zu hoch und sollte geprüft werden.',
+  'notification.title.vehicleNotReady': 'Fahrzeug nicht einsatzbereit — {label}',
+  'notification.body.vehicleNotReady': '{label} ist aktuell nicht einsatzbereit. Prüfen Sie die Fahrzeugmeldungen.',
   'notification.title.tireCritical': 'Reifen prüfen — {label}',
   'notification.title.serviceOverdue': 'Service überfällig — {label}',
   'notification.issue.activeDtc': 'Fehlercode {code}',

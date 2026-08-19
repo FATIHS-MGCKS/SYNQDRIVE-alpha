@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-readiness-aggregate-p23-2026-08-19',
+    version: '4.9.923',
+    title: 'Fleet Readiness Aggregate Notification (P2.3)',
+    summary: [
+      'Erster kanonischer Aggregate-Producer: `VEHICLE_NOT_READY` aus `VehicleHealth.rental_readiness` (kein zweiter RentalHealth-Call).',
+      '`projectVehicleReadinessAggregate()` + `VehicleReadinessNotificationAdapter` + `syncVehicleReadinessAggregate()`.',
+      'NOT_READY → OPEN; READY → RESOLVE (nur mit aktivem Fingerprint); UNEVALUABLE → preserve OPEN.',
+      'Kein Live-Producer für `BLOCKED_VEHICLE` / `MAINTENANCE_REQUIRED` — Legacy-Reconcile retiriert aktive Rows.',
+      'Registry unverändert (69/26/43). Audit: YELLOW — NOT READY FOR UI CUTOVER (P2.4 unevaluable).',
+    ],
+    reason:
+      'Eine Aggregate-Notification pro Fahrzeug — Causes bleiben getrennt; keine parallelen BLOCKED/MAINTENANCE-Lifecycles.',
+    previousBehavior:
+      'Aggregate readiness nur in RentalHealth/Operational-Issues — keine V2-Materialisierung von `rental_readiness`.',
+    details:
+      'vehicle-readiness-notification.{projector,adapter}.ts, vehicle-health-notification-sync.service.ts, architecture/FLEET_READINESS_AGGREGATE_NOTIFICATION_2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-19T14:00:00.000Z',
+  },
+  {
     id: 'vehicle-alerts-notification-v22b-2026-08-19',
     version: '4.9.922',
     title: 'Vehicle Alerts Notification V2 Producer (P2.2B)',

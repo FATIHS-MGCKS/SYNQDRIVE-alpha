@@ -12,6 +12,7 @@ import { LowUtilizationNotificationAdapter } from './low-utilization-notificatio
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { ServiceComplianceNotificationAdapter } from './service-compliance-notification.adapter';
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
+import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -209,6 +210,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleHealthNotificationAdapter(),
       new ServiceComplianceNotificationAdapter(),
       new VehicleAlertsNotificationAdapter(),
+      new VehicleReadinessNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -220,6 +222,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleHealthNotificationAdapter(),
       new ServiceComplianceNotificationAdapter(),
       new VehicleAlertsNotificationAdapter(),
+      new VehicleReadinessNotificationAdapter(),
       core,
     );
   });

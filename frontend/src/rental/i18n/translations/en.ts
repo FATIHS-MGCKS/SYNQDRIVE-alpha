@@ -1041,6 +1041,8 @@ export const en = {
   'notification.body.limpModeActive': '{label} is in limp mode and not ready for rental.',
   'notification.body.engineOilLevelLow': 'Engine oil level of {label} is critically low.',
   'notification.body.engineOilLevelHigh': 'Engine oil level of {label} is high and should be checked.',
+  'notification.title.vehicleNotReady': 'Vehicle not ready — {label}',
+  'notification.body.vehicleNotReady': '{label} is currently not ready for rental. Check vehicle alerts.',
   'notification.title.tireCritical': 'Tires need attention — {label}',
   'notification.title.serviceOverdue': 'Service overdue — {label}',
   'notification.issue.activeDtc': 'Fault code {code}',

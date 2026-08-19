@@ -103,6 +103,7 @@ describe('VehicleHealthNotificationSyncService — failure isolation (P2.2B)', (
     syncVehicleHealthWarnings: jest.fn(async () => undefined),
     syncServiceComplianceWarnings: jest.fn(async () => undefined),
     syncVehicleAlertsWarnings: jest.fn(async () => undefined),
+    syncVehicleReadinessAggregate: jest.fn(async () => undefined),
   };
 
   const rentalHealth = {
@@ -217,6 +218,14 @@ describe('VehicleHealthNotificationSyncService — failure isolation (P2.2B)', (
       );
       expect(notificationIngest.syncVehicleHealthWarnings).toHaveBeenCalled();
       expect(notificationIngest.syncServiceComplianceWarnings).toHaveBeenCalled();
+    });
+
+    it('readiness aggregate ingest throws after prior stages processed', async () => {
+      notificationIngest.syncVehicleReadinessAggregate.mockRejectedValueOnce(
+        new Error('aggregate ingest'),
+      );
+      await expect(service.syncForOrganization(ORG, 'run-4')).rejects.toThrow('aggregate ingest');
+      expect(notificationIngest.syncVehicleAlertsWarnings).toHaveBeenCalled();
     });
   });
 });

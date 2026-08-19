@@ -11,9 +11,11 @@ import { NotificationProducerIngestService } from './notification-producer.inges
 import { projectVehicleHealthWarnings } from './rental-health-notification.projector';
 import { projectServiceComplianceOverdueNotifications } from './service-compliance-notification.projector';
 import { projectVehicleAlertNotifications } from './vehicle-alerts-notification.projector';
+import { projectVehicleReadinessAggregate } from './vehicle-readiness-notification.projector';
 import type { VehicleHealthAdapterSource } from './notification-adapter.types';
 import type { ServiceComplianceAdapterSource } from './notification-adapter.types';
 import type { VehicleAlertsNotificationAdapterSource } from './notification-adapter.types';
+import type { VehicleReadinessNotificationAdapterSource } from './notification-adapter.types';
 
 const VEHICLE_BATCH_SIZE = 10;
 
@@ -21,6 +23,7 @@ type ProjectVehicleResult = {
   health: VehicleHealthAdapterSource[];
   compliance: ServiceComplianceAdapterSource[];
   vehicleAlerts: VehicleAlertsNotificationAdapterSource[];
+  readinessAggregate: VehicleReadinessNotificationAdapterSource[];
 };
 
 /**
@@ -68,6 +71,7 @@ export class VehicleHealthNotificationSyncService {
     const allHealthSources: VehicleHealthAdapterSource[] = [];
     const allComplianceSources: ServiceComplianceAdapterSource[] = [];
     const allVehicleAlertSources: VehicleAlertsNotificationAdapterSource[] = [];
+    const allReadinessAggregateSources: VehicleReadinessNotificationAdapterSource[] = [];
 
     for (let i = 0; i < vehicles.length; i += VEHICLE_BATCH_SIZE) {
       const slice = vehicles.slice(i, i + VEHICLE_BATCH_SIZE);
@@ -78,6 +82,7 @@ export class VehicleHealthNotificationSyncService {
         allHealthSources.push(...result.health);
         allComplianceSources.push(...result.compliance);
         allVehicleAlertSources.push(...result.vehicleAlerts);
+        allReadinessAggregateSources.push(...result.readinessAggregate);
       }
     }
 
@@ -108,6 +113,16 @@ export class VehicleHealthNotificationSyncService {
         organizationId,
         runId,
         allVehicleAlertSources,
+      );
+    } catch (err) {
+      failures.push(err instanceof Error ? err : new Error(String(err)));
+    }
+
+    try {
+      await this.notificationIngest.syncVehicleReadinessAggregate(
+        organizationId,
+        runId,
+        allReadinessAggregateSources,
       );
     } catch (err) {
       failures.push(err instanceof Error ? err : new Error(String(err)));
@@ -230,7 +245,11 @@ export class VehicleHealthNotificationSyncService {
 
     const vehicleAlerts = await this.projectVehicleAlerts(vehicle.id, label);
 
-    return { health, compliance, vehicleAlerts };
+    const readinessAggregate = rentalHealth
+      ? projectVehicleReadinessAggregate(vehicle.id, label, rentalHealth)
+      : [];
+
+    return { health, compliance, vehicleAlerts, readinessAggregate };
   }
 
   private emptyVehicleHealthForDtcOnly(

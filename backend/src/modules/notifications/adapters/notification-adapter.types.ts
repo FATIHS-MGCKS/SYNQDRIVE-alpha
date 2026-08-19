@@ -109,3 +109,14 @@ export interface VehicleAlertsNotificationAdapterSource {
   telltaleKey: 'engine_limp_mode' | 'engine_oil_level';
   canonicalState: 'ACTIVE' | 'CLEARED';
 }
+
+export interface VehicleReadinessNotificationAdapterSource {
+  eventType: 'VEHICLE_NOT_READY';
+  vehicleId: string;
+  label: string;
+  condition: 'NOT_READY' | 'READY';
+  cleared?: boolean;
+  blockingReasonCount?: number;
+  rentalReadiness?: 'ready' | 'not_ready' | 'unevaluable';
+  projectionVersion?: string;
+}

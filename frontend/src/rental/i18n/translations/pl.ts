@@ -61,4 +61,6 @@ export const pl: Record<TranslationKey, string> = {
   'notification.body.engineOilLevelLow': 'Poziom oleju silnikowego {label} jest krytycznie niski.',
   'notification.title.engineOilLevelHigh': 'Poziom oleju za wysoki — {label}',
   'notification.body.engineOilLevelHigh': 'Poziom oleju silnikowego {label} jest za wysoki i wymaga sprawdzenia.',
+  'notification.title.vehicleNotReady': 'Pojazd niegotowy — {label}',
+  'notification.body.vehicleNotReady': '{label} nie jest obecnie gotowy do wynajmu. Sprawdz alerty pojazdu.',
 };
