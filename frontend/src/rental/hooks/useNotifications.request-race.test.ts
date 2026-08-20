@@ -197,7 +197,7 @@ describe('useNotifications request identity (P32-F02)', () => {
     unmount();
   });
 
-  it('Test D: stale request completion does not clear loading owned by newer request', async () => {
+  it('Test D: stale request A resolves while B is pending — loading stays owned by B', async () => {
     const stationA = deferred<ReturnType<typeof listResponse>>();
     const stationB = deferred<ReturnType<typeof listResponse>>();
     let call = 0;
@@ -223,17 +223,50 @@ describe('useNotifications request identity (P32-F02)', () => {
     rerender({ stationId: 'st-b' });
     await waitForHook(() => api.notifications.list.mock.calls.length >= 2);
     expect(result.current.loading).toBe(true);
+    expect(result.current.apiRows).toEqual([]);
+
+    stationA.resolve(listResponse(['stale-a']) as never);
+    await waitForHook(() => result.current.loading === true);
+    expect(result.current.apiRows.map((row) => row.id)).toEqual([]);
 
     stationB.resolve(listResponse(['fresh-b']) as never);
     await waitForHook(() => result.current.loading === false);
+    expect(result.current.apiRows.map((row) => row.id)).toEqual(['fresh-b']);
+    unmount();
+  });
 
-    stationA.resolve(listResponse(['stale-a']) as never);
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
+  it('stale org-A response does not overwrite org-B rows after org-B resolves first', async () => {
+    const orgA = deferred<ReturnType<typeof listResponse>>();
+    const orgB = deferred<ReturnType<typeof listResponse>>();
+    let call = 0;
+
+    vi.mocked(api.notifications.list).mockImplementation(() => {
+      call += 1;
+      return call === 1 ? orgA.promise : orgB.promise;
     });
 
-    expect(result.current.loading).toBe(false);
-    expect(result.current.apiRows.map((row) => row.id)).toEqual(['fresh-b']);
+    const { result, rerender, unmount } = renderHook(
+      ({ orgId }: { orgId: string }) =>
+        useNotifications({
+          orgId,
+          locale: 'en',
+          attentionScope: 'OPERATIONS',
+          fetchCounts: false,
+        }),
+      { initialProps: { orgId: 'org-a' } },
+    );
+
+    await waitForHook(() => api.notifications.list.mock.calls.length >= 1);
+    rerender({ orgId: 'org-b' });
+    await waitForHook(() => api.notifications.list.mock.calls.length >= 2);
+
+    orgB.resolve(listResponse(['ops-org-b']) as never);
+    await waitForHook(() => result.current.loading === false);
+    expect(result.current.apiRows.map((row) => row.id)).toEqual(['ops-org-b']);
+
+    orgA.resolve(listResponse(['ops-org-a']) as never);
+    await waitForHook(() => result.current.apiRows.map((row) => row.id).includes('ops-org-b'));
+    expect(result.current.apiRows.map((row) => row.id)).toEqual(['ops-org-b']);
     unmount();
   });
 

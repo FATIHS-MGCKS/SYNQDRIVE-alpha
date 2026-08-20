@@ -146,4 +146,33 @@ describe('useFleetReadinessSummary request identity (P32-F02)', () => {
     expect(result.current.summary?.total).toBe(5);
     unmount();
   });
+
+  it('stale org-A success does not overwrite org-B summary', async () => {
+    const orgA = deferred<typeof summaryA>();
+    const orgB = deferred<typeof summaryB>();
+    let call = 0;
+
+    vi.mocked(api.rentalHealth.getFleetSummary).mockImplementation(() => {
+      call += 1;
+      return call === 1 ? orgA.promise : orgB.promise;
+    });
+
+    const { result, rerender, unmount } = renderHook(
+      ({ orgId }: { orgId: string }) => useFleetReadinessSummary({ orgId, stationId: 'st-1' }),
+      { initialProps: { orgId: 'org-a' } },
+    );
+
+    await waitForHook(() => api.rentalHealth.getFleetSummary.mock.calls.length >= 1);
+    rerender({ orgId: 'org-b' });
+    await waitForHook(() => api.rentalHealth.getFleetSummary.mock.calls.length >= 2);
+
+    orgB.resolve(summaryB);
+    await waitForHook(() => result.current.loading === false);
+    expect(result.current.summary?.total).toBe(5);
+
+    orgA.resolve(summaryA);
+    await waitForHook(() => result.current.summary?.total === 5);
+    expect(result.current.summary?.total).toBe(5);
+    unmount();
+  });
 });

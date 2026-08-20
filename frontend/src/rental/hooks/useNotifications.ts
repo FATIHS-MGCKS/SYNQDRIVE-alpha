@@ -233,17 +233,20 @@ export function useNotifications({
       optimistic: (rows: ApiNotificationResponse[]) => ApiNotificationResponse[],
       request: () => Promise<ApiNotificationResponse>,
     ) => {
+      const generation = currentGeneration();
       rowsSnapshotRef.current = apiRows;
       setMutation({ id, action, error: null });
       setApiRows((prev) => optimistic(prev));
 
       try {
         const updated = await request();
+        if (!isCurrent(generation)) return;
         setApiRows((prev) => patchRow(prev, id, updated));
         if (shouldFetchCounts) {
-          await fetchCountsForGeneration(currentGeneration());
+          await fetchCountsForGeneration(generation);
         }
       } catch (err) {
+        if (!isCurrent(generation)) return;
         setApiRows(rowsSnapshotRef.current);
         const clientErr =
           err instanceof NotificationClientError
@@ -252,10 +255,14 @@ export function useNotifications({
         setMutation({ id, action, error: clientErr });
         throw clientErr;
       } finally {
-        setMutation({ id: null, action: null, error: null });
+        setMutation((prev) =>
+          prev.id === id && prev.action === action
+            ? { id: null, action: null, error: null }
+            : prev,
+        );
       }
     },
-    [apiRows, fetchCountsForGeneration, currentGeneration, shouldFetchCounts],
+    [apiRows, fetchCountsForGeneration, currentGeneration, isCurrent, shouldFetchCounts],
   );
 
   const markRead = useCallback(
