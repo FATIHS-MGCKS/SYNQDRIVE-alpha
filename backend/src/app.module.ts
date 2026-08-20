@@ -172,7 +172,16 @@ export class AppModule {
 
         ServeStaticModule.forRoot({
           rootPath: join(process.cwd(), 'public'),
-          exclude: ['/api/(.*)'],
+          // Missing hashed bundles must 404 — never SPA-fallback index.html for /assets/*
+          // (otherwise stale cached HTML loads text/html as module script → white screen).
+          exclude: ['/api/(.*)', '/assets/(.*)'],
+          serveStaticOptions: {
+            setHeaders(res, filePath) {
+              if (filePath.endsWith('index.html')) {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              }
+            },
+          },
         }),
 
         // Global BullMQ root — always registered so @InjectQueue resolves across
