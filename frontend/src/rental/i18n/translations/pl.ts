@@ -64,6 +64,9 @@ export const pl: Record<TranslationKey, string> = {
   'notification.title.vehicleNotReady': 'Pojazd niegotowy — {label}',
   'notification.body.vehicleNotReady': '{label} nie jest obecnie gotowy do wynajmu. Sprawdz alerty pojazdu.',
   'notification.title.vehicleReadinessUnevaluable': 'Gotowosc nieocenialna — {label}',
+  'notification.title.vehicleDamageBlocking': 'Uszkodzenie blokuje gotowość — {label}',
+  'notification.body.vehicleDamageBlocking': '{label}: otwarte uszkodzenie blokuje gotowość floty.',
+  'notification.issue.vehicleDamageBlocking': 'Uszkodzenie blokuje gotowość',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive nie moze obecnie wiarygodnie ocenic gotowosci pojazdu {label}. Sprawdz dostepne dane pojazdu.',
 };

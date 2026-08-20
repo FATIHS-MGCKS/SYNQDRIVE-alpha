@@ -8,14 +8,14 @@ import type {
   TechnicalObservationAdapterSource,
 } from './notification-adapter.types';
 
-/** Shadow-mode test adapter for active technical observations. */
+/** Live producer for active technical observations. */
 @Injectable()
 export class TechnicalObservationNotificationAdapter
   implements NotificationProducerAdapter<TechnicalObservationAdapterSource>
 {
   readonly adapterId = 'technical-observation';
   readonly supportedEventTypes = ['TECHNICAL_OBSERVATION_ACTIVE'] as const;
-  readonly shadowModeOnly = true;
+  readonly shadowModeOnly = false;
 
   canHandle(source: TechnicalObservationAdapterSource): boolean {
     return Boolean(source.vehicleId && source.complaintId);

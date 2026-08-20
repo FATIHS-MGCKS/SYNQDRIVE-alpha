@@ -38,7 +38,7 @@ import {
   RESOLVED_RECENT_WINDOW_MS,
   type NotificationListFilters,
 } from './notification-query.util';
-import type { ListNotificationsQueryDto } from './dto/notification-api.dto';
+import type { ListNotificationsQueryDto, NotificationCountsQueryDto } from './dto/notification-api.dto';
 import { NotificationAuditService } from '../audit/notification-audit.service';
 import { isOperationAllowedForRole } from '../access/notification-access-permissions';
 import type { NotificationAuditClientMeta } from '../audit/notification-audit.types';
@@ -120,6 +120,7 @@ export class NotificationApiService {
         scopedVehicleIds: ctx.scopedVehicleIds,
         scopedBookingIds: ctx.scopedBookingIds,
         bypassStationScope: ctx.bypassStationScope,
+        attentionScope: query.attentionScope,
       };
 
       await this.validateEntityFilters(orgId, query, ctx);
@@ -156,7 +157,11 @@ export class NotificationApiService {
     return dto;
   }
 
-  async getCounts(orgId: string, user: NotificationRequestUser): Promise<NotificationCountsResponseDto> {
+  async getCounts(
+    orgId: string,
+    user: NotificationRequestUser,
+    query: NotificationCountsQueryDto = {},
+  ): Promise<NotificationCountsResponseDto> {
     this.assertApiEnabled(orgId);
     const ctx = await this.resolveAccessContext(orgId, user);
     const referenceNow = new Date();
@@ -171,6 +176,7 @@ export class NotificationApiService {
         scopedVehicleIds: ctx.scopedVehicleIds,
         scopedBookingIds: ctx.scopedBookingIds,
         bypassStationScope: ctx.bypassStationScope,
+        attentionScope: query.attentionScope,
       },
       ctx,
       referenceNow,
@@ -200,6 +206,7 @@ export class NotificationApiService {
         scopedVehicleIds: ctx.scopedVehicleIds,
         scopedBookingIds: ctx.scopedBookingIds,
         bypassStationScope: ctx.bypassStationScope,
+        attentionScope: query.attentionScope,
       },
       ctx,
       referenceNow,
@@ -515,14 +522,14 @@ export class NotificationApiService {
     const prefClause = buildPreferenceWhereClause(ctx.preferences);
     if (prefClause) {
       where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), prefClause],
+        AND: [where, prefClause],
       };
     }
 
     if (excludeUserSnoozed) {
       const snoozeClause = buildUserSnoozeExclusionClause(ctx.userId, referenceNow);
       where = {
-        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), snoozeClause],
+        AND: [where, snoozeClause],
       };
     }
 

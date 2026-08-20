@@ -15,6 +15,7 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import { DEVICE_QUALITY_OBSERVATION_MARKER, DEVICE_QUALITY_WORKER_ID } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
@@ -175,6 +176,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -188,6 +190,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
       core,
     );
   });

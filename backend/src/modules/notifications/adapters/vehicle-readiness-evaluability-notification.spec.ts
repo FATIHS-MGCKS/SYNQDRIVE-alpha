@@ -16,6 +16,7 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -207,6 +208,7 @@ describe('VehicleReadinessEvaluabilityNotificationAdapter + lifecycle (P2.4)', (
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -220,6 +222,7 @@ describe('VehicleReadinessEvaluabilityNotificationAdapter + lifecycle (P2.4)', (
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
       core,
     );
   });
@@ -539,9 +542,9 @@ describe('VehicleReadinessEvaluabilityNotificationAdapter + lifecycle (P2.4)', (
   });
 
   describe('registry regression', () => {
-    it('adds exactly +1 FLEET_READINESS event (70 / 27 / 43)', () => {
-      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(70);
-      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(27);
+    it('adds exactly +2 FLEET_READINESS events since P2.3 baseline (71 / 28 / 43)', () => {
+      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(71);
+      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(28);
       expect(getNotificationDefinitionsByAttentionScope('OPERATIONS').length).toBe(43);
     });
 

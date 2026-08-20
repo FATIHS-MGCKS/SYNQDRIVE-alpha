@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-readiness-dashboard-cutover-p25-2026-08-19',
+    version: '4.9.925',
+    title: 'Fleet Readiness Dashboard Cutover Backend Gate (P2.5)',
+    summary: [
+      'attentionScope API: `GET .../notifications?attentionScope=` + counts — registry-driven partition.',
+      'Live: `TECHNICAL_OBSERVATION_ACTIVE`, neuer Cause `VEHICLE_DAMAGE_BLOCKING` + shared `damage-rental-health.policy`.',
+      'Fail-safe recovery: positive evidence only (TRACKED+non-overdue service, remainingDays TÜV/BOKraft, explicit damage query success); legacy SERVICE_OVERDUE vehicle-scoped; paginated sweeps.',
+      'Full-fleet summary: `GET .../rental-health/fleet/summary` aus kanonischem `rental_readiness`.',
+      'Registry +1: 71/28/43. Audit: GREEN — READY FOR UI CUTOVER (backend gate).',
+    ],
+    reason:
+      'Class-A Backend-Blocker vor Operations/Fleet-Dashboard-Split: API-Filter, fehlende Damage-Cause, Shadow-Gap, false resolves, Fleet-Summary.',
+    previousBehavior:
+      'Kein attentionScope-Filter; Damage nur als Aggregate-Blocking-Reason; Technical Observation shadow-only; Recovery fail-open.',
+    details:
+      'notification-query.util.ts, vehicle-damage-notification.*, vehicle-health-recovery.policy.ts, rental-health-fleet.service.ts, docs/audits/fleet-readiness-notification-parity-2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-19T23:00:00.000Z',
+  },
+  {
     id: 'fleet-readiness-unevaluable-p24-2026-08-19',
     version: '4.9.924',
     title: 'Fleet Readiness UNEVALUABLE Aggregate (P2.4)',

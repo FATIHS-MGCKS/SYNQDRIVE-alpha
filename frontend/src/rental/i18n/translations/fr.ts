@@ -805,6 +805,9 @@ export const fr: Record<TranslationKey, string> = {
   'notification.title.vehicleNotReady': 'Vehicule non pret — {label}',
   'notification.body.vehicleNotReady': '{label} n\'est pas pret a la location. Verifiez les alertes du vehicule.',
   'notification.title.vehicleReadinessUnevaluable': 'Disponibilite non evaluable — {label}',
+  'notification.title.vehicleDamageBlocking': 'Dommage bloque la disponibilité — {label}',
+  'notification.body.vehicleDamageBlocking': '{label} : un dommage ouvert bloque la disponibilité opérationnelle.',
+  'notification.issue.vehicleDamageBlocking': 'Dommage bloque la disponibilité',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive ne peut pas evaluer de facon fiable la disponibilite de {label} pour le moment. Verifiez les donnees vehicule disponibles.',
 };

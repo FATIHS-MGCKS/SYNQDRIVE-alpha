@@ -132,3 +132,14 @@ export interface VehicleReadinessEvaluabilityNotificationAdapterSource {
   availability?: VehicleHealth['availability'];
   projectionVersion?: string;
 }
+
+export interface VehicleDamageNotificationAdapterSource {
+  eventType: 'VEHICLE_DAMAGE_BLOCKING';
+  vehicleId: string;
+  label: string;
+  damageId: string;
+  rentalImpact: string;
+  reason?: string;
+  severity: 'warning' | 'critical';
+  cleared?: boolean;
+}

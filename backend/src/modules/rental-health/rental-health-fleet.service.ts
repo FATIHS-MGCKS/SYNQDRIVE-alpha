@@ -17,6 +17,17 @@ import { RentalHealthSummaryService } from './rental-health-summary.service';
 import type { FleetVehicleHealthRow } from './rental-health-summary.types';
 import type { HealthState } from './rental-health.types';
 
+export interface FleetReadinessSummary {
+  total: number;
+  ready: number;
+  notReady: number;
+  unevaluable: number;
+  unknown: number;
+  readyPercent: number;
+}
+
+const FLEET_SUMMARY_VEHICLE_ID_PAGE_SIZE = 200;
+
 export interface FleetRentalHealthListFilters {
   stationId?: string;
   search?: string;
@@ -33,6 +44,95 @@ export class RentalHealthFleetService {
     private readonly stationAccess: StationAccessService,
     @Optional() private readonly fleetHealthObservability?: FleetHealthObservabilityService,
   ) {}
+
+  async getFleetReadinessSummary(
+    orgId: string,
+    userId: string | undefined,
+    query: FleetRentalHealthQueryDto,
+  ): Promise<FleetReadinessSummary> {
+    const started = performance.now();
+    try {
+      const result = await this.getFleetReadinessSummaryInternal(orgId, userId, query);
+      this.fleetHealthObservability?.observeFleetSummary(
+        'batch',
+        'success',
+        (performance.now() - started) / 1000,
+      );
+      return result;
+    } catch (err) {
+      this.fleetHealthObservability?.observeFleetSummary(
+        'batch',
+        'error',
+        (performance.now() - started) / 1000,
+      );
+      throw err;
+    }
+  }
+
+  private async getFleetReadinessSummaryInternal(
+    orgId: string,
+    userId: string | undefined,
+    query: FleetRentalHealthQueryDto,
+  ): Promise<FleetReadinessSummary> {
+    const access = await this.stationAccess.resolve(userId, orgId);
+    const filters: FleetRentalHealthListFilters = {
+      stationId: query.stationId,
+      search: query.search,
+      vehicleStatus: query.vehicleStatus,
+    };
+    const baseWhere = this.buildVehicleSelectionWhere(orgId, access, filters);
+
+    let ready = 0;
+    let notReady = 0;
+    let unevaluable = 0;
+    let unknown = 0;
+    let total = 0;
+    let cursor: string | undefined;
+
+    while (true) {
+      const andFilters: Prisma.VehicleWhereInput[] = [];
+      if (cursor) {
+        andFilters.push(buildFleetRentalHealthCursorWhere(decodeFleetRentalHealthCursor(cursor)));
+      }
+      const mergedWhere: Prisma.VehicleWhereInput =
+        andFilters.length > 0 ? { AND: [baseWhere, ...andFilters] } : baseWhere;
+
+      const vehicleRows = await this.prisma.vehicle.findMany({
+        where: mergedWhere,
+        select: { id: true, licensePlate: true },
+        orderBy: buildFleetRentalHealthOrderBy(),
+        take: FLEET_SUMMARY_VEHICLE_ID_PAGE_SIZE + 1,
+      });
+
+      const pageRows =
+        vehicleRows.length > FLEET_SUMMARY_VEHICLE_ID_PAGE_SIZE
+          ? vehicleRows.slice(0, FLEET_SUMMARY_VEHICLE_ID_PAGE_SIZE)
+          : vehicleRows;
+
+      if (pageRows.length === 0) break;
+
+      const healthRows = await this.rentalHealthSummary.getFleetRowsBatch(
+        orgId,
+        pageRows.map((row) => row.id),
+      );
+
+      for (const row of healthRows) {
+        total++;
+        const readiness = row.rental_readiness;
+        if (readiness === 'ready') ready++;
+        else if (readiness === 'not_ready') notReady++;
+        else if (readiness === 'unevaluable') unevaluable++;
+        else unknown++;
+      }
+
+      if (vehicleRows.length <= FLEET_SUMMARY_VEHICLE_ID_PAGE_SIZE) break;
+      cursor = encodeFleetRentalHealthCursorFromVehicle(pageRows[pageRows.length - 1]!);
+    }
+
+    const readyPercent = total > 0 ? Math.round((ready / total) * 1000) / 10 : 0;
+
+    return { total, ready, notReady, unevaluable, unknown, readyPercent };
+  }
 
   async listFleetHealthPage(
     orgId: string,

@@ -17,6 +17,7 @@ import {
   NotificationSeverity,
   NotificationStatus,
 } from '@prisma/client';
+import { NOTIFICATION_ATTENTION_SCOPES } from '../../registry/notification-event-registry.types';
 
 function trimEmpty({ value }: { value: unknown }): unknown {
   if (value === null || value === undefined) return undefined;
@@ -133,6 +134,25 @@ export class ListNotificationsQueryDto {
   @IsString()
   @MaxLength(120)
   search?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsIn(NOTIFICATION_ATTENTION_SCOPES)
+  attentionScope?: (typeof NOTIFICATION_ATTENTION_SCOPES)[number];
+}
+
+/**
+ * Query parameters for GET /organizations/:orgId/notifications/counts
+ */
+export class NotificationCountsQueryDto {
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
+  @IsIn(NOTIFICATION_ATTENTION_SCOPES)
+  attentionScope?: (typeof NOTIFICATION_ATTENTION_SCOPES)[number];
 }
 
 /**

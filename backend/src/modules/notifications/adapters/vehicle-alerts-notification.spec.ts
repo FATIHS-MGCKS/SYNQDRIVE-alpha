@@ -16,6 +16,7 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -246,6 +247,7 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -259,6 +261,7 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
       core,
     );
   });
@@ -677,9 +680,9 @@ describe('VehicleAlertsNotificationAdapter + lifecycle (P2.2B)', () => {
   });
 
   describe('registry regression', () => {
-    it('adds exactly +3 FLEET_READINESS events from P2.2B baseline (70 / 27 / 43)', () => {
-      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(70);
-      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(27);
+    it('registry count after P2.5 (71 / 28 / 43)', () => {
+      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(71);
+      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(28);
       expect(getNotificationDefinitionsByAttentionScope('OPERATIONS').length).toBe(43);
     });
 

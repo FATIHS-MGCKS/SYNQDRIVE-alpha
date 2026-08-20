@@ -33,6 +33,6 @@ describe('Notification shadow adapters', () => {
 
   it('adapters declare shadowModeOnly', () => {
     expect(driving.shadowModeOnly).toBe(true);
-    expect(technical.shadowModeOnly).toBe(true);
+    expect(technical.shadowModeOnly).toBe(false);
   });
 });

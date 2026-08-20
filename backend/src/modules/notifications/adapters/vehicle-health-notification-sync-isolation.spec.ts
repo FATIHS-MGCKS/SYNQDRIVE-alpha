@@ -102,6 +102,7 @@ describe('VehicleHealthNotificationSyncService — failure isolation (P2.2B)', (
   const notificationIngest = {
     syncVehicleHealthWarnings: jest.fn(async () => undefined),
     syncServiceComplianceWarnings: jest.fn(async () => undefined),
+    syncVehicleDamageBlockingWarnings: jest.fn(async () => undefined),
     syncVehicleAlertsWarnings: jest.fn(async () => undefined),
     syncVehicleReadinessAggregate: jest.fn(async () => undefined),
     syncVehicleReadinessEvaluabilityAggregate: jest.fn(async () => undefined),

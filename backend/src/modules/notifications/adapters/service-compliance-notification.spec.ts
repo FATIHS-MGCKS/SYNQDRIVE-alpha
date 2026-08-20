@@ -14,6 +14,7 @@ import { ServiceComplianceNotificationAdapter } from './service-compliance-notif
 import { VehicleAlertsNotificationAdapter } from './vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './vehicle-damage-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import {
@@ -21,7 +22,11 @@ import {
   legacyServiceOverdueFingerprint,
   LEGACY_SERVICE_OVERDUE_CONDITION_CODE,
   serviceComplianceSourceFingerprint,
+  SERVICE_COMPLIANCE_NOTIFICATION_EVENT_TYPES,
+  type ServiceComplianceNotificationEventType,
 } from './service-compliance-notification.projector';
+import type { ServiceComplianceRecoveryEligibilityByVehicle } from './notification-producer.ingest.service';
+import { buildServiceComplianceRecoveryEligibility } from './vehicle-health-recovery.policy';
 import type { ServiceComplianceEvaluation } from '@modules/vehicle-intelligence/service-compliance/service-compliance.types';
 import { buildRegistryFingerprint } from '../registry/notification-event-registry';
 import {
@@ -48,6 +53,28 @@ const VEH_A = 'veh-a';
 const VEH_B = 'veh-b';
 const PLATE_A = 'WOB A 1001';
 const PLATE_B = 'WOB B 2002';
+
+function complianceRecoveryFromEvaluation(
+  vehicleIds: string[],
+  evaluation: ServiceComplianceEvaluation,
+): ServiceComplianceRecoveryEligibilityByVehicle {
+  const eligibility = buildServiceComplianceRecoveryEligibility({
+    evaluationSucceeded: true,
+    evaluation,
+  });
+  const map: ServiceComplianceRecoveryEligibilityByVehicle = new Map();
+  for (const vehicleId of vehicleIds) {
+    map.set(vehicleId, { ...eligibility });
+  }
+  return map;
+}
+
+/** @deprecated use complianceRecoveryFromEvaluation with goodEvaluation() */
+function complianceRecoveryAll(
+  vehicleIds: string[],
+): ServiceComplianceRecoveryEligibilityByVehicle {
+  return complianceRecoveryFromEvaluation(vehicleIds, goodEvaluation());
+}
 
 const baseVehicle = {
   id: VEH_A,
@@ -178,6 +205,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
   } as unknown as NotificationRepository;
 
   let core: NotificationCoreService;
+  let router: NotificationProducerRouter;
   let ingest: NotificationProducerIngestService;
 
   beforeEach(() => {
@@ -201,7 +229,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       recordCandidate: jest.fn(),
       recordCandidateRejected: jest.fn(),
     };
-    const router = new NotificationProducerRouter(
+    const routerInstance = new NotificationProducerRouter(
       core,
       engineConfig,
       ingestObservability as any,
@@ -213,9 +241,11 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
     );
+    router = routerInstance;
     ingest = new NotificationProducerIngestService(
-      router,
+      routerInstance,
       repository,
       new DrivingAssessmentNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
@@ -226,6 +256,7 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       new VehicleAlertsNotificationAdapter(),
       new VehicleReadinessNotificationAdapter(),
       new VehicleReadinessEvaluabilityNotificationAdapter(),
+      new VehicleDamageNotificationAdapter(),
       core,
     );
   });
@@ -348,6 +379,48 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     return eval_;
   }
 
+  function noTrackingEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = goodEvaluation();
+    eval_.nextService = {
+      ...eval_.nextService,
+      trackingStatus: 'NO_TRACKING',
+      severity: 'INFO',
+      blocksRental: false,
+    };
+    return eval_;
+  }
+
+  function staleServiceEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = goodEvaluation();
+    eval_.nextService = {
+      ...eval_.nextService,
+      trackingStatus: 'STALE',
+      severity: 'WARNING',
+      blocksRental: false,
+    };
+    return eval_;
+  }
+
+  function tuvUnknownEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = goodEvaluation();
+    eval_.tuvBokraft = {
+      ...eval_.tuvBokraft,
+      tuvRemainingDays: null,
+      tuvOverdue: false,
+    };
+    return eval_;
+  }
+
+  function bokraftUnknownEvaluation(): ServiceComplianceEvaluation {
+    const eval_ = goodEvaluation();
+    eval_.tuvBokraft = {
+      ...eval_.tuvBokraft,
+      bokraftRemainingDays: null,
+      bokraftOverdue: false,
+    };
+    return eval_;
+  }
+
   async function runFullLifecycle(
     sourcesFactory: () => ReturnType<typeof projectServiceComplianceOverdueNotifications>,
     expectedEventType: string,
@@ -366,7 +439,12 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     expect(openNotifications()[0].id).toBe(first.id);
     expect(openNotifications()[0].occurrenceCount).toBeGreaterThanOrEqual(2);
 
-    await ingest.syncServiceComplianceWarnings(ORG_A, 'run-4', []);
+    await ingest.syncServiceComplianceWarnings(
+      ORG_A,
+      'run-4',
+      [],
+      complianceRecoveryFromEvaluation([VEH_A], goodEvaluation()),
+    );
     expect(notifications.get(first.id)?.status).toBe(NotificationStatus.RESOLVED);
 
     const resolvedRow = notifications.get(first.id);
@@ -547,6 +625,113 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
     });
   });
 
+  describe('fail-safe recovery eligibility', () => {
+    it('SERVICE_OVERDUE recovery requires TRACKED + confirmed non-overdue', () => {
+      const eligible = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: goodEvaluation(),
+      });
+      expect(eligible.SERVICE_OVERDUE).toBe(true);
+
+      const noTracking = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: noTrackingEvaluation(),
+      });
+      expect(noTracking.SERVICE_OVERDUE).toBe(false);
+
+      const stale = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: staleServiceEvaluation(),
+      });
+      expect(stale.SERVICE_OVERDUE).toBe(false);
+
+      const failed = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: false,
+        evaluation: null,
+      });
+      expect(failed.SERVICE_OVERDUE).toBe(false);
+    });
+
+    it('TUV_OVERDUE recovery requires tuvRemainingDays != null and not overdue', () => {
+      const eligible = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: goodEvaluation(),
+      });
+      expect(eligible.TUV_OVERDUE).toBe(true);
+
+      const unknown = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: tuvUnknownEvaluation(),
+      });
+      expect(unknown.TUV_OVERDUE).toBe(false);
+    });
+
+    it('BOKRAFT_OVERDUE recovery requires bokraftRemainingDays != null and not overdue', () => {
+      const eligible = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: goodEvaluation(),
+      });
+      expect(eligible.BOKRAFT_OVERDUE).toBe(true);
+
+      const unknown = buildServiceComplianceRecoveryEligibility({
+        evaluationSucceeded: true,
+        evaluation: bokraftUnknownEvaluation(),
+      });
+      expect(unknown.BOKRAFT_OVERDUE).toBe(false);
+    });
+
+    it('SERVICE_OVERDUE OPEN + TRACKED non-overdue sweep resolves notification', async () => {
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-open', overdue);
+      expect(openNotifications()).toHaveLength(1);
+
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-recover',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A], goodEvaluation()),
+      );
+      expect(openNotifications()).toHaveLength(0);
+    });
+
+    it('SERVICE_OVERDUE OPEN + NO_TRACKING preserves notification on sweep', async () => {
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-open', overdue);
+      const id = openNotifications()[0]!.id;
+
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-preserve',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A], noTrackingEvaluation()),
+      );
+      expect(notifications.get(id)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('TUV_OVERDUE OPEN + tuvRemainingDays=null preserves on sweep', async () => {
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        tuvOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-open', overdue);
+      const id = openNotifications()[0]!.id;
+
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-preserve',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A], tuvUnknownEvaluation()),
+      );
+      expect(notifications.get(id)?.status).toBe(NotificationStatus.OPEN);
+    });
+  });
+
   describe('legacy SERVICE_OVERDUE fingerprint reconciliation', () => {
     it('pre-P2.1 mapper used overdue conditionCode — legacy fingerprint is distinct', () => {
       const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
@@ -596,6 +781,117 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       expect(open.filter((n) => n.eventType === 'SERVICE_OVERDUE')).toHaveLength(1);
     });
 
+    it('legacy OPEN + canonical SERVICE_OVERDUE ingest failure → legacy preserved, no canonical row', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-ingest-fail';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      jest.spyOn(router, 'ingestFromAdapter').mockRejectedValueOnce(new Error('canonical ingest failed'));
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-ingest-fail', overdue);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
+      const canonicalFp = serviceComplianceSourceFingerprint(ORG_A, {
+        eventType: 'SERVICE_OVERDUE',
+        vehicleId: VEH_A,
+      });
+      expect(openNotifications().some((n) => n.fingerprint === canonicalFp)).toBe(false);
+    });
+
+    it('legacy OPEN + canonical repeat success → legacy retired, single canonical identity', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-repeat';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      const overdue = projectServiceComplianceOverdueNotifications(
+        baseVehicle,
+        serviceOverdueEvaluation(),
+      );
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-repeat-1', overdue);
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-repeat-2', overdue);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
+      const serviceOverdueOpen = openNotifications().filter((n) => n.eventType === 'SERVICE_OVERDUE');
+      expect(serviceOverdueOpen).toHaveLength(1);
+      expect(serviceOverdueOpen[0]?.fingerprint).toBe(
+        serviceComplianceSourceFingerprint(ORG_A, { eventType: 'SERVICE_OVERDUE', vehicleId: VEH_A }),
+      );
+    });
+
+    it('legacy OPEN + cleared SERVICE_OVERDUE ingest success does not retire legacy', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-cleared';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-cleared-only', [
+        {
+          eventType: 'SERVICE_OVERDUE',
+          vehicleId: VEH_A,
+          label: PLATE_A,
+          cleared: true,
+          severity: 'warning',
+          blocksRental: false,
+        },
+      ]);
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
+    });
+
     it('legacy OPEN + canonical recovered → legacy resolves without creating canonical row', async () => {
       const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
       const legacyId = 'legacy-ntf-recovered';
@@ -618,10 +914,106 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       });
       activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
 
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-recovered', []);
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-recovered',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A], goodEvaluation()),
+      );
 
       expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.RESOLVED);
       expect(openNotifications()).toHaveLength(0);
+    });
+
+    it('legacy OPEN + NO_TRACKING evaluation → legacy preserved', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-no-tracking';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-no-tracking',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A], noTrackingEvaluation()),
+      );
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('legacy OPEN + STALE evaluation → legacy preserved', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-stale';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-stale',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A], staleServiceEvaluation()),
+      );
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
+    });
+
+    it('legacy OPEN + no evaluation entry → legacy preserved', async () => {
+      const legacyFp = legacyServiceOverdueFingerprint(ORG_A, VEH_A);
+      const legacyId = 'legacy-ntf-no-eval';
+      notifications.set(legacyId, {
+        id: legacyId,
+        organizationId: ORG_A,
+        fingerprint: legacyFp,
+        eventType: 'SERVICE_OVERDUE',
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: VEH_A,
+        status: NotificationStatus.OPEN,
+        severity: NotificationSeverity.CRITICAL,
+        occurrenceCount: 1,
+        lifecycleGeneration: 1,
+        version: 1,
+        templateParams: { label: PLATE_A },
+        actionTarget: {},
+        lastSeenAt: new Date(),
+        firstSeenAt: new Date(),
+      });
+      activeByFingerprint.set(`${ORG_A}:${legacyFp}`, legacyId);
+
+      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-no-eval', [], new Map());
+
+      expect(notifications.get(legacyId)?.status).toBe(NotificationStatus.OPEN);
     });
   });
 
@@ -639,7 +1031,12 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
       expect(openNotifications()).toHaveLength(2);
 
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', []);
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-2',
+        [],
+        complianceRecoveryFromEvaluation([VEH_A, VEH_B], goodEvaluation()),
+      );
       expect(openNotifications()).toHaveLength(0);
 
       const listCalls = (repository.listNotifications as jest.Mock).mock.calls;
@@ -696,7 +1093,12 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
       );
       await ingest.syncServiceComplianceWarnings(ORG_A, 'run-1', [...sourcesA, ...sourcesB]);
 
-      await ingest.syncServiceComplianceWarnings(ORG_A, 'run-2', sourcesB);
+      await ingest.syncServiceComplianceWarnings(
+        ORG_A,
+        'run-2',
+        sourcesB,
+        complianceRecoveryFromEvaluation([VEH_A], goodEvaluation()),
+      );
       const open = openNotifications();
       expect(open).toHaveLength(1);
       expect(open[0].entityId).toBe(VEH_B);
@@ -704,9 +1106,9 @@ describe('ServiceComplianceNotificationAdapter + projector', () => {
   });
 
   describe('registry regression', () => {
-    it('attentionScope partition unchanged (70 / 27 / 43)', () => {
-      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(70);
-      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(27);
+    it('attentionScope partition after P2.5 (71 / 28 / 43)', () => {
+      expect(NOTIFICATION_EVENT_REGISTRY.length).toBe(71);
+      expect(getNotificationDefinitionsByAttentionScope('FLEET_READINESS').length).toBe(28);
       expect(getNotificationDefinitionsByAttentionScope('OPERATIONS').length).toBe(43);
     });
   });

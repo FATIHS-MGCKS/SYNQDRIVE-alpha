@@ -137,12 +137,11 @@ describe('NotificationEventRegistry', () => {
     expect(() => resolveEventSlug('not-real')).toThrow(NotificationEventRegistryError);
   });
 
-  it('three event types enabled for shadow mode (phase 1 producers)', () => {
+  it('two event types enabled for shadow mode (phase 1 producers)', () => {
     const shadow = NOTIFICATION_EVENT_REGISTRY.filter((d) => d.shadowModeEnabled);
     expect(shadow.map((d) => d.eventType).sort()).toEqual([
       'DRIVING_ASSESSMENT_DEVICE_QUALITY',
       'STATION_SHORTAGE',
-      'TECHNICAL_OBSERVATION_ACTIVE',
     ]);
   });
 
@@ -185,6 +184,7 @@ describe('NotificationEventRegistry', () => {
       'TUV_OVERDUE',
       'VEHICLE_NOT_READY',
       'VEHICLE_READINESS_UNEVALUABLE',
+      'VEHICLE_DAMAGE_BLOCKING',
       'LIMP_MODE_ACTIVE',
       'ENGINE_OIL_LEVEL_LOW',
       'ENGINE_OIL_LEVEL_HIGH',
@@ -348,6 +348,18 @@ describe('NotificationEventRegistry', () => {
         expect(fingerprint.canonical).not.toContain('OPERATIONS');
         expect(fingerprint.canonical).not.toContain('attentionScope');
       }
+    });
+
+    it('matches golden fingerprint for per-damage VEHICLE_DAMAGE_BLOCKING variant', () => {
+      const { vehicleDamageBlockingSourceFingerprint } = require('../adapters/vehicle-damage-notification.projector');
+      expect(
+        vehicleDamageBlockingSourceFingerprint(GOLDEN_FINGERPRINT_ORG_ID, {
+          vehicleId: GOLDEN_VEHICLE_ENTITY_ID,
+          damageId: 'dmg-golden-1',
+        }),
+      ).toBe(
+        'org-golden|VEHICLE_DAMAGE_BLOCKING|VEHICLE|veh-golden-1|vehicle_damage_blocking:dmg-golden-1|v1',
+      );
     });
 
     it('covers explicit boundary cases', () => {

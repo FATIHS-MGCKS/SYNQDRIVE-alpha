@@ -19,6 +19,7 @@ import { ServiceComplianceNotificationAdapter } from './adapters/service-complia
 import { VehicleAlertsNotificationAdapter } from './adapters/vehicle-alerts-notification.adapter';
 import { VehicleReadinessNotificationAdapter } from './adapters/vehicle-readiness-notification.adapter';
 import { VehicleReadinessEvaluabilityNotificationAdapter } from './adapters/vehicle-readiness-evaluability-notification.adapter';
+import { VehicleDamageNotificationAdapter } from './adapters/vehicle-damage-notification.adapter';
 import { VehicleHealthNotificationSyncService } from './adapters/vehicle-health-notification-sync.service';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
@@ -115,6 +116,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     VehicleAlertsNotificationAdapter,
     VehicleReadinessNotificationAdapter,
     VehicleReadinessEvaluabilityNotificationAdapter,
+    VehicleDamageNotificationAdapter,
     VehicleHealthNotificationSyncService,
     NotificationProducerRouter,
     NotificationProducerIngestService,
@@ -154,6 +156,7 @@ import notificationRetentionConfig from '@config/notification-retention.config';
     VehicleAlertsNotificationAdapter,
     VehicleReadinessNotificationAdapter,
     VehicleReadinessEvaluabilityNotificationAdapter,
+    VehicleDamageNotificationAdapter,
     VehicleHealthNotificationSyncService,
   ],
 })

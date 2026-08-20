@@ -1144,6 +1144,9 @@ export const de: Record<TranslationKey, string> = {
   'notification.title.vehicleNotReady': 'Fahrzeug nicht einsatzbereit — {label}',
   'notification.body.vehicleNotReady': '{label} ist aktuell nicht einsatzbereit. Prüfen Sie die Fahrzeugmeldungen.',
   'notification.title.vehicleReadinessUnevaluable': 'Einsatzbereitschaft nicht bewertbar — {label}',
+  'notification.title.vehicleDamageBlocking': 'Schaden blockiert Einsatzbereitschaft — {label}',
+  'notification.body.vehicleDamageBlocking': '{label}: Offener Schaden blockiert die Einsatzbereitschaft.',
+  'notification.issue.vehicleDamageBlocking': 'Schaden blockiert Einsatzbereitschaft',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive kann die Einsatzbereitschaft von {label} aktuell nicht zuverlässig bewerten. Prüfen Sie die verfügbaren Fahrzeugdaten.',
   'notification.title.tireCritical': 'Reifen prüfen — {label}',

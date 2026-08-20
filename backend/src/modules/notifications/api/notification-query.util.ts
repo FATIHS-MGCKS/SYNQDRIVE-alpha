@@ -7,6 +7,8 @@ import {
 } from '@prisma/client';
 import { ACTIVE_NOTIFICATION_STATUSES } from '../notification.repository';
 import { buildOrgWideScopeOrClause } from '../access/notification-org-wide.policy';
+import { getNotificationEventTypesByAttentionScope } from '../registry/notification-event-registry';
+import type { NotificationAttentionScope } from '../registry/notification-event-registry.types';
 
 export type NotificationSortField = 'lastSeenAt' | 'createdAt' | 'severity';
 export type NotificationSortOrder = 'asc' | 'desc';
@@ -40,6 +42,8 @@ export interface NotificationListFilters {
   scopedStationId?: string;
   /** When false, apply station scope constraints (including zero-station deny). */
   bypassStationScope?: boolean;
+  /** Registry-driven projection filter — not persisted, not in fingerprints. */
+  attentionScope?: NotificationAttentionScope;
 }
 
 export function parseNotificationPagination(query: {
@@ -161,6 +165,11 @@ export function buildNotificationWhereInput(
   }
   if (filters.domain) {
     where.domain = filters.domain;
+  }
+  if (filters.attentionScope) {
+    where.eventType = {
+      in: getNotificationEventTypesByAttentionScope(filters.attentionScope),
+    };
   }
   if (filters.entityType) {
     where.entityType = filters.entityType;
