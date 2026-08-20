@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WhatsAppConfig } from '../../../lib/api';
-import { AI_MODE_META } from './whatsapp.ops';
+import { labelAiMode, localizedAiModeMeta } from './whatsapp-i18n';
 
 interface WhatsAppSetupWizardProps {
   open: boolean;
@@ -17,21 +18,24 @@ interface WhatsAppSetupWizardProps {
   }) => void;
 }
 
-const STEPS = [
-  { id: 1, title: 'Business identity' },
-  { id: 2, title: 'Provider credentials' },
-  { id: 3, title: 'Webhook health' },
-  { id: 4, title: 'AI mode' },
-  { id: 5, title: 'Finish' },
-] as const;
-
 export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: WhatsAppSetupWizardProps) {
+  const { locale, t } = useLanguage();
   const [step, setStep] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [wabaId, setWabaId] = useState('');
   const [aiMode, setAiMode] = useState<WhatsAppConfig['aiMode']>('SUGGEST_ONLY');
+
+  const steps = [
+    { id: 1, title: t('whatsapp.wizard.step.businessIdentity') },
+    { id: 2, title: t('whatsapp.wizard.step.providerCredentials') },
+    { id: 3, title: t('whatsapp.wizard.step.webhookHealth') },
+    { id: 4, title: t('whatsapp.wizard.step.aiMode') },
+    { id: 5, title: t('whatsapp.wizard.step.finish') },
+  ] as const;
+
+  const aiModeOptions = localizedAiModeMeta(locale);
 
   if (!open) return null;
 
@@ -62,13 +66,13 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <StatusChip tone="watch">
-              Manual configuration
+              {t('whatsapp.wizard.badge')}
             </StatusChip>
             <h2 className="mt-2 text-[16px] font-bold tracking-[-0.02em] text-foreground">
-              WhatsApp setup wizard
+              {t('whatsapp.wizard.title')}
             </h2>
             <p className="text-[10px] text-muted-foreground">
-              Meta Embedded Signup not yet available — configure provider fields manually.
+              {t('whatsapp.wizard.subtitle')}
             </p>
           </div>
           <button type="button" onClick={onClose} className="sq-press rounded-lg p-1 hover:bg-muted">
@@ -77,7 +81,7 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
         </div>
 
         <div className="mb-5 flex gap-1">
-          {STEPS.map(s => (
+          {steps.map(s => (
             <div
               key={s.id}
               className={`h-1 flex-1 rounded-full ${s.id <= step ? 'bg-[color:var(--brand)]' : 'bg-muted'}`}
@@ -88,20 +92,20 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
         {step === 1 && (
           <div className="space-y-3">
             <label className="block text-[10px] font-semibold text-muted-foreground">
-              Business phone number *
+              {t('whatsapp.wizard.phoneLabel')}
               <input
                 value={phoneNumber}
                 onChange={e => setPhoneNumber(e.target.value)}
-                placeholder="+49 170 1234567"
+                placeholder={t('whatsapp.wizard.phonePlaceholder')}
                 className={`mt-1 ${inputClass}`}
               />
             </label>
             <label className="block text-[10px] font-semibold text-muted-foreground">
-              Business display name
+              {t('whatsapp.wizard.displayNameLabel')}
               <input
                 value={businessName}
                 onChange={e => setBusinessName(e.target.value)}
-                placeholder="SynqDrive Rental"
+                placeholder={t('whatsapp.wizard.displayNamePlaceholder')}
                 className={`mt-1 ${inputClass}`}
               />
             </label>
@@ -111,14 +115,14 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
         {step === 2 && (
           <div className="space-y-3">
             <p className="text-[10px] text-muted-foreground">
-              Server-side tokens are set via environment variables. Enter Meta IDs for webhook routing.
+              {t('whatsapp.wizard.providerHint')}
             </p>
             <label className="block text-[10px] font-semibold text-muted-foreground">
-              Phone Number ID (Meta)
+              {t('whatsapp.wizard.phoneNumberId')}
               <input value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} className={`mt-1 ${inputClass}`} />
             </label>
             <label className="block text-[10px] font-semibold text-muted-foreground">
-              WABA ID
+              {t('whatsapp.wizard.wabaId')}
               <input value={wabaId} onChange={e => setWabaId(e.target.value)} className={`mt-1 ${inputClass}`} />
             </label>
           </div>
@@ -126,28 +130,27 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
 
         {step === 3 && (
           <div className="rounded-xl border border-border/40 bg-muted/15 p-4 text-[11px] text-muted-foreground">
-            <p className="font-semibold text-foreground">Webhook endpoint</p>
-            <p className="mt-1 font-mono text-[10px]">/api/webhooks/whatsapp</p>
+            <p className="font-semibold text-foreground">{t('whatsapp.wizard.webhookTitle')}</p>
+            <p className="mt-1 font-mono text-[10px]">{t('whatsapp.wizard.webhookPath')}</p>
             <p className="mt-3">
-              Register this URL in Meta Developer Console. Verify token must match server configuration.
-              Webhook health will show on the readiness strip after the first event.
+              {t('whatsapp.wizard.webhookInstructions')}
             </p>
           </div>
         )}
 
         {step === 4 && (
           <div className="grid gap-2">
-            {(Object.keys(AI_MODE_META) as WhatsAppConfig['aiMode'][]).map(key => (
+            {aiModeOptions.map(meta => (
               <button
-                key={key}
+                key={meta.mode}
                 type="button"
-                onClick={() => setAiMode(key)}
+                onClick={() => setAiMode(meta.mode)}
                 className={`sq-press rounded-xl border p-3 text-left ${
-                  aiMode === key ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand)]/[0.05]' : 'border-border/40'
+                  aiMode === meta.mode ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand)]/[0.05]' : 'border-border/40'
                 }`}
               >
-                <p className="text-[11px] font-semibold text-foreground">{AI_MODE_META[key].label}</p>
-                <p className="text-[10px] text-muted-foreground">{AI_MODE_META[key].description}</p>
+                <p className="text-[11px] font-semibold text-foreground">{meta.label}</p>
+                <p className="text-[10px] text-muted-foreground">{meta.description}</p>
               </button>
             ))}
           </div>
@@ -155,15 +158,15 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
 
         {step === 5 && (
           <div className="space-y-2 text-[11px]">
-            <p className="text-foreground">Review your setup:</p>
+            <p className="text-foreground">{t('whatsapp.wizard.reviewTitle')}</p>
             <ul className="list-inside list-disc text-muted-foreground">
               <li>{phoneNumber}</li>
               {businessName && <li>{businessName}</li>}
-              {phoneNumberId && <li>Phone Number ID configured</li>}
-              <li>AI: {AI_MODE_META[aiMode].label}</li>
+              {phoneNumberId && <li>{t('whatsapp.wizard.reviewPhoneIdConfigured')}</li>}
+              <li>{t('whatsapp.wizard.reviewAi', { mode: labelAiMode(locale, aiMode) })}</li>
             </ul>
             <p className="text-[10px] text-[color:var(--status-watch)]">
-              Outbound messages require server-side access token before they leave SynqDrive.
+              {t('whatsapp.wizard.tokenWarning')}
             </p>
           </div>
         )}
@@ -175,7 +178,7 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
             onClick={() => setStep(s => Math.max(1, s - 1))}
             className="sq-press rounded-xl border border-border/60 px-3 py-2 text-[11px] font-semibold text-muted-foreground disabled:opacity-40"
           >
-            Back
+            {t('whatsapp.wizard.back')}
           </button>
           {step < 5 ? (
             <button
@@ -184,7 +187,7 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
               onClick={() => setStep(s => Math.min(5, s + 1))}
               className="sq-press rounded-xl bg-[color:var(--brand)] px-4 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
             >
-              Continue
+              {t('whatsapp.wizard.continue')}
             </button>
           ) : (
             <button
@@ -193,7 +196,7 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
               onClick={handleFinish}
               className="sq-press rounded-xl bg-[color:var(--status-positive)] px-4 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
             >
-              {saving ? 'Saving…' : 'Complete setup'}
+              {saving ? t('whatsapp.wizard.saving') : t('whatsapp.wizard.complete')}
             </button>
           )}
         </div>

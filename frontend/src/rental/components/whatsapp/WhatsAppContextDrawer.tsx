@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { Skeleton } from '../../../components/ui/skeleton';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, getErrorMessage, type WhatsAppAiSuggestionResponse, type WhatsAppConfig, type WhatsAppConversation, type WhatsAppConversationContext } from '../../../lib/api';
 import { WhatsAppQuickActions } from './WhatsAppQuickActions';
 
@@ -44,6 +45,7 @@ export function WhatsAppContextDrawer({
   onClose,
   onConversationRefresh,
 }: WhatsAppContextDrawerProps) {
+  const { t } = useLanguage();
   const [ctx, setCtx] = useState<WhatsAppConversationContext | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function WhatsAppContextDrawer({
   if (!conversation) {
     return (
       <aside className="hidden h-full min-h-0 flex-col border-l border-border/40 surface-premium p-4 xl:flex">
-        <p className="text-[11px] text-muted-foreground">Select a conversation to see linked SynqDrive context.</p>
+        <p className="text-[11px] text-muted-foreground">{t('whatsapp.context.empty')}</p>
       </aside>
     );
   }
@@ -86,7 +88,7 @@ export function WhatsAppContextDrawer({
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-border/40 surface-premium">
       <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
-        <h3 className="text-[11px] font-semibold text-foreground">SynqDrive context</h3>
+        <h3 className="text-[11px] font-semibold text-foreground">{t('whatsapp.context.title')}</h3>
         {onClose && (
           <button type="button" onClick={onClose} className="sq-press rounded-lg p-1 hover:bg-muted xl:hidden">
             <Icon name="x" className="h-4 w-4" />
@@ -108,22 +110,22 @@ export function WhatsAppContextDrawer({
               onRefresh={handleRefresh}
             />
 
-            <ContextCard title="Customer" icon="user">
+            <ContextCard title={t('whatsapp.context.customer')} icon="user">
               {ctx?.customer ? (
                 <div className="space-y-1 text-[11px]">
                   <p className="font-semibold text-foreground">{ctx.customer.displayName}</p>
                   <p className="text-muted-foreground">{ctx.customer.phone ?? conversation.contactPhone}</p>
-                  <p className="text-muted-foreground">{ctx.customer.email ?? 'No email'}</p>
+                  <p className="text-muted-foreground">{ctx.customer.email ?? t('whatsapp.context.noEmail')}</p>
                   {ctx.whatsapp.customerOptedOut && (
-                    <StatusChip tone="watch">Opted out</StatusChip>
+                    <StatusChip tone="watch">{t('whatsapp.context.optedOut')}</StatusChip>
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No linked customer yet</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noCustomer')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Booking" icon="calendar">
+            <ContextCard title={t('whatsapp.context.booking')} icon="calendar">
               {ctx?.booking ? (
                 <div className="space-y-1 text-[11px]">
                   <p className="font-semibold text-foreground">
@@ -134,15 +136,17 @@ export function WhatsAppContextDrawer({
                     {new Date(ctx.booking.endDate).toLocaleDateString()}
                   </p>
                   {ctx.booking.pickupStationName && (
-                    <p className="text-muted-foreground">Pickup: {ctx.booking.pickupStationName}</p>
+                    <p className="text-muted-foreground">
+                      {t('whatsapp.context.pickupStation', { name: ctx.booking.pickupStationName })}
+                    </p>
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No linked booking yet</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noBooking')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Vehicle" icon="car">
+            <ContextCard title={t('whatsapp.context.vehicle')} icon="car">
               {ctx?.vehicle ? (
                 <div className="space-y-1 text-[11px]">
                   <p className="font-semibold text-foreground">{ctx.vehicle.displayName}</p>
@@ -154,112 +158,132 @@ export function WhatsAppContextDrawer({
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No linked vehicle yet</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noVehicle')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Station" icon="map-pin">
+            <ContextCard title={t('whatsapp.context.station')} icon="map-pin">
               {ctx?.station ? (
                 <div className="space-y-1 text-[11px] text-muted-foreground">
                   <p className="font-semibold text-foreground">{ctx.station.name}</p>
                   {ctx.station.address && <p>{ctx.station.address}</p>}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No station context</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noStation')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Payment / deposit" icon="credit-card">
+            <ContextCard title={t('whatsapp.context.payment')} icon="credit-card">
               {ctx?.payment ? (
                 <div className="space-y-1 text-[11px]">
-                  <p className="text-foreground">Payment: {ctx.payment.paymentStatus ?? '—'}</p>
-                  <p className="text-muted-foreground">Deposit: {ctx.payment.depositStatus ?? '—'}</p>
+                  <p className="text-foreground">
+                    {t('whatsapp.context.paymentStatus', { status: ctx.payment.paymentStatus ?? '—' })}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {t('whatsapp.context.depositStatus', { status: ctx.payment.depositStatus ?? '—' })}
+                  </p>
                   {ctx.payment.openInvoiceCount > 0 && (
                     <p className="text-[color:var(--status-watch)]">
-                      {ctx.payment.openInvoiceCount} open invoice(s)
+                      {t('whatsapp.context.openInvoices', { count: ctx.payment.openInvoiceCount })}
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No payment context linked</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noPayment')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Documents" icon="file-text">
+            <ContextCard title={t('whatsapp.context.documents')} icon="file-text">
               {ctx?.documents ? (
                 <div className="space-y-1 text-[11px]">
                   <p className="text-foreground">
                     {ctx.documents.missingCount > 0
-                      ? `${ctx.documents.missingCount} missing`
-                      : 'Bundle complete'}
+                      ? t('whatsapp.context.missingCount', { count: ctx.documents.missingCount })
+                      : t('whatsapp.context.bundleComplete')}
                   </p>
                   {ctx.documents.missingLabels.length > 0 && (
                     <p className="text-muted-foreground">{ctx.documents.missingLabels.join(', ')}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No booking documents to show</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noDocuments')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Damages" icon="alert-triangle">
+            <ContextCard title={t('whatsapp.context.damages')} icon="alert-triangle">
               {ctx?.damages ? (
                 <p className="text-[11px] text-foreground">
                   {ctx.damages.openCount > 0
-                    ? `${ctx.damages.openCount} open damage(s)`
-                    : 'No open damages'}
+                    ? t('whatsapp.context.openDamages', { count: ctx.damages.openCount })
+                    : t('whatsapp.context.noOpenDamages')}
                 </p>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No vehicle damages</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noDamages')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Tasks" icon="list-checks">
+            <ContextCard title={t('whatsapp.context.tasks')} icon="list-checks">
               {ctx?.tasks ? (
                 <div className="space-y-1 text-[11px]">
                   <p className="text-foreground">
-                    {ctx.tasks.openCount} open
-                    {ctx.tasks.overdueCount > 0 ? ` · ${ctx.tasks.overdueCount} overdue` : ''}
+                    {t('whatsapp.context.tasksOpen', { count: ctx.tasks.openCount })}
+                    {ctx.tasks.overdueCount > 0
+                      ? ` · ${t('whatsapp.context.tasksOverdue', { count: ctx.tasks.overdueCount })}`
+                      : ''}
                   </p>
-                  {ctx.tasks.items.map(t => (
-                    <p key={t.id} className="truncate text-muted-foreground">
-                      {t.title}
+                  {ctx.tasks.items.map(task => (
+                    <p key={task.id} className="truncate text-muted-foreground">
+                      {task.title}
                     </p>
                   ))}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No linked tasks</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noTasks')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="Handover / return" icon="clipboard-check">
+            <ContextCard title={t('whatsapp.context.handover')} icon="clipboard-check">
               {ctx?.handover ? (
                 <div className="space-y-1 text-[11px] text-muted-foreground">
-                  <p>Pickup: {ctx.handover.pickupCompleted ? 'completed' : 'pending'}</p>
-                  <p>Return: {ctx.handover.returnCompleted ? 'completed' : 'pending'}</p>
+                  <p>
+                    {t('whatsapp.context.pickupStatus', {
+                      status: ctx.handover.pickupCompleted
+                        ? t('whatsapp.context.status.completed')
+                        : t('whatsapp.context.status.pending'),
+                    })}
+                  </p>
+                  <p>
+                    {t('whatsapp.context.returnStatus', {
+                      status: ctx.handover.returnCompleted
+                        ? t('whatsapp.context.status.completed')
+                        : t('whatsapp.context.status.pending'),
+                    })}
+                  </p>
                   {ctx.handover.operatorBookingUrl && (
                     <p className="truncate text-[9px]">{ctx.handover.operatorBookingUrl}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground">No handover context</p>
+                <p className="text-[10px] text-muted-foreground">{t('whatsapp.context.noHandover')}</p>
               )}
             </ContextCard>
 
-            <ContextCard title="AI context" icon="sparkles">
+            <ContextCard title={t('whatsapp.context.ai')} icon="sparkles">
               <div className="space-y-1.5 text-[10px] text-muted-foreground">
                 <p>
-                  Mode: <span className="font-semibold text-foreground">{config?.aiMode ?? 'OFF'}</span>
+                  {t('whatsapp.context.aiMode')}{' '}
+                  <span className="font-semibold text-foreground">{config?.aiMode ?? 'OFF'}</span>
                 </p>
                 {conversation.status === 'PENDING_HUMAN' && (
-                  <p className="text-[color:var(--status-watch)]">Human review required for this thread.</p>
+                  <p className="text-[color:var(--status-watch)]">{t('whatsapp.context.humanReviewRequired')}</p>
                 )}
                 {aiResult && (
                   <>
                     <p>
-                      Intent: <span className="font-semibold text-foreground">{aiResult.intent}</span>
+                      {t('whatsapp.context.intent')}{' '}
+                      <span className="font-semibold text-foreground">{aiResult.intent}</span>
                     </p>
-                    <p>Confidence: {Math.round(aiResult.confidence * 100)}%</p>
+                    <p>{t('whatsapp.context.confidence', { percent: Math.round(aiResult.confidence * 100) })}</p>
                   </>
                 )}
                 {aiSuggestionReason && <p>{aiSuggestionReason}</p>}
