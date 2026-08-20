@@ -1,10 +1,10 @@
 # P2.2.7B — Voice Assistant Telephony + Test Center — Read-Only Pre-Flight / Scope Freeze
 
-**Date:** 2026-08-20  
-**Mode:** read-only analysis only — **no implementation**  
-**Program baseline (P2.2.7A merged):** `77047cfa48e44968bfe78fbf69f939d324094b5f` on `origin/i18n/production-hardening-p2-2-6-2026-08`  
-**PR #1074:** MERGED 2026-08-20T01:36:12Z (squash merge commit `77047cfa`)  
-**Audit performed from:** isolated read-only worktree at `77047cfa` (`/tmp/synqdrive-p227b-audit`) + validation runs from `/workspace/frontend` (same file content for P2.2.7B surfaces)  
+**Date:** 2026-08-20
+**Mode:** read-only analysis only — **no implementation**
+**Program baseline (P2.2.7A merged):** `77047cfa48e44968bfe78fbf69f939d324094b5f` on `origin/i18n/production-hardening-p2-2-6-2026-08`
+**PR #1074:** MERGED 2026-08-20T01:36:12Z (squash merge commit `77047cfa`)
+**Audit performed from:** isolated read-only worktree at `77047cfa` (`/tmp/synqdrive-p227b-audit`) + validation runs from `/workspace/frontend` (same file content for P2.2.7B surfaces)
 **Analysis branch for audit artifact:** `cursor/p227b-voice-telephony-test-center-preflight-3c10` @ `77047cfa`
 
 ---
@@ -413,7 +413,7 @@ const P27B_ENFORCE_CLEAN_PREFIXES = [
 If implementation only wraps scanner-flagged JSX text, **residual manual debt** remains in:
 
 - WizardStep status chip fallthrough (`pending`, `warning`, `error` raw)
-- Error strings in `setPhonesError(...)` 
+- Error strings in `setPhonesError(...)`
 - Phase/status labels in Test Center
 - **`voice-test-scenarios.ts` entire file**
 
@@ -539,51 +539,51 @@ Not updated during this read-only pre-flight. Update at P2.2.7B implementation t
 
 ### `VoiceTelephonyWizard.tsx` (24)
 
-1. TITLE — Agent provisioning  
-2. TEXT — Connect the provider first.  
-3. TEXT — Enable outbound telephony?  
-4. TEXT — I understand — enable outbound  
-5. TITLE — Inbound calls  
-6. TEXT — Inbound enabled  
-7. TEXT — Loading provider numbers…  
-8. TEXT — Master switch for phone live mode.  
-9. TEXT — No agent provisioned yet. Complete readiness checks and activate the assistant from the command center header.  
-10. TEXT — No phone numbers found in your ElevenLabs account. Import or purchase numbers in ElevenLabs, then refresh.  
-11. TEXT — Open Test Center  
-12. TITLE — Outbound calls  
-13. TEXT — Outbound enabled  
-14. TITLE — Phone number  
-15. TITLE — Provider connection  
-16. TEXT — Provision the agent before assigning a number.  
-17. TEXT — Refresh status  
-18. TEXT — Run a signed test session in the Test Center — no phone charges apply.  
-19. TEXT — Select a phone number  
-20. TEXT — Strongly recommended only with suggest-only contact permissions and monitoring.  
-21. TEXT — Telephony enabled  
-22. TEXT — Telephony setup  
-23. TEXT — Unassign number  
+1. TITLE — Agent provisioning
+2. TEXT — Connect the provider first.
+3. TEXT — Enable outbound telephony?
+4. TEXT — I understand — enable outbound
+5. TITLE — Inbound calls
+6. TEXT — Inbound enabled
+7. TEXT — Loading provider numbers…
+8. TEXT — Master switch for phone live mode.
+9. TEXT — No agent provisioned yet. Complete readiness checks and activate the assistant from the command center header.
+10. TEXT — No phone numbers found in your ElevenLabs account. Import or purchase numbers in ElevenLabs, then refresh.
+11. TEXT — Open Test Center
+12. TITLE — Outbound calls
+13. TEXT — Outbound enabled
+14. TITLE — Phone number
+15. TITLE — Provider connection
+16. TEXT — Provision the agent before assigning a number.
+17. TEXT — Refresh status
+18. TEXT — Run a signed test session in the Test Center — no phone charges apply.
+19. TEXT — Select a phone number
+20. TEXT — Strongly recommended only with suggest-only contact permissions and monitoring.
+21. TEXT — Telephony enabled
+22. TEXT — Telephony setup
+23. TEXT — Unassign number
 24. TEXT — Warning: inbound is enabled but no phone number is assigned.
 
 ### `VoiceTestCenter.tsx` (19)
 
-1. TITLE — Agent not provisioned  
-2. TEXT — Current test scenario  
-3. TEXT — Escalate when  
-4. TEXT — Expected behavior  
-5. TEXT — Live session  
-6. TEXT — Microphone not supported in this browser — live voice testing may be unavailable.  
-7. TITLE — No active session  
-8. PLACEHOLDER — Notes: what worked, what failed, escalation issues…  
-9. TEXT — Open launch checklist  
-10. TEXT — Readiness gaps  
-11. TEXT — Real-time transcript and tool-policy decisions will appear here when live integration is enabled.  
-12. TEXT — Record your operator verdict locally. Results are not saved to the server yet.  
-13. TEXT — Select a scenario to define expected behavior. No automated simulation — use it as an operator script.  
-14. TEXT — Stop / reset  
-15. TEXT — Test Center  
-16. TEXT — Test result  
-17. TEXT — Test scenarios  
-18. TEXT — Test session expired. Start a new session to continue testing.  
+1. TITLE — Agent not provisioned
+2. TEXT — Current test scenario
+3. TEXT — Escalate when
+4. TEXT — Expected behavior
+5. TEXT — Live session
+6. TEXT — Microphone not supported in this browser — live voice testing may be unavailable.
+7. TITLE — No active session
+8. PLACEHOLDER — Notes: what worked, what failed, escalation issues…
+9. TEXT — Open launch checklist
+10. TEXT — Readiness gaps
+11. TEXT — Real-time transcript and tool-policy decisions will appear here when live integration is enabled.
+12. TEXT — Record your operator verdict locally. Results are not saved to the server yet.
+13. TEXT — Select a scenario to define expected behavior. No automated simulation — use it as an operator script.
+14. TEXT — Stop / reset
+15. TEXT — Test Center
+16. TEXT — Test result
+17. TEXT — Test scenarios
+18. TEXT — Test session expired. Start a new session to continue testing.
 19. TEXT — Validate greeting, tone, escalation, and permissions before going live on phone.
 
 ---

@@ -172,7 +172,7 @@ const WIZARD_STEP_STATUS_KEYS: Record<WizardStepStatus, TranslationKey> = {
   current: 'voice.telephony.stepStatus.inProgress',
   pending: 'voice.telephony.stepStatus.pending',
   warning: 'voice.telephony.stepStatus.warning',
-  error: 'voice.telephony.stepStatus.error',
+  error: 'voice.status.operator.error',
 };
 
 export function labelWizardStepStatus(locale: string, status: WizardStepStatus): string {
@@ -192,7 +192,7 @@ const TEST_SESSION_PHASE_KEYS: Record<TestSessionPhase, TranslationKey> = {
   starting: 'voice.test.phase.starting',
   active: 'voice.test.phase.active',
   expired: 'voice.test.phase.expired',
-  error: 'voice.test.phase.error',
+  error: 'voice.status.operator.error',
   blocked: 'voice.test.phase.blocked',
 };
 

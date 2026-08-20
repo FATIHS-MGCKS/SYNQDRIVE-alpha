@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@iconify/react', () => ({
   Icon: () => null,
@@ -11,8 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider, useLanguage } from '../../i18n/LanguageContext';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
 import inventory from '../../i18n/hardcoded-copy-inventory.json';
@@ -176,6 +175,54 @@ describe('rental voice assistant telephony + test center localization (P2.2.7B)'
       expect(source).toContain('phoneNumberId');
       expect(source).toContain('updateTelephonySettings({ outboundEnabled: true })');
     });
+
+    it('gates outbound enable behind confirmation dialog', async () => {
+      const updateTelephonySettings = vi.fn(async () => buildAssistant({ outboundEnabled: true }));
+
+      ({ cleanup } = renderWithLocale(
+        'en',
+        createElement(VoiceTelephonyWizard, {
+          orgId: 'org-1',
+          assistant: buildAssistant({ outboundEnabled: false }),
+          readinessElevenLabsOk: true,
+          isBusy: false,
+          onAssistantUpdated: () => {},
+          onNavigateTest: () => {},
+          onError: () => {},
+          ...telephonyCallbacks,
+          updateTelephonySettings,
+        }),
+      ));
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const outboundCheckbox = [...document.querySelectorAll('input[type="checkbox"]')].find(input => {
+        const label = input.closest('label');
+        return label?.textContent?.includes(en['voice.telephony.toggle.outbound.label']);
+      });
+      expect(outboundCheckbox).toBeTruthy();
+
+      await act(async () => {
+        (outboundCheckbox as HTMLInputElement).click();
+      });
+
+      expect(document.body.textContent).toContain(en['voice.telephony.outbound.confirmTitle']);
+      expect(document.body.textContent).toContain(en['common.cancel']);
+      expect(updateTelephonySettings).not.toHaveBeenCalled();
+
+      const confirmButton = [...document.querySelectorAll('button')].find(button =>
+        button.textContent?.includes(en['voice.telephony.outbound.confirmAction']),
+      );
+      expect(confirmButton).toBeTruthy();
+
+      await act(async () => {
+        (confirmButton as HTMLButtonElement).click();
+      });
+
+      expect(updateTelephonySettings).toHaveBeenCalledWith({ outboundEnabled: true });
+    });
   });
 
   describe('VoiceTestCenter', () => {
@@ -224,6 +271,56 @@ describe('rental voice assistant telephony + test center localization (P2.2.7B)'
       const source = readFileSync(join(__dirname, 'voice-assistant/VoiceTestCenter.tsx'), 'utf8');
       expect(source).toContain("res.status === 'blocked'");
       expect(source).toContain("api.voiceAssistant.testSession(orgId)");
+    });
+
+    it('re-localizes the selected scenario when locale switches', async () => {
+      const firstScenarioEn = localizedVoiceTestScenarios('en', VOICE_TEST_SCENARIO_DEFINITIONS)[0];
+      const firstScenarioDe = localizedVoiceTestScenarios('de', VOICE_TEST_SCENARIO_DEFINITIONS)[0];
+
+      function LocaleSwitchButton() {
+        const { setLocale } = useLanguage();
+        return createElement(
+          'button',
+          { type: 'button', 'data-testid': 'switch-locale-de', onClick: () => setLocale('de') },
+          'DE',
+        );
+      }
+
+      ({ cleanup } = renderWithLocale(
+        'en',
+        createElement(
+          'div',
+          null,
+          createElement(LocaleSwitchButton),
+          createElement(VoiceTestCenter, {
+            orgId: 'org-1',
+            assistant: buildAssistant(),
+            readiness: buildReadiness(),
+            onTestPassed: () => {},
+            onNavigateTab: () => {},
+          }),
+        ),
+      ));
+
+      const scenarioButton = [...document.querySelectorAll('button')].find(button =>
+        button.textContent?.includes(firstScenarioEn.title),
+      );
+      expect(scenarioButton).toBeTruthy();
+
+      await act(async () => {
+        (scenarioButton as HTMLButtonElement).click();
+      });
+      expect(document.body.textContent).toContain(firstScenarioEn.title);
+
+      const switchButton = document.querySelector('[data-testid="switch-locale-de"]');
+      expect(switchButton).toBeTruthy();
+
+      await act(async () => {
+        (switchButton as HTMLButtonElement).click();
+      });
+
+      expect(document.body.textContent).toContain(firstScenarioDe.title);
+      expect(document.body.textContent).not.toContain(firstScenarioEn.title);
     });
   });
 

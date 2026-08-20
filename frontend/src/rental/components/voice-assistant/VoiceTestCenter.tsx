@@ -180,8 +180,8 @@ export function VoiceTestCenter({
               label: t('voice.test.row.provider'),
               ok: providerOk,
               value: providerOk
-                ? t('voice.test.row.providerConnected')
-                : t('voice.test.row.notConnected'),
+                ? t('voice.checklist.elevenlabs.label')
+                : t('voice.status.telephony.notConnected'),
             },
             {
               label: t('voice.test.row.agent'),
