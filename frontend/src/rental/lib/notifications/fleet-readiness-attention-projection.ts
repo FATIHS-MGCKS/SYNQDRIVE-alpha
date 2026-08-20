@@ -16,8 +16,14 @@ export const FLEET_READINESS_AGGREGATE_EVENT_TYPES = new Set([
 export interface FleetReadinessVehicleGroup {
   vehicleId: string;
   label: string;
-  aggregateEventType?: 'VEHICLE_NOT_READY' | 'VEHICLE_READINESS_UNEVALUABLE';
-  aggregateItem?: ActionQueueItem;
+  /**
+   * Header aggregate for the vehicle card.
+   * When both aggregates coexist, UNEVALUABLE reflects current evaluability (P2.4);
+   * preserved NOT_READY is represented separately.
+   */
+  primaryAggregate?: ActionQueueItem;
+  /** Preserved NOT_READY when coexisting with UNEVALUABLE (P2.4 fail-safe). */
+  preservedNotReadyAggregate?: ActionQueueItem;
   causes: ActionQueueItem[];
   severity: ActionQueueSeverity;
 }
@@ -66,9 +72,59 @@ function childFromItem(item: ActionQueueItem): ActionQueueChildAction {
   };
 }
 
+function resolveAggregates(vehicleItems: ActionQueueItem[]) {
+  const aggregateItems = vehicleItems.filter((item) =>
+    FLEET_READINESS_AGGREGATE_EVENT_TYPES.has(item.issueType ?? ''),
+  );
+  const notReady = aggregateItems.find((item) => item.issueType === 'VEHICLE_NOT_READY');
+  const unevaluable = aggregateItems.find((item) => item.issueType === 'VEHICLE_READINESS_UNEVALUABLE');
+  const primaryAggregate = unevaluable ?? notReady;
+  const preservedNotReadyAggregate = notReady && unevaluable ? notReady : undefined;
+  return { notReady, unevaluable, primaryAggregate, preservedNotReadyAggregate };
+}
+
+/**
+ * Aggregate rows rendered under the same vehicle card (presentation only).
+ * - Coexisting aggregates: preserved NOT_READY is always a child row.
+ * - When both aggregates exist without concrete causes, UNEVALUABLE is also a child
+ *   so both canonical notifications remain reachable for CTA/detail expansion.
+ * - When both aggregates exist with causes, UNEVALUABLE remains header context only.
+ */
+function buildPresentationAggregateRows(group: FleetReadinessVehicleGroup): ActionQueueItem[] {
+  const rows: ActionQueueItem[] = [];
+  if (group.preservedNotReadyAggregate) {
+    rows.push(group.preservedNotReadyAggregate);
+  }
+  if (
+    group.preservedNotReadyAggregate
+    && group.primaryAggregate?.issueType === 'VEHICLE_READINESS_UNEVALUABLE'
+    && group.causes.length === 0
+  ) {
+    rows.push(group.primaryAggregate);
+  }
+  return rows;
+}
+
+export function resolveFleetReadinessGroupPriority(
+  group: FleetReadinessVehicleGroup,
+  childActions: ActionQueueChildAction[],
+): number {
+  if (group.primaryAggregate?.priority != null) {
+    return group.primaryAggregate.priority;
+  }
+  const hasCriticalChild = childActions.some((child) => child.severity === 'critical');
+  const hasCriticalCause = group.causes.some((cause) => cause.severity === 'critical');
+  return hasCriticalChild || hasCriticalCause ? 100 : 50;
+}
+
 /**
  * Presentation-only projection: groups FLEET_READINESS vehicle notifications by vehicle,
  * separating aggregate readiness state from specific causes.
+ *
+ * Lifecycle-action note: grouped cards expose CTA/task actions on child rows via
+ * NotificationGroupCard + itemsById. Header-only aggregates (single aggregate + causes)
+ * remain title context only — same pattern as the legacy NotificationPanel grouping.
+ * Coexisting aggregates render as child rows so both canonical notifications stay reachable.
  */
 export function projectFleetReadinessVehicleGroups(
   items: ActionQueueItem[],
@@ -86,29 +142,19 @@ export function projectFleetReadinessVehicleGroups(
   const groups: FleetReadinessVehicleGroup[] = [];
 
   for (const [vehicleId, vehicleItems] of byVehicle) {
-    const aggregateItems = vehicleItems.filter((item) =>
-      FLEET_READINESS_AGGREGATE_EVENT_TYPES.has(item.issueType ?? ''),
-    );
     const causes = vehicleItems.filter(
       (item) => !FLEET_READINESS_AGGREGATE_EVENT_TYPES.has(item.issueType ?? ''),
     );
+    const { primaryAggregate, preservedNotReadyAggregate } = resolveAggregates(vehicleItems);
 
-    const notReady = aggregateItems.find((item) => item.issueType === 'VEHICLE_NOT_READY');
-    const unevaluable = aggregateItems.find((item) => item.issueType === 'VEHICLE_READINESS_UNEVALUABLE');
-    const aggregateItem = notReady ?? unevaluable;
-    const aggregateEventType = aggregateItem?.issueType as
-      | 'VEHICLE_NOT_READY'
-      | 'VEHICLE_READINESS_UNEVALUABLE'
-      | undefined;
-
-    const labelSource = aggregateItem ?? causes[0] ?? vehicleItems[0];
+    const labelSource = primaryAggregate ?? causes[0] ?? vehicleItems[0];
     if (!labelSource) continue;
 
     groups.push({
       vehicleId,
       label: resolveVehicleLabel(labelSource, vehicleId),
-      aggregateEventType,
-      aggregateItem,
+      primaryAggregate,
+      preservedNotReadyAggregate,
       causes,
       severity: highestSeverity(causes.length > 0 ? causes : vehicleItems),
     });
@@ -120,14 +166,19 @@ export function projectFleetReadinessVehicleGroups(
 export function fleetReadinessGroupToActionQueueGroup(
   group: FleetReadinessVehicleGroup,
 ): ActionQueueGroupItem | ActionQueueLeafItem {
-  const children = group.causes.map(childFromItem);
+  const aggregateRows = buildPresentationAggregateRows(group);
+  const causeChildren = group.causes.map(childFromItem);
+  const children = [...aggregateRows.map(childFromItem), ...causeChildren];
 
-  if (children.length === 0 && group.aggregateItem) {
-    return { ...group.aggregateItem, kind: 'leaf' };
+  if (children.length === 0 && group.primaryAggregate) {
+    return { ...group.primaryAggregate, kind: 'leaf' };
   }
 
   const childSeverity = children.reduce<ActionQueueChildSeverity>(
-    (worst, child) => (severityRank(child.severity as ActionQueueSeverity) > severityRank(worst as ActionQueueSeverity) ? child.severity : worst),
+    (worst, child) =>
+      severityRank(child.severity as ActionQueueSeverity) > severityRank(worst as ActionQueueSeverity)
+        ? child.severity
+        : worst,
     'info',
   );
 
@@ -136,14 +187,14 @@ export function fleetReadinessGroupToActionQueueGroup(
     id: `fleet-readiness:${group.vehicleId}`,
     groupKey: `vehicle:${group.vehicleId}`,
     groupType: 'vehicle-health',
-    title: group.aggregateItem?.title ?? group.label,
-    subtitle: children.length > 0 ? String(children.length) : '',
+    title: group.primaryAggregate?.title ?? group.label,
+    subtitle: causeChildren.length > 0 ? String(causeChildren.length) : '',
     severity: childSeverity,
-    category: group.aggregateItem?.category ?? 'health',
+    category: group.primaryAggregate?.category ?? 'health',
     vehicleId: group.vehicleId,
     entityLabel: group.label,
     children,
-    priority: group.aggregateItem?.priority ?? children[0]?.severity === 'critical' ? 100 : 50,
+    priority: resolveFleetReadinessGroupPriority(group, children),
   };
 }
 
@@ -156,4 +207,48 @@ export function projectFleetReadinessPresentationItems(
   );
   const projected = groups.map((group) => fleetReadinessGroupToActionQueueGroup(group));
   return [...projected, ...nonVehicle];
+}
+
+/**
+ * Returns notification ids explicitly represented in the Fleet Readiness presentation model.
+ * Header-only aggregates (single aggregate + concrete causes) count as represented via title context.
+ */
+export function collectFleetReadinessRepresentedNotificationIds(
+  items: ActionQueueItem[],
+): Set<string> {
+  const represented = new Set<string>();
+
+  for (const item of items.filter((row) => !resolveVehicleId(row))) {
+    represented.add(item.id);
+  }
+
+  for (const group of projectFleetReadinessVehicleGroups(items)) {
+    const projected = fleetReadinessGroupToActionQueueGroup(group);
+    if (projected.kind === 'leaf') {
+      represented.add(projected.id);
+      continue;
+    }
+
+    for (const child of projected.children) {
+      represented.add(child.itemId);
+    }
+
+    if (
+      group.primaryAggregate
+      && group.causes.length > 0
+      && !group.preservedNotReadyAggregate
+    ) {
+      represented.add(group.primaryAggregate.id);
+    }
+
+    if (
+      group.primaryAggregate?.issueType === 'VEHICLE_READINESS_UNEVALUABLE'
+      && group.preservedNotReadyAggregate
+      && group.causes.length > 0
+    ) {
+      represented.add(group.primaryAggregate.id);
+    }
+  }
+
+  return represented;
 }
