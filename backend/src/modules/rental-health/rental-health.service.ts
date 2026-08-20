@@ -59,6 +59,10 @@ import {
   type VehicleAlertBlockingCause,
 } from '../vehicle-intelligence/dashboard-warning-lights/vehicle-alerts-rental-health.projector';
 import type { BrakeRentalHealthModuleHealth } from './brake-rental-health.types';
+import {
+  evaluateTelemetryRentalBlocking,
+  type TelemetryRentalBlockingEvaluation,
+} from './rental-health-telemetry-blocking.policy';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
 
@@ -79,7 +83,7 @@ export interface RentalHealthGateResult {
 const OPEN_COMPLAINT_STATUSES = ['ACTIVE', 'OPEN', 'IN_REVIEW', 'CONFIRMED', 'NEW'] as const;
 
 /** Bumped when rental-health response contract or blocking policy changes (VW-F-033). */
-export const RENTAL_HEALTH_PROJECTION_VERSION = 'rh-projection-v2';
+export const RENTAL_HEALTH_PROJECTION_VERSION = 'rh-projection-v3';
 
 /**
  * Rental Health V1 — consumption-only aggregation layer.
@@ -133,6 +137,9 @@ export class RentalHealthService {
         nextBokraftDate: true,
         lastServiceDate: true,
         lastServiceOdometerKm: true,
+        dimoVehicle: {
+          select: { lastSignal: true },
+        },
       },
     });
     if (!vehicle) {
@@ -166,7 +173,7 @@ export class RentalHealthService {
       this.brakeRentalReview.findActiveOverride(orgId, vehicleId),
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
-        select: { odometerKm: true },
+        select: { odometerKm: true, updatedAt: true },
       }),
       this.prisma.vehicleComplaint.findMany({
         where: {
@@ -269,17 +276,26 @@ export class RentalHealthService {
       finalizeVehicleHealthAvailability(modules, moduleLoadFailures);
 
     const overall_state = computeOverallState(Object.values(modulesWithAvailability));
-    const blocking_reasons = this.collectBlockingReasons(
-      modulesWithAvailability,
-      openComplaints,
-      vehicleAlertsProjection.blockingCauses,
-      complianceEval,
-      dtcSummary,
-      brakeSummary,
-      batterySummary,
-      rentalBlockingDamages,
-      hmAi,
+    const telemetryBlocking = this.evaluateTelemetryRentalBlocking(
+      vehicle.dimoVehicle?.lastSignal ?? null,
+      unwrap(currentOdoRes)?.updatedAt ?? null,
     );
+    const blocking_reasons = [
+      ...this.collectBlockingReasons(
+        modulesWithAvailability,
+        openComplaints,
+        vehicleAlertsProjection.blockingCauses,
+        complianceEval,
+        dtcSummary,
+        brakeSummary,
+        batterySummary,
+        rentalBlockingDamages,
+        hmAi,
+      ),
+      ...(telemetryBlocking.blocksRental && telemetryBlocking.reason
+        ? [telemetryBlocking.reason]
+        : []),
+    ];
 
     const evaluatedAt = new Date().toISOString();
     const rental_blocked = resolveRentalBlockedState(availability, blocking_reasons);
@@ -638,6 +654,16 @@ export class RentalHealthService {
   // ═══════════════════════════════════════════════════════════════════════════
   //  Rental-blocked reasons collector
   // ═══════════════════════════════════════════════════════════════════════════
+
+  private evaluateTelemetryRentalBlocking(
+    dimoLastSignal: Date | null | undefined,
+    latestStateUpdatedAt: Date | null | undefined,
+  ): TelemetryRentalBlockingEvaluation {
+    return evaluateTelemetryRentalBlocking({
+      lastSignal: dimoLastSignal ?? null,
+      latestStateUpdatedAt: latestStateUpdatedAt ?? null,
+    });
+  }
 
   /**
    * Vehicle Alerts (OEM) — canonical projection from {@link DashboardWarningLightsService}.

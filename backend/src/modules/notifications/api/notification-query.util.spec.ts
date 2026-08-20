@@ -6,8 +6,9 @@ import {
   NotificationSeverity,
   NotificationSourceType,
   NotificationStatus,
+  Prisma,
 } from '@prisma/client';
-import { buildNotificationWhereInput } from './notification-query.util';
+import { buildNotificationWhereInput, buildStationIdQueryFilter } from './notification-query.util';
 
 describe('buildNotificationWhereInput', () => {
   const base = {
@@ -101,5 +102,86 @@ describe('buildNotificationWhereInput', () => {
       in: expect.arrayContaining(['LOW_UTILIZATION', 'PICKUP_OVERDUE']),
     });
     expect((where.eventType as { in: string[] }).in).not.toContain('VEHICLE_NOT_READY');
+  });
+
+  describe('stationId dashboard filter', () => {
+    it('includes vehicle notifications for vehicles at the requested station', () => {
+      const where = buildNotificationWhereInput({
+        ...base,
+        stationId: 'st-1',
+        stationFilterVehicleIds: ['veh-1'],
+      });
+      expect(where.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              { entityType: NotificationEntityType.VEHICLE, entityId: { in: ['veh-1'] } },
+            ]),
+          }),
+        ]),
+      );
+    });
+
+    it('excludes vehicle notifications when vehicle is not in station membership list', () => {
+      const filter = buildStationIdQueryFilter({
+        stationId: 'st-1',
+        vehicleIds: ['veh-1'],
+        bookingIds: [],
+      });
+      expect(filter.OR).not.toEqual(
+        expect.arrayContaining([
+          { entityType: NotificationEntityType.VEHICLE, entityId: 'veh-2' },
+        ]),
+      );
+    });
+
+    it('includes station entity notifications for direct station ownership', () => {
+      const filter = buildStationIdQueryFilter({
+        stationId: 'st-1',
+        vehicleIds: [],
+        bookingIds: [],
+      });
+      expect(filter.OR).toEqual(
+        expect.arrayContaining([
+          { entityType: NotificationEntityType.STATION, entityId: 'st-1' },
+          { actionTarget: { path: ['stationId'], equals: 'st-1' } },
+        ]),
+      );
+    });
+
+    it('combines FLEET_READINESS attentionScope with station vehicle membership', () => {
+      const where = buildNotificationWhereInput({
+        ...base,
+        attentionScope: 'FLEET_READINESS',
+        stationId: 'st-1',
+        stationFilterVehicleIds: ['veh-1'],
+      });
+      expect(where.eventType).toEqual({
+        in: expect.arrayContaining(['VEHICLE_NOT_READY', 'TIRE_CRITICAL']),
+      });
+      expect(where.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              { entityType: NotificationEntityType.VEHICLE, entityId: { in: ['veh-1'] } },
+            ]),
+          }),
+        ]),
+      );
+    });
+
+    it('does not include vehicle notifications when station membership is empty', () => {
+      const filter = buildStationIdQueryFilter({
+        stationId: 'st-1',
+        vehicleIds: [],
+        bookingIds: [],
+      });
+      const vehicleEntityClauses = (filter.OR as Prisma.NotificationWhereInput[]).filter(
+        (clause) =>
+          clause.entityType === NotificationEntityType.VEHICLE ||
+          (clause.actionTarget as { path?: string[] } | undefined)?.path?.[0] === 'vehicleId',
+      );
+      expect(vehicleEntityClauses).toHaveLength(0);
+    });
   });
 });

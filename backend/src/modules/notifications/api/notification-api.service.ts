@@ -92,6 +92,12 @@ export class NotificationApiService {
 
       const resolvedOnly = !!query.resolvedOnly;
 
+      await this.validateEntityFilters(orgId, query, ctx);
+
+      const stationFilterMembership = query.stationId
+        ? await this.resolveStationFilterMembership(orgId, query.stationId)
+        : undefined;
+
       const listFilters: NotificationListFilters = {
         organizationId: orgId,
         userId: ctx.userId,
@@ -121,9 +127,9 @@ export class NotificationApiService {
         scopedBookingIds: ctx.scopedBookingIds,
         bypassStationScope: ctx.bypassStationScope,
         attentionScope: query.attentionScope,
+        stationFilterVehicleIds: stationFilterMembership?.vehicleIds,
+        stationFilterBookingIds: stationFilterMembership?.bookingIds,
       };
-
-      await this.validateEntityFilters(orgId, query, ctx);
 
       const where = this.buildAccessWhere(listFilters, ctx, referenceNow, !resolvedOnly);
 
@@ -166,17 +172,31 @@ export class NotificationApiService {
     const ctx = await this.resolveAccessContext(orgId, user);
     const referenceNow = new Date();
 
+    if (query.stationId) {
+      await this.assertEntityInOrg(orgId, 'station', query.stationId);
+      if (!this.stationScopeService.isEntityInCallerScope(ctx, { kind: 'station', id: query.stationId })) {
+        throw new NotFoundException('Entity not found');
+      }
+    }
+
+    const stationFilterMembership = query.stationId
+      ? await this.resolveStationFilterMembership(orgId, query.stationId)
+      : undefined;
+
     const activeWhere = this.buildAccessWhere(
       {
         organizationId: orgId,
         userId: ctx.userId,
         activeOnly: true,
+        stationId: query.stationId,
         scopedStationId: ctx.scopedStationId,
         scopedStationIds: ctx.scopedStationIds,
         scopedVehicleIds: ctx.scopedVehicleIds,
         scopedBookingIds: ctx.scopedBookingIds,
         bypassStationScope: ctx.bypassStationScope,
         attentionScope: query.attentionScope,
+        stationFilterVehicleIds: stationFilterMembership?.vehicleIds,
+        stationFilterBookingIds: stationFilterMembership?.bookingIds,
       },
       ctx,
       referenceNow,
@@ -708,6 +728,37 @@ export class NotificationApiService {
     if (query.entityId && query.entityType) {
       await this.assertEntityInOrg(orgId, query.entityType.toLowerCase(), query.entityId);
     }
+  }
+
+  private async resolveStationFilterMembership(
+    orgId: string,
+    stationId: string,
+  ): Promise<{ vehicleIds: string[]; bookingIds: string[] }> {
+    const [vehicles, bookings] = await Promise.all([
+      this.prisma.vehicle.findMany({
+        where: {
+          organizationId: orgId,
+          OR: [
+            { homeStationId: stationId },
+            { currentStationId: stationId },
+            { expectedStationId: stationId },
+          ],
+        },
+        select: { id: true },
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          organizationId: orgId,
+          OR: [{ pickupStationId: stationId }, { returnStationId: stationId }],
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    return {
+      vehicleIds: vehicles.map((vehicle) => vehicle.id),
+      bookingIds: bookings.map((booking) => booking.id),
+    };
   }
 
   private async assertEntityInOrg(orgId: string, entityKind: string, entityId: string) {
