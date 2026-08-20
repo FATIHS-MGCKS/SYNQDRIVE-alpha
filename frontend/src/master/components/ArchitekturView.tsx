@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental WhatsApp Business (P2.2.8 — V4.9.930)', icon: Globe,
+    endpoint: 'WhatsAppBusinessView, rental/components/whatsapp/*, whatsapp.ops.ts translation-key defs.',
+    service: '**Helper:** `whatsapp-i18n.ts` (`wa`, nav/filter/status/readiness label helpers). **Keys:** +270 EN+DE (`whatsapp.{en,de}.ts`; 6621→6891); reused `nav.whatsappBusiness`, `whatsapp.ai.description`, `common.cancel`. **Guardrails:** P2.2.8 enforce-clean exact — 0 findings (93→0); WhatsApp module 93→0; ops blind-spot grep guard. **Shim:** two whatsapp shells to canonical; 29→27. **Tests:** `rental-whatsapp-localization.test.tsx`. **Semantics:** Meta/API payloads, filter/tab/category/status machine keys unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-8-preflight-2026-08-20.md; architecture/I18N_RENTAL_WHATSAPP_P2_2_8_2026-08-20.md' },
   { name: 'Platform i18n Rental Voice Assistant Telephony + Test Center (P2.2.7B — V4.9.928)', icon: Globe,
     endpoint: 'VoiceTelephonyWizard, VoiceTestCenter, and voice-test-scenarios translation-key definitions.',
     service: '**Helper:** `voice-assistant-i18n.ts` extended with telephony error codes, wizard step status, test session phase/verdict labels, and `localizedVoiceTestScenarios()`. **Keys:** +160 EN+DE (`voice.telephony.*`, `voice.test.*`, `voice.test.scenario.*`; 6465→6625); reused `voice.nav.tab.test`, `voice.wizard.step.phone`, `common.cancel`. **Guardrails:** P2.2.7B enforce-clean exact — 0 findings (43→0); Voice Assistant module 43→0. **Tests:** `rental-voice-assistant-telephony-test-center-localization.test.tsx` EN/DE render + scenario locale switching. **Semantics:** `telephonyEnabled`/`inboundEnabled`/`outboundEnabled` payload keys, `testSession` API, phase/verdict machine values unchanged.',

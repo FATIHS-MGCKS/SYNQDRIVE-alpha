@@ -148,12 +148,37 @@ const P27B_ENFORCE_CLEAN_EXACT = [
   'rental/components/voice-assistant/voice-test-scenarios.ts',
 ];
 
+const P28_ENFORCE_CLEAN_EXACT = [
+  'rental/components/WhatsAppBusinessView.tsx',
+  'rental/components/whatsapp/WhatsAppChatPanel.tsx',
+  'rental/components/whatsapp/WhatsAppContextDrawer.tsx',
+  'rental/components/whatsapp/WhatsAppConversationInbox.tsx',
+  'rental/components/whatsapp/WhatsAppInboxLayout.tsx',
+  'rental/components/whatsapp/WhatsAppKpiCards.tsx',
+  'rental/components/whatsapp/WhatsAppMessageBubble.tsx',
+  'rental/components/whatsapp/WhatsAppMessageComposer.tsx',
+  'rental/components/whatsapp/WhatsAppOperationsHeader.tsx',
+  'rental/components/whatsapp/WhatsAppOverviewTab.tsx',
+  'rental/components/whatsapp/WhatsAppQuickActions.tsx',
+  'rental/components/whatsapp/WhatsAppReadinessStrip.tsx',
+  'rental/components/whatsapp/WhatsAppSectionNav.tsx',
+  'rental/components/whatsapp/WhatsAppSettingsPanel.tsx',
+  'rental/components/whatsapp/WhatsAppSetupWizard.tsx',
+  'rental/components/whatsapp/WhatsAppTemplateManager.tsx',
+  'rental/components/whatsapp/whatsapp.ops.ts',
+  'rental/components/whatsapp/whatsapp-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP27BEnforceCleanPath(relPath: string): boolean {
   return P27B_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP28EnforceCleanPath(relPath: string): boolean {
+  return P28_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -179,7 +204,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -246,5 +271,33 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP27BEnforceCleanPath(finding.file),
     );
     expect(p27bDebt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.8 enforce-clean findings to WhatsApp Business only', () => {
+    const p28Debt = inventory.findings.filter((finding) =>
+      isP28EnforceCleanPath(finding.file),
+    );
+    expect(p28Debt).toHaveLength(0);
+  });
+
+  it('keeps whatsapp.ops.ts free of user-facing presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/whatsapp/whatsapp.ops.ts'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /label:\s*'[A-Z]/,
+      /description:\s*'[A-Z]/,
+      /return\s+'Connected'/,
+      /return\s+'Queued'/,
+      /'Overview'/,
+      /'Booking confirmation'/,
+      /'just now'/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('INBOX_FILTER_DEFS');
   });
 });

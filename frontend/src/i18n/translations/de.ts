@@ -5,6 +5,7 @@ import { legalDocumentsDe } from './legal-documents.de';
 import { settingsAdminDe } from './settings-admin.de';
 import { stationsTabDe } from './stations-tab.de';
 import { voiceAssistantDe } from './voice-assistant.de';
+import { whatsappDe } from './whatsapp.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -677,8 +678,6 @@ export const de: Record<TranslationKey, string> = {
   'aiChat.progress.tools': 'Flottendaten werden geladen…',
   'aiChat.progress.composing': 'Antwort wird zusammengestellt…',
   'aiChat.progress.token': 'Antwort wird formuliert…',
-  'whatsapp.ai.description':
-    'SynqDrive AI unterstützt Entwürfe auf Basis von Flottendaten und verbundener Telemetrie. Menschen entscheiden, was gesendet wird.',
   'aiChat.sidebar.info': 'Chat-Sitzungsinfo',
   // ─── Support View ───
   'view.support': 'Support',
@@ -5378,4 +5377,5 @@ export const de: Record<TranslationKey, string> = {
   ...automationWorkflowDe,
   ...stationsTabDe,
   ...voiceAssistantDe,
+  ...whatsappDe,
 } satisfies CompleteTranslationDictionary;

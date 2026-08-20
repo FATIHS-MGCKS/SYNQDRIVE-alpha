@@ -337,7 +337,7 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       await api.whatsapp.requestHumanReview(
         orgId,
         selectedConvo.id,
-        aiResult?.humanReason ?? t('whatsapp.handover.manualReason'),
+        aiResult?.humanReason ?? 'Manual human review from WhatsApp Operations Center',
       );
       await refreshConversations();
       toast.success(t('whatsapp.toast.markedForReview'));

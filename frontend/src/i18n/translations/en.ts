@@ -3,6 +3,7 @@ import { legalDocumentsEn } from './legal-documents.en';
 import { settingsAdminEn } from './settings-admin.en';
 import { stationsTabEn } from './stations-tab.en';
 import { voiceAssistantEn } from './voice-assistant.en';
+import { whatsappEn } from './whatsapp.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -4031,8 +4032,6 @@ export const en = {
   'aiChat.progress.tools': 'Loading fleet data…',
   'aiChat.progress.composing': 'Composing response…',
   'aiChat.progress.token': 'Composing answer…',
-  'whatsapp.ai.description':
-    'SynqDrive AI supports drafting from fleet data and connected telemetry. Humans decide what is sent.',
   'aiChat.sidebar.info': 'Chat session info',
   // ─── Support View ───
   'view.support': 'Support',
@@ -5378,6 +5377,7 @@ export const en = {
   ...automationWorkflowEn,
   ...stationsTabEn,
   ...voiceAssistantEn,
+  ...whatsappEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

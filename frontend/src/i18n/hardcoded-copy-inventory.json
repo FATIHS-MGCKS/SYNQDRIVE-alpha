@@ -111,26 +111,25 @@
     }
   },
   "summary": {
-    "total": 2044,
+    "total": 1951,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 722,
+      "RENTAL": 629,
       "SHARED": 35,
       "SHELL": 38
     },
     "byCategory": {
-      "ARIA": 85,
-      "TITLE": 295,
-      "TEXT": 1412,
+      "ARIA": 84,
+      "TITLE": 281,
+      "TEXT": 1341,
       "LABEL": 112,
-      "PLACEHOLDER": 132,
+      "PLACEHOLDER": 125,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 474,
+      "other Rental areas": 453,
       "Finance/Billing": 131,
-      "WhatsApp": 72,
       "Tasks": 17,
       "Support": 19,
       "Documents": 8,
@@ -379,7 +378,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1468,
+      "line": 1472,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -407,7 +406,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23313,
+      "line": 23346,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -659,7 +658,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27198,
+      "line": 27231,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1650,7 +1649,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27143,
+      "line": 27176,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1791,7 +1790,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 939,
+      "line": 943,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1805,7 +1804,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23617,
+      "line": 23650,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1847,7 +1846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1558,
+      "line": 1562,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2772,7 +2771,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1679,
+      "line": 1683,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2856,7 +2855,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 988,
+      "line": 992,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3150,7 +3149,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1569,
+      "line": 1573,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3476,7 +3475,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1473,
+      "line": 1477,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3532,7 +3531,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1627,
+      "line": 1631,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3546,7 +3545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1629,
+      "line": 1633,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4151,7 +4150,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24585,
+      "line": 24618,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4180,7 +4179,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1453,
+      "line": 1457,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4194,7 +4193,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1597,
+      "line": 1601,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4685,7 +4684,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27133,
+      "line": 27166,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4896,7 +4895,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1677,
+      "line": 1681,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5205,7 +5204,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 21926,
+      "line": 21959,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5653,7 +5652,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23227,
+      "line": 23260,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6284,7 +6283,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1516,
+      "line": 1520,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6299,7 +6298,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 956,
+      "line": 960,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7764,7 +7763,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1532,
+      "line": 1536,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7988,7 +7987,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1522,
+      "line": 1526,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8030,7 +8029,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27168,
+      "line": 27201,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8325,7 +8324,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23293,
+      "line": 23326,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8563,7 +8562,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1509,
+      "line": 1513,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9097,7 +9096,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27155,
+      "line": 27188,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9111,7 +9110,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27172,
+      "line": 27205,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9532,7 +9531,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26849,
+      "line": 26882,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10196,7 +10195,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1497,
+      "line": 1501,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10714,7 +10713,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1633,
+      "line": 1637,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10728,7 +10727,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1630,
+      "line": 1634,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10742,7 +10741,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1626,
+      "line": 1630,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11639,7 +11638,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1530,
+      "line": 1534,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11849,7 +11848,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1680,
+      "line": 1684,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12479,7 +12478,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1431,
+      "line": 1435,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13069,7 +13068,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27122,
+      "line": 27155,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13083,7 +13082,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1227,
+      "line": 1231,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13181,7 +13180,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1570,
+      "line": 1574,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13758,7 +13757,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1427,
+      "line": 1431,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13856,7 +13855,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1560,
+      "line": 1564,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13942,7 +13941,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1475,
+      "line": 1479,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14124,7 +14123,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24587,
+      "line": 24620,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14166,7 +14165,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23313,
+      "line": 23346,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14194,7 +14193,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1431,
+      "line": 1435,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14208,7 +14207,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1432,
+      "line": 1436,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14251,7 +14250,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1374,
+      "line": 1378,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14265,7 +14264,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1398,
+      "line": 1402,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14307,7 +14306,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1557,
+      "line": 1561,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14659,7 +14658,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23353,
+      "line": 23386,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14827,7 +14826,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1680,
+      "line": 1684,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -17896,20 +17895,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 148,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Access tokens stored server-side only — never in this UI",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 1168,
       "surface": "RENTAL",
@@ -18162,48 +18147,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 88,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "AI assistance",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 122,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "AI assistance summary",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 249,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "AI context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
       "line": 307,
       "surface": "RENTAL",
@@ -18215,20 +18158,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 59,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "AI suggestion — review before sending",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
       ]
     },
     {
@@ -18932,34 +18861,6 @@
       ]
     },
     {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 613,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Body with",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 601,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Booking confirmation",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/ScheduleBox.tsx",
       "line": 393,
       "surface": "RENTAL",
@@ -18971,48 +18872,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/ScheduleBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 99,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Business display name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 42,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Business name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 90,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Business phone number *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
       ]
     },
     {
@@ -19367,20 +19226,6 @@
       ]
     },
     {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 544,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Contact name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorManagementView.tsx",
       "line": 889,
       "surface": "RENTAL",
@@ -19480,20 +19325,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 38,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "Could not load WhatsApp",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageDetailDrawer.tsx",
       "line": 156,
       "surface": "RENTAL",
@@ -19505,34 +19336,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 619,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Create draft",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
-      "line": 81,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Create first template",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppTemplateManager.tsx"
       ]
     },
     {
@@ -19576,20 +19379,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppQuickActions.tsx",
-      "line": 72,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Customer opted out — outbound reminders blocked.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppQuickActions.tsx"
       ]
     },
     {
@@ -19646,20 +19435,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 607,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Damage follow-up",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
       ]
     },
     {
@@ -19909,20 +19684,6 @@
       ]
     },
     {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 606,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Deposit reminder",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/CreateUserWizard.tsx",
       "line": 359,
       "surface": "RENTAL",
@@ -19976,20 +19737,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 165,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Dev / test only",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
       ]
     },
     {
@@ -20247,20 +19994,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 121,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Edit in composer",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
       ]
     },
     {
@@ -20617,20 +20350,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 120,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Escalation enabled for sensitive topics",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 221,
       "surface": "RENTAL",
@@ -20698,20 +20417,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppConversationInbox.tsx",
-      "line": 49,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "f.needsIntent ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppConversationInbox.tsx"
       ]
     },
     {
@@ -21128,20 +20833,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 142,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "Get AI suggestion",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorDetailView.tsx",
       "line": 347,
       "surface": "RENTAL",
@@ -21170,20 +20861,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 235,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "Handover / return",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageRentalSections.tsx",
       "line": 111,
       "surface": "RENTAL",
@@ -21195,20 +20872,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 608,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Handover link",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
       ]
     },
     {
@@ -21366,34 +21029,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 118,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Human handover",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 255,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Human review required for this thread.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 449,
       "surface": "RENTAL",
@@ -21545,20 +21180,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageAiIntakeDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 259,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Intent:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -22550,34 +22171,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 64,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Manual configuration",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 37,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Manual Meta Cloud API configuration — embedded signup pending.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 287,
       "surface": "RENTAL",
@@ -22617,20 +22210,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 113,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Mark for human review",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
       ]
     },
     {
@@ -22704,76 +22283,6 @@
       ]
     },
     {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 549,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Message content",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 152,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Message retention follows org policy and Meta requirements",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
-      "line": 55,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Message templates",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppTemplateManager.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 70,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Meta Embedded Signup not yet available — configure provider fields manually.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 604,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Missing documents",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
       "line": 76,
       "surface": "RENTAL",
@@ -22799,20 +22308,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 251,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Mode:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -23054,20 +22549,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
-      "line": 65,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "New draft",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppTemplateManager.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 453,
       "surface": "RENTAL",
@@ -23093,20 +22574,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 597,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "New template draft",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
       ]
     },
     {
@@ -23208,20 +22675,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 201,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No booking documents to show",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/ScheduleBox.tsx",
       "line": 400,
       "surface": "RENTAL",
@@ -23247,34 +22700,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppConversationInbox.tsx",
-      "line": 69,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "No conversations",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppConversationInbox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 97,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "No conversations yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
       ]
     },
     {
@@ -23304,20 +22729,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 245,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No handover context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -23419,62 +22830,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 141,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No linked booking yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 122,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No linked customer yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 231,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No linked tasks",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 157,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No linked vehicle yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorManagementView.tsx",
       "line": 776,
       "surface": "RENTAL",
@@ -23486,20 +22841,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppChatPanel.tsx",
-      "line": 114,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "No messages yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppChatPanel.tsx"
       ]
     },
     {
@@ -23528,20 +22869,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UsersRolesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 184,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No payment context linked",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -23626,48 +22953,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/SecurityAuditTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 168,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No station context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
-      "line": 73,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "No templates yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppTemplateManager.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 213,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "No vehicle damages",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -24178,34 +23463,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 92,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Open inbox",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 439,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Open setup wizard",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageDetailDrawer.tsx",
       "line": 192,
       "surface": "RENTAL",
@@ -24231,20 +23488,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 118,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Opted out",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -24318,20 +23561,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 165,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Outbound messages require server-side access token before they leave SynqDrive.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 1110,
       "surface": "RENTAL",
@@ -24402,34 +23631,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 172,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "Payment / deposit",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 605,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Payment reminder",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageRentalSections.tsx",
       "line": 291,
       "surface": "RENTAL",
@@ -24486,62 +23687,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 46,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Phone number",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 50,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Phone number ID",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 116,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Phone Number ID (Meta)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 162,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Phone Number ID configured",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateDamageDialog.tsx",
       "line": 340,
       "surface": "RENTAL",
@@ -24567,20 +23712,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 602,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Pickup reminder",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
       ]
     },
     {
@@ -24949,20 +24080,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppQuickActions.tsx",
-      "line": 48,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Quick actions",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppQuickActions.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/TeamMemberDrawer.tsx",
       "line": 190,
       "surface": "RENTAL",
@@ -25016,20 +24133,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinancialInsightsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 87,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Recent activity",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
       ]
     },
     {
@@ -25372,48 +24475,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 159,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "Request human handover",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 609,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Return link",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 603,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Return reminder",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 885,
       "surface": "RENTAL",
@@ -25453,20 +24514,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 158,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Review your setup:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
       ]
     },
     {
@@ -25724,20 +24771,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppConversationInbox.tsx",
-      "line": 40,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "PLACEHOLDER",
-      "sample": "Search name, phone, message…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppConversationInbox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 708,
       "surface": "RENTAL",
@@ -25819,34 +24852,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppChatPanel.tsx",
-      "line": 66,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TITLE",
-      "sample": "Select a conversation",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppChatPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 81,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Select a conversation to see linked SynqDrive context.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
       ]
     },
     {
@@ -25977,20 +24982,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 104,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Send AI reply",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 1245,
       "surface": "RENTAL",
@@ -26016,20 +25007,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 113,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Server-side tokens are set via environment variables. Enter Meta IDs for webhook routing.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
       ]
     },
     {
@@ -26077,34 +25054,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 55,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Setup checklist",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 432,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Setup required",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 1071,
       "surface": "RENTAL",
@@ -26130,35 +25079,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/insights/InsightsCockpit.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 167,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Simulate inbound messages without Meta webhooks. Not available in production.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 540,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Simulate incoming message",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx",
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
       ]
     },
     {
@@ -26215,20 +25135,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantPaymentMethodsSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppOverviewTab.tsx",
-      "line": 79,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Start setup wizard",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOverviewTab.tsx"
       ]
     },
     {
@@ -26302,20 +25208,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
-      "line": 144,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "STOP / STOPP / Abmelden processed server-side as opt-out",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSettingsPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 1129,
       "surface": "RENTAL",
@@ -26386,20 +25278,6 @@
       ]
     },
     {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 610,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Support update",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/OrganizationSwitcher.tsx",
       "line": 59,
       "surface": "RENTAL",
@@ -26411,48 +25289,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/OrganizationSwitcher.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppMessageBubble.tsx",
-      "line": 32,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "SynqDrive AI",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageBubble.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppContextDrawer.tsx",
-      "line": 89,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "SynqDrive context",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 104,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "PLACEHOLDER",
-      "sample": "SynqDrive Rental",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
       ]
     },
     {
@@ -26680,20 +25516,6 @@
       ]
     },
     {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 599,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Template name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 621,
       "surface": "RENTAL",
@@ -26918,20 +25740,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppMessageComposer.tsx",
-      "line": 174,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "PLACEHOLDER",
-      "sample": "Type a message…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppMessageComposer.tsx"
-      ]
-    },
-    {
       "file": "rental/components/EntityTasksSection.tsx",
       "line": 142,
       "surface": "RENTAL",
@@ -27071,20 +25879,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppTemplateManager.tsx",
-      "line": 56,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Use approved templates outside the 24h service window. Meta approval required for production.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppTemplateManager.tsx"
       ]
     },
     {
@@ -27241,20 +26035,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 611,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Vehicle ready",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
       ]
     },
     {
@@ -27426,20 +26206,6 @@
       ]
     },
     {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 120,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "WABA ID",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/support/SupportTicketDetailPanel.tsx",
       "line": 75,
       "surface": "RENTAL",
@@ -27479,20 +26245,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 129,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "Webhook endpoint",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
       ]
     },
     {
@@ -27563,62 +26315,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppOperationsHeader.tsx",
-      "line": 35,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "WhatsApp Operations Center",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppOperationsHeader.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSectionNav.tsx",
-      "line": 16,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "ARIA",
-      "sample": "WhatsApp sections",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSectionNav.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/whatsapp/WhatsAppSetupWizard.tsx",
-      "line": 67,
-      "surface": "RENTAL",
-      "module": "WhatsApp",
-      "category": "TEXT",
-      "sample": "WhatsApp setup wizard",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/WhatsAppBusinessView.tsx",
-      "line": 358,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "WhatsApp unavailable",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/WhatsAppBusinessView.tsx"
       ]
     },
     {

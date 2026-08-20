@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-whatsapp-p2-2-8-2026-08-20',
+    version: '4.9.930',
+    title: 'Rental i18n — P2.2.8 WhatsApp Business localization',
+    summary: [
+      'Rental WhatsApp Business surface (17 components + ops blind spot) migrated to canonical `whatsapp.{en,de}.ts` with `whatsapp-i18n.ts` presentation helpers.',
+      'Scanner P2.2.8 enforce-clean exact scope reports 0 findings (93→0); WhatsApp module 93→0; rental 722→629; +270 EN+DE keys (6621→6891); reused `nav.whatsappBusiness`, `whatsapp.ai.description`, `common.cancel`.',
+      'Two whatsapp shells migrated rental shim→canonical (`WhatsAppSettingsPanel`, `WhatsAppMessageComposer`); shim 29→27; 12 new localization tests; presentation-only — Meta/API payloads, filter/tab/status machine keys unchanged.',
+    ],
+    reason: 'P2.2.8 pre-flight audit GO verdict scoped 93 scanner findings plus ~90 ops blind-spot literals in `whatsapp.ops.ts`.',
+    previousBehavior: 'Hardcoded English/German mix in WhatsApp Operations Center; ops label maps invisible to scanner; no EN/DE component regression tests.',
+    details:
+      'WhatsAppBusinessView.tsx; rental/components/whatsapp/*; whatsapp.ops.ts; whatsapp-i18n.ts; whatsapp translations; rental-whatsapp-localization.test.tsx; architecture/I18N_RENTAL_WHATSAPP_P2_2_8_2026-08-20.md; docs/audits/i18n-p2-2-8-whatsapp-business-implementation-2026-08-20.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-20T05:55:00.000Z',
+  },
+  {
     id: 'i18n-rental-voice-assistant-p2-2-7b-polish-2026-08-20',
     version: '4.9.929',
     title: 'Rental i18n — P2.2.7B polish (audit non-blocking corrections)',
