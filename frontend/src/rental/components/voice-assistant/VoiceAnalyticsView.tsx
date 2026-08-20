@@ -4,6 +4,7 @@ import { EmptyState } from '../../../components/patterns/states';
 import { cn } from '../../../components/ui/utils';
 import { api, getErrorMessage } from '../../../lib/api';
 import type { VoiceAssistantAnalytics } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { formatDuration } from './voice-conversation.utils';
 
@@ -20,6 +21,7 @@ export function VoiceAnalyticsView({
   cardClassName,
   onRequestSync,
 }: VoiceAnalyticsViewProps) {
+  const { t } = useLanguage();
   const [analytics, setAnalytics] = useState<VoiceAssistantAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function VoiceAnalyticsView({
     return (
       <div className={cn(cardClassName, 'p-8 flex items-center justify-center text-xs text-muted-foreground')}>
         <Icon name="loader-2" className="w-4 h-4 animate-spin mr-2" />
-        Loading analytics…
+        {t('evaluations.availability.loading')}
       </div>
     );
   }
@@ -78,7 +80,7 @@ export function VoiceAnalyticsView({
     return (
       <EmptyState
         icon={<Icon name="bar-chart-3" className="h-5 w-5" />}
-        title="No analytics yet"
+        title={t('voice.analytics.emptyTitle')}
         description="Call metrics appear after your first synced conversations. Activate the assistant and sync from ElevenLabs to populate this view."
         action={
           onRequestSync ? (
@@ -137,7 +139,7 @@ export function VoiceAnalyticsView({
             <span className="flex h-8 w-8 items-center justify-center rounded-xl sq-tone-brand">
               <Icon name="clock" className="h-4 w-4" />
             </span>
-            <span className="text-[10px] font-semibold text-muted-foreground">Total Talk Time</span>
+            <span className="text-[10px] font-semibold text-muted-foreground">{t('voice.analytics.totalTalkTime')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground tabular-nums">
             {analytics.totalTalkMinutes.toFixed(1)} min
@@ -149,7 +151,7 @@ export function VoiceAnalyticsView({
             <span className="flex h-8 w-8 items-center justify-center rounded-xl sq-tone-neutral">
               <BarChart3 className="h-4 w-4" />
             </span>
-            <span className="text-[10px] font-semibold text-muted-foreground">Avg Duration</span>
+            <span className="text-[10px] font-semibold text-muted-foreground">{t('voice.analytics.avgDuration')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground tabular-nums">
             {formatDuration(analytics.avgDurationSeconds)}
@@ -161,7 +163,7 @@ export function VoiceAnalyticsView({
             <span className="flex h-8 w-8 items-center justify-center rounded-xl sq-tone-warning">
               <ArrowUpRight className="h-4 w-4" />
             </span>
-            <span className="text-[10px] font-semibold text-muted-foreground">Escalation Rate</span>
+            <span className="text-[10px] font-semibold text-muted-foreground">{t('voice.analytics.escalationRate')}</span>
           </div>
           <p className="text-2xl font-bold text-foreground tabular-nums">{escalationPct}%</p>
         </div>
@@ -169,7 +171,7 @@ export function VoiceAnalyticsView({
 
       {outcomeEntries.length > 0 && (
         <div className={cn(cardClassName, 'p-4')}>
-          <h4 className="text-xs font-bold mb-3">Calls by outcome</h4>
+          <h4 className="text-xs font-bold mb-3">{t('voice.analytics.callsByOutcome')}</h4>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {outcomeEntries.map(([outcome, count]) => (
               <div
@@ -189,7 +191,7 @@ export function VoiceAnalyticsView({
 
       {analytics.topEscalationReasons.length > 0 && (
         <div className={cn(cardClassName, 'p-4')}>
-          <h4 className="text-xs font-bold mb-3">Top escalation reasons</h4>
+          <h4 className="text-xs font-bold mb-3">{t('voice.analytics.topEscalationReasons')}</h4>
           <div className="space-y-2">
             {analytics.topEscalationReasons.map(item => (
               <div key={item.reason} className="flex items-center justify-between text-xs">
@@ -206,12 +208,12 @@ export function VoiceAnalyticsView({
         {analytics.insights.hasEnoughData && analytics.insights.topEscalationInsight ? (
           <p className="text-xs text-muted-foreground">{analytics.insights.topEscalationInsight}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">Not enough call data yet</p>
+          <p className="text-xs text-muted-foreground">{t('voice.analytics.notEnoughData')}</p>
         )}
       </div>
 
       <div className={cn(cardClassName, 'p-4 border-dashed')}>
-        <h4 className="text-xs font-bold mb-2">Knowledge gaps</h4>
+        <h4 className="text-xs font-bold mb-2">{t('voice.analytics.knowledgeGaps')}</h4>
         <p className="text-xs text-muted-foreground">{analytics.knowledgeGaps.message}</p>
       </div>
     </div>

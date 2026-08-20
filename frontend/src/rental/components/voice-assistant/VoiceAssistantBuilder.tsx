@@ -3,6 +3,7 @@ import { DataCard } from '../../../components/patterns/data-card';
 import { StatusChip } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { VoiceAssistantData, VoiceAssistantReadiness, VoiceConnectionStatus, VoiceOption } from '../../../lib/api';
 import { BuilderField, builderInputCls, builderTextareaCls } from './BuilderField';
 import { KnowledgeIntegrationHints } from './KnowledgeIntegrationHints';
@@ -87,6 +88,7 @@ export function VoiceAssistantBuilder({
   onSave,
   onNavigateTab,
 }: VoiceAssistantBuilderProps) {
+  const { t } = useLanguage();
   const { links } = useVoiceKnowledgeLinks(orgId, assistant);
   const elevenLabsOk = readiness?.checks.find(c => c.key === 'elevenlabs')?.ok;
 
@@ -123,8 +125,8 @@ export function VoiceAssistantBuilder({
         <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color:var(--brand)]/25 surface-frosted px-4 py-2.5 shadow-[var(--shadow-1)]">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[color:var(--brand)] animate-pulse" />
-            <span className="text-[11px] font-semibold text-foreground">Unsaved changes</span>
-            <span className="text-[10px] text-muted-foreground">Save before activating or leaving this tab.</span>
+            <span className="text-[11px] font-semibold text-foreground">{t('voice.builder.unsavedChanges')}</span>
+            <span className="text-[10px] text-muted-foreground">{t('voice.builder.unsavedHint')}</span>
           </div>
           <button
             type="button"
@@ -133,7 +135,7 @@ export function VoiceAssistantBuilder({
             className="sq-press inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] px-3.5 py-1.5 text-[11px] font-semibold text-[color:var(--brand-ink)] disabled:opacity-60"
           >
             <Icon name={saving ? 'loader-2' : 'save'} className={cn('h-3.5 w-3.5', saving && 'animate-spin')} />
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? t('voice.common.saving') : t('voice.common.save')}
           </button>
         </div>
       )}
@@ -157,7 +159,7 @@ export function VoiceAssistantBuilder({
                   className={builderInputCls}
                   value={textField('name')}
                   maxLength={VOICE_FIELD_LIMITS.name}
-                  placeholder="e.g. SynqDrive Rental Assistant"
+                  placeholder={t('voice.builder.placeholder.name')}
                   onChange={e => setTextField('name', clampField('name', e.target.value))}
                 />
               </BuilderField>
@@ -171,7 +173,7 @@ export function VoiceAssistantBuilder({
                   className={builderInputCls}
                   value={textField('role')}
                   maxLength={VOICE_FIELD_LIMITS.role}
-                  placeholder="Customer service & booking help"
+                  placeholder={t('voice.builder.placeholder.role')}
                   onChange={e => setTextField('role', clampField('role', e.target.value))}
                 />
               </BuilderField>
@@ -210,7 +212,7 @@ export function VoiceAssistantBuilder({
                   className={builderInputCls}
                   value={textField('personality')}
                   maxLength={VOICE_FIELD_LIMITS.personality}
-                  placeholder="Warm, professional, solution-oriented"
+                  placeholder={t('voice.builder.placeholder.personality')}
                   onChange={e => setTextField('personality', clampField('personality', e.target.value))}
                 />
               </BuilderField>
@@ -225,7 +227,7 @@ export function VoiceAssistantBuilder({
                   className={builderInputCls}
                   value={textField('greetingMessage')}
                   maxLength={VOICE_FIELD_LIMITS.greetingMessage}
-                  placeholder="Hello! Welcome to our rental team. How can I help you today?"
+                  placeholder={t('voice.builder.placeholder.greeting')}
                   onChange={e => setTextField('greetingMessage', clampField('greetingMessage', e.target.value))}
                 />
               </BuilderField>
@@ -234,7 +236,7 @@ export function VoiceAssistantBuilder({
 
           {/* Company Knowledge */}
           <DataCard
-            title="Company knowledge"
+            title={t('voice.builder.section.companyKnowledge')}
             description="Background information the assistant can reference. Live fleet data integrations are shown below."
             className="rounded-2xl shadow-[var(--shadow-1)]"
           >
@@ -248,13 +250,13 @@ export function VoiceAssistantBuilder({
                 value={textField('companyContext')}
                 onChange={v => setTextField('companyContext', v)}
                 rows={5}
-                placeholder="We are a vehicle rental company operating in… Our services include short-term rentals, fleet management…"
+                placeholder={t('voice.builder.placeholder.companyContext')}
               />
             </BuilderField>
 
             <div className="mt-4">
               <KnowledgeIntegrationHints
-                title="Data integrations"
+                title={t('voice.builder.section.dataIntegrations')}
                 description="These rental modules can enrich assistant knowledge when connected."
                 items={[links.openingHours, links.stations, links.serviceArea]}
               />
@@ -263,7 +265,7 @@ export function VoiceAssistantBuilder({
 
           {/* Rental Knowledge */}
           <KnowledgeIntegrationHints
-            title="Rental knowledge"
+            title={t('voice.builder.section.rentalKnowledge')}
             description="Pricing, categories, and booking rules from your rental configuration. Not yet auto-injected into prompts — prepare context manually until live sync is enabled."
             items={[
               links.vehicleCategories,
@@ -275,7 +277,7 @@ export function VoiceAssistantBuilder({
 
           {/* Behavior Rules */}
           <DataCard
-            title="Behavior rules"
+            title={t('voice.builder.section.behaviorRules')}
             description="Policies the assistant must follow during every conversation."
             className="rounded-2xl shadow-[var(--shadow-1)]"
           >
@@ -295,9 +297,9 @@ export function VoiceAssistantBuilder({
 
             <div className="mt-5 space-y-3">
               <div>
-                <p className="text-[11px] font-semibold text-foreground">Forbidden actions</p>
+                <p className="text-[11px] font-semibold text-foreground">{t('voice.builder.forbiddenActions')}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  Critical guardrails for rental operations. Recommended rules are pre-defined for fleet safety.
+                  {t('voice.builder.forbiddenActionsHint')}
                 </p>
               </div>
 
@@ -343,7 +345,7 @@ export function VoiceAssistantBuilder({
                     setForbidden([...recommended, v].filter(Boolean).join('\n'));
                   }}
                   rows={3}
-                  placeholder="Any additional restrictions…"
+                  placeholder={t('voice.builder.placeholder.additionalForbidden')}
                 />
               </BuilderField>
             </div>
@@ -351,9 +353,9 @@ export function VoiceAssistantBuilder({
             <div className="mt-5 rounded-xl border border-border/50 bg-muted/15 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-[11px] font-semibold text-foreground">Escalation behavior</p>
+                  <p className="text-[11px] font-semibold text-foreground">{t('voice.builder.escalationBehavior')}</p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    Handover triggers and fallback messages are configured in the Escalation tab.
+                    {t('voice.builder.escalationHandoverHint')}
                   </p>
                 </div>
                 <button
@@ -361,7 +363,7 @@ export function VoiceAssistantBuilder({
                   onClick={() => onNavigateTab('escalation')}
                   className="sq-press rounded-lg border border-border/60 surface-premium px-3 py-1.5 text-[10px] font-semibold"
                 >
-                  Edit escalation
+                  {t('voice.builder.editEscalation')}
                 </button>
               </div>
               <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -384,12 +386,12 @@ export function VoiceAssistantBuilder({
 
           {/* System Prompt */}
           <DataCard
-            title="System prompt"
+            title={t('voice.builder.section.systemPrompt')}
             description="Advanced: override the auto-assembled instructions sent to ElevenLabs. Leave empty to use generated content from the sections above."
             className="rounded-2xl shadow-[var(--shadow-1)]"
             actions={
               hasManualOverride ? (
-                <StatusChip tone="watch" className="text-[9px]">Manual override active</StatusChip>
+                <StatusChip tone="watch" className="text-[9px]">{t('voice.builder.manualOverrideActive')}</StatusChip>
               ) : (
                 <StatusChip tone="neutral" className="text-[9px]">Auto-generated</StatusChip>
               )
@@ -405,14 +407,14 @@ export function VoiceAssistantBuilder({
                 value={textField('systemPrompt')}
                 onChange={v => setTextField('systemPrompt', v)}
                 rows={8}
-                placeholder="Leave empty to auto-build from identity, company context, rules, and snippets…"
+                placeholder={t('voice.builder.placeholder.systemPrompt')}
               />
             </BuilderField>
           </DataCard>
 
           {/* Knowledge Snippets */}
           <DataCard
-            title="Knowledge snippets"
+            title={t('voice.builder.section.knowledgeSnippets')}
             description="Short FAQ blocks for frequent caller questions — parking, fuel policy, insurance, etc."
             className="rounded-2xl shadow-[var(--shadow-1)]"
           >
@@ -434,7 +436,7 @@ export function VoiceAssistantBuilder({
         {/* Prompt Preview sidebar */}
         <aside className="space-y-4 xl:sticky xl:top-16 xl:self-start">
           <DataCard
-            title="Prompt preview"
+            title={t('voice.builder.section.promptPreview')}
             description="Structured summary of what your assistant knows. Not the exact provider payload."
             className="rounded-2xl shadow-[var(--shadow-1)]"
             footer={
@@ -466,7 +468,7 @@ export function VoiceAssistantBuilder({
 
           {!hasDraft && (
             <p className="text-center text-[10px] text-muted-foreground">
-              Changes are saved to your organization&apos;s voice assistant configuration.
+              {t('voice.builder.savedHint')}
             </p>
           )}
         </aside>

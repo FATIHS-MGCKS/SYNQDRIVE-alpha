@@ -10,6 +10,7 @@ import type {
   VoiceConversationOutcome,
 } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   directionLabel,
   formatDuration,
@@ -37,6 +38,7 @@ export function VoiceConversationsPanel({
   cardClassName,
   onConversationsChange,
 }: VoiceConversationsPanelProps) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<VoiceConversationEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState<VoiceConversationListParams>(DEFAULT_FILTERS);
@@ -171,10 +173,10 @@ export function VoiceConversationsPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className={cn('text-sm font-bold', isDarkMode ? 'text-white' : 'text-gray-900')}>
-            Conversation Logs
+            {t('voice.conversations.title')}
           </h3>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            Filter, review, and prepare follow-ups from synced calls.
+            {t('voice.conversations.subtitle')}
           </p>
         </div>
         <button
@@ -218,7 +220,7 @@ export function VoiceConversationsPanel({
           onKeyDown={e => {
             if (e.key === 'Enter') void load();
           }}
-          placeholder="Search summary, transcript, number…"
+          placeholder={t('voice.conversations.searchPlaceholder')}
           className={inputCls}
         />
         <select
@@ -226,7 +228,7 @@ export function VoiceConversationsPanel({
           onChange={e => updateFilter('direction', e.target.value as VoiceConversationListParams['direction'])}
           className={selectCls}
         >
-          <option value="all">All directions</option>
+          <option value="all">{t('voice.conversations.filter.allDirections')}</option>
           <option value="inbound">Inbound</option>
           <option value="outbound">Outbound</option>
         </select>
@@ -235,7 +237,7 @@ export function VoiceConversationsPanel({
           onChange={e => updateFilter('outcome', e.target.value as VoiceConversationOutcome)}
           className={selectCls}
         >
-          <option value="all">All outcomes</option>
+          <option value="all">{t('voice.conversations.filter.allOutcomes')}</option>
           {OUTCOME_OPTIONS.map(o => (
             <option key={o} value={o}>
               {o}
@@ -261,9 +263,9 @@ export function VoiceConversationsPanel({
           }}
           className={selectCls}
         >
-          <option value="all">All calls</option>
-          <option value="escalated">Escalated only</option>
-          <option value="transcript">Has transcript</option>
+          <option value="all">{t('voice.conversations.filter.allCalls')}</option>
+          <option value="escalated">{t('voice.conversations.filter.escalatedOnly')}</option>
+          <option value="transcript">{t('voice.conversations.filter.hasTranscript')}</option>
         </select>
       </div>
 
@@ -273,14 +275,14 @@ export function VoiceConversationsPanel({
           value={filters.dateFrom?.slice(0, 10) ?? ''}
           onChange={e => updateFilter('dateFrom', e.target.value ? `${e.target.value}T00:00:00.000Z` : undefined)}
           className={inputCls}
-          aria-label="From date"
+          aria-label={t('serviceCenter.history.dateFrom')}
         />
         <input
           type="date"
           value={filters.dateTo?.slice(0, 10) ?? ''}
           onChange={e => updateFilter('dateTo', e.target.value ? `${e.target.value}T23:59:59.999Z` : undefined)}
           className={inputCls}
-          aria-label="To date"
+          aria-label={t('serviceCenter.history.dateTo')}
         />
         <button
           type="button"
@@ -302,13 +304,13 @@ export function VoiceConversationsPanel({
       {loading && items.length === 0 ? (
         <div className="flex items-center justify-center py-12 text-xs text-muted-foreground">
           <Icon name="loader-2" className="w-4 h-4 animate-spin mr-2" />
-          Loading conversations…
+          {t('voice.conversations.loading')}
         </div>
       ) : items.length === 0 ? (
         <EmptyState
           compact
           icon={<Icon name="file-text" className="h-5 w-5" />}
-          title="No conversations match"
+          title={t('voice.conversations.emptyTitle')}
           description="Sync from ElevenLabs or adjust filters to see call history, transcripts, and escalation patterns."
           action={
             <button
@@ -365,7 +367,7 @@ export function VoiceConversationsPanel({
                         <StatusChip tone="warning">Escalated</StatusChip>
                       )}
                       {isTraining && (
-                        <StatusChip tone="ai">Training example</StatusChip>
+                        <StatusChip tone="ai">{t('voice.conversations.trainingExample')}</StatusChip>
                       )}
                     </div>
                     <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -400,18 +402,18 @@ export function VoiceConversationsPanel({
                     <button
                       type="button"
                       disabled
-                      title="Booking link API coming soon"
+                      title={t('voice.conversations.bookingLinkSoon')}
                       className="px-2 py-1 rounded text-[10px] font-semibold opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
                     >
-                      Link to booking
+                      {t('voice.conversations.linkBooking')}
                     </button>
                     <button
                       type="button"
                       disabled
-                      title="Customer link API coming soon"
+                      title={t('voice.conversations.customerLinkSoon')}
                       className="px-2 py-1 rounded text-[10px] font-semibold opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
                     >
-                      Link to customer
+                      {t('voice.conversations.linkCustomer')}
                     </button>
                     <button
                       type="button"
@@ -456,7 +458,7 @@ export function VoiceConversationsPanel({
                       )}
                     </div>
                   ) : (
-                    <p className="text-[10px] text-muted-foreground">No transcript available</p>
+                    <p className="text-[10px] text-muted-foreground">{t('voice.conversations.noTranscript')}</p>
                   )}
                 </div>
               );

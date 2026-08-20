@@ -4,7 +4,7 @@ import { cn } from '../../../components/ui/utils';
 import { api, getErrorMessage } from '../../../lib/api';
 import type { VoiceUsageForecast, VoiceUsageSummary } from '../../../lib/api';
 import { formatMoneyCents } from '../../../lib/money';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { VoiceAnalyticsView } from './VoiceAnalyticsView';
 

@@ -2,6 +2,7 @@ import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VoiceConnectionStatus, VoiceOption } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { BuilderField, builderInputCls } from './BuilderField';
 
 interface VoiceSelectorFieldProps {
@@ -27,6 +28,7 @@ export function VoiceSelectorField({
   onLoadVoices,
   onSelect,
 }: VoiceSelectorFieldProps) {
+  const { t } = useLanguage();
   const providerDown = elevenLabsOk === false || connectionStatus === 'ERROR';
   const notConfigured = connectionStatus === 'NOT_CONFIGURED' && !elevenLabsOk;
 
@@ -49,7 +51,7 @@ export function VoiceSelectorField({
         {loading ? (
           <div className={cn(builderInputCls, 'flex items-center gap-2 text-muted-foreground')}>
             <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" />
-            Loading voices from ElevenLabs…
+            {t('voice.selector.loadingVoices')}
           </div>
         ) : voices.length === 0 ? (
           <button
@@ -69,7 +71,7 @@ export function VoiceSelectorField({
               onSelect(e.target.value, selected?.name ?? '');
             }}
           >
-            <option value="">Select a voice</option>
+            <option value="">{t('voice.selector.selectVoice')}</option>
             {voices.map(v => (
               <option key={v.voice_id} value={v.voice_id}>
                 {v.name}
@@ -80,7 +82,7 @@ export function VoiceSelectorField({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <StatusChip tone="info" className="text-[9px]">Provider: ElevenLabs</StatusChip>
+          <StatusChip tone="info" className="text-[9px]">{t('voice.selector.providerElevenLabs')}</StatusChip>
           {voiceName && (
             <span className="text-[10px] text-muted-foreground">Selected: {voiceName}</span>
           )}

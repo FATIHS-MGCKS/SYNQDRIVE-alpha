@@ -10,12 +10,14 @@ import type {
   VoiceConversationEntry,
   VoiceRemainingMinutes,
 } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import {
+  labelLastCall,
+  labelOperatorStatus,
+} from './voice-assistant-i18n';
 import {
   callsTodayFromConversations,
-  lastCallLabel,
   openEscalationsCount,
-  operatorStatusLabel,
   resolveOperatorStatus,
 } from './voice-assistant.ops';
 
@@ -40,7 +42,7 @@ export function VoiceOperationsOverview({
   onOpenConversations,
   onOpenAnalytics,
 }: VoiceOperationsOverviewProps) {
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
   const [minutes, setMinutes] = useState<VoiceRemainingMinutes | null>(null);
   const [minutesError, setMinutesError] = useState<string | null>(null);
   const [minutesLoading, setMinutesLoading] = useState(true);
@@ -107,7 +109,7 @@ export function VoiceOperationsOverview({
         {[
           {
             label: t('voice.ops.kpi.status'),
-            value: operatorStatusLabel(operatorStatus),
+            value: labelOperatorStatus(locale, operatorStatus),
             tone: operatorStatus === 'active' ? 'success' : 'watch',
           },
           {
@@ -208,7 +210,7 @@ export function VoiceOperationsOverview({
 
       <DataCard
         title={t('voice.ops.recentCalls')}
-        description={lastCallLabel(conversations, conversationsLoaded)}
+        description={labelLastCall(locale, conversations, conversationsLoaded)}
         className="rounded-2xl shadow-[var(--shadow-1)]"
         actions={
           <button

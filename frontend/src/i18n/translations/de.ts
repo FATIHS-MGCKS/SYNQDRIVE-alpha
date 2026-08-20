@@ -4,6 +4,7 @@ import { automationWorkflowDe } from './automation-workflow.de';
 import { legalDocumentsDe } from './legal-documents.de';
 import { settingsAdminDe } from './settings-admin.de';
 import { stationsTabDe } from './stations-tab.de';
+import { voiceAssistantDe } from './voice-assistant.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -5376,4 +5377,5 @@ export const de: Record<TranslationKey, string> = {
   ...settingsAdminDe,
   ...automationWorkflowDe,
   ...stationsTabDe,
+  ...voiceAssistantDe,
 } satisfies CompleteTranslationDictionary;

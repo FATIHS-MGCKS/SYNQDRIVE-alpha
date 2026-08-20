@@ -23,10 +23,10 @@ import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsP
 import { VoiceAssistantBuilder } from './voice-assistant/VoiceAssistantBuilder';
 import { VoiceTelephonyWizard } from './voice-assistant/VoiceTelephonyWizard';
 import type { VoiceToolCapabilityKey, VoicePermissionMode } from './voice-assistant/voice-assistant-permissions.ops';
+import { labelLastCall } from './voice-assistant/voice-assistant-i18n';
 import {
   answerRatePercent,
   callsTodayFromConversations,
-  lastCallLabel,
   openEscalationsCount,
   readinessPercent,
 } from './voice-assistant/voice-assistant.ops';
@@ -36,7 +36,7 @@ import {
   shouldShowOnboardingWizard,
   type VoiceOpsTab,
 } from './voice-assistant/voice-wizard.ops';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface Props {
   isDarkMode: boolean;
@@ -47,7 +47,7 @@ type VoiceBoolField = Exclude<{
 }[keyof VoiceAssistantUpdatePayload], undefined>;
 
 export function VoiceAssistantView({ isDarkMode }: Props) {
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [opsTab, setOpsTab] = useState<VoiceOpsTab>('overview');
   const [assistant, setAssistant] = useState<VoiceAssistantData | null>(null);
@@ -274,7 +274,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const openEscalations = openEscalationsCount(conversations, conversationsLoaded);
   const answerRate = answerRatePercent(assistant);
   const readinessPct = readinessPercent(readiness);
-  const lastCall = lastCallLabel(conversations, conversationsLoaded);
+  const lastCall = labelLastCall(locale, conversations, conversationsLoaded);
 
   const providerWarning = useMemo(() => {
     const el = readiness?.checks.find(c => c.key === 'elevenlabs');

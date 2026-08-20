@@ -129,6 +129,23 @@ const P26_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/stations/',
 ];
 
+const P27A_ENFORCE_CLEAN_EXACT = [
+  'rental/components/VoiceAssistantView.tsx',
+  'rental/components/voice-assistant/VoiceAssistantBuilder.tsx',
+  'rental/components/voice-assistant/VoiceConversationsPanel.tsx',
+  'rental/components/voice-assistant/VoiceAnalyticsView.tsx',
+  'rental/components/voice-assistant/VoicePermissionsMatrix.tsx',
+  'rental/components/voice-assistant/VoiceCommandHeader.tsx',
+  'rental/components/voice-assistant/VoiceSelectorField.tsx',
+  'rental/components/voice-assistant/VoiceLaunchChecklist.tsx',
+  'rental/components/voice-assistant/VoiceOnboardingWizard.tsx',
+  'rental/components/voice-assistant/VoiceSectionNav.tsx',
+];
+
+function isP27AEnforceCleanPath(relPath: string): boolean {
+  return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
 function isP26EnforceCleanPath(relPath: string): boolean {
   return P26_ENFORCE_CLEAN_PREFIXES.some(
     (prefix) => relPath === prefix || relPath.startsWith(prefix),
@@ -152,7 +169,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -205,5 +222,12 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP26EnforceCleanPath(finding.file),
     );
     expect(p26Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.7A enforce-clean findings to voice assistant presentation slice only', () => {
+    const p27aDebt = inventory.findings.filter((finding) =>
+      isP27AEnforceCleanPath(finding.file),
+    );
+    expect(p27aDebt).toHaveLength(0);
   });
 });
