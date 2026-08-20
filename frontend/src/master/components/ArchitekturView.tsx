@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Support Center (P2.2.9 — V4.9.931)', icon: Globe,
+    endpoint: 'SupportView, rental/components/support/*, support-center.utils.ts translation-key defs, CreateSupportTicketDialog (Phase B).',
+    service: '**Helper:** `support-i18n.ts` (`su`, status/priority/category/sender/relative-time label helpers). **Keys:** +127 EN+DE (`support.{en,de}.ts`; 6891→7018); reused 8 existing `support.*` keys; new `support.statusNew` for inbox OPEN. **Guardrails:** P2.2.9 enforce-clean exact — 0 findings (19+~12→0); utils blind-spot grep guard. **Shim:** unchanged (29). **Tests:** `rental-support-center-localization.test.tsx`. **Semantics:** ticket status/priority/category machine enums, API payloads, filters unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-9-preflight-2026-08-20.md; architecture/I18N_RENTAL_SUPPORT_P2_2_9_2026-08-20.md' },
   { name: 'Platform i18n Rental WhatsApp Business (P2.2.8 — V4.9.930)', icon: Globe,
     endpoint: 'WhatsAppBusinessView, rental/components/whatsapp/*, whatsapp.ops.ts translation-key defs.',
     service: '**Helper:** `whatsapp-i18n.ts` (`wa`, nav/filter/status/readiness label helpers). **Keys:** +270 EN+DE (`whatsapp.{en,de}.ts`; 6621→6891); reused `nav.whatsappBusiness`, `whatsapp.ai.description`, `common.cancel`. **Guardrails:** P2.2.8 enforce-clean exact — 0 findings (93→0); WhatsApp module 93→0; ops blind-spot grep guard. **Shim:** two whatsapp shells to canonical; 29→27. **Tests:** `rental-whatsapp-localization.test.tsx`. **Semantics:** Meta/API payloads, filter/tab/category/status machine keys unchanged.',
