@@ -111,20 +111,20 @@
     }
   },
   "summary": {
-    "total": 2087,
+    "total": 2044,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 765,
+      "RENTAL": 722,
       "SHARED": 35,
       "SHELL": 38
     },
     "byCategory": {
       "ARIA": 85,
-      "TITLE": 302,
-      "TEXT": 1447,
+      "TITLE": 295,
+      "TEXT": 1412,
       "LABEL": 112,
-      "PLACEHOLDER": 133,
+      "PLACEHOLDER": 132,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
@@ -132,7 +132,6 @@
       "Finance/Billing": 131,
       "WhatsApp": 72,
       "Tasks": 17,
-      "Voice Assistant": 43,
       "Support": 19,
       "Documents": 8,
       "App / routing shell": 1
@@ -380,7 +379,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1464,
+      "line": 1468,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -408,7 +407,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23296,
+      "line": 23313,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -660,7 +659,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27181,
+      "line": 27198,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1651,7 +1650,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27126,
+      "line": 27143,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1792,7 +1791,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 935,
+      "line": 939,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1806,7 +1805,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23600,
+      "line": 23617,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1848,7 +1847,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1554,
+      "line": 1558,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2773,7 +2772,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1675,
+      "line": 1679,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2857,7 +2856,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 984,
+      "line": 988,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3151,7 +3150,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1565,
+      "line": 1569,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3477,7 +3476,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1469,
+      "line": 1473,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3533,7 +3532,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1623,
+      "line": 1627,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3547,7 +3546,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1625,
+      "line": 1629,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4152,7 +4151,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24568,
+      "line": 24585,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4181,7 +4180,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1449,
+      "line": 1453,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4195,7 +4194,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1593,
+      "line": 1597,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4686,7 +4685,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27116,
+      "line": 27133,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4897,7 +4896,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1673,
+      "line": 1677,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5206,7 +5205,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 21909,
+      "line": 21926,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5654,7 +5653,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23210,
+      "line": 23227,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6285,7 +6284,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1512,
+      "line": 1516,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6300,7 +6299,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 952,
+      "line": 956,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7765,7 +7764,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1528,
+      "line": 1532,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7989,7 +7988,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1518,
+      "line": 1522,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8031,7 +8030,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27151,
+      "line": 27168,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8326,7 +8325,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23276,
+      "line": 23293,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8564,7 +8563,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1505,
+      "line": 1509,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9098,7 +9097,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27138,
+      "line": 27155,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9112,7 +9111,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27155,
+      "line": 27172,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9533,7 +9532,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26832,
+      "line": 26849,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10197,7 +10196,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1493,
+      "line": 1497,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10715,7 +10714,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1629,
+      "line": 1633,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10729,7 +10728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1626,
+      "line": 1630,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10743,7 +10742,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1622,
+      "line": 1626,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11640,7 +11639,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1526,
+      "line": 1530,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11850,7 +11849,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1676,
+      "line": 1680,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12480,7 +12479,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1427,
+      "line": 1431,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13070,7 +13069,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27105,
+      "line": 27122,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13084,7 +13083,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1223,
+      "line": 1227,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13182,7 +13181,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1566,
+      "line": 1570,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13759,7 +13758,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1423,
+      "line": 1427,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13857,7 +13856,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1556,
+      "line": 1560,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13943,7 +13942,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1471,
+      "line": 1475,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14125,7 +14124,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24570,
+      "line": 24587,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14167,7 +14166,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23296,
+      "line": 23313,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14195,7 +14194,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1427,
+      "line": 1431,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14209,7 +14208,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1428,
+      "line": 1432,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14252,7 +14251,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1370,
+      "line": 1374,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14266,7 +14265,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1394,
+      "line": 1398,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14308,7 +14307,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1553,
+      "line": 1557,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14660,7 +14659,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23336,
+      "line": 23353,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14828,7 +14827,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1676,
+      "line": 1680,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -18135,34 +18134,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 262,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "Agent not provisioned",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 244,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "Agent provisioning",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 845,
       "surface": "RENTAL",
@@ -19382,20 +19353,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 275,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Connect the provider first.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VehicleInsightsCard.tsx",
       "line": 292,
       "surface": "RENTAL",
@@ -19619,20 +19576,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 304,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Current test scenario",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -20589,20 +20532,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 387,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Enable outbound telephony?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/InvitesTab.tsx",
       "line": 152,
       "surface": "RENTAL",
@@ -20688,20 +20617,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 321,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Escalate when",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 120,
       "surface": "RENTAL",
@@ -20769,20 +20684,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 313,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Expected behavior",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -21507,20 +21408,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 398,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "I understand — enable outbound",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillingOverviewTab.tsx",
       "line": 92,
       "surface": "RENTAL",
@@ -21532,34 +21419,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillingOverviewTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 330,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "Inbound calls",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 356,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Inbound enabled",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -22564,20 +22423,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 347,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Live session",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 939,
       "surface": "RENTAL",
@@ -22617,20 +22462,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageEvidenceCanvas.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 280,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Loading provider numbers…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -22859,20 +22690,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 374,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Master switch for phone live mode.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 961,
       "surface": "RENTAL",
@@ -22940,20 +22757,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppSetupWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 209,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Microphone not supported in this browser — live voice testing may be unavailable.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -23391,20 +23194,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 377,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "No active session",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VendorDetailView.tsx",
       "line": 808,
       "surface": "RENTAL",
@@ -23416,20 +23205,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 253,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "No agent provisioned yet. Complete readiness checks and activate the assistant from the command center header.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -23767,20 +23542,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppContextDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 283,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "No phone numbers found in your ElevenLabs account. Import or purchase numbers in ElevenLabs, then refresh.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -24192,20 +23953,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 415,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "PLACEHOLDER",
-      "sample": "Notes: what worked, what failed, escalation issues…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VehicleInsightsCard.tsx",
       "line": 342,
       "surface": "RENTAL",
@@ -24445,20 +24192,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 269,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Open launch checklist",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WhatsAppBusinessView.tsx",
       "line": 439,
       "surface": "RENTAL",
@@ -24484,20 +24217,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 446,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Open Test Center",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -24596,34 +24315,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 381,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "Outbound calls",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 423,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Outbound enabled",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -24792,20 +24483,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 261,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "Phone number",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -25216,20 +24893,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 231,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TITLE",
-      "sample": "Provider connection",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 1004,
       "surface": "RENTAL",
@@ -25255,20 +24918,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 277,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Provision the agent before assigning a number.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -25311,34 +24960,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/whatsapp/WhatsAppQuickActions.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 146,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Readiness gaps",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 348,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Real-time transcript and tool-policy decisions will appear here when live integration is enabled.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -25611,20 +25232,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 386,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Record your operator verdict locally. Results are not saved to the server yet.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceTimeline.tsx",
       "line": 37,
       "surface": "RENTAL",
@@ -25636,20 +25243,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceTimeline.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 224,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Refresh status",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -25990,20 +25583,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 437,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Run a signed test session in the Test Center — no phone charges apply.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageRentalSections.tsx",
       "line": 174,
       "surface": "RENTAL",
@@ -26271,20 +25850,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 308,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Select a phone number",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 418,
       "surface": "RENTAL",
@@ -26310,20 +25875,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/RolesAccessTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 280,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Select a scenario to define expected behavior. No automated simulation — use it as an operator script.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -26751,20 +26302,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 233,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Stop / reset",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
       "file": "rental/components/whatsapp/WhatsAppSettingsPanel.tsx",
       "line": 144,
       "surface": "RENTAL",
@@ -26790,20 +26327,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 424,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Strongly recommended only with suggest-only contact permissions and monitoring.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {
@@ -27157,34 +26680,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 373,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Telephony enabled",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 212,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Telephony setup",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/WhatsAppBusinessView.tsx",
       "line": 599,
       "surface": "RENTAL",
@@ -27210,62 +26705,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 129,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Test Center",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 385,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Test result",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 279,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Test scenarios",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 252,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Test session expired. Start a new session to continue testing.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -27593,20 +27032,6 @@
       ]
     },
     {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 298,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Unassign number",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
-      ]
-    },
-    {
       "file": "rental/components/handover/SignaturePad.tsx",
       "line": 226,
       "surface": "RENTAL",
@@ -27746,20 +27171,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTestCenter.tsx",
-      "line": 130,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Validate greeting, tone, escalation, and permissions before going live on phone.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTestCenter.tsx"
       ]
     },
     {
@@ -28040,20 +27451,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/voice-assistant/VoiceTelephonyWizard.tsx",
-      "line": 343,
-      "surface": "RENTAL",
-      "module": "Voice Assistant",
-      "category": "TEXT",
-      "sample": "Warning: inbound is enabled but no phone number is assigned.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/voice-assistant/VoiceTelephonyWizard.tsx"
       ]
     },
     {

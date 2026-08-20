@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-voice-assistant-p2-2-7b-2026-08-20',
+    version: '4.9.928',
+    title: 'Rental i18n — P2.2.7B Voice Assistant Telephony + Test Center',
+    summary: [
+      'Deferred Voice Assistant telephony wizard and test center surfaces migrated to canonical `frontend/src/i18n` with scenario definitions as translation-key metadata.',
+      'Scanner P2.2.7B enforce-clean exact scope reports 0 findings (43→0); Voice Assistant module 43→0; +160 EN+DE keys under `voice.telephony.*`, `voice.test.*`, and `voice.test.scenario.*`; reused `voice.nav.tab.test`, `voice.wizard.step.phone`, `common.cancel`.',
+      'Helper extensions in `voice-assistant-i18n.ts` (wizard step status, session phase, verdict, telephony errors, localized scenarios); presentation-only — Twilio/ElevenLabs/PSTN payloads, test session API, and permission semantics unchanged; 0 new compat consumers.',
+    ],
+    reason: 'P2.2.7A intentionally deferred high-risk telephony/test surfaces; pre-flight audit GO verdict scoped 43 scanner findings plus scenario copy blind spot.',
+    previousBehavior: 'Hardcoded English in VoiceTelephonyWizard, VoiceTestCenter, and voice-test-scenarios literal strings; no dedicated EN/DE component tests.',
+    details:
+      'VoiceTelephonyWizard.tsx; VoiceTestCenter.tsx; voice-test-scenarios.ts; voice-assistant-i18n.ts; voice-assistant translations; rental-voice-assistant-telephony-test-center-localization.test.tsx; docs/audits/i18n-p2-2-7b-voice-telephony-test-center-preflight-2026-08-20.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-20T02:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-voice-assistant-p2-2-7a-2026-08-20',
     version: '4.9.927',
     title: 'Rental i18n — P2.2.7A Voice Assistant presentation',

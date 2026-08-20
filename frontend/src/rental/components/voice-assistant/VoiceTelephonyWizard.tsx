@@ -2,22 +2,29 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type {
   VoiceAssistantData,
   VoiceProviderPhoneNumber,
   VoiceTelephonyStatusSnapshot,
 } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
+import {
+  labelTelephonyError,
+  labelWizardStepStatus,
+  type TelephonyErrorCode,
+} from './voice-assistant-i18n';
 
 interface WizardStepProps {
   step: number;
   title: string;
   description: string;
   status: 'complete' | 'current' | 'pending' | 'warning' | 'error';
+  statusLabel: string;
   children: ReactNode;
 }
 
-function WizardStep({ step, title, description, status, children }: WizardStepProps) {
+function WizardStep({ step, title, description, status, statusLabel, children }: WizardStepProps) {
   const tone =
     status === 'complete'
       ? 'success'
@@ -47,7 +54,7 @@ function WizardStep({ step, title, description, status, children }: WizardStepPr
           </div>
         </div>
         <StatusChip tone={tone} className="text-[9px] capitalize">
-          {status === 'complete' ? 'Complete' : status === 'current' ? 'In progress' : status}
+          {statusLabel}
         </StatusChip>
       </div>
       {children}
@@ -91,9 +98,10 @@ export function VoiceTelephonyWizard({
   refreshTelephony,
   updateTelephonySettings,
 }: VoiceTelephonyWizardProps) {
+  const { locale, t } = useLanguage();
   const [phoneNumbers, setPhoneNumbers] = useState<VoiceProviderPhoneNumber[]>([]);
   const [phonesLoading, setPhonesLoading] = useState(false);
-  const [phonesError, setPhonesError] = useState<string | null>(null);
+  const [phonesErrorCode, setPhonesErrorCode] = useState<TelephonyErrorCode | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string>('');
@@ -106,17 +114,18 @@ export function VoiceTelephonyWizard({
   const phoneAssigned = Boolean(
     assistant.phoneNumber || assistant.elevenLabsPhoneNumberId || assistant.phoneNumberId,
   );
+  const phonesError = phonesErrorCode ? labelTelephonyError(locale, phonesErrorCode) : null;
 
   const fetchPhones = useCallback(async () => {
     setPhonesLoading(true);
-    setPhonesError(null);
+    setPhonesErrorCode(null);
     try {
       const list = await loadPhoneNumbers();
       setPhoneNumbers(list);
       const current = list.find(n => n.assignedToThisAssistant);
       if (current) setSelectedId(current.phoneNumberId);
     } catch (err) {
-      setPhonesError('Failed to load phone numbers');
+      setPhonesErrorCode('loadNumbers');
       onError(err);
     } finally {
       setPhonesLoading(false);
@@ -129,13 +138,13 @@ export function VoiceTelephonyWizard({
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    setPhonesError(null);
+    setPhonesErrorCode(null);
     try {
       const result = await refreshTelephony();
       onAssistantUpdated(result.assistant);
       setPhoneNumbers(result.phoneNumbers);
     } catch (err) {
-      setPhonesError('Refresh failed');
+      setPhonesErrorCode('refresh');
       onError(err);
     } finally {
       setRefreshing(false);
@@ -145,13 +154,13 @@ export function VoiceTelephonyWizard({
   const handleAssign = async () => {
     if (!selectedId) return;
     setAssigningId(selectedId);
-    setPhonesError(null);
+    setPhonesErrorCode(null);
     try {
       const updated = await assignPhoneNumber(selectedId);
       onAssistantUpdated(updated);
       await fetchPhones();
     } catch (err) {
-      setPhonesError('Assign failed');
+      setPhonesErrorCode('assign');
       onError(err);
     } finally {
       setAssigningId(null);
@@ -205,13 +214,15 @@ export function VoiceTelephonyWizard({
     }
   };
 
+  const stepStatusLabel = (status: WizardStepProps['status']) => labelWizardStepStatus(locale, status);
+
   return (
     <div className="space-y-4">
       <div className="surface-premium flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <div>
-          <h3 className="text-sm font-bold text-foreground">Telephony setup</h3>
+          <h3 className="text-sm font-bold text-foreground">{t('voice.telephony.setup.title')}</h3>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {telephonyStatus?.label ?? 'Checking status…'}
+            {telephonyStatus?.label ?? t('voice.telephony.setup.checkingStatus')}
             {telephonyStatus?.detail ? ` — ${telephonyStatus.detail}` : ''}
           </p>
         </div>
@@ -222,47 +233,52 @@ export function VoiceTelephonyWizard({
           className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-border/60 surface-premium px-3 py-1.5 text-[10px] font-semibold disabled:opacity-60"
         >
           <Icon name={refreshing ? 'loader-2' : 'refresh-cw'} className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
-          Refresh status
+          {t('voice.telephony.refreshStatus')}
         </button>
       </div>
 
       <WizardStep
         step={1}
-        title="Provider connection"
-        description="ElevenLabs must be configured on the SynqDrive server."
+        title={t('voice.telephony.step.provider.title')}
+        description={t('voice.telephony.step.provider.description')}
         status={providerOk ? 'complete' : 'error'}
+        statusLabel={stepStatusLabel(providerOk ? 'complete' : 'error')}
       >
         <p className="text-[11px] text-muted-foreground">
           {providerOk
-            ? 'ElevenLabs API is connected. Phone numbers can be loaded from your provider account.'
-            : 'Provider not connected — ask your administrator to set ELEVENLABS_API_KEY on the server.'}
+            ? t('voice.telephony.step.provider.connected')
+            : t('voice.telephony.step.provider.notConnected')}
         </p>
       </WizardStep>
 
       <WizardStep
         step={2}
-        title="Agent provisioning"
-        description="A conversational agent must exist before linking a phone number."
+        title={t('voice.telephony.step.agent.title')}
+        description={t('voice.telephony.step.agent.description')}
         status={agentOk ? 'complete' : providerOk ? 'current' : 'pending'}
+        statusLabel={stepStatusLabel(agentOk ? 'complete' : providerOk ? 'current' : 'pending')}
       >
         {agentOk ? (
           <p className="font-mono text-[10px] text-muted-foreground">
-            Agent ID: {assistant.elevenLabsAgentId}
+            {t('voice.telephony.step.agent.idLabel')} {assistant.elevenLabsAgentId}
           </p>
         ) : (
           <p className="text-[11px] text-muted-foreground">
-            No agent provisioned yet. Complete readiness checks and activate the assistant from the command center header.
+            {t('voice.telephony.step.agent.notProvisioned')}
           </p>
         )}
       </WizardStep>
 
       <WizardStep
         step={3}
-        title="Phone number"
-        description="Select a number from ElevenLabs and assign it to this assistant."
+        title={t('voice.wizard.step.phone')}
+        description={t('voice.telephony.step.phone.description')}
         status={
           !providerOk ? 'pending' : phoneAssigned ? 'complete' : agentOk ? 'current' : 'pending'
         }
+        statusLabel={stepStatusLabel(
+          !providerOk ? 'pending' : phoneAssigned ? 'complete' : agentOk ? 'current' : 'pending',
+        )}
       >
         {phonesError && (
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.04] px-3 py-2">
@@ -272,23 +288,30 @@ export function VoiceTelephonyWizard({
         )}
 
         {!providerOk ? (
-          <p className="text-[11px] text-muted-foreground">Connect the provider first.</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t('voice.telephony.step.phone.connectProviderFirst')}
+          </p>
         ) : !agentOk ? (
-          <p className="text-[11px] text-muted-foreground">Provision the agent before assigning a number.</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t('voice.telephony.step.phone.provisionAgentFirst')}
+          </p>
         ) : phonesLoading ? (
           <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> Loading provider numbers…
+            <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" />{' '}
+            {t('voice.telephony.step.phone.loadingNumbers')}
           </p>
         ) : phoneNumbers.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">
-            No phone numbers found in your ElevenLabs account. Import or purchase numbers in ElevenLabs, then refresh.
+            {t('voice.telephony.step.phone.noNumbers')}
           </p>
         ) : (
           <div className="space-y-3">
             {phoneAssigned && (
               <div className="rounded-lg border border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.04] px-3 py-2">
                 <p className="text-[11px] font-semibold text-foreground">
-                  Assigned: {assistant.phoneNumber ?? 'Number linked'}
+                  {t('voice.telephony.step.phone.assigned', {
+                    number: assistant.phoneNumber ?? t('voice.telephony.step.phone.numberLinked'),
+                  })}
                 </p>
                 <button
                   type="button"
@@ -296,7 +319,7 @@ export function VoiceTelephonyWizard({
                   disabled={assigningId !== null || isBusy}
                   className="mt-2 text-[10px] font-semibold text-[color:var(--status-critical)]"
                 >
-                  Unassign number
+                  {t('voice.telephony.step.phone.unassign')}
                 </button>
               </div>
             )}
@@ -305,11 +328,15 @@ export function VoiceTelephonyWizard({
               value={selectedId}
               onChange={e => setSelectedId(e.target.value)}
             >
-              <option value="">Select a phone number</option>
+              <option value="">{t('voice.telephony.step.phone.selectPlaceholder')}</option>
               {phoneNumbers.map(n => (
                 <option key={n.phoneNumberId} value={n.phoneNumberId} disabled={n.assignedToOther}>
                   {n.phoneNumber ?? n.phoneNumberId}
-                  {n.assignedToThisAssistant ? ' (current)' : n.assignedToOther ? ' (other agent)' : ''}
+                  {n.assignedToThisAssistant
+                    ? ` ${t('voice.telephony.step.phone.optionCurrent')}`
+                    : n.assignedToOther
+                      ? ` ${t('voice.telephony.step.phone.optionOtherAgent')}`
+                      : ''}
                 </option>
               ))}
             </select>
@@ -319,7 +346,7 @@ export function VoiceTelephonyWizard({
               disabled={!selectedId || assigningId !== null || isBusy}
               className="sq-press rounded-lg border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] px-4 py-2 text-[11px] font-semibold text-[color:var(--brand-ink)] disabled:opacity-60"
             >
-              {assigningId ? 'Assigning…' : 'Assign to assistant'}
+              {assigningId ? t('voice.telephony.step.phone.assigning') : t('voice.telephony.step.phone.assign')}
             </button>
           </div>
         )}
@@ -327,8 +354,8 @@ export function VoiceTelephonyWizard({
 
       <WizardStep
         step={4}
-        title="Inbound calls"
-        description="Accept incoming calls on the assigned number."
+        title={t('voice.telephony.step.inbound.title')}
+        description={t('voice.telephony.step.inbound.description')}
         status={
           !phoneAssigned && (assistant.telephonyEnabled || assistant.inboundEnabled)
             ? 'warning'
@@ -338,10 +365,19 @@ export function VoiceTelephonyWizard({
                 ? 'current'
                 : 'pending'
         }
+        statusLabel={stepStatusLabel(
+          !phoneAssigned && (assistant.telephonyEnabled || assistant.inboundEnabled)
+            ? 'warning'
+            : telephonyStatus?.inboundReady
+              ? 'complete'
+              : phoneAssigned
+                ? 'current'
+                : 'pending',
+        )}
       >
         {!phoneAssigned && (assistant.telephonyEnabled || assistant.inboundEnabled) && (
           <p className="mb-2 text-[10px] text-[color:var(--status-watch)]">
-            Warning: inbound is enabled but no phone number is assigned.
+            {t('voice.telephony.step.inbound.warningNoNumber')}
           </p>
         )}
         <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/40 p-3">
@@ -353,11 +389,11 @@ export function VoiceTelephonyWizard({
             className="h-4 w-4 rounded"
           />
           <div>
-            <p className="text-[11px] font-semibold">Inbound enabled</p>
+            <p className="text-[11px] font-semibold">{t('voice.telephony.toggle.inbound.label')}</p>
             <p className="text-[10px] text-muted-foreground">
               {phoneAssigned
-                ? 'Callers can reach this assistant on the assigned number.'
-                : 'Assign a phone number first.'}
+                ? t('voice.telephony.toggle.inbound.hintAssigned')
+                : t('voice.telephony.toggle.inbound.hintNoNumber')}
             </p>
           </div>
         </label>
@@ -370,24 +406,26 @@ export function VoiceTelephonyWizard({
             className="h-4 w-4 rounded"
           />
           <div>
-            <p className="text-[11px] font-semibold">Telephony enabled</p>
-            <p className="text-[10px] text-muted-foreground">Master switch for phone live mode.</p>
+            <p className="text-[11px] font-semibold">{t('voice.telephony.toggle.telephony.label')}</p>
+            <p className="text-[10px] text-muted-foreground">{t('voice.telephony.toggle.telephony.hint')}</p>
           </div>
         </label>
       </WizardStep>
 
       <WizardStep
         step={5}
-        title="Outbound calls"
-        description="Allow the assistant to initiate calls — higher cost and compliance risk."
+        title={t('voice.telephony.step.outbound.title')}
+        description={t('voice.telephony.step.outbound.description')}
         status={assistant.outboundEnabled ? 'warning' : 'pending'}
+        statusLabel={stepStatusLabel(assistant.outboundEnabled ? 'warning' : 'pending')}
       >
         {outboundConfirm && (
           <div className="mb-3 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.04] p-3">
-            <p className="text-[11px] font-semibold text-foreground">Enable outbound telephony?</p>
+            <p className="text-[11px] font-semibold text-foreground">
+              {t('voice.telephony.outbound.confirmTitle')}
+            </p>
             <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-              Outbound calls may incur provider charges and require permission guardrails. Customer and vendor contact
-              capabilities should remain on suggest-only unless explicitly approved.
+              {t('voice.telephony.outbound.confirmBody')}
             </p>
             <div className="mt-3 flex gap-2">
               <button
@@ -396,14 +434,14 @@ export function VoiceTelephonyWizard({
                 disabled={settingsSaving}
                 className="sq-press rounded-lg border border-[color:var(--status-critical)]/40 px-3 py-1.5 text-[10px] font-semibold text-[color:var(--status-critical)]"
               >
-                I understand — enable outbound
+                {t('voice.telephony.outbound.confirmAction')}
               </button>
               <button
                 type="button"
                 onClick={() => setOutboundConfirm(false)}
                 className="sq-press rounded-lg border border-border/60 px-3 py-1.5 text-[10px] font-semibold"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -420,23 +458,20 @@ export function VoiceTelephonyWizard({
             className="h-4 w-4 rounded"
           />
           <div>
-            <p className="text-[11px] font-semibold">Outbound enabled</p>
-            <p className="text-[10px] text-muted-foreground">
-              Strongly recommended only with suggest-only contact permissions and monitoring.
-            </p>
+            <p className="text-[11px] font-semibold">{t('voice.telephony.toggle.outbound.label')}</p>
+            <p className="text-[10px] text-muted-foreground">{t('voice.telephony.toggle.outbound.hint')}</p>
           </div>
         </label>
       </WizardStep>
 
       <WizardStep
         step={6}
-        title="Test"
-        description="Validate the assistant before going live on phone."
+        title={t('voice.telephony.step.test.title')}
+        description={t('voice.telephony.step.test.description')}
         status={agentOk ? 'current' : 'pending'}
+        statusLabel={stepStatusLabel(agentOk ? 'current' : 'pending')}
       >
-        <p className="mb-3 text-[11px] text-muted-foreground">
-          Run a signed test session in the Test Center — no phone charges apply.
-        </p>
+        <p className="mb-3 text-[11px] text-muted-foreground">{t('voice.telephony.step.test.body')}</p>
         <button
           type="button"
           onClick={onNavigateTest}
@@ -444,7 +479,7 @@ export function VoiceTelephonyWizard({
           className="sq-press inline-flex items-center gap-2 rounded-lg border border-border/60 surface-premium px-4 py-2 text-[11px] font-semibold disabled:opacity-60"
         >
           <Icon name="mic" className="h-3.5 w-3.5" />
-          Open Test Center
+          {t('voice.telephony.openTestCenter')}
         </button>
       </WizardStep>
     </div>

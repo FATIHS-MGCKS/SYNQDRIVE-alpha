@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { StatusChip } from '../../../components/patterns';
 import { EmptyState } from '../../../components/patterns/states';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, getErrorMessage } from '../../../lib/api';
 import type {
   VoiceAssistantData,
@@ -10,10 +11,19 @@ import type {
 } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
 import type { VoiceTab } from './voice-assistant.ops';
-import { VOICE_TEST_SCENARIOS, type VoiceTestScenario } from './voice-test-scenarios';
+import {
+  labelTestSessionPhase,
+  labelTestVerdict,
+  labelVoiceTab,
+  localizedVoiceTestScenarios,
+  type TestSessionPhase,
+  type TestVerdictId,
+} from './voice-assistant-i18n';
+import {
+  VOICE_TEST_SCENARIO_DEFINITIONS,
+} from './voice-test-scenarios';
 
-type SessionPhase = 'idle' | 'starting' | 'active' | 'expired' | 'error' | 'blocked';
-type TestVerdict = 'passed' | 'needs_review' | 'failed';
+type TestVerdict = TestVerdictId | null;
 
 interface VoiceTestCenterProps {
   orgId: string;
@@ -30,11 +40,21 @@ export function VoiceTestCenter({
   onTestPassed,
   onNavigateTab,
 }: VoiceTestCenterProps) {
+  const { locale, t } = useLanguage();
+  const scenarios = useMemo(
+    () => localizedVoiceTestScenarios(locale, VOICE_TEST_SCENARIO_DEFINITIONS),
+    [locale],
+  );
+
   const [session, setSession] = useState<VoiceAssistantTestSession | null>(null);
-  const [phase, setPhase] = useState<SessionPhase>('idle');
+  const [phase, setPhase] = useState<TestSessionPhase>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [selectedScenario, setSelectedScenario] = useState<VoiceTestScenario | null>(null);
-  const [verdict, setVerdict] = useState<TestVerdict | null>(null);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const selectedScenario = useMemo(
+    () => scenarios.find(scenario => scenario.id === selectedScenarioId) ?? null,
+    [scenarios, selectedScenarioId],
+  );
+  const [verdict, setVerdict] = useState<TestVerdict>(null);
   const [notes, setNotes] = useState('');
 
   const micSupported = useMemo(
@@ -69,7 +89,7 @@ export function VoiceTestCenter({
   const startSession = async () => {
     if (!orgId) return;
     if (!micSupported) {
-      setError('Microphone access is not supported in this browser. Try Chrome or Edge on desktop.');
+      setError(t('voice.test.micUnsupportedStart'));
       setPhase('error');
       return;
     }
@@ -90,7 +110,7 @@ export function VoiceTestCenter({
       setPhase('active');
       onTestPassed();
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not start test session'));
+      setError(getErrorMessage(err, t('voice.test.startSessionError')));
       setPhase('error');
     }
   };
@@ -98,19 +118,7 @@ export function VoiceTestCenter({
   const agentProvisioned = Boolean(assistant.elevenLabsAgentId);
   const providerOk = readiness?.checks.find(c => c.key === 'elevenlabs')?.ok ?? false;
 
-  const statusLabel =
-    phase === 'active'
-      ? 'Session active'
-      : phase === 'starting'
-        ? 'Starting…'
-        : phase === 'expired'
-          ? 'Session expired'
-          : phase === 'blocked'
-            ? 'Blocked — fix configuration'
-            : phase === 'error'
-              ? 'Error'
-              : 'Ready to test';
-
+  const statusLabel = labelTestSessionPhase(locale, phase);
   const statusTone =
     phase === 'active'
       ? 'success'
@@ -120,32 +128,48 @@ export function VoiceTestCenter({
           ? 'watch'
           : 'neutral';
 
+  const livePanels = [
+    { labelKey: 'voice.test.live.transcript' as const, hintKey: 'voice.test.live.waitingStream' as const },
+    { labelKey: 'voice.test.live.assistantResponse' as const, hintKey: 'voice.test.live.noResponse' as const },
+    { labelKey: 'voice.test.live.detectedIntent' as const, hintKey: 'voice.test.live.dash' as const },
+    { labelKey: 'voice.test.live.toolPolicy' as const, hintKey: 'voice.test.live.dash' as const },
+    { labelKey: 'voice.test.live.escalationTriggered' as const, hintKey: 'voice.test.live.no' as const },
+    { labelKey: 'voice.test.live.latency' as const, hintKey: 'voice.test.live.dash' as const },
+  ];
+
+  const verdictOptions: { id: TestVerdictId; tone: 'success' | 'watch' | 'critical' }[] = [
+    { id: 'passed', tone: 'success' },
+    { id: 'needs_review', tone: 'watch' },
+    { id: 'failed', tone: 'critical' },
+  ];
+
+  const navTabs: VoiceTab[] = ['config', 'permissions', 'escalation'];
+
   return (
     <div className="space-y-4">
-      {/* Readiness + status header */}
       <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">Test Center</h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Validate greeting, tone, escalation, and permissions before going live on phone.
-            </p>
+            <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">
+              {t('voice.nav.tab.test')}
+            </h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">{t('voice.test.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip tone={statusTone} className="text-[10px]">
               {statusLabel}
             </StatusChip>
             <StatusChip tone={readiness?.ready ? 'success' : 'watch'} className="text-[10px]">
-              Readiness {readinessPct}%
+              {t('voice.test.readinessChip', { pct: readinessPct })}
             </StatusChip>
           </div>
         </div>
 
         {readiness && !readiness.ready && (
           <div className="mt-3 rounded-lg border border-[color:var(--status-watch)]/25 bg-[color:var(--status-watch)]/[0.04] px-3 py-2">
-            <p className="text-[10px] font-semibold text-foreground">Readiness gaps</p>
+            <p className="text-[10px] font-semibold text-foreground">{t('voice.test.readinessGaps')}</p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {(readiness.missing ?? []).join(' · ') || 'Some checks are incomplete.'}
+              {(readiness.missing ?? []).join(' · ') || t('voice.test.readinessIncomplete')}
             </p>
           </div>
         )}
@@ -153,21 +177,23 @@ export function VoiceTestCenter({
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[
             {
-              label: 'Provider',
+              label: t('voice.test.row.provider'),
               ok: providerOk,
-              value: providerOk ? 'ElevenLabs connected' : 'Not connected',
+              value: providerOk
+                ? t('voice.test.row.providerConnected')
+                : t('voice.test.row.notConnected'),
             },
             {
-              label: 'Agent',
+              label: t('voice.test.row.agent'),
               ok: agentProvisioned,
               value: agentProvisioned
                 ? `${assistant.elevenLabsAgentId?.slice(0, 10)}…`
-                : 'Not provisioned',
+                : t('voice.test.row.notProvisioned'),
             },
             {
-              label: 'Voice',
+              label: t('voice.test.row.voice'),
               ok: Boolean(assistant.voiceId),
-              value: assistant.voiceName ?? 'Not set',
+              value: assistant.voiceName ?? t('voice.test.row.notSet'),
             },
           ].map(row => (
             <div
@@ -207,7 +233,7 @@ export function VoiceTestCenter({
 
         {!micSupported && (
           <p className="mt-3 text-[10px] text-[color:var(--status-watch)]">
-            Microphone not supported in this browser — live voice testing may be unavailable.
+            {t('voice.test.micUnsupported')}
           </p>
         )}
 
@@ -222,7 +248,7 @@ export function VoiceTestCenter({
               name={phase === 'starting' ? 'loader-2' : 'mic'}
               className={cn('h-3.5 w-3.5', phase === 'starting' && 'animate-spin')}
             />
-            {phase === 'starting' ? 'Starting session…' : 'Start test session'}
+            {phase === 'starting' ? t('voice.test.startingSession') : t('voice.test.startSession')}
           </button>
           {(phase === 'active' || phase === 'expired' || phase === 'error' || phase === 'blocked') && (
             <button
@@ -231,7 +257,7 @@ export function VoiceTestCenter({
               className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 surface-premium px-4 py-2 text-[11px] font-semibold"
             >
               <Icon name="rotate-ccw" className="h-3.5 w-3.5" />
-              Stop / reset
+              {t('voice.test.stopReset')}
             </button>
           )}
         </div>
@@ -242,7 +268,9 @@ export function VoiceTestCenter({
             {session.expiresAt && (
               <>
                 {' '}
-                Expires {new Date(session.expiresAt).toLocaleTimeString()}.
+                {t('voice.test.expiresAt', {
+                  time: new Date(session.expiresAt).toLocaleTimeString(),
+                })}
               </>
             )}
           </p>
@@ -250,7 +278,7 @@ export function VoiceTestCenter({
 
         {phase === 'expired' && (
           <p className="mt-3 text-[10px] text-[color:var(--status-critical)]">
-            Test session expired. Start a new session to continue testing.
+            {t('voice.test.sessionExpired')}
           </p>
         )}
 
@@ -259,33 +287,30 @@ export function VoiceTestCenter({
             compact
             className="mt-4"
             icon={<Icon name="bot" className="h-5 w-5" />}
-            title="Agent not provisioned"
-            description="Activate the assistant from the command center to create an ElevenLabs agent before testing."
+            title={t('voice.test.agentNotProvisioned.title')}
+            description={t('voice.test.agentNotProvisioned.description')}
             action={
               <button
                 type="button"
                 onClick={() => onNavigateTab('overview')}
                 className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold"
               >
-                Open launch checklist
+                {t('voice.test.openLaunchChecklist')}
               </button>
             }
           />
         )}
       </div>
 
-      {/* Scenarios */}
       <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-        <h4 className="text-[12px] font-bold text-foreground">Test scenarios</h4>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Select a scenario to define expected behavior. No automated simulation — use it as an operator script.
-        </p>
+        <h4 className="text-[12px] font-bold text-foreground">{t('voice.test.scenarios.title')}</h4>
+        <p className="mt-1 text-[10px] text-muted-foreground">{t('voice.test.scenarios.subtitle')}</p>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {VOICE_TEST_SCENARIOS.map(scenario => (
+          {scenarios.map(scenario => (
             <button
               key={scenario.id}
               type="button"
-              onClick={() => setSelectedScenario(scenario)}
+              onClick={() => setSelectedScenarioId(scenario.id)}
               className={cn(
                 'sq-press rounded-xl border p-3 text-left transition-all',
                 selectedScenario?.id === scenario.id
@@ -302,7 +327,7 @@ export function VoiceTestCenter({
         {selectedScenario && (
           <div className="mt-4 rounded-xl border border-border/50 bg-muted/10 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Current test scenario
+              {t('voice.test.scenarios.current')}
             </p>
             <p className="mt-1 text-[12px] font-semibold text-foreground">{selectedScenario.title}</p>
             <p className="mt-2 text-[11px] italic text-muted-foreground">
@@ -310,7 +335,9 @@ export function VoiceTestCenter({
             </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div>
-                <p className="text-[10px] font-semibold text-foreground">Expected behavior</p>
+                <p className="text-[10px] font-semibold text-foreground">
+                  {t('voice.test.scenarios.expectedBehavior')}
+                </p>
                 <ul className="mt-1 list-inside list-disc text-[10px] text-muted-foreground">
                   {selectedScenario.expectedBehavior.map(line => (
                     <li key={line}>{line}</li>
@@ -318,7 +345,9 @@ export function VoiceTestCenter({
                 </ul>
               </div>
               <div>
-                <p className="text-[10px] font-semibold text-foreground">Escalate when</p>
+                <p className="text-[10px] font-semibold text-foreground">
+                  {t('voice.test.scenarios.escalateWhen')}
+                </p>
                 <ul className="mt-1 list-inside list-disc text-[10px] text-muted-foreground">
                   {selectedScenario.escalateWhen.map(line => (
                     <li key={line}>{line}</li>
@@ -327,7 +356,9 @@ export function VoiceTestCenter({
               </div>
             </div>
             <p className="mt-2 text-[10px] text-muted-foreground">
-              Permissions involved: {selectedScenario.permissions.join(' · ')}
+              {t('voice.test.scenarios.permissionsInvolved', {
+                permissions: selectedScenario.permissions.join(' · '),
+              })}
             </p>
             {selectedScenario.fixTab && (
               <button
@@ -335,37 +366,29 @@ export function VoiceTestCenter({
                 onClick={() => onNavigateTab(selectedScenario.fixTab!)}
                 className="mt-3 text-[10px] font-semibold text-[color:var(--brand-ink)]"
               >
-                Review in {selectedScenario.fixTab} →
+                {t('voice.test.scenarios.reviewIn', {
+                  tab: labelVoiceTab(locale, selectedScenario.fixTab),
+                })}
               </button>
             )}
           </div>
         )}
       </section>
 
-      {/* Live transcript placeholder */}
       <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-        <h4 className="text-[12px] font-bold text-foreground">Live session</h4>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Real-time transcript and tool-policy decisions will appear here when live integration is enabled.
-        </p>
+        <h4 className="text-[12px] font-bold text-foreground">{t('voice.test.live.title')}</h4>
+        <p className="mt-1 text-[10px] text-muted-foreground">{t('voice.test.live.subtitle')}</p>
         {phase === 'active' ? (
           <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {[
-              { label: 'Live transcript', hint: 'Waiting for live stream…' },
-              { label: 'Assistant response', hint: 'No response yet' },
-              { label: 'Detected intent', hint: '—' },
-              { label: 'Tool policy decision', hint: '—' },
-              { label: 'Escalation triggered', hint: 'No' },
-              { label: 'Latency', hint: '—' },
-            ].map(panel => (
+            {livePanels.map(panel => (
               <div
-                key={panel.label}
+                key={panel.labelKey}
                 className="rounded-lg border border-dashed border-border/60 bg-muted/10 px-3 py-2.5"
               >
                 <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {panel.label}
+                  {t(panel.labelKey)}
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">{panel.hint}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">{t(panel.hintKey)}</p>
               </div>
             ))}
           </div>
@@ -374,26 +397,17 @@ export function VoiceTestCenter({
             compact
             className="mt-3"
             icon={<Icon name="message-square" className="h-5 w-5" />}
-            title="No active session"
-            description="Start a test session to see transcript and policy panels."
+            title={t('voice.test.live.noActiveSession.title')}
+            description={t('voice.test.live.noActiveSession.description')}
           />
         )}
       </section>
 
-      {/* Test result (local UI only) */}
       <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-        <h4 className="text-[12px] font-bold text-foreground">Test result</h4>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Record your operator verdict locally. Results are not saved to the server yet.
-        </p>
+        <h4 className="text-[12px] font-bold text-foreground">{t('voice.test.result.title')}</h4>
+        <p className="mt-1 text-[10px] text-muted-foreground">{t('voice.test.result.subtitle')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {(
-            [
-              { id: 'passed' as const, label: 'Passed', tone: 'success' },
-              { id: 'needs_review' as const, label: 'Needs review', tone: 'watch' },
-              { id: 'failed' as const, label: 'Failed', tone: 'critical' },
-            ] as const
-          ).map(opt => (
+          {verdictOptions.map(opt => (
             <button
               key={opt.id}
               type="button"
@@ -405,45 +419,32 @@ export function VoiceTestCenter({
                   : 'border-border/60 surface-premium',
               )}
             >
-              {opt.label}
+              {labelTestVerdict(locale, opt.id)}
             </button>
           ))}
         </div>
         <textarea
           className="mt-3 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-[11px] outline-none focus:border-[color:var(--brand)]/40"
           rows={3}
-          placeholder="Notes: what worked, what failed, escalation issues…"
+          placeholder={t('voice.test.notesPlaceholder')}
           value={notes}
           onChange={e => setNotes(e.target.value)}
         />
         {verdict && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onNavigateTab('config')}
-              className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-            >
-              → Configuration
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('permissions')}
-              className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-            >
-              → Permissions
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('escalation')}
-              className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-            >
-              → Escalation
-            </button>
+            {navTabs.map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => onNavigateTab(tab)}
+                className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+              >
+                {t('voice.test.navTo', { tab: labelVoiceTab(locale, tab) })}
+              </button>
+            ))}
           </div>
         )}
       </section>
-
-      {/* Signed provider URLs are not exposed to the browser for security. */}
     </div>
   );
 }

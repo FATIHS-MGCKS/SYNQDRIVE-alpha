@@ -1,4 +1,15 @@
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { VoiceTab } from './voice-assistant.ops';
+
+export interface VoiceTestScenarioDefinition {
+  id: string;
+  titleKey: TranslationKey;
+  promptKey: TranslationKey;
+  expectedBehaviorKeys: TranslationKey[];
+  escalateWhenKeys: TranslationKey[];
+  permissionKeys: TranslationKey[];
+  fixTab?: VoiceTab;
+}
 
 export interface VoiceTestScenario {
   id: string;
@@ -10,101 +21,114 @@ export interface VoiceTestScenario {
   fixTab?: VoiceTab;
 }
 
-export const VOICE_TEST_SCENARIOS: VoiceTestScenario[] = [
+export const VOICE_TEST_SCENARIO_DEFINITIONS: VoiceTestScenarioDefinition[] = [
   {
     id: 'book_vehicle',
-    title: 'Customer wants to book a vehicle',
-    prompt: 'I would like to rent a car for next weekend.',
-    expectedBehavior: [
-      'Answer general questions about availability and process.',
-      'May suggest creating a booking draft if permission allows.',
-      'Must not quote binding prices without tariff data.',
+    titleKey: 'voice.test.scenario.bookVehicle.title',
+    promptKey: 'voice.test.scenario.bookVehicle.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.bookVehicle.expected.0',
+      'voice.test.scenario.bookVehicle.expected.1',
+      'voice.test.scenario.bookVehicle.expected.2',
     ],
-    escalateWhen: ['Customer insists on immediate confirmation with special terms.'],
-    permissions: ['Answer general questions', 'Create booking draft (suggest only)'],
+    escalateWhenKeys: ['voice.test.scenario.bookVehicle.escalate.0'],
+    permissionKeys: [
+      'voice.test.scenario.bookVehicle.permission.0',
+      'voice.test.scenario.bookVehicle.permission.1',
+    ],
     fixTab: 'permissions',
   },
   {
     id: 'modify_booking',
-    title: 'Customer wants to change a booking',
-    prompt: 'I need to move my reservation to another date.',
-    expectedBehavior: [
-      'Search for the booking if lookup is enabled.',
-      'Explain that changes require staff review unless autonomous modify is explicitly allowed.',
+    titleKey: 'voice.test.scenario.modifyBooking.title',
+    promptKey: 'voice.test.scenario.modifyBooking.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.modifyBooking.expected.0',
+      'voice.test.scenario.modifyBooking.expected.1',
     ],
-    escalateWhen: ['Modification affects pricing, vehicle class, or same-day change.'],
-    permissions: ['Booking search', 'Modify booking (suggest only)'],
+    escalateWhenKeys: ['voice.test.scenario.modifyBooking.escalate.0'],
+    permissionKeys: [
+      'voice.test.scenario.modifyBooking.permission.0',
+      'voice.test.scenario.modifyBooking.permission.1',
+    ],
     fixTab: 'permissions',
   },
   {
     id: 'cancel_booking',
-    title: 'Customer wants to cancel',
-    prompt: 'Please cancel my booking and refund me.',
-    expectedBehavior: [
-      'Acknowledge the request and explain cancellation policy.',
-      'Must not confirm cancellation autonomously.',
+    titleKey: 'voice.test.scenario.cancelBooking.title',
+    promptKey: 'voice.test.scenario.cancelBooking.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.cancelBooking.expected.0',
+      'voice.test.scenario.cancelBooking.expected.1',
     ],
-    escalateWhen: ['Always — cancellation requires human approval.'],
-    permissions: ['Cancel booking (disabled by default)'],
+    escalateWhenKeys: ['voice.test.scenario.cancelBooking.escalate.0'],
+    permissionKeys: ['voice.test.scenario.cancelBooking.permission.0'],
     fixTab: 'permissions',
   },
   {
     id: 'breakdown',
-    title: 'Customer reports breakdown',
-    prompt: 'My rental car broke down on the highway.',
-    expectedBehavior: [
-      'Gather location and safety status.',
-      'Open damage/breakdown case if permitted (suggest only).',
+    titleKey: 'voice.test.scenario.breakdown.title',
+    promptKey: 'voice.test.scenario.breakdown.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.breakdown.expected.0',
+      'voice.test.scenario.breakdown.expected.1',
     ],
-    escalateWhen: ['Immediately if caller is in danger or on a live roadway.'],
-    permissions: ['Emergency escalation', 'Create damage case'],
+    escalateWhenKeys: ['voice.test.scenario.breakdown.escalate.0'],
+    permissionKeys: [
+      'voice.test.scenario.breakdown.permission.0',
+      'voice.test.scenario.breakdown.permission.1',
+    ],
     fixTab: 'escalation',
   },
   {
     id: 'accident_damage',
-    title: 'Customer reports accident / damage',
-    prompt: 'I had a small accident and there is damage to the bumper.',
-    expectedBehavior: [
-      'Ensure caller safety first.',
-      'Collect facts without assigning fault or legal advice.',
+    titleKey: 'voice.test.scenario.accidentDamage.title',
+    promptKey: 'voice.test.scenario.accidentDamage.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.accidentDamage.expected.0',
+      'voice.test.scenario.accidentDamage.expected.1',
     ],
-    escalateWhen: ['Injuries, police involvement, or disputed liability.'],
-    permissions: ['Emergency escalation', 'Create damage case'],
+    escalateWhenKeys: ['voice.test.scenario.accidentDamage.escalate.0'],
+    permissionKeys: [
+      'voice.test.scenario.accidentDamage.permission.0',
+      'voice.test.scenario.accidentDamage.permission.1',
+    ],
     fixTab: 'escalation',
   },
   {
     id: 'price_quote',
-    title: 'Customer asks for price',
-    prompt: 'How much would a week in a midsize car cost?',
-    expectedBehavior: [
-      'Explain that exact pricing depends on dates and vehicle class.',
-      'May provide indicative guidance only in suggest mode — never binding quotes.',
+    titleKey: 'voice.test.scenario.priceQuote.title',
+    promptKey: 'voice.test.scenario.priceQuote.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.priceQuote.expected.0',
+      'voice.test.scenario.priceQuote.expected.1',
     ],
-    escalateWhen: ['Customer needs a formal quote or contract terms.'],
-    permissions: ['Quote prices (suggest only)'],
+    escalateWhenKeys: ['voice.test.scenario.priceQuote.escalate.0'],
+    permissionKeys: ['voice.test.scenario.priceQuote.permission.0'],
     fixTab: 'config',
   },
   {
     id: 'human_handover',
-    title: 'Customer wants a human',
-    prompt: 'I want to speak to a real person please.',
-    expectedBehavior: [
-      'Acknowledge politely and initiate escalation flow.',
+    titleKey: 'voice.test.scenario.humanHandover.title',
+    promptKey: 'voice.test.scenario.humanHandover.prompt',
+    expectedBehaviorKeys: ['voice.test.scenario.humanHandover.expected.0'],
+    escalateWhenKeys: ['voice.test.scenario.humanHandover.escalate.0'],
+    permissionKeys: [
+      'voice.test.scenario.humanHandover.permission.0',
+      'voice.test.scenario.humanHandover.permission.1',
     ],
-    escalateWhen: ['Immediately on explicit human request.'],
-    permissions: ['Emergency escalation', 'Escalation on request'],
     fixTab: 'escalation',
   },
   {
     id: 'after_hours',
-    title: 'Customer calls outside business hours',
-    prompt: 'Hello, I am calling about my rental but I know it is late.',
-    expectedBehavior: [
-      'Play after-hours message if configured.',
-      'Offer to take details or escalate per policy.',
+    titleKey: 'voice.test.scenario.afterHours.title',
+    promptKey: 'voice.test.scenario.afterHours.prompt',
+    expectedBehaviorKeys: [
+      'voice.test.scenario.afterHours.expected.0',
+      'voice.test.scenario.afterHours.expected.1',
     ],
-    escalateWhen: ['Emergency or safety issue regardless of hours.'],
-    permissions: ['Answer general questions'],
+    escalateWhenKeys: ['voice.test.scenario.afterHours.escalate.0'],
+    permissionKeys: ['voice.test.scenario.afterHours.permission.0'],
     fixTab: 'escalation',
   },
 ];

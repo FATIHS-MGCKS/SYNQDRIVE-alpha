@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Voice Assistant Telephony + Test Center (P2.2.7B — V4.9.928)', icon: Globe,
+    endpoint: 'VoiceTelephonyWizard, VoiceTestCenter, and voice-test-scenarios translation-key definitions.',
+    service: '**Helper:** `voice-assistant-i18n.ts` extended with telephony error codes, wizard step status, test session phase/verdict labels, and `localizedVoiceTestScenarios()`. **Keys:** +160 EN+DE (`voice.telephony.*`, `voice.test.*`, `voice.test.scenario.*`; 6465→6625); reused `voice.nav.tab.test`, `voice.wizard.step.phone`, `common.cancel`. **Guardrails:** P2.2.7B enforce-clean exact — 0 findings (43→0); Voice Assistant module 43→0. **Tests:** `rental-voice-assistant-telephony-test-center-localization.test.tsx` EN/DE render + scenario locale switching. **Semantics:** `telephonyEnabled`/`inboundEnabled`/`outboundEnabled` payload keys, `testSession` API, phase/verdict machine values unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-7b-voice-telephony-test-center-preflight-2026-08-20.md; architecture/I18N_RENTAL_VOICE_ASSISTANT_P2_2_7B_2026-08-20.md' },
   { name: 'Platform i18n Rental Voice Assistant (P2.2.7A — V4.9.927)', icon: Globe,
     endpoint: 'Rental Voice Assistant presentation slice (builder, conversations, analytics, permissions matrix, command header, selector, launch checklist, section nav, onboarding timezone placeholder).',
     service: '**Helper:** `voice-assistant-i18n.ts` (`va`, status/nav/checklist label helpers); React uses `useLanguage()`. **Keys:** +116 EN+DE (`voice-assistant.{en,de}.ts`; 6349→6465); reused `voice.common.*`, `voice.ops.navLabel`, cross-domain date/risk/loading keys. **Guardrails:** P2.2.7A enforce-clean exact — 0 findings (68→0); Voice Assistant module 111→43 (7B deferred). **Shim:** eight voice shells to canonical imports; 0 new compat. **Semantics:** telephony, test center, permission modes, and API payloads unchanged.',

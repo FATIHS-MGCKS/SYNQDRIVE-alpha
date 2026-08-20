@@ -129,6 +129,12 @@ const P27A_ENFORCE_CLEAN_EXACT = new Set([
   'rental/components/voice-assistant/VoiceSectionNav.tsx',
 ]);
 
+const P27B_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/voice-assistant/VoiceTelephonyWizard.tsx',
+  'rental/components/voice-assistant/VoiceTestCenter.tsx',
+  'rental/components/voice-assistant/voice-test-scenarios.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -356,6 +362,10 @@ function isP27AEnforceCleanPath(relPath) {
   return P27A_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP27BEnforceCleanPath(relPath) {
+  return P27B_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -381,6 +391,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (surface === 'RENTAL' && isP25EnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP26EnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP27AEnforceCleanPath(relPath)) return true;
+  if (surface === 'RENTAL' && isP27BEnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -389,6 +400,7 @@ function migrationPhaseFor(relPath, surface) {
     return surface === 'LOGIN' || surface === 'SHELL' ? 'P2.1' : surface === 'RENTAL' ? 'P2.2' : 'P2.3';
   }
   if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
+  if (isP27BEnforceCleanPath(relPath)) return 'P2.2.7B';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
   if (isP26EnforceCleanPath(relPath)) return 'P2.2.6';
   if (isP25EnforceCleanPath(relPath)) return 'P2.2.5';
