@@ -45,7 +45,7 @@ export function SupportOpsKpis({ stats, loading }: SupportOpsKpisProps) {
   return (
     <div className={cn(sop.kpiStrip, 'grid grid-cols-2 gap-1 sm:grid-cols-4 xl:grid-cols-7')}>
       <KpiCell label={t('support.ops.kpi.open')} value={stats?.totalOpen ?? stats?.open ?? 0} icon={<Inbox className="h-3.5 w-3.5" />} />
-      <KpiCell label={t('support.ops.kpi.new')} value={stats?.newTickets ?? stats?.open ?? 0} icon={<Sparkles className="h-3.5 w-3.5" />} />
+      <KpiCell label={t('support.statusNew')} value={stats?.newTickets ?? stats?.open ?? 0} icon={<Sparkles className="h-3.5 w-3.5" />} />
       <KpiCell
         label={t('support.ops.kpi.critical')}
         value={stats?.criticalOpen ?? 0}

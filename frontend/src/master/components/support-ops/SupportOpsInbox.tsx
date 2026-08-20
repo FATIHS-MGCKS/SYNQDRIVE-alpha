@@ -154,7 +154,7 @@ export function SupportOpsInbox({
             value={filters.organizationId}
             onChange={(v) => set('organizationId', v)}
             options={[
-              { value: '', label: t('support.ops.filter.all') },
+              { value: '', label: t('common.all') },
               ...organizations.map((o) => ({ value: o.id, label: o.name })),
             ]}
           />
@@ -164,7 +164,7 @@ export function SupportOpsInbox({
             onChange={(v) => set('status', v as SupportTicketStatus | 'all')}
             options={STATUS_OPTS.map((v) => ({
               value: v,
-              label: v === 'all' ? t('support.ops.filter.all') : labelSupportStatus(locale, v, 'admin'),
+              label: v === 'all' ? t('common.all') : labelSupportStatus(locale, v, 'admin'),
             }))}
           />
           <FilterSelect
@@ -173,7 +173,7 @@ export function SupportOpsInbox({
             onChange={(v) => set('priority', v as SupportTicketPriority | 'all')}
             options={PRIORITY_OPTS.map((v) => ({
               value: v,
-              label: v === 'all' ? t('support.ops.filter.all') : labelSupportPriority(locale, v),
+              label: v === 'all' ? t('common.all') : labelSupportPriority(locale, v),
             }))}
           />
           <FilterSelect
@@ -182,7 +182,7 @@ export function SupportOpsInbox({
             onChange={(v) => set('category', v as SupportTicketCategory | 'all')}
             options={CATEGORY_OPTS.map((v) => ({
               value: v,
-              label: v === 'all' ? t('support.ops.filter.all') : labelSupportCategory(locale, v),
+              label: v === 'all' ? t('common.all') : labelSupportCategory(locale, v),
             }))}
           />
           <FilterSelect
@@ -190,7 +190,7 @@ export function SupportOpsInbox({
             value={filters.assigneeId}
             onChange={(v) => set('assigneeId', v)}
             options={[
-              { value: '', label: t('support.ops.filter.all') },
+              { value: '', label: t('common.all') },
               ...assignees.map((u) => ({ value: u.id, label: u.name })),
             ]}
           />
@@ -232,10 +232,10 @@ export function SupportOpsInbox({
         ) : error ? (
           <ErrorState
             compact
-            title={t('support.ops.inbox.errorTitle')}
+            title={t('support.error.ticketsLoadFailed')}
             description={error}
             onRetry={onRetry}
-            retryLabel={t('support.ops.inbox.retryLabel')}
+            retryLabel={t('common.retry')}
           />
         ) : tickets.length === 0 ? (
           <EmptyState
@@ -331,7 +331,7 @@ function TicketRow({
             )}
             {critical && (
               <StatusChip tone="critical" className="text-[9px] px-1.5 py-0">
-                {t('support.ops.inbox.badgeCritical')}
+                {t('support.prioCritical')}
               </StatusChip>
             )}
           </div>

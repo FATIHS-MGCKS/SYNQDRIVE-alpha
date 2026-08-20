@@ -111,18 +111,18 @@
     }
   },
   "summary": {
-    "total": 1900,
+    "total": 1899,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 180,
       "RENTAL": 610,
       "SHARED": 35,
-      "SHELL": 26
+      "SHELL": 25
     },
     "byCategory": {
       "ARIA": 74,
       "TITLE": 273,
-      "TEXT": 1318,
+      "TEXT": 1317,
       "LABEL": 109,
       "PLACEHOLDER": 118,
       "FORMAT_LOCALE": 8
@@ -26929,20 +26929,6 @@
       "occurrences": 1,
       "files": [
         "components/mfa/MfaEnrollmentPanel.tsx"
-      ]
-    },
-    {
-      "file": "components/support/SupportTechnicalContextCard.tsx",
-      "line": 61,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Technischer Kontext",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/SupportTechnicalContextCard.tsx"
       ]
     },
     {

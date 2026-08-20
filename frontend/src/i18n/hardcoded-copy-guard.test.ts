@@ -186,6 +186,7 @@ const P210_ENFORCE_CLEAN_EXACT = [
   'master/components/support-ops/SupportOpsInbox.tsx',
   'master/components/support-ops/SupportOpsQueue.tsx',
   'master/components/support-ops/SupportOpsKpis.tsx',
+  'components/support/SupportTechnicalContextCard.tsx',
 ];
 
 function isP27AEnforceCleanPath(relPath: string): boolean {
@@ -386,5 +387,26 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     }
     expect(source).toContain('TranslationKey');
     expect(source).toContain('SUPPORT_QUEUE_DEFS');
+  });
+
+  it('keeps SupportTechnicalContextCard free of hardcoded presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../components/support/SupportTechnicalContextCard.tsx'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /Technischer Kontext/,
+      /Quellseite/,
+      /Nicht verfügbar/,
+      /label:\s*'Fahrzeug/,
+      /'Ja'\s*:\s*'Nein'/,
+      /formatDateTimeDe/,
+      /support-ops\.utils/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('support.ops.technicalContext.title');
+    expect(source).toContain('useLanguage');
   });
 });

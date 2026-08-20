@@ -173,6 +173,7 @@ const P210_ENFORCE_CLEAN_EXACT = new Set([
   'master/components/support-ops/SupportOpsInbox.tsx',
   'master/components/support-ops/SupportOpsQueue.tsx',
   'master/components/support-ops/SupportOpsKpis.tsx',
+  'components/support/SupportTechnicalContextCard.tsx',
 ]);
 
 const P22_ENFORCE_CLEAN_PREFIXES = [

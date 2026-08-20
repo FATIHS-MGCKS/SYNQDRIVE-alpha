@@ -373,7 +373,7 @@ export function SupportOpsWorkspace({
           {onNavigateToOrg && ticket.organizationId && (
             <Button type="button" variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => onNavigateToOrg(ticket.organizationId)}>
               <Building2 className="h-3 w-3" />
-              {t('support.ops.workspace.organization')}
+              {t('support.ops.filter.organization')}
             </Button>
           )}
         </div>
@@ -382,7 +382,7 @@ export function SupportOpsWorkspace({
       <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto]">
         <div className="overflow-y-auto p-3 space-y-2.5">
           {messages.length === 0 ? (
-            <p className="text-center text-[11px] text-muted-foreground">{t('support.ops.workspace.noMessages')}</p>
+            <p className="text-center text-[11px] text-muted-foreground">{t('support.detail.noMessages')}</p>
           ) : (
             messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
           )}

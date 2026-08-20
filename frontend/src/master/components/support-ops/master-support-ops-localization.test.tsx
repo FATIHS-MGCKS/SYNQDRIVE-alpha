@@ -18,6 +18,7 @@ import { supportOpsDe } from '../../../i18n/translations/support.ops.de';
 import { supportOpsEn } from '../../../i18n/translations/support.ops.en';
 import inventory from '../../../i18n/hardcoded-copy-inventory.json';
 import type { SupportTicket, SupportTicketStats } from '../../../lib/api';
+import { SupportTechnicalContextCard } from '../../../components/support/SupportTechnicalContextCard';
 import { SupportOpsInbox } from './SupportOpsInbox';
 import { SupportOpsKpis } from './SupportOpsKpis';
 import { SupportOpsQueue } from './SupportOpsQueue';
@@ -43,6 +44,7 @@ const P210_ENFORCE_CLEAN_EXACT = [
   'master/components/support-ops/SupportOpsInbox.tsx',
   'master/components/support-ops/SupportOpsQueue.tsx',
   'master/components/support-ops/SupportOpsKpis.tsx',
+  'components/support/SupportTechnicalContextCard.tsx',
 ];
 
 const P27B_ENFORCE_CLEAN_EXACT = [
@@ -327,6 +329,93 @@ describe('master Support Ops localization (P2.2.10)', () => {
       const source = readFileSync(join(__dirname, 'support-ops-i18n.ts'), 'utf8');
       expect(source).toContain("Master-owned");
       expect(source).not.toMatch(/rental\/components\/support\/support-i18n/);
+    });
+  });
+
+  describe('Phase B — SupportTechnicalContextCard', () => {
+    const GERMAN_PRESENTATION_LITERALS = [
+      'Technischer Kontext',
+      'Quellseite',
+      'Nicht verfügbar',
+      'Kennzeichen',
+      'Zuletzt gesehen',
+    ];
+
+    it('renders localized technical context in English', () => {
+      const ticket = buildTicket({
+        sourcePage: '/fleet/vehicles',
+        organizationId: 'org-abc',
+        metadata: {
+          vehicleId: 'veh-123',
+          licensePlate: 'B-XY 123',
+          vin: 'WVWZZZ1JZXW000001',
+          helpCenterAttempted: true,
+          aiTriage: { summaryForAdmin: 'Customer reported GPS drift.' },
+        },
+      });
+      const view = renderWithLocale(
+        'en',
+        createElement(SupportTechnicalContextCard, {
+          ticket,
+          orgName: 'Acme Fleet GmbH',
+        }),
+      );
+      cleanup = view.cleanup;
+      expect(document.body.textContent).toContain(en['support.ops.technicalContext.title']);
+      expect(document.body.textContent).toContain(en['support.ops.technicalContext.sourcePage']);
+      expect(document.body.textContent).toContain('/fleet/vehicles');
+      expect(document.body.textContent).toContain('Acme Fleet GmbH');
+      expect(document.body.textContent).toContain(en['common.yes']);
+      for (const literal of GERMAN_PRESENTATION_LITERALS) {
+        expect(document.body.textContent).not.toContain(literal);
+      }
+    });
+
+    it('renders localized technical context in German', () => {
+      const ticket = buildTicket({
+        metadata: {
+          helpCenterAttempted: false,
+        },
+      });
+      const view = renderWithLocale(
+        'de',
+        createElement(SupportTechnicalContextCard, {
+          ticket,
+          orgName: 'Muster Org',
+        }),
+      );
+      cleanup = view.cleanup;
+      expect(document.body.textContent).toContain(de['support.ops.technicalContext.title']);
+      expect(document.body.textContent).toContain(de['support.ops.technicalContext.notAvailable']);
+      expect(document.body.textContent).toContain(de['common.no']);
+    });
+
+    it('preserves machine metadata values in presentation output', () => {
+      const ticket = buildTicket({
+        metadata: {
+          vehicleId: 'veh-machine-42',
+          provider: 'dimo',
+          connectionStatus: 'CONNECTED',
+        },
+      });
+      const view = renderWithLocale(
+        'en',
+        createElement(SupportTechnicalContextCard, { ticket, orgName: 'Org' }),
+      );
+      cleanup = view.cleanup;
+      expect(document.body.textContent).toContain('veh-machine-42');
+      expect(document.body.textContent).toContain('dimo');
+      expect(document.body.textContent).toContain('CONNECTED');
+    });
+
+    it('has no hardcoded German presentation literals in source', () => {
+      const source = readFileSync(
+        join(__dirname, '../../../components/support/SupportTechnicalContextCard.tsx'),
+        'utf8',
+      );
+      for (const literal of GERMAN_PRESENTATION_LITERALS) {
+        expect(source).not.toContain(literal);
+      }
     });
   });
 

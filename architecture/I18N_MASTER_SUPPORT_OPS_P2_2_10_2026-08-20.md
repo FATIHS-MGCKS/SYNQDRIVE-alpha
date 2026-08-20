@@ -14,7 +14,8 @@
 | `SupportOpsInbox.tsx` | Filters, list, pagination, empty/error states |
 | `SupportOpsQueue.tsx` | Queue sidebar + mobile chips |
 | `SupportOpsKpis.tsx` | KPI strip |
-| `support.ops.{en,de}.ts` | Canonical dictionary module (+88 keys) |
+| `SupportTechnicalContextCard.tsx` | Phase B — technical context panel (mixed-language fix) |
+| `support.ops.{en,de}.ts` | Canonical dictionary module (96 keys) |
 
 ## i18n architecture
 
@@ -25,18 +26,29 @@
 - Master-specific presentation uses `support.ops.*`.
 - Machine values preserved: `SupportQueueId`, status/priority/category enums, filter keys, API payloads, `buildTicketListParams` semantics.
 
-## Phase B decision
+## Phase B
 
-`SupportTechnicalContextCard.tsx` remains German-hardcoded and is rendered from `SupportOpsWorkspace`. It causes residual mixed-language UI when Master locale is EN. Per P2.2.9 precedent, Phase B was **deferred** — the five-file slice is localized; technical context card is documented as follow-up. Import fix only: `formatDateTimeDe` from shared pattern utils (removed broken import from utils).
+`SupportTechnicalContextCard.tsx` is rendered from `SupportOpsWorkspace`. Pre-localization it caused confirmed EN/DE mixed-language UI (German labels under EN locale). Phase B localizes all presentation copy via `support.ops.technicalContext.*` plus reused `support.entity*`, `common.yes`/`common.no`, and `support.time.emDash`. Technical metadata values remain raw machine strings.
+
+## Key audit summary
+
+| Item | Count |
+|------|-------|
+| Original first-pass `support.ops.*` keys | 88 |
+| Replaced by existing canonical keys (B) | 6 |
+| Removed as duplication (C) | 1 |
+| Phase B additions (A) | 15 |
+| Final `support.ops.*` module | 96 |
+| Net canonical delta | +96 (7018→7114) |
 
 ## Scanner
 
-`P210_ENFORCE_CLEAN_EXACT` — 5 paths (utils + 4 components).  
-Blind-spot grep guard on `support-ops.utils.ts` mirrors P2.2.8/P2.2.9 ops/utils pattern.
+`P210_ENFORCE_CLEAN_EXACT` — 6 paths (5 master support-ops + Phase B card).  
+Blind-spot grep guards on `support-ops.utils.ts` and `SupportTechnicalContextCard.tsx`.
 
 ## Tests
 
-`master-support-ops-localization.test.tsx` — EN/DE render, machine enum preservation, `buildTicketListParams`, dictionary parity, P210 enforce-clean, P27B/P28/P29 regression, utils blind-spot guard.
+`master-support-ops-localization.test.tsx` — 21 tests: EN/DE render, machine enum preservation, `buildTicketListParams`, dictionary parity, Phase B EN/DE + no German in EN surface, P210 enforce-clean, P27B/P28/P29 regression, utils blind-spot guard.
 
 ## Shim
 
