@@ -10,7 +10,7 @@
 
 ## 1. Executive verdict
 
-### **YELLOW — ready with non-blocking findings**
+### **ORANGE — remediation required before full production confidence**
 
 P3.1 on `main` establishes a **single coherent canonical truth model** on the standard dashboard split path:
 
@@ -22,22 +22,32 @@ P3.1 on `main` establishes a **single coherent canonical truth model** on the st
 
 No competing readiness reconstruction was found on the **reachable split path**. Legacy paths remain for V2 OFF, shadow diagnostics, and operator-focus surfaces — documented below with reachability conditions.
 
-**Material gaps** that prevent a GREEN verdict:
+**This is not a cross-tenant backend authorization failure.** Backend org/station isolation remains authoritative. **P3.1 does not require rollback** — the canonical cutover architecture is valid.
 
-1. **Paginated fleet grouping** can present incomplete vehicle context until `loadMore` merges pages (HIGH).
-2. **Request race conditions** (`cancelRef` boolean pattern) can show stale station/org data after fast filter changes (HIGH).
-3. **Operator-focus / legacy `NotificationPanel`** grouped cards lack lifecycle mutations wired (MEDIUM).
+**However**, independent reviewer verification confirmed a **material correctness issue** in request cancellation (`P32-F02`): both `useNotifications` and `useFleetReadinessSummary` use a shared boolean `cancelRef` that a newer fetch can reset while an older in-flight response remains able to commit. On a multi-station operations dashboard, this can display notifications or fleet summary data for a **previously selected station** after the operator has switched scope. That is a scope-correctness defect, not merely cosmetic UX debt.
 
-These are reliability/hardening issues, not invalidation of the canonical cutover architecture. Immediate production block is **not** warranted for typical fleet sizes, but large fleets and fast station switching need follow-up hardening.
+**Finding severity summary:** BLOCKER 0 · HIGH 2 · MEDIUM 3 · LOW 3 · INFO 4 (12 total)
+
+**Material gaps by category:**
+
+| ID | Severity | Category | Issue type |
+|----|----------|----------|------------|
+| P32-F02 | **HIGH** | Request cancellation | **Correctness** — wrong selected station/org data can be displayed |
+| P32-F01 | **HIGH** | Pagination + grouping | **Completeness** — partial vehicle context until `loadMore` |
+| P32-F03 | MEDIUM | Operator-focus lifecycle | Workflow parity gap (secondary surface) |
+
+`P32-F02` blocks claiming **unrestricted multi-station production confidence** until request-race hardening ships. `P32-F01` is a separate pagination-boundary completeness issue and does not imply displaying the wrong station's data.
 
 ### Go / no-go
 
 | Question | Answer |
 |----------|--------|
-| Safe to operate P3.1 split in production with V2 ON? | **Yes, with documented limitations** |
 | Canonical truth model achieved? | **Yes** on standard dashboard split path |
-| Immediate remediation PR required before any rollout? | **No** — follow-up hardening recommended |
-| Full production confidence at scale without follow-up? | **No** — pagination + race hardening advised |
+| P3.1 architecture valid? | **Yes** — no rollback required |
+| Rollback required? | **No** |
+| Cross-tenant authorization failure? | **No** — backend isolation remains authoritative |
+| Immediate remediation before full production confidence? | **Yes** — `P32-F02` request-race hardening + tests |
+| Unrestricted multi-station production confidence without follow-up? | **No** — not until `P32-F02` is fixed |
 
 ---
 
@@ -289,7 +299,7 @@ Mutations patch local `apiRows` optimistically. Grouping recomputes from items o
 - Misleading cause count in subtitle — **possible** until all pages loaded
 - Severity may under-state until critical cause loads — **possible**
 
-**Classification:** Inherent to paginated notification feed + client-side vehicle grouping. **Acceptable for small/medium fleets; needs UX indication or server-side vehicle bundling for large fleets.** See P32-F01.
+**Classification:** Inherent to paginated notification feed + client-side vehicle grouping. This is a **completeness** issue (partial vehicle context), distinct from `P32-F02` which is a **correctness** issue (wrong station scope). Acceptable for small/medium fleets with awareness; needs UX indication or server-side vehicle bundling for large fleets. See P32-F01.
 
 ---
 
@@ -333,7 +343,7 @@ if (cancelRef.current) return;  // check after await
 
 **Problem:** New fetch resets `cancelRef` to `false` while older in-flight request may still complete and pass the check, overwriting newer station's data.
 
-**Risk:** Fast station/org switching — **HIGH**. No `AbortController` or request generation token. See P32-F02.
+**Risk:** Fast station/org switching — **HIGH (correctness)**. A newer fetch resets `cancelRef.current = false` while an older response can still commit, displaying data for the wrong selected station/org. No `AbortController` or request generation token. See P32-F02.
 
 ---
 
@@ -404,7 +414,7 @@ if (cancelRef.current) return;  // check after await
 
 ### Browser / manual QA
 
-**Not performed.** No browser automation was available in this audit run. Layout and accessibility confidence is **code-level only**. See P32-F10.
+**Not performed.** No browser automation was available in this audit run. Layout and accessibility confidence is **code-level only**. Mobile panel height concerns are documented under P32-F05; responsive behavior was not browser-verified.
 
 ---
 
@@ -418,7 +428,7 @@ Interpolation variables consistent: `{ready}`, `{total}`, `{percent}`, `{count}`
 
 **Gaps:**
 
-- `AttentionScopedList.resolveErrorBanner` uses hardcoded DE/EN strings for `api_disabled`, `permission_denied`, `network` — not i18n keys (pre-existing pattern). See P32-F09.
+- `AttentionScopedList.resolveErrorBanner` uses hardcoded DE/EN strings for `api_disabled`, `permission_denied`, `network` — not i18n keys (pre-existing pattern). See P32-F08.
 
 ---
 
@@ -521,11 +531,11 @@ vehicles.controller.status-patch.spec.ts(25,5): error TS2345: Argument of type '
 
 | ID | Severity | Title | Remediation type |
 |----|----------|-------|------------------|
-| P32-F01 | **HIGH** | Paginated fleet grouping presents incomplete vehicle context across pages | Follow-up hardening |
-| P32-F02 | **HIGH** | `cancelRef` race can apply stale station/org results | Follow-up hardening |
-| P32-F03 | **MEDIUM** | Operator-focus `NotificationPanel` grouped cards lack lifecycle mutations | Follow-up hardening |
-| P32-F04 | **MEDIUM** | Fleet summary vs notification list can diverge without UX indication | Follow-up hardening |
-| P32-F05 | **MEDIUM** | Mobile stacked panels capped at ~240px each — cramped dual-panel scroll | Follow-up hardening |
+| P32-F01 | **HIGH** | Paginated fleet grouping presents incomplete vehicle context across pages (completeness) | Next hardening |
+| P32-F02 | **HIGH** | `cancelRef` race can apply stale station/org results (correctness) | **Immediate remediation** |
+| P32-F03 | **MEDIUM** | Operator-focus `NotificationPanel` grouped cards lack lifecycle mutations | Next hardening |
+| P32-F04 | **MEDIUM** | Fleet summary vs notification list can diverge without UX indication | Next hardening |
+| P32-F05 | **MEDIUM** | Mobile stacked panels capped at ~240px each — cramped dual-panel scroll (browser unverified) | Next hardening |
 | P32-F06 | **LOW** | Duplicate `api.vendors.list` per panel mount | Accepted debt |
 | P32-F07 | **LOW** | Scoped hooks skip counts — no per-scope tab badges | Accepted debt |
 | P32-F08 | **LOW** | Hardcoded DE/EN error strings in `AttentionScopedList` | Accepted debt |
@@ -536,19 +546,25 @@ vehicles.controller.status-patch.spec.ts(25,5): error TS2345: Argument of type '
 
 ### Finding details
 
-#### P32-F01 — Paginated fleet grouping incomplete across pages
+#### P32-F01 — Paginated fleet grouping incomplete across pages (completeness)
 - **Files:** `useNotifications.ts`, `fleet-readiness-attention-projection.ts`, `FleetReadinessAttentionPanel.tsx`
 - **Evidence:** Grouping runs on in-memory `items` array only; page size 50.
 - **Scenario:** Aggregate on page 1, cause on page 2 → operator sees incomplete vehicle card until load more.
-- **Impact:** Misleading readiness context; possible wrong severity perception.
+- **Impact:** Incomplete vehicle context; possible understated severity — **not** display of the wrong station's data.
+- **Issue type:** Completeness (pagination boundary), distinct from `P32-F02` correctness.
 - **Remediation:** Server-side vehicle-scoped bundling, or UX “partial data” indicator, or raise page size for fleet scope.
 
-#### P32-F02 — Stale response race on station/org change
+#### P32-F02 — Stale response race on station/org change (correctness)
 - **Files:** `useNotifications.ts:112-215`, `useFleetReadinessSummary.ts:26-64`
-- **Evidence:** Boolean `cancelRef` without generation counter or AbortController.
+- **Evidence:** Both hooks use the same flawed pattern:
+  ```typescript
+  cancelRef.current = false;  // new fetch resets shared boolean
+  await request();
+  if (cancelRef.current) return;  // stale response can pass when newer fetch already reset flag
+  ```
 - **Scenario:** User switches station A→B quickly; response for A arrives after B fetch started and overwrites B data.
-- **Impact:** Wrong station notifications or summary briefly or persistently displayed.
-- **Remediation:** Request sequence token or AbortController per hook.
+- **Impact:** Wrong station notifications or fleet summary displayed for the currently selected scope — **material correctness/reliability issue** on multi-station dashboards.
+- **Remediation:** Request identity token (generation counter) or `AbortController` per hook; add tests proving stale responses cannot commit.
 
 #### P32-F03 — Operator-focus grouped lifecycle gap
 - **Files:** `NotificationPanel.tsx:371-379`, `DashboardView.tsx:75-84`
@@ -575,21 +591,22 @@ vehicles.controller.status-patch.spec.ts(25,5): error TS2345: Argument of type '
 
 ## 20. Recommended next steps
 
-### Immediate (optional hotfix window)
+### Immediate remediation (required before full production confidence)
 
-1. None required for canonical cutover validity.
+1. **P32-F02** — Fix request identity / cancellation race in `useNotifications` and `useFleetReadinessSummary` (generation counter or `AbortController`).
+2. **Tests** — Add tests proving stale station/org responses cannot commit after a newer scope fetch has started (both hooks).
 
-### Follow-up hardening (recommended priority)
+### Next hardening (after P32-F02)
 
-1. **P32-F02** — Add request generation / AbortController to `useNotifications` and `useFleetReadinessSummary`.
-2. **P32-F01** — Design pagination strategy for fleet vehicle grouping (backend bundle or UX partial-state).
-3. **P32-F03** — Wire lifecycle handlers in `NotificationPanel` for operator-focus parity.
-4. Add integration tests for station-switch race and pagination boundary grouping.
+1. **P32-F01** — Design pagination strategy for fleet vehicle grouping (backend bundle, UX partial-state indicator, or scoped page-size policy).
+2. **P32-F03** — Wire lifecycle handlers in `NotificationPanel` for operator-focus grouped-card parity.
+3. **P32-F05** — Mobile panel height / dual-panel scroll UX review with browser verification.
+4. Add integration tests for pagination boundary grouping behavior.
 
 ### Accepted monitoring
 
-- Fleet summary vs list divergence (document in operator help).
-- Duplicate vendor fetch (dedupe via shared context or SWR).
+- Fleet summary vs list divergence (P32-F04 — document in operator help).
+- Duplicate vendor fetch (P32-F06 — dedupe via shared context or SWR).
 - Global backend CI spec drift (separate from P3.1).
 
 ---
