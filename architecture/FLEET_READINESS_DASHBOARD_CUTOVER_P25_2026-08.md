@@ -46,4 +46,7 @@ GET /organizations/:orgId/notifications/counts?attentionScope=...
 
 - `SERVICE_WINDOW` / `HM_SERVICE_NO_TRACKING` live open producers
 - Tire/brake/battery producer rewrites
-- Dashboard UI split (Operations vs Fleet Readiness panels)
+
+## UI cutover (P3.1)
+
+Dashboard attention split implemented in frontend — see `architecture/DASHBOARD_ATTENTION_SPLIT_P31_2026-08.md`.

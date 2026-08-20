@@ -69,4 +69,16 @@ export const pl: Record<TranslationKey, string> = {
   'notification.issue.vehicleDamageBlocking': 'Uszkodzenie blokuje gotowość',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive nie moze obecnie wiarygodnie ocenic gotowosci pojazdu {label}. Sprawdz dostepne dane pojazdu.',
+  'dashboardAttention.stackLabel': 'Uwaga panelu',
+  'dashboardAttention.operations.title': 'Operacje',
+  'dashboardAttention.operations.subtitle': 'Wydania, rezerwacje, rozliczenia i zadania stacji',
+  'dashboardAttention.fleetReadiness.title': 'Gotowosc floty',
+  'dashboardAttention.fleetReadiness.subtitle': 'Pojazdy niegotowe lub nieocenialne w zakresie',
+  'dashboardAttention.fleetSummary.unavailable': 'Podsumowanie gotowosci floty niedostepne.',
+  'dashboardAttention.fleetSummary.ready': '{ready} z {total} gotowych',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% gotowych',
+  'dashboardAttention.fleetSummary.notReady': '{count} niegotowych',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} nieocenialnych',
+  'dashboardAttention.fleetSummary.unknown': '{count} nieznanych',
+  'dashboardAttention.loadMore': 'Zaladuj wiecej ({count} wyswietlonych)',
 };
