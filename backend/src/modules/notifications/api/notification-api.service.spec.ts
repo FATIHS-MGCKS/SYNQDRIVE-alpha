@@ -485,4 +485,118 @@ describe('NotificationApiService', () => {
       expect(Array.isArray(whereArg.AND) && whereArg.AND.length).toBeGreaterThan(1);
     });
   });
+
+  describe('stationId dashboard filter (vehicle membership)', () => {
+    const STATION_S1 = 'station-s1';
+    const STATION_S2 = 'station-s2';
+    const VEH_S1 = 'veh-s1';
+    const VEH_S2 = 'veh-s2';
+
+    beforeEach(() => {
+      (prisma.station.findFirst as jest.Mock).mockImplementation(async ({ where }: any) =>
+        where.id === STATION_S1 && where.organizationId === ORG
+          ? { id: STATION_S1, name: 'Zentrale' }
+          : where.id === STATION_S2 && where.organizationId === ORG
+            ? { id: STATION_S2, name: 'Other' }
+            : null,
+      );
+      (prisma.vehicle.findMany as jest.Mock).mockImplementation(async ({ where }: any) => {
+        const andClauses = Array.isArray(where.AND) ? where.AND : [where];
+        const orgClause = andClauses.find((clause: any) => clause.organizationId);
+        if (orgClause?.organizationId && orgClause.organizationId !== ORG) return [];
+        const stationOr = andClauses.find((clause: any) => Array.isArray(clause.OR))?.OR ?? [];
+        const stationIds = new Set<string>();
+        for (const clause of stationOr) {
+          if (clause.homeStationId) stationIds.add(clause.homeStationId);
+          if (clause.currentStationId) stationIds.add(clause.currentStationId);
+          if (clause.expectedStationId) stationIds.add(clause.expectedStationId);
+        }
+        if (stationIds.has(STATION_S1)) return [{ id: VEH_S1 }];
+        if (stationIds.has(STATION_S2)) return [{ id: VEH_S2 }];
+        return [];
+      });
+      (stationScopeService.isEntityInCallerScope as jest.Mock).mockImplementation(
+        (_ctx: any, entity: any) => {
+          if (entity.kind === 'station') return entity.id === STATION_S1 || entity.id === STATION_S2;
+          if (entity.kind === 'vehicle') return entity.id === VEH_S1 || entity.id === VEH_S2;
+          return false;
+        },
+      );
+    });
+
+    function findStationVehicleFilter(where: Record<string, unknown>): { OR?: unknown[] } | undefined {
+      const or = where.OR;
+      if (
+        Array.isArray(or) &&
+        or.some(
+          (entry) =>
+            entry &&
+            typeof entry === 'object' &&
+            (entry as { entityType?: string; entityId?: unknown }).entityType ===
+              NotificationEntityType.VEHICLE &&
+            (entry as { entityId?: unknown }).entityId &&
+            typeof (entry as { entityId?: { in?: unknown[] } }).entityId === 'object' &&
+            Array.isArray((entry as { entityId?: { in?: unknown[] } }).entityId?.in),
+        )
+      ) {
+        return where as { OR?: unknown[] };
+      }
+
+      const and = where.AND;
+      if (!Array.isArray(and)) return undefined;
+      for (const clause of and) {
+        if (clause && typeof clause === 'object') {
+          const nested = findStationVehicleFilter(clause as Record<string, unknown>);
+          if (nested) return nested;
+        }
+      }
+      return undefined;
+    }
+
+    it('returns vehicle notifications for vehicles at requested station S1', async () => {
+      row = buildRow({ entityId: VEH_S1, eventType: 'TIRE_CRITICAL' });
+      await service.list(
+        ORG,
+        { id: USER, membershipRole: MembershipRole.ORG_ADMIN },
+        { stationId: STATION_S1, attentionScope: 'FLEET_READINESS' },
+      );
+
+      const whereArg = (repository.listNotificationsWhere as jest.Mock).mock.calls[0][0];
+      const filter = findStationVehicleFilter(whereArg) as { OR?: unknown[] } | undefined;
+      expect(filter?.OR).toEqual(
+        expect.arrayContaining([
+          { entityType: NotificationEntityType.VEHICLE, entityId: { in: [VEH_S1] } },
+        ]),
+      );
+    });
+
+    it('excludes S1 vehicle notifications when stationId=S2', async () => {
+      row = buildRow({ entityId: VEH_S1, eventType: 'TIRE_CRITICAL' });
+      await service.list(
+        ORG,
+        { id: USER, membershipRole: MembershipRole.ORG_ADMIN },
+        { stationId: STATION_S2, attentionScope: 'FLEET_READINESS' },
+      );
+
+      const whereArg = (repository.listNotificationsWhere as jest.Mock).mock.calls[0][0];
+      const filter = findStationVehicleFilter(whereArg) as { OR?: unknown[] } | undefined;
+      expect(filter?.OR).toEqual(
+        expect.arrayContaining([
+          { entityType: NotificationEntityType.VEHICLE, entityId: { in: [VEH_S2] } },
+        ]),
+      );
+      expect(JSON.stringify(filter?.OR ?? [])).not.toContain(VEH_S1);
+    });
+
+    it('applies station vehicle membership to counts endpoint', async () => {
+      await service.getCounts(
+        ORG,
+        { id: USER, membershipRole: MembershipRole.ORG_ADMIN },
+        { stationId: STATION_S1, attentionScope: 'FLEET_READINESS' },
+      );
+
+      const activeWhere = (repository.countNotificationsWhere as jest.Mock).mock.calls[0][0];
+      expect(findStationVehicleFilter(activeWhere)).toBeDefined();
+    });
+  });
 });

@@ -840,7 +840,7 @@ describe('RentalHealthService (unit)', () => {
     expect(reasons.some((r: string) => /TPMS/i.test(r))).toBe(true);
   });
 
-  function mockHealthyVehicleModules() {
+  function mockHealthyVehicleModules(options?: { lastSignal?: Date | null }) {
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'veh-1',
       organizationId: 'org-1',
@@ -851,6 +851,12 @@ describe('RentalHealthService (unit)', () => {
       nextBokraftDate: null,
       lastServiceDate: null,
       lastServiceOdometerKm: null,
+      dimoVehicle:
+        options?.lastSignal === undefined
+          ? { lastSignal: new Date('2026-08-20T11:00:00.000Z') }
+          : options.lastSignal === null
+            ? null
+            : { lastSignal: options.lastSignal },
     });
     prisma.vehicleLatestState.findUnique.mockResolvedValue(null);
     prisma.vehicleComplaint.findMany.mockResolvedValue([]);
@@ -1011,6 +1017,90 @@ describe('RentalHealthService (unit)', () => {
       expect(health.rental_readiness).toBe(
         deriveRentalReadiness(health.availability, health.rental_blocked),
       );
+    });
+  });
+
+  describe('telemetry hard-offline rental blocking (2026-08-21 policy)', () => {
+    const NOW = Date.parse('2026-08-20T12:00:00.000Z');
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(NOW);
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('marks rental_readiness NOT_READY when telemetry is hard-offline (>=48h)', async () => {
+      mockHealthyVehicleModules({
+        lastSignal: new Date(NOW - 49 * 60 * 60 * 1000),
+      });
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'DIMO',
+        connectionStatus: 'connected',
+        supportStatus: 'supported',
+        freshness: 'fresh',
+        overallStatus: 'good',
+        lastObservedAt: null,
+        message: '',
+        rentalHealthReady: true,
+        lights: [],
+      });
+
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+
+      expect(health.rental_readiness).toBe('not_ready');
+      expect(health.rental_blocked).toBe(true);
+      expect(health.blocking_reasons).toContain(
+        'Telemetrie: Kein Signal innerhalb der letzten 48 Stunden',
+      );
+    });
+
+    it('does not block soft-offline telemetry (24–48h)', async () => {
+      mockHealthyVehicleModules({
+        lastSignal: new Date(NOW - 30 * 60 * 60 * 1000),
+      });
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'DIMO',
+        connectionStatus: 'connected',
+        supportStatus: 'supported',
+        freshness: 'fresh',
+        overallStatus: 'good',
+        lastObservedAt: null,
+        message: '',
+        rentalHealthReady: true,
+        lights: [],
+      });
+
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+
+      expect(health.rental_readiness).toBe('ready');
+      expect(health.rental_blocked).toBe(false);
+    });
+
+    it('does not block missing telemetry timestamp (no_signal)', async () => {
+      mockHealthyVehicleModules({ lastSignal: null });
+      dashboardWarningLights.getDashboardWarningLights.mockResolvedValue({
+        vehicleId: 'veh-1',
+        provider: 'NONE',
+        connectionStatus: 'not_connected',
+        supportStatus: 'not_connected',
+        freshness: 'no_data',
+        overallStatus: 'unknown',
+        lastObservedAt: null,
+        message: '',
+        rentalHealthReady: true,
+        lights: [],
+      });
+
+      const health = await svc.getVehicleHealth('org-1', 'veh-1');
+
+      expect(health.rental_readiness).toBe('ready');
+      expect(health.rental_blocked).toBe(false);
     });
   });
 });
