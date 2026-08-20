@@ -1,39 +1,119 @@
 import type {
+  SupportTicket,
   SupportTicketListParams,
   SupportTicketCategory,
   SupportTicketPriority,
+  SupportTicketRelatedEntityType,
   SupportTicketStatus,
 } from '../../../lib/api';
 import {
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_LABEL,
-  SUPPORT_STATUS_LABEL,
-  formatRelativeTime,
-  getLastMessagePreview,
-  getMessageSenderLabel,
   getTicketCode,
+  isKnownSupportCategory,
+  isKnownSupportPriority,
+  isKnownSupportStatus,
   normalizeCategoryKey,
   normalizePriorityKey,
   normalizeStatusKey,
-  relatedEntityLabel,
   supportPriorityTone,
-  supportStatusLabel,
 } from '../../../rental/components/support/support-center.utils';
+import {
+  formatSupportRelativeTime,
+  getLocalizedLastMessagePreview,
+  getLocalizedLastSenderLabel,
+  labelMessageSender,
+  labelRelatedEntity,
+  labelSupportCategory,
+  labelSupportPriority,
+  labelSupportStatus,
+} from '../../../rental/components/support/support-i18n';
+
+/** Master Support Ops still uses German presentation until a dedicated master i18n slice. */
+const MASTER_SUPPORT_LOCALE = 'de';
+
+export function supportStatusLabel(
+  status: SupportTicketStatus,
+  perspective: 'user' | 'admin' = 'user',
+): string {
+  return labelSupportStatus(MASTER_SUPPORT_LOCALE, status, perspective);
+}
+
+export function getMessageSenderLabel(
+  message: { senderRole?: string; senderName?: string },
+  perspective: 'user' | 'admin' = 'user',
+): string {
+  return labelMessageSender(MASTER_SUPPORT_LOCALE, message, perspective);
+}
+
+export function formatRelativeTime(iso: string | null | undefined): string {
+  return formatSupportRelativeTime(MASTER_SUPPORT_LOCALE, iso);
+}
+
+export function getLastMessagePreview(ticket: SupportTicket): string {
+  return getLocalizedLastMessagePreview(MASTER_SUPPORT_LOCALE, ticket);
+}
+
+export function getLastSenderLabel(ticket: SupportTicket): string {
+  return getLocalizedLastSenderLabel(MASTER_SUPPORT_LOCALE, ticket);
+}
+
+export function relatedEntityLabel(
+  type: SupportTicketRelatedEntityType | null | undefined,
+  id?: string | null,
+): string | null {
+  return labelRelatedEntity(MASTER_SUPPORT_LOCALE, type, id);
+}
+
+function buildStatusLabelRecord(): Record<SupportTicketStatus, string> {
+  const statuses: SupportTicketStatus[] = [
+    'OPEN',
+    'IN_PROGRESS',
+    'WAITING_FOR_CUSTOMER',
+    'RESOLVED',
+    'CLOSED',
+  ];
+  return Object.fromEntries(
+    statuses.map((status) => [status, labelSupportStatus(MASTER_SUPPORT_LOCALE, status)]),
+  ) as Record<SupportTicketStatus, string>;
+}
+
+function buildCategoryLabelRecord(): Record<SupportTicketCategory, string> {
+  const categories: SupportTicketCategory[] = [
+    'APP',
+    'VEHICLE',
+    'BOOKING',
+    'BILLING',
+    'DIMO_TELEMETRY',
+    'ACCOUNT',
+    'DOCUMENTS',
+    'DATA_AUTHORIZATION',
+    'HEALTH',
+    'OTHER',
+  ];
+  return Object.fromEntries(
+    categories.map((category) => [category, labelSupportCategory(MASTER_SUPPORT_LOCALE, category)]),
+  ) as Record<SupportTicketCategory, string>;
+}
+
+function buildPriorityLabelRecord(): Record<SupportTicketPriority, string> {
+  const priorities: SupportTicketPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
+  return Object.fromEntries(
+    priorities.map((priority) => [priority, labelSupportPriority(MASTER_SUPPORT_LOCALE, priority)]),
+  ) as Record<SupportTicketPriority, string>;
+}
+
+export const SUPPORT_STATUS_LABEL = buildStatusLabelRecord();
+export const SUPPORT_CATEGORY_LABEL = buildCategoryLabelRecord();
+export const SUPPORT_PRIORITY_LABEL = buildPriorityLabelRecord();
 
 export {
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_LABEL,
-  SUPPORT_STATUS_LABEL,
-  formatRelativeTime,
-  getLastMessagePreview,
-  getMessageSenderLabel,
   getTicketCode,
   normalizeCategoryKey,
   normalizePriorityKey,
   normalizeStatusKey,
-  relatedEntityLabel,
   supportPriorityTone,
-  supportStatusLabel,
+  isKnownSupportCategory,
+  isKnownSupportPriority,
+  isKnownSupportStatus,
 };
 
 export const sop = {

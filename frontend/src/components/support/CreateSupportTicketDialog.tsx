@@ -13,15 +13,16 @@ import {
   type SupportTicketPriority,
   type SupportTicketRelatedEntityType,
 } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { suggestHelpArticles } from './help-center-suggestions';
 import { mergeTicketMetadata, sanitizeSourcePage } from './support-metadata';
 import type { SupportAiTriage, SupportTicketDialogDefaults } from './support.types';
 import {
-  QUICK_ISSUE_CARDS,
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_HINT,
-  SUPPORT_PRIORITY_LABEL,
-} from '../../rental/components/support/support-center.utils';
+  labelSupportCategory,
+  labelSupportPriority,
+  labelSupportPriorityHint,
+  localizedQuickIssueCards,
+} from '../../rental/components/support/support-i18n';
 
 export interface CreateSupportTicketDialogProps {
   open: boolean;
@@ -45,14 +46,6 @@ export interface CreateSupportTicketDialogProps {
 
 const PRIORITIES: SupportTicketPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
 
-const RELATED_TYPES: Array<{ value: SupportTicketRelatedEntityType | ''; label: string }> = [
-  { value: '', label: 'Kein Objekt' },
-  { value: 'VEHICLE', label: 'Fahrzeug' },
-  { value: 'BOOKING', label: 'Buchung' },
-  { value: 'INVOICE', label: 'Rechnung' },
-  { value: 'OTHER', label: 'Sonstiges' },
-];
-
 export function CreateSupportTicketDialog({
   open,
   onOpenChange,
@@ -71,6 +64,7 @@ export function CreateSupportTicketDialog({
   presetRelatedEntityType,
   presetRelatedEntityId,
 }: CreateSupportTicketDialogProps) {
+  const { t, locale } = useLanguage();
   const initCategory = defaultCategory ?? presetCategory ?? aiTriage?.suggestedCategory ?? 'OTHER';
   const initPriority = defaultPriority ?? aiTriage?.suggestedPriority ?? 'NORMAL';
   const initRelatedType = relatedEntityType ?? presetRelatedEntityType ?? '';
@@ -87,6 +81,16 @@ export function CreateSupportTicketDialog({
   const [previews, setPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  const quickIssueCards = localizedQuickIssueCards(locale);
+
+  const relatedTypeOptions: Array<{ value: SupportTicketRelatedEntityType | ''; label: string }> = [
+    { value: '', label: t('support.create.relatedNone') },
+    { value: 'VEHICLE', label: t('support.create.relatedVehicle') },
+    { value: 'BOOKING', label: t('support.create.relatedBooking') },
+    { value: 'INVOICE', label: t('support.create.relatedInvoice') },
+    { value: 'OTHER', label: t('support.create.relatedOther') },
+  ];
 
   useEffect(() => {
     if (!open) return;
@@ -133,10 +137,10 @@ export function CreateSupportTicketDialog({
   };
 
   const validate = (): string | null => {
-    if (!subject.trim()) return 'Bitte einen Betreff eingeben.';
-    if (!description.trim()) return 'Bitte eine Beschreibung eingeben.';
+    if (!subject.trim()) return t('support.validation.subjectRequired');
+    if (!description.trim()) return t('support.validation.descriptionRequired');
     if (relatedType && relatedType !== 'OTHER' && !relatedId.trim()) {
-      return 'Bitte die ID des betroffenen Objekts angeben.';
+      return t('support.validation.relatedIdRequired');
     }
     return null;
   };
@@ -148,7 +152,7 @@ export function CreateSupportTicketDialog({
       return;
     }
     if (!orgId) {
-      toast.error('Organisation nicht verfügbar');
+      toast.error(t('support.toast.orgUnavailable'));
       return;
     }
     setSaving(true);
@@ -187,13 +191,13 @@ export function CreateSupportTicketDialog({
       }
 
       const ticket = await api.support.createByOrg(orgId, payload);
-      toast.success('Ticket wurde erstellt');
+      toast.success(t('support.toast.createSuccess'));
       onCreated(ticket);
       resetForm();
       onOpenChange(false);
     } catch (e) {
-      toast.error('Ticket konnte nicht erstellt werden', {
-        description: e instanceof Error ? e.message : 'Bitte später erneut versuchen.',
+      toast.error(t('support.toast.createFailed'), {
+        description: e instanceof Error ? e.message : t('support.toast.retryLater'),
       });
     } finally {
       setSaving(false);
@@ -213,22 +217,24 @@ export function CreateSupportTicketDialog({
     <FormDialog
       open={open}
       onOpenChange={handleOpenChange}
-      title="Neues Support-Ticket"
-      description="Beschreibe dein Anliegen — unser Team antwortet im Ticket-Thread."
+      title={t('support.create.title')}
+      description={t('support.create.description')}
       maxWidthClassName="sm:max-w-2xl"
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={saving}>
-            Abbrechen
+            {t('support.cancel')}
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={saving}>
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {uploadProgress != null ? `Upload ${uploadProgress}%` : 'Wird erstellt…'}
+                {uploadProgress != null
+                  ? t('support.create.uploadProgress', { percent: uploadProgress })
+                  : t('support.create.submitting')}
               </>
             ) : (
-              'Ticket erstellen'
+              t('support.submitTicket')
             )}
           </Button>
         </>
@@ -239,15 +245,16 @@ export function CreateSupportTicketDialog({
         <div className="flex items-start gap-2 rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5 text-[11px] text-muted-foreground">
           <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--brand)]" />
           <span>
-            Kategorie automatisch vorgeschlagen:{' '}
-            <strong className="text-foreground">{SUPPORT_CATEGORY_LABEL[aiTriage!.suggestedCategory!]}</strong>
+            {t('support.create.aiSuggestedCategory', {
+              category: labelSupportCategory(locale, aiTriage!.suggestedCategory!),
+            })}
           </span>
         </div>
       )}
 
       {helpSuggestions.length > 0 && (
         <div className="rounded-xl border border-border/40 bg-muted/15 px-3.5 py-3">
-          <p className="text-[11px] font-semibold text-foreground">Vielleicht hilft dir einer dieser Artikel</p>
+          <p className="text-[11px] font-semibold text-foreground">{t('support.create.helpArticlesTitle')}</p>
           <ul className="mt-2 space-y-1">
             {helpSuggestions.map((article) => (
               <li key={article.id} className="text-[11px] text-muted-foreground">
@@ -258,14 +265,14 @@ export function CreateSupportTicketDialog({
           {onOpenHelpCenter && (
             <Button type="button" variant="link" size="sm" className="mt-2 h-auto p-0 text-[11px]" onClick={onOpenHelpCenter}>
               <BookOpen className="h-3.5 w-3.5" />
-              Help Center öffnen
+              {t('support.center.openHelpCenter')}
             </Button>
           )}
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {QUICK_ISSUE_CARDS.map((card) => (
+        {quickIssueCards.map((card) => (
           <button
             key={card.id}
             type="button"
@@ -295,34 +302,65 @@ export function CreateSupportTicketDialog({
                 : 'border-border/50 hover:bg-muted/40',
             )}
           >
-            <span className="block text-[12px] font-semibold text-foreground">{SUPPORT_PRIORITY_LABEL[p]}</span>
-            <span className="mt-0.5 block text-[10px] text-muted-foreground">{SUPPORT_PRIORITY_HINT[p]}</span>
+            <span className="block text-[12px] font-semibold text-foreground">{labelSupportPriority(locale, p)}</span>
+            <span className="mt-0.5 block text-[10px] text-muted-foreground">{labelSupportPriorityHint(locale, p)}</span>
           </button>
         ))}
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Betreff *</label>
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} placeholder="Kurze Zusammenfassung" />
+        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t('support.create.subjectLabel')}
+        </label>
+        <input
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className={inputClass}
+          placeholder={t('support.create.subjectPlaceholder')}
+        />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Beschreibung *</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={cn(inputClass, 'resize-none')} placeholder="Was ist passiert?" />
+        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t('support.create.descriptionLabel')}
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={5}
+          className={cn(inputClass, 'resize-none')}
+          placeholder={t('support.create.descriptionPlaceholder')}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Betroffenes Objekt</label>
-          <select value={relatedType} onChange={(e) => setRelatedType(e.target.value as SupportTicketRelatedEntityType | '')} className={inputClass}>
-            {RELATED_TYPES.map((opt) => (
-              <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t('support.create.relatedObjectLabel')}
+          </label>
+          <select
+            value={relatedType}
+            onChange={(e) => setRelatedType(e.target.value as SupportTicketRelatedEntityType | '')}
+            className={inputClass}
+          >
+            {relatedTypeOptions.map((opt) => (
+              <option key={opt.value || 'none'} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Objekt-ID</label>
-          <input value={relatedId} onChange={(e) => setRelatedId(e.target.value)} disabled={!relatedType} className={inputClass} placeholder="ID" />
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t('support.create.objectIdLabel')}
+          </label>
+          <input
+            value={relatedId}
+            onChange={(e) => setRelatedId(e.target.value)}
+            disabled={!relatedType}
+            className={inputClass}
+            placeholder={t('support.create.objectIdPlaceholder')}
+          />
         </div>
       </div>
 
@@ -332,13 +370,21 @@ export function CreateSupportTicketDialog({
           {previews.map((src, i) => (
             <div key={i} className="relative">
               <img src={src} alt="" className="h-16 w-16 rounded-lg border border-border/50 object-cover" />
-              <button type="button" onClick={() => removeFile(i)} className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white">
+              <button
+                type="button"
+                onClick={() => removeFile(i)}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white"
+              >
                 <X className="h-3 w-3" />
               </button>
             </div>
           ))}
           {files.length < 5 && (
-            <button type="button" onClick={() => fileRef.current?.click()} className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground hover:bg-muted/40">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground hover:bg-muted/40"
+            >
               <Paperclip className="h-4 w-4" />
             </button>
           )}
@@ -346,8 +392,10 @@ export function CreateSupportTicketDialog({
       </div>
 
       <div className="rounded-xl border border-border/40 bg-muted/20 px-3.5 py-3 text-[11px] leading-relaxed text-muted-foreground">
-        Technische Kontextdaten werden automatisch angehängt (ohne sensible Tokens), damit der Support schneller helfen kann.
+        {t('support.create.contextNotice')}
       </div>
     </FormDialog>
   );
 }
+
+export type { SupportTicketDialogDefaults };

@@ -3,6 +3,7 @@ import { legalDocumentsEn } from './legal-documents.en';
 import { settingsAdminEn } from './settings-admin.en';
 import { stationsTabEn } from './stations-tab.en';
 import { voiceAssistantEn } from './voice-assistant.en';
+import { supportEn } from './support.en';
 import { whatsappEn } from './whatsapp.en';
 
 export const en = {
@@ -5378,6 +5379,7 @@ export const en = {
   ...stationsTabEn,
   ...voiceAssistantEn,
   ...whatsappEn,
+  ...supportEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

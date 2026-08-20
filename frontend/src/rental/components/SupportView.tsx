@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type SupportTicket, type SupportTicketCategory, type SupportTicketRelatedEntityType } from '../../lib/api';
 import { useSupportPolling } from '../../components/support/useSupportPolling';
 import { CreateSupportTicketDialog } from '../../components/support/CreateSupportTicketDialog';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { Sheet, SheetContent } from '../../components/ui/sheet';
 import { SupportCenterHero } from './support/SupportCenterHero';
@@ -33,6 +34,7 @@ export function SupportView({
   helpCenterAttempted,
   onUnreadCountChange,
 }: SupportViewProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -75,13 +77,13 @@ export function SupportView({
       } catch (e) {
         if (!opts?.silent) {
           setTickets([]);
-          setLoadError(e instanceof Error ? e.message : 'Unbekannter Fehler');
+          setLoadError(e instanceof Error ? e.message : t('support.error.unknown'));
         }
       } finally {
         if (!opts?.silent) setLoading(false);
       }
     },
-    [orgId, onUnreadCountChange],
+    [orgId, onUnreadCountChange, t],
   );
 
   const refreshSelectedTicket = useCallback(async () => {

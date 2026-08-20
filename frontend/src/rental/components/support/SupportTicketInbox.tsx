@@ -5,21 +5,24 @@ import { supportStatusTone } from '../../../components/patterns/status-utils';
 import { EmptyState, ErrorState, SkeletonRows } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { SupportTicket, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from '../../../lib/api';
 import {
+  formatSupportRelativeTime,
+  getLocalizedLastMessagePreview,
+  getLocalizedLastSenderLabel,
+  labelRelatedEntity,
+  labelSupportCategory,
+  labelSupportPriority,
+  labelSupportStatus,
+} from './support-i18n';
+import {
   DEFAULT_TICKET_FILTERS,
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_LABEL,
-  SUPPORT_STATUS_LABEL,
-  formatRelativeTime,
-  getLastMessagePreview,
-  getLastSenderLabel,
   getTicketCode,
   isWaitingOnUser,
   normalizeCategoryKey,
   normalizePriorityKey,
   normalizeStatusKey,
-  relatedEntityLabel,
   sp,
   supportPriorityTone,
   type SupportTicketFilters,
@@ -75,6 +78,8 @@ export function SupportTicketInbox({
   onRetry,
   hasAnyTickets,
 }: SupportTicketInboxProps) {
+  const { t, locale } = useLanguage();
+
   const set = <K extends keyof SupportTicketFilters>(key: K, value: SupportTicketFilters[K]) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -92,8 +97,10 @@ export function SupportTicketInbox({
       <div className="border-b border-border/40 p-3 sm:p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-[13px] font-semibold text-foreground">Deine Tickets</p>
-            <p className="text-[11px] text-muted-foreground">{tickets.length} Einträge</p>
+            <p className="text-[13px] font-semibold text-foreground">{t('support.center.yourTickets')}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t('support.center.entryCount', { count: tickets.length })}
+            </p>
           </div>
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden />
         </div>
@@ -104,48 +111,48 @@ export function SupportTicketInbox({
             type="search"
             value={filters.search}
             onChange={(e) => set('search', e.target.value)}
-            placeholder="Ticket suchen…"
-            aria-label="Eigene Support-Tickets durchsuchen"
+            placeholder={t('support.center.searchTicketsPlaceholder')}
+            aria-label={t('support.center.searchTicketsAria')}
             className="w-full rounded-xl border border-border/60 bg-background/80 py-2.5 pl-10 pr-3 text-xs outline-none transition-colors focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--brand)_15%,transparent)]"
           />
         </div>
 
         <div className="flex flex-wrap gap-1.5">
           <FilterSelect
-            label="Status"
+            label={t('support.filter.statusLabel')}
             value={filters.status}
             onChange={(v) => set('status', v as SupportTicketStatus | 'all')}
             options={STATUS_OPTIONS.map((v) => ({
               value: v,
-              label: v === 'all' ? 'Alle Status' : SUPPORT_STATUS_LABEL[v],
+              label: v === 'all' ? t('support.filter.allStatuses') : labelSupportStatus(locale, v),
             }))}
           />
           <FilterSelect
-            label="Kategorie"
+            label={t('support.filter.categoryLabel')}
             value={filters.category}
             onChange={(v) => set('category', v as SupportTicketCategory | 'all')}
             options={CATEGORY_OPTIONS.map((v) => ({
               value: v,
-              label: v === 'all' ? 'Alle Kategorien' : SUPPORT_CATEGORY_LABEL[v],
+              label: v === 'all' ? t('support.allCategories') : labelSupportCategory(locale, v),
             }))}
           />
           <FilterSelect
-            label="Priorität"
+            label={t('support.filter.priorityLabel')}
             value={filters.priority}
             onChange={(v) => set('priority', v as SupportTicketPriority | 'all')}
             options={PRIORITY_OPTIONS.map((v) => ({
               value: v,
-              label: v === 'all' ? 'Alle Prioritäten' : SUPPORT_PRIORITY_LABEL[v],
+              label: v === 'all' ? t('support.filter.allPriorities') : labelSupportPriority(locale, v),
             }))}
           />
         </div>
 
         <div className="flex flex-wrap gap-1.5">
           <ToggleChip active={filters.openOnly} onClick={() => set('openOnly', !filters.openOnly)}>
-            Nur offene
+            {t('support.filter.openOnly')}
           </ToggleChip>
           <ToggleChip active={filters.waitingOnMe} onClick={() => set('waitingOnMe', !filters.waitingOnMe)}>
-            Wartet auf mich
+            {t('support.filter.waitingOnMe')}
           </ToggleChip>
           {hasActiveFilters && (
             <button
@@ -153,7 +160,7 @@ export function SupportTicketInbox({
               onClick={() => onFiltersChange(DEFAULT_TICKET_FILTERS)}
               className="rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              Filter zurücksetzen
+              {t('support.filter.reset')}
             </button>
           )}
         </div>
@@ -167,31 +174,31 @@ export function SupportTicketInbox({
         ) : error ? (
           <ErrorState
             compact
-            title="Tickets konnten nicht geladen werden"
+            title={t('support.error.ticketsLoadFailed')}
             description={error}
             onRetry={onRetry}
-            retryLabel="Erneut versuchen"
+            retryLabel={t('common.retry')}
           />
         ) : tickets.length === 0 ? (
           hasAnyTickets ? (
             <EmptyState
               compact
-              title="Keine Tickets gefunden"
-              description="Passe die Filter an oder setze sie zurück."
+              title={t('support.empty.noResultsTitle')}
+              description={t('support.empty.noResultsDescription')}
               action={
                 <Button type="button" variant="outline" size="sm" onClick={() => onFiltersChange(DEFAULT_TICKET_FILTERS)}>
-                  Filter zurücksetzen
+                  {t('support.filter.reset')}
                 </Button>
               }
             />
           ) : (
             <EmptyState
               compact
-              title="Noch keine Support Tickets"
-              description="Erstelle dein erstes Ticket — wir melden uns im Thread bei dir."
+              title={t('support.empty.noTicketsYetTitle')}
+              description={t('support.empty.noTicketsYetDescription')}
               action={
                 <Button type="button" size="sm" onClick={onCreateTicket}>
-                  Erstes Ticket erstellen
+                  {t('support.empty.createFirstTicket')}
                 </Button>
               }
             />
@@ -268,11 +275,12 @@ function TicketRow({
   active: boolean;
   onSelect: () => void;
 }) {
+  const { t, locale } = useLanguage();
   const status = normalizeStatusKey(ticket);
   const priority = normalizePriorityKey(ticket);
   const category = normalizeCategoryKey(ticket);
   const waiting = isWaitingOnUser(ticket);
-  const related = relatedEntityLabel(ticket.relatedEntityType ?? null, ticket.relatedEntityId);
+  const related = labelRelatedEntity(locale, ticket.relatedEntityType ?? null, ticket.relatedEntityId);
 
   return (
     <button
@@ -288,30 +296,30 @@ function TicketRow({
           <span className="truncate text-[13px] font-semibold text-foreground">{ticket.subject}</span>
           {waiting && (
             <StatusChip tone="watch" className="text-[10px]">
-              {ticket.unreadForUser ? 'Neue Antwort' : 'Wartet auf dich'}
+              {ticket.unreadForUser ? t('support.badge.newReply') : t('support.badge.waitingOnYou')}
             </StatusChip>
           )}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <StatusChip tone={supportStatusTone(status)} dot className="text-[10px]">
-            {SUPPORT_STATUS_LABEL[status]}
+            {labelSupportStatus(locale, status)}
           </StatusChip>
           <StatusChip tone="neutral" className="text-[10px]">
-            {SUPPORT_CATEGORY_LABEL[category]}
+            {labelSupportCategory(locale, category)}
           </StatusChip>
           <StatusChip tone={supportPriorityTone(priority)} className="text-[10px]">
-            {SUPPORT_PRIORITY_LABEL[priority]}
+            {labelSupportPriority(locale, priority)}
           </StatusChip>
         </div>
         <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-          {getLastMessagePreview(ticket)}
+          {getLocalizedLastMessagePreview(locale, ticket)}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
           <span>{getTicketCode(ticket)}</span>
           <span>·</span>
-          <span>{formatRelativeTime(ticket.lastMessageAt || ticket.lastActivityAt || ticket.createdAt)}</span>
+          <span>{formatSupportRelativeTime(locale, ticket.lastMessageAt || ticket.lastActivityAt || ticket.createdAt)}</span>
           <span>·</span>
-          <span>{getLastSenderLabel(ticket)}</span>
+          <span>{getLocalizedLastSenderLabel(locale, ticket)}</span>
           {related && (
             <>
               <span>·</span>
