@@ -61,6 +61,10 @@ export function shouldUseV2NotificationSource(orgId?: string | null): boolean {
   return isNotificationsV2Active(orgId);
 }
 
+export function shouldUseDashboardAttentionSplit(orgId?: string | null): boolean {
+  return shouldUseV2NotificationSource(orgId);
+}
+
 export function shouldFetchV2NotificationsInBackground(orgId?: string | null): boolean {
   const mode = getNotificationsV2Mode();
   if (mode !== 'on' && mode !== 'shadow') return false;

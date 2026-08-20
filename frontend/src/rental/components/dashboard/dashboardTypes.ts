@@ -13,6 +13,7 @@ import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { StatusTone } from '../../../components/patterns';
 import type { DashboardDrilldownTarget, TodaysOperationsDrilldownGroupId } from './dashboardDrilldownTypes';
 import type { DataTrustLayer, DashboardTrustHint } from './dataTrustBuilder';
+import type { DashboardAttentionModel } from './dashboardAttentionTypes';
 import type {
   BusinessMetricId,
   BusinessPulseSlice,
@@ -780,6 +781,8 @@ export interface DashboardViewModel {
   dataTrust: DataTrustLayer;
   vehicleTelemetryFreshness: import('./controlSignalsBuilder').VehicleTelemetryFreshness;
   fleetReadiness: FleetReadinessSummary;
+  /** V2 dashboard attention split — Operations + Fleet Readiness panels. */
+  dashboardAttention: DashboardAttentionModel | null;
 }
 
 export type { VehicleTelemetryFreshness } from './controlSignalsBuilder';

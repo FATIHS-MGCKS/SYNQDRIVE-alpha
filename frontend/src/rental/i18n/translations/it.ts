@@ -69,4 +69,16 @@ export const it: Record<TranslationKey, string> = {
   'notification.issue.vehicleDamageBlocking': 'Danno blocca disponibilità',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive non puo valutare in modo affidabile la disponibilita di {label} al momento. Controllare i dati veicolo disponibili.',
+  'dashboardAttention.stackLabel': 'Attenzione dashboard',
+  'dashboardAttention.operations.title': 'Operazioni',
+  'dashboardAttention.operations.subtitle': 'Consegne, prenotazioni, fatturazione e compiti di stazione',
+  'dashboardAttention.fleetReadiness.title': 'Disponibilita flotta',
+  'dashboardAttention.fleetReadiness.subtitle': 'Veicoli non pronti o non valutabili nel perimetro',
+  'dashboardAttention.fleetSummary.unavailable': 'Riepilogo disponibilita flotta non disponibile.',
+  'dashboardAttention.fleetSummary.ready': '{ready} su {total} pronti',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% pronti',
+  'dashboardAttention.fleetSummary.notReady': '{count} non pronti',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} non valutabili',
+  'dashboardAttention.fleetSummary.unknown': '{count} sconosciuti',
+  'dashboardAttention.loadMore': 'Carica altri ({count} mostrati)',
 };

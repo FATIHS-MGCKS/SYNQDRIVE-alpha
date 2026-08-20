@@ -1,5 +1,7 @@
 /** Mirrors backend Notification API DTO (V4.9.356+). */
 
+export type ApiNotificationAttentionScope = 'OPERATIONS' | 'FLEET_READINESS';
+
 export type ApiNotificationSeverity = 'CRITICAL' | 'WARNING' | 'INFO' | 'SUCCESS';
 export type ApiNotificationStatus = 'OPEN' | 'ACKNOWLEDGED' | 'SNOOZED' | 'RESOLVED' | 'ARCHIVED';
 export type ApiNotificationDomain =
@@ -125,4 +127,21 @@ export interface ApiNotificationListParams {
   to?: string;
   sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
   sortOrder?: 'asc' | 'desc';
+  attentionScope?: ApiNotificationAttentionScope;
+  stationId?: string;
+}
+
+export interface ApiFleetReadinessSummaryResponse {
+  total: number;
+  ready: number;
+  notReady: number;
+  unevaluable: number;
+  unknown: number;
+  readyPercent: number | null;
+}
+
+export interface ApiFleetReadinessSummaryParams {
+  stationId?: string;
+  search?: string;
+  vehicleStatus?: string;
 }

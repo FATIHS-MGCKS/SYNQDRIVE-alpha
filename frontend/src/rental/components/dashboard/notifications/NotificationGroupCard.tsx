@@ -7,6 +7,7 @@ import { buildNotificationDetailViewModel } from './notification-task-bridge';
 import { buildNotificationSummaryFromGroup } from './notification-summary-view-model';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { ResolveNotificationItemLifecycleHandlers } from './notification-item-lifecycle';
 
 function groupSeveritySurface(severity: ActionQueueGroupItem['severity']): string {
   if (severity === 'critical' || severity === 'overdue') {
@@ -26,6 +27,7 @@ export interface NotificationGroupCardProps {
   t: ReturnType<typeof useLanguage>['t'];
   onItemCta: (item: ActionQueueItem) => void;
   onCreateTask?: (item: ActionQueueItem) => void;
+  resolveItemLifecycleHandlers?: ResolveNotificationItemLifecycleHandlers;
 }
 
 export const NotificationGroupCard = memo(function NotificationGroupCard({
@@ -36,6 +38,7 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
   t,
   onItemCta,
   onCreateTask,
+  resolveItemLifecycleHandlers,
 }: NotificationGroupCardProps) {
   const [expanded, setExpanded] = useState(false);
   const contentId = `notification-group-${group.id}`;
@@ -76,14 +79,20 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
           {group.children.map((child) => {
             const item = itemsById.get(child.itemId);
             if (!item) return null;
-            const detail = buildNotificationDetailViewModel(item, locale);
+            const detail = buildNotificationDetailViewModel(item, locale, referenceNowMs);
+            const lifecycle = resolveItemLifecycleHandlers?.(child.itemId) ?? {};
             return (
               <li key={child.id} className="list-none">
                 <NotificationChildRow
                   detail={detail}
                   t={t}
+                  readStatus={item.queue?.readStatus}
+                  availableActions={item.availableActions}
                   onPrimaryCta={() => onItemCta(item)}
                   onCreateTask={onCreateTask ? () => onCreateTask(item) : undefined}
+                  onMarkRead={lifecycle.onMarkRead}
+                  onAcknowledge={lifecycle.onAcknowledge}
+                  onSnooze={lifecycle.onSnooze}
                 />
               </li>
             );

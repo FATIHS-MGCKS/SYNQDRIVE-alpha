@@ -4708,6 +4708,19 @@ export const api = {
       fetchFleetRentalHealthPage(orgId, filters),
     getFleetScoped: (orgId: string, filters?: FleetRentalHealthQuery) =>
       fetchAllFleetRentalHealth(orgId, filters),
+    getFleetSummary: (
+      orgId: string,
+      params?: import('../rental/lib/notifications/notification-api.types').ApiFleetReadinessSummaryParams,
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.stationId) q.set('stationId', params.stationId);
+      if (params?.search) q.set('search', params.search);
+      if (params?.vehicleStatus) q.set('vehicleStatus', params.vehicleStatus);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<import('../rental/lib/notifications/notification-api.types').ApiFleetReadinessSummaryResponse>(
+        `/organizations/${orgId}/rental-health/fleet/summary${suffix}`,
+      );
+    },
     /** @deprecated Prefer `getFleetScoped` — avoids huge `vehicleIds` query strings. */
     getFleet: (orgId: string, vehicleIds?: string[]) => {
       const suffix =
@@ -4761,6 +4774,8 @@ export const api = {
         to?: string;
         sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
         sortOrder?: 'asc' | 'desc';
+        attentionScope?: import('../rental/lib/notifications/notification-api.types').ApiNotificationAttentionScope;
+        stationId?: string;
       },
     ) => {
       const q = new URLSearchParams();
@@ -4773,6 +4788,8 @@ export const api = {
       if (params?.to) q.set('to', params.to);
       if (params?.sortBy) q.set('sortBy', params.sortBy);
       if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
+      if (params?.attentionScope) q.set('attentionScope', params.attentionScope);
+      if (params?.stationId) q.set('stationId', params.stationId);
       const suffix = q.toString() ? `?${q.toString()}` : '';
       return get<import('../rental/lib/notifications/notification-api.types').ApiNotificationListResponse>(
         `/organizations/${orgId}/notifications${suffix}`,

@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-attention-split-p31-2026-08-20',
+    version: '4.9.926',
+    title: 'Dashboard Attention Split UI (P3.1)',
+    summary: [
+      'Standard dashboard: Operations + Fleet Readiness panels via `DashboardAttentionStack` when V2 cutover active.',
+      '`useDashboardViewModel`: scoped `useNotifications` (OPERATIONS / FLEET_READINESS) + `useFleetReadinessSummary`; no supplemental merge in split path.',
+      'Fleet panel header uses canonical `GET /rental-health/fleet/summary` only; list uses fleet-readiness presentation projection.',
+      'Grouped Fleet Readiness children expose per-notification lifecycle actions (mark read, acknowledge, snooze) via `AttentionScopedList` → `NotificationGroupCard` + canonical `itemId`; header-only aggregates render as actionable child rows when causes coexist.',
+      'Shadow mode unchanged (single hook, `dashboardAttention` null); focus mode keeps operations-only `ActionQueue`.',
+    ],
+    reason:
+      'P2.5 backend gate enabled attentionScope partition — P3.1 wires the rental dashboard UI to scoped feeds without domain-based client rerouting.',
+    previousBehavior:
+      'Single `NotificationPanel` / merged V2 queue with supplemental derived + vehicle-health items.',
+    details:
+      'attention/{AttentionScopedList,OperationsAttentionPanel,FleetReadinessAttentionPanel,DashboardAttentionStack}.tsx, useDashboardViewModel.ts, DashboardView.tsx, dashboardAttentionTypes.ts, i18n dashboardAttention.*.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-20T01:10:00.000Z',
+  },
+  {
     id: 'fleet-readiness-dashboard-cutover-p25-2026-08-19',
     version: '4.9.925',
     title: 'Fleet Readiness Dashboard Cutover Backend Gate (P2.5)',

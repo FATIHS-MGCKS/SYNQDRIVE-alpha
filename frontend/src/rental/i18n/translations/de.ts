@@ -1072,6 +1072,20 @@ export const de: Record<TranslationKey, string> = {
   'dashboard.newToday': '{count} neu heute',
   'dashboard.unread': '{count} ungelesen',
 
+  // ─── Dashboard attention split (P3.1) ───
+  'dashboardAttention.stackLabel': 'Dashboard-Aufmerksamkeit',
+  'dashboardAttention.operations.title': 'Betrieb',
+  'dashboardAttention.operations.subtitle': 'Übergaben, Buchungen, Abrechnung und Stationsaufgaben',
+  'dashboardAttention.fleetReadiness.title': 'Flotten-Einsatzbereitschaft',
+  'dashboardAttention.fleetReadiness.subtitle': 'Fahrzeuge nicht bereit oder nicht auswertbar im Scope',
+  'dashboardAttention.fleetSummary.unavailable': 'Flotten-Einsatzbereitschaft nicht verfügbar.',
+  'dashboardAttention.fleetSummary.ready': '{ready} von {total} bereit',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% bereit',
+  'dashboardAttention.fleetSummary.notReady': '{count} nicht bereit',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} nicht auswertbar',
+  'dashboardAttention.fleetSummary.unknown': '{count} unbekannt',
+  'dashboardAttention.loadMore': 'Mehr laden ({count} angezeigt)',
+
   // ─── Dashboard notification queue (ActionQueue) ───
   'notification.panelTitle': 'Meldungen',
   'notification.entityUnavailable': 'Der verknüpfte Datensatz ist nicht mehr verfügbar. Details bleiben hier sichtbar.',

@@ -70,4 +70,16 @@ export const nl: Record<TranslationKey, string> = {
   'notification.issue.vehicleDamageBlocking': 'Schade blokkeert inzetbaarheid',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive kan de inzetbaarheid van {label} momenteel niet betrouwbaar beoordelen. Controleer de beschikbare voertuiggegevens.',
+  'dashboardAttention.stackLabel': 'Dashboard-aandacht',
+  'dashboardAttention.operations.title': 'Operaties',
+  'dashboardAttention.operations.subtitle': 'Overdrachten, boekingen, facturatie en stationstaken',
+  'dashboardAttention.fleetReadiness.title': 'Vloot inzetbaarheid',
+  'dashboardAttention.fleetReadiness.subtitle': 'Voertuigen niet klaar of niet beoordeelbaar in scope',
+  'dashboardAttention.fleetSummary.unavailable': 'Vloot-inzetbaarheidssamenvatting niet beschikbaar.',
+  'dashboardAttention.fleetSummary.ready': '{ready} van {total} klaar',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% klaar',
+  'dashboardAttention.fleetSummary.notReady': '{count} niet klaar',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} niet beoordeelbaar',
+  'dashboardAttention.fleetSummary.unknown': '{count} onbekend',
+  'dashboardAttention.loadMore': 'Meer laden ({count} getoond)',
 };

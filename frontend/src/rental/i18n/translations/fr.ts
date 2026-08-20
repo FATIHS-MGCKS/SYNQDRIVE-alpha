@@ -810,4 +810,16 @@ export const fr: Record<TranslationKey, string> = {
   'notification.issue.vehicleDamageBlocking': 'Dommage bloque la disponibilité',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive ne peut pas evaluer de facon fiable la disponibilite de {label} pour le moment. Verifiez les donnees vehicule disponibles.',
+  'dashboardAttention.stackLabel': 'Attention du tableau de bord',
+  'dashboardAttention.operations.title': 'Operations',
+  'dashboardAttention.operations.subtitle': 'Remises, reservations, facturation et taches de station',
+  'dashboardAttention.fleetReadiness.title': 'Disponibilite flotte',
+  'dashboardAttention.fleetReadiness.subtitle': 'Vehicules non prets ou non evaluables dans le perimetre',
+  'dashboardAttention.fleetSummary.unavailable': 'Resume de disponibilite flotte indisponible.',
+  'dashboardAttention.fleetSummary.ready': '{ready} sur {total} prets',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% prets',
+  'dashboardAttention.fleetSummary.notReady': '{count} non prets',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} non evaluables',
+  'dashboardAttention.fleetSummary.unknown': '{count} inconnus',
+  'dashboardAttention.loadMore': 'Charger plus ({count} affiches)',
 };

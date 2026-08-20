@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionQueueFilterTab, ActionQueueItem } from '../components/dashboard/dashboardTypes';
 import { notificationClient, NotificationClientError } from '../lib/notifications/notification-client';
-import type { ApiNotificationListParams, ApiNotificationResponse } from '../lib/notifications/notification-api.types';
+import type {
+  ApiNotificationAttentionScope,
+  ApiNotificationListParams,
+  ApiNotificationResponse,
+} from '../lib/notifications/notification-api.types';
 import { mapNotificationApiList } from '../lib/notifications/map-notification-api-to-view-model';
-import { emptyTabCounts, emptyPrimaryTabCounts, mapApiCountsToPrimaryTabCounts, mapApiCountsToTabCounts } from '../lib/notifications/map-api-counts-to-tab-counts';
+import {
+  emptyTabCounts,
+  emptyPrimaryTabCounts,
+  mapApiCountsToPrimaryTabCounts,
+  mapApiCountsToTabCounts,
+} from '../lib/notifications/map-api-counts-to-tab-counts';
 import type { NotificationPrimaryTab } from '../components/dashboard/notifications/notificationPanelTypes';
 import { resolvedRecentFromIso } from '../lib/notifications/notification-resolved-window';
 
@@ -15,6 +24,10 @@ export interface UseNotificationsOptions {
   orgId: string | null | undefined;
   locale: string;
   enabled?: boolean;
+  attentionScope?: ApiNotificationAttentionScope;
+  stationId?: string | null;
+  /** Global counts endpoint — disabled automatically when attentionScope is set. */
+  fetchCounts?: boolean;
 }
 
 export interface NotificationMutationState {
@@ -35,6 +48,7 @@ export interface UseNotificationsResult {
   mutation: NotificationMutationState;
   page: number;
   totalPages: number;
+  total: number;
   hasMore: boolean;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -75,7 +89,12 @@ export function useNotifications({
   orgId,
   locale,
   enabled = true,
+  attentionScope,
+  stationId,
+  fetchCounts: fetchCountsOption,
 }: UseNotificationsOptions): UseNotificationsResult {
+  const shouldFetchCounts = fetchCountsOption ?? !attentionScope;
+
   const [apiRows, setApiRows] = useState<ApiNotificationResponse[]>([]);
   const [tabCounts, setTabCounts] = useState<Record<ActionQueueFilterTab, number>>(emptyTabCounts);
   const [primaryTabCounts, setPrimaryTabCounts] = useState(emptyPrimaryTabCounts);
@@ -89,6 +108,7 @@ export function useNotifications({
   });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const cancelRef = useRef(false);
   const rowsSnapshotRef = useRef<ApiNotificationResponse[]>([]);
 
@@ -99,12 +119,14 @@ export function useNotifications({
 
   const listParams = useMemo<ApiNotificationListParams>(
     () => {
-      const base = {
+      const base: ApiNotificationListParams = {
         page: 1,
         limit: DEFAULT_PAGE_SIZE,
-        sortBy: 'lastSeenAt' as const,
-        sortOrder: 'desc' as const,
+        sortBy: 'lastSeenAt',
+        sortOrder: 'desc',
       };
+      if (attentionScope) base.attentionScope = attentionScope;
+      if (stationId) base.stationId = stationId;
       if (listMode === 'resolved') {
         return {
           ...base,
@@ -117,15 +139,15 @@ export function useNotifications({
         activeOnly: true,
       };
     },
-    [listMode],
+    [listMode, attentionScope, stationId],
   );
 
   const fetchCounts = useCallback(async () => {
-    if (!orgId || !enabled) return;
+    if (!orgId || !enabled || !shouldFetchCounts) return;
     const counts = await notificationClient.counts(orgId);
     setTabCounts(mapApiCountsToTabCounts(counts));
     setPrimaryTabCounts(mapApiCountsToPrimaryTabCounts(counts));
-  }, [orgId, enabled]);
+  }, [orgId, enabled, shouldFetchCounts]);
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -133,6 +155,7 @@ export function useNotifications({
         setApiRows([]);
         setTabCounts(emptyTabCounts());
         setPrimaryTabCounts(emptyPrimaryTabCounts());
+        setTotal(0);
         setError(null);
         return;
       }
@@ -144,7 +167,7 @@ export function useNotifications({
       try {
         const [listRes] = await Promise.all([
           notificationClient.list(orgId, { ...listParams, page: targetPage }),
-          targetPage === 1 ? fetchCounts() : Promise.resolve(),
+          targetPage === 1 && shouldFetchCounts ? fetchCounts() : Promise.resolve(),
         ]);
 
         if (cancelRef.current) return;
@@ -152,6 +175,7 @@ export function useNotifications({
         setApiRows((prev) => mergePages(prev, listRes.data, append));
         setPage(listRes.meta.page);
         setTotalPages(listRes.meta.totalPages);
+        setTotal(listRes.meta.total);
       } catch (err) {
         if (cancelRef.current) return;
         const clientErr =
@@ -162,13 +186,14 @@ export function useNotifications({
         if (!append) {
           setApiRows([]);
           setTabCounts(emptyTabCounts());
-        setPrimaryTabCounts(emptyPrimaryTabCounts());
+          setPrimaryTabCounts(emptyPrimaryTabCounts());
+          setTotal(0);
         }
       } finally {
         if (!cancelRef.current) setLoading(false);
       }
     },
-    [orgId, enabled, listParams, fetchCounts],
+    [orgId, enabled, listParams, fetchCounts, shouldFetchCounts],
   );
 
   const refresh = useCallback(async () => {
@@ -203,7 +228,7 @@ export function useNotifications({
       try {
         const updated = await request();
         setApiRows((prev) => patchRow(prev, id, updated));
-        await fetchCounts();
+        if (shouldFetchCounts) await fetchCounts();
       } catch (err) {
         setApiRows(rowsSnapshotRef.current);
         const clientErr =
@@ -216,7 +241,7 @@ export function useNotifications({
         setMutation({ id: null, action: null, error: null });
       }
     },
-    [apiRows, fetchCounts],
+    [apiRows, fetchCounts, shouldFetchCounts],
   );
 
   const markRead = useCallback(
@@ -371,6 +396,7 @@ export function useNotifications({
     mutation,
     page,
     totalPages,
+    total,
     hasMore: page < totalPages,
     refresh,
     loadMore,

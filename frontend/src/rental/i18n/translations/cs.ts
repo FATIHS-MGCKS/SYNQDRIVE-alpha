@@ -69,4 +69,16 @@ export const cs: Record<TranslationKey, string> = {
   'notification.issue.vehicleDamageBlocking': 'Poškození blokuje připravenost',
   'notification.body.vehicleReadinessUnevaluable':
     'SynqDrive nemuze v tuto chvili spolehlive vyhodnotit pripravenost vozidla {label}. Zkontrolujte dostupna data vozidla.',
+  'dashboardAttention.stackLabel': 'Pozornost panelu',
+  'dashboardAttention.operations.title': 'Provoz',
+  'dashboardAttention.operations.subtitle': 'Predani, rezervace, fakturace a ukoly stanice',
+  'dashboardAttention.fleetReadiness.title': 'Pripravenost flotily',
+  'dashboardAttention.fleetReadiness.subtitle': 'Vozidla nepripravena nebo nevyhodnotitelna v rozsahu',
+  'dashboardAttention.fleetSummary.unavailable': 'Souhrn pripravenosti flotily neni k dispozici.',
+  'dashboardAttention.fleetSummary.ready': '{ready} z {total} pripraveno',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% pripraveno',
+  'dashboardAttention.fleetSummary.notReady': '{count} nepripraveno',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} nevyhodnotitelnych',
+  'dashboardAttention.fleetSummary.unknown': '{count} neznamych',
+  'dashboardAttention.loadMore': 'Nacist vice ({count} zobrazeno)',
 };
