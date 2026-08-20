@@ -3,7 +3,9 @@ import {
   chromeSectionNavClass,
   chromeSectionNavItemClass,
 } from '../../../components/patterns/chrome-tab-bar';
-import { NAV_ITEMS, type WhatsAppTab } from './whatsapp.ops';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { localizedNavItems } from './whatsapp-i18n';
+import type { WhatsAppTab } from './whatsapp.ops';
 
 interface WhatsAppSectionNavProps {
   activeTab: WhatsAppTab;
@@ -12,10 +14,13 @@ interface WhatsAppSectionNavProps {
 }
 
 export function WhatsAppSectionNav({ activeTab, unreadTotal, onChange }: WhatsAppSectionNavProps) {
+  const { t, locale } = useLanguage();
+  const navItems = localizedNavItems(locale);
+
   return (
-    <nav className={chromeSectionNavClass()} aria-label="WhatsApp sections">
+    <nav className={chromeSectionNavClass()} aria-label={t('whatsapp.nav.ariaLabel')}>
       <div className="flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = activeTab === item.key;
           return (
             <button

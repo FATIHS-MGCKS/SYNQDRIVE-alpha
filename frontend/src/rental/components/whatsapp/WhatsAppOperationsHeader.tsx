@@ -1,9 +1,10 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WhatsAppConfig, WhatsAppStats } from '../../../lib/api';
+import { labelConnectionStatus } from './whatsapp-i18n';
 import {
-  connectionStatusLabel,
   connectionStatusTone,
   resolveConnectionStatus,
 } from './whatsapp.ops';
@@ -25,6 +26,7 @@ export function WhatsAppOperationsHeader({
   onOpenTemplates,
   onRefresh,
 }: WhatsAppOperationsHeaderProps) {
+  const { t, locale } = useLanguage();
   const status = resolveConnectionStatus(config);
   const tone = connectionStatusTone(status);
 
@@ -33,21 +35,22 @@ export function WhatsAppOperationsHeader({
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
-            WhatsApp Operations Center
+            {t('whatsapp.header.title')}
           </h1>
           <StatusChip tone={tone}>
-            {connectionStatusLabel(status)}
+            {labelConnectionStatus(locale, status)}
           </StatusChip>
         </div>
         <p className="max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-          Kundenkommunikation, Buchungsstatus, Übergabe/Rückgabe, Dokumente und AI-Assistenz in einem Kanal.
-          SynqDrive steuert Versand und Freigabe — externe Agents liefern nur Kontext.
+          {t('whatsapp.header.subtitle')}
         </p>
         {config?.phoneNumber && (
           <p className="text-[11px] text-muted-foreground">
             {config.businessName ? `${config.businessName} · ` : ''}
             {config.phoneNumber}
-            {stats?.unreadTotal ? ` · ${stats.unreadTotal} unread` : ''}
+            {stats?.unreadTotal
+              ? ` · ${t('whatsapp.header.unreadCount', { count: stats.unreadTotal })}`
+              : ''}
           </p>
         )}
       </div>
@@ -59,7 +62,7 @@ export function WhatsAppOperationsHeader({
           className="sq-press inline-flex items-center gap-1.5 rounded-xl border border-border/60 surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted"
         >
           <Icon name="file-text" className="h-3.5 w-3.5" />
-          Templates
+          {t('whatsapp.header.templates')}
         </button>
         <button
           type="button"
@@ -67,13 +70,13 @@ export function WhatsAppOperationsHeader({
           className="sq-press inline-flex items-center gap-1.5 rounded-xl bg-[color:var(--brand)] px-3.5 py-2 text-[11px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-95"
         >
           <Icon name={config?.isConnected ? 'refresh-cw' : 'link'} className="h-3.5 w-3.5" />
-          {config?.isConnected ? 'Configure' : 'Connect'}
+          {config?.isConnected ? t('whatsapp.header.configure') : t('whatsapp.header.connect')}
         </button>
         <button
           type="button"
           onClick={onRefresh}
           disabled={isBusy}
-          aria-label="Refresh"
+          aria-label={t('whatsapp.header.refreshAria')}
           className={cn(
             'sq-press flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 surface-premium text-muted-foreground transition-all hover:bg-muted hover:text-foreground',
             isBusy && 'opacity-60',
