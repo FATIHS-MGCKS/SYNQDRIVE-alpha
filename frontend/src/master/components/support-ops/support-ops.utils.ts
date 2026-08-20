@@ -1,11 +1,10 @@
 import type {
-  SupportTicket,
   SupportTicketListParams,
   SupportTicketCategory,
   SupportTicketPriority,
-  SupportTicketRelatedEntityType,
   SupportTicketStatus,
 } from '../../../lib/api';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   getTicketCode,
   isKnownSupportCategory,
@@ -16,94 +15,6 @@ import {
   normalizeStatusKey,
   supportPriorityTone,
 } from '../../../rental/components/support/support-center.utils';
-import {
-  formatSupportRelativeTime,
-  getLocalizedLastMessagePreview,
-  getLocalizedLastSenderLabel,
-  labelMessageSender,
-  labelRelatedEntity,
-  labelSupportCategory,
-  labelSupportPriority,
-  labelSupportStatus,
-} from '../../../rental/components/support/support-i18n';
-
-/** Master Support Ops still uses German presentation until a dedicated master i18n slice. */
-const MASTER_SUPPORT_LOCALE = 'de';
-
-export function supportStatusLabel(
-  status: SupportTicketStatus,
-  perspective: 'user' | 'admin' = 'user',
-): string {
-  return labelSupportStatus(MASTER_SUPPORT_LOCALE, status, perspective);
-}
-
-export function getMessageSenderLabel(
-  message: { senderRole?: string; senderName?: string },
-  perspective: 'user' | 'admin' = 'user',
-): string {
-  return labelMessageSender(MASTER_SUPPORT_LOCALE, message, perspective);
-}
-
-export function formatRelativeTime(iso: string | null | undefined): string {
-  return formatSupportRelativeTime(MASTER_SUPPORT_LOCALE, iso);
-}
-
-export function getLastMessagePreview(ticket: SupportTicket): string {
-  return getLocalizedLastMessagePreview(MASTER_SUPPORT_LOCALE, ticket);
-}
-
-export function getLastSenderLabel(ticket: SupportTicket): string {
-  return getLocalizedLastSenderLabel(MASTER_SUPPORT_LOCALE, ticket);
-}
-
-export function relatedEntityLabel(
-  type: SupportTicketRelatedEntityType | null | undefined,
-  id?: string | null,
-): string | null {
-  return labelRelatedEntity(MASTER_SUPPORT_LOCALE, type, id);
-}
-
-function buildStatusLabelRecord(): Record<SupportTicketStatus, string> {
-  const statuses: SupportTicketStatus[] = [
-    'OPEN',
-    'IN_PROGRESS',
-    'WAITING_FOR_CUSTOMER',
-    'RESOLVED',
-    'CLOSED',
-  ];
-  return Object.fromEntries(
-    statuses.map((status) => [status, labelSupportStatus(MASTER_SUPPORT_LOCALE, status)]),
-  ) as Record<SupportTicketStatus, string>;
-}
-
-function buildCategoryLabelRecord(): Record<SupportTicketCategory, string> {
-  const categories: SupportTicketCategory[] = [
-    'APP',
-    'VEHICLE',
-    'BOOKING',
-    'BILLING',
-    'DIMO_TELEMETRY',
-    'ACCOUNT',
-    'DOCUMENTS',
-    'DATA_AUTHORIZATION',
-    'HEALTH',
-    'OTHER',
-  ];
-  return Object.fromEntries(
-    categories.map((category) => [category, labelSupportCategory(MASTER_SUPPORT_LOCALE, category)]),
-  ) as Record<SupportTicketCategory, string>;
-}
-
-function buildPriorityLabelRecord(): Record<SupportTicketPriority, string> {
-  const priorities: SupportTicketPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
-  return Object.fromEntries(
-    priorities.map((priority) => [priority, labelSupportPriority(MASTER_SUPPORT_LOCALE, priority)]),
-  ) as Record<SupportTicketPriority, string>;
-}
-
-export const SUPPORT_STATUS_LABEL = buildStatusLabelRecord();
-export const SUPPORT_CATEGORY_LABEL = buildCategoryLabelRecord();
-export const SUPPORT_PRIORITY_LABEL = buildPriorityLabelRecord();
 
 export {
   getTicketCode,
@@ -145,22 +56,26 @@ export type SupportQueueId =
   | 'resolved'
   | 'closed';
 
-export interface SupportQueueItem {
+export type SupportQueueDef = {
   id: SupportQueueId;
-  label: string;
-  hint?: string;
-}
+  labelKey: TranslationKey;
+  hintKey?: TranslationKey;
+};
 
-export const SUPPORT_QUEUES: SupportQueueItem[] = [
-  { id: 'all_open', label: 'Alle offenen' },
-  { id: 'new', label: 'Neue Tickets' },
-  { id: 'critical', label: 'Kritisch', hint: 'Offen + kritisch' },
-  { id: 'waiting_support', label: 'Wartet auf Support' },
-  { id: 'waiting_customer', label: 'Wartet auf Kunde' },
-  { id: 'mine', label: 'Meine Tickets' },
-  { id: 'unread', label: 'Ungelesen' },
-  { id: 'resolved', label: 'Gelöst' },
-  { id: 'closed', label: 'Geschlossen' },
+export const SUPPORT_QUEUE_DEFS: SupportQueueDef[] = [
+  { id: 'all_open', labelKey: 'support.ops.queue.allOpen' },
+  { id: 'new', labelKey: 'support.ops.queue.new' },
+  {
+    id: 'critical',
+    labelKey: 'support.ops.queue.critical',
+    hintKey: 'support.ops.queue.criticalHint',
+  },
+  { id: 'waiting_support', labelKey: 'support.ops.queue.waitingSupport' },
+  { id: 'waiting_customer', labelKey: 'support.ops.queue.waitingCustomer' },
+  { id: 'mine', labelKey: 'support.ops.queue.mine' },
+  { id: 'unread', labelKey: 'support.ops.queue.unread' },
+  { id: 'resolved', labelKey: 'support.ops.queue.resolved' },
+  { id: 'closed', labelKey: 'support.ops.queue.closed' },
 ];
 
 export interface SupportInboxFilters {
@@ -248,28 +163,6 @@ export function buildTicketListParams(
   if (filters.assigneeId) params.assignedToUserId = filters.assigneeId;
 
   return params;
-}
-
-export function formatDurationMs(ms: number | null | undefined): string {
-  if (ms == null || ms <= 0 || !Number.isFinite(ms)) return '—';
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m} min`;
-  return '< 1 min';
-}
-
-export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 export function isTerminalStatus(status: SupportTicketStatus): boolean {

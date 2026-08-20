@@ -4,6 +4,7 @@ import { settingsAdminEn } from './settings-admin.en';
 import { stationsTabEn } from './stations-tab.en';
 import { voiceAssistantEn } from './voice-assistant.en';
 import { supportEn } from './support.en';
+import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
 
 export const en = {
@@ -5380,6 +5381,7 @@ export const en = {
   ...voiceAssistantEn,
   ...whatsappEn,
   ...supportEn,
+  ...supportOpsEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

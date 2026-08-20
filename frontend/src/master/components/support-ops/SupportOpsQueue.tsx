@@ -1,5 +1,7 @@
 import { cn } from '../../../components/ui/utils';
-import { SUPPORT_QUEUES, sop, type SupportQueueId } from './support-ops.utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { localizedSupportQueues } from './support-ops-i18n';
+import { sop, type SupportQueueId } from './support-ops.utils';
 
 interface SupportOpsQueueProps {
   activeQueue: SupportQueueId;
@@ -8,13 +10,18 @@ interface SupportOpsQueueProps {
 }
 
 export function SupportOpsQueue({ activeQueue, onQueueChange, counts }: SupportOpsQueueProps) {
+  const { t, locale } = useLanguage();
+  const queues = localizedSupportQueues(locale);
+
   return (
     <aside className={cn(sop.queueCol, 'sticky top-0 self-start max-h-[calc(100vh-9rem)]')}>
       <div className="border-b border-border/40 px-3 py-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">Queues</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+          {t('support.ops.queue.header')}
+        </p>
       </div>
       <nav className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
-        {SUPPORT_QUEUES.map((queue) => {
+        {queues.map((queue) => {
           const count = counts?.[queue.id];
           return (
             <button
@@ -48,10 +55,13 @@ export function SupportOpsQueueMobile({
   activeQueue: SupportQueueId;
   onQueueChange: (queue: SupportQueueId) => void;
 }) {
+  const { locale } = useLanguage();
+  const queues = localizedSupportQueues(locale);
+
   return (
     <div className="lg:hidden overflow-x-auto">
       <div className="flex gap-1.5 pb-1 min-w-max">
-        {SUPPORT_QUEUES.map((queue) => (
+        {queues.map((queue) => (
           <button
             key={queue.id}
             type="button"
@@ -59,8 +69,8 @@ export function SupportOpsQueueMobile({
             className={cn(
               'rounded-lg border px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors',
               activeQueue === queue.id
-                ? 'border-[color:color-mix(in_srgb,var(--brand)_30%,transparent)] bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                : 'border-border/50 text-muted-foreground',
+                ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                : 'border-border/50 text-muted-foreground hover:bg-muted/40',
             )}
           >
             {queue.label}

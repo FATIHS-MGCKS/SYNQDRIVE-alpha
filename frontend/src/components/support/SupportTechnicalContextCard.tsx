@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../ui/utils';
 import type { SupportTicket } from '../../lib/api';
-import { formatDateTime } from '../../master/components/support-ops/support-ops.utils';
+import { formatDateTimeDe } from '../patterns/format-utils';
 
 interface SupportTechnicalContextCardProps {
   ticket: SupportTicket;
@@ -41,7 +41,7 @@ export function SupportTechnicalContextCard({ ticket, orgName, className }: Supp
     { label: 'Modul / Tab', value: display(meta.selectedTab ?? meta.contextKind) },
     { label: 'DIMO Status', value: display(meta.connectionStatus) },
     { label: 'Provider', value: display(meta.provider) },
-    { label: 'Zuletzt gesehen', value: meta.lastSeen ? formatDateTime(String(meta.lastSeen)) : display(meta.lastTelemetryAt) },
+    { label: 'Zuletzt gesehen', value: meta.lastSeen ? formatDateTimeDe(String(meta.lastSeen)) : display(meta.lastTelemetryAt) },
     { label: 'Health Summary', value: display(meta.healthStatusSummary ?? meta.overallState) },
     { label: 'User Agent', value: display(meta.userAgent) },
     { label: 'Viewport', value: display(meta.viewport) },

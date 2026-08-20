@@ -4,22 +4,25 @@ import { supportStatusTone } from '../../../components/patterns/status-utils';
 import { EmptyState, ErrorState, SkeletonRows } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { SupportTicket, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from '../../../lib/api';
 import {
+  formatSupportRelativeTime,
+  getLocalizedLastMessagePreview,
+  labelRelatedEntity,
+  labelSupportCategory,
+  labelSupportPriority,
+  labelSupportStatus,
+} from './support-ops-i18n';
+import {
   DEFAULT_INBOX_FILTERS,
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_LABEL,
-  formatRelativeTime,
-  getLastMessagePreview,
   getTicketCode,
   hasActiveInboxFilters,
   normalizeCategoryKey,
   normalizePriorityKey,
   normalizeStatusKey,
-  relatedEntityLabel,
   sop,
   supportPriorityTone,
-  supportStatusLabel,
   type SupportInboxFilters,
 } from './support-ops.utils';
 
@@ -102,6 +105,8 @@ export function SupportOpsInbox({
   onPageChange,
   onRefresh,
 }: SupportOpsInboxProps) {
+  const { t, locale } = useLanguage();
+
   const set = <K extends keyof SupportInboxFilters>(key: K, value: SupportInboxFilters[K]) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -113,10 +118,20 @@ export function SupportOpsInbox({
       <div className="border-b border-border/40 p-3 space-y-2.5">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-[13px] font-semibold text-foreground">Inbox</p>
-            <p className="text-[10px] text-muted-foreground tabular-nums">{total} Tickets</p>
+            <p className="text-[13px] font-semibold text-foreground">{t('support.ops.inbox.title')}</p>
+            <p className="text-[10px] text-muted-foreground tabular-nums">
+              {t('support.ops.inbox.ticketCount', { count: total })}
+            </p>
           </div>
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={onRefresh} disabled={loading} aria-label="Inbox aktualisieren">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onRefresh}
+            disabled={loading}
+            aria-label={t('support.ops.inbox.refreshAria')}
+          >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
           </Button>
         </div>
@@ -127,65 +142,69 @@ export function SupportOpsInbox({
             type="search"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Suche Betreff, E-Mail, Ticketnr…"
-            aria-label="Support-Tickets durchsuchen"
+            placeholder={t('support.ops.inbox.searchPlaceholder')}
+            aria-label={t('support.ops.inbox.searchAria')}
             className={cn(INPUT, 'pl-8')}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
           <FilterSelect
-            label="Organisation"
+            label={t('support.ops.filter.organization')}
             value={filters.organizationId}
             onChange={(v) => set('organizationId', v)}
             options={[
-              { value: '', label: 'Alle' },
+              { value: '', label: t('support.ops.filter.all') },
               ...organizations.map((o) => ({ value: o.id, label: o.name })),
             ]}
           />
           <FilterSelect
-            label="Status"
+            label={t('support.filter.statusLabel')}
             value={filters.status}
             onChange={(v) => set('status', v as SupportTicketStatus | 'all')}
             options={STATUS_OPTS.map((v) => ({
               value: v,
-              label: v === 'all' ? 'Alle' : supportStatusLabel(v, 'admin'),
+              label: v === 'all' ? t('support.ops.filter.all') : labelSupportStatus(locale, v, 'admin'),
             }))}
           />
           <FilterSelect
-            label="Priorität"
+            label={t('support.filter.priorityLabel')}
             value={filters.priority}
             onChange={(v) => set('priority', v as SupportTicketPriority | 'all')}
             options={PRIORITY_OPTS.map((v) => ({
               value: v,
-              label: v === 'all' ? 'Alle' : SUPPORT_PRIORITY_LABEL[v],
+              label: v === 'all' ? t('support.ops.filter.all') : labelSupportPriority(locale, v),
             }))}
           />
           <FilterSelect
-            label="Kategorie"
+            label={t('support.filter.categoryLabel')}
             value={filters.category}
             onChange={(v) => set('category', v as SupportTicketCategory | 'all')}
             options={CATEGORY_OPTS.map((v) => ({
               value: v,
-              label: v === 'all' ? 'Alle' : SUPPORT_CATEGORY_LABEL[v],
+              label: v === 'all' ? t('support.ops.filter.all') : labelSupportCategory(locale, v),
             }))}
           />
           <FilterSelect
-            label="Assignee"
+            label={t('support.ops.filter.assignee')}
             value={filters.assigneeId}
             onChange={(v) => set('assigneeId', v)}
             options={[
-              { value: '', label: 'Alle' },
+              { value: '', label: t('support.ops.filter.all') },
               ...assignees.map((u) => ({ value: u.id, label: u.name })),
             ]}
           />
           <div className="col-span-2 grid grid-cols-2 gap-2 xl:col-span-1">
             <label className="block">
-              <span className="mb-1 block text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Von</span>
+              <span className="mb-1 block text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t('support.ops.filter.from')}
+              </span>
               <input type="date" value={filters.createdFrom} onChange={(e) => set('createdFrom', e.target.value)} className={INPUT} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Bis</span>
+              <span className="mb-1 block text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t('support.ops.filter.to')}
+              </span>
               <input type="date" value={filters.createdTo} onChange={(e) => set('createdTo', e.target.value)} className={INPUT} />
             </label>
           </div>
@@ -200,7 +219,7 @@ export function SupportOpsInbox({
             }}
             className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
           >
-            Filter zurücksetzen
+            {t('support.filter.reset')}
           </button>
         )}
       </div>
@@ -211,12 +230,20 @@ export function SupportOpsInbox({
             <SkeletonRows rows={8} />
           </div>
         ) : error ? (
-          <ErrorState compact title="Tickets konnten nicht geladen werden" description={error} onRetry={onRetry} retryLabel="Erneut versuchen" />
+          <ErrorState
+            compact
+            title={t('support.ops.inbox.errorTitle')}
+            description={error}
+            onRetry={onRetry}
+            retryLabel={t('support.ops.inbox.retryLabel')}
+          />
         ) : tickets.length === 0 ? (
           <EmptyState
             compact
-            title={filtersActive ? 'Keine Suchergebnisse' : 'Keine Tickets in dieser Queue'}
-            description={filtersActive ? 'Passe Suche oder Filter an.' : 'Diese Queue ist aktuell leer.'}
+            title={filtersActive ? t('support.ops.inbox.emptyFilteredTitle') : t('support.ops.inbox.emptyQueueTitle')}
+            description={
+              filtersActive ? t('support.ops.inbox.emptyFilteredDescription') : t('support.ops.inbox.emptyQueueDescription')
+            }
           />
         ) : (
           tickets.map((ticket) => (
@@ -237,7 +264,7 @@ export function SupportOpsInbox({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-[10px] tabular-nums text-muted-foreground">
-            Seite {page} / {totalPages}
+            {t('support.ops.inbox.page', { page, totalPages })}
           </span>
           <Button type="button" variant="ghost" size="sm" disabled={page >= totalPages || loading} onClick={() => onPageChange(page + 1)}>
             <ChevronRight className="h-4 w-4" />
@@ -284,10 +311,11 @@ function TicketRow({
   active: boolean;
   onSelect: () => void;
 }) {
+  const { t, locale } = useLanguage();
   const status = normalizeStatusKey(ticket);
   const priority = normalizePriorityKey(ticket);
   const category = normalizeCategoryKey(ticket);
-  const related = relatedEntityLabel(ticket.relatedEntityType ?? null, ticket.relatedEntityId);
+  const related = labelRelatedEntity(locale, ticket.relatedEntityType ?? null, ticket.relatedEntityId);
   const critical = priority === 'CRITICAL';
 
   return (
@@ -298,12 +326,12 @@ function TicketRow({
             <span className="text-[10px] font-bold text-[color:var(--brand)] tabular-nums">{getTicketCode(ticket)}</span>
             {ticket.unreadForAdmin && (
               <StatusChip tone="watch" className="text-[9px] px-1.5 py-0">
-                Ungelesen
+                {t('support.ops.inbox.badgeUnread')}
               </StatusChip>
             )}
             {critical && (
               <StatusChip tone="critical" className="text-[9px] px-1.5 py-0">
-                Kritisch
+                {t('support.ops.inbox.badgeCritical')}
               </StatusChip>
             )}
           </div>
@@ -311,21 +339,23 @@ function TicketRow({
           <p className="truncate text-[10px] text-muted-foreground">{orgName}</p>
         </div>
         <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-          {formatRelativeTime(ticket.lastMessageAt || ticket.lastActivityAt || ticket.createdAt)}
+          {formatSupportRelativeTime(locale, ticket.lastMessageAt || ticket.lastActivityAt || ticket.createdAt)}
         </span>
       </div>
       <div className="mt-1.5 flex flex-wrap gap-1">
         <StatusChip tone={supportStatusTone(status)} dot className="text-[9px]">
-          {supportStatusLabel(status, 'admin')}
+          {labelSupportStatus(locale, status, 'admin')}
         </StatusChip>
         <StatusChip tone="neutral" className="text-[9px]">
-          {SUPPORT_CATEGORY_LABEL[category]}
+          {labelSupportCategory(locale, category)}
         </StatusChip>
         <StatusChip tone={supportPriorityTone(priority)} className="text-[9px]">
-          {SUPPORT_PRIORITY_LABEL[priority]}
+          {labelSupportPriority(locale, priority)}
         </StatusChip>
       </div>
-      <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">{getLastMessagePreview(ticket)}</p>
+      <p className="mt-1.5 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
+        {getLocalizedLastMessagePreview(locale, ticket)}
+      </p>
       <p className="mt-1 text-[9px] text-muted-foreground">
         {ticket.reporterName || ticket.reporterEmail}
         {related ? ` · ${related}` : ''}
