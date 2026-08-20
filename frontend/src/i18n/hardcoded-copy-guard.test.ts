@@ -142,8 +142,18 @@ const P27A_ENFORCE_CLEAN_EXACT = [
   'rental/components/voice-assistant/VoiceSectionNav.tsx',
 ];
 
+const P27B_ENFORCE_CLEAN_EXACT = [
+  'rental/components/voice-assistant/VoiceTelephonyWizard.tsx',
+  'rental/components/voice-assistant/VoiceTestCenter.tsx',
+  'rental/components/voice-assistant/voice-test-scenarios.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP27BEnforceCleanPath(relPath: string): boolean {
+  return P27B_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -169,7 +179,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -229,5 +239,12 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP27AEnforceCleanPath(finding.file),
     );
     expect(p27aDebt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.7B enforce-clean findings to telephony and test center only', () => {
+    const p27bDebt = inventory.findings.filter((finding) =>
+      isP27BEnforceCleanPath(finding.file),
+    );
+    expect(p27bDebt).toHaveLength(0);
   });
 });

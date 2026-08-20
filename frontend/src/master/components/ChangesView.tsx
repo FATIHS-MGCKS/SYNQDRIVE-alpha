@@ -36,6 +36,39 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-voice-assistant-p2-2-7b-polish-2026-08-20',
+    version: '4.9.929',
+    title: 'Rental i18n — P2.2.7B polish (audit non-blocking corrections)',
+    summary: [
+      'Independent re-audit non-blocking items cleared: deduplicated 4 Category-C keys by reusing `voice.status.operator.error`, `voice.checklist.elevenlabs.label`, and `voice.status.telephony.notConnected`; canonical net +156 keys (was +160).',
+      'Strengthened P2.2.7B tests: outbound confirmation gating interaction + locale-switch scenario re-localization; stripped trailing whitespace from audit/architecture markdown.',
+    ],
+    reason: 'Independent P2.2.7B re-audit verdict B listed duplicate-key debt, ACCEPTABLE test gaps, and doc whitespace as non-blocking polish.',
+    previousBehavior: '4 duplicate EN dictionary entries; no outbound-confirm or locale-switch component tests; markdown trailing whitespace failed git diff --check.',
+    details:
+      'voice-assistant-i18n.ts; VoiceTestCenter.tsx; voice-assistant.{en,de}.ts; rental-voice-assistant-telephony-test-center-localization.test.tsx; architecture/I18N_RENTAL_VOICE_ASSISTANT_P2_2_7B_2026-08-20.md; docs/audits preflight markdown.',
+    affectsArchitecture: false,
+    module: 'Rental',
+    createdAt: '2026-08-20T03:10:00.000Z',
+  },
+  {
+    id: 'i18n-rental-voice-assistant-p2-2-7b-2026-08-20',
+    version: '4.9.928',
+    title: 'Rental i18n — P2.2.7B Voice Assistant Telephony + Test Center',
+    summary: [
+      'Deferred Voice Assistant telephony wizard and test center surfaces migrated to canonical `frontend/src/i18n` with scenario definitions as translation-key metadata.',
+      'Scanner P2.2.7B enforce-clean exact scope reports 0 findings (43→0); Voice Assistant module 43→0; +160 EN+DE keys under `voice.telephony.*`, `voice.test.*`, and `voice.test.scenario.*`; reused `voice.nav.tab.test`, `voice.wizard.step.phone`, `common.cancel`.',
+      'Helper extensions in `voice-assistant-i18n.ts` (wizard step status, session phase, verdict, telephony errors, localized scenarios); presentation-only — Twilio/ElevenLabs/PSTN payloads, test session API, and permission semantics unchanged; 0 new compat consumers.',
+    ],
+    reason: 'P2.2.7A intentionally deferred high-risk telephony/test surfaces; pre-flight audit GO verdict scoped 43 scanner findings plus scenario copy blind spot.',
+    previousBehavior: 'Hardcoded English in VoiceTelephonyWizard, VoiceTestCenter, and voice-test-scenarios literal strings; no dedicated EN/DE component tests.',
+    details:
+      'VoiceTelephonyWizard.tsx; VoiceTestCenter.tsx; voice-test-scenarios.ts; voice-assistant-i18n.ts; voice-assistant translations; rental-voice-assistant-telephony-test-center-localization.test.tsx; docs/audits/i18n-p2-2-7b-voice-telephony-test-center-preflight-2026-08-20.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-20T02:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-voice-assistant-p2-2-7a-2026-08-20',
     version: '4.9.927',
     title: 'Rental i18n — P2.2.7A Voice Assistant presentation',
