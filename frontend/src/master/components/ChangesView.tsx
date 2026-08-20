@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Dashboard Fleet Readiness Production Hardening (P3.3)',
     summary: [
       'P32-F02 fixed: `useRequestGeneration()` monotonic token in `useNotifications` + `useFleetReadinessSummary` — stale station/org/scope responses cannot commit rows, pagination, summary, errors, or loading.',
-      'P32-F01 mitigated: `fleetCausesMayBeIncomplete` + i18n hint when fleet notification pages remain unloaded; no false exhaustive cause counts.',
+      'P32-F01 mitigated: `fleetCausesMayBeIncomplete` + i18n hint when fleet notification pages remain unloaded; aggregate-only page-1 vehicles render as one-child groups until all pages load.',
       'P32-F03 fixed: operator-focus `NotificationPanel` wires `resolveItemLifecycleHandlers` on grouped `NotificationGroupCard` children (mark read, acknowledge, snooze per canonical id).',
       'Deferred-promise race regression tests for notifications, fleet summary, pagination-boundary projection, and NotificationPanel grouped lifecycle.',
     ],
