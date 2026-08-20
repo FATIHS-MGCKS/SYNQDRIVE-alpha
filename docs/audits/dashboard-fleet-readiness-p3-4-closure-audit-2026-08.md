@@ -311,9 +311,9 @@ These predate P3.3 and were not expanded by this workstream.
 | `dashboard-attention-routing.test.ts` | 4 |
 | `dashboard-attention-legacy-guard.test.ts` | 4 |
 | `fleet-readiness-attention-projection.test.ts` | 17 |
-| `FleetReadinessAttentionPanel.test.tsx` | 2 |
-| `NotificationGroupCard.lifecycle.test.tsx` | 5 |
-| `AttentionScopedList.lifecycle.test.tsx` | 2 |
+| `attention/FleetReadinessAttentionPanel.test.tsx` | 2 |
+| `notifications/NotificationGroupCard.lifecycle.test.tsx` | 5 |
+| `attention/AttentionScopedList.lifecycle.test.tsx` | 2 |
 | `NotificationPanel.lifecycle.test.tsx` | 1 |
 
 ### Test quality assessment
