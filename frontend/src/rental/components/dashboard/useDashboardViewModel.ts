@@ -87,12 +87,19 @@ import {
 } from './runtime';
 import { buildRentalBlockingServiceCaseMap } from '../fleet-health-service/fleet-health-service-vehicle-overview';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useFleetReadinessSummary } from '../../hooks/useFleetReadinessSummary';
 import {
   getNotificationsV2Mode,
   isNotificationsV2Shadow,
   shouldFetchV2NotificationsInBackground,
+  shouldUseDashboardAttentionSplit,
   shouldUseV2NotificationSource,
 } from '../../lib/notifications/notifications-v2-flag';
+import { enrichNotificationGroupingList } from '../../lib/notifications/enrich-notification-grouping';
+import { projectFleetReadinessPresentationItems } from '../../lib/notifications/fleet-readiness-attention-projection';
+import { groupActionQueueEntries } from './actionQueueGrouping';
+import { ensureNotificationPanelQueueItems } from './notificationQueueEnricher';
+import type { DashboardAttentionModel } from './dashboardAttentionTypes';
 import {
   compareNotificationQueuesShadow,
   logShadowCompareDiagnostics,
@@ -292,21 +299,59 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [loadTodayBookings]);
 
   const notificationsV2Mode = getNotificationsV2Mode();
+  const attentionSplitActive = shouldUseDashboardAttentionSplit(orgId);
+  const v2BackgroundFetch = shouldFetchV2NotificationsInBackground(orgId);
+
   const notificationsV2 = useNotifications({
     orgId,
     locale,
-    enabled: shouldFetchV2NotificationsInBackground(orgId),
+    enabled: v2BackgroundFetch && !attentionSplitActive,
+    stationId: selectedStationId,
+  });
+
+  const operationsNotifications = useNotifications({
+    orgId,
+    locale,
+    enabled: attentionSplitActive,
+    attentionScope: 'OPERATIONS',
+    stationId: selectedStationId,
+    fetchCounts: false,
+  });
+
+  const fleetReadinessNotifications = useNotifications({
+    orgId,
+    locale,
+    enabled: attentionSplitActive,
+    attentionScope: 'FLEET_READINESS',
+    stationId: selectedStationId,
+    fetchCounts: false,
+  });
+
+  const fleetReadinessSummaryHook = useFleetReadinessSummary({
+    orgId,
+    stationId: selectedStationId,
+    enabled: attentionSplitActive,
   });
 
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
     try {
+      const notificationRefresh = attentionSplitActive
+        ? Promise.all([
+            operationsNotifications.refresh(),
+            fleetReadinessNotifications.refresh(),
+            fleetReadinessSummaryHook.refresh(),
+          ])
+        : v2BackgroundFetch
+          ? notificationsV2.refresh()
+          : Promise.resolve();
+
       await Promise.all([
         refreshFleet(),
         refreshInsights(),
         loadTodayBookings(),
         loadInvoices(),
-        shouldFetchV2NotificationsInBackground(orgId) ? notificationsV2.refresh() : Promise.resolve(),
+        notificationRefresh,
       ]);
       const syncedAt = new Date();
       setDashboardNow(syncedAt);
@@ -314,7 +359,18 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, notificationsV2.refresh, orgId]);
+  }, [
+    attentionSplitActive,
+    v2BackgroundFetch,
+    refreshFleet,
+    refreshInsights,
+    loadTodayBookings,
+    loadInvoices,
+    notificationsV2.refresh,
+    operationsNotifications.refresh,
+    fleetReadinessNotifications.refresh,
+    fleetReadinessSummaryHook.refresh,
+  ]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -956,12 +1012,28 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     ],
   );
 
+  const v2ItemsForShadowCompare = useMemo(() => {
+    if (attentionSplitActive) {
+      return [...operationsNotifications.items, ...fleetReadinessNotifications.items];
+    }
+    return notificationsV2.items;
+  }, [
+    attentionSplitActive,
+    operationsNotifications.items,
+    fleetReadinessNotifications.items,
+    notificationsV2.items,
+  ]);
+
+  const v2ShadowCompareLoading = attentionSplitActive
+    ? operationsNotifications.loading || fleetReadinessNotifications.loading
+    : notificationsV2.loading;
+
   useEffect(() => {
     if (!isNotificationsV2Shadow(orgId)) return;
-    if (notificationsV2.loading) return;
-    const result = compareNotificationQueuesShadow(v1ActionQueue, notificationsV2.items);
+    if (v2ShadowCompareLoading) return;
+    const result = compareNotificationQueuesShadow(v1ActionQueue, v2ItemsForShadowCompare);
     logShadowCompareDiagnostics(result);
-  }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading, orgId]);
+  }, [v1ActionQueue, v2ItemsForShadowCompare, v2ShadowCompareLoading, orgId]);
 
   const derivedQueueItems = useMemo(
     () => buildDerivedOperationalQueueItems(derivedOperationalInsights),
@@ -980,6 +1052,12 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const actionQueue = useMemo(() => {
     if (!shouldUseV2NotificationSource(orgId)) return v1ActionQueue;
+    if (attentionSplitActive) {
+      if (operationsNotifications.listMode === 'resolved') {
+        return [...operationsNotifications.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+      }
+      return operationsNotifications.items;
+    }
     if (notificationsV2.listMode === 'resolved') {
       return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     }
@@ -987,6 +1065,10 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
     return mergeV2NotificationsWithVehicleHealth(withHandovers, vehicleHealthQueueItems);
   }, [
+    orgId,
+    attentionSplitActive,
+    operationsNotifications.items,
+    operationsNotifications.listMode,
     notificationsV2.items,
     notificationsV2.listMode,
     v1ActionQueue,
@@ -996,20 +1078,29 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   ]);
 
   const actionQueueTabCounts = useMemo(
-    () => (shouldUseV2NotificationSource(orgId) ? notificationsV2.tabCounts : null),
-    [notificationsV2.tabCounts],
+    () => {
+      if (!shouldUseV2NotificationSource(orgId)) return null;
+      if (attentionSplitActive) return operationsNotifications.tabCounts;
+      return notificationsV2.tabCounts;
+    },
+    [orgId, attentionSplitActive, operationsNotifications.tabCounts, notificationsV2.tabCounts],
   );
 
   const resolvedActionQueueLoading = shouldUseV2NotificationSource(orgId)
-    ? notificationsV2.loading || vehicleHealthLoading
+    ? attentionSplitActive
+      ? operationsNotifications.loading
+      : notificationsV2.loading || vehicleHealthLoading
     : insightsLoading || vehicleHealthLoading || !todayBookingsLoaded;
 
   const resolvedActionQueueError = shouldUseV2NotificationSource(orgId)
-    ? !!notificationsV2.error
+    ? attentionSplitActive
+      ? !!operationsNotifications.error
+      : !!notificationsV2.error
     : insightsError;
 
   const notificationPrimaryTabCounts = useMemo(() => {
     if (!shouldUseV2NotificationSource(orgId)) return null;
+    if (attentionSplitActive) return operationsNotifications.primaryTabCounts;
 
     if (notificationsV2.listMode === 'resolved') {
       return {
@@ -1046,6 +1137,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     const withHealthCounts = augmentPrimaryTabCountsWithHealthItems(withHandoverCounts, healthExtra);
     return mergeNotificationPrimaryTabCounts(withHealthCounts, mergedActiveQueue);
   }, [
+    orgId,
+    attentionSplitActive,
+    operationsNotifications.primaryTabCounts,
     notificationsV2.items,
     notificationsV2.listMode,
     notificationsV2.primaryTabCounts,
@@ -1056,12 +1150,135 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const setNotificationListMode = useCallback(
     (mode: 'active' | 'resolved') => {
+      if (attentionSplitActive) {
+        operationsNotifications.setListMode(mode);
+        return;
+      }
       notificationsV2.setListMode(mode);
     },
-    [notificationsV2.setListMode],
+    [attentionSplitActive, operationsNotifications.setListMode, notificationsV2.setListMode],
   );
 
-  const notificationsV2ErrorCode = notificationsV2.error?.code ?? null;
+  const notificationsV2ErrorCode = attentionSplitActive
+    ? operationsNotifications.error?.code ?? null
+    : notificationsV2.error?.code ?? null;
+
+  const attentionReferenceNowMs = useMemo(
+    () => Date.now(),
+    [
+      operationsNotifications.items,
+      fleetReadinessNotifications.items,
+      isRefreshing,
+      lastManualSyncAt,
+    ],
+  );
+
+  const dashboardAttention = useMemo<DashboardAttentionModel | null>(() => {
+    if (!attentionSplitActive) return null;
+
+    const buildMutations = (
+      hook: typeof operationsNotifications,
+    ): DashboardAttentionModel['operations']['mutations'] => ({
+      markRead: hook.markRead,
+      markUnread: hook.markUnread,
+      acknowledge: hook.acknowledge,
+      snooze: hook.snooze,
+      unsnooze: hook.unsnooze,
+      resolveNotification: hook.resolveNotification,
+      archiveNotification: hook.archiveNotification,
+      loadMore: hook.loadMore,
+      hasMore: hook.hasMore,
+    });
+
+    const operationsEnriched = enrichNotificationGroupingList(
+      ensureNotificationPanelQueueItems(operationsNotifications.items, {
+        locale,
+        referenceNowMs: attentionReferenceNowMs,
+        t,
+      }),
+      locale,
+      attentionReferenceNowMs,
+      'default',
+    );
+
+    const fleetEnriched = enrichNotificationGroupingList(
+      ensureNotificationPanelQueueItems(fleetReadinessNotifications.items, {
+        locale,
+        referenceNowMs: attentionReferenceNowMs,
+        t,
+      }),
+      locale,
+      attentionReferenceNowMs,
+      'fleet-readiness',
+    );
+
+    return {
+      splitActive: true,
+      operations: {
+        items: operationsEnriched,
+        entries: groupActionQueueEntries(operationsEnriched, locale),
+        loading: operationsNotifications.loading,
+        error: operationsNotifications.error,
+        errorCode: operationsNotifications.error?.code ?? null,
+        total: operationsNotifications.total,
+        refresh: operationsNotifications.refresh,
+        mutations: buildMutations(operationsNotifications),
+      },
+      fleetReadiness: {
+        items: fleetEnriched,
+        entries: projectFleetReadinessPresentationItems(fleetEnriched),
+        loading: fleetReadinessNotifications.loading,
+        error: fleetReadinessNotifications.error,
+        errorCode: fleetReadinessNotifications.error?.code ?? null,
+        total: fleetReadinessNotifications.total,
+        refresh: fleetReadinessNotifications.refresh,
+        mutations: buildMutations(fleetReadinessNotifications),
+      },
+      fleetSummary: {
+        summary: fleetReadinessSummaryHook.summary,
+        loading: fleetReadinessSummaryHook.loading,
+        error: fleetReadinessSummaryHook.error,
+        refresh: fleetReadinessSummaryHook.refresh,
+      },
+    };
+  }, [
+    attentionSplitActive,
+    operationsNotifications.items,
+    operationsNotifications.loading,
+    operationsNotifications.error,
+    operationsNotifications.total,
+    operationsNotifications.refresh,
+    operationsNotifications.markRead,
+    operationsNotifications.markUnread,
+    operationsNotifications.acknowledge,
+    operationsNotifications.snooze,
+    operationsNotifications.unsnooze,
+    operationsNotifications.resolveNotification,
+    operationsNotifications.archiveNotification,
+    operationsNotifications.loadMore,
+    operationsNotifications.hasMore,
+    fleetReadinessNotifications.items,
+    fleetReadinessNotifications.loading,
+    fleetReadinessNotifications.error,
+    fleetReadinessNotifications.total,
+    fleetReadinessNotifications.refresh,
+    fleetReadinessNotifications.markRead,
+    fleetReadinessNotifications.markUnread,
+    fleetReadinessNotifications.acknowledge,
+    fleetReadinessNotifications.snooze,
+    fleetReadinessNotifications.unsnooze,
+    fleetReadinessNotifications.resolveNotification,
+    fleetReadinessNotifications.archiveNotification,
+    fleetReadinessNotifications.loadMore,
+    fleetReadinessNotifications.hasMore,
+    fleetReadinessSummaryHook.summary,
+    fleetReadinessSummaryHook.loading,
+    fleetReadinessSummaryHook.error,
+    fleetReadinessSummaryHook.refresh,
+    locale,
+    attentionReferenceNowMs,
+    t,
+  ]);
 
   const stationCommandDetail = useMemo(() => {
     if (!selectedStationId) return null;
@@ -1216,21 +1433,37 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     actionQueueTabCounts,
     notificationPrimaryTabCounts,
     setNotificationListMode: shouldUseV2NotificationSource(orgId) ? setNotificationListMode : undefined,
-    notificationListMode: shouldUseV2NotificationSource(orgId) ? notificationsV2.listMode : undefined,
+    notificationListMode: shouldUseV2NotificationSource(orgId)
+      ? attentionSplitActive
+        ? operationsNotifications.listMode
+        : notificationsV2.listMode
+      : undefined,
     notificationsV2Mode,
     notificationsV2ErrorCode,
     notificationMutations: shouldUseV2NotificationSource(orgId)
-      ? {
-          markRead: notificationsV2.markRead,
-          markUnread: notificationsV2.markUnread,
-          acknowledge: notificationsV2.acknowledge,
-          snooze: notificationsV2.snooze,
-          unsnooze: notificationsV2.unsnooze,
-          resolveNotification: notificationsV2.resolveNotification,
-          archiveNotification: notificationsV2.archiveNotification,
-          loadMore: notificationsV2.loadMore,
-          hasMore: notificationsV2.hasMore,
-        }
+      ? attentionSplitActive
+        ? {
+            markRead: operationsNotifications.markRead,
+            markUnread: operationsNotifications.markUnread,
+            acknowledge: operationsNotifications.acknowledge,
+            snooze: operationsNotifications.snooze,
+            unsnooze: operationsNotifications.unsnooze,
+            resolveNotification: operationsNotifications.resolveNotification,
+            archiveNotification: operationsNotifications.archiveNotification,
+            loadMore: operationsNotifications.loadMore,
+            hasMore: operationsNotifications.hasMore,
+          }
+        : {
+            markRead: notificationsV2.markRead,
+            markUnread: notificationsV2.markUnread,
+            acknowledge: notificationsV2.acknowledge,
+            snooze: notificationsV2.snooze,
+            unsnooze: notificationsV2.unsnooze,
+            resolveNotification: notificationsV2.resolveNotification,
+            archiveNotification: notificationsV2.archiveNotification,
+            loadMore: notificationsV2.loadMore,
+            hasMore: notificationsV2.hasMore,
+          }
       : undefined,
     actionQueueEmptySummary,
     todayBookingsLoaded,
@@ -1244,5 +1477,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     dataTrust,
     vehicleTelemetryFreshness,
     fleetReadiness,
+    dashboardAttention,
   };
 }

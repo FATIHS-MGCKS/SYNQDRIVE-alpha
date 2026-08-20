@@ -972,6 +972,20 @@ export const en = {
   'dashboard.newToday': '{count} new today',
   'dashboard.unread': '{count} unread',
 
+  // ─── Dashboard attention split (P3.1) ───
+  'dashboardAttention.stackLabel': 'Dashboard attention',
+  'dashboardAttention.operations.title': 'Operations',
+  'dashboardAttention.operations.subtitle': 'Handovers, bookings, billing, and station tasks',
+  'dashboardAttention.fleetReadiness.title': 'Fleet readiness',
+  'dashboardAttention.fleetReadiness.subtitle': 'Vehicles not ready or unevaluable in scope',
+  'dashboardAttention.fleetSummary.unavailable': 'Fleet readiness summary unavailable.',
+  'dashboardAttention.fleetSummary.ready': '{ready} of {total} ready',
+  'dashboardAttention.fleetSummary.readyPercent': '{percent}% ready',
+  'dashboardAttention.fleetSummary.notReady': '{count} not ready',
+  'dashboardAttention.fleetSummary.unevaluable': '{count} unevaluable',
+  'dashboardAttention.fleetSummary.unknown': '{count} unknown',
+  'dashboardAttention.loadMore': 'Load more ({count} shown)',
+
   // ─── Dashboard notification queue (ActionQueue) ───
   'notification.panelTitle': 'Notifications',
   'notification.entityUnavailable': 'The linked record is no longer available. Details remain visible here.',

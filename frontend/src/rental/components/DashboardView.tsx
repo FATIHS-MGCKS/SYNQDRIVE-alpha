@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import {
   ActionQueue,
   ControlKpiStrip,
+  DashboardAttentionStack,
   DashboardControlHeader,
   DashboardDrilldownDrawer,
   DASHBOARD_LAYOUT,
@@ -147,7 +148,11 @@ export function DashboardView({
             className={DASHBOARD_LAYOUT.notificationsSlot}
             style={notificationsMaxHeight ? { maxHeight: notificationsMaxHeight } : undefined}
           >
-            <ActionQueue vm={vm} {...handlers} layout="sidebar" />
+            {vm.dashboardAttention?.splitActive ? (
+              <DashboardAttentionStack vm={vm} handlers={handlers} t={vm.t} locale={vm.locale} layout="sidebar" />
+            ) : (
+              <ActionQueue vm={vm} {...handlers} layout="sidebar" />
+            )}
           </div>
         </div>
       </div>

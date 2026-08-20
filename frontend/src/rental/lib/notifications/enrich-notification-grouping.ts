@@ -116,10 +116,13 @@ function normalizeVehicleGroupKey(groupKey: string | undefined): string | undefi
  * Derives stable groupKey/groupType for V2 notification rows so the panel can
  * reuse ActionQueue grouping (vehicle, station, booking, customer).
  */
+export type NotificationGroupingPresentation = 'default' | 'fleet-readiness';
+
 export function enrichNotificationGroupingMetadata(
   item: ActionQueueItem,
   locale: string,
   referenceNowMs = Date.now(),
+  presentation: NotificationGroupingPresentation = 'default',
 ): ActionQueueItem {
   const normalizedGroupKey = normalizeVehicleGroupKey(item.groupKey);
   if (normalizedGroupKey && normalizedGroupKey !== item.groupKey) {
@@ -127,6 +130,7 @@ export function enrichNotificationGroupingMetadata(
       { ...item, groupKey: normalizedGroupKey },
       locale,
       referenceNowMs,
+      presentation,
     );
   }
   if (item.groupKey) return item;
@@ -152,7 +156,7 @@ export function enrichNotificationGroupingMetadata(
     return {
       ...base,
       groupKey: `vehicle:${item.vehicleId}`,
-      groupType: isVehicleHealthItem(item) ? 'vehicle-health' : 'vehicle-ops',
+      groupType: presentation === 'fleet-readiness' ? 'vehicle-health' : (isVehicleHealthItem(item) ? 'vehicle-health' : 'vehicle-ops'),
     };
   }
 
@@ -187,6 +191,7 @@ export function enrichNotificationGroupingList(
   items: ActionQueueItem[],
   locale: string,
   referenceNowMs = Date.now(),
+  presentation: NotificationGroupingPresentation = 'default',
 ): ActionQueueItem[] {
-  return items.map((item) => enrichNotificationGroupingMetadata(item, locale, referenceNowMs));
+  return items.map((item) => enrichNotificationGroupingMetadata(item, locale, referenceNowMs, presentation));
 }
