@@ -1,14 +1,17 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WhatsAppMsg } from '../../../lib/api';
-import { deliveryStatusLabel, formatTime } from './whatsapp.ops';
+import { labelDeliveryStatus } from './whatsapp-i18n';
+import { formatTime } from './whatsapp.ops';
 
 interface WhatsAppMessageBubbleProps {
   msg: WhatsAppMsg;
 }
 
 export function WhatsAppMessageBubble({ msg }: WhatsAppMessageBubbleProps) {
+  const { locale, t } = useLanguage();
   const isOutgoing = msg.direction === 'outgoing';
   const isAi = msg.senderType === 'ai' || msg.aiGenerated;
   const isSystem = msg.senderType === 'system';
@@ -30,7 +33,7 @@ export function WhatsAppMessageBubble({ msg }: WhatsAppMessageBubbleProps) {
           <div className="mb-1 flex items-center gap-1">
             <Icon name="sparkles" className="h-3 w-3 text-[color:var(--status-ai)]" />
             <span className="text-[9px] font-semibold text-[color:var(--status-ai)]">
-              SynqDrive AI
+              {t('whatsapp.chat.bubble.aiLabel')}
             </span>
           </div>
         )}
@@ -44,12 +47,12 @@ export function WhatsAppMessageBubble({ msg }: WhatsAppMessageBubbleProps) {
           <span className="text-[9px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
           {isOutgoing && (
             <StatusChip tone={failed ? 'critical' : msg.status === 'READ' ? 'success' : 'neutral'}>
-              {deliveryStatusLabel(msg.status)}
+              {labelDeliveryStatus(locale, msg.status)}
             </StatusChip>
           )}
           {msg.aiSuggested && (
             <StatusChip tone="ai">
-              Suggested
+              {t('whatsapp.chat.bubble.suggested')}
             </StatusChip>
           )}
         </div>

@@ -135,6 +135,27 @@ const P27B_ENFORCE_CLEAN_EXACT = new Set([
   'rental/components/voice-assistant/voice-test-scenarios.ts',
 ]);
 
+const P28_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/WhatsAppBusinessView.tsx',
+  'rental/components/whatsapp/WhatsAppChatPanel.tsx',
+  'rental/components/whatsapp/WhatsAppContextDrawer.tsx',
+  'rental/components/whatsapp/WhatsAppConversationInbox.tsx',
+  'rental/components/whatsapp/WhatsAppInboxLayout.tsx',
+  'rental/components/whatsapp/WhatsAppKpiCards.tsx',
+  'rental/components/whatsapp/WhatsAppMessageBubble.tsx',
+  'rental/components/whatsapp/WhatsAppMessageComposer.tsx',
+  'rental/components/whatsapp/WhatsAppOperationsHeader.tsx',
+  'rental/components/whatsapp/WhatsAppOverviewTab.tsx',
+  'rental/components/whatsapp/WhatsAppQuickActions.tsx',
+  'rental/components/whatsapp/WhatsAppReadinessStrip.tsx',
+  'rental/components/whatsapp/WhatsAppSectionNav.tsx',
+  'rental/components/whatsapp/WhatsAppSettingsPanel.tsx',
+  'rental/components/whatsapp/WhatsAppSetupWizard.tsx',
+  'rental/components/whatsapp/WhatsAppTemplateManager.tsx',
+  'rental/components/whatsapp/whatsapp.ops.ts',
+  'rental/components/whatsapp/whatsapp-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -366,6 +387,10 @@ function isP27BEnforceCleanPath(relPath) {
   return P27B_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP28EnforceCleanPath(relPath) {
+  return P28_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -392,6 +417,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (surface === 'RENTAL' && isP26EnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP27AEnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP27BEnforceCleanPath(relPath)) return true;
+  if (surface === 'RENTAL' && isP28EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -401,6 +427,7 @@ function migrationPhaseFor(relPath, surface) {
   }
   if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
   if (isP27BEnforceCleanPath(relPath)) return 'P2.2.7B';
+  if (isP28EnforceCleanPath(relPath)) return 'P2.2.8';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
   if (isP26EnforceCleanPath(relPath)) return 'P2.2.6';
   if (isP25EnforceCleanPath(relPath)) return 'P2.2.5';

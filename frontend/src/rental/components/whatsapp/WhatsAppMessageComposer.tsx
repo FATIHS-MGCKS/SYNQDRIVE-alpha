@@ -2,7 +2,7 @@ import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
 import type { WhatsAppAiSuggestionResponse, WhatsAppConfig } from '../../../lib/api';
 
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface WhatsAppMessageComposerProps {
   config: WhatsAppConfig | null;
@@ -57,13 +57,13 @@ export function WhatsAppMessageComposer({
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-ai)]" />
             <span className="text-[10px] font-semibold text-[color:var(--status-ai)]">
-              AI suggestion — review before sending
+              {t('whatsapp.chat.aiSuggestionTitle')}
             </span>
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
               {aiResult.intent}
             </span>
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-              {Math.round(aiResult.confidence * 100)}% confidence
+              {t('whatsapp.chat.confidence', { percent: Math.round(aiResult.confidence * 100) })}
             </span>
           </div>
           <p className="text-[11px] leading-relaxed text-foreground">{suggestedReply}</p>
@@ -83,7 +83,7 @@ export function WhatsAppMessageComposer({
 
           {aiResult.usedTools.length > 0 && (
             <p className="mt-1.5 text-[9px] text-muted-foreground">
-              Data sources: {aiResult.usedTools.join(', ')}
+              {t('whatsapp.chat.dataSources', { sources: aiResult.usedTools.join(', ') })}
             </p>
           )}
 
@@ -102,7 +102,7 @@ export function WhatsAppMessageComposer({
                 disabled={sending}
                 className="sq-press rounded-lg bg-[color:var(--status-ai)] px-2.5 py-1.5 text-[10px] font-semibold text-white disabled:opacity-50"
               >
-                Send AI reply
+                {t('whatsapp.chat.sendAiReply')}
               </button>
             )}
             {needsHuman && (
@@ -111,7 +111,7 @@ export function WhatsAppMessageComposer({
                 onClick={onRequestHandover}
                 className="sq-press rounded-lg border border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--status-watch)]"
               >
-                Mark for human review
+                {t('whatsapp.chat.markHumanReview')}
               </button>
             )}
             <button
@@ -119,14 +119,14 @@ export function WhatsAppMessageComposer({
               onClick={onUseSuggestionInComposer}
               className="sq-press rounded-lg border border-border/60 px-2.5 py-1.5 text-[10px] font-semibold text-foreground hover:bg-muted"
             >
-              Edit in composer
+              {t('whatsapp.chat.editInComposer')}
             </button>
             <button
               type="button"
               onClick={onDismissSuggestion}
               className="sq-press px-2 py-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground"
             >
-              Dismiss
+              {t('whatsapp.chat.dismiss')}
             </button>
           </div>
         </div>
@@ -139,7 +139,7 @@ export function WhatsAppMessageComposer({
               type="button"
               onClick={onAiSuggest}
               disabled={aiLoading}
-              title="Get AI suggestion"
+              title={t('whatsapp.chat.getAiSuggestion')}
               className="sq-press flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--status-ai)]/10 text-[color:var(--status-ai)] hover:bg-[color:var(--status-ai)]/15 disabled:opacity-40"
             >
               <Icon name={aiLoading ? 'loader-2' : 'sparkles'} className={cn('h-4 w-4', aiLoading && 'animate-spin')} />
@@ -148,7 +148,7 @@ export function WhatsAppMessageComposer({
           <button
             type="button"
             onClick={onOpenTemplates}
-            title="Templates"
+            title={t('whatsapp.header.templates')}
             className="sq-press flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Icon name="file-text" className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function WhatsAppMessageComposer({
           <button
             type="button"
             onClick={onRequestHandover}
-            title="Request human handover"
+            title={t('whatsapp.chat.requestHandover')}
             className="sq-press flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Icon name="user-check" className="h-4 w-4" />
@@ -171,7 +171,7 @@ export function WhatsAppMessageComposer({
               onSend();
             }
           }}
-          placeholder="Type a message…"
+          placeholder={t('whatsapp.chat.composerPlaceholder')}
           rows={1}
           className="max-h-24 min-h-[36px] flex-1 resize-none rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-foreground outline-none focus:ring-1 focus:ring-[color:var(--brand)]/30"
         />

@@ -1,13 +1,14 @@
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
-import type { ReadinessCheck, WhatsAppTab } from './whatsapp.ops';
+import type { LocalizedReadinessCheck } from './whatsapp-i18n';
+import type { WhatsAppTab } from './whatsapp.ops';
 
 interface WhatsAppReadinessStripProps {
-  checks: ReadinessCheck[];
+  checks: LocalizedReadinessCheck[];
   onNavigate?: (tab: WhatsAppTab) => void;
 }
 
-const STATUS_ICON: Record<ReadinessCheck['status'], { icon: string; className: string }> = {
+const STATUS_ICON: Record<LocalizedReadinessCheck['status'], { icon: string; className: string }> = {
   ok: { icon: 'check-circle-2', className: 'text-[color:var(--status-positive)]' },
   warn: { icon: 'alert-triangle', className: 'text-[color:var(--status-watch)]' },
   error: { icon: 'x-circle', className: 'text-[color:var(--status-critical)]' },

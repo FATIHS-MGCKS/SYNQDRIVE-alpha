@@ -1,11 +1,13 @@
 import { Icon } from '../ui/Icon';
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WhatsAppConfig, WhatsAppConversation, WhatsAppStats } from '../../../lib/api';
-import { AI_MODE_META, buildReadinessChecks, type ReadinessCheck, type WhatsAppTab } from './whatsapp.ops';
+import type { WhatsAppTemplate } from '../../../lib/api';
+import { labelAiModeDescription, localizedReadinessChecks } from './whatsapp-i18n';
+import type { WhatsAppTab } from './whatsapp.ops';
 import { WhatsAppReadinessStrip } from './WhatsAppReadinessStrip';
 import { WhatsAppKpiCards } from './WhatsAppKpiCards';
-import type { WhatsAppTemplate } from '../../../lib/api';
 
 interface WhatsAppOverviewTabProps {
   config: WhatsAppConfig | null;
@@ -28,14 +30,21 @@ export function WhatsAppOverviewTab({
   onConnect,
   onRetry,
 }: WhatsAppOverviewTabProps) {
-  const checks = buildReadinessChecks(config, stats, templates);
+  const { t, locale } = useLanguage();
+  const checks = localizedReadinessChecks(locale, config, stats, templates);
   const humanReview = conversations.filter(c => c.status === 'PENDING_HUMAN').length;
   const recent = [...conversations]
     .sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''))
     .slice(0, 5);
 
   if (loadError) {
-    return <ErrorState title="Could not load WhatsApp" description={loadError} onRetry={onRetry} />;
+    return (
+      <ErrorState
+        title={t('whatsapp.overview.loadError')}
+        description={loadError}
+        onRetry={onRetry}
+      />
+    );
   }
 
   return (
@@ -52,9 +61,9 @@ export function WhatsAppOverviewTab({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-          <h3 className="text-[12px] font-semibold text-foreground">Setup checklist</h3>
+          <h3 className="text-[12px] font-semibold text-foreground">{t('whatsapp.overview.setupChecklist')}</h3>
           <ul className="mt-3 space-y-2">
-            {checks.map((c: ReadinessCheck) => (
+            {checks.map(c => (
               <li key={c.id} className="flex items-start gap-2 text-[11px]">
                 <Icon
                   name={c.status === 'ok' ? 'check-circle-2' : c.status === 'error' ? 'x-circle' : 'alert-circle'}
@@ -77,24 +86,28 @@ export function WhatsAppOverviewTab({
               onClick={onConnect}
               className="sq-press mt-4 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[11px] font-semibold text-white"
             >
-              Start setup wizard
+              {t('whatsapp.overview.startWizard')}
             </button>
           )}
         </section>
 
         <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center justify-between">
-            <h3 className="text-[12px] font-semibold text-foreground">Recent activity</h3>
+            <h3 className="text-[12px] font-semibold text-foreground">{t('whatsapp.overview.recentActivity')}</h3>
             <button
               type="button"
               onClick={() => onNavigate('inbox')}
               className="text-[10px] font-semibold text-[color:var(--brand)] hover:underline"
             >
-              Open inbox
+              {t('whatsapp.overview.openInbox')}
             </button>
           </div>
           {recent.length === 0 ? (
-            <EmptyState compact title="No conversations yet" description="Inbound messages appear after webhook delivery." />
+            <EmptyState
+              compact
+              title={t('whatsapp.overview.noConversations')}
+              description={t('whatsapp.overview.noConversationsDesc')}
+            />
           ) : (
             <ul className="mt-2 divide-y divide-border/30">
               {recent.map(c => (
@@ -119,9 +132,9 @@ export function WhatsAppOverviewTab({
 
       {config && (
         <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
-          <h3 className="text-[12px] font-semibold text-foreground">AI assistance summary</h3>
+          <h3 className="text-[12px] font-semibold text-foreground">{t('whatsapp.overview.aiSummaryTitle')}</h3>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            {AI_MODE_META[config.aiMode].description}. Sensitive cases remain human review.
+            {labelAiModeDescription(locale, config.aiMode)}. {t('whatsapp.overview.aiSummarySuffix')}
           </p>
         </section>
       )}

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Icon } from '../ui/Icon';
 import { EmptyState } from '../../../components/patterns/states';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WhatsAppAiSuggestionResponse, WhatsAppConfig, WhatsAppConversation, WhatsAppMsg } from '../../../lib/api';
 import { conversationDisplayName } from './whatsapp.ops';
 import { WhatsAppMessageBubble } from './WhatsAppMessageBubble';
@@ -52,6 +53,7 @@ export function WhatsAppChatPanel({
   onOpenTemplates,
   onRequestHandover,
 }: WhatsAppChatPanelProps) {
+  const { t } = useLanguage();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,8 +65,8 @@ export function WhatsAppChatPanel({
       <div className="flex h-full min-h-[320px] flex-col items-center justify-center bg-muted/10">
         <EmptyState
           icon={<Icon name="message-circle" className="h-5 w-5" />}
-          title="Select a conversation"
-          description="Choose a thread from the inbox to view messages and linked SynqDrive context."
+          title={t('whatsapp.chat.selectTitle')}
+          description={t('whatsapp.chat.selectDesc')}
         />
       </div>
     );
@@ -90,7 +92,7 @@ export function WhatsAppChatPanel({
         <div className="flex items-center gap-1">
           {conversation.status === 'PENDING_HUMAN' && (
             <StatusChip tone="watch">
-              Handover
+              {t('whatsapp.inbox.chip.handover')}
             </StatusChip>
           )}
           {onOpenContext && (
@@ -99,7 +101,7 @@ export function WhatsAppChatPanel({
               onClick={onOpenContext}
               className="sq-press rounded-lg border border-border/60 px-2 py-1 text-[9px] font-semibold text-muted-foreground hover:bg-muted xl:hidden"
             >
-              Context
+              {t('whatsapp.chat.context')}
             </button>
           )}
         </div>
@@ -111,7 +113,7 @@ export function WhatsAppChatPanel({
             <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
-          <EmptyState compact title="No messages yet" description="Send a reply or wait for the customer." />
+          <EmptyState compact title={t('whatsapp.chat.noMessages')} description={t('whatsapp.chat.noMessagesDesc')} />
         ) : (
           messages.map(m => <WhatsAppMessageBubble key={m.id} msg={m} />)
         )}

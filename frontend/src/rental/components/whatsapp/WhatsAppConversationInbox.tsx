@@ -2,13 +2,10 @@ import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { EmptyState } from '../../../components/patterns/states';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WhatsAppConversation } from '../../../lib/api';
-import {
-  conversationDisplayName,
-  formatRelativeTime,
-  INBOX_FILTERS,
-  type InboxFilter,
-} from './whatsapp.ops';
+import { formatRelativeTime, localizedInboxFilters } from './whatsapp-i18n';
+import { conversationDisplayName, type InboxFilter } from './whatsapp.ops';
 
 interface WhatsAppConversationInboxProps {
   conversations: WhatsAppConversation[];
@@ -29,6 +26,9 @@ export function WhatsAppConversationInbox({
   onFilterChange,
   onSelect,
 }: WhatsAppConversationInboxProps) {
+  const { t, locale } = useLanguage();
+  const inboxFilters = localizedInboxFilters(locale);
+
   return (
     <div className="flex h-full min-h-0 flex-col border-r border-border/40">
       <div className="space-y-2 border-b border-border/40 p-3">
@@ -37,16 +37,16 @@ export function WhatsAppConversationInbox({
           <input
             value={search}
             onChange={e => onSearchChange(e.target.value)}
-            placeholder="Search name, phone, message…"
+            placeholder={t('whatsapp.inbox.searchPlaceholder')}
             className="w-full rounded-lg border border-border/60 bg-muted/30 py-2 pl-8 pr-3 text-[11px] text-foreground outline-none focus:ring-1 focus:ring-[color:var(--brand)]/30"
           />
         </div>
         <div className="flex flex-wrap gap-1">
-          {INBOX_FILTERS.map(f => (
+          {inboxFilters.map(f => (
             <button
               key={f.key}
               type="button"
-              title={f.needsIntent ? 'Requires backend intent detection' : undefined}
+              title={f.needsIntent ? t('whatsapp.inbox.filterNeedsIntentTitle') : undefined}
               onClick={() => onFilterChange(f.key)}
               className={cn(
                 'sq-press rounded-md px-2 py-1 text-[9px] font-semibold transition-all',
@@ -66,11 +66,11 @@ export function WhatsAppConversationInbox({
         {conversations.length === 0 ? (
           <EmptyState
             compact
-            title="No conversations"
+            title={t('whatsapp.inbox.emptyTitle')}
             description={
               filter !== 'all'
-                ? 'Try another filter or wait for inbound messages.'
-                : 'Inbound WhatsApp messages appear here once webhooks are active.'
+                ? t('whatsapp.inbox.emptyFiltered')
+                : t('whatsapp.inbox.emptyAll')
             }
           />
         ) : (
@@ -96,12 +96,12 @@ export function WhatsAppConversationInbox({
                       <span className="truncate text-[11px] font-semibold text-foreground">{name}</span>
                       {c.lastMessageAt && (
                         <span className="shrink-0 text-[9px] text-muted-foreground">
-                          {formatRelativeTime(c.lastMessageAt)}
+                          {formatRelativeTime(locale, c.lastMessageAt)}
                         </span>
                       )}
                     </div>
                     <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                      {c.lastMessagePreview || 'No messages yet'}
+                      {c.lastMessagePreview || t('whatsapp.inbox.noMessagesYet')}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1">
                       {c.unreadCount > 0 && (
@@ -111,17 +111,17 @@ export function WhatsAppConversationInbox({
                       )}
                       {c.status === 'PENDING_HUMAN' && (
                         <StatusChip tone="watch">
-                          Handover
+                          {t('whatsapp.inbox.chip.handover')}
                         </StatusChip>
                       )}
                       {!c.customerId && (
                         <StatusChip tone="neutral">
-                          Unknown
+                          {t('whatsapp.inbox.chip.unknown')}
                         </StatusChip>
                       )}
                       {c.bookingId && (
                         <StatusChip tone="info">
-                          Booking
+                          {t('whatsapp.inbox.chip.booking')}
                         </StatusChip>
                       )}
                       {c.intent && (

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Icon } from './ui/Icon';
 import { EmptyState, ErrorState } from '../../components/patterns/states';
 import { Skeleton } from '../../components/ui/skeleton';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import {
   api,
@@ -22,6 +23,7 @@ import { WhatsAppInboxLayout } from './whatsapp/WhatsAppInboxLayout';
 import { WhatsAppTemplateManager } from './whatsapp/WhatsAppTemplateManager';
 import { WhatsAppSettingsPanel } from './whatsapp/WhatsAppSettingsPanel';
 import { WhatsAppSetupWizard } from './whatsapp/WhatsAppSetupWizard';
+import { localizedTemplateCategories } from './whatsapp/whatsapp-i18n';
 import {
   countFailedInThread,
   filterConversations,
@@ -36,6 +38,7 @@ interface WhatsAppBusinessViewProps {
 }
 
 export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusinessViewProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const [tab, setTab] = useState<WhatsAppTab>('overview');
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
@@ -88,7 +91,7 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
   const load = useCallback(async () => {
     if (!orgId) {
       setLoading(false);
-      setLoadError('Organization context is missing.');
+      setLoadError(t('whatsapp.errors.orgMissing'));
       return;
     }
     setLoading(true);
@@ -104,13 +107,13 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       setConversations(convos ?? []);
       void loadTemplates();
     } catch (err) {
-      const msg = getErrorMessage(err, 'Failed to load WhatsApp');
+      const msg = getErrorMessage(err, t('whatsapp.errors.loadFailed'));
       setLoadError(msg);
-      toast.error('Could not load WhatsApp', { description: msg });
+      toast.error(t('whatsapp.toast.loadFailed'), { description: msg });
     } finally {
       setLoading(false);
     }
-  }, [orgId, loadTemplates]);
+  }, [orgId, loadTemplates, t]);
 
   useEffect(() => {
     void load();
@@ -133,12 +136,12 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       } catch (err) {
         const msg = getErrorMessage(err);
         setMessages([]);
-        toast.error('Could not load messages', { description: msg });
+        toast.error(t('whatsapp.toast.messagesLoadFailed'), { description: msg });
       } finally {
         setMsgLoading(false);
       }
     },
-    [orgId],
+    [orgId, t],
   );
 
   const refreshConversations = useCallback(async () => {
@@ -161,14 +164,16 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       setAiResult(null);
       await refreshConversations();
       if (res.status === 'FAILED') {
-        toast.error('Message failed', { description: res.failureReason ?? 'Provider error' });
+        toast.error(t('whatsapp.toast.messageFailed'), {
+          description: res.failureReason ?? t('whatsapp.toast.providerError'),
+        });
       } else {
-        toast.success('Message queued');
+        toast.success(t('whatsapp.toast.messageQueued'));
       }
     } catch (err) {
       const msg = getErrorMessage(err);
       setPolicyBlock(msg);
-      toast.error('Send failed', { description: msg });
+      toast.error(t('whatsapp.toast.sendFailed'), { description: msg });
     } finally {
       setSending(false);
       operationLock.current = false;
@@ -184,10 +189,12 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       setAiResult(res);
       setAiSuggestionReason(res.humanReason ?? res.reason ?? null);
       if (!res.suggestedReply && (res.reason || res.humanReason)) {
-        toast.message('No suggestion', { description: res.humanReason ?? res.reason ?? undefined });
+        toast.message(t('whatsapp.toast.noSuggestion'), {
+          description: res.humanReason ?? res.reason ?? undefined,
+        });
       }
     } catch (err) {
-      toast.error('AI suggestion failed', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.aiSuggestionFailed'), { description: getErrorMessage(err) });
     } finally {
       setAiLoading(false);
     }
@@ -208,9 +215,9 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       setMessages(prev => [...prev, res]);
       setAiResult(null);
       await refreshConversations();
-      toast.success('AI reply sent');
+      toast.success(t('whatsapp.toast.aiReplySent'));
     } catch (err) {
-      toast.error('AI reply blocked', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.aiReplyBlocked'), { description: getErrorMessage(err) });
     } finally {
       setSending(false);
     }
@@ -222,9 +229,9 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
     try {
       const res = await api.whatsapp.updateConfig(orgId, patch);
       setConfig(res);
-      toast.success('Settings saved');
+      toast.success(t('whatsapp.toast.settingsSaved'));
     } catch (err) {
-      toast.error('Save failed', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.saveFailed'), { description: getErrorMessage(err) });
     } finally {
       setSavingConfig(false);
     }
@@ -254,12 +261,12 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       });
       setConfig(updated);
       setWizardOpen(false);
-      toast.success('WhatsApp configured', {
-        description: 'Provider token must be set on the server for outbound delivery.',
+      toast.success(t('whatsapp.toast.configured'), {
+        description: t('whatsapp.toast.configuredDesc'),
       });
       await load();
     } catch (err) {
-      toast.error('Setup failed', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.setupFailed'), { description: getErrorMessage(err) });
     } finally {
       setSavingConfig(false);
     }
@@ -270,10 +277,10 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
     try {
       const res = await api.whatsapp.disconnect(orgId);
       setConfig(res);
-      toast.success('Disconnected');
+      toast.success(t('whatsapp.toast.disconnected'));
       await load();
     } catch (err) {
-      toast.error('Disconnect failed', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.disconnectFailed'), { description: getErrorMessage(err) });
     }
   };
 
@@ -287,8 +294,8 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       });
       setSimModal(false);
       setSimContent('');
-      toast.success(res.sandbox ? 'Sandbox message simulated' : 'Message simulated', {
-        description: res.sandbox ? 'Dev/test only — not a real Meta delivery' : undefined,
+      toast.success(res.sandbox ? t('whatsapp.toast.simulatedSandbox') : t('whatsapp.toast.simulated'), {
+        description: res.sandbox ? t('whatsapp.toast.simulatedSandboxDesc') : undefined,
       });
       await load();
       if (res.conversationId) {
@@ -299,7 +306,7 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
         }
       }
     } catch (err) {
-      toast.error('Simulation failed', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.simulationFailed'), { description: getErrorMessage(err) });
     }
   };
 
@@ -314,16 +321,16 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       setTemplateModal(false);
       setNewTemplateName('');
       setNewTemplateBody('');
-      toast.success('Template draft created');
+      toast.success(t('whatsapp.toast.templateCreated'));
       await loadTemplates();
     } catch (err) {
-      toast.error('Could not create template', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.templateCreateFailed'), { description: getErrorMessage(err) });
     }
   };
 
   const handleRequestHandover = async () => {
     if (!orgId || !selectedConvo) {
-      toast.message('Human handover noted', { description: 'Select a conversation first.' });
+      toast.message(t('whatsapp.toast.handoverNote'), { description: t('whatsapp.toast.selectConversation') });
       return;
     }
     try {
@@ -333,9 +340,9 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
         aiResult?.humanReason ?? 'Manual human review from WhatsApp Operations Center',
       );
       await refreshConversations();
-      toast.success('Marked for human review');
+      toast.success(t('whatsapp.toast.markedForReview'));
     } catch (err) {
-      toast.error('Handover failed', { description: getErrorMessage(err) });
+      toast.error(t('whatsapp.toast.handoverFailed'), { description: getErrorMessage(err) });
     }
   };
 
@@ -355,7 +362,7 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
   if (loadError && !config) {
     return (
       <div className="mx-auto max-w-[1600px]">
-        <ErrorState title="WhatsApp unavailable" error={loadError} onRetry={() => void load()} />
+        <ErrorState title={t('whatsapp.errors.unavailable')} error={loadError} onRetry={() => void load()} />
       </div>
     );
   }
@@ -429,15 +436,15 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
         ) : (
           <EmptyState
             icon={<Icon name="wifi-off" className="h-5 w-5" />}
-            title="Setup required"
-            description="Connect WhatsApp Business before using the operations inbox."
+            title={t('whatsapp.empty.setupRequired')}
+            description={t('whatsapp.empty.setupRequiredDesc')}
             action={
               <button
                 type="button"
                 onClick={() => setWizardOpen(true)}
                 className="sq-press rounded-xl bg-[color:var(--brand)] px-4 py-2 text-[11px] font-semibold text-white"
               >
-                Open setup wizard
+                {t('whatsapp.empty.openWizard')}
               </button>
             }
           />
@@ -500,7 +507,7 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
 
       {tab === 'inbox' && selectedConvo && failedInThread > 0 && (
         <p className="text-center text-[10px] text-muted-foreground xl:hidden">
-          {failedInThread} failed message(s) in current thread
+          {t('whatsapp.chat.failedInThread', { count: failedInThread })}
         </p>
       )}
     </div>
@@ -526,6 +533,7 @@ function SimulateModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const { t } = useLanguage();
   const inputClass =
     'w-full rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[11px] outline-none focus:ring-1 focus:ring-[color:var(--brand)]/30';
 
@@ -535,24 +543,24 @@ function SimulateModal({
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-[color:var(--status-watch)]/30 bg-popover p-5 shadow-[var(--shadow-2)]">
         <div className="mb-3 flex items-center gap-2">
           <span className="rounded-md bg-[color:var(--status-watch)]/15 px-2 py-0.5 text-[9px] font-bold text-[color:var(--status-watch)]">
-            SANDBOX
+            {t('whatsapp.sandbox.badge')}
           </span>
-          <h3 className="text-[13px] font-semibold text-foreground">Simulate incoming message</h3>
+          <h3 className="text-[13px] font-semibold text-foreground">{t('whatsapp.sandbox.modalTitle')}</h3>
         </div>
         <div className="space-y-2">
-          <input value={simPhone} onChange={e => onPhoneChange(e.target.value)} placeholder="Phone" className={inputClass} />
-          <input value={simName} onChange={e => onNameChange(e.target.value)} placeholder="Contact name" className={inputClass} />
+          <input value={simPhone} onChange={e => onPhoneChange(e.target.value)} placeholder={t('whatsapp.sandbox.phonePlaceholder')} className={inputClass} />
+          <input value={simName} onChange={e => onNameChange(e.target.value)} placeholder={t('whatsapp.sandbox.namePlaceholder')} className={inputClass} />
           <textarea
             value={simContent}
             onChange={e => onContentChange(e.target.value)}
             rows={3}
-            placeholder="Message content"
+            placeholder={t('whatsapp.sandbox.contentPlaceholder')}
             className={`${inputClass} resize-none`}
           />
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="sq-press rounded-lg px-3 py-2 text-[11px] font-medium text-muted-foreground">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -560,7 +568,7 @@ function SimulateModal({
             disabled={!simPhone.trim() || !simContent.trim()}
             className="sq-press rounded-lg bg-[color:var(--brand)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
           >
-            Simulate
+            {t('whatsapp.sandbox.simulate')}
           </button>
         </div>
       </div>
@@ -587,6 +595,8 @@ function TemplateDraftModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const { locale, t } = useLanguage();
+  const templateCategories = localizedTemplateCategories(locale);
   const inputClass =
     'w-full rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[11px] outline-none';
 
@@ -594,30 +604,39 @@ function TemplateDraftModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 overlay-scrim" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-popover p-5 shadow-[var(--shadow-2)]">
-        <h3 className="text-[13px] font-semibold text-foreground">New template draft</h3>
+        <h3 className="text-[13px] font-semibold text-foreground">{t('whatsapp.template.modal.title')}</h3>
         <div className="mt-3 space-y-2">
-          <input value={name} onChange={e => onNameChange(e.target.value)} placeholder="Template name" className={inputClass} />
-          <select value={category} onChange={e => onCategoryChange(e.target.value as WhatsAppTemplateCategory)} className={inputClass}>
-            <option value="BOOKING_CONFIRMATION">Booking confirmation</option>
-            <option value="PICKUP_REMINDER">Pickup reminder</option>
-            <option value="RETURN_REMINDER">Return reminder</option>
-            <option value="MISSING_DOCUMENTS">Missing documents</option>
-            <option value="PAYMENT_REMINDER">Payment reminder</option>
-            <option value="DEPOSIT_REMINDER">Deposit reminder</option>
-            <option value="DAMAGE_FOLLOWUP">Damage follow-up</option>
-            <option value="HANDOVER_LINK">Handover link</option>
-            <option value="RETURN_LINK">Return link</option>
-            <option value="SUPPORT_UPDATE">Support update</option>
-            <option value="VEHICLE_READY">Vehicle ready</option>
+          <input
+            value={name}
+            onChange={e => onNameChange(e.target.value)}
+            placeholder={t('whatsapp.template.modal.namePlaceholder')}
+            className={inputClass}
+          />
+          <select
+            value={category}
+            onChange={e => onCategoryChange(e.target.value as WhatsAppTemplateCategory)}
+            className={inputClass}
+          >
+            {templateCategories.map(({ category: cat, label }) => (
+              <option key={cat} value={cat}>
+                {label}
+              </option>
+            ))}
           </select>
-          <textarea value={body} onChange={e => onBodyChange(e.target.value)} rows={4} placeholder="Body with {{variables}}" className={`${inputClass} resize-none font-mono`} />
+          <textarea
+            value={body}
+            onChange={e => onBodyChange(e.target.value)}
+            rows={4}
+            placeholder={t('whatsapp.template.modal.bodyPlaceholder')}
+            className={`${inputClass} resize-none font-mono`}
+          />
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="sq-press rounded-lg px-3 py-2 text-[11px] text-muted-foreground">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" onClick={onSubmit} className="sq-press rounded-lg bg-[color:var(--brand)] px-3 py-2 text-[11px] font-semibold text-white">
-            Create draft
+            {t('whatsapp.template.modal.create')}
           </button>
         </div>
       </div>
