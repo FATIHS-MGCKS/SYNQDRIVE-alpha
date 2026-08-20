@@ -302,6 +302,91 @@ describe('grouped lifecycle-action reachability audit', () => {
   });
 });
 
+describe('pagination-boundary partial context (P32-F01)', () => {
+  it('aggregate-only page 1 shows incomplete group context before loadMore, then merges cause', () => {
+    const page1Items = [
+      minimalActionQueueItem('agg-a', {
+        vehicleId: 'veh-a',
+        issueType: 'VEHICLE_NOT_READY',
+        severity: 'warning',
+      }),
+    ];
+
+    const beforeLoadMore = projectFleetReadinessPresentationItems(page1Items, {
+      hasMoreUnloadedPages: true,
+    });
+    expect(beforeLoadMore).toHaveLength(1);
+
+    const groupBefore = beforeLoadMore[0];
+    expect(groupBefore?.kind).toBe('group');
+    if (groupBefore?.kind === 'group') {
+      expect(groupBefore.id).toBe('fleet-readiness:veh-a');
+      expect(groupBefore.fleetCausesMayBeIncomplete).toBe(true);
+      expect(groupBefore.subtitle).toBe('');
+      expect(groupBefore.children.map((child) => child.itemId)).toEqual(['agg-a']);
+    }
+
+    const page2Items = [
+      ...page1Items,
+      minimalActionQueueItem('cause-critical', {
+        vehicleId: 'veh-a',
+        issueType: 'TIRE_CRITICAL',
+        severity: 'critical',
+      }),
+    ];
+
+    const afterLoadMore = projectFleetReadinessPresentationItems(page2Items, {
+      hasMoreUnloadedPages: false,
+    });
+    const vehiclePresentations = afterLoadMore.filter(
+      (row) => row.kind === 'group' && row.id === 'fleet-readiness:veh-a',
+    );
+    expect(vehiclePresentations).toHaveLength(1);
+
+    const groupAfter = vehiclePresentations[0];
+    expect(groupAfter?.kind).toBe('group');
+    if (groupAfter?.kind === 'group') {
+      expect(groupAfter.fleetCausesMayBeIncomplete).toBe(false);
+      expect(groupAfter.severity).toBe('critical');
+      expect(groupAfter.subtitle).toBe('1');
+      expect(groupAfter.children.map((child) => child.itemId)).toEqual(['agg-a', 'cause-critical']);
+    }
+  });
+
+  it('single loaded cause with more pages does not imply exhaustive vehicle context', () => {
+    const page1Items = [
+      minimalActionQueueItem('cause-only', {
+        vehicleId: 'veh-a',
+        issueType: 'TIRE_CRITICAL',
+        severity: 'critical',
+      }),
+    ];
+
+    const beforeLoadMore = projectFleetReadinessPresentationItems(page1Items, {
+      hasMoreUnloadedPages: true,
+    });
+    expect(beforeLoadMore).toHaveLength(1);
+
+    const groupBefore = beforeLoadMore[0];
+    expect(groupBefore?.kind).toBe('group');
+    if (groupBefore?.kind === 'group') {
+      expect(groupBefore.fleetCausesMayBeIncomplete).toBe(true);
+      expect(groupBefore.subtitle).toBe('');
+      expect(groupBefore.children.map((child) => child.itemId)).toEqual(['cause-only']);
+    }
+
+    const afterLoadMore = projectFleetReadinessPresentationItems(page1Items, {
+      hasMoreUnloadedPages: false,
+    });
+    const groupAfter = afterLoadMore[0];
+    expect(groupAfter?.kind).toBe('group');
+    if (groupAfter?.kind === 'group') {
+      expect(groupAfter.fleetCausesMayBeIncomplete).toBe(false);
+      expect(groupAfter.subtitle).toBe('1');
+    }
+  });
+});
+
 describe('projectFleetReadinessPresentationItems', () => {
   it('projects grouped vehicles and preserves non-vehicle rows', () => {
     const items = [

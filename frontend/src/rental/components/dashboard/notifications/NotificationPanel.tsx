@@ -376,6 +376,7 @@ export function NotificationPanel({
                         t={t}
                         onItemCta={runCta}
                         onCreateTask={openCreateTask}
+                        resolveItemLifecycleHandlers={mutationHandlers}
                       />
                     </li>
                   );

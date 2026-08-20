@@ -815,6 +815,7 @@ export const fr: Record<TranslationKey, string> = {
   'dashboardAttention.operations.subtitle': 'Remises, reservations, facturation et taches de station',
   'dashboardAttention.fleetReadiness.title': 'Disponibilite flotte',
   'dashboardAttention.fleetReadiness.subtitle': 'Vehicules non prets ou non evaluables dans le perimetre',
+  'dashboardAttention.fleetReadiness.moreCausesPossible': 'D\'autres causes peuvent exister — chargez plus pour voir le contexte complet du vehicule.',
   'dashboardAttention.fleetSummary.unavailable': 'Resume de disponibilite flotte indisponible.',
   'dashboardAttention.fleetSummary.ready': '{ready} sur {total} prets',
   'dashboardAttention.fleetSummary.readyPercent': '{percent}% prets',

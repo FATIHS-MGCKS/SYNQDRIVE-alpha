@@ -15,6 +15,7 @@ import {
 } from '../lib/notifications/map-api-counts-to-tab-counts';
 import type { NotificationPrimaryTab } from '../components/dashboard/notifications/notificationPanelTypes';
 import { resolvedRecentFromIso } from '../lib/notifications/notification-resolved-window';
+import { useRequestGeneration } from './request-generation';
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -94,6 +95,7 @@ export function useNotifications({
   fetchCounts: fetchCountsOption,
 }: UseNotificationsOptions): UseNotificationsResult {
   const shouldFetchCounts = fetchCountsOption ?? !attentionScope;
+  const { nextGeneration, isCurrent, currentGeneration } = useRequestGeneration();
 
   const [apiRows, setApiRows] = useState<ApiNotificationResponse[]>([]);
   const [tabCounts, setTabCounts] = useState<Record<ActionQueueFilterTab, number>>(emptyTabCounts);
@@ -109,7 +111,6 @@ export function useNotifications({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const cancelRef = useRef(false);
   const rowsSnapshotRef = useRef<ApiNotificationResponse[]>([]);
 
   const items = useMemo(
@@ -142,42 +143,53 @@ export function useNotifications({
     [listMode, attentionScope, stationId],
   );
 
-  const fetchCounts = useCallback(async () => {
-    if (!orgId || !enabled || !shouldFetchCounts) return;
-    const counts = await notificationClient.counts(orgId);
-    setTabCounts(mapApiCountsToTabCounts(counts));
-    setPrimaryTabCounts(mapApiCountsToPrimaryTabCounts(counts));
-  }, [orgId, enabled, shouldFetchCounts]);
+  const fetchCountsForGeneration = useCallback(
+    async (generation: number) => {
+      if (!orgId || !enabled || !shouldFetchCounts) return;
+      const counts = await notificationClient.counts(orgId);
+      if (!isCurrent(generation)) return;
+      setTabCounts(mapApiCountsToTabCounts(counts));
+      setPrimaryTabCounts(mapApiCountsToPrimaryTabCounts(counts));
+    },
+    [orgId, enabled, shouldFetchCounts, isCurrent],
+  );
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
       if (!orgId || !enabled) {
+        nextGeneration();
         setApiRows([]);
         setTabCounts(emptyTabCounts());
         setPrimaryTabCounts(emptyPrimaryTabCounts());
         setTotal(0);
+        setPage(1);
+        setTotalPages(1);
         setError(null);
+        setLoading(false);
         return;
       }
 
-      cancelRef.current = false;
+      const generation = nextGeneration();
       setLoading(true);
-      setError(null);
+      if (!append) {
+        setError(null);
+      }
 
       try {
-        const [listRes] = await Promise.all([
-          notificationClient.list(orgId, { ...listParams, page: targetPage }),
-          targetPage === 1 && shouldFetchCounts ? fetchCounts() : Promise.resolve(),
-        ]);
+        const listRes = await notificationClient.list(orgId, { ...listParams, page: targetPage });
 
-        if (cancelRef.current) return;
+        if (!isCurrent(generation)) return;
 
         setApiRows((prev) => mergePages(prev, listRes.data, append));
         setPage(listRes.meta.page);
         setTotalPages(listRes.meta.totalPages);
         setTotal(listRes.meta.total);
+
+        if (targetPage === 1 && shouldFetchCounts) {
+          await fetchCountsForGeneration(generation);
+        }
       } catch (err) {
-        if (cancelRef.current) return;
+        if (!isCurrent(generation)) return;
         const clientErr =
           err instanceof NotificationClientError
             ? err
@@ -188,12 +200,16 @@ export function useNotifications({
           setTabCounts(emptyTabCounts());
           setPrimaryTabCounts(emptyPrimaryTabCounts());
           setTotal(0);
+          setPage(1);
+          setTotalPages(1);
         }
       } finally {
-        if (!cancelRef.current) setLoading(false);
+        if (isCurrent(generation)) {
+          setLoading(false);
+        }
       }
     },
-    [orgId, enabled, listParams, fetchCounts, shouldFetchCounts],
+    [orgId, enabled, listParams, shouldFetchCounts, fetchCountsForGeneration, nextGeneration, isCurrent],
   );
 
   const refresh = useCallback(async () => {
@@ -207,11 +223,7 @@ export function useNotifications({
   }, [page, totalPages, loading, fetchPage]);
 
   useEffect(() => {
-    cancelRef.current = false;
     void fetchPage(1, false);
-    return () => {
-      cancelRef.current = true;
-    };
   }, [fetchPage]);
 
   const runOptimisticMutation = useCallback(
@@ -221,15 +233,20 @@ export function useNotifications({
       optimistic: (rows: ApiNotificationResponse[]) => ApiNotificationResponse[],
       request: () => Promise<ApiNotificationResponse>,
     ) => {
+      const generation = currentGeneration();
       rowsSnapshotRef.current = apiRows;
       setMutation({ id, action, error: null });
       setApiRows((prev) => optimistic(prev));
 
       try {
         const updated = await request();
+        if (!isCurrent(generation)) return;
         setApiRows((prev) => patchRow(prev, id, updated));
-        if (shouldFetchCounts) await fetchCounts();
+        if (shouldFetchCounts) {
+          await fetchCountsForGeneration(generation);
+        }
       } catch (err) {
+        if (!isCurrent(generation)) return;
         setApiRows(rowsSnapshotRef.current);
         const clientErr =
           err instanceof NotificationClientError
@@ -238,10 +255,14 @@ export function useNotifications({
         setMutation({ id, action, error: clientErr });
         throw clientErr;
       } finally {
-        setMutation({ id: null, action: null, error: null });
+        setMutation((prev) =>
+          prev.id === id && prev.action === action
+            ? { id: null, action: null, error: null }
+            : prev,
+        );
       }
     },
-    [apiRows, fetchCounts, shouldFetchCounts],
+    [apiRows, fetchCountsForGeneration, currentGeneration, isCurrent, shouldFetchCounts],
   );
 
   const markRead = useCallback(

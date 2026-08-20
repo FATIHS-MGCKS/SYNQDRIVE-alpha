@@ -1078,6 +1078,7 @@ export const de: Record<TranslationKey, string> = {
   'dashboardAttention.operations.subtitle': 'Übergaben, Buchungen, Abrechnung und Stationsaufgaben',
   'dashboardAttention.fleetReadiness.title': 'Flotten-Einsatzbereitschaft',
   'dashboardAttention.fleetReadiness.subtitle': 'Fahrzeuge nicht bereit oder nicht auswertbar im Scope',
+  'dashboardAttention.fleetReadiness.moreCausesPossible': 'Weitere Ursachen können vorhanden sein — „Mehr laden“ zeigt den vollständigen Fahrzeugkontext.',
   'dashboardAttention.fleetSummary.unavailable': 'Flotten-Einsatzbereitschaft nicht verfügbar.',
   'dashboardAttention.fleetSummary.ready': '{ready} von {total} bereit',
   'dashboardAttention.fleetSummary.readyPercent': '{percent}% bereit',
