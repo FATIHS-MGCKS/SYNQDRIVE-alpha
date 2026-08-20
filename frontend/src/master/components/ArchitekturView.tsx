@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Master Support Ops (P2.2.10 — V4.9.932)', icon: Globe,
+    endpoint: 'SupportView (Master), master/components/support-ops/*, support-ops.utils.ts translation-key defs.',
+    service: '**Helper:** `support-ops-i18n.ts` (`so`, status/priority/category/sender/relative-time/duration label helpers). **Keys:** +88 EN+DE (`support.ops.{en,de}.ts`; 7018→7106); reused `support.status*`, `support.prio*`, `support.cat*`, `support.time.*`. **Decoupling:** removed Rental `support-i18n` import + `MASTER_SUPPORT_LOCALE`. **Guardrails:** P2.2.10 enforce-clean exact — 0 findings; utils blind-spot grep guard. **Phase B:** `SupportTechnicalContextCard` deferred. **Shim:** unchanged (29). **Tests:** `master-support-ops-localization.test.tsx`. **Semantics:** SupportQueueId, buildTicketListParams, status/priority/category machine enums unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-10-preflight-2026-08-20.md; architecture/I18N_MASTER_SUPPORT_OPS_P2_2_10_2026-08-20.md' },
   { name: 'Platform i18n Rental Support Center (P2.2.9 — V4.9.931)', icon: Globe,
     endpoint: 'SupportView, rental/components/support/*, support-center.utils.ts translation-key defs, CreateSupportTicketDialog (Phase B).',
     service: '**Helper:** `support-i18n.ts` (`su`, status/priority/category/sender/relative-time label helpers). **Keys:** +127 EN+DE (`support.{en,de}.ts`; 6891→7018); reused 8 existing `support.*` keys; new `support.statusNew` for inbox OPEN. **Guardrails:** P2.2.9 enforce-clean exact — 0 findings (19+~12→0); utils blind-spot grep guard. **Shim:** unchanged (29). **Tests:** `rental-support-center-localization.test.tsx`. **Semantics:** ticket status/priority/category machine enums, API payloads, filters unchanged.',
