@@ -156,6 +156,17 @@ const P28_ENFORCE_CLEAN_EXACT = new Set([
   'rental/components/whatsapp/whatsapp-i18n.ts',
 ]);
 
+const P29_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/SupportView.tsx',
+  'rental/components/support/SupportCenterHero.tsx',
+  'rental/components/support/SupportTicketInbox.tsx',
+  'rental/components/support/SupportTicketDetailPanel.tsx',
+  'rental/components/support/SupportCreateTicketDialog.tsx',
+  'rental/components/support/support-center.utils.ts',
+  'rental/components/support/support-i18n.ts',
+  'components/support/CreateSupportTicketDialog.tsx',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -391,6 +402,10 @@ function isP28EnforceCleanPath(relPath) {
   return P28_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP29EnforceCleanPath(relPath) {
+  return P29_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -418,6 +433,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (surface === 'RENTAL' && isP27AEnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP27BEnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP28EnforceCleanPath(relPath)) return true;
+  if (isP29EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -428,6 +444,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
   if (isP27BEnforceCleanPath(relPath)) return 'P2.2.7B';
   if (isP28EnforceCleanPath(relPath)) return 'P2.2.8';
+  if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
   if (isP26EnforceCleanPath(relPath)) return 'P2.2.6';
   if (isP25EnforceCleanPath(relPath)) return 'P2.2.5';

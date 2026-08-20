@@ -10,8 +10,10 @@ import { PageHeader } from '../../../components/patterns/page-header';
 import { MetricCard } from '../../../components/patterns/data-card';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
-import { QUICK_ISSUE_CARDS, formatRelativeTime, sp, type SupportCenterStats } from './support-center.utils';
+import { formatSupportRelativeTime, localizedQuickIssueCards } from './support-i18n';
+import { sp, type SupportCenterStats } from './support-center.utils';
 import type { SupportTicketCategory } from '../../../lib/api';
 
 interface SupportCenterHeroProps {
@@ -29,22 +31,25 @@ export function SupportCenterHero({
   onOpenHelpCenter,
   onQuickCategory,
 }: SupportCenterHeroProps) {
+  const { t, locale } = useLanguage();
+  const quickIssueCards = localizedQuickIssueCards(locale);
+
   return (
     <div className="space-y-5 animate-fade-up">
       <PageHeader
-        title="Support"
+        title={t('support.center.heroTitle')}
         icon={<Headphones className="h-4 w-4 text-[color:var(--brand)]" />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {onOpenHelpCenter && (
               <Button type="button" variant="outline" size="sm" onClick={onOpenHelpCenter}>
                 <BookOpen className="h-4 w-4" />
-                Help Center öffnen
+                {t('support.center.openHelpCenter')}
               </Button>
             )}
             <Button type="button" size="sm" onClick={onCreateTicket}>
               <Plus className="h-4 w-4" />
-              Neues Ticket erstellen
+              {t('support.center.createTicketButton')}
             </Button>
           </div>
         }
@@ -52,27 +57,31 @@ export function SupportCenterHero({
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <MetricCard
-          label="Offene Tickets"
+          label={t('support.center.metricOpenTickets')}
           value={stats.openCount}
           icon={<Inbox className="h-4 w-4" />}
           loading={loading}
         />
         <MetricCard
-          label="Wartet auf deine Antwort"
+          label={t('support.center.metricWaitingForYou')}
           value={stats.waitingOnYouCount}
           icon={<MessageCircle className="h-4 w-4" />}
           status={stats.waitingOnYouCount > 0 ? 'watch' : 'neutral'}
           loading={loading}
         />
         <MetricCard
-          label="Letzte Support-Antwort"
-          value={stats.lastSupportReplyAt ? formatRelativeTime(stats.lastSupportReplyAt) : '—'}
+          label={t('support.center.metricLastSupportReply')}
+          value={
+            stats.lastSupportReplyAt
+              ? formatSupportRelativeTime(locale, stats.lastSupportReplyAt)
+              : t('support.time.emDash')
+          }
           icon={<Clock className="h-4 w-4" />}
           loading={loading}
           className="col-span-2 lg:col-span-1"
         />
         <MetricCard
-          label="Gelöste Tickets"
+          label={t('support.center.metricResolvedTickets')}
           value={stats.resolvedCount}
           icon={<Headphones className="h-4 w-4" />}
           status="success"
@@ -83,14 +92,14 @@ export function SupportCenterHero({
       <div className={cn(sp.glassPanel, 'p-4 sm:p-5')}>
         <div className="mb-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-            Schnellhilfe
+            {t('support.center.quickHelpTitle')}
           </p>
           <p className="mt-0.5 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
-            Wobei können wir helfen?
+            {t('support.center.quickHelpSubtitle')}
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {QUICK_ISSUE_CARDS.map((card) => (
+          {quickIssueCards.map((card) => (
             <button
               key={card.id}
               type="button"

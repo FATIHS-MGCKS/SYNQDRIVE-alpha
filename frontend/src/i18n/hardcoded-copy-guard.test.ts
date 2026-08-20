@@ -169,6 +169,17 @@ const P28_ENFORCE_CLEAN_EXACT = [
   'rental/components/whatsapp/whatsapp-i18n.ts',
 ];
 
+const P29_ENFORCE_CLEAN_EXACT = [
+  'rental/components/SupportView.tsx',
+  'rental/components/support/SupportCenterHero.tsx',
+  'rental/components/support/SupportTicketInbox.tsx',
+  'rental/components/support/SupportTicketDetailPanel.tsx',
+  'rental/components/support/SupportCreateTicketDialog.tsx',
+  'rental/components/support/support-center.utils.ts',
+  'rental/components/support/support-i18n.ts',
+  'components/support/CreateSupportTicketDialog.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -179,6 +190,10 @@ function isP27BEnforceCleanPath(relPath: string): boolean {
 
 function isP28EnforceCleanPath(relPath: string): boolean {
   return P28_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP29EnforceCleanPath(relPath: string): boolean {
+  return P29_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -204,7 +219,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -280,6 +295,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p28Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.9 enforce-clean findings to Rental Support Center only', () => {
+    const p29Debt = inventory.findings.filter((finding) =>
+      isP29EnforceCleanPath(finding.file),
+    );
+    expect(p29Debt).toHaveLength(0);
+  });
+
   it('keeps whatsapp.ops.ts free of user-facing presentation literals', () => {
     const source = readFileSync(
       join(__dirname, '../rental/components/whatsapp/whatsapp.ops.ts'),
@@ -299,5 +321,25 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     }
     expect(source).toContain('TranslationKey');
     expect(source).toContain('INBOX_FILTER_DEFS');
+  });
+
+  it('keeps support-center.utils.ts free of user-facing presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/support/support-center.utils.ts'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /OPEN:\s*'Neu'/,
+      /IN_PROGRESS:\s*'In Bearbeitung'/,
+      /title:\s*'App/,
+      /return\s+'Gerade eben'/,
+      /return\s+'SynqDrive Support'/,
+      /VEHICLE:\s*'Fahrzeug'/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('QUICK_ISSUE_CARD_DEFS');
   });
 });

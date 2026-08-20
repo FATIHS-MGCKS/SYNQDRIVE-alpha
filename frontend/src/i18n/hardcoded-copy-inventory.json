@@ -111,27 +111,26 @@
     }
   },
   "summary": {
-    "total": 1951,
+    "total": 1920,
     "bySurface": {
       "MASTER": 1069,
       "OPERATOR": 180,
-      "RENTAL": 629,
+      "RENTAL": 610,
       "SHARED": 35,
-      "SHELL": 38
+      "SHELL": 26
     },
     "byCategory": {
-      "ARIA": 84,
-      "TITLE": 281,
-      "TEXT": 1341,
-      "LABEL": 112,
-      "PLACEHOLDER": 125,
+      "ARIA": 80,
+      "TITLE": 277,
+      "TEXT": 1325,
+      "LABEL": 109,
+      "PLACEHOLDER": 121,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 453,
       "Finance/Billing": 131,
       "Tasks": 17,
-      "Support": 19,
       "Documents": 8,
       "App / routing shell": 1
     },
@@ -18476,20 +18475,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 239,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "ARIA",
-      "sample": "Anhang hinzufügen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantVehicleChangesSection.tsx",
       "line": 80,
       "surface": "RENTAL",
@@ -19586,7 +19571,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 86,
+      "occurrences": 85,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
@@ -19622,7 +19607,7 @@
         "rental/components/settings/company/company-activity-mapper.ts",
         "rental/components/settings/company/company-utils.ts",
         "rental/components/settings/data-authorization/data-authorization.utils.ts",
-        "rental/components/support/support-center.utils.ts",
+        "rental/components/support/support-i18n.ts",
         "rental/components/users-roles/utils.ts",
         "rental/components/vendors/VendorOperationalTasks.tsx",
         "rental/components/voice-assistant/VoiceUsageAnalyticsPanel.tsx",
@@ -19639,20 +19624,6 @@
         "rental/lib/task-detail.utils.ts",
         "rental/lib/task-list.utils.ts",
         "rental/lib/task-operator.utils.ts"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 95,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Deine Tickets",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
       ]
     },
     {
@@ -20039,20 +20010,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 108,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "ARIA",
-      "sample": "Eigene Support-Tickets durchsuchen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
       "line": 29,
       "surface": "RENTAL",
@@ -20251,7 +20208,7 @@
       "sample": "en-US",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 14,
+      "occurrences": 15,
       "files": [
         "rental/components/FinancialInsightsView.tsx",
         "rental/components/ScheduleBox.tsx",
@@ -20260,6 +20217,7 @@
         "rental/components/booking-payment/booking-payment-status.utils.ts",
         "rental/components/new-booking/CheckoutStep.tsx",
         "rental/components/settings/company/company-utils.ts",
+        "rental/components/support/support-i18n.ts",
         "rental/components/voice-assistant/VoiceUsageAnalyticsPanel.tsx",
         "rental/components/voice-assistant/VoiceWizardPlanStep.tsx"
       ]
@@ -20305,20 +20263,6 @@
       "files": [
         "rental/components/billing/BillableVehiclesDrawer.tsx",
         "rental/components/documents/DocumentExtractionFlowStatus.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 193,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Erstes Ticket erstellen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
       ]
     },
     {
@@ -20640,13 +20584,12 @@
       "sample": "Filter zurücksetzen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 7,
+      "occurrences": 5,
       "files": [
         "rental/components/invoices/InvoiceFilters.tsx",
         "rental/components/invoices/InvoiceList.tsx",
         "rental/components/new-booking/VehiclePickerStep.tsx",
-        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
-        "rental/components/support/SupportTicketInbox.tsx"
+        "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
       ]
     },
     {
@@ -20886,20 +20829,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportCenterHero.tsx",
-      "line": 41,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Help Center öffnen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportCenterHero.tsx"
       ]
     },
     {
@@ -21733,20 +21662,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 179,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TITLE",
-      "sample": "Keine Tickets gefunden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 326,
       "surface": "RENTAL",
@@ -22367,48 +22282,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 248,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "ARIA",
-      "sample": "Nachricht an Support",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 247,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "PLACEHOLDER",
-      "sample": "Nachricht schreiben…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 256,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "ARIA",
-      "sample": "Nachricht senden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 299,
       "surface": "RENTAL",
@@ -22518,20 +22391,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UsersTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportCenterHero.tsx",
-      "line": 46,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Neues Ticket erstellen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportCenterHero.tsx"
       ]
     },
     {
@@ -23139,20 +22998,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 190,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Noch keine Nachrichten im Thread.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingInvoiceSection.tsx",
       "line": 131,
       "surface": "RENTAL",
@@ -23165,20 +23010,6 @@
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 190,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TITLE",
-      "sample": "Noch keine Support Tickets",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
       ]
     },
     {
@@ -23277,20 +23108,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/invoices/InvoiceNotes.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 144,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Nur offene",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
       ]
     },
     {
@@ -25530,48 +25347,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 74,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Ticket auswählen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 107,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "PLACEHOLDER",
-      "sample": "Ticket suchen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 170,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TITLE",
-      "sample": "Tickets konnten nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 913,
       "surface": "RENTAL",
@@ -26206,34 +25981,6 @@
       ]
     },
     {
-      "file": "rental/components/support/SupportTicketDetailPanel.tsx",
-      "line": 75,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Wähle links ein Ticket, um den Verlauf zu lesen und zu antworten.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketDetailPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportTicketInbox.tsx",
-      "line": 147,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Wartet auf mich",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportTicketInbox.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 465,
       "surface": "RENTAL",
@@ -26315,20 +26062,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/support/SupportCenterHero.tsx",
-      "line": 88,
-      "surface": "RENTAL",
-      "module": "Support",
-      "category": "TEXT",
-      "sample": "Wobei können wir helfen?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/support/SupportCenterHero.tsx"
       ]
     },
     {
@@ -27185,34 +26918,6 @@
       ]
     },
     {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 310,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Beschreibung *",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 310,
-      "surface": "SHELL",
-      "module": null,
-      "category": "LABEL",
-      "sample": "Beschreibung *",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
       "file": "components/mfa/MfaEnrollmentPanel.tsx",
       "line": 100,
       "surface": "SHELL",
@@ -27238,62 +26943,6 @@
       "occurrences": 1,
       "files": [
         "components/mfa/MfaEnrollmentPanel.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 305,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Betreff *",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 305,
-      "surface": "SHELL",
-      "module": null,
-      "category": "LABEL",
-      "sample": "Betreff *",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 316,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Betroffenes Objekt",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 316,
-      "surface": "SHELL",
-      "module": null,
-      "category": "LABEL",
-      "sample": "Betroffenes Objekt",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
       ]
     },
     {
@@ -27367,20 +27016,6 @@
       ]
     },
     {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 260,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Help Center öffnen",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
       "file": "components/mfa/MfaEnrollmentPanel.tsx",
       "line": 95,
       "surface": "SHELL",
@@ -27406,20 +27041,6 @@
       "occurrences": 1,
       "files": [
         "components/patterns/data-card.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 306,
-      "surface": "SHELL",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Kurze Zusammenfassung",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
       ]
     },
     {
@@ -27476,20 +27097,6 @@
       "occurrences": 1,
       "files": [
         "components/ui/pagination.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 216,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Neues Support-Ticket",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
       ]
     },
     {
@@ -27605,20 +27212,6 @@
       ]
     },
     {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 348,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Technische Kontextdaten werden automatisch angehängt (ohne sensible Tokens), damit der Support schneller helfen kann.",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
       "file": "components/support/SupportTechnicalContextCard.tsx",
       "line": 61,
       "surface": "SHELL",
@@ -27644,34 +27237,6 @@
       "occurrences": 1,
       "files": [
         "components/mfa/MfaEnrollmentPanel.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 250,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Vielleicht hilft dir einer dieser Artikel",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
-      ]
-    },
-    {
-      "file": "components/support/CreateSupportTicketDialog.tsx",
-      "line": 311,
-      "surface": "SHELL",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Was ist passiert?",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/CreateSupportTicketDialog.tsx"
       ]
     },
     {

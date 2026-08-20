@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-support-center-p2-2-9-2026-08-20',
+    version: '4.9.931',
+    title: 'Rental i18n — P2.2.9 Support Center localization',
+    summary: [
+      'Rental Support Center surface (hero, inbox, detail, utils blind spot) migrated to canonical `support.{en,de}.ts` with `support-i18n.ts` presentation helpers; Phase B includes shared `CreateSupportTicketDialog` for mixed-language create flow.',
+      'Scanner P2.2.9 enforce-clean exact scope reports 0 findings (19 rental + ~12 shell → 0); Support module 19→0; rental 629→610; global 1951→1920; +127 EN+DE keys (6891→7018); reused 8 existing `support.*` keys.',
+      '12 new localization tests; presentation-only — ticket status/priority/category machine enums, API payloads, filters, and routing unchanged; shim 29 unchanged; 0 new compat consumers.',
+    ],
+    reason: 'P2.2.9 pre-flight audit GO verdict scoped 19 scanner findings plus ~112+ utils blind-spot literals in `support-center.utils.ts`.',
+    previousBehavior: 'Hardcoded German/English mix in Rental Support Center; utils presentation literals invisible to scanner; no EN/DE component regression tests.',
+    details:
+      'SupportView.tsx; rental/components/support/*; support-center.utils.ts; support-i18n.ts; CreateSupportTicketDialog.tsx; support translations; rental-support-center-localization.test.tsx; architecture/I18N_RENTAL_SUPPORT_P2_2_9_2026-08-20.md; docs/audits/i18n-p2-2-9-support-center-implementation-2026-08-20.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-20T14:20:00.000Z',
+  },
+  {
     id: 'i18n-rental-whatsapp-p2-2-8-2026-08-20',
     version: '4.9.930',
     title: 'Rental i18n — P2.2.8 WhatsApp Business localization',

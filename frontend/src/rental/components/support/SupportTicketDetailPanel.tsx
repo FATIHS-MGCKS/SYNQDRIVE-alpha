@@ -6,20 +6,23 @@ import { supportStatusTone } from '../../../components/patterns/status-utils';
 import { SkeletonCard } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api, type SupportTicket, type SupportTicketMessage } from '../../../lib/api';
 import {
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_LABEL,
-  SUPPORT_STATUS_LABEL,
-  formatDateTime,
-  formatRelativeTime,
-  getMessageSenderLabel,
+  formatSupportDateTime,
+  formatSupportRelativeTime,
+  labelMessageSender,
+  labelRelatedEntity,
+  labelSupportCategory,
+  labelSupportPriority,
+  labelSupportStatus,
+} from './support-i18n';
+import {
   getTicketCode,
   isTicketClosed,
   normalizeCategoryKey,
   normalizePriorityKey,
   normalizeStatusKey,
-  relatedEntityLabel,
   sp,
   supportPriorityTone,
 } from './support-center.utils';
@@ -41,6 +44,7 @@ export function SupportTicketDetailPanel({
   onClose,
   className,
 }: SupportTicketDetailPanelProps) {
+  const { t, locale } = useLanguage();
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -71,10 +75,8 @@ export function SupportTicketDetailPanel({
   if (!ticket) {
     return (
       <div className={cn(sp.detailPanel, 'items-center justify-center p-8 text-center', className)}>
-        <p className="text-[13px] font-semibold text-foreground">Ticket auswählen</p>
-        <p className="mt-1 max-w-xs text-[12px] text-muted-foreground">
-          Wähle links ein Ticket, um den Verlauf zu lesen und zu antworten.
-        </p>
+        <p className="text-[13px] font-semibold text-foreground">{t('support.detail.selectTicket')}</p>
+        <p className="mt-1 max-w-xs text-[12px] text-muted-foreground">{t('support.detail.selectTicketHint')}</p>
       </div>
     );
   }
@@ -84,7 +86,7 @@ export function SupportTicketDetailPanel({
   const category = normalizeCategoryKey(ticket);
   const closed = isTicketClosed(ticket);
   const messages = (ticket.messages ?? []).filter((m) => !m.isInternal);
-  const related = relatedEntityLabel(ticket.relatedEntityType ?? null, ticket.relatedEntityId);
+  const related = labelRelatedEntity(locale, ticket.relatedEntityType ?? null, ticket.relatedEntityId);
 
   const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -117,9 +119,9 @@ export function SupportTicketDetailPanel({
       setImagePreview(null);
       const updated = await api.support.getByOrg(orgId, ticket.id);
       onTicketUpdate(updated);
-      toast.success('Nachricht gesendet');
+      toast.success(t('support.toast.messageSent'));
     } catch (e) {
-      toast.error('Nachricht konnte nicht gesendet werden', {
+      toast.error(t('support.toast.messageFailed'), {
         description: e instanceof Error ? e.message : undefined,
       });
     } finally {
@@ -134,9 +136,9 @@ export function SupportTicketDetailPanel({
       const updated = await api.support.reopenByOrg(orgId, ticket.id);
       const full = await api.support.getByOrg(orgId, updated.id);
       onTicketUpdate(full);
-      toast.success('Ticket wurde wieder geöffnet');
+      toast.success(t('support.toast.reopenSuccess'));
     } catch (e) {
-      toast.error('Ticket konnte nicht wieder geöffnet werden', {
+      toast.error(t('support.toast.reopenFailed'), {
         description: e instanceof Error ? e.message : undefined,
       });
     } finally {
@@ -151,6 +153,9 @@ export function SupportTicketDetailPanel({
     }
   };
 
+  const closedLabel =
+    status === 'RESOLVED' ? t('support.detail.ticketClosedResolved') : t('support.detail.ticketClosedClosed');
+
   return (
     <div className={cn(sp.detailPanel, 'min-h-[420px]', className)}>
       <div className="border-b border-border/40 p-4 sm:p-5">
@@ -159,20 +164,20 @@ export function SupportTicketDetailPanel({
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-bold text-[color:var(--brand)]">{getTicketCode(ticket)}</span>
               <StatusChip tone={supportStatusTone(status)} dot className="text-[10px]">
-                {SUPPORT_STATUS_LABEL[status]}
+                {labelSupportStatus(locale, status)}
               </StatusChip>
             </div>
             <h2 className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-foreground">{ticket.subject}</h2>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <StatusChip tone="neutral" className="text-[10px]">
-                {SUPPORT_CATEGORY_LABEL[category]}
+                {labelSupportCategory(locale, category)}
               </StatusChip>
               <StatusChip tone={supportPriorityTone(priority)} className="text-[10px]">
-                {SUPPORT_PRIORITY_LABEL[priority]}
+                {labelSupportPriority(locale, priority)}
               </StatusChip>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Erstellt {formatDateTime(ticket.createdAt)}
+              {t('support.detail.createdAt', { date: formatSupportDateTime(locale, ticket.createdAt) })}
               {related ? ` · ${related}` : ''}
             </p>
           </div>
@@ -187,7 +192,7 @@ export function SupportTicketDetailPanel({
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
           {messages.length === 0 ? (
-            <p className="text-center text-[12px] text-muted-foreground">Noch keine Nachrichten im Thread.</p>
+            <p className="text-center text-[12px] text-muted-foreground">{t('support.detail.noMessages')}</p>
           ) : (
             messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
           )}
@@ -198,7 +203,7 @@ export function SupportTicketDetailPanel({
           {closed ? (
             <div className="space-y-3 text-center">
               <p className="text-[12px] text-muted-foreground">
-                Dieses Ticket ist {status === 'RESOLVED' ? 'gelöst' : 'geschlossen'}.
+                {t('support.detail.ticketClosedPrefix')} {closedLabel}.
               </p>
               <Button type="button" variant="outline" onClick={handleReopen} disabled={reopening}>
                 {reopening ? (
@@ -206,7 +211,7 @@ export function SupportTicketDetailPanel({
                 ) : (
                   <RotateCcw className="h-4 w-4" />
                 )}
-                Ticket wieder öffnen
+                {t('support.detail.reopenTicket')}
               </Button>
             </div>
           ) : (
@@ -236,7 +241,13 @@ export function SupportTicketDetailPanel({
               )}
               <div className="flex items-end gap-2">
                 <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={handleImage} className="hidden" />
-                <Button type="button" variant="outline" size="icon" onClick={() => fileRef.current?.click()} aria-label="Anhang hinzufügen">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileRef.current?.click()}
+                  aria-label={t('support.detail.addAttachmentAria')}
+                >
                   <Paperclip className="h-4 w-4" />
                 </Button>
                 <textarea
@@ -244,8 +255,8 @@ export function SupportTicketDetailPanel({
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   rows={2}
-                  placeholder="Nachricht schreiben…"
-                  aria-label="Nachricht an Support"
+                  placeholder={t('support.detail.messagePlaceholder')}
+                  aria-label={t('support.detail.messageAria')}
                   className="min-h-[44px] flex-1 resize-none rounded-xl border border-border/60 bg-background/80 px-3.5 py-2.5 text-xs outline-none focus:border-[color:var(--brand)]"
                 />
                 <Button
@@ -253,7 +264,7 @@ export function SupportTicketDetailPanel({
                   size="icon"
                   onClick={() => void handleSend()}
                   disabled={sending || (!message.trim() && !imageFile)}
-                  aria-label="Nachricht senden"
+                  aria-label={t('support.detail.sendMessageAria')}
                 >
                   {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
@@ -267,11 +278,12 @@ export function SupportTicketDetailPanel({
 }
 
 function MessageBubble({ message }: { message: SupportTicketMessage }) {
+  const { t, locale } = useLanguage();
   const isSystem = message.senderRole === 'system';
   const isUser = message.senderRole === 'user';
   const text = message.body || message.content;
   const attachments = [
-    ...(message.imageUrl ? [{ url: message.imageUrl, fileName: 'Anhang' }] : []),
+    ...(message.imageUrl ? [{ url: message.imageUrl, fileName: t('support.previewAttachment') }] : []),
     ...(message.attachments ?? []),
   ];
 
@@ -280,7 +292,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
       <div className="flex justify-center animate-fade-up">
         <div className="max-w-[90%] rounded-lg bg-muted/50 px-3 py-1.5 text-center text-[10px] text-muted-foreground">
           {text}
-          <span className="mt-0.5 block opacity-70">{formatRelativeTime(message.createdAt)}</span>
+          <span className="mt-0.5 block opacity-70">{formatSupportRelativeTime(locale, message.createdAt)}</span>
         </div>
       </div>
     );
@@ -291,9 +303,9 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
       <div className={cn('max-w-[85%]', isUser ? 'items-end' : 'items-start')}>
         <div className={cn('mb-1 flex items-center gap-2 text-[10px]', isUser && 'justify-end')}>
           <span className={cn('font-semibold', isUser ? 'text-[color:var(--brand)]' : 'text-foreground')}>
-            {getMessageSenderLabel(message, 'user')}
+            {labelMessageSender(locale, message, 'user')}
           </span>
-          <span className="text-muted-foreground">{formatRelativeTime(message.createdAt)}</span>
+          <span className="text-muted-foreground">{formatSupportRelativeTime(locale, message.createdAt)}</span>
         </div>
         <div
           className={cn(
@@ -314,6 +326,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
 }
 
 function AttachmentPreview({ url, fileName }: { url: string; fileName?: string }) {
+  const { t } = useLanguage();
   const isImage = /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url) || url.startsWith('data:image');
   if (isImage) {
     return (
@@ -322,7 +335,11 @@ function AttachmentPreview({ url, fileName }: { url: string; fileName?: string }
         onClick={() => window.open(url, '_blank')}
         className="mt-2 block overflow-hidden rounded-lg"
       >
-        <img src={url} alt={fileName || 'Anhang'} className="max-h-48 object-cover transition-opacity hover:opacity-90" />
+        <img
+          src={url}
+          alt={fileName || t('support.previewAttachment')}
+          className="max-h-48 object-cover transition-opacity hover:opacity-90"
+        />
       </button>
     );
   }
@@ -333,7 +350,7 @@ function AttachmentPreview({ url, fileName }: { url: string; fileName?: string }
       rel="noreferrer"
       className="mt-2 inline-flex items-center gap-1 text-[11px] underline"
     >
-      {fileName || 'Anhang öffnen'}
+      {fileName || t('support.previewOpenAttachment')}
     </a>
   );
 }
