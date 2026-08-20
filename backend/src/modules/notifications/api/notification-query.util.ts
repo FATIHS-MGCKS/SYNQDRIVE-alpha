@@ -44,6 +44,13 @@ export interface NotificationListFilters {
   bypassStationScope?: boolean;
   /** Registry-driven projection filter — not persisted, not in fingerprints. */
   attentionScope?: NotificationAttentionScope;
+  /**
+   * Vehicle IDs belonging to {@link stationId} — resolved by API layer for
+   * dashboard station filtering. Required when stationId is set.
+   */
+  stationFilterVehicleIds?: string[];
+  /** Booking IDs tied to {@link stationId} — resolved by API layer when stationId is set. */
+  stationFilterBookingIds?: string[];
 }
 
 export function parseNotificationPagination(query: {
@@ -75,6 +82,54 @@ export function buildNotificationPaginatedResult<T>(
       totalPages: Math.ceil(total / limit) || 0,
     },
   };
+}
+
+/**
+ * Dashboard station filter — includes notifications canonically tied to a station via:
+ * - direct station entity / actionTarget.stationId
+ * - vehicle entity membership at the station (resolved upstream)
+ * - booking entity membership at the station (resolved upstream)
+ */
+export function buildStationIdQueryFilter(input: {
+  stationId: string;
+  vehicleIds: string[];
+  bookingIds: string[];
+  entityType?: NotificationEntityType;
+}): Prisma.NotificationWhereInput {
+  const orClauses: Prisma.NotificationWhereInput[] = [
+    { entityType: NotificationEntityType.STATION, entityId: input.stationId },
+    { actionTarget: { path: ['stationId'], equals: input.stationId } },
+  ];
+
+  if (!input.entityType || input.entityType === NotificationEntityType.VEHICLE) {
+    if (input.vehicleIds.length > 0) {
+      orClauses.push({
+        entityType: NotificationEntityType.VEHICLE,
+        entityId: { in: input.vehicleIds },
+      });
+      for (const vehicleId of input.vehicleIds) {
+        orClauses.push({
+          actionTarget: { path: ['vehicleId'], equals: vehicleId },
+        });
+      }
+    }
+  }
+
+  if (!input.entityType || input.entityType === NotificationEntityType.BOOKING) {
+    if (input.bookingIds.length > 0) {
+      orClauses.push({
+        entityType: NotificationEntityType.BOOKING,
+        entityId: { in: input.bookingIds },
+      });
+      for (const bookingId of input.bookingIds) {
+        orClauses.push({
+          actionTarget: { path: ['bookingId'], equals: bookingId },
+        });
+      }
+    }
+  }
+
+  return { OR: orClauses };
 }
 
 function entityOrActionTargetFilter(
@@ -182,7 +237,14 @@ export function buildNotificationWhereInput(
     entityFilters.push(entityOrActionTargetFilter('vehicleId', filters.vehicleId, filters.entityType));
   }
   if (filters.stationId) {
-    entityFilters.push(entityOrActionTargetFilter('stationId', filters.stationId, filters.entityType));
+    entityFilters.push(
+      buildStationIdQueryFilter({
+        stationId: filters.stationId,
+        vehicleIds: filters.stationFilterVehicleIds ?? [],
+        bookingIds: filters.stationFilterBookingIds ?? [],
+        entityType: filters.entityType,
+      }),
+    );
   }
   if (filters.bookingId) {
     entityFilters.push(entityOrActionTargetFilter('bookingId', filters.bookingId, filters.entityType));

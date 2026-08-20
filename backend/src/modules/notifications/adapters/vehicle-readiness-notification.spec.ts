@@ -307,6 +307,23 @@ describe('VehicleReadinessNotificationAdapter + lifecycle (P2.3)', () => {
       expect(openNotifications()[0].severity).toBe(NotificationSeverity.WARNING);
     });
 
+    it('NOT_READY from telemetry hard-offline blocking reason opens VEHICLE_NOT_READY', async () => {
+      await syncAggregate(
+        projectVehicleReadinessAggregate(
+          VEH_A,
+          LABEL_A,
+          health({
+            rental_blocked: true,
+            rental_readiness: 'not_ready',
+            blocking_reasons: ['Telemetrie: Kein Signal innerhalb der letzten 48 Stunden'],
+          }),
+        ),
+        'run-telemetry-offline-1',
+      );
+      expect(openNotifications()).toHaveLength(1);
+      expect(openNotifications()[0].eventType).toBe('VEHICLE_NOT_READY');
+    });
+
     it('NOT_READY repeated keeps same notification id', async () => {
       const blocked = projectVehicleReadinessAggregate(
         VEH_A,

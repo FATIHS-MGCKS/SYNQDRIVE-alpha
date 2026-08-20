@@ -7,6 +7,7 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -153,6 +154,10 @@ export class NotificationCountsQueryDto {
   )
   @IsIn(NOTIFICATION_ATTENTION_SCOPES)
   attentionScope?: (typeof NOTIFICATION_ATTENTION_SCOPES)[number];
+
+  @IsOptional()
+  @IsUUID()
+  stationId?: string;
 }
 
 /**

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-readiness-hard-offline-station-filter-2026-08-21',
+    version: '4.9.928',
+    title: 'Fleet Readiness Hard-Offline Block + Notification stationId Fix',
+    summary: [
+      'Notification V2 dashboard stationId filter now includes vehicle-entity notifications when the vehicle belongs to the requested station (home/current/expected station membership resolved upstream).',
+      'Canonical rental_readiness: telemetry hard-offline (>=48h, freshness=offline) is a hard NOT_READY blocker via shared telemetry-freshness resolver — soft-offline (24–48h) remains non-blocking.',
+      'Blocking reason: Telemetrie: Kein Signal innerhalb der letzten 48 Stunden; VEHICLE_NOT_READY producer picks up automatically.',
+      'Regression: station filter tests, telemetry boundary tests (47h59m/48h/>48h), 5-vehicle fleet summary 3 ready / 2 notReady / 60%.',
+    ],
+    reason:
+      'Production audit PR #1089 proved stationId SQL excluded vehicle notifications and canonical readiness ignored >=48h telemetry offline while operative KPI counted 2 not-ready.',
+    previousBehavior:
+      'stationId query matched only STATION entity or actionTarget.stationId; vehicle FLEET_READINESS notifications returned 0 rows with station filter. Rental health did not block on telemetry offline.',
+    details:
+      'notification-query.util.ts (buildStationIdQueryFilter), notification-api.service.ts (resolveStationFilterMembership), rental-health-telemetry-blocking.policy.ts, rental-health.service.ts (rh-projection-v3), *.spec.ts, docs/audits/fleet-readiness-hard-offline-and-station-filter-remediation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-21T00:00:00.000Z',
+  },
+  {
     id: 'dashboard-fleet-readiness-hardening-p33-2026-08-20',
     version: '4.9.927',
     title: 'Dashboard Fleet Readiness Production Hardening (P3.3)',

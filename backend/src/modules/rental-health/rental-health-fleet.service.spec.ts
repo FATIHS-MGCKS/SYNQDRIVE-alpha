@@ -248,6 +248,34 @@ describe('RentalHealthFleetService', () => {
       expect(rentalHealthSummary.getFleetRowsBatch).toHaveBeenCalledWith('org-a', ['v1']);
     });
 
+    it('reflects production scenario: 5 vehicles, 2 hard-offline notReady, 3 ready (60%)', async () => {
+      prisma.vehicle.findMany.mockResolvedValueOnce([
+        { id: 'v1', licensePlate: 'A' },
+        { id: 'v2', licensePlate: 'B' },
+        { id: 'v3', licensePlate: 'C' },
+        { id: 'v4', licensePlate: 'D' },
+        { id: 'v5', licensePlate: 'E' },
+      ]);
+      rentalHealthSummary.getFleetRowsBatch.mockResolvedValueOnce([
+        healthRow('v1', 'ready'),
+        healthRow('v2', 'ready'),
+        healthRow('v3', 'ready'),
+        healthRow('v4', 'not_ready'),
+        healthRow('v5', 'not_ready'),
+      ]);
+
+      const result = await svc.getFleetReadinessSummary('org1', 'user-1', {});
+
+      expect(result).toEqual({
+        total: 5,
+        ready: 3,
+        notReady: 2,
+        unevaluable: 0,
+        unknown: 0,
+        readyPercent: 60,
+      });
+    });
+
     it('empty fleet returns zeros', async () => {
       prisma.vehicle.findMany.mockResolvedValueOnce([]);
 
