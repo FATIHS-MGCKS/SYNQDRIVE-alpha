@@ -4,6 +4,13 @@ import type {
   VoiceConnectionStatus,
   VoiceConversationEntry,
 } from '../../../lib/api';
+import { DEFAULT_PRODUCT_LOCALE } from '../../../i18n/locales';
+import {
+  labelLastCall,
+  labelOperatorStatus,
+  labelProviderStatus,
+  labelTelephonyStatus,
+} from './voice-assistant-i18n';
 
 export type VoiceTab =
   | 'overview'
@@ -56,20 +63,7 @@ export function resolveOperatorStatus(
 }
 
 export function operatorStatusLabel(status: OperatorStatus): string {
-  switch (status) {
-    case 'active':
-      return 'Active';
-    case 'ready':
-      return 'Ready';
-    case 'inactive':
-      return 'Inactive';
-    case 'degraded':
-      return 'Degraded';
-    case 'error':
-      return 'Error';
-    default:
-      return 'Draft';
-  }
+  return labelOperatorStatus(DEFAULT_PRODUCT_LOCALE, status);
 }
 
 export function providerStatusLabel(
@@ -78,27 +72,17 @@ export function providerStatusLabel(
   twilioOk?: boolean | undefined,
   pstnProvider?: 'elevenlabs' | 'twilio',
 ): string {
-  if (connectionStatus === 'ERROR') return 'Error';
-  if (connectionStatus === 'DEGRADED') return 'Degraded';
-  if (connectionStatus === 'NOT_CONFIGURED' || !elevenLabsOk) return 'Not configured';
-  if (pstnProvider === 'twilio') {
-    if (twilioOk === false) return 'Twilio not configured';
-    if (connectionStatus === 'CONNECTED' && elevenLabsOk) {
-      return 'Diagnostic PSTN only';
-    }
-  }
-  if (connectionStatus === 'CONNECTED' && elevenLabsOk) return 'Connected';
-  return connectionStatus ?? 'Unknown';
+  return labelProviderStatus(
+    DEFAULT_PRODUCT_LOCALE,
+    connectionStatus,
+    elevenLabsOk,
+    twilioOk,
+    pstnProvider,
+  );
 }
 
 export function telephonyStatusLabel(assistant: VoiceAssistantData | null): string {
-  if (assistant?.telephonyStatus?.label) return assistant.telephonyStatus.label;
-  if (!assistant?.telephonyEnabled && !assistant?.inboundEnabled) return 'Disabled';
-  if (assistant?.telephonyStatus?.status === 'legacy_diagnostic_only') {
-    return 'Diagnostic PSTN only';
-  }
-  if (assistant?.phoneNumber) return 'Number assigned';
-  return 'Not connected';
+  return labelTelephonyStatus(DEFAULT_PRODUCT_LOCALE, assistant);
 }
 
 export function readinessPercent(readiness: VoiceAssistantReadiness | null): number {
@@ -125,12 +109,7 @@ export function lastCallLabel(
   conversations: VoiceConversationEntry[],
   conversationsLoaded: boolean,
 ): string {
-  if (!conversationsLoaded) return 'Not available';
-  if (!conversations.length) return 'No calls yet';
-  const latest = [...conversations].sort(
-    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-  )[0];
-  return new Date(latest.startedAt).toLocaleString();
+  return labelLastCall(DEFAULT_PRODUCT_LOCALE, conversations, conversationsLoaded);
 }
 
 export function answerRatePercent(assistant: VoiceAssistantData | null): number | null {

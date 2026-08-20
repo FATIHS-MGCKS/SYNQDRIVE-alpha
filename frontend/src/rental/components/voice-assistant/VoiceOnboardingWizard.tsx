@@ -11,7 +11,7 @@ import type {
   VoicePlanCode,
   VoiceProtectionStatus,
 } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import { VoiceAssistantBuilder } from './VoiceAssistantBuilder';
 import { VoiceLaunchChecklist } from './VoiceLaunchChecklist';
@@ -350,7 +350,7 @@ export function VoiceOnboardingWizard({
                   className={inputCls}
                   value={textField('businessHoursTimezone')}
                   onChange={e => setTextField('businessHoursTimezone', e.target.value)}
-                  placeholder="Europe/Berlin"
+                  placeholder={t('voice.availability.timezoneExample')}
                 />
               </div>
             </div>

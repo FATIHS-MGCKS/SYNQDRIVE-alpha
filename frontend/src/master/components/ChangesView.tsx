@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-voice-assistant-p2-2-7a-2026-08-20',
+    version: '4.9.927',
+    title: 'Rental i18n — P2.2.7A Voice Assistant presentation',
+    summary: [
+      'Nine rental Voice Assistant presentation surfaces (builder, conversations, analytics, permissions matrix, command header, selector, launch checklist, onboarding placeholder, section nav) migrated to canonical `frontend/src/i18n`.',
+      'Scanner P2.2.7A enforce-clean exact scope reports 0 findings (68→0); Voice Assistant module 111→43 (P2.2.7B telephony/test deferred); +116 EN+DE keys via `voice-assistant.{en,de}.ts`; helper `voice-assistant-i18n.ts`; reused `voice.common.*`, `voice.ops.navLabel`, `serviceCenter.history.dateFrom/To`, `iam.risk.low`, `evaluations.availability.loading`.',
+      'Eight existing voice shells migrated shim→canonical (`../i18n/` / `../../i18n/`→`../../../i18n/` or `../../i18n/`); ops label functions delegate to i18n helper; presentation-only — telephony, permissions semantics, and API contracts unchanged.',
+    ],
+    reason: 'Pre-flight audit P2.2.7 scoped telephony/test surfaces as high-risk P2.2.7B; presentation slice carried 68 scanner findings plus hidden EN ops label debt.',
+    previousBehavior: 'Mixed hardcoded English in Voice Assistant builder/ops/conversations/analytics/permissions; partial `t()` via rental/i18n shim on eight files.',
+    details:
+      'frontend/src/rental/components/voice-assistant/* (7A slice); voice-assistant-i18n.ts; voice-assistant translations; rental-voice-assistant-localization.test.tsx; docs/audits/i18n-p2-2-7-voice-assistant-preflight-2026-08-19.md.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-08-20T00:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-stations-p2-2-6-2026-08-19',
     version: '4.9.926',
     title: 'Rental i18n — P2.2.6 Stations presentation',

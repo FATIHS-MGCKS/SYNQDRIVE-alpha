@@ -1,13 +1,16 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { VoiceAssistantData, VoiceAssistantReadiness } from '../../../lib/api';
 import {
-  operatorStatusLabel,
-  providerStatusLabel,
+  labelOperatorStatus,
+  labelProviderStatus,
+  labelTelephonyStatus,
+} from './voice-assistant-i18n';
+import {
   readinessPercent,
   resolveOperatorStatus,
-  telephonyStatusLabel,
   type OperatorStatus,
 } from './voice-assistant.ops';
 
@@ -71,6 +74,7 @@ export function VoiceCommandHeader({
   onSync,
   onSave,
 }: VoiceCommandHeaderProps) {
+  const { locale, t } = useLanguage();
   const operatorStatus = resolveOperatorStatus(assistant, readiness);
   const elevenLabsOk = readiness?.checks.find(c => c.key === 'elevenlabs')?.ok;
   const twilioOk = readiness?.checks.find(c => c.key === 'twilio')?.ok;
@@ -81,7 +85,8 @@ export function VoiceCommandHeader({
     {
       icon: 'zap' as const,
       label: 'Provider',
-      value: providerStatusLabel(
+      value: labelProviderStatus(
+        locale,
         assistant.connectionStatus,
         elevenLabsOk,
         twilioOk,
@@ -91,7 +96,7 @@ export function VoiceCommandHeader({
     {
       icon: 'phone' as const,
       label: 'Telephony',
-      value: telephonyStatusLabel(assistant),
+      value: labelTelephonyStatus(locale, assistant),
     },
     {
       icon: 'hash' as const,
@@ -126,18 +131,19 @@ export function VoiceCommandHeader({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  AI Voice Command Center
+                  {t('voice.header.eyebrow')}
                 </p>
                 <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
                   {assistant.name}
                 </h1>
               </div>
               <StatusChip tone={statusTone(operatorStatus)} dot className="text-[10px]">
-                {operatorStatusLabel(operatorStatus)}
+                {labelOperatorStatus(locale, operatorStatus)}
               </StatusChip>
               <StatusChip tone={elevenLabsOk ? 'info' : 'watch'} className="text-[10px]">
                 ElevenLabs ·{' '}
-                {providerStatusLabel(
+                {labelProviderStatus(
+                  locale,
                   assistant.connectionStatus,
                   elevenLabsOk,
                   twilioOk,
@@ -205,7 +211,7 @@ export function VoiceCommandHeader({
           className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 surface-premium px-3.5 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted disabled:opacity-60"
         >
           <Icon name={testLoading ? 'loader-2' : 'mic'} className={cn('h-3.5 w-3.5', testLoading && 'animate-spin')} />
-          Test call
+          {t('voice.header.testCall')}
         </button>
 
         <button
@@ -226,7 +232,7 @@ export function VoiceCommandHeader({
             className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] px-3.5 py-2 text-[11px] font-semibold text-[color:var(--brand-ink)] transition-all hover:opacity-90 disabled:opacity-60"
           >
             <Icon name={saving ? 'loader-2' : 'save'} className={cn('h-3.5 w-3.5', saving && 'animate-spin')} />
-            Save changes
+            {t('voice.common.save')}
           </button>
         )}
       </div>

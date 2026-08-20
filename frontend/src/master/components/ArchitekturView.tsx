@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Voice Assistant (P2.2.7A — V4.9.927)', icon: Globe,
+    endpoint: 'Rental Voice Assistant presentation slice (builder, conversations, analytics, permissions matrix, command header, selector, launch checklist, section nav, onboarding timezone placeholder).',
+    service: '**Helper:** `voice-assistant-i18n.ts` (`va`, status/nav/checklist label helpers); React uses `useLanguage()`. **Keys:** +116 EN+DE (`voice-assistant.{en,de}.ts`; 6349→6465); reused `voice.common.*`, `voice.ops.navLabel`, cross-domain date/risk/loading keys. **Guardrails:** P2.2.7A enforce-clean exact — 0 findings (68→0); Voice Assistant module 111→43 (7B deferred). **Shim:** eight voice shells to canonical imports; 0 new compat. **Semantics:** telephony, test center, permission modes, and API payloads unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-7-voice-assistant-preflight-2026-08-19.md; docs/audits/i18n-production-hardening-baseline-2026-08.md' },
   { name: 'Platform i18n Rental Stations (P2.2.6 — V4.9.926)', icon: Globe,
     endpoint: 'Stations settings tab (legacy) and booking station select fields.',
     service: '**Helper:** `stations-i18n.ts` (`st`, `labelStationWarning`); React uses `useLanguage()`. **Keys:** +98 EN+DE (`stations.tab.*`, `stations.select.*`; 6265→6363); reused `stations.*`, `common.*`, `bookings.detail.oneWayRental`. **Guardrails:** P2.2.6 enforce-clean — 0 findings (57→0). **Shim:** four station shells `../../i18n/`→`../../../i18n/`; rental compat 30→26; 0 new compat. **Semantics:** station CRUD, assignment, and booking selectors unchanged.',

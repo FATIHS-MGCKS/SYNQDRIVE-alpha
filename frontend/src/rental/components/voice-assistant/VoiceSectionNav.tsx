@@ -4,7 +4,9 @@ import {
   chromeSectionNavClass,
   chromeSectionNavItemClass,
 } from '../../../components/patterns/chrome-tab-bar';
-import { NAV_GROUPS, type VoiceTab } from './voice-assistant.ops';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { localizedNavGroups } from './voice-assistant-i18n';
+import type { VoiceTab } from './voice-assistant.ops';
 
 interface VoiceSectionNavProps {
   activeTab: VoiceTab;
@@ -12,10 +14,13 @@ interface VoiceSectionNavProps {
 }
 
 export function VoiceSectionNav({ activeTab, onChange }: VoiceSectionNavProps) {
+  const { locale, t } = useLanguage();
+  const navGroups = localizedNavGroups(locale);
+
   return (
-    <nav className={chromeSectionNavClass()} aria-label="Voice assistant sections">
+    <nav className={chromeSectionNavClass()} aria-label={t('voice.ops.navLabel')}>
       <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <div
             key={group.id}
             className="flex min-w-0 shrink-0 flex-col gap-1 rounded-xl border border-border/30 bg-background/20 p-1.5"

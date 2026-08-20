@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { VoiceAssistantData } from '../../../lib/api';
 import type { VoiceAssistantUpdatePayload } from '../../../lib/api';
@@ -33,6 +34,7 @@ export function VoicePermissionsMatrix({
   onModeChange,
   onSave,
 }: VoicePermissionsMatrixProps) {
+  const { t } = useLanguage();
   const [pendingConfirm, setPendingConfirm] = useState<{
     key: VoiceToolCapabilityKey;
     mode: VoicePermissionMode;
@@ -68,11 +70,13 @@ export function VoicePermissionsMatrix({
       <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">Tool & rights matrix</h3>
+            <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">{t('voice.permissions.matrixTitle')}</h3>
             <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-muted-foreground">
-              Control what the voice assistant may do during calls. <strong className="font-semibold">Suggest only</strong> means
-              the assistant proposes an action — a human must confirm. <strong className="font-semibold">Autonomous</strong> allows
-              execution without confirmation.
+              {t('voice.permissions.matrixIntroLead')}{' '}
+              <strong className="font-semibold">{t('voice.permissions.suggestOnly')}</strong>{' '}
+              {t('voice.permissions.matrixIntroMiddle')}{' '}
+              <strong className="font-semibold">{t('voice.permissions.autonomous')}</strong>{' '}
+              {t('voice.permissions.matrixIntroEnd')}
             </p>
           </div>
           {hasDraft && (
@@ -83,13 +87,13 @@ export function VoicePermissionsMatrix({
               className="sq-press inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] px-3.5 py-1.5 text-[11px] font-semibold text-[color:var(--brand-ink)] disabled:opacity-60"
             >
               <Icon name={saving ? 'loader-2' : 'save'} className={cn('h-3.5 w-3.5', saving && 'animate-spin')} />
-              Save permissions
+              {t('voice.permissions.save')}
             </button>
           )}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <StatusChip tone="success" className="text-[9px]">Low risk</StatusChip>
+          <StatusChip tone="success" className="text-[9px]">{t('iam.risk.low')}</StatusChip>
           <StatusChip tone="info" className="text-[9px]">Medium</StatusChip>
           <StatusChip tone="watch" className="text-[9px]">High</StatusChip>
           <StatusChip tone="critical" className="text-[9px]">Critical</StatusChip>
@@ -101,7 +105,7 @@ export function VoicePermissionsMatrix({
           <div className="flex items-start gap-2">
             <Icon name="alert-triangle" className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold text-foreground">Enable autonomous mode?</p>
+              <p className="text-[12px] font-semibold text-foreground">{t('voice.permissions.enableAutonomous')}</p>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                 This capability is classified as high risk. Autonomous execution can change operational data or
                 initiate outbound actions without staff review. The backend will still enforce guardrails.
@@ -115,7 +119,7 @@ export function VoicePermissionsMatrix({
                   }}
                   className="sq-press rounded-lg border border-[color:var(--status-critical)]/40 bg-[color:var(--status-critical)]/10 px-3 py-1.5 text-[10px] font-semibold text-[color:var(--status-critical)]"
                 >
-                  Confirm autonomous
+                  {t('voice.permissions.confirmAutonomous')}
                 </button>
                 <button
                   type="button"
@@ -210,7 +214,7 @@ export function VoicePermissionsMatrix({
       {!assistant.outboundEnabled && (
         <p className="flex items-start gap-2 text-[10px] text-muted-foreground">
           <Icon name="phone-off" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Outbound telephony is disabled. Customer and vendor contact cannot be set to autonomous until enabled in Telephony.
+          {t('voice.permissions.outboundDisabled')}
         </p>
       )}
     </div>
