@@ -1226,7 +1226,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       },
       fleetReadiness: {
         items: fleetEnriched,
-        entries: projectFleetReadinessPresentationItems(fleetEnriched),
+        entries: projectFleetReadinessPresentationItems(fleetEnriched, {
+          hasMoreUnloadedPages: fleetReadinessNotifications.hasMore,
+        }),
         loading: fleetReadinessNotifications.loading,
         error: fleetReadinessNotifications.error,
         errorCode: fleetReadinessNotifications.error?.code ?? null,
@@ -1271,6 +1273,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     fleetReadinessNotifications.archiveNotification,
     fleetReadinessNotifications.loadMore,
     fleetReadinessNotifications.hasMore,
+    fleetReadinessNotifications.page,
     fleetReadinessSummaryHook.summary,
     fleetReadinessSummaryHook.loading,
     fleetReadinessSummaryHook.error,

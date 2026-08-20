@@ -387,6 +387,11 @@ export interface ActionQueueGroupItem {
   children: ActionQueueChildAction[];
   /** Max child priority — used to order the group among leaves. */
   priority: number;
+  /**
+   * Fleet readiness presentation: additional unloaded notification pages may
+   * contain more causes for this vehicle — do not treat visible causes as exhaustive.
+   */
+  fleetCausesMayBeIncomplete?: boolean;
 }
 
 /** A render-level entry: either a single leaf or a multi-child group. */

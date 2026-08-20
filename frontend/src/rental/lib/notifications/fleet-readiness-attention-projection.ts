@@ -172,10 +172,12 @@ export function projectFleetReadinessVehicleGroups(
 
 export function fleetReadinessGroupToActionQueueGroup(
   group: FleetReadinessVehicleGroup,
+  options?: { causesMayBeIncomplete?: boolean },
 ): ActionQueueGroupItem | ActionQueueLeafItem {
   const aggregateRows = buildPresentationAggregateRows(group);
   const causeChildren = group.causes.map(childFromItem);
   const children = [...aggregateRows.map(childFromItem), ...causeChildren];
+  const causesMayBeIncomplete = options?.causesMayBeIncomplete ?? false;
 
   if (children.length === 0 && group.primaryAggregate) {
     return { ...group.primaryAggregate, kind: 'leaf' };
@@ -189,30 +191,42 @@ export function fleetReadinessGroupToActionQueueGroup(
     'info',
   );
 
+  const showDefinitiveCauseCount = causeChildren.length > 0 && !causesMayBeIncomplete;
+
   return {
     kind: 'group',
     id: `fleet-readiness:${group.vehicleId}`,
     groupKey: `vehicle:${group.vehicleId}`,
     groupType: 'vehicle-health',
     title: group.primaryAggregate?.title ?? group.label,
-    subtitle: causeChildren.length > 0 ? String(causeChildren.length) : '',
+    subtitle: showDefinitiveCauseCount ? String(causeChildren.length) : '',
     severity: childSeverity,
     category: group.primaryAggregate?.category ?? 'health',
     vehicleId: group.vehicleId,
     entityLabel: group.label,
     children,
     priority: resolveFleetReadinessGroupPriority(group, children),
+    fleetCausesMayBeIncomplete: causesMayBeIncomplete,
   };
+}
+
+export interface FleetReadinessPresentationOptions {
+  /** True when the notification list has unloaded pages — vehicle cause lists may be incomplete. */
+  hasMoreUnloadedPages?: boolean;
 }
 
 export function projectFleetReadinessPresentationItems(
   items: ActionQueueItem[],
+  options?: FleetReadinessPresentationOptions,
 ): Array<ActionQueueGroupItem | ActionQueueLeafItem> {
+  const causesMayBeIncomplete = options?.hasMoreUnloadedPages ?? false;
   const groups = projectFleetReadinessVehicleGroups(items);
   const nonVehicle = items.filter((item) => !resolveVehicleId(item)).map(
     (item) => ({ ...item, kind: 'leaf' as const }),
   );
-  const projected = groups.map((group) => fleetReadinessGroupToActionQueueGroup(group));
+  const projected = groups.map((group) =>
+    fleetReadinessGroupToActionQueueGroup(group, { causesMayBeIncomplete }),
+  );
   return [...projected, ...nonVehicle];
 }
 

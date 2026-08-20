@@ -628,4 +628,25 @@ gh run list --branch main  # CI failures documented
 
 ---
 
+## P3.3 Remediation status (2026-08-20)
+
+**Remediation branch:** `cursor/dashboard-fleet-readiness-hardening-p33-dcd7`  
+**Base commit:** `e868adc61956fa14d4f20a14122d03c25990fc9d` (main after P3.2 audit merge)
+
+| Finding | Status | Evidence |
+|---------|--------|----------|
+| **P32-F02** (HIGH — stale request race) | **Fixed** | `useRequestGeneration()` monotonic generation token (`request-generation.ts`) replaces shared `cancelRef` boolean in `useNotifications` and `useFleetReadinessSummary`. Stale responses/errors cannot commit `apiRows`, pagination, summary, error, or loading when `generation !== currentGeneration()`. `finally` blocks guard `setLoading(false)`. Deferred-promise tests: `useNotifications.request-race.test.ts` (Tests A–D + stationId forwarding), `useFleetReadinessSummary.request-race.test.ts` (stale success, stale error, refresh overlap). |
+| **P32-F01** (HIGH — pagination grouping incompleteness) | **Mitigated (UX)** | Full server-side vehicle-context bundling deferred — would require Notification V2 pagination contract changes beyond P3.3 scope. **Option C implemented:** `projectFleetReadinessPresentationItems({ hasMoreUnloadedPages })` sets `fleetCausesMayBeIncomplete` on groups; `NotificationGroupCard` shows i18n `dashboardAttention.fleetReadiness.moreCausesPossible` (de/en/fr/nl/es/it/pl/cs); definitive cause-count subtitle omitted while `hasMore === true`. Test: `fleet-readiness-attention-projection.test.ts` pagination-boundary case. **Deferred:** backend vehicle-context bundling (Option A). |
+| **P32-F03** (MEDIUM — operator-focus grouped lifecycle) | **Fixed** | `NotificationPanel` passes `resolveItemLifecycleHandlers={mutationHandlers}` to `NotificationGroupCard` (parity with `AttentionScopedList`). Test: `NotificationPanel.lifecycle.test.tsx`. |
+| P32-F05 (mobile panel height) | Unchanged | Out of P3.3 scope per task brief. |
+| P32-F06 (duplicate vendor fetch) | Accepted debt | No new dedupe framework introduced. |
+
+**Canonical truth ownership:** unchanged — fleet summary from `GET /rental-health/fleet/summary`; scoped Notification V2 feeds; no supplemental merge on split path.
+
+**Test evidence (P3-focused):** 40/40 pass in targeted frontend suite (race + P3.1/P3.2 regression + F01/F03 additions). `npx tsc -b` PASS. `npm run build` PASS.
+
+**Backend CI baseline:** unchanged — same 5 pre-existing `tsconfig.json` spec constructor errors in `billing.controller.security.characterization.spec.ts` and `vehicles-*-spec.ts` (not introduced by P3.3).
+
+---
+
 *End of audit document.*

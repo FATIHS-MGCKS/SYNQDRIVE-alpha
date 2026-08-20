@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import type { ApiFleetReadinessSummaryResponse } from '../lib/notifications/notification-api.types';
+import { useRequestGeneration } from './request-generation';
 
 export interface UseFleetReadinessSummaryOptions {
   orgId: string | null | undefined;
@@ -20,19 +21,21 @@ export function useFleetReadinessSummary({
   stationId,
   enabled = true,
 }: UseFleetReadinessSummaryOptions): UseFleetReadinessSummaryResult {
+  const { nextGeneration, isCurrent } = useRequestGeneration();
   const [summary, setSummary] = useState<ApiFleetReadinessSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const cancelRef = useRef(false);
 
   const fetchSummary = useCallback(async () => {
     if (!orgId || !enabled) {
+      nextGeneration();
       setSummary(null);
       setError(null);
+      setLoading(false);
       return;
     }
 
-    cancelRef.current = false;
+    const generation = nextGeneration();
     setLoading(true);
     setError(null);
 
@@ -40,27 +43,25 @@ export function useFleetReadinessSummary({
       const result = await api.rentalHealth.getFleetSummary(orgId, {
         stationId: stationId ?? undefined,
       });
-      if (cancelRef.current) return;
+      if (!isCurrent(generation)) return;
       setSummary(result);
     } catch (err) {
-      if (cancelRef.current) return;
+      if (!isCurrent(generation)) return;
       setError(err instanceof Error ? err : new Error('Failed to load fleet readiness summary'));
       setSummary(null);
     } finally {
-      if (!cancelRef.current) setLoading(false);
+      if (isCurrent(generation)) {
+        setLoading(false);
+      }
     }
-  }, [orgId, stationId, enabled]);
+  }, [orgId, stationId, enabled, nextGeneration, isCurrent]);
 
   const refresh = useCallback(async () => {
     await fetchSummary();
   }, [fetchSummary]);
 
   useEffect(() => {
-    cancelRef.current = false;
     void fetchSummary();
-    return () => {
-      cancelRef.current = true;
-    };
   }, [fetchSummary]);
 
   return { summary, loading, error, refresh };

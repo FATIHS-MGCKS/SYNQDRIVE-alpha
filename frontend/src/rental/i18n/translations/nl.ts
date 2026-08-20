@@ -75,6 +75,7 @@ export const nl: Record<TranslationKey, string> = {
   'dashboardAttention.operations.subtitle': 'Overdrachten, boekingen, facturatie en stationstaken',
   'dashboardAttention.fleetReadiness.title': 'Vloot inzetbaarheid',
   'dashboardAttention.fleetReadiness.subtitle': 'Voertuigen niet klaar of niet beoordeelbaar in scope',
+  'dashboardAttention.fleetReadiness.moreCausesPossible': 'Er kunnen meer oorzaken zijn — laad meer om de volledige voertuigcontext te zien.',
   'dashboardAttention.fleetSummary.unavailable': 'Vloot-inzetbaarheidssamenvatting niet beschikbaar.',
   'dashboardAttention.fleetSummary.ready': '{ready} van {total} klaar',
   'dashboardAttention.fleetSummary.readyPercent': '{percent}% klaar',

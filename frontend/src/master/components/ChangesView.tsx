@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-fleet-readiness-hardening-p33-2026-08-20',
+    version: '4.9.927',
+    title: 'Dashboard Fleet Readiness Production Hardening (P3.3)',
+    summary: [
+      'P32-F02 fixed: `useRequestGeneration()` monotonic token in `useNotifications` + `useFleetReadinessSummary` — stale station/org/scope responses cannot commit rows, pagination, summary, errors, or loading.',
+      'P32-F01 mitigated: `fleetCausesMayBeIncomplete` + i18n hint when fleet notification pages remain unloaded; no false exhaustive cause counts.',
+      'P32-F03 fixed: operator-focus `NotificationPanel` wires `resolveItemLifecycleHandlers` on grouped `NotificationGroupCard` children (mark read, acknowledge, snooze per canonical id).',
+      'Deferred-promise race regression tests for notifications, fleet summary, pagination-boundary projection, and NotificationPanel grouped lifecycle.',
+    ],
+    reason:
+      'P3.2 post-merge audit (ORANGE) identified request-race and pagination-boundary correctness gaps blocking multi-station production confidence.',
+    previousBehavior:
+      'Shared `cancelRef` boolean allowed stale in-flight fetches to commit after station/org/scope changes; fleet grouping could imply complete cause context across unloaded pages; operator-focus grouped cards lacked lifecycle handler wiring.',
+    details:
+      'request-generation.ts, useNotifications.ts, useFleetReadinessSummary.ts, fleet-readiness-attention-projection.ts, NotificationGroupCard.tsx, NotificationPanel.tsx, useDashboardViewModel.ts, i18n dashboardAttention.fleetReadiness.moreCausesPossible, *.request-race.test.ts, NotificationPanel.lifecycle.test.tsx, docs/audits/dashboard-fleet-readiness-p3-2-post-merge-audit-2026-08.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-08-20T06:00:00.000Z',
+  },
+  {
     id: 'dashboard-attention-split-p31-2026-08-20',
     version: '4.9.926',
     title: 'Dashboard Attention Split UI (P3.1)',

@@ -74,6 +74,7 @@ export const cs: Record<TranslationKey, string> = {
   'dashboardAttention.operations.subtitle': 'Predani, rezervace, fakturace a ukoly stanice',
   'dashboardAttention.fleetReadiness.title': 'Pripravenost flotily',
   'dashboardAttention.fleetReadiness.subtitle': 'Vozidla nepripravena nebo nevyhodnotitelna v rozsahu',
+  'dashboardAttention.fleetReadiness.moreCausesPossible': 'Mohou existovat dalsi priciny — nactete vice pro uplny kontext vozidla.',
   'dashboardAttention.fleetSummary.unavailable': 'Souhrn pripravenosti flotily neni k dispozici.',
   'dashboardAttention.fleetSummary.ready': '{ready} z {total} pripraveno',
   'dashboardAttention.fleetSummary.readyPercent': '{percent}% pripraveno',

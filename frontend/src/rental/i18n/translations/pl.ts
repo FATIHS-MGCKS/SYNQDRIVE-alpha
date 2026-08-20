@@ -74,6 +74,7 @@ export const pl: Record<TranslationKey, string> = {
   'dashboardAttention.operations.subtitle': 'Wydania, rezerwacje, rozliczenia i zadania stacji',
   'dashboardAttention.fleetReadiness.title': 'Gotowosc floty',
   'dashboardAttention.fleetReadiness.subtitle': 'Pojazdy niegotowe lub nieocenialne w zakresie',
+  'dashboardAttention.fleetReadiness.moreCausesPossible': 'Mogą istnieć dodatkowe przyczyny — załaduj więcej, aby zobaczyć pełny kontekst pojazdu.',
   'dashboardAttention.fleetSummary.unavailable': 'Podsumowanie gotowosci floty niedostepne.',
   'dashboardAttention.fleetSummary.ready': '{ready} z {total} gotowych',
   'dashboardAttention.fleetSummary.readyPercent': '{percent}% gotowych',

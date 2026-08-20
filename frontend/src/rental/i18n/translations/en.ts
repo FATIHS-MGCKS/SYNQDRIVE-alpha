@@ -978,6 +978,7 @@ export const en = {
   'dashboardAttention.operations.subtitle': 'Handovers, bookings, billing, and station tasks',
   'dashboardAttention.fleetReadiness.title': 'Fleet readiness',
   'dashboardAttention.fleetReadiness.subtitle': 'Vehicles not ready or unevaluable in scope',
+  'dashboardAttention.fleetReadiness.moreCausesPossible': 'Additional causes may be present — load more to see the full vehicle context.',
   'dashboardAttention.fleetSummary.unavailable': 'Fleet readiness summary unavailable.',
   'dashboardAttention.fleetSummary.ready': '{ready} of {total} ready',
   'dashboardAttention.fleetSummary.readyPercent': '{percent}% ready',

@@ -65,6 +65,11 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
           as="button"
           onToggle={() => setExpanded((value) => !value)}
         />
+        {group.fleetCausesMayBeIncomplete ? (
+          <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-1 text-muted-foreground')}>
+            {t('dashboardAttention.fleetReadiness.moreCausesPossible')}
+          </p>
+        ) : null}
       </div>
 
       {expanded ? (
