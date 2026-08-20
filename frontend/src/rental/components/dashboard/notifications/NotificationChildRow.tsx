@@ -3,18 +3,31 @@ import { cn } from '../../../../components/ui/utils';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { NotificationDetailViewModel } from './notification-detail-view-model';
 import type { useLanguage } from '../../../i18n/LanguageContext';
+import { NotificationActionsMenu } from './NotificationActionsMenu';
+import type { ApiNotificationAvailableAction } from '../../../lib/notifications/notification-api.types';
 
 export interface NotificationChildRowProps {
   detail: NotificationDetailViewModel;
   t: ReturnType<typeof useLanguage>['t'];
   onPrimaryCta: () => void;
   onCreateTask?: () => void;
+  readStatus?: 'read' | 'unread';
+  availableActions?: ApiNotificationAvailableAction[];
+  onMarkRead?: () => void;
+  onAcknowledge?: () => void;
+  onSnooze?: () => void;
 }
 
 export const NotificationChildRow = memo(function NotificationChildRow({
   detail,
+  t,
   onPrimaryCta,
   onCreateTask,
+  readStatus = 'read',
+  availableActions = detail.availableActions,
+  onMarkRead,
+  onAcknowledge,
+  onSnooze,
 }: NotificationChildRowProps) {
   return (
     <div
@@ -53,6 +66,14 @@ export const NotificationChildRow = memo(function NotificationChildRow({
             {detail.createTaskLabel}
           </button>
         ) : null}
+        <NotificationActionsMenu
+          t={t}
+          readStatus={readStatus}
+          availableActions={availableActions}
+          onMarkRead={onMarkRead}
+          onAcknowledge={onAcknowledge}
+          onSnooze={onSnooze}
+        />
       </div>
     </div>
   );

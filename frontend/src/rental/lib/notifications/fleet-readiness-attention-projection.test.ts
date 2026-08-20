@@ -146,7 +146,7 @@ describe('simultaneous readiness aggregates (P2.4 coexistence)', () => {
     expect(group?.kind).toBe('group');
     if (group?.kind === 'group') {
       expect(group.title).toContain('unevaluable');
-      expect(group.children.map((child) => child.itemId)).toEqual(['not-ready', 'cause']);
+      expect(group.children.map((child) => child.itemId)).toEqual(['not-ready', 'unevaluable', 'cause']);
     }
   });
 
@@ -254,6 +254,29 @@ describe('resolveFleetReadinessGroupPriority', () => {
     expect(projected.kind).toBe('group');
     if (projected.kind === 'group') {
       expect(projected.priority).toBe(50);
+    }
+  });
+});
+
+describe('aggregate actionability in expanded groups', () => {
+  it('keeps single aggregate + causes actionable via aggregate child row', () => {
+    const items = [
+      minimalActionQueueItem('agg', {
+        vehicleId: 'veh-a',
+        issueType: 'VEHICLE_NOT_READY',
+        title: 'Vehicle not ready — WOB L 1',
+      }),
+      minimalActionQueueItem('cause', {
+        vehicleId: 'veh-a',
+        issueType: 'TIRE_CRITICAL',
+      }),
+    ];
+
+    const projected = projectFleetReadinessPresentationItems(items);
+    const group = projected.find((row) => row.kind === 'group');
+    expect(group?.kind).toBe('group');
+    if (group?.kind === 'group') {
+      expect(group.children.map((child) => child.itemId)).toEqual(['agg', 'cause']);
     }
   });
 });

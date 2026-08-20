@@ -267,6 +267,7 @@ export function AttentionScopedList({
                       t={t}
                       onItemCta={runCta}
                       onCreateTask={openCreateTask}
+                      resolveItemLifecycleHandlers={mutationHandlers}
                     />
                   </li>
                 );

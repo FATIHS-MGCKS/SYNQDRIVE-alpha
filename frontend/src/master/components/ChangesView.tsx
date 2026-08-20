@@ -43,6 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Standard dashboard: Operations + Fleet Readiness panels via `DashboardAttentionStack` when V2 cutover active.',
       '`useDashboardViewModel`: scoped `useNotifications` (OPERATIONS / FLEET_READINESS) + `useFleetReadinessSummary`; no supplemental merge in split path.',
       'Fleet panel header uses canonical `GET /rental-health/fleet/summary` only; list uses fleet-readiness presentation projection.',
+      'Grouped Fleet Readiness children expose per-notification lifecycle actions (mark read, acknowledge, snooze) via `AttentionScopedList` → `NotificationGroupCard` + canonical `itemId`; header-only aggregates render as actionable child rows when causes coexist.',
       'Shadow mode unchanged (single hook, `dashboardAttention` null); focus mode keeps operations-only `ActionQueue`.',
     ],
     reason:

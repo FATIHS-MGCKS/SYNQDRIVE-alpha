@@ -85,23 +85,30 @@ function resolveAggregates(vehicleItems: ActionQueueItem[]) {
 
 /**
  * Aggregate rows rendered under the same vehicle card (presentation only).
- * - Coexisting aggregates: preserved NOT_READY is always a child row.
- * - When both aggregates exist without concrete causes, UNEVALUABLE is also a child
- *   so both canonical notifications remain reachable for CTA/detail expansion.
- * - When both aggregates exist with causes, UNEVALUABLE remains header context only.
+ * Every canonical aggregate appears as an actionable child whenever the vehicle
+ * group has any expanded child section (other aggregates and/or concrete causes).
+ * The group header still uses primaryAggregate for current evaluability context.
  */
 function buildPresentationAggregateRows(group: FleetReadinessVehicleGroup): ActionQueueItem[] {
   const rows: ActionQueueItem[] = [];
-  if (group.preservedNotReadyAggregate) {
-    rows.push(group.preservedNotReadyAggregate);
+  const { primaryAggregate, preservedNotReadyAggregate, causes } = group;
+
+  if (!preservedNotReadyAggregate && causes.length === 0) {
+    return rows;
   }
-  if (
-    group.preservedNotReadyAggregate
-    && group.primaryAggregate?.issueType === 'VEHICLE_READINESS_UNEVALUABLE'
-    && group.causes.length === 0
-  ) {
-    rows.push(group.primaryAggregate);
+
+  if (preservedNotReadyAggregate) {
+    rows.push(preservedNotReadyAggregate);
+    if (primaryAggregate?.issueType === 'VEHICLE_READINESS_UNEVALUABLE') {
+      rows.push(primaryAggregate);
+    }
+    return rows;
   }
+
+  if (primaryAggregate && causes.length > 0) {
+    rows.push(primaryAggregate);
+  }
+
   return rows;
 }
 
@@ -121,10 +128,10 @@ export function resolveFleetReadinessGroupPriority(
  * Presentation-only projection: groups FLEET_READINESS vehicle notifications by vehicle,
  * separating aggregate readiness state from specific causes.
  *
- * Lifecycle-action note: grouped cards expose CTA/task actions on child rows via
- * NotificationGroupCard + itemsById. Header-only aggregates (single aggregate + causes)
- * remain title context only — same pattern as the legacy NotificationPanel grouping.
- * Coexisting aggregates render as child rows so both canonical notifications stay reachable.
+ * Lifecycle-action note: grouped cards expose CTA/task and per-notification lifecycle
+ * actions on child rows via NotificationGroupCard + itemsById + resolveItemLifecycleHandlers.
+ * Header title uses primaryAggregate for evaluability context; aggregates also render as
+ * child rows whenever the group expands so canonical notifications stay actionable.
  */
 export function projectFleetReadinessVehicleGroups(
   items: ActionQueueItem[],
@@ -211,7 +218,6 @@ export function projectFleetReadinessPresentationItems(
 
 /**
  * Returns notification ids explicitly represented in the Fleet Readiness presentation model.
- * Header-only aggregates (single aggregate + concrete causes) count as represented via title context.
  */
 export function collectFleetReadinessRepresentedNotificationIds(
   items: ActionQueueItem[],
@@ -231,22 +237,6 @@ export function collectFleetReadinessRepresentedNotificationIds(
 
     for (const child of projected.children) {
       represented.add(child.itemId);
-    }
-
-    if (
-      group.primaryAggregate
-      && group.causes.length > 0
-      && !group.preservedNotReadyAggregate
-    ) {
-      represented.add(group.primaryAggregate.id);
-    }
-
-    if (
-      group.primaryAggregate?.issueType === 'VEHICLE_READINESS_UNEVALUABLE'
-      && group.preservedNotReadyAggregate
-      && group.causes.length > 0
-    ) {
-      represented.add(group.primaryAggregate.id);
     }
   }
 
