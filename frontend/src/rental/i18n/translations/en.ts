@@ -974,10 +974,10 @@ export const en = {
 
   // ─── Dashboard attention split (P3.1) ───
   'dashboardAttention.stackLabel': 'Dashboard attention',
-  'dashboardAttention.operations.title': 'Operations',
-  'dashboardAttention.operations.subtitle': 'Handovers, bookings, billing, and station tasks',
-  'dashboardAttention.fleetReadiness.title': 'Fleet readiness',
-  'dashboardAttention.fleetReadiness.subtitle': 'Vehicles not ready or unevaluable in scope',
+  'dashboardAttention.operations.title': 'Operations notifications',
+  'dashboardAttention.operations.subtitle': 'Warnings and notifications related to operations',
+  'dashboardAttention.fleetReadiness.title': 'Fleet notifications',
+  'dashboardAttention.fleetReadiness.subtitle': 'Warnings and notifications related to vehicles',
   'dashboardAttention.fleetReadiness.moreCausesPossible': 'Additional causes may be present — load more to see the full vehicle context.',
   'dashboardAttention.fleetSummary.unavailable': 'Fleet readiness summary unavailable.',
   'dashboardAttention.fleetSummary.ready': '{ready} of {total} ready',

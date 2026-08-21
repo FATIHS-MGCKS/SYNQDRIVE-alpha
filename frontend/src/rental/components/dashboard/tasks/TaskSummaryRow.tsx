@@ -123,7 +123,7 @@ export const TaskSummaryRow = memo(function TaskSummaryRow({
         </div>
       </div>
 
-      <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'mt-1 text-pretty pl-10')}>
+      <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'mt-0.5 text-pretty pl-10')}>
         {task.title?.trim() || '—'}
       </p>
 

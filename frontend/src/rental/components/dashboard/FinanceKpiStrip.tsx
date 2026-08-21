@@ -1,4 +1,3 @@
-import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -13,7 +12,6 @@ import type { BusinessMetricId, BusinessPulseSlice } from './runtime';
 interface FinanceKpiStripProps {
   businessPulseSlices: Record<BusinessMetricId, BusinessPulseSlice>;
   onSelectBusinessMetric?: (metricId: BusinessMetricId) => void;
-  onOpenBilling?: () => void;
   activeBusinessMetricId?: BusinessMetricId | null;
   locale?: string;
   currency?: string;
@@ -24,7 +22,6 @@ interface FinanceKpiStripProps {
 export function FinanceKpiStrip({
   businessPulseSlices,
   onSelectBusinessMetric,
-  onOpenBilling,
   activeBusinessMetricId,
   locale: localeProp,
   currency = 'EUR',
@@ -79,19 +76,6 @@ export function FinanceKpiStrip({
           />
         ))}
       </div>
-
-      {onOpenBilling ? (
-        <div className="mt-2.5 flex justify-end">
-          <button
-            type="button"
-            onClick={onOpenBilling}
-            className="sq-press inline-flex min-h-8 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-[color:var(--brand)] transition-colors hover:bg-[color:var(--brand-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-          >
-            {t('dashboard.openInvoices')}
-            <Icon name="arrow-right" className="h-3 w-3" />
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

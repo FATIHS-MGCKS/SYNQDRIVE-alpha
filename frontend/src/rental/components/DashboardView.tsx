@@ -135,7 +135,6 @@ export function DashboardView({
                   <FinanceKpiStrip
                     businessPulseSlices={vm.businessPulseSlices}
                     onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
-                    onOpenBilling={() => onOpenFinanceView?.('invoices')}
                     activeBusinessMetricId={vm.activeBusinessMetricId}
                     locale={vm.locale}
                     currency="EUR"
