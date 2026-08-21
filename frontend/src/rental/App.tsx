@@ -928,6 +928,7 @@ function RentalAppContent() {
               setDetailCustomer({ id: customerId });
               setCurrentView('customer-detail');
             }}
+            onOpenTasks={() => handleViewChange('tasks')}
           />
         ) : currentView === 'bookings' ? (
           <BookingsView onActiveBookingRefChange={setActiveBookingRef} onNavigateToVehicle={(vehicleName) => {

@@ -100,6 +100,7 @@ export interface DashboardViewProps {
   onOpenFinanceView?: (view: 'financial-insights' | 'invoices') => void;
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenPriceTariffs?: () => void;
+  onOpenTasks?: () => void;
 }
 
 export interface DashboardInvoice {

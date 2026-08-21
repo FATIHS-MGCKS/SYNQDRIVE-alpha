@@ -987,6 +987,26 @@ export const en = {
   'dashboardAttention.fleetSummary.unknown': '{count} unknown',
   'dashboardAttention.loadMore': 'Load more ({count} shown)',
 
+  // ─── Dashboard tasks quick overview ───
+  'dashboardTasksOverview.title': 'Tasks',
+  'dashboardTasksOverview.subtitle': '{openCount} open · {todayCount} due today',
+  'dashboardTasksOverview.subtitleLoading': 'Loading tasks…',
+  'dashboardTasksOverview.overdue': 'Overdue',
+  'dashboardTasksOverview.today': 'Today',
+  'dashboardTasksOverview.inProgress': 'In progress',
+  'dashboardTasksOverview.unassigned': 'Unassigned',
+  'dashboardTasksOverview.allTasks': 'All tasks',
+  'dashboardTasksOverview.emptyTitle': 'No open tasks',
+  'dashboardTasksOverview.emptyDescription': 'Nothing to do right now.',
+  'dashboardTasksOverview.error': 'Tasks could not be loaded',
+  'dashboardTasksOverview.retry': 'Retry',
+  'dashboardTasksOverview.unassignedAssignee': 'Unassigned',
+  'dashboardTasksOverview.dueOverdue': 'Overdue',
+  'dashboardTasksOverview.dueToday': 'Due today',
+  'dashboardTasksOverview.noDueDate': 'No due date',
+  'dashboardTasksOverview.priorityCritical': 'Critical',
+  'dashboardTasksOverview.priorityHigh': 'High',
+
   // ─── Dashboard notification queue (ActionQueue) ───
   'notification.panelTitle': 'Notifications',
   'notification.entityUnavailable': 'The linked record is no longer available. Details remain visible here.',

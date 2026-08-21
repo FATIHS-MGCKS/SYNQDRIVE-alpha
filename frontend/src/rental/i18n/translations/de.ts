@@ -1087,6 +1087,26 @@ export const de: Record<TranslationKey, string> = {
   'dashboardAttention.fleetSummary.unknown': '{count} unbekannt',
   'dashboardAttention.loadMore': 'Mehr laden ({count} angezeigt)',
 
+  // ─── Dashboard tasks quick overview ───
+  'dashboardTasksOverview.title': 'Aufgaben',
+  'dashboardTasksOverview.subtitle': '{openCount} offen · {todayCount} heute fällig',
+  'dashboardTasksOverview.subtitleLoading': 'Aufgaben werden geladen…',
+  'dashboardTasksOverview.overdue': 'Überfällig',
+  'dashboardTasksOverview.today': 'Heute',
+  'dashboardTasksOverview.inProgress': 'In Bearbeitung',
+  'dashboardTasksOverview.unassigned': 'Unzugewiesen',
+  'dashboardTasksOverview.allTasks': 'Alle Aufgaben',
+  'dashboardTasksOverview.emptyTitle': 'Keine offenen Aufgaben',
+  'dashboardTasksOverview.emptyDescription': 'Aktuell ist nichts zu erledigen.',
+  'dashboardTasksOverview.error': 'Aufgaben konnten nicht geladen werden',
+  'dashboardTasksOverview.retry': 'Erneut laden',
+  'dashboardTasksOverview.unassignedAssignee': 'Unzugewiesen',
+  'dashboardTasksOverview.dueOverdue': 'Überfällig',
+  'dashboardTasksOverview.dueToday': 'Heute fällig',
+  'dashboardTasksOverview.noDueDate': 'Kein Termin',
+  'dashboardTasksOverview.priorityCritical': 'Kritisch',
+  'dashboardTasksOverview.priorityHigh': 'Hoch',
+
   // ─── Dashboard notification queue (ActionQueue) ───
   'notification.panelTitle': 'Meldungen',
   'notification.entityUnavailable': 'Der verknüpfte Datensatz ist nicht mehr verfügbar. Details bleiben hier sichtbar.',
