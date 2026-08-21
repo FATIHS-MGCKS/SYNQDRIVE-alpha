@@ -22,12 +22,22 @@ describe('communication-permission.defaults', () => {
     expect(patch['voice-assistant']?.manage).toBe(true);
   });
 
-  it('skips modules when explicit communication key exists (including explicit revoke)', () => {
+  it('skips communication when explicit communication key exists (including explicit revoke)', () => {
     const patch = deriveCommunicationPermissionsFromLegacy({
       'ai-assistant': { read: true, write: true, manage: true },
       communication: { read: false, write: false, manage: false },
     });
     expect(patch.communication).toBeUndefined();
+    expect(patch['voice-assistant']).toEqual({ read: true, write: true, manage: true });
+  });
+
+  it('skips voice-assistant when explicit voice-assistant key exists but still backfills communication', () => {
+    const patch = deriveCommunicationPermissionsFromLegacy({
+      'ai-assistant': { read: true, write: true, manage: false },
+      'voice-assistant': { read: false, write: false, manage: false },
+    });
+    expect(patch.communication).toEqual({ read: true, write: true, manage: false });
+    expect(patch['voice-assistant']).toBeUndefined();
   });
 
   it('mergeCommunicationPermissionBackfill is idempotent', () => {

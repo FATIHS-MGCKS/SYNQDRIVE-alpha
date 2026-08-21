@@ -133,6 +133,85 @@ describe('communication-permission.compat', () => {
     });
   });
 
+  describe('least-privilege legacy bridges', () => {
+    it('WORKER voice operational legacy cannot reach voice-assistant write or manage', () => {
+      const access = accessFor(MembershipRole.WORKER, null);
+      expect(
+        isVoiceAssistantPermissionGranted(access, 'write', { voiceAdminLegacy: true }),
+      ).toBe(false);
+      expect(
+        isVoiceAssistantPermissionGranted(access, 'manage', { voiceAdminLegacy: true }),
+      ).toBe(false);
+    });
+
+    it('WORKER voice operational legacy cannot reach communication.manage', () => {
+      const access = accessFor(MembershipRole.WORKER, null);
+      expect(
+        isCommunicationPermissionGranted(access, 'manage', { voiceOperationalLegacy: true }),
+      ).toBe(false);
+    });
+
+    it('communication.write does not grant voice-assistant.manage', () => {
+      const access = accessFor(MembershipRole.WORKER, {
+        communication: { read: false, write: true, manage: false },
+      });
+      expect(isVoiceAssistantPermissionGranted(access, 'manage')).toBe(false);
+      expect(isVoiceAssistantPermissionGranted(access, 'write')).toBe(false);
+    });
+
+    it('communication.manage does not grant voice-assistant.manage', () => {
+      const access = accessFor(MembershipRole.WORKER, {
+        communication: { read: false, write: false, manage: true },
+      });
+      expect(isVoiceAssistantPermissionGranted(access, 'manage')).toBe(false);
+      expect(isVoiceAssistantPermissionGranted(access, 'write')).toBe(false);
+    });
+
+    it('DRIVER cannot enter via voice operational legacy bridge', () => {
+      const access = accessFor(MembershipRole.DRIVER, null);
+      expect(
+        isCommunicationPermissionGranted(access, 'read', { voiceOperationalLegacy: true }),
+      ).toBe(false);
+      expect(
+        isCommunicationPermissionGranted(access, 'write', { voiceOperationalLegacy: true }),
+      ).toBe(false);
+      expect(
+        isVoiceAssistantPermissionGranted(access, 'read', { voiceAdminLegacy: true }),
+      ).toBe(false);
+    });
+
+    it('WORKER cannot use SUB_ADMIN voiceAdminLegacy bridge', () => {
+      const access = accessFor(MembershipRole.WORKER, null);
+      expect(
+        isVoiceAssistantPermissionGranted(access, 'manage', { voiceAdminLegacy: true }),
+      ).toBe(false);
+    });
+
+    it('SUB_ADMIN voiceAdminLegacy matches pre-C0.2 org-staff deep admin access only for SUB_ADMIN', () => {
+      const subAdmin = accessFor(MembershipRole.SUB_ADMIN, null);
+      const worker = accessFor(MembershipRole.WORKER, null);
+      expect(
+        isVoiceAssistantPermissionGranted(subAdmin, 'manage', { voiceAdminLegacy: true }),
+      ).toBe(true);
+      expect(
+        isVoiceAssistantPermissionGranted(worker, 'manage', { voiceAdminLegacy: true }),
+      ).toBe(false);
+    });
+
+    it('internal ai-assistant bridge is one-way and isolated from communication grants', () => {
+      const commOnly = accessFor(MembershipRole.WORKER, {
+        communication: { read: true, write: true, manage: true },
+      });
+      expect(isInternalAiAssistantPermissionGranted(commOnly, 'read')).toBe(false);
+
+      const aiOnly = accessFor(MembershipRole.WORKER, {
+        'ai-assistant': { read: true, write: false },
+      });
+      expect(isCommunicationPermissionGranted(aiOnly, 'read')).toBe(true);
+      expect(isInternalAiAssistantPermissionGranted(aiOnly, 'read')).toBe(true);
+    });
+  });
+
   describe('isInternalAiAssistantPermissionGranted', () => {
     it('does not grant internal AI from communication permission alone', () => {
       const access = accessFor(MembershipRole.WORKER, {

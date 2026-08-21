@@ -13,6 +13,7 @@ import {
   Lock,
   MapPin,
   MessageSquare,
+  Phone,
   Tag,
   Upload,
   UserCog,

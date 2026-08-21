@@ -27,8 +27,16 @@ function hasExplicitModule(
   return Boolean(perms && Object.prototype.hasOwnProperty.call(perms, module));
 }
 
+export type CommunicationPermissionBackfillMeta = {
+  hasExplicitCommunication: boolean;
+  hasExplicitVoiceAssistant: boolean;
+  patchedCommunication: boolean;
+  patchedVoiceAssistant: boolean;
+};
+
 /**
  * Derive communication / voice-assistant flags from legacy ai-assistant for idempotent backfill.
+ * Each domain is evaluated independently; explicit keys (including revoke) are never overwritten.
  * Never grants communication.manage from ai-assistant alone.
  */
 export function deriveCommunicationPermissionsFromLegacy(
@@ -62,18 +70,37 @@ export function mergeCommunicationPermissionBackfill(
 ): {
   next: MembershipPermissionsMap | null;
   changed: boolean;
+  meta: CommunicationPermissionBackfillMeta;
 } {
   const base = { ...(existing ?? {}) } as MembershipPermissionsMap;
+  const hasExplicitCommunication = hasExplicitModule(base, COMMUNICATION_PERMISSION_MODULE);
+  const hasExplicitVoiceAssistant = hasExplicitModule(base, VOICE_ASSISTANT_PERMISSION_MODULE);
   const patch = deriveCommunicationPermissionsFromLegacy(base);
-  if (Object.keys(patch).length === 0) {
-    return { next: existing ?? null, changed: false };
+  const patchedCommunication = Object.prototype.hasOwnProperty.call(
+    patch,
+    COMMUNICATION_PERMISSION_MODULE,
+  );
+  const patchedVoiceAssistant = Object.prototype.hasOwnProperty.call(
+    patch,
+    VOICE_ASSISTANT_PERMISSION_MODULE,
+  );
+
+  const meta: CommunicationPermissionBackfillMeta = {
+    hasExplicitCommunication,
+    hasExplicitVoiceAssistant,
+    patchedCommunication,
+    patchedVoiceAssistant,
+  };
+
+  if (!patchedCommunication && !patchedVoiceAssistant) {
+    return { next: existing ?? null, changed: false, meta };
   }
 
   for (const [key, flags] of Object.entries(patch)) {
     base[key as keyof MembershipPermissionsMap] = flags;
   }
 
-  return { next: base, changed: true };
+  return { next: base, changed: true, meta };
 }
 
 /** Default communication permissions bundled into org role templates. */

@@ -14,6 +14,9 @@ export type CommunicationPermissionBackfillResult = {
   skipped: number;
   skippedDriver: number;
   skippedExplicitCommunication: number;
+  skippedExplicitVoiceAssistant: number;
+  backfilledCommunication: number;
+  backfilledVoiceAssistant: number;
 };
 
 @Injectable()
@@ -23,9 +26,11 @@ export class CommunicationPermissionBackfillService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Idempotent membership backfill:
-   * - maps legacy ai-assistant → communication / voice-assistant when module keys absent
-   * - never overwrites explicit communication/voice-assistant keys (including explicit revoke)
+   * Idempotent membership backfill with independent domain evaluation:
+   * - explicit communication key → never infer/overwrite communication; voice-assistant still evaluated if missing
+   * - explicit voice-assistant key → never infer/overwrite voice-assistant; communication still evaluated if missing
+   * - both explicit → no mutation
+   * - neither explicit → evaluate both from legacy ai-assistant mapping
    * - never grants communication.manage from ai-assistant alone
    */
   async backfillOrganization(
@@ -51,6 +56,9 @@ export class CommunicationPermissionBackfillService {
       skipped: 0,
       skippedDriver: 0,
       skippedExplicitCommunication: 0,
+      skippedExplicitVoiceAssistant: 0,
+      backfilledCommunication: 0,
+      backfilledVoiceAssistant: 0,
     };
 
     for (const membership of memberships) {
@@ -61,17 +69,15 @@ export class CommunicationPermissionBackfillService {
         continue;
       }
 
-      const hasExplicitCommunication =
-        normalized &&
-        Object.prototype.hasOwnProperty.call(normalized, 'communication');
+      const { next, changed, meta } = mergeCommunicationPermissionBackfill(normalized);
 
-      if (hasExplicitCommunication) {
+      if (meta.hasExplicitCommunication) {
         result.skippedExplicitCommunication += 1;
-        result.skipped += 1;
-        continue;
+      }
+      if (meta.hasExplicitVoiceAssistant) {
+        result.skippedExplicitVoiceAssistant += 1;
       }
 
-      const { next, changed } = mergeCommunicationPermissionBackfill(normalized);
       if (!changed || !next) {
         result.skipped += 1;
         continue;
@@ -85,11 +91,17 @@ export class CommunicationPermissionBackfillService {
       }
 
       result.updated += 1;
+      if (meta.patchedCommunication) {
+        result.backfilledCommunication += 1;
+      }
+      if (meta.patchedVoiceAssistant) {
+        result.backfilledVoiceAssistant += 1;
+      }
     }
 
     if (result.updated > 0) {
       this.logger.log(
-        `Communication permission backfill org=${organizationId} updated=${result.updated} dryRun=${options.dryRun === true}`,
+        `Communication permission backfill org=${organizationId} updated=${result.updated} communication=${result.backfilledCommunication} voiceAssistant=${result.backfilledVoiceAssistant} dryRun=${options.dryRun === true}`,
       );
     }
 
