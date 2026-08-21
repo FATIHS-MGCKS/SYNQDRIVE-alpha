@@ -293,7 +293,7 @@ export class WhatsAppQuickActionsService {
     ) {
       void this.communicationProjection.projectConversationResolved({
         conversation: updated,
-        occurredAt: new Date(),
+        occurredAt: updated.updatedAt,
       });
     }
 

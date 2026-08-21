@@ -196,14 +196,16 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
 
   fromHumanRequired(source: MetaWhatsAppHumanRequiredProjectionSource): NormalizedCommunicationInput {
     const { conversation } = source;
+    const occurredAt = source.occurredAt ?? resolveNativeTransitionOccurredAt(conversation);
     const providerEventId =
-      source.webhookExternalEventId?.trim() || `wa-human:${conversation.id}`;
+      source.webhookExternalEventId?.trim() ||
+      buildWhatsAppTransitionProviderEventId('wa-human', conversation);
 
     return {
       envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
       event: {
         eventType: CommunicationEventType.HUMAN_REQUIRED,
-        occurredAt: source.occurredAt,
+        occurredAt,
         direction: CommunicationDirection.INTERNAL,
         providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
         providerEventId,
@@ -227,14 +229,16 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
     source: MetaWhatsAppHumanRequiredProjectionSource,
   ): NormalizedCommunicationInput {
     const { conversation } = source;
+    const occurredAt = source.occurredAt ?? resolveNativeTransitionOccurredAt(conversation);
     const providerEventId =
-      source.webhookExternalEventId?.trim() || `wa-resolved:${conversation.id}`;
+      source.webhookExternalEventId?.trim() ||
+      buildWhatsAppTransitionProviderEventId('wa-resolved', conversation);
 
     return {
       envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
       event: {
         eventType: CommunicationEventType.CONVERSATION_RESOLVED,
-        occurredAt: source.occurredAt,
+        occurredAt,
         direction: CommunicationDirection.INTERNAL,
         providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
         providerEventId,
@@ -413,4 +417,26 @@ export function sanitizeFailureCode(reason: string): string {
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
   return normalized || 'WHATSAPP_DELIVERY_FAILED';
+}
+
+/** ISO timestamp from persisted native row — stable per transition occurrence. */
+export function resolveNativeTransitionVersion(conversation: WhatsAppConversation): string {
+  if (!conversation.updatedAt) {
+    throw new CommunicationNormalizationError(
+      CommunicationNormalizationErrorCode.INVALID_NORMALIZED_INPUT,
+      'WhatsApp transition projection requires persisted conversation.updatedAt',
+    );
+  }
+  return conversation.updatedAt.toISOString();
+}
+
+export function resolveNativeTransitionOccurredAt(conversation: WhatsAppConversation): Date {
+  return new Date(resolveNativeTransitionVersion(conversation));
+}
+
+export function buildWhatsAppTransitionProviderEventId(
+  prefix: 'wa-human' | 'wa-resolved',
+  conversation: WhatsAppConversation,
+): string {
+  return `${prefix}:${conversation.id}:${resolveNativeTransitionVersion(conversation)}`;
 }

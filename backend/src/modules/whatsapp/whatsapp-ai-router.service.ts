@@ -165,7 +165,7 @@ export class WhatsAppAiRouterService {
     ) {
       void this.communicationProjection.projectHumanRequired({
         conversation: updated,
-        occurredAt: new Date(),
+        occurredAt: updated.updatedAt,
         handoffReasonCode: sanitizeHandoffReason(humanReason ?? intent),
       });
     }
@@ -220,11 +220,16 @@ export class WhatsAppAiRouterService {
       data: { status: WhatsAppConversationStatus.PENDING_HUMAN },
     });
 
-    void this.communicationProjection.projectHumanRequired({
-      conversation: updated,
-      occurredAt: new Date(),
-      handoffReasonCode: sanitizeHandoffReason(reason),
-    });
+    if (
+      convo.status !== WhatsAppConversationStatus.PENDING_HUMAN &&
+      updated.status === WhatsAppConversationStatus.PENDING_HUMAN
+    ) {
+      void this.communicationProjection.projectHumanRequired({
+        conversation: updated,
+        occurredAt: updated.updatedAt,
+        handoffReasonCode: sanitizeHandoffReason(reason),
+      });
+    }
 
     return { ok: true, conversationId, status: 'PENDING_HUMAN' as const };
   }

@@ -283,19 +283,45 @@ describe('WhatsAppAiRouterService', () => {
     expect(communicationProjection.projectHumanRequired).not.toHaveBeenCalled();
   });
 
-  it('requestHumanReview projects HUMAN_REQUIRED', async () => {
+  it('requestHumanReview projects HUMAN_REQUIRED on transition', async () => {
     prisma.orgWhatsAppConfig.findUnique.mockResolvedValue({
       ...baseConfig,
       aiCanCreateTasks: false,
+    });
+    const transitionAt = new Date('2026-08-21T10:05:00Z');
+    prisma.whatsAppConversation.update.mockResolvedValue({
+      ...baseConvo,
+      status: 'PENDING_HUMAN',
+      updatedAt: transitionAt,
+    });
+
+    await router.requestHumanReview('org-1', 'convo-1', 'Needs review');
+
+    expect(communicationProjection.projectHumanRequired).toHaveBeenCalledTimes(1);
+    expect(communicationProjection.projectHumanRequired).toHaveBeenCalledWith(
+      expect.objectContaining({
+        occurredAt: transitionAt,
+      }),
+    );
+  });
+
+  it('requestHumanReview does not project when already PENDING_HUMAN', async () => {
+    prisma.orgWhatsAppConfig.findUnique.mockResolvedValue({
+      ...baseConfig,
+      aiCanCreateTasks: false,
+    });
+    prisma.whatsAppConversation.findFirst.mockResolvedValue({
+      ...baseConvo,
+      status: 'PENDING_HUMAN',
     });
     prisma.whatsAppConversation.update.mockResolvedValue({
       ...baseConvo,
       status: 'PENDING_HUMAN',
     });
 
-    await router.requestHumanReview('org-1', 'convo-1', 'Needs review');
+    await router.requestHumanReview('org-1', 'convo-1', 'Needs review again');
 
-    expect(communicationProjection.projectHumanRequired).toHaveBeenCalledTimes(1);
+    expect(communicationProjection.projectHumanRequired).not.toHaveBeenCalled();
   });
 
   it('WhatsApp AI path does not import DIMO Agent ChatService', () => {

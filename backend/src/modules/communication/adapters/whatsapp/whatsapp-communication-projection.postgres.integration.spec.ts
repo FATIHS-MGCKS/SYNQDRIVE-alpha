@@ -126,6 +126,65 @@ describePg('WhatsApp canonical projection postgres integration', () => {
     expect(events[0]?.eventType).toBe(CommunicationEventType.MESSAGE_RECEIVED);
   });
 
+  it('projects HUMAN_REQUIRED per native transition occurrence with replay convergence', async () => {
+    const firstTransition = await prisma.whatsAppConversation.update({
+      where: { id: waConversationId },
+      data: { status: WhatsAppConversationStatus.PENDING_HUMAN },
+    });
+
+    const firstSource = {
+      conversation: firstTransition,
+      occurredAt: firstTransition.updatedAt,
+      handoffReasonCode: 'ACCIDENT',
+    };
+
+    await integration.projectHumanRequired(firstSource);
+    await integration.projectHumanRequired(firstSource);
+
+    const canonical = await prisma.communicationConversation.findFirst({
+      where: { organizationId: orgId, nativeConversationId: waConversationId },
+    });
+    expect(canonical?.status).toBe('HUMAN_REQUIRED');
+
+    let hrEvents = await prisma.communicationEvent.findMany({
+      where: {
+        organizationId: orgId,
+        conversationId: canonical!.id,
+        eventType: CommunicationEventType.HUMAN_REQUIRED,
+      },
+    });
+    expect(hrEvents).toHaveLength(1);
+
+    await prisma.whatsAppConversation.update({
+      where: { id: waConversationId },
+      data: { status: WhatsAppConversationStatus.OPEN },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const secondTransition = await prisma.whatsAppConversation.update({
+      where: { id: waConversationId },
+      data: { status: WhatsAppConversationStatus.PENDING_HUMAN },
+    });
+
+    await integration.projectHumanRequired({
+      conversation: secondTransition,
+      occurredAt: secondTransition.updatedAt,
+      handoffReasonCode: 'PAYMENT',
+    });
+
+    hrEvents = await prisma.communicationEvent.findMany({
+      where: {
+        organizationId: orgId,
+        conversationId: canonical!.id,
+        eventType: CommunicationEventType.HUMAN_REQUIRED,
+      },
+      orderBy: { occurredAt: 'asc' },
+    });
+    expect(hrEvents).toHaveLength(2);
+    expect(hrEvents[0]?.providerEventId).not.toBe(hrEvents[1]?.providerEventId);
+  });
+
   it('projects delivered and read for same wamid without unread changes', async () => {
     const providerMessageId = `wamid.lifecycle.${Date.now()}`;
     const waConvo = await prisma.whatsAppConversation.findUniqueOrThrow({

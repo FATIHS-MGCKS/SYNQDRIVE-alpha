@@ -11,6 +11,7 @@ import {
 import { buildCanonicalIdempotencyKey } from '../../normalization/communication-idempotency';
 import {
   MetaWhatsAppCommunicationAdapter,
+  buildWhatsAppTransitionProviderEventId,
   mapWhatsAppConversationStatus,
 } from './meta-whatsapp-communication.adapter';
 
@@ -314,22 +315,32 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
   });
 
   it('HUMAN_REQUIRED event explicitly patches canonical status', () => {
+    const transitionAt = new Date('2026-08-21T10:05:00Z');
     const result = adapter.fromHumanRequired({
-      conversation: conversation(),
-      occurredAt: new Date('2026-08-21T10:05:00Z'),
+      conversation: conversation({ status: WhatsAppConversationStatus.PENDING_HUMAN, updatedAt: transitionAt }),
+      occurredAt: transitionAt,
       handoffReasonCode: 'ACCIDENT',
     });
     expect(result.event.eventType).toBe(CommunicationEventType.HUMAN_REQUIRED);
+    expect(result.event.providerEventId).toBe(
+      buildWhatsAppTransitionProviderEventId('wa-human', conversation({ updatedAt: transitionAt })),
+    );
+    expect(result.event.occurredAt).toEqual(transitionAt);
     expect(result.projection?.status).toBe(CommunicationConversationStatus.HUMAN_REQUIRED);
     expect(result.envelope.initialStatus).toBeUndefined();
   });
 
   it('CONVERSATION_RESOLVED event explicitly patches canonical status', () => {
+    const transitionAt = new Date('2026-08-21T10:06:00Z');
     const result = adapter.fromConversationResolved({
-      conversation: conversation({ status: WhatsAppConversationStatus.CLOSED }),
-      occurredAt: new Date('2026-08-21T10:06:00Z'),
+      conversation: conversation({ status: WhatsAppConversationStatus.CLOSED, updatedAt: transitionAt }),
+      occurredAt: transitionAt,
     });
     expect(result.event.eventType).toBe(CommunicationEventType.CONVERSATION_RESOLVED);
+    expect(result.event.providerEventId).toBe(
+      buildWhatsAppTransitionProviderEventId('wa-resolved', conversation({ updatedAt: transitionAt })),
+    );
+    expect(result.event.occurredAt).toEqual(transitionAt);
     expect(result.projection?.status).toBe(CommunicationConversationStatus.RESOLVED);
     expect(result.envelope.initialStatus).toBeUndefined();
   });
@@ -360,5 +371,117 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
     expect(outboundFailed.event.providerEventId).toBe('wa-failed:wa-msg-1');
     expect(webhookFailed.event.providerEventId).toBe('wa-failed:wa-msg-1');
     expect(outboundFailed.event.idempotencyKey).toBe(webhookFailed.event.idempotencyKey);
+  });
+
+  describe('transition occurrence idempotency', () => {
+    const firstTransitionAt = new Date('2026-08-21T10:10:00.000Z');
+    const secondTransitionAt = new Date('2026-08-21T11:20:00.000Z');
+    const closedFirstAt = new Date('2026-08-21T12:00:00.000Z');
+    const closedSecondAt = new Date('2026-08-21T13:30:00.000Z');
+
+    it('A: OPEN → PENDING_HUMAN produces occurrence-scoped HUMAN_REQUIRED identity', () => {
+      const convo = conversation({
+        status: WhatsAppConversationStatus.PENDING_HUMAN,
+        updatedAt: firstTransitionAt,
+      });
+      const result = adapter.fromHumanRequired({
+        conversation: convo,
+        occurredAt: firstTransitionAt,
+      });
+      expect(result.event.providerEventId).toBe('wa-human:wa-convo-1:2026-08-21T10:10:00.000Z');
+    });
+
+    it('B: replaying the same persisted PENDING_HUMAN transition converges', () => {
+      const convo = conversation({
+        status: WhatsAppConversationStatus.PENDING_HUMAN,
+        updatedAt: firstTransitionAt,
+      });
+      const first = adapter.fromHumanRequired({ conversation: convo, occurredAt: firstTransitionAt });
+      const replay = adapter.fromHumanRequired({ conversation: convo, occurredAt: firstTransitionAt });
+      expect(first.event.idempotencyKey).toBe(replay.event.idempotencyKey);
+    });
+
+    it('D: later PENDING_HUMAN with different persisted updatedAt yields distinct identity', () => {
+      const first = adapter.fromHumanRequired({
+        conversation: conversation({
+          status: WhatsAppConversationStatus.PENDING_HUMAN,
+          updatedAt: firstTransitionAt,
+        }),
+        occurredAt: firstTransitionAt,
+      });
+      const second = adapter.fromHumanRequired({
+        conversation: conversation({
+          status: WhatsAppConversationStatus.PENDING_HUMAN,
+          updatedAt: secondTransitionAt,
+        }),
+        occurredAt: secondTransitionAt,
+      });
+      expect(first.event.idempotencyKey).not.toBe(second.event.idempotencyKey);
+    });
+
+    it('E: OPEN → CLOSED produces occurrence-scoped CONVERSATION_RESOLVED identity', () => {
+      const result = adapter.fromConversationResolved({
+        conversation: conversation({
+          status: WhatsAppConversationStatus.CLOSED,
+          updatedAt: closedFirstAt,
+        }),
+        occurredAt: closedFirstAt,
+      });
+      expect(result.event.providerEventId).toBe('wa-resolved:wa-convo-1:2026-08-21T12:00:00.000Z');
+    });
+
+    it('F: replaying the same CLOSED transition converges', () => {
+      const convo = conversation({
+        status: WhatsAppConversationStatus.CLOSED,
+        updatedAt: closedFirstAt,
+      });
+      const first = adapter.fromConversationResolved({ conversation: convo, occurredAt: closedFirstAt });
+      const replay = adapter.fromConversationResolved({ conversation: convo, occurredAt: closedFirstAt });
+      expect(first.event.idempotencyKey).toBe(replay.event.idempotencyKey);
+    });
+
+    it('G: later CLOSED with different persisted updatedAt yields distinct identity', () => {
+      const first = adapter.fromConversationResolved({
+        conversation: conversation({
+          status: WhatsAppConversationStatus.CLOSED,
+          updatedAt: closedFirstAt,
+        }),
+        occurredAt: closedFirstAt,
+      });
+      const second = adapter.fromConversationResolved({
+        conversation: conversation({
+          status: WhatsAppConversationStatus.CLOSED,
+          updatedAt: closedSecondAt,
+        }),
+        occurredAt: closedSecondAt,
+      });
+      expect(first.event.idempotencyKey).not.toBe(second.event.idempotencyKey);
+    });
+
+    it('H: ordinary inbound/outbound/lifecycle events still do not patch status', () => {
+      const inbound = adapter.fromInbound({
+        conversation: conversation({ status: WhatsAppConversationStatus.OPEN }),
+        message: message(),
+        webhookExternalEventId: 'msg:wamid.status-safe.1',
+      });
+      const outbound = adapter.fromOutboundAccepted({
+        conversation: conversation(),
+        message: message({
+          direction: 'outgoing',
+          status: WhatsAppMessageDeliveryStatus.SENT,
+          providerMessageId: 'wamid.out.1',
+        }),
+      });
+      const delivered = adapter.fromStatusUpdate({
+        conversation: conversation(),
+        message: message({ direction: 'outgoing', providerMessageId: 'wamid.out.1' }),
+        status: 'DELIVERED',
+        webhookExternalEventId: 'status:wamid.out.1:delivered:1',
+        occurredAt: new Date('2026-08-21T10:01:00Z'),
+      });
+      expect(inbound.projection?.status).toBeUndefined();
+      expect(outbound.projection?.status).toBeUndefined();
+      expect(delivered.projection?.status).toBeUndefined();
+    });
   });
 });

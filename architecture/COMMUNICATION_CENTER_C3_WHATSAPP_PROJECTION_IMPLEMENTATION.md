@@ -74,8 +74,8 @@ Inputs are **persisted** `WhatsAppConversation` + `WhatsAppMessage` (+ webhook e
 | Webhook status READ | `MESSAGE_READ` | `META_WHATSAPP` | `OUTBOUND` | `status:{wamid}:read:{metaTs}` | none | Log + continue |
 | Webhook status FAILED | `MESSAGE_FAILED` | `META_WHATSAPP` | `OUTBOUND` | `wa-failed:{WhatsAppMessage.id}` *(converges with sync)* | `failureCode` | Log + continue |
 | Webhook status SENT | *(skipped)* | — | — | — | — | `MESSAGE_SENT` sourced from `sendMessage` only |
-| `route()` / `requestHumanReview` → `PENDING_HUMAN` | `HUMAN_REQUIRED` | `META_WHATSAPP` | `INTERNAL` | `wa-human:{conversationId}` | `status: HUMAN_REQUIRED` | Log + continue |
-| `close_conversation` → `CLOSED` | `CONVERSATION_RESOLVED` | `META_WHATSAPP` | `INTERNAL` | `wa-resolved:{conversationId}` | `status: RESOLVED` | Log + continue |
+| `route()` / `requestHumanReview` → `PENDING_HUMAN` | `HUMAN_REQUIRED` | `META_WHATSAPP` | `INTERNAL` | `wa-human:{conversationId}:{updatedAt}` | `status: HUMAN_REQUIRED` | Log + continue |
+| `close_conversation` → `CLOSED` | `CONVERSATION_RESOLVED` | `META_WHATSAPP` | `INTERNAL` | `wa-resolved:{conversationId}:{updatedAt}` | `status: RESOLVED` | Log + continue |
 
 All keys hashed via C2 `buildCanonicalIdempotencyKey` (`cc1:{sha256}`).
 
@@ -96,6 +96,21 @@ All keys hashed via C2 `buildCanonicalIdempotencyKey` (`cc1:{sha256}`).
 - Ordinary `MESSAGE_RECEIVED`, `MESSAGE_SENT`, `MESSAGE_DELIVERED`, `MESSAGE_READ`, and `MESSAGE_FAILED` events **must not** patch canonical status from the native conversation row.
 
 This prevents regressing a stronger canonical state (e.g. `HUMAN_REQUIRED`) when native WhatsApp remains or returns to `OPEN`.
+
+### Transition occurrence idempotency
+
+`HUMAN_REQUIRED` and `CONVERSATION_RESOLVED` use **per native transition occurrence** identity — not per conversation lifetime:
+
+- `providerEventId`: `wa-human:{conversationId}:{conversation.updatedAt.toISOString()}`
+- `providerEventId`: `wa-resolved:{conversationId}:{conversation.updatedAt.toISOString()}`
+- `occurredAt`: same persisted `conversation.updatedAt` from the native status write
+
+**Rules:**
+
+- Same persisted transition replayed → same idempotency key (converges)
+- Later distinct native transition (new `updatedAt`) → new canonical event allowed
+- Forbidden: `Date.now()`, random UUID, or other process-time-only identity
+- `requestHumanReview` / `route()` only project when native status **changes into** `PENDING_HUMAN` (not when already `PENDING_HUMAN`)
 
 ---
 
@@ -147,7 +162,7 @@ No new phone matching, booking inference, or station resolution in C3. Unresolve
 | Outbound sent/failed | `whatsapp.service.ts` | After native message final update |
 | AI outbound | `whatsapp.service.ts` | `sendAiReply` after AI flags (single projection) |
 | Simulation inbound | `whatsapp.service.ts` | After simulate message create |
-| Human review / AI handoff | `whatsapp-ai-router.service.ts` | After `PENDING_HUMAN` transition |
+| `requestHumanReview` | `whatsapp-ai-router.service.ts` | After `PENDING_HUMAN` transition only (not idempotent re-write) |
 | Close conversation | `whatsapp-quick-actions.service.ts` | After `CLOSED` transition |
 
 Projection runs **outside** native DB transactions — failures cannot roll back WhatsApp persistence.
@@ -191,7 +206,7 @@ Resolver: `CommunicationProjectionFeatureService`
 Priority:
 
 1. `WhatsAppWebhookEvent.externalEventId` for webhook-scoped events (Meta parser: `msg:{wamid}`, `status:{wamid}:{status}:{metaTimestamp}`)
-2. Stable native lifecycle ids (`wa-sent:{messageId}`, `wa-failed:{messageId}`, `wa-human:{conversationId}`, `wa-resolved:{conversationId}`)
+2. Stable native lifecycle ids (`wa-sent:{messageId}`, `wa-failed:{messageId}`, `wa-human:{conversationId}:{updatedAt}`, `wa-resolved:{conversationId}:{updatedAt}`)
 3. C2 SHA-256 digest — never hash message body, phone, or customer PII
 
 **Webhook replay:** Meta `externalEventId` uses provider message id + status + **Meta timestamp** (not process time). Duplicate webhook delivery produces identical ids.

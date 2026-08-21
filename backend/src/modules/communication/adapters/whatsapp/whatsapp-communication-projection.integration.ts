@@ -3,7 +3,7 @@ import { WhatsAppMessageDeliveryStatus } from '@prisma/client';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { CommunicationProjectionService } from '../../communication-projection.service';
 import { CommunicationNormalizationError } from '../../normalization/communication-normalization.errors';
-import { MetaWhatsAppCommunicationAdapter } from './meta-whatsapp-communication.adapter';
+import { MetaWhatsAppCommunicationAdapter, buildWhatsAppTransitionProviderEventId } from './meta-whatsapp-communication.adapter';
 import type {
   MetaWhatsAppHumanRequiredProjectionSource,
   MetaWhatsAppInboundProjectionSource,
@@ -124,7 +124,9 @@ export class WhatsAppCommunicationProjectionIntegration {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
         providerMessageId: null,
-        providerEventId: source.webhookExternalEventId ?? `wa-human:${source.conversation.id}`,
+        providerEventId:
+          source.webhookExternalEventId ??
+          buildWhatsAppTransitionProviderEventId('wa-human', source.conversation),
         eventType: 'HUMAN_REQUIRED',
       },
     );
@@ -146,7 +148,9 @@ export class WhatsAppCommunicationProjectionIntegration {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
         providerMessageId: null,
-        providerEventId: source.webhookExternalEventId ?? `wa-resolved:${source.conversation.id}`,
+        providerEventId:
+          source.webhookExternalEventId ??
+          buildWhatsAppTransitionProviderEventId('wa-resolved', source.conversation),
         eventType: 'CONVERSATION_RESOLVED',
       },
     );
