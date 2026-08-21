@@ -22,49 +22,45 @@ export class CommunicationEventRepository {
 
   /**
    * Append-only with idempotency on organizationId + idempotencyKey when provided.
+   * Uses PostgreSQL INSERT ... ON CONFLICT DO NOTHING (via createMany skipDuplicates)
+   * so concurrent replays never abort the surrounding transaction.
    * Does not mutate existing rows — returns prior event on replay.
    */
   async appendEventIdempotently(
     input: AppendCommunicationEventInput,
     tx?: CommunicationTx,
   ): Promise<{ event: CommunicationEvent; created: boolean }> {
-    if (input.idempotencyKey) {
-      const existing = await this.client(tx).communicationEvent.findUnique({
-        where: {
-          communication_events_org_idempotency_key: {
-            organizationId: input.organizationId,
-            idempotencyKey: input.idempotencyKey,
-          },
-        },
-      });
-      if (existing) {
-        return { event: existing, created: false };
-      }
-    }
-
-    try {
+    if (!input.idempotencyKey) {
       const event = await this.appendEvent(input, tx);
       return { event, created: true };
-    } catch (error) {
-      if (
-        input.idempotencyKey
-        && error instanceof Prisma.PrismaClientKnownRequestError
-        && error.code === 'P2002'
-      ) {
-        const existing = await this.client(tx).communicationEvent.findUnique({
-          where: {
-            communication_events_org_idempotency_key: {
-              organizationId: input.organizationId,
-              idempotencyKey: input.idempotencyKey,
-            },
-          },
-        });
-        if (existing) {
-          return { event: existing, created: false };
-        }
-      }
-      throw error;
     }
+
+    const existing = await this.findByIdempotencyKey(
+      input.organizationId,
+      input.idempotencyKey,
+      tx,
+    );
+    if (existing) {
+      return { event: existing, created: false };
+    }
+
+    const inserted = await this.client(tx).communicationEvent.createMany({
+      data: [this.toCreateManyData(input)],
+      skipDuplicates: true,
+    });
+
+    const event = await this.findByIdempotencyKey(
+      input.organizationId,
+      input.idempotencyKey,
+      tx,
+    );
+    if (!event) {
+      throw new BadRequestException(
+        'Communication event idempotent append failed to resolve canonical row',
+      );
+    }
+
+    return { event, created: inserted.count === 1 };
   }
 
   async findById(
@@ -86,6 +82,48 @@ export class CommunicationEventRepository {
       where: { organizationId, conversationId },
       orderBy: { occurredAt: 'asc' },
     });
+  }
+
+  private async findByIdempotencyKey(
+    organizationId: string,
+    idempotencyKey: string,
+    tx?: CommunicationTx,
+  ): Promise<CommunicationEvent | null> {
+    return this.client(tx).communicationEvent.findUnique({
+      where: {
+        communication_events_org_idempotency_key: {
+          organizationId,
+          idempotencyKey,
+        },
+      },
+    });
+  }
+
+  private toCreateManyData(
+    input: AppendCommunicationEventInput,
+  ): Prisma.CommunicationEventCreateManyInput {
+    if (!input.occurredAt) {
+      throw new BadRequestException('occurredAt is required');
+    }
+    return {
+      organizationId: input.organizationId,
+      conversationId: input.conversationId,
+      channel: input.channel,
+      eventType: input.eventType,
+      occurredAt: input.occurredAt,
+      direction: input.direction ?? undefined,
+      providerIdentity: input.providerIdentity ?? undefined,
+      providerEventId: input.providerEventId ?? undefined,
+      providerMessageId: input.providerMessageId ?? undefined,
+      idempotencyKey: input.idempotencyKey ?? undefined,
+      actorType: input.actorType ?? undefined,
+      actorId: input.actorId ?? undefined,
+      customerId: input.customerId ?? undefined,
+      bookingId: input.bookingId ?? undefined,
+      vehicleId: input.vehicleId ?? undefined,
+      metadata: input.metadata ?? undefined,
+      redactedPayloadRef: input.redactedPayloadRef ?? undefined,
+    };
   }
 
   private toCreateData(input: AppendCommunicationEventInput): Prisma.CommunicationEventCreateInput {

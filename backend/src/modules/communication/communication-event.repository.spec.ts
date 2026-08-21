@@ -9,6 +9,7 @@ function makePrisma() {
   return {
     communicationEvent: {
       create: jest.fn(),
+      createMany: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -60,14 +61,16 @@ describe('CommunicationEventRepository', () => {
     });
     expect(result.created).toBe(false);
     expect(result.event).toEqual({ id: 'ev-existing' });
-    expect(prisma.communicationEvent.create).not.toHaveBeenCalled();
+    expect(prisma.communicationEvent.createMany).not.toHaveBeenCalled();
   });
 
-  it('allows multiple delivery events with same providerMessageId via distinct idempotency keys', async () => {
-    prisma.communicationEvent.findUnique.mockResolvedValue(null);
-    prisma.communicationEvent.create.mockResolvedValue({ id: 'ev-delivered' });
+  it('uses createMany skipDuplicates for new idempotent append', async () => {
+    prisma.communicationEvent.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'ev-new' });
+    prisma.communicationEvent.createMany.mockResolvedValue({ count: 1 });
 
-    await repository.appendEventIdempotently({
+    const result = await repository.appendEventIdempotently({
       organizationId: 'org-1',
       conversationId: 'cc-1',
       channel: CommunicationChannel.WHATSAPP,
@@ -77,11 +80,40 @@ describe('CommunicationEventRepository', () => {
       idempotencyKey: 'org-1:wa:delivered:wamid-shared',
     });
 
-    expect(prisma.communicationEvent.create).toHaveBeenCalled();
+    expect(prisma.communicationEvent.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          organizationId: 'org-1',
+          idempotencyKey: 'org-1:wa:delivered:wamid-shared',
+        }),
+      ],
+      skipDuplicates: true,
+    });
+    expect(result.created).toBe(true);
+    expect(result.event).toEqual({ id: 'ev-new' });
+  });
+
+  it('treats skipDuplicates race as replay without create()', async () => {
+    prisma.communicationEvent.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'ev-raced' });
+    prisma.communicationEvent.createMany.mockResolvedValue({ count: 0 });
+
+    const result = await repository.appendEventIdempotently({
+      organizationId: 'org-1',
+      conversationId: 'cc-1',
+      channel: CommunicationChannel.WHATSAPP,
+      eventType: CommunicationEventType.MESSAGE_RECEIVED,
+      occurredAt: new Date(),
+      idempotencyKey: 'race-key',
+    });
+
+    expect(result.created).toBe(false);
+    expect(result.event).toEqual({ id: 'ev-raced' });
+    expect(prisma.communicationEvent.create).not.toHaveBeenCalled();
   });
 
   it('does not dedupe by provider-event unique when provider fields are null', async () => {
-    prisma.communicationEvent.findUnique.mockResolvedValue(null);
     prisma.communicationEvent.create.mockResolvedValue({ id: 'ev-null-provider' });
 
     await repository.appendEventIdempotently({
