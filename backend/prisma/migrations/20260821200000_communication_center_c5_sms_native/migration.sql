@@ -1,9 +1,18 @@
--- Communication Center C5 — native SMS persistence (sent.dm foundation)
--- Additive only. Rollback: drop sms_* tables + enums, then org relation columns are implicit.
+-- Communication Center C5.1 — native SMS persistence foundation
+-- Additive only. Rollback: drop sms_* tables + enums.
 
 CREATE TYPE "SmsConversationStatus" AS ENUM ('OPEN', 'CLOSED');
 
-CREATE TYPE "SmsMessageDeliveryStatus" AS ENUM ('PENDING', 'QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'BLOCKED');
+CREATE TYPE "SmsMessageDeliveryStatus" AS ENUM (
+  'PENDING',
+  'DISPATCHING',
+  'DISPATCH_AMBIGUOUS',
+  'QUEUED',
+  'SENT',
+  'DELIVERED',
+  'FAILED',
+  'BLOCKED'
+);
 
 CREATE TABLE "org_sms_configs" (
     "id" TEXT NOT NULL,
@@ -12,6 +21,7 @@ CREATE TABLE "org_sms_configs" (
     "is_active" BOOLEAN NOT NULL DEFAULT false,
     "api_key_configured" BOOLEAN NOT NULL DEFAULT false,
     "webhook_signing_secret_configured" BOOLEAN NOT NULL DEFAULT false,
+    "sent_dm_account_id" TEXT,
     "webhook_endpoint_id" TEXT,
     "sender_profile_id" TEXT,
     "last_webhook_at" TIMESTAMP(3),
@@ -38,7 +48,8 @@ CREATE TABLE "sms_conversations" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "sms_conversations_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "sms_conversations_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "sms_conversations_unread_count_check" CHECK ("unread_count" >= 0)
 );
 
 CREATE TABLE "sms_messages" (
@@ -54,13 +65,16 @@ CREATE TABLE "sms_messages" (
     "status" "SmsMessageDeliveryStatus" NOT NULL DEFAULT 'PENDING',
     "failure_code" TEXT,
     "failure_reason" TEXT,
+    "dispatch_attempted_at" TIMESTAMP(3),
     "accepted_at" TIMESTAMP(3),
     "delivered_at" TIMESTAMP(3),
     "failed_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "sms_messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "sms_messages_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "sms_messages_direction_check" CHECK ("direction" IN ('incoming', 'outgoing')),
+    CONSTRAINT "sms_messages_sender_type_check" CHECK ("sender_type" IN ('customer', 'user', 'system', 'ai_agent'))
 );
 
 CREATE TABLE "sms_webhook_events" (
@@ -78,7 +92,8 @@ CREATE TABLE "sms_webhook_events" (
 );
 
 CREATE UNIQUE INDEX "org_sms_configs_organization_id_key" ON "org_sms_configs"("organization_id");
-CREATE INDEX "org_sms_configs_webhook_endpoint_id_idx" ON "org_sms_configs"("webhook_endpoint_id");
+CREATE UNIQUE INDEX "org_sms_configs_sent_dm_account_id_key" ON "org_sms_configs"("sent_dm_account_id");
+CREATE UNIQUE INDEX "org_sms_configs_webhook_endpoint_id_key" ON "org_sms_configs"("webhook_endpoint_id");
 
 CREATE UNIQUE INDEX "sms_conversations_organization_id_contact_phone_normalized_key" ON "sms_conversations"("organization_id", "contact_phone_normalized");
 CREATE INDEX "sms_conversations_organization_id_idx" ON "sms_conversations"("organization_id");

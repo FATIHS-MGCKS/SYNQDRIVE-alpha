@@ -11508,6 +11508,8 @@ enum SmsConversationStatus {
 
 enum SmsMessageDeliveryStatus {
   PENDING
+  DISPATCHING
+  DISPATCH_AMBIGUOUS
   QUEUED
   SENT
   DELIVERED
@@ -11522,8 +11524,10 @@ model OrgSmsConfig {
   isActive                   Boolean  @default(false) @map("is_active")
   apiKeyConfigured           Boolean  @default(false) @map("api_key_configured")
   webhookSigningSecretConfigured Boolean @default(false) @map("webhook_signing_secret_configured")
-  /// sent.dm webhook endpoint UUID (X-Webhook-ID) for tenant routing when message lookup is unavailable.
-  webhookEndpointId          String?  @map("webhook_endpoint_id")
+  /// sent.dm account UUID from webhook payload.account_id.
+  sentDmAccountId            String?  @unique @map("sent_dm_account_id")
+  /// sent.dm webhook configuration UUID (X-Webhook-ID header) — stable per registered endpoint.
+  webhookEndpointId          String?  @unique @map("webhook_endpoint_id")
   senderProfileId            String?  @map("sender_profile_id")
   lastWebhookAt              DateTime? @map("last_webhook_at")
   createdAt                  DateTime @default(now()) @map("created_at")
@@ -11531,7 +11535,6 @@ model OrgSmsConfig {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([webhookEndpointId])
   @@map("org_sms_configs")
 }
 
@@ -11580,6 +11583,7 @@ model SmsMessage {
   status              SmsMessageDeliveryStatus @default(PENDING)
   failureCode         String?                  @map("failure_code")
   failureReason       String?                  @map("failure_reason")
+  dispatchAttemptedAt DateTime?                @map("dispatch_attempted_at")
   acceptedAt          DateTime?                @map("accepted_at")
   deliveredAt         DateTime?                @map("delivered_at")
   failedAt            DateTime?                @map("failed_at")

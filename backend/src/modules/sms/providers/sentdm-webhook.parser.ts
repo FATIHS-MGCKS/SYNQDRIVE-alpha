@@ -2,14 +2,21 @@ export interface SentDmWebhookMessagePayload {
   message_id?: string;
   message_status?: string;
   channel?: string;
+  account_id?: string;
+  /** Remote sender/customer number (E.164) — NOT SynqDrive-owned receiving number. */
   inbound_number?: string;
+  /** SynqDrive/sent.dm provisioned receiving number. */
+  outbound_number?: string;
   text?: string;
   failure_code?: string;
+  updated_at?: string;
+  received_at?: string;
 }
 
 export interface ParsedSentDmWebhookEvent {
   field: string;
   event: string;
+  timestamp?: string;
   payload: SentDmWebhookMessagePayload;
 }
 
