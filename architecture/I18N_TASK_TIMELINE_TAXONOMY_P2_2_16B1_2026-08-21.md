@@ -67,13 +67,17 @@ Blind-spot guards: no `RESOLUTION_CODE_LABELS`, no `taskStatusLabelDe`, no Germa
 
 ## B.1 merge safety
 
-Hosts without locale continue to receive German timeline copy via explicit `TASK_TIMELINE_BRIDGE_LOCALE = 'de'` in utils wrappers. Removed in B.2 when `taskDetailView` threads active locale.
+~~Hosts without locale continue to receive German timeline copy via explicit `TASK_TIMELINE_BRIDGE_LOCALE = 'de'` in utils wrappers. Removed in B.2 when `taskDetailView` threads active locale.~~
+
+**Superseded by P2.2.16B.2** — bridge removed; hosts thread `LanguageContext.locale`. See `architecture/I18N_TASK_TIMELINE_LOCALE_THREADING_P2_2_16B2_2026-08-22.md`.
 
 ## B.2 deferred
 
-- Locale threading through `taskDetailView.utils.ts` and production hosts
-- Replace B.1 bridge default with host `LanguageContext` locale
-- Final EN/DE timeline render under active product locale
+~~- Locale threading through `taskDetailView.utils.ts` and production hosts~~
+~~- Replace B.1 bridge default with host `LanguageContext` locale~~
+~~- Final EN/DE timeline render under active product locale~~
+
+**Completed in P2.2.16B.2** (2026-08-22).
 
 ## Tests
 
