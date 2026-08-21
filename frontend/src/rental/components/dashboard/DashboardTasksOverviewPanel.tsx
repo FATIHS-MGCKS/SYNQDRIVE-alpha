@@ -8,18 +8,12 @@ import { deriveTaskIsOverdue } from '../../lib/task-display.utils';
 import { resolvePrimaryLinkedObjectLabel } from '../../lib/task-list.utils';
 import type { TranslationKey } from '../../i18n/translations/en';
 import type { VehicleData } from '../../data/vehicles';
-import {
-  DashboardPanelHeader,
-  INTERACTIVE_ROW_CLASS,
-  META_TEXT_CLASS,
-  ROW_BODY_CLASS,
-  ROW_TITLE_CLASS,
-  panelShellClass,
-} from './dashboardShell';
+import { panelShellClass } from './dashboardShell';
 import type { DashboardViewModel } from './dashboardTypes';
 import { useDashboardTasksOverview } from './useDashboardTasksOverview';
 import { buildFleetVehicleById, isTaskDueToday } from './dashboardTasksOverview.utils';
 import { useRentalOrg } from '../../RentalContext';
+import { NOTIFICATION_PANEL_TYPO } from './notifications/notificationPanelTypography';
 
 interface DashboardTasksOverviewPanelProps {
   vm: DashboardViewModel;
@@ -36,7 +30,8 @@ function StatusChip({ label, value, tone = 'neutral' }: StatusChipProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-lg border border-border/45 bg-muted/20 px-2 py-1 text-[11px] font-medium tabular-nums text-muted-foreground',
+        NOTIFICATION_PANEL_TYPO.metaBadge,
+        'gap-1 border border-border/45 bg-muted/20 px-2 py-1 tabular-nums text-muted-foreground',
         tone === 'critical' && value > 0 && 'border-[color:var(--status-critical)]/25 text-[color:var(--status-critical)]',
         tone === 'watch' && value > 0 && 'border-[color:var(--status-watch)]/25 text-[color:var(--status-watch)]',
       )}
@@ -89,11 +84,11 @@ function TaskPreviewRow({
     task.priority === 'CRITICAL' || task.priority === 'HIGH';
 
   return (
-    <div className={cn(INTERACTIVE_ROW_CLASS, 'border-b border-border/30 px-3.5 py-2.5 last:border-b-0')}>
+    <div className="border-b border-border/30 px-3 py-2.5 last:border-b-0">
       <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
-          <p className={cn(ROW_TITLE_CLASS, 'truncate')}>{task.title?.trim() || '—'}</p>
-          <p className={cn(ROW_BODY_CLASS, 'mt-0.5 truncate')}>
+          <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'truncate')}>{task.title?.trim() || '—'}</p>
+          <p className={cn(NOTIFICATION_PANEL_TYPO.entity, 'mt-0.5 truncate')}>
             {linked.primary}
             {linked.secondary ? ` · ${linked.secondary}` : ''}
           </p>
@@ -101,7 +96,7 @@ function TaskPreviewRow({
         <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 sm:justify-end">
           <span
             className={cn(
-              META_TEXT_CLASS,
+              NOTIFICATION_PANEL_TYPO.meta,
               deriveTaskIsOverdue(task) && 'font-medium text-[color:var(--status-critical)]',
               isTaskDueToday(task) && !deriveTaskIsOverdue(task) && 'font-medium text-[color:var(--status-watch)]',
             )}
@@ -109,13 +104,13 @@ function TaskPreviewRow({
             {formatTaskDueLabel(task, t, locale)}
           </span>
           {showPriority ? (
-            <span className={cn(META_TEXT_CLASS, 'font-semibold uppercase tracking-wide')}>
+            <span className={cn(NOTIFICATION_PANEL_TYPO.metaBadge, 'bg-muted/30 uppercase')}>
               {task.priority === 'CRITICAL'
                 ? t('dashboardTasksOverview.priorityCritical')
                 : t('dashboardTasksOverview.priorityHigh')}
             </span>
           ) : null}
-          <span className={META_TEXT_CLASS}>{assignee}</span>
+          <span className={NOTIFICATION_PANEL_TYPO.meta}>{assignee}</span>
         </div>
       </div>
     </div>
@@ -161,25 +156,38 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
       aria-label={t('dashboardTasksOverview.title')}
       data-testid="dashboard-tasks-overview-panel"
     >
-      <DashboardPanelHeader
-        icon={<ListTodo className="h-4 w-4 text-[color:var(--brand)]" aria-hidden />}
-        iconToneClass="sq-tone-brand bg-[color:var(--brand)]/10"
-        title={t('dashboardTasksOverview.title')}
-        subtitle={subtitle}
-        trailing={
-          onOpenTasks ? (
+      <div className="shrink-0 border-b border-border/35 px-3.5 py-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand)]/10"
+                aria-hidden
+              >
+                <ListTodo className="h-4 w-4 text-[color:var(--brand)]" />
+              </span>
+              <h2 className={NOTIFICATION_PANEL_TYPO.boxTitle}>{t('dashboardTasksOverview.title')}</h2>
+            </div>
+            <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-0.5 text-muted-foreground')}>
+              {subtitle}
+            </p>
+          </div>
+          {onOpenTasks ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 shrink-0 px-2.5 text-[12px] font-semibold"
+              className={cn(
+                NOTIFICATION_PANEL_TYPO.cta,
+                'h-8 shrink-0 px-2.5 text-muted-foreground hover:text-foreground',
+              )}
               onClick={onOpenTasks}
             >
               {t('dashboardTasksOverview.allTasks')}
             </Button>
-          ) : null
-        }
-      />
+          ) : null}
+        </div>
+      </div>
 
       <div className="border-b border-border/35 px-3.5 py-2.5">
         {overview.countsLoading ? (
@@ -233,8 +241,8 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
           </div>
         ) : overview.previewReady && overview.counts && overview.counts.open === 0 ? (
           <div className="px-3.5 py-6 text-center">
-            <p className={ROW_TITLE_CLASS}>{t('dashboardTasksOverview.emptyTitle')}</p>
-            <p className={cn(ROW_BODY_CLASS, 'mt-1')}>{t('dashboardTasksOverview.emptyDescription')}</p>
+            <p className={NOTIFICATION_PANEL_TYPO.emptyTitle}>{t('dashboardTasksOverview.emptyTitle')}</p>
+            <p className={cn(NOTIFICATION_PANEL_TYPO.emptyBody, 'mt-1')}>{t('dashboardTasksOverview.emptyDescription')}</p>
           </div>
         ) : overview.previewReady ? (
           <div data-testid="dashboard-tasks-overview-preview">

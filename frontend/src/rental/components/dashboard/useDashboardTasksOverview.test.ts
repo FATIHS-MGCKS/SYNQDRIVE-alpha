@@ -1,9 +1,30 @@
+// @vitest-environment happy-dom
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { act } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderHook, waitForHook } from '../../../test/renderHook';
 import type { ApiTask } from '../../../lib/api';
 import { buildDashboardTaskPreview } from './dashboardTasksOverview.utils';
+import { useDashboardTasksOverview } from './useDashboardTasksOverview';
+
+vi.mock('../../../lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/api')>();
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      tasks: {
+        ...actual.api.tasks,
+        summary: vi.fn(),
+        list: vi.fn(),
+      },
+    },
+  };
+});
+
+import { api } from '../../../lib/api';
 
 function task(over: Partial<ApiTask> = {}): ApiTask {
   return {
@@ -91,5 +112,108 @@ describe('org-wide preview ordering across paginated ALL_OPEN pages', () => {
     ]);
 
     expect(preview[0]?.id).toBe('page-2-overdue');
+  });
+});
+
+describe('useDashboardTasksOverview runtime pagination', () => {
+  let unmountCurrent: (() => void) | null = null;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.tasks.summary).mockImplementation(async () =>
+      ({
+        open: 2,
+        active: 2,
+        inProgress: 0,
+        waiting: 0,
+        done: 0,
+        cancelled: 0,
+        dueToday: 0,
+        overdue: 0,
+        critical: 0,
+        assignedToMe: 0,
+        byStatus: {},
+        byPriority: {},
+      }) as never,
+    );
+    let listCall = 0;
+    vi.mocked(api.tasks.list).mockImplementation(async () => {
+      listCall += 1;
+      if (listCall === 1) {
+        return {
+          data: [task({ id: 'page-1' })],
+          meta: { limit: 50, nextCursor: 'cursor-1' },
+        } as never;
+      }
+      return {
+        data: [task({ id: 'page-2' })],
+        meta: { limit: 50, nextCursor: null },
+      } as never;
+    });
+  });
+
+  afterEach(() => {
+    unmountCurrent?.();
+    unmountCurrent = null;
+  });
+
+  it('paginates each cursor once and stabilizes without repeated page-1 reloads', async () => {
+    const { result, rerender, unmount } = renderHook(
+      ({ version }: { version: number }) => {
+        void version;
+        return useDashboardTasksOverview({
+          orgId: 'org-1',
+          selectedStationId: null,
+          fleetVehicles: [],
+          userRole: 'ORG_ADMIN',
+          hasPermission: () => true,
+        });
+      },
+      { initialProps: { version: 0 } },
+    );
+    unmountCurrent = unmount;
+
+    await waitForHook(() => vi.mocked(api.tasks.list).mock.calls.length >= 1);
+    await waitForHook(
+      () => result.current.listComplete === true && vi.mocked(api.tasks.list).mock.calls.length >= 2,
+    );
+    expect(vi.mocked(api.tasks.list).mock.calls.length).toBe(2);
+    expect(vi.mocked(api.tasks.list).mock.calls[0]?.[1]).not.toMatchObject({ cursor: expect.anything() });
+    expect(vi.mocked(api.tasks.list).mock.calls[1]?.[1]).toMatchObject({ cursor: 'cursor-1', bucket: 'ALL_OPEN' });
+
+    const callsAfterPagination = vi.mocked(api.tasks.list).mock.calls.length;
+    rerender({ version: 1 });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+
+    expect(vi.mocked(api.tasks.list).mock.calls.length).toBe(callsAfterPagination);
+    expect(result.current.error).toBeNull();
+    expect(result.current.previewTasks.length).toBeGreaterThan(0);
+  });
+
+  it('does not restart pagination after list error', async () => {
+    vi.mocked(api.tasks.list).mockReset();
+    vi.mocked(api.tasks.list).mockRejectedValue(new Error('Aufgaben konnten nicht geladen werden'));
+
+    const { result, unmount } = renderHook(() =>
+      useDashboardTasksOverview({
+        orgId: 'org-1',
+        selectedStationId: null,
+        fleetVehicles: [],
+        userRole: 'ORG_ADMIN',
+        hasPermission: () => true,
+      }),
+    );
+    unmountCurrent = unmount;
+
+    await waitForHook(() => result.current.error != null);
+    const callsAfterError = vi.mocked(api.tasks.list).mock.calls.length;
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+
+    expect(vi.mocked(api.tasks.list).mock.calls.length).toBe(callsAfterError);
   });
 });

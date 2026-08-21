@@ -13,7 +13,9 @@ describe('task query cache hooks contract', () => {
     expect(source).toContain('matchesTaskListInvalidation');
     expect(source).toContain('subscribeTaskQueryInvalidation');
     expect(source).toContain('tasksRef.current');
-    expect(source).toContain('isStale: Boolean(error) && tasks.length > 0');
+    expect(source).toContain('isStale: Boolean(error && tasks.length > 0)');
+    expect(source).toContain('taskListQuerySignature');
+    expect(source).not.toContain('[reload, queryKey]');
   });
 
   it('useTaskDetail reloads only matching detail invalidations', () => {
