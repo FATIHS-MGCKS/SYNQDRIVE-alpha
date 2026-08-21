@@ -3,7 +3,10 @@ import { cn } from '../../../../components/ui/utils';
 import type { ApiTask } from '../../../../lib/api';
 import type { TranslationKey } from '../../../i18n/translations/en';
 import type { VehicleData } from '../../../data/vehicles';
-import { TASK_PREVIEW_CARD_SURFACE } from './dashboardTaskPreviewDisplay.utils';
+import {
+  resolveTaskPreviewPriority,
+  taskPreviewCardSurfaceClass,
+} from './dashboardTaskPreviewDisplay.utils';
 import { TaskQuickDetailPanel } from './TaskQuickDetailPanel';
 import { TaskSummaryRow } from './TaskSummaryRow';
 
@@ -24,16 +27,18 @@ export const TaskPreviewCard = memo(function TaskPreviewCard({
 }: TaskPreviewCardProps) {
   const [expanded, setExpanded] = useState(false);
   const contentId = `dashboard-task-preview-${task.id}`;
+  const priority = resolveTaskPreviewPriority(task);
 
   return (
     <article
       className={cn(
         'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
-        TASK_PREVIEW_CARD_SURFACE,
+        taskPreviewCardSurfaceClass(priority),
         expanded && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]',
       )}
       data-testid="dashboard-task-preview-card"
       data-expanded={expanded ? 'true' : 'false'}
+      data-priority={priority}
     >
       <div className="px-3 py-2.5">
         <TaskSummaryRow

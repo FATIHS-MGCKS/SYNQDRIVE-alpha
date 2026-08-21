@@ -4,10 +4,15 @@ import { mapTaskCategory, mapTaskPriority, type TaskListPriority } from '../../.
 import { isServiceMaintenanceTask } from '../../../lib/service-task-semantics';
 import { deriveTaskIsOverdue } from '../../../lib/task-display.utils';
 import { isTaskDueToday } from '../dashboardTasksOverview.utils';
+import {
+  NOTIFICATION_CARD_NEUTRAL_SURFACE,
+  notificationCriticalSurface,
+  notificationWatchSurface,
+} from '../notifications/notificationCardSurface';
 
 export type TaskPreviewDueTone = 'critical' | 'watch' | 'neutral' | 'muted';
 
-export type TaskPreviewPriorityTone = 'critical' | 'watch' | 'neutral';
+export type TaskPreviewPriorityTone = 'critical-strong' | 'critical' | 'watch' | 'neutral';
 
 export function resolveDashboardTaskDomainKey(task: ApiTask): TranslationKey {
   const type = task.type ?? 'CUSTOM';
@@ -74,8 +79,10 @@ export function taskPreviewPriorityLabelKey(priority: TaskListPriority): Transla
 export function taskPreviewPriorityBadgeTone(priority: TaskListPriority): TaskPreviewPriorityTone {
   switch (priority) {
     case 'Critical':
-      return 'critical';
+      return 'critical-strong';
     case 'High':
+      return 'critical';
+    case 'Medium':
       return 'watch';
     default:
       return 'neutral';
@@ -83,6 +90,9 @@ export function taskPreviewPriorityBadgeTone(priority: TaskListPriority): TaskPr
 }
 
 export function priorityBadgeClassName(tone: TaskPreviewPriorityTone): string {
+  if (tone === 'critical-strong') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_16%,transparent)] text-[color:var(--status-critical)] font-semibold';
+  }
   if (tone === 'critical') {
     return 'bg-[color:color-mix(in_srgb,var(--status-critical)_12%,transparent)] text-[color:var(--status-critical)]';
   }
@@ -90,6 +100,20 @@ export function priorityBadgeClassName(tone: TaskPreviewPriorityTone): string {
     return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
   }
   return 'bg-muted/60 text-muted-foreground';
+}
+
+/** Notification-aligned card surface driven by task priority (not due state). */
+export function taskPreviewCardSurfaceClass(priority: TaskListPriority): string {
+  switch (priority) {
+    case 'Critical':
+      return notificationCriticalSurface('strong');
+    case 'High':
+      return notificationCriticalSurface('default');
+    case 'Medium':
+      return notificationWatchSurface();
+    default:
+      return NOTIFICATION_CARD_NEUTRAL_SURFACE;
+  }
 }
 
 export function taskPreviewDueTone(task: ApiTask): TaskPreviewDueTone {
@@ -105,7 +129,3 @@ export function dueToneClassName(tone: TaskPreviewDueTone): string {
   if (tone === 'muted') return 'text-muted-foreground';
   return 'text-muted-foreground';
 }
-
-/** Neutral notification-style card surface — no priority/due-driven full-card tint. */
-export const TASK_PREVIEW_CARD_SURFACE =
-  'border-border/30 bg-card/40';

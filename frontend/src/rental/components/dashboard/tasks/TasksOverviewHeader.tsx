@@ -8,7 +8,7 @@ import type { DashboardTasksOverviewFilter } from '../dashboardTypes';
 
 interface TasksOverviewHeaderProps {
   title: string;
-  subtitle: string;
+  openCount: number | null;
   countsLoading: boolean;
   counts: {
     open: number;
@@ -75,7 +75,7 @@ function MetricCell({
 
 export function TasksOverviewHeader({
   title,
-  subtitle,
+  openCount,
   countsLoading,
   counts,
   canViewUnassigned,
@@ -84,16 +84,38 @@ export function TasksOverviewHeader({
   onOpenAllTasks,
   onFilterSelect,
 }: TasksOverviewHeaderProps) {
+  const showOpenCount = !countsLoading && openCount != null;
+
   return (
     <div className="shrink-0 border-b border-border/35 px-3.5 py-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className={cn(NOTIFICATION_PANEL_TYPO.boxTitle, 'min-w-0 flex-1')}>{title}</h2>
+      <div
+        className="flex min-w-0 items-center justify-between gap-2"
+        data-testid="dashboard-tasks-overview-header-row"
+      >
+        <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+          <h2 className={cn(NOTIFICATION_PANEL_TYPO.boxTitle, 'shrink-0')}>{title}</h2>
+          {showOpenCount ? (
+            <span
+              className={cn(NOTIFICATION_PANEL_TYPO.meta, 'shrink-0 text-muted-foreground')}
+              data-testid="dashboard-tasks-overview-open-count"
+            >
+              {t('dashboardTasksOverview.openCountShort', { count: openCount })}
+            </span>
+          ) : countsLoading ? (
+            <span
+              className="inline-block h-4 w-14 shrink-0 animate-pulse rounded bg-muted/40"
+              data-testid="dashboard-tasks-overview-open-count-loading"
+              aria-hidden
+            />
+          ) : null}
+        </div>
+
         {onOpenAllTasks ? (
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            className="h-8 shrink-0 gap-1 px-2.5"
+            className="h-8 shrink-0 gap-1 self-center px-2.5"
             onClick={onOpenAllTasks}
           >
             <span className={NOTIFICATION_PANEL_TYPO.cta}>{t('dashboardTasksOverview.allTasks')}</span>
@@ -101,10 +123,6 @@ export function TasksOverviewHeader({
           </Button>
         ) : null}
       </div>
-
-      <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-0.5 text-muted-foreground')}>
-        {subtitle}
-      </p>
 
       {countsLoading ? (
         <div

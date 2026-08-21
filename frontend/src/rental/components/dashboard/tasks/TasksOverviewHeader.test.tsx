@@ -5,6 +5,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TasksOverviewHeader } from './TasksOverviewHeader';
 import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 import type { TranslationKey } from '../../../i18n/translations/en';
 
 function t(key: TranslationKey, vars?: Record<string, string | number>): string {
@@ -17,7 +18,7 @@ function t(key: TranslationKey, vars?: Record<string, string | number>): string 
   return value;
 }
 
-describe('TasksOverviewHeader mobile metrics', () => {
+describe('TasksOverviewHeader', () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -32,14 +33,14 @@ describe('TasksOverviewHeader mobile metrics', () => {
     container.remove();
   });
 
-  function renderHeader(width = 375) {
+  function renderHeader(width = 375, openCount: number | null = 4) {
     container.style.width = `${width}px`;
     act(() => {
       root.render(
         createElement(TasksOverviewHeader, {
           title: de['dashboardTasksOverview.title'],
-          subtitle: t('dashboardTasksOverview.openTasksSubtitle', { count: 4 }),
-          countsLoading: false,
+          openCount,
+          countsLoading: openCount == null,
           counts: { open: 4, overdue: 1, today: 2, inProgress: 1, unassigned: 3 },
           canViewUnassigned: true,
           showMetrics: true,
@@ -60,8 +61,23 @@ describe('TasksOverviewHeader mobile metrics', () => {
     const grid = metricsGrid();
     expect(grid).not.toBeNull();
     expect(grid?.className).toContain('grid-cols-4');
-    expect(grid?.className).toContain('overflow-hidden');
     expect(grid?.querySelectorAll('button').length).toBe(4);
+  });
+
+  it('shows open count inline with title and removes legacy subtitle', () => {
+    renderHeader(375, 4);
+    const headerRow = container.querySelector('[data-testid="dashboard-tasks-overview-header-row"]');
+    expect(headerRow).not.toBeNull();
+    expect(container.textContent).toContain(de['dashboardTasksOverview.openCountShort'].replace('{count}', '4'));
+    expect(container.textContent).not.toContain(de['dashboardTasksOverview.openTasksSubtitle'].replace('{count}', '4'));
+    expect(container.querySelector('[data-testid="dashboard-tasks-overview-open-count"]')).not.toBeNull();
+  });
+
+  it('aligns title, open count and CTA in the same header row', () => {
+    renderHeader(430, 4);
+    const headerRow = container.querySelector('[data-testid="dashboard-tasks-overview-header-row"]');
+    expect(headerRow?.querySelector('h2')?.textContent).toBe(de['dashboardTasksOverview.title']);
+    expect(headerRow?.textContent).toContain(de['dashboardTasksOverview.allTasks']);
   });
 
   it('provides compact and full unassigned labels for responsive display', () => {
@@ -79,5 +95,12 @@ describe('TasksOverviewHeader mobile metrics', () => {
     for (const button of buttons ?? []) {
       expect(button.className).toContain('min-h-11');
     }
+  });
+});
+
+describe('TasksOverviewHeader english labels', () => {
+  it('uses natural english priority labels in translation keys', () => {
+    expect(en['dashboardTasksOverview.priorityHigh']).toBe('High priority');
+    expect(en['dashboardTasksOverview.openCountShort']).toBe('{count} open');
   });
 });

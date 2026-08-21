@@ -143,9 +143,11 @@ describe('DashboardTasksOverviewPanel', () => {
       root.render(createElement(DashboardTasksOverviewPanel, { vm: minimalVm() }));
     });
 
-    expect(container.textContent).toContain(en['dashboardTasksOverview.subtitleLoading']);
+    expect(container.querySelector('[data-testid="dashboard-tasks-overview-open-count-loading"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="dashboard-tasks-overview-loading"]')).not.toBeNull();
-    expect(container.textContent).not.toContain('0 offen');
+    expect(container.textContent).not.toContain('0 open');
+    expect(container.textContent).not.toContain(en['dashboardTasksOverview.openTasksSubtitle']);
+    expect(container.textContent).not.toContain(en['dashboardTasksOverview.subtitleLoading']);
   });
 
   it('shows preview loading without rendering partial preview rows', () => {
@@ -169,7 +171,8 @@ describe('DashboardTasksOverviewPanel', () => {
 
     expect(container.querySelector('[data-testid="dashboard-tasks-overview-preview"]')).toBeNull();
     expect(container.querySelector('[data-testid="dashboard-tasks-overview-preview-loading"]')).not.toBeNull();
-    expect(container.textContent).toContain('3 open tasks');
+    expect(container.textContent).toContain(en['dashboardTasksOverview.openCountShort'].replace('{count}', '3'));
+    expect(container.textContent).not.toContain(en['dashboardTasksOverview.openTasksSubtitle'].replace('{count}', '3'));
   });
 
   it('shows error state without zero-count chips', () => {

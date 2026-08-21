@@ -6,19 +6,7 @@ import { NotificationSummaryRow } from './NotificationSummaryRow';
 import { buildNotificationDetailViewModel } from './notification-task-bridge';
 import { buildNotificationSummaryFromItem } from './notification-summary-view-model';
 import type { useLanguage } from '../../../i18n/LanguageContext';
-
-function entrySurface(resolved: boolean, severity: string): string {
-  if (resolved) {
-    return 'border-border/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-success)_6%,transparent),transparent)]';
-  }
-  if (severity === 'critical') {
-    return 'border-[color:color-mix(in_srgb,var(--status-critical)_22%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),transparent)]';
-  }
-  if (severity === 'warning') {
-    return 'border-[color:color-mix(in_srgb,var(--status-watch)_20%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_6%,transparent),transparent)]';
-  }
-  return 'border-border/30 bg-card/40';
-}
+import { notificationEntrySurface } from './notificationCardSurface';
 
 export interface NotificationEntryCardProps {
   item: ActionQueueItem;
@@ -56,7 +44,7 @@ export const NotificationEntryCard = memo(function NotificationEntryCard({
     <article
       className={cn(
         'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
-        entrySurface(summary.resolved, summary.severity),
+        notificationEntrySurface(summary.resolved, summary.severity),
         summary.unread && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_18%,transparent)]',
         expanded && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]',
       )}

@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiTask, ApiTaskType } from '../../../../lib/api';
 import {
+  dueToneClassName,
+  priorityBadgeClassName,
   resolveDashboardTaskDomainKey,
   resolveTaskPreviewPriority,
-  taskPreviewPriorityLabelKey,
+  taskPreviewCardSurfaceClass,
   taskPreviewDueTone,
+  taskPreviewPriorityBadgeTone,
+  taskPreviewPriorityLabelKey,
 } from './dashboardTaskPreviewDisplay.utils';
+import {
+  NOTIFICATION_CARD_NEUTRAL_SURFACE,
+  notificationCriticalSurface,
+  notificationWatchSurface,
+} from '../notifications/notificationCardSurface';
 
 function task(over: Partial<ApiTask> = {}): ApiTask {
   return {
@@ -101,6 +110,54 @@ describe('dashboardTaskPreviewDisplay.utils', () => {
       expect(resolveDashboardTaskDomainKey(task({ vehicleId: 'veh-1' }))).toBe(
         'dashboardTasksOverview.domain.maintenance',
       );
+    });
+  });
+
+  describe('priority presentation', () => {
+    it('maps HIGH to Hohe Priorität label key and critical badge tone', () => {
+      expect(taskPreviewPriorityLabelKey('High')).toBe('dashboardTasksOverview.priorityHigh');
+      expect(taskPreviewPriorityBadgeTone('High')).toBe('critical');
+      expect(priorityBadgeClassName('critical')).toContain('--status-critical');
+    });
+
+    it('maps CRITICAL to stronger critical badge and surface than HIGH', () => {
+      expect(taskPreviewPriorityLabelKey('Critical')).toBe('dashboardTasksOverview.priorityCritical');
+      expect(taskPreviewPriorityBadgeTone('Critical')).toBe('critical-strong');
+      expect(taskPreviewCardSurfaceClass('Critical')).toBe(notificationCriticalSurface('strong'));
+      expect(taskPreviewCardSurfaceClass('High')).toBe(notificationCriticalSurface('default'));
+    });
+
+    it('maps MEDIUM to watch tone and subtle watch surface', () => {
+      expect(taskPreviewPriorityLabelKey('Medium')).toBe('dashboardTasksOverview.priorityMedium');
+      expect(taskPreviewPriorityBadgeTone('Medium')).toBe('watch');
+      expect(taskPreviewCardSurfaceClass('Medium')).toBe(notificationWatchSurface());
+      expect(priorityBadgeClassName('watch')).toContain('--status-watch');
+    });
+
+    it('maps LOW to neutral tone and neutral surface', () => {
+      expect(taskPreviewPriorityLabelKey('Low')).toBe('dashboardTasksOverview.priorityLow');
+      expect(taskPreviewPriorityBadgeTone('Low')).toBe('neutral');
+      expect(taskPreviewCardSurfaceClass('Low')).toBe(NOTIFICATION_CARD_NEUTRAL_SURFACE);
+    });
+  });
+
+  describe('due state independence from priority', () => {
+    it('keeps overdue due tone independent from priority mapping', () => {
+      expect(taskPreviewDueTone(task({ priority: 'HIGH', isOverdue: true }))).toBe('critical');
+      expect(taskPreviewPriorityBadgeTone(resolveTaskPreviewPriority(task({ priority: 'HIGH' })))).toBe(
+        'critical',
+      );
+      expect(dueToneClassName('critical')).toContain('--status-critical');
+    });
+
+    it('allows medium priority with overdue due state', () => {
+      expect(taskPreviewDueTone(task({ priority: 'NORMAL', isOverdue: true }))).toBe('critical');
+      expect(taskPreviewPriorityBadgeTone('Medium')).toBe('watch');
+    });
+
+    it('keeps muted due tone for high priority without due date', () => {
+      expect(taskPreviewDueTone(task({ priority: 'HIGH', dueDate: null, isOverdue: false }))).toBe('muted');
+      expect(taskPreviewPriorityBadgeTone('High')).toBe('critical');
     });
   });
 

@@ -43,12 +43,10 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
   const { t, locale } = vm;
   const intlLocale = locale === 'de' ? 'de-DE' : locale;
 
-  const subtitle =
+  const openCount =
     overview.countsLoading || overview.error || !overview.counts
-      ? t('dashboardTasksOverview.subtitleLoading')
-      : t('dashboardTasksOverview.openTasksSubtitle', {
-          count: overview.counts.open,
-        });
+      ? null
+      : overview.counts.open;
 
   const handleOpenTask = (taskId: string) => {
     onOpenTasks?.({ taskId });
@@ -62,7 +60,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
     >
       <TasksOverviewHeader
         title={t('dashboardTasksOverview.title')}
-        subtitle={subtitle}
+        openCount={openCount}
         countsLoading={overview.countsLoading}
         counts={overview.counts}
         canViewUnassigned={overview.canViewUnassigned}
