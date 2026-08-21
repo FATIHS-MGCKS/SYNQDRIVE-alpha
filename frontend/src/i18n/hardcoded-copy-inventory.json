@@ -111,25 +111,25 @@
     }
   },
   "summary": {
-    "total": 1875,
+    "total": 1854,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 180,
-      "RENTAL": 586,
+      "RENTAL": 565,
       "SHARED": 35,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 74,
       "TITLE": 272,
-      "TEXT": 1303,
-      "LABEL": 105,
-      "PLACEHOLDER": 113,
+      "TEXT": 1291,
+      "LABEL": 102,
+      "PLACEHOLDER": 107,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 429,
-      "Finance/Billing": 131,
+      "other Rental areas": 397,
+      "Finance/Billing": 142,
       "Tasks": 17,
       "Documents": 8,
       "App / routing shell": 1
@@ -17880,34 +17880,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 475,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Aktenzeichen / Nr.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 475,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Aktenzeichen / Nr.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceFilters.tsx",
       "line": 157,
       "surface": "RENTAL",
@@ -18238,32 +18210,17 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 470,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 263,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Auswählen...",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 644,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Automatisch zugeordnet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -18337,34 +18294,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 483,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Behörde",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 483,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Behörde",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/SecurityActivityTab.tsx",
       "line": 119,
       "surface": "RENTAL",
@@ -18422,62 +18351,58 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 510,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 353,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Beschreibung / Notizen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 510,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 353,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "LABEL",
       "sample": "Beschreibung / Notizen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 479,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 339,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Betrag (EUR) *",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 479,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 339,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "LABEL",
       "sample": "Betrag (EUR) *",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
@@ -18493,20 +18418,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantInvoiceDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 523,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Bild/Dokument anhängen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -18563,76 +18474,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/ScheduleBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 461,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Bußgeld manuell erfassen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 626,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Bußgeld-Details",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 294,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Bußgeld, Nummer, Ort oder Verstoß suchen...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 152,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Bußgelder",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 476,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Bußgeldnummer",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -18776,17 +18617,16 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 282,
+      "file": "rental/components/VendorManagementView.tsx",
+      "line": 483,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Clear filters",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/VendorManagementView.tsx"
       ]
     },
@@ -19277,13 +19117,12 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 83,
+      "occurrences": 82,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
         "rental/components/EntityTasksSection.tsx",
         "rental/components/FinancialInsightsView.tsx",
-        "rental/components/FinesView.tsx",
         "rental/components/NewBookingView.tsx",
         "rental/components/PartsAccessoriesView.tsx",
         "rental/components/ScheduleBox.tsx",
@@ -19326,6 +19165,7 @@
         "rental/lib/dashboard-warning-lights-display.ts",
         "rental/lib/device-connection-ui.ts",
         "rental/lib/document-extraction-field-format.ts",
+        "rental/lib/fines-i18n.ts",
         "rental/lib/rpm-webhook-ui.ts",
         "rental/lib/task-detail.utils.ts",
         "rental/lib/task-list.utils.ts",
@@ -19559,32 +19399,30 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 514,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 363,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Dokument / Bild",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 514,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 363,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "LABEL",
       "sample": "Dokument / Bild",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
@@ -19914,7 +19752,7 @@
       "sample": "en-US",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 16,
+      "occurrences": 17,
       "files": [
         "rental/components/FinancialInsightsView.tsx",
         "rental/components/ScheduleBox.tsx",
@@ -19926,7 +19764,8 @@
         "rental/components/settings/company/company-utils.ts",
         "rental/components/support/support-i18n.ts",
         "rental/components/voice-assistant/VoiceUsageAnalyticsPanel.tsx",
-        "rental/components/voice-assistant/VoiceWizardPlanStep.tsx"
+        "rental/components/voice-assistant/VoiceWizardPlanStep.tsx",
+        "rental/lib/fines-i18n.ts"
       ]
     },
     {
@@ -20183,32 +20022,30 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 495,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 329,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Fälligkeitsdatum",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 495,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 329,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "LABEL",
       "sample": "Fälligkeitsdatum",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
@@ -20863,20 +20700,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 685,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Interne Anmerkungen...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
       "line": 194,
       "surface": "RENTAL",
@@ -20891,17 +20714,16 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 678,
+      "file": "rental/components/VendorDetailView.tsx",
+      "line": 620,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Interne Notizen",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 3,
+      "occurrences": 2,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/VendorDetailView.tsx",
         "rental/components/invoices/InvoiceNotes.tsx"
       ]
@@ -21170,20 +20992,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/AccessScopesTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 359,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Keine Bußgelder gefunden",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -21751,20 +21559,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 172,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Manuell erfassen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/MarkRepairedDialog.tsx",
       "line": 58,
       "surface": "RENTAL",
@@ -22112,20 +21906,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantBillableVehiclesTable.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 644,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Nicht zugeordnet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -22984,20 +22764,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/CreateUserWizard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 500,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Ort / Straße",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -24084,17 +23850,16 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 268,
+      "file": "rental/components/VendorManagementView.tsx",
+      "line": 473,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Search active",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/VendorManagementView.tsx"
       ]
     },
@@ -24872,34 +24637,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 464,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Titel / Vergehen *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 464,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Titel / Vergehen *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 732,
       "surface": "RENTAL",
@@ -25282,20 +25019,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 652,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Verknüpfte Aufgabe",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
       "line": 134,
       "surface": "RENTAL",
@@ -25534,20 +25257,6 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 465,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. Geschwindigkeitsüberschreitung A81",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
       "line": 58,
       "surface": "RENTAL",
@@ -25559,20 +25268,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/FinesView.tsx",
-      "line": 484,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "z. B. Stadt Stuttgart",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/FinesView.tsx"
       ]
     },
     {
@@ -25717,17 +25412,16 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 457,
+      "file": "rental/components/billing/BillingInvoiceSection.tsx",
+      "line": 211,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "TEXT",
       "sample": "Zurück",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 12,
+      "occurrences": 10,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/billing/BillingInvoiceSection.tsx",
         "rental/components/billing/TenantBillableVehiclesTable.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx",
@@ -25754,17 +25448,16 @@
       ]
     },
     {
-      "file": "rental/components/FinesView.tsx",
-      "line": 511,
+      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
+      "line": 359,
       "surface": "RENTAL",
-      "module": "other Rental areas",
+      "module": "Finance/Billing",
       "category": "PLACEHOLDER",
       "sample": "Zusätzliche Informationen...",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/FinesView.tsx",
         "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },

@@ -197,6 +197,11 @@ const P211_ENFORCE_CLEAN_EXACT = [
   'rental/components/handover/handover-i18n.ts',
 ];
 
+const P212_ENFORCE_CLEAN_EXACT = [
+  'rental/components/FinesView.tsx',
+  'rental/lib/fines-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -219,6 +224,10 @@ function isP210EnforceCleanPath(relPath: string): boolean {
 
 function isP211EnforceCleanPath(relPath: string): boolean {
   return P211_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP212EnforceCleanPath(relPath: string): boolean {
+  return P212_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -339,6 +348,48 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP211EnforceCleanPath(finding.file),
     );
     expect(p211Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.12 enforce-clean findings to Rental Fines only', () => {
+    const p212Debt = inventory.findings.filter((finding) =>
+      isP212EnforceCleanPath(finding.file),
+    );
+    expect(p212Debt).toHaveLength(0);
+  });
+
+  it('keeps FinesView free of hardcoded presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/FinesView.tsx'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /Bußgelder/,
+      /Manuell erfassen/,
+      /Alle Status/,
+      /Keine Bußgelder gefunden/,
+      /STATUS_MAP/,
+      /OFFENSE_TYPES/,
+      /toLocaleDateString\('de-DE'/,
+      /NumberFormat\('de-DE'/,
+      /'Filters'/,
+      /Clear filters/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain("t('fines.");
+    expect(source).toContain('labelFineStatus');
+  });
+
+  it('keeps fines-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/fines-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('FINE_OFFENSE_TYPE_VALUES');
+    expect(source).toContain('fines.status.NEW');
+    expect(source).not.toMatch(/label:\s*'Neu'/);
   });
 
   it('keeps bookingHandoverGates.ts free of user-facing presentation literals', () => {

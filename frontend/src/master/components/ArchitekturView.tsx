@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Fines (P2.2.12 — V4.9.934)', icon: Globe,
+    endpoint: 'FinesView, fines-i18n.ts status/offense label maps, fines.{en,de}.ts.',
+    service: '**Helper:** `fines-i18n.ts` (`fi`, `labelFineStatus`, `labelFineOffenseType`, `formatFineDate`, `formatFineAmount`, machine value constants). **Keys:** +82 EN+DE (`fines.{en,de}.ts`; 7210→7292); wired 11 legacy `fines.*`; reused `common.back/cancel/save/edit`, `tasks.filter.status.*`. **Offense types:** German machine values preserved in API payloads; display via `fines.offenseType.*`. **Guardrails:** P2.2.12 enforce-clean exact (2 paths) — 0 findings; FinesView + fines-i18n blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-fines-localization.test.tsx` (9). **Semantics:** status enums, offenseType strings, filter machine keys, document intake context unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-12-preflight-2026-08-21.md; architecture/I18N_RENTAL_FINES_P2_2_12_2026-08-21.md' },
   { name: 'Platform i18n Rental Handover Protocol (P2.2.11 — V4.9.933)', icon: Globe,
     endpoint: 'HandoverProtocolDialog, SignaturePad, BookingHandoverTab, bookingHandoverGates.ts reason keys, handover-i18n.ts.',
     service: '**Helper:** `handover-i18n.ts` (`ho`, gate reason resolver, damage type/severity display maps, `HANDOVER_REPORTED_BY_FALLBACK`). **Keys:** +96 EN+DE (`handover.protocol.{en,de}.ts`; 7114→7210); reused `bookings.handover.*`, `common.cancel`, `common.add`. **Gates:** machine booleans unchanged; `reasonKey` + params (backend blocking reasons pass through untranslated). **Guardrails:** P2.2.11 enforce-clean exact (5 paths) — 0 findings; gates/tab blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-handover-localization.test.tsx` (12). **Semantics:** PICKUP/RETURN, signature data URLs, damage API enums, persisted reportedBy unchanged.',
