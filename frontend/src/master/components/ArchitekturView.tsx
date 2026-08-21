@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Task Detail Chrome (P2.2.16C.1 — V4.9.941)', icon: Globe,
+    endpoint: 'task-detail-presentation-i18n.ts, taskDetailView.utils.ts, TaskDetailBody/Shell/NotesActivity/ChecklistSection, GlobalTaskDetailPanel, VehicleTaskDetailDrawer, OperatorTaskDetail.',
+    service: '**Locale flow:** `useLanguage().locale` → `buildTaskDetailViewModel({ locale })` → `task-detail-presentation-i18n` + `useLanguage().t` in chrome components. **Keys:** +62 EN+DE `tasks.detail.*` (7773→7835); reuses `tasks.filter.*`, `tasks.type.*`, `service-task-presentation-i18n`. **Guardrails:** P2.2.16C.1 enforce-clean exact (8 paths) — 0 findings; blind-spot guards on adapter/utils. **Tests:** `task-detail-chrome-localization.test.tsx` (11). **C.2 deferred:** workflow actions/dialogs. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-16c-task-detail-ui-preflight-2026-08-22.md; architecture/I18N_TASK_DETAIL_CHROME_P2_2_16C1_2026-08-22.md' },
   { name: 'Platform i18n Task Timeline Locale Threading (P2.2.16B.2 — V4.9.940)', icon: Globe,
     endpoint: 'taskDetailView.utils.ts, taskTimeline.utils.ts, GlobalTaskDetailPanel.tsx, VehicleTaskDetailDrawer.tsx, OperatorTaskDetail.tsx.',
     service: '**Locale flow:** `useLanguage().locale` → `buildTaskDetailViewModel({ locale })` → `buildTaskTimelineItems({ locale })` → `task-timeline-presentation-i18n`. **Removed:** `TASK_TIMELINE_BRIDGE_LOCALE`, hardcoded `de-DE` timeline datetime override. **Keys:** 0 new (reuses B.1 `tasks.timeline.*`). **Guardrails:** P2.2.16B.2 enforce-clean exact (6 paths) — 0 findings; anti-bridge grep guard. **Tests:** `task-timeline-locale-threading.test.ts` (8). **Semantics:** presentation-only; Category E=0.',

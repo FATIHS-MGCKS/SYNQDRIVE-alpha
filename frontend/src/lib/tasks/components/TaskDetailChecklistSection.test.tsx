@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY } from '../../../i18n/locales';
 import type { TaskDetailChecklistModel } from '../taskDetailChecklist.utils';
 import { TaskDetailChecklistSection } from './TaskDetailChecklistSection';
 
@@ -54,15 +58,23 @@ function checklistFixture(
   };
 }
 
+function renderSection(props: React.ComponentProps<typeof TaskDetailChecklistSection>) {
+  return renderToStaticMarkup(
+    createElement(LanguageProvider, null, createElement(TaskDetailChecklistSection, props)),
+  );
+}
+
 describe('TaskDetailChecklistSection', () => {
+  beforeEach(() => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'de');
+  });
+
   it('renders progress, required/optional labels and expandable descriptions', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailChecklistSection
-        checklist={checklistFixture()}
-        onToggle={vi.fn()}
-        onRequestOverride={vi.fn()}
-      />,
-    );
+    const html = renderSection({
+      checklist: checklistFixture(),
+      onToggle: vi.fn(),
+      onRequestOverride: vi.fn(),
+    });
 
     expect(html).toContain('Checkliste');
     expect(html).toContain('2 von 4 erledigt');
@@ -76,20 +88,18 @@ describe('TaskDetailChecklistSection', () => {
   });
 
   it('renders documentation mode without interactive checkboxes', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailChecklistSection
-        checklist={checklistFixture({
-          mode: 'documentationOnly',
-          canEditItems: false,
-          showAsInteractive: false,
-          blocked: false,
-          blockerLabel: null,
-          legacyClosedHint:
-            'Diese Aufgabe wurde nach älterer Logik geschlossen; die Checkliste ist nur zur Dokumentation sichtbar.',
-        })}
-        mobile
-      />,
-    );
+    const html = renderSection({
+      checklist: checklistFixture({
+        mode: 'documentationOnly',
+        canEditItems: false,
+        showAsInteractive: false,
+        blocked: false,
+        blockerLabel: null,
+        legacyClosedHint:
+          'Diese Aufgabe wurde nach älterer Logik geschlossen; die Checkliste ist nur zur Dokumentation sichtbar.',
+      }),
+      mobile: true,
+    });
 
     expect(html).toContain('data-checklist-mode="documentationOnly"');
     expect(html).toContain('älterer Logik');
@@ -98,18 +108,16 @@ describe('TaskDetailChecklistSection', () => {
   });
 
   it('renders read-only DONE checklist without active controls', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailChecklistSection
-        checklist={checklistFixture({
-          mode: 'readOnly',
-          canEditItems: false,
-          showAsInteractive: false,
-          blocked: false,
-          blockerLabel: null,
-          overrideCompletion: { enabled: false },
-        })}
-      />,
-    );
+    const html = renderSection({
+      checklist: checklistFixture({
+        mode: 'readOnly',
+        canEditItems: false,
+        showAsInteractive: false,
+        blocked: false,
+        blockerLabel: null,
+        overrideCompletion: { enabled: false },
+      }),
+    });
 
     expect(html).toContain('data-checklist-mode="readOnly"');
     expect(html).not.toContain('type="checkbox"');

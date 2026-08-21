@@ -274,6 +274,17 @@ const P216B2_ENFORCE_CLEAN_EXACT = [
   'operator/tasks/OperatorTaskDetail.tsx',
 ];
 
+const P216C1_ENFORCE_CLEAN_EXACT = [
+  'lib/tasks/taskDetailView.utils.ts',
+  'lib/tasks/taskDetailChecklist.utils.ts',
+  'lib/tasks/components/TaskDetailBody.tsx',
+  'lib/tasks/components/TaskDetailShell.tsx',
+  'lib/tasks/components/TaskDetailNotesActivitySection.tsx',
+  'lib/tasks/components/TaskDetailChecklistSection.tsx',
+  'rental/lib/task-detail.utils.ts',
+  'operator/components/OperatorTaskSheet.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -324,6 +335,10 @@ function isP216B1EnforceCleanPath(relPath: string): boolean {
 
 function isP216B2EnforceCleanPath(relPath: string): boolean {
   return P216B2_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP216C1EnforceCleanPath(relPath: string): boolean {
+  return P216C1_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -495,6 +510,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p216b2Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.16C.1 enforce-clean findings to task detail chrome only', () => {
+    const p216c1Debt = inventory.findings.filter((finding) =>
+      isP216C1EnforceCleanPath(finding.file),
+    );
+    expect(p216c1Debt).toHaveLength(0);
+  });
+
   it('keeps taskTimeline.utils.ts machine/descriptor-only without German prose maps', () => {
     const source = readFileSync(
       join(__dirname, '../lib/tasks/taskTimeline.utils.ts'),
@@ -541,6 +563,37 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).toContain('TranslationKey');
     expect(source).toContain('tasks.type.VEHICLE_SERVICE');
     expect(source).not.toMatch(/Fahrzeug-Service/);
+  });
+
+  it('keeps task-detail-presentation-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/task-detail-presentation-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('tasks.detail.linked.VEHICLE');
+    expect(source).not.toMatch(/Verknüpfte Objekte/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps taskDetailChecklist.utils.ts free of hardcoded presentation prose', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/taskDetailChecklist.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('taskDetailChecklistProgressLabel');
+    expect(source).not.toMatch(/Pflichtpunkt offen/);
+    expect(source).not.toMatch(/von \$\{/);
+  });
+
+  it('keeps taskDetailView.utils.ts free of hardcoded linked-object label maps', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/taskDetailView.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('taskDetailLinkedObjectTypeLabel');
+    expect(source).not.toContain('LINKED_OBJECT_TYPE_LABELS');
+    expect(source).not.toMatch(/Fahrzeug':/);
   });
 
   it('keeps vendor-directory-i18n.ts on canonical translation keys', () => {

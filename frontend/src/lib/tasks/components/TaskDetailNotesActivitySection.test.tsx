@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY } from '../../../i18n/locales';
 import type { TaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailNotesActivitySection } from './TaskDetailNotesActivitySection';
 
@@ -60,17 +64,25 @@ function modelFixture(overrides?: Partial<TaskDetailViewModel>): TaskDetailViewM
   };
 }
 
+function renderSection(props: React.ComponentProps<typeof TaskDetailNotesActivitySection>) {
+  return renderToStaticMarkup(
+    createElement(LanguageProvider, null, createElement(TaskDetailNotesActivitySection, props)),
+  );
+}
+
 describe('TaskDetailNotesActivitySection', () => {
+  beforeEach(() => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'de');
+  });
+
   it('renders mobile tabs for notes and activity', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailNotesActivitySection
-        model={modelFixture()}
-        mobile
-        commentDraft=""
-        onCommentDraftChange={vi.fn()}
-        onAddComment={vi.fn()}
-      />,
-    );
+    const html = renderSection({
+      model: modelFixture(),
+      mobile: true,
+      commentDraft: '',
+      onCommentDraftChange: vi.fn(),
+      onAddComment: vi.fn(),
+    });
 
     expect(html).toContain('role="tablist"');
     expect(html).toContain('Notizen');
@@ -80,9 +92,7 @@ describe('TaskDetailNotesActivitySection', () => {
   });
 
   it('renders desktop split layout with both panels', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailNotesActivitySection model={modelFixture()} mobile={false} />,
-    );
+    const html = renderSection({ model: modelFixture(), mobile: false });
 
     expect(html).toContain('md:grid-cols-2');
     expect(html).toContain('data-panel="notes"');
@@ -91,15 +101,13 @@ describe('TaskDetailNotesActivitySection', () => {
   });
 
   it('shows compact comment form without oversized empty container', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailNotesActivitySection
-        model={modelFixture({ comments: [] })}
-        mobile
-        commentDraft=""
-        onCommentDraftChange={vi.fn()}
-        onAddComment={vi.fn()}
-      />,
-    );
+    const html = renderSection({
+      model: modelFixture({ comments: [] }),
+      mobile: true,
+      commentDraft: '',
+      onCommentDraftChange: vi.fn(),
+      onAddComment: vi.fn(),
+    });
 
     expect(html).toContain('min-h-[72px]');
     expect(html).toContain('Notiz speichern');

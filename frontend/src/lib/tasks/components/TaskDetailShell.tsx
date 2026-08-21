@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { DetailDrawer, PriorityBadge, StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailBody, TaskDetailCompactHeader, TaskDetailLoadingSkeleton } from './TaskDetailBody';
 
@@ -33,19 +34,23 @@ export function TaskDetailShell({
   open = false,
   onOpenChange,
   widthClassName = 'sm:max-w-xl',
-  closeLabel = 'Schließen',
+  closeLabel,
   footer,
   hideDrawerHeader = false,
   children,
   bodyProps,
   className,
 }: TaskDetailShellProps) {
+  const { t } = useLanguage();
+  const resolvedCloseLabel = closeLabel ?? t('common.close');
+  const drawerTitle = t('tasks.detail.drawerTitle');
+
   if (variant === 'drawer') {
     return (
       <DetailDrawer
         open={open}
         onOpenChange={onOpenChange ?? (() => undefined)}
-        title={hideDrawerHeader ? 'Aufgabe' : model?.header.title ?? 'Aufgabe'}
+        title={hideDrawerHeader ? drawerTitle : model?.header.title ?? drawerTitle}
         eyebrow={hideDrawerHeader ? undefined : model?.header.eyebrow ?? undefined}
         description={
           hideDrawerHeader
@@ -58,12 +63,12 @@ export function TaskDetailShell({
           hideDrawerHeader || !model ? undefined : (
             <StatusChip tone={model.header.statusTone}>
               {model.header.statusLabel}
-              {model.flags.isOverdue && !model.flags.isTerminal ? ' · Überfällig' : ''}
+              {model.flags.isOverdue && !model.flags.isTerminal ? t('tasks.detail.overdueSuffix') : ''}
             </StatusChip>
           )
         }
         widthClassName={widthClassName}
-        closeLabel={closeLabel}
+        closeLabel={resolvedCloseLabel}
         footer={footer}
         className={className}
       >

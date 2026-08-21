@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createElement, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY } from '../../../i18n/locales';
 import { buildTaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailBody } from './TaskDetailBody';
 import type { ApiTask, ApiTaskDetail } from '../types';
@@ -147,17 +151,25 @@ function normalizedTaskFixture(): ApiTaskDetail {
 describe('TaskDetailBody', () => {
   const model = buildTaskDetailViewModel(normalizedTaskFixture(), { locale: 'de' });
 
-  it('renders normalized reason, next step and linked objects in order', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailBody
-        model={model}
-        density="desktop"
-        hideHeader
-        onPrimaryAction={vi.fn()}
-        onLinkedObjectClick={vi.fn()}
-        onChecklistToggle={vi.fn()}
-      />,
+  beforeEach(() => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'de');
+  });
+
+  function renderBody(props: ComponentProps<typeof TaskDetailBody>) {
+    return renderToStaticMarkup(
+      createElement(LanguageProvider, null, createElement(TaskDetailBody, props)),
     );
+  }
+
+  it('renders normalized reason, next step and linked objects in order', () => {
+    const html = renderBody({
+      model,
+      density: 'desktop',
+      hideHeader: true,
+      onPrimaryAction: vi.fn(),
+      onLinkedObjectClick: vi.fn(),
+      onChecklistToggle: vi.fn(),
+    });
 
     const reasonIndex = html.indexOf('Warum wurde diese Aufgabe erstellt?');
     const nextStepIndex = html.indexOf('Nächster Schritt');
@@ -175,12 +187,10 @@ describe('TaskDetailBody', () => {
   });
 
   it('renders compact mobile header with safe-area friendly density classes', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailBody model={model} density="mobile" onClose={vi.fn()} />,
-    );
+    const html = renderBody({ model, density: 'mobile', onClose: vi.fn() });
 
     expect(html).toContain('data-density="mobile"');
     expect(html).toContain('Dokumente für Übergabe prüfen mit sehr langem deutschen Aufgabentitel');
-    expect(html).toContain('aria-label="Schließen"');
+    expect(html).toContain('aria-label="Schliessen"');
   });
 });

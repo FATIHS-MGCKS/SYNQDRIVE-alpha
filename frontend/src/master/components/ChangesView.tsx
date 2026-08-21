@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-task-detail-chrome-p2-2-16c1-2026-08-22',
+    version: '4.9.941',
+    title: 'Platform i18n — P2.2.16C.1 Task Detail chrome & view-model presentation',
+    summary: [
+      'Introduced `task-detail-presentation-i18n.ts` and localized Task Detail chrome across shared body/shell/notes/checklist components plus view-model utils.',
+      'P216C1 enforce-clean exact scope (8 paths) reports 0 findings; +62 EN+DE keys (7773→7835); reuses `tasks.filter.*`, `tasks.type.*`, `service-task-presentation-i18n`.',
+      'Presentation-only — workflow actions, completion dialogs, and assignment mutations deferred to P2.2.16C.2. Category E=0.',
+    ],
+    reason:
+      'P2.2.16C pre-flight split C.1 (chrome/view-model) from C.2 (workflow actions). B.2 threaded locale; C.1 completes chrome localization for three Task Detail hosts.',
+    previousBehavior:
+      'Task Detail sections, technical rows, checklist chrome, and view-model helpers contained hardcoded German prose and `de-DE` date formatting.',
+    details:
+      'lib/tasks/task-detail-presentation-i18n.ts; taskDetailView.utils.ts; taskDetailChecklist.utils.ts; TaskDetailBody/Shell/NotesActivity/ChecklistSection; rental/lib/task-detail.utils.ts; OperatorTaskSheet.tsx; VehicleTaskDetailDrawer meta dates; task-detail-chrome-localization.test.tsx; P216C1_ENFORCE_CLEAN_EXACT; architecture/I18N_TASK_DETAIL_CHROME_P2_2_16C1_2026-08-22.md; docs/audits/i18n-p2-2-16c1-task-detail-chrome-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T00:00:00.000Z',
+  },
+  {
     id: 'i18n-task-timeline-locale-threading-p2-2-16b2-2026-08-22',
     version: '4.9.940',
     title: 'Platform i18n — P2.2.16B.2 Task Timeline locale threading',

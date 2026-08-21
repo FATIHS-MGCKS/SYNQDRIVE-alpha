@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -16,10 +17,11 @@ interface Props {
 export function OperatorTaskSheet({ action }: Props) {
   const { orgId } = useRentalOrg();
   const { closeSheet } = useOperatorShell();
+  const { t } = useLanguage();
 
   if (action.type === 'task-detail') {
     return (
-      <TaskSheetShell title="Aufgabe" onClose={closeSheet}>
+      <TaskSheetShell title={t('tasks.detail.drawerTitle')} onClose={closeSheet}>
         <OperatorTaskDetail
           taskId={action.taskId}
           initialTask={action.task}
@@ -33,16 +35,16 @@ export function OperatorTaskSheet({ action }: Props) {
 
   if (!orgId) {
     return (
-      <TaskSheetShell title="Aufgabe erstellen" onClose={closeSheet}>
-        <p className="text-sm text-muted-foreground">Organisation nicht geladen.</p>
+      <TaskSheetShell title={t('tasks.dialog.createTitle')} onClose={closeSheet}>
+        <p className="text-sm text-muted-foreground">{t('tasks.sheet.orgNotLoaded')}</p>
       </TaskSheetShell>
     );
   }
 
   return (
     <TaskSheetShell
-      title="Aufgabe erstellen"
-      subtitle={action.vehicleLabel || undefined}
+      title={t('tasks.dialog.createTitle')}
+      subtitle={action.vehicleLabel}
       onClose={closeSheet}
     >
       <OperatorTaskCreateForm
@@ -71,6 +73,7 @@ function TaskSheetShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <div
       className="fixed inset-0 z-[130] flex flex-col bg-background"
@@ -90,7 +93,7 @@ function TaskSheetShell({
           type="button"
           onClick={onClose}
           className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-          aria-label="Schließen"
+          aria-label={t('common.close')}
         >
           <X className="h-4 w-4" />
         </button>

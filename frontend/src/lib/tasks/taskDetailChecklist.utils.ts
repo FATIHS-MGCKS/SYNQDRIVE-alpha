@@ -1,5 +1,11 @@
 import { isActiveTaskStatus, isTerminalTaskStatus } from '../../rental/lib/task-detail.utils';
 import { isTaskActivated } from '../../operator/tasks/operatorTaskCard.utils';
+import type { SupportedLocale } from '../../i18n/locales';
+import {
+  taskDetailChecklistBlockerLabel,
+  taskDetailChecklistLegacyHint,
+  taskDetailChecklistProgressLabel,
+} from './task-detail-presentation-i18n';
 import type {
   ApiTask,
   ApiTaskChecklistItem,
@@ -10,10 +16,14 @@ import type {
 } from './types';
 import { inferTaskChecklistProgress } from './taskDetailView.utils';
 
-export const LEGACY_DONE_CHECKLIST_HINT =
-  'Diese Aufgabe wurde nach älterer Logik geschlossen; die Checkliste ist nur zur Dokumentation sichtbar.';
-
 export type TaskChecklistDisplayMode = 'editable' | 'readOnly' | 'documentationOnly' | 'hidden';
+
+export function formatChecklistProgressLabel(
+  locale: SupportedLocale,
+  progress: TaskChecklistProgress,
+): string {
+  return taskDetailChecklistProgressLabel(locale, progress.completedItems, progress.totalItems);
+}
 
 export interface TaskDetailChecklistItemModel {
   id: string;
@@ -39,10 +49,6 @@ export interface TaskDetailChecklistModel {
   showAsInteractive: boolean;
   completeAction: TaskActionAvailability;
   overrideCompletion: TaskActionAvailability;
-}
-
-export function formatChecklistProgressLabel(progress: TaskChecklistProgress): string {
-  return `${progress.completedItems} von ${progress.totalItems} erledigt`;
 }
 
 export function computeChecklistProgressPercent(progress: TaskChecklistProgress): number {
@@ -103,12 +109,19 @@ export function resolveChecklistDisplayMode(detail: ApiTaskDetail, now = new Dat
   return 'readOnly';
 }
 
-export function buildChecklistBlockerLabel(openRequiredTitles: string[]): string {
-  if (openRequiredTitles.length === 0) return 'Offene Pflichtpunkte vor Abschluss';
-  if (openRequiredTitles.length === 1) {
-    return `Pflichtpunkt offen: ${openRequiredTitles[0]}`;
+export function buildChecklistBlockerLabel(
+  locale: SupportedLocale,
+  openRequiredTitles: string[],
+): string;
+export function buildChecklistBlockerLabel(openRequiredTitles: string[]): string;
+export function buildChecklistBlockerLabel(
+  localeOrTitles: SupportedLocale | string[],
+  maybeTitles?: string[],
+): string {
+  if (Array.isArray(localeOrTitles)) {
+    return taskDetailChecklistBlockerLabel('de', localeOrTitles);
   }
-  return `${openRequiredTitles.length} Pflichtpunkte offen`;
+  return taskDetailChecklistBlockerLabel(localeOrTitles, maybeTitles ?? []);
 }
 
 function mapChecklistItem(item: ApiTaskChecklistItem): TaskDetailChecklistItemModel {
@@ -126,6 +139,7 @@ function mapChecklistItem(item: ApiTaskChecklistItem): TaskDetailChecklistItemMo
 
 export function buildTaskDetailChecklistModel(
   detail: ApiTaskDetail,
+  locale: SupportedLocale,
   now = new Date(),
 ): TaskDetailChecklistModel | null {
   const progress = detail.checklistProgress ?? inferTaskChecklistProgress(detail);
@@ -145,17 +159,17 @@ export function buildTaskDetailChecklistModel(
 
   let legacyClosedHint: string | null = null;
   if (isLegacyDoneWithOpenChecklist(detail)) {
-    legacyClosedHint = LEGACY_DONE_CHECKLIST_HINT;
+    legacyClosedHint = taskDetailChecklistLegacyHint(locale);
   }
 
   return {
     mode,
     progress,
     items: items.map(mapChecklistItem),
-    progressLabel: formatChecklistProgressLabel(progress),
+    progressLabel: formatChecklistProgressLabel(locale, progress),
     progressPercent: computeChecklistProgressPercent(progress),
     blocked,
-    blockerLabel: blocked ? buildChecklistBlockerLabel(openRequiredTitles) : null,
+    blockerLabel: blocked ? buildChecklistBlockerLabel(locale, openRequiredTitles) : null,
     openRequiredTitles,
     legacyClosedHint,
     canEditItems,
