@@ -396,9 +396,13 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Task Timeline Locale Threading (P2.2.16B.2 — V4.9.940)', icon: Globe,
+    endpoint: 'taskDetailView.utils.ts, taskTimeline.utils.ts, GlobalTaskDetailPanel.tsx, VehicleTaskDetailDrawer.tsx, OperatorTaskDetail.tsx.',
+    service: '**Locale flow:** `useLanguage().locale` → `buildTaskDetailViewModel({ locale })` → `buildTaskTimelineItems({ locale })` → `task-timeline-presentation-i18n`. **Removed:** `TASK_TIMELINE_BRIDGE_LOCALE`, hardcoded `de-DE` timeline datetime override. **Keys:** 0 new (reuses B.1 `tasks.timeline.*`). **Guardrails:** P2.2.16B.2 enforce-clean exact (6 paths) — 0 findings; anti-bridge grep guard. **Tests:** `task-timeline-locale-threading.test.ts` (8). **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-16b2-task-timeline-locale-threading-preflight-2026-08-22.md; architecture/I18N_TASK_TIMELINE_LOCALE_THREADING_P2_2_16B2_2026-08-22.md' },
   { name: 'Platform i18n Task Timeline Taxonomy (P2.2.16B.1 — V4.9.939)', icon: Globe,
     endpoint: 'task-timeline-presentation-i18n.ts, taskTimeline.utils.ts, taskDetailView.utils.ts, TaskDetailNotesActivitySection.',
-    service: '**Helper:** `task-timeline-presentation-i18n.ts` (event descriptors, actor/resolution maps, datetime formatting via `getFormattingLocale`). **Machine:** `taskTimeline.utils.ts` orchestration + B.1 `de` bridge until B.2. **Keys:** +40 EN+DE `tasks.timeline.*` (7733→7773); reuses `tasks.filter.status.*`. **Guardrails:** P2.2.16B.1 enforce-clean exact (2 paths) — 0 findings. **Tests:** `task-timeline-presentation-localization.test.ts` (20). **Deferred B.2:** host locale threading through task detail.',
+    service: '**Helper:** `task-timeline-presentation-i18n.ts` (event descriptors, actor/resolution maps, datetime formatting via `getFormattingLocale`). **Machine:** `taskTimeline.utils.ts` orchestration only (B.2 removed bridge). **Keys:** +40 EN+DE `tasks.timeline.*` (7733→7773); reuses `tasks.filter.status.*`. **Guardrails:** P2.2.16B.1 enforce-clean exact (2 paths) — 0 findings. **Tests:** `task-timeline-presentation-localization.test.ts` (20). **B.2 complete:** locale threading — see P2.2.16B.2 flow.',
     dataSource: 'docs/audits/i18n-p2-2-16b-task-timeline-preflight-2026-08-21.md; architecture/I18N_TASK_TIMELINE_TAXONOMY_P2_2_16B1_2026-08-21.md' },
   { name: 'Platform i18n Shared Service Task Presentation (P2.2.16A — V4.9.938)', icon: Globe,
     endpoint: 'service-task-presentation-i18n.ts, service-task-semantics.ts, VendorOperationalTasks, ServiceTaskCard, ServiceScheduleRow, ServiceTasksCalendar, VehicleTasksView, EntityTasksSection.',

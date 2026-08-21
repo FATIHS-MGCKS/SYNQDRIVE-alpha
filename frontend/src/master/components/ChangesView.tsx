@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-task-timeline-locale-threading-p2-2-16b2-2026-08-22',
+    version: '4.9.940',
+    title: 'Platform i18n — P2.2.16B.2 Task Timeline locale threading',
+    summary: [
+      'Removed `TASK_TIMELINE_BRIDGE_LOCALE` and threaded canonical `LanguageContext.locale` from three Task Detail production hosts through `buildTaskDetailViewModel` into the P2.2.16B.1 timeline presentation adapter.',
+      'P216B2 enforce-clean exact scope (6 paths) reports 0 findings; 0 new dictionary keys; EN/DE timeline copy and datetime formatting now follow active product locale.',
+      'Presentation-only — timeline event codes, ordering, metadata, status machine values, API payloads unchanged. Task Detail chrome deferred to P2.2.16C.',
+    ],
+    reason:
+      'P2.2.16B.2 pre-flight GO identified EN product locale still rendering German timeline templates via the B.1 bridge and a hardcoded `de-DE` datetime override in `buildTimeline`.',
+    previousBehavior:
+      '`TASK_TIMELINE_BRIDGE_LOCALE = de` forced German timeline presentation regardless of active locale; `buildTimeline` passed `formatTaskDateTime` with hardcoded `de-DE`.',
+    details:
+      'lib/tasks/taskDetailView.utils.ts; lib/tasks/taskTimeline.utils.ts; GlobalTaskDetailPanel.tsx; VehicleTaskDetailDrawer.tsx; OperatorTaskDetail.tsx; task-timeline-locale-threading.test.ts; P216B2_ENFORCE_CLEAN_EXACT; architecture/I18N_TASK_TIMELINE_LOCALE_THREADING_P2_2_16B2_2026-08-22.md; docs/audits/i18n-p2-2-16b2-task-timeline-locale-threading-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-08-22T22:40:00.000Z',
+  },
+  {
     id: 'i18n-task-timeline-taxonomy-p2-2-16b1-2026-08-21',
     version: '4.9.939',
     title: 'Platform i18n — P2.2.16B.1 Task Timeline event taxonomy & presentation adapter',

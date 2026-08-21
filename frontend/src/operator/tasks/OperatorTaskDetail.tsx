@@ -15,6 +15,7 @@ import {
   useTaskLinkedObjectNavigator,
 } from '../../lib/tasks';
 import { getStoredUser } from '../../lib/auth';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { isActiveTaskStatus } from '../../rental/lib/task-detail.utils';
 
@@ -36,6 +37,7 @@ export function OperatorTaskDetail({
   layout = 'tab',
   onOpenSuccessorTask,
 }: Props) {
+  const { locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [task, setTask] = useState<ApiTask | null>(initialTask ?? null);
   const [loading, setLoading] = useState(!initialTask);
@@ -114,8 +116,8 @@ export function OperatorTaskDetail({
 
   const detailModel = useMemo(() => {
     if (!task || !isNormalizedTaskDetail(task)) return null;
-    return buildTaskDetailViewModel(task);
-  }, [task]);
+    return buildTaskDetailViewModel(task, { locale });
+  }, [locale, task]);
 
   const handleAddComment = async () => {
     if (!task) return;

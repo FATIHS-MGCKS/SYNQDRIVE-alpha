@@ -152,6 +152,7 @@ describe('buildTaskDetailViewModel', () => {
   it('maps normalized backend sections without technical source codes in the reason area', () => {
     const task = normalizedDetail(baseTask({ id: 'task-1', title: 'Reifen prüfen', type: 'TIRE_CHECK' }));
     const model = buildTaskDetailViewModel(task, {
+      locale: 'de',
       orgMembers: [{ id: 'user-1', name: 'Alex Operator' }],
     });
 
@@ -181,7 +182,7 @@ describe('buildTaskDetailViewModel', () => {
       },
     );
 
-    const model = buildTaskDetailViewModel(task);
+    const model = buildTaskDetailViewModel(task, { locale: 'de' });
     expect(model.nextStep?.enabled).toBe(false);
     expect(model.nextStep?.disabledReason).toBe('Offene Pflichtpunkte in der Checkliste.');
   });
@@ -219,8 +220,32 @@ describe('buildTaskDetailViewModel', () => {
       },
     );
 
-    const model = buildTaskDetailViewModel(task);
+    const model = buildTaskDetailViewModel(task, { locale: 'de' });
     expect(model.linkedObjects.map((row) => row.type)).toEqual(['BOOKING', 'CUSTOMER', 'INVOICE']);
+  });
+
+  it('localizes timeline presentation when locale is threaded', () => {
+    const task = normalizedDetail(baseTask({ id: 'task-tl', title: 'Timeline', type: 'CUSTOM' }));
+    task.timeline = [
+      {
+        id: 'evt-1',
+        type: 'STATUS_CHANGED',
+        label: 'STATUS_CHANGED',
+        actor: { id: 'user-1', displayName: 'Fatih Sero' },
+        actorUserId: 'user-1',
+        oldValue: 'OPEN',
+        newValue: 'DONE',
+        metadata: { resolutionKind: 'MANUAL' },
+        createdAt: '2026-07-15T10:30:00.000Z',
+      },
+    ];
+
+    const deModel = buildTaskDetailViewModel(task, { locale: 'de' });
+    const enModel = buildTaskDetailViewModel(task, { locale: 'en' });
+
+    expect(deModel.timeline[0]?.title).toBe('Von Fatih Sero als erledigt markiert');
+    expect(enModel.timeline[0]?.title).toContain('marked as complete');
+    expect(deModel.timeline[0]?.time).not.toBe(enModel.timeline[0]?.time);
   });
 });
 

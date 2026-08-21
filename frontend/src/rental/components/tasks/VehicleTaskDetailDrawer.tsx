@@ -128,12 +128,13 @@ export function VehicleTaskDetailDrawer({
   const detailModel = useMemo(() => {
     if (!detail || !isNormalizedTaskDetail(detail)) return null;
     return buildTaskDetailViewModel(detail, {
+      locale,
       eyebrow: t('tasks.detail.vehicleTaskEyebrow'),
       priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority), locale),
       orgMembers,
       stationLabel: vehicle?.station || undefined,
     });
-  }, [detail, orgMembers, vehicle]);
+  }, [detail, locale, orgMembers, t, vehicle]);
 
   const normalizedDetail = detail && isNormalizedTaskDetail(detail) ? detail : null;
 

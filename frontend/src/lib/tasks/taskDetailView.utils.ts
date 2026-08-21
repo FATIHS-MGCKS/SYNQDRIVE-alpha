@@ -1,3 +1,4 @@
+import type { SupportedLocale } from '../../i18n/locales';
 import type { TimelineItem } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns/status-utils';
 import {
@@ -31,6 +32,7 @@ export interface TaskDetailViewMember {
 }
 
 export interface TaskDetailViewModelOptions {
+  locale: SupportedLocale;
   eyebrow?: string | null;
   subtitle?: string | null;
   category?: string | null;
@@ -287,7 +289,7 @@ function buildTimeline(
   options: TaskDetailViewModelOptions,
 ): TimelineItem[] {
   return buildTaskTimelineItems(detail.timeline ?? [], {
-    formatDateTime: (iso) => formatTaskDateTime(iso),
+    locale: options.locale,
   });
 }
 
@@ -358,7 +360,7 @@ function buildTechnicalRows(
 
 export function buildTaskDetailViewModel(
   detail: ApiTaskDetail,
-  options: TaskDetailViewModelOptions = {},
+  options: TaskDetailViewModelOptions,
 ): TaskDetailViewModel {
   const now = options.now ?? new Date();
   const timing = resolveTimingLabel(detail, now);
@@ -372,7 +374,12 @@ export function buildTaskDetailViewModel(
   const comments = (detail.comments ?? []).map((comment) => ({
     id: comment.id,
     body: comment.body,
-    authorLabel: buildTaskCommentAuthorLabel(comment.userId, members),
+    authorLabel: buildTaskCommentAuthorLabel(
+      comment.userId,
+      members,
+      null,
+      options.locale,
+    ),
     createdAt: comment.createdAt,
     createdAtLabel: formatTaskDateTime(comment.createdAt),
   }));

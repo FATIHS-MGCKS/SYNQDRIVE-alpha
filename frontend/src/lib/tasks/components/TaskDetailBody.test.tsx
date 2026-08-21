@@ -145,7 +145,7 @@ function normalizedTaskFixture(): ApiTaskDetail {
 }
 
 describe('TaskDetailBody', () => {
-  const model = buildTaskDetailViewModel(normalizedTaskFixture());
+  const model = buildTaskDetailViewModel(normalizedTaskFixture(), { locale: 'de' });
 
   it('renders normalized reason, next step and linked objects in order', () => {
     const html = renderToStaticMarkup(
