@@ -261,7 +261,7 @@ export default function LoginPage() {
           <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-7 lg:px-9 py-5">
             <div className="w-full max-w-[280px]">
               <div className="flex items-center justify-center mb-5">
-                <SynqDriveBrandLogo className="h-5 w-auto object-contain" />
+                <SynqDriveBrandLogo className="h-5 w-auto max-w-[150px] object-contain" />
               </div>
 
               {!organizationChoices && !mfaPendingToken ? (
