@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Prisma, SmsMessage, SmsMessageDeliveryStatus } from '@prisma/client';
+import { Prisma, SmsConversation, SmsMessage, SmsMessageDeliveryStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { SMS_DISPATCH_STALE_MS } from '../sms.constants';
 import {
@@ -8,6 +8,10 @@ import {
   isSmsDispatchReclaimableStatus,
   SMS_NON_RECLAIMABLE_DISPATCH_STATUSES,
 } from '../sms-dispatch-state';
+import {
+  mapSentDmLifecycleToNativeStatus,
+  shouldApplyNativeDeliveryTransition,
+} from '../utils/sms-message-status';
 import type { SmsMessageDirection, SmsSenderType } from '../sms.constants';
 
 export interface CreateOutboundSmsMessageInput {
@@ -247,6 +251,78 @@ export class SmsMessageRepository {
     });
   }
 
+  async applyDeliveryStatusUpdate(input: {
+    messageId: string;
+    organizationId: string;
+    providerMessageId: string;
+    providerStatus: string;
+    occurredAt: Date;
+    failureCode?: string | null;
+  }): Promise<(SmsMessage & { conversation: SmsConversation }) | null> {
+    const message = await this.prisma.smsMessage.findFirst({
+      where: {
+        id: input.messageId,
+        organizationId: input.organizationId,
+        providerMessageId: input.providerMessageId,
+      },
+      include: { conversation: true },
+    });
+    if (!message) {
+      return null;
+    }
+
+    const nextStatus = mapSentDmLifecycleToNativeStatus(input.providerStatus);
+    if (!nextStatus || !shouldApplyNativeDeliveryTransition(message.status, nextStatus)) {
+      return message;
+    }
+
+    const data: Prisma.SmsMessageUpdateInput = {
+      status: nextStatus,
+      providerStatus: input.providerStatus,
+    };
+    if (nextStatus === SmsMessageDeliveryStatus.DELIVERED) {
+      data.deliveredAt = input.occurredAt;
+    }
+    if (nextStatus === SmsMessageDeliveryStatus.FAILED) {
+      data.failedAt = input.occurredAt;
+      data.failureCode = input.failureCode?.slice(0, 64) ?? 'PROVIDER_FAILED';
+      data.failureReason = 'provider_delivery_failed';
+    }
+
+    return this.prisma.smsMessage.update({
+      where: { id: message.id },
+      data,
+      include: { conversation: true },
+    });
+  }
+
+  async applyDeliveryStatusUpdateByProviderMessageId(input: {
+    organizationId: string;
+    providerMessageId: string;
+    providerStatus: string;
+    occurredAt: Date;
+    failureCode?: string | null;
+  }): Promise<(SmsMessage & { conversation: SmsConversation }) | null> {
+    const message = await this.prisma.smsMessage.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        providerMessageId: input.providerMessageId,
+      },
+      include: { conversation: true },
+    });
+    if (!message) {
+      return null;
+    }
+    return this.applyDeliveryStatusUpdate({
+      messageId: message.id,
+      organizationId: input.organizationId,
+      providerMessageId: input.providerMessageId,
+      providerStatus: input.providerStatus,
+      occurredAt: input.occurredAt,
+      failureCode: input.failureCode,
+    });
+  }
+
   async createInboundMessage(input: {
     organizationId: string;
     conversationId: string;
@@ -254,9 +330,9 @@ export class SmsMessageRepository {
     providerMessageId: string;
     businessOperationId: string;
     deliveredAt: Date;
-  }) {
+  }): Promise<{ message: SmsMessage & { conversation: { id: string } }; created: boolean }> {
     try {
-      return await this.prisma.smsMessage.create({
+      const message = await this.prisma.smsMessage.create({
         data: {
           organizationId: input.organizationId,
           conversationId: input.conversationId,
@@ -271,9 +347,14 @@ export class SmsMessageRepository {
         },
         include: { conversation: true },
       });
+      return { message, created: true };
     } catch (err: unknown) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        return this.findByProviderMessageId(input.providerMessageId, input.organizationId);
+        const existing = await this.findByProviderMessageId(input.providerMessageId, input.organizationId);
+        if (!existing) {
+          throw err;
+        }
+        return { message: existing as SmsMessage & { conversation: { id: string } }, created: false };
       }
       throw err;
     }

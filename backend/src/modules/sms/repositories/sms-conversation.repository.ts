@@ -121,4 +121,37 @@ export class SmsConversationRepository {
       throw new BadRequestException('SMS conversation not found in organization');
     }
   }
+
+  async recordOutboundActivity(input: {
+    conversationId: string;
+    organizationId: string;
+    preview: string;
+    occurredAt: Date;
+  }) {
+    await this.prisma.smsConversation.updateMany({
+      where: { id: input.conversationId, organizationId: input.organizationId },
+      data: {
+        lastMessageAt: input.occurredAt,
+        lastMessagePreview: input.preview.slice(0, 120),
+      },
+    });
+  }
+
+  async recordInboundActivity(input: {
+    conversationId: string;
+    organizationId: string;
+    preview: string;
+    occurredAt: Date;
+    unreadDelta: number;
+  }) {
+    await this.prisma.smsConversation.updateMany({
+      where: { id: input.conversationId, organizationId: input.organizationId },
+      data: {
+        lastMessageAt: input.occurredAt,
+        lastCustomerMessageAt: input.occurredAt,
+        lastMessagePreview: input.preview.slice(0, 120),
+        unreadCount: { increment: input.unreadDelta },
+      },
+    });
+  }
 }
