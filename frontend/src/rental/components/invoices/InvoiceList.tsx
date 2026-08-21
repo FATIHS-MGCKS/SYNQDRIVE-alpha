@@ -2,6 +2,7 @@ import { Receipt } from 'lucide-react';
 
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { InvoiceListItem } from './invoiceTypes';
 import { InvoiceListMobileCards } from './InvoiceListMobileCards';
 import { InvoiceListPagination } from './InvoiceListPagination';
@@ -43,30 +44,32 @@ export function InvoiceList({
   onPageChange,
   onClearFilters,
 }: InvoiceListProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="surface-premium overflow-hidden rounded-2xl shadow-[var(--shadow-1)]" data-testid="invoice-list">
       {error && !loading ? (
         <ErrorState
-          title="Rechnungen konnten nicht geladen werden"
+          title={t('invoices.list.error.loadFailed')}
           description={error}
           onRetry={onRetry}
-          retryLabel="Erneut laden"
+          retryLabel={t('invoices.list.retry')}
         />
       ) : loading && items.length === 0 ? (
         <InvoiceListSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           icon={<Receipt className="h-5 w-5" />}
-          title="Keine Rechnungen gefunden"
+          title={t('invoices.list.empty.title')}
           description={
             hasActiveFilters || searchTerm.trim()
-              ? 'Für die aktuelle Suche oder Filter gibt es keine Treffer. Passen Sie die Kriterien an oder setzen Sie die Filter zurück.'
-              : 'Erstellen Sie Ihre erste Rechnung oder laden Sie ein Dokument per KI-Upload hoch.'
+              ? t('invoices.list.empty.filteredDescription')
+              : t('invoices.list.empty.firstHint')
           }
           action={
             hasActiveFilters || searchTerm.trim() ? (
               <Button type="button" variant="neutral" size="sm" onClick={onClearFilters}>
-                Filter zurücksetzen
+                {t('invoices.list.empty.clearFilters')}
               </Button>
             ) : undefined
           }

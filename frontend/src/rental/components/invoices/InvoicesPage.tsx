@@ -64,18 +64,18 @@ export function InvoicesPage({
         setSelectedInvoice(full);
         setView('detail');
       } catch {
-        toast.error('Rechnung konnte nicht geöffnet werden.');
+        toast.error(t('invoices.list.error.openFailed'));
       } finally {
         setOpeningDetail(false);
         onConsumeInitialInvoiceId?.();
       }
     })();
-  }, [initialInvoiceId, onConsumeInitialInvoiceId, orgId]);
+  }, [initialInvoiceId, onConsumeInitialInvoiceId, orgId, t]);
 
   if (openingDetail) {
     return (
       <div className="max-w-[1600px] mx-auto py-16 text-center text-sm text-muted-foreground">
-        Rechnung wird geladen…
+        {t('invoices.list.loading')}
       </div>
     );
   }
@@ -123,7 +123,7 @@ export function InvoicesPage({
             {canWriteInvoices ? (
               <>
                 <DocumentIntakeLaunchAiButton
-                  label="KI-Upload"
+                  label={t('invoices.list.action.aiUpload')}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 surface-premium px-3 py-2 text-[10px] font-semibold"
                   request={{
                     optionalContextType: 'INVOICE',
@@ -134,8 +134,8 @@ export function InvoicesPage({
                 />
                 <Button type="button" variant="primary" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('create'); }}>
                   <Icon name="plus" className="size-3.5" />
-                  <span className="hidden min-[420px]:inline">Rechnung erstellen</span>
-                  <span className="min-[420px]:hidden">Neu</span>
+                  <span className="hidden min-[420px]:inline">{t('invoices.list.action.create')}</span>
+                  <span className="min-[420px]:hidden">{t('invoices.list.action.createShort')}</span>
                 </Button>
               </>
             ) : null}

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-list-p2-2-14-2026-08-21',
+    version: '4.9.936',
+    title: 'Rental i18n — P2.2.14 Invoice List + Filters localization',
+    summary: [
+      'Rental Invoice List surface (`rental/components/invoices/*` list stack + `invoice-list-i18n.ts` P214 boundary) migrated to canonical `invoices.list.{en,de}.ts` with presentation adapter.',
+      'Scanner P2.2.14 enforce-clean exact scope reports 0 findings (~100 blind-spot literals in filter maps, KPI labels, status/document/send labels, fixed de-DE formatting remediated); +125 EN+DE keys (7417→7542); reused `nav.customerInvoices` and legacy `invoices.*` patterns via new module.',
+      'Presentation-only — invoice status/type/send/document filter machine values, sort keys, API query params, URL state, amount cents, and currency codes unchanged; Invoice Detail deferred.',
+    ],
+    reason:
+      'P2.2.14 pre-flight GO verdict scoped smallest coherent finance list surface with Category E=0 target on English status/filter/sort enums.',
+    previousBehavior:
+      'Invoice list, filters, KPI grid, table/mobile cards hardcoded German; filter option arrays stored inline labels; list formatting fixed to de-DE.',
+    details:
+      'rental/components/invoices/* (12-path P214 boundary); rental/lib/invoice-list-i18n.ts; invoices.list translations; i18n-hardcoded-scan.mjs P214 boundary; rental-invoice-list-localization.test.tsx; architecture/I18N_RENTAL_INVOICE_LIST_P2_2_14_2026-08-21.md; docs/audits/i18n-p2-2-14-rental-invoice-list-implementation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-08-21T04:45:00.000Z',
+  },
+  {
     id: 'i18n-operator-handover-p2-2-13-2026-08-21',
     version: '4.9.935',
     title: 'Operator i18n — P2.2.13 Handover localization',

@@ -216,6 +216,21 @@ const P213_ENFORCE_CLEAN_EXACT = [
   'operator/handover/operator-handover-i18n.ts',
 ];
 
+const P214_ENFORCE_CLEAN_EXACT = [
+  'rental/components/invoices/InvoicesPage.tsx',
+  'rental/components/invoices/InvoiceList.tsx',
+  'rental/components/invoices/InvoiceListTable.tsx',
+  'rental/components/invoices/InvoiceListMobileCards.tsx',
+  'rental/components/invoices/InvoiceListPagination.tsx',
+  'rental/components/invoices/InvoiceFilters.tsx',
+  'rental/components/invoices/InvoiceKpiGrid.tsx',
+  'rental/components/invoices/InvoiceKpiCard.tsx',
+  'rental/components/invoices/hooks/useInvoices.ts',
+  'rental/components/invoices/invoiceListLabels.ts',
+  'rental/components/invoices/invoiceConstants.ts',
+  'rental/lib/invoice-list-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -248,6 +263,10 @@ function isP213EnforceCleanPath(relPath: string): boolean {
   return P213_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
+function isP214EnforceCleanPath(relPath: string): boolean {
+  return P214_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
 function isP26EnforceCleanPath(relPath: string): boolean {
   return P26_ENFORCE_CLEAN_PREFIXES.some(
     (prefix) => relPath === prefix || relPath.startsWith(prefix),
@@ -271,7 +290,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 + P2.2.14 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -380,6 +399,44 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP213EnforceCleanPath(finding.file),
     );
     expect(p213Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.14 enforce-clean findings to Rental Invoice List only', () => {
+    const p214Debt = inventory.findings.filter((finding) =>
+      isP214EnforceCleanPath(finding.file),
+    );
+    expect(p214Debt).toHaveLength(0);
+  });
+
+  it('keeps invoice-list-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/invoice-list-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('INVOICE_STATUS_FILTER_OPTIONS');
+    expect(source).toContain('invoices.list.status.ISSUED');
+    expect(source).not.toMatch(/label:\s*'Entwurf'/);
+    expect(source).not.toMatch(/toLocaleDateString\('de-DE'/);
+  });
+
+  it('keeps invoiceConstants.ts as machine-only re-exports', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/invoices/invoiceConstants.ts'),
+      'utf8',
+    );
+    expect(source).toContain('invoice-list-i18n');
+    expect(source).not.toMatch(/Buchungsrechnung/);
+  });
+
+  it('keeps InvoiceFilters free of hardcoded German presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/invoices/InvoiceFilters.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/Filter zurücksetzen/);
+    expect(source).not.toMatch(/Rechnungen durchsuchen/);
+    expect(source).toContain("t('invoices.list.");
   });
 
   it('keeps FinesView free of hardcoded presentation literals', () => {

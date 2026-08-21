@@ -1,17 +1,18 @@
-import type { InvoiceDirectionFilter } from './invoiceConstants';
+import type {
+  InvoiceDirectionFilter,
+  InvoiceDocumentStatusFilter,
+  InvoiceListSortField,
+  InvoiceListSortOrder,
+  InvoiceSendStatusFilter,
+} from '../../lib/invoice-list-i18n';
 import type { InvoiceListMeta } from './invoiceTypes';
 
-export type InvoiceListSortField = 'invoiceDate' | 'dueDate' | 'totalGross' | 'status' | 'createdAt';
-export type InvoiceListSortOrder = 'asc' | 'desc';
-
-export type InvoiceDocumentStatusFilter = 'all' | 'present' | 'missing' | 'failed';
-export type InvoiceSendStatusFilter =
-  | 'all'
-  | 'QUEUED'
-  | 'SENDING'
-  | 'SENT'
-  | 'FAILED'
-  | 'SENT_SIMULATED';
+export type {
+  InvoiceDocumentStatusFilter,
+  InvoiceListSortField,
+  InvoiceListSortOrder,
+  InvoiceSendStatusFilter,
+} from '../../lib/invoice-list-i18n';
 
 export interface InvoiceListFilters {
   search: string;
@@ -193,11 +194,4 @@ export function hasActiveInvoiceListFilters(filters: InvoiceListFilters, search:
     Boolean(filters.dateTo) ||
     filters.overdue
   );
-}
-
-export function paginationLabel(meta: InvoiceListMeta | null): string {
-  if (!meta || meta.total === 0) return '0 Einträge';
-  const from = (meta.page - 1) * meta.limit + 1;
-  const to = Math.min(meta.page * meta.limit, meta.total);
-  return `${from}–${to} von ${meta.total}`;
 }

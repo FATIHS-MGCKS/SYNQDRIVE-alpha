@@ -1,6 +1,9 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { LanguageProvider } from '../../i18n/LanguageContext';
+import { de } from '../../i18n/translations/de';
 import { InvoiceFilters } from './InvoiceFilters';
 import { DEFAULT_INVOICE_LIST_FILTERS } from './invoiceListState';
 import { getInvoiceThemeClasses } from './invoiceTheme';
@@ -23,24 +26,30 @@ describe('InvoiceFilters', () => {
     onClearFilters: vi.fn(),
   };
 
-  it('renders search input and filter controls in German', () => {
-    const html = renderToStaticMarkup(<InvoiceFilters {...baseProps} />);
-    expect(html).toContain('aria-label="Rechnungen durchsuchen"');
-    expect(html).toContain('Dokumentstatus filtern');
-    expect(html).toContain('Versandstatus filtern');
-    expect(html).toContain('Station filtern');
+  it('renders search input and filter controls', () => {
+    const html = renderToStaticMarkup(
+      <LanguageProvider>
+        <InvoiceFilters {...baseProps} />
+      </LanguageProvider>,
+    );
+    expect(html).toContain(de['invoices.list.filters.searchAria']);
+    expect(html).toContain(de['invoices.list.filters.documentAria']);
+    expect(html).toContain(de['invoices.list.filters.sendAria']);
+    expect(html).toContain(de['invoices.list.filters.stationAria']);
   });
 
   it('shows active filter chips when filters are applied', () => {
     const html = renderToStaticMarkup(
-      <InvoiceFilters
-        {...baseProps}
-        hasActiveFilters
-        filters={{ ...DEFAULT_INVOICE_LIST_FILTERS, status: 'PAID' }}
-      />,
+      <LanguageProvider>
+        <InvoiceFilters
+          {...baseProps}
+          hasActiveFilters
+          filters={{ ...DEFAULT_INVOICE_LIST_FILTERS, status: 'PAID' }}
+        />
+      </LanguageProvider>,
     );
-    expect(html).toContain('Aktive Filter');
-    expect(html).toContain('Bezahlt');
-    expect(html).toContain('Filter zurücksetzen');
+    expect(html).toContain(de['invoices.list.filters.activeAria']);
+    expect(html).toContain(de['invoices.list.status.PAID']);
+    expect(html).toContain(de['invoices.list.filters.clear']);
   });
 });

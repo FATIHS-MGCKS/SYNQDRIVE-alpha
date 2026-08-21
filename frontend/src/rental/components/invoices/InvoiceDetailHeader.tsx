@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { StatusChip } from '../../../components/patterns';
-import { INVOICE_TYPE_MAP } from './invoiceConstants';
+import { INVOICE_TYPE_MAP } from './invoice-detail.constants';
 import { invoiceStatusTone } from './invoiceDetailStatus.util';
 import type { InvoiceDetailDto } from './invoiceDetailTypes';
 import { primaryActionsGridClass, resolveInvoiceHeaderLayoutMode } from './invoiceDetailHeader.layout';

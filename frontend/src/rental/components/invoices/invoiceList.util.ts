@@ -1,6 +1,6 @@
 import type { Invoice } from './invoiceTypes';
 import { displayNumber, isOutgoing } from './invoiceFormatters';
-import type { InvoiceDirectionFilter } from './invoiceConstants';
+import type { InvoiceDirectionFilter } from '../../lib/invoice-list-i18n';
 
 export function filterInvoices(
   invoices: Invoice[],

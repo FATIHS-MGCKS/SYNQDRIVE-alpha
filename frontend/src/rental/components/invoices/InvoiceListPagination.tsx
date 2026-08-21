@@ -1,5 +1,6 @@
 import { Button } from '../../../components/ui/button';
-import { paginationLabel } from './invoiceListState';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { invoiceListPaginationLabel } from '../../lib/invoice-list-i18n';
 import type { InvoiceListMeta } from './invoiceTypes';
 
 interface InvoiceListPaginationProps {
@@ -9,11 +10,13 @@ interface InvoiceListPaginationProps {
 }
 
 export function InvoiceListPagination({ meta, onPageChange, disabled }: InvoiceListPaginationProps) {
+  const { locale, t } = useLanguage();
+
   if (!meta || meta.totalPages <= 1) return null;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-4 py-3">
-      <p className="text-[11px] text-muted-foreground">{paginationLabel(meta)}</p>
+      <p className="text-[11px] text-muted-foreground">{invoiceListPaginationLabel(locale, meta)}</p>
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -22,10 +25,10 @@ export function InvoiceListPagination({ meta, onPageChange, disabled }: InvoiceL
           disabled={disabled || meta.page <= 1}
           onClick={() => onPageChange(meta.page - 1)}
         >
-          Zurück
+          {t('invoices.list.pagination.back')}
         </Button>
         <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-          Seite {meta.page} / {meta.totalPages}
+          {t('invoices.list.pagination.page', { page: meta.page, totalPages: meta.totalPages })}
         </span>
         <Button
           type="button"
@@ -34,7 +37,7 @@ export function InvoiceListPagination({ meta, onPageChange, disabled }: InvoiceL
           disabled={disabled || meta.page >= meta.totalPages}
           onClick={() => onPageChange(meta.page + 1)}
         >
-          Weiter
+          {t('invoices.list.pagination.next')}
         </Button>
       </div>
     </div>

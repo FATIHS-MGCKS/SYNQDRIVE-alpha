@@ -2,7 +2,7 @@ import type { BookingDetailDto, CustomerApiRecord } from '../../../lib/api';
 import { customerDisplayName } from '../../../operator/bookings/operatorBooking.utils';
 import { bookingRef } from '../bookings/bookingUtils';
 import { bookingStatusLabel, normalizeBookingStatus } from '../bookings/bookingStatus';
-import { INVOICE_TEMPLATES } from './invoiceConstants';
+import { INVOICE_TEMPLATES } from './invoice-detail.constants';
 import { formatDate } from './invoiceFormatters';
 import type {
   InvoiceEntityRelation,

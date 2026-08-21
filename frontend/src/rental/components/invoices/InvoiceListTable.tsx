@@ -1,10 +1,18 @@
+import { ChevronRight } from 'lucide-react';
+
 import { DataTable, StatusChip, type DataTableColumn } from '../../../components/patterns';
-import { formatAmount, formatDate, STATUS_MAP } from './invoiceFormatters';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  formatInvoiceListAmount,
+  formatInvoiceListDate,
+  invoiceListStatusStyle,
+  labelInvoiceListStatus,
+} from '../../lib/invoice-list-i18n';
 import {
   counterpartyDisplayName,
-  documentStatusLabelDe,
+  documentStatusLabel,
   documentStatusTone,
-  sendStatusLabelDe,
+  sendStatusLabel,
   sendStatusTone,
   vehicleDisplayLine,
 } from './invoiceListLabels';
@@ -17,20 +25,22 @@ interface InvoiceListTableProps {
 }
 
 export function InvoiceListTable({ items, loading, onSelect }: InvoiceListTableProps) {
+  const { locale, t } = useLanguage();
+
   const columns: DataTableColumn<InvoiceListItem>[] = [
     {
       key: 'invoiceNumber',
-      header: 'Rechnungsnr.',
+      header: t('invoices.list.col.invoiceNumber'),
       cell: (item) => (
         <span className="font-semibold text-brand tabular-nums">{item.invoiceNumber}</span>
       ),
     },
     {
       key: 'party',
-      header: 'Kunde / Lieferant',
+      header: t('invoices.list.col.party'),
       cell: (item) => (
         <div className="min-w-[140px] max-w-[220px]">
-          <p className="truncate font-medium text-foreground">{counterpartyDisplayName(item)}</p>
+          <p className="truncate font-medium text-foreground">{counterpartyDisplayName(item, locale)}</p>
           {item.bookingNumber && (
             <p className="truncate text-[11px] text-muted-foreground">{item.bookingNumber}</p>
           )}
@@ -39,41 +49,45 @@ export function InvoiceListTable({ items, loading, onSelect }: InvoiceListTableP
     },
     {
       key: 'vehicle',
-      header: 'Fahrzeug',
+      header: t('invoices.list.col.vehicle'),
       cell: (item) => (
         <span className="block max-w-[160px] truncate text-muted-foreground">
-          {vehicleDisplayLine(item)}
+          {vehicleDisplayLine(item, locale)}
         </span>
       ),
     },
     {
       key: 'invoiceDate',
-      header: 'Datum',
+      header: t('invoices.list.col.date'),
       numeric: true,
-      cell: (item) => <span className="tabular-nums">{formatDate(item.invoiceDate)}</span>,
+      cell: (item) => (
+        <span className="tabular-nums">{formatInvoiceListDate(locale, item.invoiceDate)}</span>
+      ),
     },
     {
       key: 'dueDate',
-      header: 'Fällig',
+      header: t('invoices.list.col.dueDate'),
       numeric: true,
       cell: (item) => (
         <span className={item.isOverdue ? 'font-medium text-status-critical tabular-nums' : 'tabular-nums'}>
-          {formatDate(item.dueDate)}
+          {formatInvoiceListDate(locale, item.dueDate)}
         </span>
       ),
     },
     {
       key: 'totalGross',
-      header: 'Gesamt',
+      header: t('invoices.list.col.total'),
       align: 'right',
       numeric: true,
       cell: (item) => (
-        <span className="font-semibold tabular-nums">{formatAmount(item.totalGross, item.currency)}</span>
+        <span className="font-semibold tabular-nums">
+          {formatInvoiceListAmount(locale, item.totalGross, item.currency)}
+        </span>
       ),
     },
     {
       key: 'outstandingAmount',
-      header: 'Offen',
+      header: t('invoices.list.col.outstanding'),
       align: 'right',
       numeric: true,
       cell: (item) => (
@@ -84,37 +98,37 @@ export function InvoiceListTable({ items, loading, onSelect }: InvoiceListTableP
               : 'tabular-nums text-muted-foreground'
           }
         >
-          {formatAmount(item.outstandingAmount, item.currency)}
+          {formatInvoiceListAmount(locale, item.outstandingAmount, item.currency)}
         </span>
       ),
     },
     {
       key: 'status',
-      header: 'Status',
+      header: t('invoices.list.col.status'),
       cell: (item) => {
-        const st = STATUS_MAP[item.status] || STATUS_MAP.DRAFT;
+        const st = invoiceListStatusStyle(item.status);
         return (
           <StatusChip tone={item.isOverdue ? 'critical' : 'neutral'} dot className="text-[11px]">
-            <span className={st.text}>{st.label}</span>
+            <span className={st.text}>{labelInvoiceListStatus(locale, item.status)}</span>
           </StatusChip>
         );
       },
     },
     {
       key: 'documentStatus',
-      header: 'Dokument',
+      header: t('invoices.list.col.document'),
       cell: (item) => (
         <StatusChip tone={documentStatusTone(item.documentStatus)} className="text-[10px]">
-          {documentStatusLabelDe(item.documentStatus)}
+          {documentStatusLabel(locale, item.documentStatus)}
         </StatusChip>
       ),
     },
     {
       key: 'lastSendStatus',
-      header: 'Versand',
+      header: t('invoices.list.col.send'),
       cell: (item) => (
         <StatusChip tone={sendStatusTone(item.lastSendStatus)} className="text-[10px]">
-          {sendStatusLabelDe(item.lastSendStatus)}
+          {sendStatusLabel(locale, item.lastSendStatus)}
         </StatusChip>
       ),
     },
@@ -132,7 +146,7 @@ export function InvoiceListTable({ items, loading, onSelect }: InvoiceListTableP
         dense
         onRowClick={onSelect}
         getRowClassName={(item) => (item.isOverdue ? 'bg-status-critical-soft/20' : undefined)}
-        empty="Keine Rechnungen für die aktuelle Auswahl"
+        empty={t('invoices.list.table.empty')}
       />
     </div>
   );
