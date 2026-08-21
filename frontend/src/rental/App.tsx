@@ -45,6 +45,10 @@ import {
   stripLegacyBillingCustomerPaymentsParams,
 } from './components/finance-navigation';
 import { TasksView } from './components/TasksView';
+import {
+  DEFAULT_TASKS_LIST_FILTERS,
+  syncTasksListFiltersToUrl,
+} from './components/tasks/tasksListState';
 import { VendorDetailView } from './components/VendorDetailView';
 import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
@@ -928,7 +932,23 @@ function RentalAppContent() {
               setDetailCustomer({ id: customerId });
               setCurrentView('customer-detail');
             }}
-            onOpenTasks={() => handleViewChange('tasks')}
+            onOpenTasks={(options) => {
+              if (options?.taskId) {
+                setHighlightedTaskId(options.taskId);
+              }
+              if (options?.filter) {
+                const base = { ...DEFAULT_TASKS_LIST_FILTERS };
+                if (options.filter.kind === 'view') {
+                  syncTasksListFiltersToUrl({ ...base, view: options.filter.view }, '');
+                } else {
+                  syncTasksListFiltersToUrl(
+                    { ...base, status: options.filter.status, view: 'open' },
+                    '',
+                  );
+                }
+              }
+              handleViewChange('tasks');
+            }}
           />
         ) : currentView === 'bookings' ? (
           <BookingsView onActiveBookingRefChange={setActiveBookingRef} onNavigateToVehicle={(vehicleName) => {

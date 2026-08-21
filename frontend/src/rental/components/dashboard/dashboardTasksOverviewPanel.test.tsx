@@ -57,7 +57,41 @@ describe('DashboardTasksOverviewPanel', () => {
     });
     mockOverview.mockReturnValue({
       counts: { open: 2, overdue: 1, today: 1, inProgress: 0, unassigned: 1 },
-      previewTasks: [{ id: 't1', title: 'Test', status: 'OPEN', priority: 'NORMAL' }],
+      previewTasks: [{
+        id: 't1',
+        title: 'Test',
+        description: '',
+        category: '',
+        type: 'CUSTOM',
+        status: 'OPEN',
+        priority: 'NORMAL',
+        organizationId: 'org-1',
+        source: null,
+        sourceType: 'MANUAL',
+        dedupKey: null,
+        vehicleId: null,
+        bookingId: null,
+        customerId: null,
+        vendorId: null,
+        alertId: null,
+        documentId: null,
+        fineId: null,
+        invoiceId: null,
+        serviceCaseId: null,
+        assignedUserId: null,
+        estimatedCostCents: null,
+        actualCostCents: null,
+        resolutionNote: null,
+        blocksVehicleAvailability: false,
+        metadata: null,
+        isOverdue: false,
+        dueDate: null,
+        startedAt: null,
+        completedAt: null,
+        cancelledAt: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
       loading: false,
       countsLoading: false,
       previewLoading: false,
@@ -135,7 +169,7 @@ describe('DashboardTasksOverviewPanel', () => {
 
     expect(container.querySelector('[data-testid="dashboard-tasks-overview-preview"]')).toBeNull();
     expect(container.querySelector('[data-testid="dashboard-tasks-overview-preview-loading"]')).not.toBeNull();
-    expect(container.textContent).toContain('3 open');
+    expect(container.textContent).toContain('3 open tasks');
   });
 
   it('shows error state without zero-count chips', () => {
@@ -204,14 +238,32 @@ describe('DashboardTasksOverviewPanel', () => {
       'utf8',
     );
 
-    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.boxTitle');
-    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.meta');
-    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.cta');
-    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.cardTitle');
-    expect(panelSrc).toContain('NotificationCardSkeleton');
-    expect(panelSrc).toContain('rounded-xl border');
-    expect(panelSrc).toContain("panelShellClass('tertiary')");
+    expect(panelSrc).toContain('TasksOverviewHeader');
+    expect(panelSrc).toContain('TaskPreviewCard');
     expect(panelSrc).not.toContain('DashboardPanelHeader');
+  });
+
+  it('renders header metrics in a four-column grid', () => {
+    act(() => {
+      root.render(createElement(DashboardTasksOverviewPanel, { vm: minimalVm() }));
+    });
+
+    const grid = container.querySelector('[data-testid="dashboard-tasks-overview-status-chips"]');
+    expect(grid?.className).toContain('grid-cols-4');
+  });
+
+  it('passes task navigation options through onOpenTasks', () => {
+    const onOpenTasks = vi.fn();
+    act(() => {
+      root.render(
+        createElement(DashboardTasksOverviewPanel, {
+          vm: minimalVm(),
+          onOpenTasks,
+        }),
+      );
+    });
+
+    expect(onOpenTasks).not.toHaveBeenCalled();
   });
 });
 

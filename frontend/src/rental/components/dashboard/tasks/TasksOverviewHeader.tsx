@@ -1,0 +1,162 @@
+import { ArrowRight } from 'lucide-react';
+import { Button } from '../../../../components/ui/button';
+import { cn } from '../../../../components/ui/utils';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
+import type { DashboardTasksOverviewFilter } from '../dashboardTypes';
+
+interface TasksOverviewHeaderProps {
+  title: string;
+  subtitle: string;
+  countsLoading: boolean;
+  counts: {
+    open: number;
+    overdue: number;
+    today: number;
+    inProgress: number;
+    unassigned: number;
+  } | null;
+  canViewUnassigned: boolean;
+  showMetrics: boolean;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  onOpenAllTasks?: () => void;
+  onFilterSelect?: (filter: DashboardTasksOverviewFilter) => void;
+}
+
+function MetricCell({
+  label,
+  value,
+  tone,
+  onClick,
+}: {
+  label: string;
+  value: number | string;
+  tone?: 'critical' | 'watch' | 'neutral';
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <span className={cn(NOTIFICATION_PANEL_TYPO.meta, 'block truncate text-center text-muted-foreground')}>
+        {label}
+      </span>
+      <span
+        className={cn(
+          NOTIFICATION_PANEL_TYPO.meta,
+          'mt-0.5 block text-center text-base font-semibold tabular-nums leading-5 text-foreground',
+          tone === 'critical' && typeof value === 'number' && value > 0 && 'text-[color:var(--status-critical)]',
+          tone === 'watch' && typeof value === 'number' && value > 0 && 'text-[color:var(--status-watch)]',
+        )}
+      >
+        {value}
+      </span>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className="min-w-0 px-1">{content}</div>;
+  }
+
+  return (
+    <button
+      type="button"
+      className="min-w-0 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      onClick={onClick}
+    >
+      {content}
+    </button>
+  );
+}
+
+export function TasksOverviewHeader({
+  title,
+  subtitle,
+  countsLoading,
+  counts,
+  canViewUnassigned,
+  showMetrics,
+  t,
+  onOpenAllTasks,
+  onFilterSelect,
+}: TasksOverviewHeaderProps) {
+  return (
+    <div className="shrink-0 border-b border-border/35 px-3.5 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className={cn(NOTIFICATION_PANEL_TYPO.boxTitle, 'min-w-0 flex-1')}>{title}</h2>
+        {onOpenAllTasks ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 shrink-0 gap-1 px-2.5"
+            onClick={onOpenAllTasks}
+          >
+            <span className={NOTIFICATION_PANEL_TYPO.cta}>{t('dashboardTasksOverview.allTasks')}</span>
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Button>
+        ) : null}
+      </div>
+
+      <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-0.5 text-muted-foreground')}>
+        {subtitle}
+      </p>
+
+      {countsLoading ? (
+        <div
+          className="mt-2 grid grid-cols-4 gap-1"
+          data-testid="dashboard-tasks-overview-loading"
+        >
+          {Array.from({ length: 4 }).map((_, index) => (
+            <span
+              key={index}
+              className="mx-auto inline-block h-8 w-full max-w-[4.5rem] animate-pulse rounded-md bg-muted/40"
+            />
+          ))}
+        </div>
+      ) : showMetrics && counts ? (
+        <div
+          className="mt-2 grid grid-cols-4 divide-x divide-border/35"
+          data-testid="dashboard-tasks-overview-status-chips"
+        >
+          <MetricCell
+            label={t('dashboardTasksOverview.overdue')}
+            value={counts.overdue}
+            tone="critical"
+            onClick={
+              onFilterSelect
+                ? () => onFilterSelect({ kind: 'view', view: 'overdue' })
+                : undefined
+            }
+          />
+          <MetricCell
+            label={t('dashboardTasksOverview.today')}
+            value={counts.today}
+            tone="watch"
+            onClick={
+              onFilterSelect
+                ? () => onFilterSelect({ kind: 'view', view: 'today' })
+                : undefined
+            }
+          />
+          <MetricCell
+            label={t('dashboardTasksOverview.inProgressShort')}
+            value={counts.inProgress}
+            onClick={
+              onFilterSelect
+                ? () => onFilterSelect({ kind: 'status', status: 'IN_PROGRESS' })
+                : undefined
+            }
+          />
+          <MetricCell
+            label={t('dashboardTasksOverview.unassigned')}
+            value={canViewUnassigned ? counts.unassigned : '—'}
+            onClick={
+              canViewUnassigned && onFilterSelect
+                ? () => onFilterSelect({ kind: 'view', view: 'unassigned' })
+                : undefined
+            }
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}

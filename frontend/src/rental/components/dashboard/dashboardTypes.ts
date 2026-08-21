@@ -100,7 +100,16 @@ export interface DashboardViewProps {
   onOpenFinanceView?: (view: 'financial-insights' | 'invoices') => void;
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenPriceTariffs?: () => void;
-  onOpenTasks?: () => void;
+  onOpenTasks?: (options?: DashboardOpenTasksOptions) => void;
+}
+
+export type DashboardTasksOverviewFilter =
+  | { kind: 'view'; view: import('../../lib/tasks-page.utils').TasksPageView }
+  | { kind: 'status'; status: import('../../../lib/tasks/types').ApiTaskStatus };
+
+export interface DashboardOpenTasksOptions {
+  taskId?: string;
+  filter?: DashboardTasksOverviewFilter;
 }
 
 export interface DashboardInvoice {
