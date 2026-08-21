@@ -26,6 +26,7 @@ import {
   WhatsAppAiToolName,
   WhatsAppAiSourceContextIds,
 } from './whatsapp-ai.types';
+import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
 
 const CONFIDENCE_THRESHOLD = 0.7;
 
@@ -57,6 +58,7 @@ export class WhatsAppAiRouterService {
     private readonly tools: WhatsAppAiToolsService,
     private readonly policy: WhatsAppMessagePolicyService,
     private readonly audit: AuditService,
+    private readonly communicationProjection: WhatsAppCommunicationProjectionIntegration,
   ) {}
 
   async route(input: WhatsAppAiRouterInput): Promise<WhatsAppAiRouterResult> {
@@ -201,9 +203,15 @@ export class WhatsAppAiRouterService {
       }
     }
 
-    await this.prisma.whatsAppConversation.update({
+    const updated = await this.prisma.whatsAppConversation.update({
       where: { id: conversationId },
       data: { status: WhatsAppConversationStatus.PENDING_HUMAN },
+    });
+
+    void this.communicationProjection.projectHumanRequired({
+      conversation: updated,
+      occurredAt: new Date(),
+      handoffReasonCode: sanitizeHandoffReason(reason),
     });
 
     return { ok: true, conversationId, status: 'PENDING_HUMAN' as const };
@@ -399,4 +407,14 @@ export class WhatsAppAiRouterService {
       },
     };
   }
+}
+
+function sanitizeHandoffReason(reason: string): string {
+  const normalized = reason
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+  return normalized || 'HUMAN_REVIEW_REQUESTED';
 }

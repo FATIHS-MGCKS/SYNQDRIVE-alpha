@@ -48,6 +48,10 @@ describe('WhatsAppWebhookService idempotency', () => {
   const consent = { processInboundConsentKeywords: jest.fn() };
   const audit = { record: jest.fn() };
   const whatsAppService = { processInboundAutoReply: jest.fn().mockResolvedValue(undefined) };
+  const communicationProjection = {
+    projectInbound: jest.fn().mockResolvedValue(undefined),
+    projectStatusUpdate: jest.fn().mockResolvedValue(undefined),
+  };
 
   let service: WhatsAppWebhookService;
 
@@ -71,8 +75,14 @@ describe('WhatsAppWebhookService idempotency', () => {
     prisma.whatsAppWebhookEvent.findUnique.mockResolvedValue(null);
     prisma.whatsAppMessage.findUnique.mockResolvedValue(null);
     prisma.whatsAppConversation.findUnique.mockResolvedValue(null);
-    prisma.whatsAppConversation.create.mockResolvedValue({ id: 'convo-1' });
-    prisma.whatsAppMessage.create.mockResolvedValue({ id: 'm-1' });
+    prisma.whatsAppConversation.create.mockResolvedValue({ id: 'convo-1', organizationId: 'org-1' });
+    prisma.whatsAppMessage.create.mockResolvedValue({
+      id: 'm-1',
+      organizationId: 'org-1',
+      conversationId: 'convo-1',
+      providerMessageId: 'wamid.abc',
+      direction: 'incoming',
+    });
     prisma.whatsAppWebhookEvent.create.mockResolvedValue({ id: 'evt-1' });
 
     service = new WhatsAppWebhookService(
@@ -82,6 +92,7 @@ describe('WhatsAppWebhookService idempotency', () => {
       consent as any,
       audit as any,
       whatsAppService as any,
+      communicationProjection as any,
     );
   });
 
@@ -95,7 +106,13 @@ describe('WhatsAppWebhookService idempotency', () => {
         }),
       }),
     );
+    expect(communicationProjection.projectInbound).toHaveBeenCalled();
     expect(whatsAppService.processInboundAutoReply).toHaveBeenCalledWith('org-1', 'convo-1');
+  });
+
+  it('invokes canonical projection after native inbound persistence', async () => {
+    await service.receiveWebhook(Buffer.from('{}'), {}, {});
+    expect(communicationProjection.projectInbound).toHaveBeenCalled();
   });
 
   it('skips duplicate provider message', async () => {

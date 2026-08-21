@@ -27,6 +27,7 @@ describe('WhatsApp org scoping', () => {
         {} as any,
         {} as any,
         {} as any,
+        { projectInbound: jest.fn() } as any,
       );
 
       await expect(service.getMessages(orgB, convoId)).rejects.toBeInstanceOf(NotFoundException);

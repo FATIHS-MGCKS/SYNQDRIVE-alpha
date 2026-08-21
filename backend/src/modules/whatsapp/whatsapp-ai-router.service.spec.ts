@@ -14,6 +14,7 @@ describe('WhatsAppAiRouterService', () => {
   const tools = { runTools: jest.fn() };
   const policy = new WhatsAppMessagePolicyService();
   const audit = { record: jest.fn() };
+  const communicationProjection = { projectHumanRequired: jest.fn() };
 
   let router: WhatsAppAiRouterService;
 
@@ -74,6 +75,7 @@ describe('WhatsAppAiRouterService', () => {
       tools as any,
       policy,
       audit as any,
+      communicationProjection as any,
     );
     prisma.orgWhatsAppConfig.findUnique.mockResolvedValue(baseConfig);
     prisma.whatsAppConversation.findFirst.mockResolvedValue(baseConvo);
