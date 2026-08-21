@@ -14,13 +14,15 @@ import {
   vehicleTaskStatusTone,
 } from '../../lib/task-display.utils';
 import {
-  buildVehicleLabel,
   checklistProgress,
   formatCostCents,
   taskSourceLabel,
-  taskTypeLabel,
-  TASK_PRIORITY_LABEL_DE,
 } from '../../lib/service-task-semantics';
+import {
+  serviceTaskPriorityLabel,
+  serviceTaskTypeLabel,
+  serviceVehicleLabel,
+} from '../../../lib/tasks/service-task-presentation-i18n';
 import { TaskSourceBadgePill } from '../tasks/VehicleTaskActionCenter';
 
 function statusTone(tone: ReturnType<typeof vehicleTaskStatusTone>) {
@@ -56,7 +58,7 @@ export function ServiceTaskCard({
   onWaiting,
   onComplete,
 }: ServiceTaskCardProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const overdue = deriveTaskIsOverdue(task);
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
   const terminal = isTerminalTaskStatus(task.status);
@@ -94,7 +96,7 @@ export function ServiceTaskCard({
               label={vehicleTaskPriorityLabel(mapApiPriority(task.priority))}
             />
             <span className="text-[10px] font-medium text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/40">
-              {taskTypeLabel(task)}
+              {serviceTaskTypeLabel(locale, task)}
             </span>
             <TaskSourceBadgePill label={taskSourceLabel(task)} />
             {task.blocksVehicleAvailability && (
@@ -108,7 +110,7 @@ export function ServiceTaskCard({
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-1 text-[10px]">
               <span className="text-muted-foreground">
                 Fahrzeug:{' '}
-                <span className="text-foreground font-medium">{buildVehicleLabel(vehicle)}</span>
+                <span className="text-foreground font-medium">{serviceVehicleLabel(locale, vehicle)}</span>
               </span>
               <span className="text-muted-foreground">
                 Partner:{' '}
@@ -184,7 +186,7 @@ export function ServiceTaskCard({
       </div>
       {compact && (
         <p className="text-[10px] text-muted-foreground mt-1">
-          {buildVehicleLabel(vehicle)} · {TASK_PRIORITY_LABEL_DE[task.priority]}
+          {serviceVehicleLabel(locale, vehicle)} · {serviceTaskPriorityLabel(locale, task.priority)}
         </p>
       )}
     </div>

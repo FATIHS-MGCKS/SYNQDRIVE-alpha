@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-shared-service-task-presentation-p2-2-16a-2026-08-21',
+    version: '4.9.938',
+    title: 'Platform i18n — P2.2.16A Shared Service Task presentation utilities',
+    summary: [
+      'Legacy German presentation maps removed from `service-task-semantics.ts`; new canonical adapter `service-task-presentation-i18n.ts` localizes task type/status/priority/board/vehicle labels across service center, vendor tasks, vehicle tasks, and entity embeds.',
+      'Fixes confirmed EN UI leaking German task type labels (e.g. VEHICLE_SERVICE → `Fahrzeug-Service / Wartung` under EN). P216A enforce-clean exact scope 0 findings; +13 EN+DE keys (7720→7733); reused existing `tasks.type.*`, `tasks.filter.status.*`, `tasks.filter.priority.*`.',
+      'Presentation-only — ApiTaskType/Status/Priority, board column ids, filters, API payloads unchanged. Task timeline (16B) and task detail UI (16C) deferred.',
+    ],
+    reason:
+      'P2.2.16 pre-flight GO-BUT-SPLIT selected bounded shared service-task presentation slice first to fix cross-locale leak with Category E=0.',
+    previousBehavior:
+      '`TASK_TYPE_LABEL_DE` / `TASK_PRIORITY_LABEL_DE` / `TASK_STATUS_LABEL_DE` and locale-blind `taskTypeLabel(task)` returned German copy under EN in VendorOperationalTasks and service-center surfaces.',
+    details:
+      'rental/lib/service-task-semantics.ts; lib/tasks/service-task-presentation-i18n.ts; 17-path P216A boundary; service center + vendor + vehicle + entity consumer rewiring; service-task-presentation-localization.test.tsx; architecture/I18N_SHARED_SERVICE_TASK_PRESENTATION_P2_2_16A_2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-08-21T14:15:00.000Z',
+  },
+  {
     id: 'i18n-rental-vendor-directory-p2-2-15-2026-08-21',
     version: '4.9.937',
     title: 'Rental i18n — P2.2.15 Vendor Directory localization',

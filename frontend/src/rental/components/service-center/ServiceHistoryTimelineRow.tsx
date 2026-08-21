@@ -1,12 +1,14 @@
 import { ChevronRight, ExternalLink, Paperclip, User, Wrench } from 'lucide-react';
 import { StatusChip } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiTask } from '../../../lib/api';
 import { formatTaskDateTime } from '../../lib/task-detail.utils';
 import {
   attachmentCount,
   taskCompletedTimestamp,
 } from '../../lib/service-history.utils';
-import { formatCostCents, taskTypeLabel } from '../../lib/service-task-semantics';
+import { formatCostCents } from '../../lib/service-task-semantics';
+import { serviceTaskTypeLabel } from '../../../lib/tasks/service-task-presentation-i18n';
 import { taskTypeIcon } from '../../lib/service-task-icons';
 
 interface ServiceHistoryTimelineRowProps {
@@ -28,6 +30,7 @@ export function ServiceHistoryTimelineRow({
   onOpenVehicle,
   onOpenVendor,
 }: ServiceHistoryTimelineRowProps) {
+  const { locale } = useLanguage();
   const Icon = taskTypeIcon(task.type);
   const actual = formatCostCents(task.actualCostCents);
   const completedAt = task.completedAt ?? (taskCompletedTimestamp(task) ? new Date(taskCompletedTimestamp(task)).toISOString() : null);
@@ -53,7 +56,7 @@ export function ServiceHistoryTimelineRow({
                 {task.title}
               </p>
             </button>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{taskTypeLabel(task)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{serviceTaskTypeLabel(locale, task)}</p>
           </div>
           <StatusChip tone={task.status === 'DONE' ? 'success' : 'neutral'}>
             {task.status === 'DONE' ? 'Erledigt' : 'Storniert'}

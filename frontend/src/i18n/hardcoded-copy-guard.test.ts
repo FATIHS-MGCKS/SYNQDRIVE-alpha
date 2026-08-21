@@ -240,6 +240,26 @@ const P215_ENFORCE_CLEAN_EXACT = [
   'rental/lib/vendor-directory-i18n.ts',
 ];
 
+const P216A_ENFORCE_CLEAN_EXACT = [
+  'rental/lib/service-task-semantics.ts',
+  'lib/tasks/service-task-presentation-i18n.ts',
+  'rental/components/vendors/VendorOperationalTasks.tsx',
+  'rental/components/VehicleTasksView.tsx',
+  'rental/components/EntityTasksSection.tsx',
+  'rental/components/vehicle-detail/VehicleServiceContextPanel.tsx',
+  'rental/components/fleet-health-service/fleet-health-service-case-list.ts',
+  'rental/components/service-center/ServiceTaskCard.tsx',
+  'rental/components/service-center/ServiceScheduleRow.tsx',
+  'rental/components/service-center/ServiceSchedulePanel.tsx',
+  'rental/components/service-center/ServiceTasksCalendar.tsx',
+  'rental/components/service-center/ServiceHistoryTimelineRow.tsx',
+  'rental/components/service-center/ServiceTasksBoard.tsx',
+  'rental/components/service-center/ServiceTaskCreateModal.tsx',
+  'rental/components/service-center/ServiceHistoryPanel.tsx',
+  'rental/components/service-center/ServiceTasksPanel.tsx',
+  'rental/components/service-center/ServiceCenterContextBar.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -278,6 +298,10 @@ function isP214EnforceCleanPath(relPath: string): boolean {
 
 function isP215EnforceCleanPath(relPath: string): boolean {
   return P215_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP216AEnforceCleanPath(relPath: string): boolean {
+  return P216A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -426,6 +450,36 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP215EnforceCleanPath(finding.file),
     );
     expect(p215Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.16A enforce-clean findings to Shared Service Task presentation only', () => {
+    const p216aDebt = inventory.findings.filter((finding) =>
+      isP216AEnforceCleanPath(finding.file),
+    );
+    expect(p216aDebt).toHaveLength(0);
+  });
+
+  it('keeps service-task-semantics.ts as machine-only utilities', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/service-task-semantics.ts'),
+      'utf8',
+    );
+    expect(source).toContain('isServiceMaintenanceTask');
+    expect(source).toContain('boardColumnForTask');
+    expect(source).not.toContain('TASK_TYPE_LABEL_DE');
+    expect(source).not.toContain('TASK_PRIORITY_LABEL_DE');
+    expect(source).not.toContain('TASK_STATUS_LABEL_DE');
+    expect(source).not.toMatch(/label:\s*'Offen'/);
+  });
+
+  it('keeps service-task-presentation-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/service-task-presentation-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('tasks.type.VEHICLE_SERVICE');
+    expect(source).not.toMatch(/Fahrzeug-Service/);
   });
 
   it('keeps vendor-directory-i18n.ts on canonical translation keys', () => {
