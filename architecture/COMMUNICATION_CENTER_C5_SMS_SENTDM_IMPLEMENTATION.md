@@ -99,18 +99,22 @@ Hardening:
 | State | Meaning |
 |-------|---------|
 | `PENDING` | Durable row created; provider not yet claimed |
-| `DISPATCHING` | Dispatch lease held (`dispatchAttemptedAt`) |
+| `DISPATCHING` | Current dispatch lease (`dispatchAttemptedAt`) |
 | `DISPATCH_AMBIGUOUS` | Retryable transport/unknown outcome — **not** terminal FAILED; reclaimable within idempotency window |
 | `QUEUED` | Provider accepted; `providerMessageId` set |
 | `FAILED` | Terminal provider rejection only |
 
 Stale threshold: `SMS_DISPATCH_STALE_MS` (120s). After stale, `claimProviderDispatch` reclaims `DISPATCHING` lease.
 
-**Idempotency window:** `SENT_DM_IDEMPOTENCY_WINDOW_MS` (24h). Anchor: `dispatchAttemptedAt ?? createdAt`.
+**Idempotency window:** `SENT_DM_IDEMPOTENCY_WINDOW_MS` (24h).
 
-- Within window: `PENDING`, stale `DISPATCHING`, and `DISPATCH_AMBIGUOUS` may reclaim the **same** `SmsMessage` row / `businessOperationId` / sent.dm `Idempotency-Key`.
-- Outside window: `claimProviderDispatch` returns `idempotency_expired` — no silent reset to `PENDING`, no duplicate outbound row.
-- Acceptance path: `DISPATCH_AMBIGUOUS` → reclaim → `DISPATCHING` → `recordProviderAcceptance` → `QUEUED`.
+- `firstDispatchAttemptedAt` = immutable sent.dm idempotency window anchor (set on first `PENDING` → `DISPATCHING` claim only)
+- `dispatchAttemptedAt` = mutable current dispatch lease timestamp
+- **Retries NEVER extend provider idempotency lifetime**
+- `PENDING` without `firstDispatchAttemptedAt` may still be initially claimed regardless of `createdAt` age
+- Reclaims require `firstDispatchAttemptedAt`; missing anchor on `DISPATCHING` / `DISPATCH_AMBIGUOUS` → `not_claimable` (reconciliation)
+- Outside window: `claimProviderDispatch` returns `idempotency_expired` — no silent reset to `PENDING`, no duplicate outbound row
+- Acceptance path: `DISPATCH_AMBIGUOUS` → reclaim → `DISPATCHING` → `recordProviderAcceptance` → `QUEUED`
 
 ---
 

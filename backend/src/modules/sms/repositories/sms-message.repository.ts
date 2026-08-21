@@ -4,9 +4,8 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { SMS_DISPATCH_STALE_MS } from '../sms.constants';
 import {
   buildIdempotencyWindowStart,
-  getSmsIdempotencyAnchorAt,
+  evaluateSmsProviderDispatchEligibility,
   isSmsDispatchReclaimableStatus,
-  isWithinSentDmIdempotencyWindow,
   SMS_NON_RECLAIMABLE_DISPATCH_STATUSES,
 } from '../sms-dispatch-state';
 import type { SmsMessageDirection, SmsSenderType } from '../sms.constants';
@@ -80,7 +79,8 @@ export class SmsMessageRepository {
 
   /**
    * Claims an active provider dispatch lease on the SAME SmsMessage row.
-   * Reuses businessOperationId / sent.dm Idempotency-Key only while within the 24h window.
+   * Reuses businessOperationId / sent.dm Idempotency-Key only while within the 24h window
+   * anchored at firstDispatchAttemptedAt (immutable after first claim).
    */
   async claimProviderDispatch(messageId: string, organizationId: string): Promise<SmsDispatchClaimResult> {
     const message = await this.prisma.smsMessage.findFirst({
@@ -102,17 +102,13 @@ export class SmsMessageRepository {
     const now = new Date();
     const staleBefore = new Date(now.getTime() - SMS_DISPATCH_STALE_MS);
     const idempotencyWindowStart = buildIdempotencyWindowStart(now);
-    const withinIdempotencyWindow = isWithinSentDmIdempotencyWindow(
-      getSmsIdempotencyAnchorAt(message),
-      now,
-    );
+    const eligibility = evaluateSmsProviderDispatchEligibility(message, now);
 
-    if (
-      (message.status === SmsMessageDeliveryStatus.DISPATCHING
-        || message.status === SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS)
-      && !withinIdempotencyWindow
-    ) {
-      return { outcome: 'idempotency_expired', message };
+    if (!eligibility.eligible) {
+      if (eligibility.reason === 'idempotency_expired') {
+        return { outcome: 'idempotency_expired', message };
+      }
+      return { outcome: 'not_claimable', message };
     }
 
     if (message.status === SmsMessageDeliveryStatus.PENDING) {
@@ -122,10 +118,12 @@ export class SmsMessageRepository {
           organizationId,
           providerMessageId: null,
           status: SmsMessageDeliveryStatus.PENDING,
+          firstDispatchAttemptedAt: null,
         },
         data: {
           status: SmsMessageDeliveryStatus.DISPATCHING,
           dispatchAttemptedAt: now,
+          firstDispatchAttemptedAt: now,
         },
       });
       if (claimed.count === 1) {
@@ -148,7 +146,8 @@ export class SmsMessageRepository {
           organizationId,
           providerMessageId: null,
           status: SmsMessageDeliveryStatus.DISPATCHING,
-          dispatchAttemptedAt: { lt: staleBefore, gte: idempotencyWindowStart },
+          firstDispatchAttemptedAt: { not: null, gte: idempotencyWindowStart },
+          dispatchAttemptedAt: { lt: staleBefore },
         },
         data: { dispatchAttemptedAt: now },
       });
@@ -168,13 +167,7 @@ export class SmsMessageRepository {
           organizationId,
           providerMessageId: null,
           status: SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS,
-          OR: [
-            { dispatchAttemptedAt: { gte: idempotencyWindowStart } },
-            {
-              dispatchAttemptedAt: null,
-              createdAt: { gte: idempotencyWindowStart },
-            },
-          ],
+          firstDispatchAttemptedAt: { not: null, gte: idempotencyWindowStart },
         },
         data: {
           status: SmsMessageDeliveryStatus.DISPATCHING,

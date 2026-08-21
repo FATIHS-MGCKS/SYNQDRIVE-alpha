@@ -11583,7 +11583,9 @@ model SmsMessage {
   status              SmsMessageDeliveryStatus @default(PENDING)
   failureCode         String?                  @map("failure_code")
   failureReason       String?                  @map("failure_reason")
-  dispatchAttemptedAt DateTime?                @map("dispatch_attempted_at")
+  dispatchAttemptedAt      DateTime?                @map("dispatch_attempted_at")
+  /// Immutable anchor for sent.dm Idempotency-Key reuse window (first provider dispatch claim).
+  firstDispatchAttemptedAt DateTime?                @map("first_dispatch_attempted_at")
   acceptedAt          DateTime?                @map("accepted_at")
   deliveredAt         DateTime?                @map("delivered_at")
   failedAt            DateTime?                @map("failed_at")

@@ -66,6 +66,7 @@ CREATE TABLE "sms_messages" (
     "failure_code" TEXT,
     "failure_reason" TEXT,
     "dispatch_attempted_at" TIMESTAMP(3),
+    "first_dispatch_attempted_at" TIMESTAMP(3),
     "accepted_at" TIMESTAMP(3),
     "delivered_at" TIMESTAMP(3),
     "failed_at" TIMESTAMP(3),

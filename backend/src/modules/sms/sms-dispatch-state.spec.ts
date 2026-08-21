@@ -1,6 +1,7 @@
 import { SmsMessageDeliveryStatus } from '@prisma/client';
 import {
   buildIdempotencyWindowStart,
+  evaluateSmsProviderDispatchEligibility,
   getSmsIdempotencyAnchorAt,
   isSmsDispatchReclaimableStatus,
   isWithinSentDmIdempotencyWindow,
@@ -11,18 +12,14 @@ import { SENT_DM_IDEMPOTENCY_WINDOW_MS } from './sms.constants';
 describe('sms-dispatch-state', () => {
   const anchor = new Date('2026-08-21T10:00:00Z');
 
-  it('uses dispatchAttemptedAt as idempotency anchor when present', () => {
-    const createdAt = new Date('2026-08-20T10:00:00Z');
+  it('uses firstDispatchAttemptedAt as idempotency anchor when present', () => {
     expect(
-      getSmsIdempotencyAnchorAt({ dispatchAttemptedAt: anchor, createdAt }),
+      getSmsIdempotencyAnchorAt({ firstDispatchAttemptedAt: anchor }),
     ).toEqual(anchor);
   });
 
-  it('falls back to createdAt when dispatchAttemptedAt is null', () => {
-    const createdAt = new Date('2026-08-20T10:00:00Z');
-    expect(
-      getSmsIdempotencyAnchorAt({ dispatchAttemptedAt: null, createdAt }),
-    ).toEqual(createdAt);
+  it('returns null anchor when firstDispatchAttemptedAt is unset', () => {
+    expect(getSmsIdempotencyAnchorAt({ firstDispatchAttemptedAt: null })).toBeNull();
   });
 
   it('treats anchor within 24h as inside idempotency window', () => {
@@ -38,6 +35,34 @@ describe('sms-dispatch-state', () => {
   it('buildIdempotencyWindowStart subtracts 24h from now', () => {
     const now = new Date('2026-08-21T12:00:00Z');
     expect(buildIdempotencyWindowStart(now).toISOString()).toBe('2026-08-20T12:00:00.000Z');
+  });
+
+  it('allows PENDING without first anchor regardless of row age', () => {
+    expect(
+      evaluateSmsProviderDispatchEligibility({
+        status: SmsMessageDeliveryStatus.PENDING,
+        firstDispatchAttemptedAt: null,
+      }),
+    ).toEqual({ eligible: true });
+  });
+
+  it('rejects DISPATCHING without first anchor', () => {
+    expect(
+      evaluateSmsProviderDispatchEligibility({
+        status: SmsMessageDeliveryStatus.DISPATCHING,
+        firstDispatchAttemptedAt: null,
+      }),
+    ).toEqual({ eligible: false, reason: 'missing_idempotency_anchor' });
+  });
+
+  it('rejects reclaim when first anchor is outside 24h window', () => {
+    const expiredAnchor = new Date(Date.now() - SENT_DM_IDEMPOTENCY_WINDOW_MS - 1);
+    expect(
+      evaluateSmsProviderDispatchEligibility({
+        status: SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS,
+        firstDispatchAttemptedAt: expiredAnchor,
+      }),
+    ).toEqual({ eligible: false, reason: 'idempotency_expired' });
   });
 
   it('marks reclaimable dispatch statuses', () => {
