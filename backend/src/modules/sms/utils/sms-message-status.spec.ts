@@ -1,5 +1,5 @@
 import { SmsMessageDeliveryStatus } from '@prisma/client';
-import { mapSentDmLifecycleToNativeStatus, shouldApplyNativeDeliveryTransition } from './sms-message-status';
+import { mapSentDmLifecycleToNativeStatus, shouldApplyNativeDeliveryTransition, eligibleCurrentStatusesForDeliveryTransition } from './sms-message-status';
 
 describe('sms-message-status', () => {
   it('maps sent.dm lifecycle names', () => {
@@ -23,5 +23,12 @@ describe('sms-message-status', () => {
         SmsMessageDeliveryStatus.SENT,
       ),
     ).toBe(true);
+  });
+
+  it('eligible statuses for DELIVERED exclude DELIVERED itself', () => {
+    const eligible = eligibleCurrentStatusesForDeliveryTransition(SmsMessageDeliveryStatus.DELIVERED);
+    expect(eligible).toContain(SmsMessageDeliveryStatus.QUEUED);
+    expect(eligible).toContain(SmsMessageDeliveryStatus.SENT);
+    expect(eligible).not.toContain(SmsMessageDeliveryStatus.DELIVERED);
   });
 });

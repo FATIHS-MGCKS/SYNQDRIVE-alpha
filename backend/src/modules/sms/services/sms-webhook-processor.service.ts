@@ -15,6 +15,10 @@ import { normalizePhoneNumber } from '../utils/sms-phone.util';
 import { SmsMessageDeliveryStatus } from '@prisma/client';
 import { SmsConfigService } from './sms-config.service';
 
+type DeliveryWebhookResult =
+  | { kind: 'updated'; transitioned: boolean }
+  | { kind: 'unknown_message' };
+
 @Injectable()
 export class SmsWebhookProcessorService {
   private readonly logger = new Logger(SmsWebhookProcessorService.name);
@@ -68,15 +72,34 @@ export class SmsWebhookProcessorService {
         signatureValid: true,
       }));
 
-    if (existing?.processedAt) {
+    const claim = await this.webhookEvents.tryClaimProcessing(eventRow.id);
+    if (claim.outcome === 'already_processed' || claim.outcome === 'held_by_peer') {
       return;
     }
+
+    const isDeliveryEvent =
+      isTerminalDeliveryEvent(verified.parsed.event) || verified.parsed.event === 'message.sent';
 
     try {
       if (isInboundReceivedEvent(verified.parsed.event)) {
         await this.handleInbound(verified, providerMessageId, externalEventId);
-      } else if (isTerminalDeliveryEvent(verified.parsed.event) || verified.parsed.event === 'message.sent') {
-        await this.handleDeliveryUpdate(verified, providerMessageId, messageStatus, externalEventId);
+      } else if (isDeliveryEvent) {
+        const deliveryResult = await this.handleDeliveryUpdate(
+          verified,
+          providerMessageId,
+          messageStatus,
+          externalEventId,
+        );
+        if (deliveryResult.kind === 'unknown_message') {
+          await this.webhookEvents.markUnknownProviderMessage(eventRow.id);
+          this.logger.warn({
+            msg: 'SMS delivery webhook uncorrelated — left unprocessed for retry/reconciliation',
+            organizationId: verified.organizationId,
+            providerMessageId,
+            eventType: verified.parsed.event,
+          });
+          return;
+        }
       }
 
       await this.webhookEvents.markProcessed(eventRow.id);
@@ -164,7 +187,12 @@ export class SmsWebhookProcessorService {
     providerMessageId: string,
     messageStatus: string,
     externalEventId: string,
-  ) {
+  ): Promise<DeliveryWebhookResult> {
+    const before = await this.messages.findByProviderMessageId(providerMessageId, verified.organizationId);
+    if (!before) {
+      return { kind: 'unknown_message' };
+    }
+
     const updated = await this.messages.applyDeliveryStatusUpdateByProviderMessageId({
       organizationId: verified.organizationId,
       providerMessageId,
@@ -173,10 +201,12 @@ export class SmsWebhookProcessorService {
       failureCode: verified.parsed.payload.failure_code ?? null,
     });
     if (!updated) {
-      return;
+      return { kind: 'unknown_message' };
     }
 
-    if (updated.status === SmsMessageDeliveryStatus.DELIVERED) {
+    const transitioned = updated.status !== before.status;
+
+    if (updated.status === SmsMessageDeliveryStatus.DELIVERED && transitioned) {
       try {
         await this.projection.projectStatusUpdate({
           conversation: updated.conversation,
@@ -193,10 +223,10 @@ export class SmsWebhookProcessorService {
           eventType: verified.parsed.event,
         });
       }
-      return;
+      return { kind: 'updated', transitioned: true };
     }
 
-    if (updated.status === SmsMessageDeliveryStatus.FAILED) {
+    if (updated.status === SmsMessageDeliveryStatus.FAILED && transitioned) {
       try {
         await this.projection.projectStatusUpdate({
           conversation: updated.conversation,
@@ -214,6 +244,9 @@ export class SmsWebhookProcessorService {
           eventType: verified.parsed.event,
         });
       }
+      return { kind: 'updated', transitioned: true };
     }
+
+    return { kind: 'updated', transitioned };
   }
 }

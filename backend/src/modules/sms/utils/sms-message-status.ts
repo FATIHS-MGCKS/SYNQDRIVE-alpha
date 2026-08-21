@@ -45,3 +45,12 @@ export function shouldApplyNativeDeliveryTransition(
   }
   return STATUS_RANK[next] > STATUS_RANK[current];
 }
+
+/** Statuses that may transition to `next` under monotonic delivery rules (DB compare-and-set). */
+export function eligibleCurrentStatusesForDeliveryTransition(
+  next: SmsMessageDeliveryStatus,
+): SmsMessageDeliveryStatus[] {
+  return (Object.values(SmsMessageDeliveryStatus) as SmsMessageDeliveryStatus[]).filter(
+    (current) => shouldApplyNativeDeliveryTransition(current, next),
+  );
+}

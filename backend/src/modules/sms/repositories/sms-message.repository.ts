@@ -10,7 +10,7 @@ import {
 } from '../sms-dispatch-state';
 import {
   mapSentDmLifecycleToNativeStatus,
-  shouldApplyNativeDeliveryTransition,
+  eligibleCurrentStatusesForDeliveryTransition,
 } from '../utils/sms-message-status';
 import type { SmsMessageDirection, SmsSenderType } from '../sms.constants';
 
@@ -272,7 +272,12 @@ export class SmsMessageRepository {
     }
 
     const nextStatus = mapSentDmLifecycleToNativeStatus(input.providerStatus);
-    if (!nextStatus || !shouldApplyNativeDeliveryTransition(message.status, nextStatus)) {
+    if (!nextStatus) {
+      return message;
+    }
+
+    const eligibleStatuses = eligibleCurrentStatusesForDeliveryTransition(nextStatus);
+    if (eligibleStatuses.length === 0) {
       return message;
     }
 
@@ -289,9 +294,24 @@ export class SmsMessageRepository {
       data.failureReason = 'provider_delivery_failed';
     }
 
-    return this.prisma.smsMessage.update({
-      where: { id: message.id },
+    const updated = await this.prisma.smsMessage.updateMany({
+      where: {
+        id: message.id,
+        organizationId: input.organizationId,
+        providerMessageId: input.providerMessageId,
+        status: { in: eligibleStatuses },
+      },
       data,
+    });
+    if (updated.count !== 1) {
+      return this.prisma.smsMessage.findFirst({
+        where: { id: message.id },
+        include: { conversation: true },
+      });
+    }
+
+    return this.prisma.smsMessage.findFirst({
+      where: { id: message.id },
       include: { conversation: true },
     });
   }

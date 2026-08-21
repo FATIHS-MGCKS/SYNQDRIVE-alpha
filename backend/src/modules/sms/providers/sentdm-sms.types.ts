@@ -12,6 +12,8 @@ export interface SentDmSendSuccess {
   providerMessageId: string;
   providerStatus: string;
   acceptedAt: Date;
+  /** Whether acceptedAt came from sent.dm meta.timestamp or local receipt time. */
+  acceptedAtSource: 'provider_meta_timestamp' | 'local_receipt_fallback';
 }
 
 export interface SentDmSendFailure {

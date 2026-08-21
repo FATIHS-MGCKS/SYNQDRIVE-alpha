@@ -82,11 +82,23 @@ export class SentDmSmsAdapter implements SmsProviderPort {
       const providerStatus =
         typeof json?.data?.status === 'string' ? json.data.status : 'QUEUED';
 
+      const metaTimestamp = typeof json?.meta?.timestamp === 'string' ? json.meta.timestamp.trim() : '';
+      const acceptedAt = metaTimestamp ? new Date(metaTimestamp) : new Date();
+      if (metaTimestamp && Number.isNaN(acceptedAt.getTime())) {
+        return {
+          ok: false,
+          kind: 'MALFORMED_RESPONSE',
+          failureCode: 'MALFORMED_RESPONSE',
+          retryable: true,
+        };
+      }
+
       return {
         ok: true,
         providerMessageId,
         providerStatus,
-        acceptedAt: new Date(),
+        acceptedAt,
+        acceptedAtSource: metaTimestamp ? 'provider_meta_timestamp' : 'local_receipt_fallback',
       };
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {

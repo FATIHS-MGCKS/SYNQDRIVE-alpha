@@ -13,6 +13,7 @@ import { SentDmSmsAdapter } from '../providers/sentdm-sms.adapter';
 import type { SentDmSendFailure } from '../providers/sentdm-sms.types';
 import { SmsConfigService } from './sms-config.service';
 import { normalizePhoneNumber, toE164Phone } from '../utils/sms-phone.util';
+import { detectSmsIdempotencyPayloadMismatch } from '../utils/sms-idempotency';
 
 export interface SmsSendOutboundInput {
   organizationId: string;
@@ -35,7 +36,13 @@ export type SmsSendOutboundResult =
   | { status: 'in_progress'; messageId: string }
   | { status: 'idempotency_expired'; messageId: string; businessOperationId: string }
   | { status: 'already_terminal'; messageId: string; deliveryStatus: SmsMessageDeliveryStatus }
-  | { status: 'blocked'; messageId: string };
+  | { status: 'blocked'; messageId: string }
+  | {
+      status: 'idempotency_conflict';
+      messageId: string;
+      businessOperationId: string;
+      mismatch: 'recipient' | 'content' | 'recipient_and_content';
+    };
 
 @Injectable()
 export class SmsService {
@@ -59,6 +66,18 @@ export class SmsService {
     }
     const recipientE164 = toE164Phone(phoneNormalized);
 
+    let existing = await this.messages.findByBusinessOperation(
+      input.organizationId,
+      input.businessOperationId,
+    );
+    if (existing) {
+      this.assertIdempotentPayloadOrThrow(existing, phoneNormalized, input);
+      const replay = await this.handleExistingBusinessOperation(existing, input, recipientE164, orgConfig!);
+      if (replay) {
+        return replay;
+      }
+    }
+
     const conversation = await this.conversations.ensureConversation({
       organizationId: input.organizationId,
       contactPhone: recipientE164,
@@ -67,17 +86,6 @@ export class SmsService {
       bookingId: input.bookingId,
       vehicleId: input.vehicleId,
     });
-
-    const existing = await this.messages.findByBusinessOperation(
-      input.organizationId,
-      input.businessOperationId,
-    );
-    if (existing) {
-      const replay = await this.handleExistingBusinessOperation(existing, input, recipientE164, orgConfig!);
-      if (replay) {
-        return replay;
-      }
-    }
 
     const pending =
       existing ??
@@ -91,6 +99,11 @@ export class SmsService {
     if (!pending) {
       throw new BadRequestException('Failed to create outbound SMS message');
     }
+
+    if (!existing) {
+      existing = pending;
+    }
+    this.assertIdempotentPayloadOrThrow(existing, phoneNormalized, input);
 
     const claim = await this.messages.claimProviderDispatch(pending.id, input.organizationId);
     if (claim.outcome === 'held_by_peer') {
@@ -151,36 +164,61 @@ export class SmsService {
       acceptedAt: providerResult.acceptedAt,
     });
 
-      await this.conversations.recordOutboundActivity({
-        conversationId: conversation.id,
-        organizationId: input.organizationId,
-        preview: input.content,
+    await this.conversations.recordOutboundActivity({
+      conversationId: conversation.id,
+      organizationId: input.organizationId,
+      preview: input.content,
+      occurredAt: providerResult.acceptedAt,
+    });
+
+    let projectionAttempted = false;
+    try {
+      await this.projection.projectOutboundAccepted({
+        conversation: accepted.conversation,
+        message: accepted,
         occurredAt: providerResult.acceptedAt,
       });
+      projectionAttempted = true;
+    } catch (err: unknown) {
+      this.logger.error({
+        msg: 'SMS canonical projection failed after provider acceptance',
+        organizationId: input.organizationId,
+        messageId: accepted.id,
+        providerMessageId: accepted.providerMessageId,
+      });
+    }
 
-      let projectionAttempted = false;
-      try {
-        await this.projection.projectOutboundAccepted({
-          conversation: accepted.conversation,
-          message: accepted,
-          occurredAt: providerResult.acceptedAt,
-        });
-        projectionAttempted = true;
-      } catch (err: unknown) {
-        this.logger.error({
-          msg: 'SMS canonical projection failed after provider acceptance',
-          organizationId: input.organizationId,
-          messageId: accepted.id,
-          providerMessageId: accepted.providerMessageId,
-        });
-      }
+    return {
+      status: 'accepted',
+      message: accepted,
+      providerMessageId: providerResult.providerMessageId,
+      projectionAttempted,
+    };
+  }
 
-      return {
-        status: 'accepted',
-        message: accepted,
-        providerMessageId: providerResult.providerMessageId,
-        projectionAttempted,
-      };
+  private assertIdempotentPayloadOrThrow(
+    existing: SmsMessage & { conversation?: { contactPhoneNormalized: string } | null },
+    recipientNormalized: string,
+    input: SmsSendOutboundInput,
+  ): void {
+    if (!existing.conversation) {
+      throw new BadRequestException('SMS idempotency row missing conversation context');
+    }
+    const mismatch = detectSmsIdempotencyPayloadMismatch({
+      existing: existing as SmsMessage & { conversation: { contactPhoneNormalized: string } },
+      recipientNormalized,
+      content: input.content,
+    });
+    if (!mismatch) {
+      return;
+    }
+    throw new ConflictException({
+      status: 'idempotency_conflict',
+      code: 'IDEMPOTENCY_CONFLICT',
+      messageId: existing.id,
+      businessOperationId: input.businessOperationId,
+      mismatch,
+    });
   }
 
   private async handleProviderFailure(

@@ -128,13 +128,19 @@ export class SmsConversationRepository {
     preview: string;
     occurredAt: Date;
   }) {
-    await this.prisma.smsConversation.updateMany({
-      where: { id: input.conversationId, organizationId: input.organizationId },
-      data: {
-        lastMessageAt: input.occurredAt,
-        lastMessagePreview: input.preview.slice(0, 120),
-      },
-    });
+    const preview = input.preview.slice(0, 120);
+    const epoch = new Date(0);
+    await this.prisma.$executeRaw`
+      UPDATE sms_conversations
+      SET
+        last_message_at = GREATEST(COALESCE(last_message_at, ${epoch}), ${input.occurredAt}),
+        last_message_preview = CASE
+          WHEN ${input.occurredAt} >= COALESCE(last_message_at, ${epoch})
+          THEN ${preview}
+          ELSE last_message_preview
+        END
+      WHERE id = ${input.conversationId} AND organization_id = ${input.organizationId}
+    `;
   }
 
   async recordInboundActivity(input: {
@@ -144,14 +150,20 @@ export class SmsConversationRepository {
     occurredAt: Date;
     unreadDelta: number;
   }) {
-    await this.prisma.smsConversation.updateMany({
-      where: { id: input.conversationId, organizationId: input.organizationId },
-      data: {
-        lastMessageAt: input.occurredAt,
-        lastCustomerMessageAt: input.occurredAt,
-        lastMessagePreview: input.preview.slice(0, 120),
-        unreadCount: { increment: input.unreadDelta },
-      },
-    });
+    const preview = input.preview.slice(0, 120);
+    const epoch = new Date(0);
+    await this.prisma.$executeRaw`
+      UPDATE sms_conversations
+      SET
+        last_message_at = GREATEST(COALESCE(last_message_at, ${epoch}), ${input.occurredAt}),
+        last_customer_message_at = GREATEST(COALESCE(last_customer_message_at, ${epoch}), ${input.occurredAt}),
+        last_message_preview = CASE
+          WHEN ${input.occurredAt} >= COALESCE(last_message_at, ${epoch})
+          THEN ${preview}
+          ELSE last_message_preview
+        END,
+        unread_count = unread_count + ${input.unreadDelta}
+      WHERE id = ${input.conversationId} AND organization_id = ${input.organizationId}
+    `;
   }
 }

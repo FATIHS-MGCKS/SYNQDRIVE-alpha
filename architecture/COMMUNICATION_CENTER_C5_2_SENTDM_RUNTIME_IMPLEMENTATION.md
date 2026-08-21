@@ -1,8 +1,8 @@
 # Communication Center C5.2 — sent.dm SMS Runtime
 
-**Phase:** C5.2 (production send + webhook processing + canonical projection)  
-**Depends on:** C5.1 native persistence + webhook security (PR #1127)  
-**Date verified against sent.dm docs:** 2026-08-21  
+**Phase:** C5.2 (production send + webhook processing + canonical projection)
+**Depends on:** C5.1 native persistence + webhook security (PR #1127)
+**Date verified against sent.dm docs:** 2026-08-21
 **Branch:** `feature/communication-center-c5-2-sentdm-runtime`
 
 ---
@@ -59,7 +59,7 @@ No C5.1 schema contradiction found.
 
 ## 4. Credential model
 
-**DB (`OrgSmsConfig`):** metadata flags only (`apiKeyConfigured`, `webhookSigningSecretConfigured`, account/profile/endpoint IDs).  
+**DB (`OrgSmsConfig`):** metadata flags only (`apiKeyConfigured`, `webhookSigningSecretConfigured`, account/profile/endpoint IDs).
 **Secrets (env):**
 
 - `SENT_DM_API_KEY` or `SENT_DM_API_KEY_<ORG_ID>`
@@ -96,7 +96,7 @@ Webhook path additionally requires `webhookEndpointId` + `webhookSigningSecretCo
 
 Uses C5.1 repository contract unchanged:
 
-`PENDING → DISPATCHING → QUEUED → SENT → DELIVERED`  
+`PENDING → DISPATCHING → QUEUED → SENT → DELIVERED`
 ambiguous: `DISPATCH_AMBIGUOUS` (retryable within `firstDispatchAttemptedAt + 24h`)
 
 ---
@@ -137,7 +137,7 @@ Replay with same `businessOperationId` reuses same `SmsMessage` row and same sen
 
 ## 14. Webhook idempotency
 
-`externalEventId = buildSmsWebhookExternalEventId(message_id, message_status)`  
+`externalEventId = buildSmsWebhookExternalEventId(message_id, message_status)`
 `SmsWebhookEventRepository.beginProcessing` + `processedAt` reclaim for crash recovery.
 
 ---
@@ -165,8 +165,8 @@ Projection failures are logged; provider acceptance is not rolled back.
 
 ## 19. Actor / RBAC
 
-`POST /organizations/:orgId/sms/messages` requires `communication.write`.  
-`Idempotency-Key` header required → `businessOperationId`.  
+`POST /organizations/:orgId/sms/messages` requires `communication.write`.
+`Idempotency-Key` header required → `businessOperationId`.
 Actor: authenticated user (`senderType: user`). No public `actorType` / `sandbox` DTO fields.
 
 ---
@@ -196,7 +196,77 @@ HTTP mock via jest `fetch` stub on `SentDmSmsAdapter`; signed webhook fixtures; 
 
 ## 23. Live provider test
 
-`backend/scripts/test/sentdm-sms-live.integration.sh` — opt-in via `SENT_DM_LIVE_INTEGRATION=1`.
+**Provider connectivity smoke test** — `backend/scripts/test/sentdm-sms-live.integration.sh`
+Opt-in via `SENT_DM_LIVE_INTEGRATION=1`. Exercises sent.dm `POST /v3/messages` directly only.
+Does **not** validate SynqDrive `SmsController`, persistence, dispatch claim/idempotency, or canonical projection.
+
+**SynqDrive runtime E2E validation** — `backend/scripts/test/synqdrive-sms-runtime-e2e.integration.sh`
+Opt-in via `SYNQDRIVE_SMS_E2E_VALIDATION=1`. Authenticated call to deployed/staging
+`POST /organizations/:orgId/sms/messages` with `communication.write`, explicit `Idempotency-Key`,
+staging/test org, and dedicated test recipient. Verify `SmsMessage` → QUEUED, `CommunicationEvent` →
+`MESSAGE_SENT`, then webhook → DELIVERED / `MESSAGE_DELIVERED`. No credentials/phone/body logged.
+One SMS maximum per invocation. Never runs automatically.
+
+---
+
+## C5.2 pre-live hardening (PR #1134)
+
+### Immutable request semantics (`businessOperationId`)
+
+`Idempotency-Key` → `businessOperationId` identifies one immutable logical SMS operation.
+Before replay/reclaim/provider invocation, SynqDrive compares the incoming request against the persisted
+`SmsMessage` + `SmsConversation`:
+
+| Condition | Result |
+|-----------|--------|
+| Same `businessOperationId` + same normalized recipient + same content | Valid replay |
+| Same key + different recipient and/or content | HTTP **409** `idempotency_conflict` / `IDEMPOTENCY_CONFLICT`, **zero** provider calls |
+| Context enrichment (`customerId` / `bookingId` / `vehicleId`) | Same-org enrich policy only; never mutates SMS payload |
+
+Implementation: `detectSmsIdempotencyPayloadMismatch` in `sms-idempotency.ts`, enforced in `SmsService.sendOutbound` **before** `claimProviderDispatch`.
+
+### Monotonic conversation activity
+
+`recordOutboundActivity` / `recordInboundActivity` use PostgreSQL `GREATEST` atomically:
+
+- `lastMessageAt = max(existing, occurredAt)`
+- `lastCustomerMessageAt = max(existing, occurredAt)` (inbound)
+- `lastMessagePreview` updates only when `occurredAt >= current lastMessageAt`
+- `unreadCount` increments per newly-created distinct inbound message (replay does not increment)
+
+### DB-authoritative delivery transitions
+
+`applyDeliveryStatusUpdate` uses conditional `updateMany` with `eligibleCurrentStatusesForDeliveryTransition`.
+Concurrent/out-of-order SENT + DELIVERED webhooks cannot downgrade DELIVERED → SENT. FAILED/BLOCKED terminal semantics preserved.
+
+### Webhook processing ownership
+
+`SmsWebhookEventRepository.tryClaimProcessing` sets `processingError = in_progress` lease atomically.
+P2002 losers must acquire the lease; only one worker processes each `externalEventId`.
+Crash recovery: `processing_failed` and `unknown_provider_message` states are reclaimable.
+
+### Unknown `providerMessageId` policy (outbound delivery webhooks)
+
+When a signed delivery webhook references a `providerMessageId` with no local `SmsMessage`:
+
+- **Do not** mark `processedAt` (event stays retryable)
+- Set `processingError = unknown_provider_message` for operator visibility
+- **Do not** fabricate `SmsMessage` from delivery webhook alone
+- Distinguishes truly stale provider events from crash-window uncorrelated acceptance (aligns with `DISPATCH_AMBIGUOUS` reconciliation)
+
+### `acceptedAt` authority
+
+sent.dm `202` responses include `meta.timestamp` (server response generation time).
+`SentDmSmsAdapter` uses `meta.timestamp` when present (`acceptedAtSource: provider_meta_timestamp`).
+When absent, falls back to local provider-response receipt time (`local_receipt_fallback`) — not claimed as provider-authored.
+
+### Live test safety
+
+- Runtime default OFF; staging/test org only
+- No automatic business producers
+- Explicit test recipient; one SMS per invocation
+- No production customer numbers; no secrets/body/phone in logs
+- Sandbox billability: verify against official sent.dm docs before assuming non-billable
 
 ---
 
@@ -204,7 +274,7 @@ HTTP mock via jest `fetch` stub on `SentDmSmsAdapter`; signed webhook fixtures; 
 
 - C5.1 dispatch + security postgres suites (preserved)
 - C5.2 unit: adapter, idempotency key, status monotonicity
-- C5.2 postgres: `sms-runtime.postgres.integration.spec.ts`
+- C5.2 postgres: `sms-runtime.postgres.integration.spec.ts` (idempotency conflicts, concurrency, monotonic activity, webhook ownership, unknown providerMessageId)
 
 ---
 
@@ -239,5 +309,5 @@ Runtime + canonical projection hooks exist. C6 context resolver / read APIs not 
 
 ## Changes / Architektur
 
-- **Changes:** C5.2 runtime documented here
-- **Architektur:** SMS runtime path added on C5.1 foundation; canonical projection unchanged contract
+- **Changes:** C5.2 pre-live hardening documented in this file (idempotency payload consistency, monotonic activity, DB delivery CAS, webhook lease, unknown providerMessageId policy, acceptedAt authority, smoke vs E2E validation scripts)
+- **Architektur:** SMS runtime hardening on C5.1 foundation; canonical projection contract unchanged
