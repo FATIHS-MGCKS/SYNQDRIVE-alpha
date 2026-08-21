@@ -2995,7 +2995,6 @@ export const de: Record<TranslationKey, string> = {
   'tasks.detail.technical.rawSource': 'Rohquelle',
   'tasks.detail.technical.dedupKey': 'Dedup-Schlüssel',
   'tasks.detail.technical.assignedTo': 'Zugewiesen an',
-  'tasks.detail.technical.unassigned': 'Nicht zugewiesen',
   'tasks.detail.technical.createdBy': 'Erstellt von',
   'tasks.detail.technical.role': 'Rolle',
   'tasks.detail.technical.resolutionNote': 'Abschluss-Notiz',

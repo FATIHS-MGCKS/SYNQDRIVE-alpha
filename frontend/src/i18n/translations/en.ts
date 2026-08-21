@@ -2896,7 +2896,6 @@ export const en = {
   'tasks.detail.technical.rawSource': 'Raw source',
   'tasks.detail.technical.dedupKey': 'Dedup key',
   'tasks.detail.technical.assignedTo': 'Assigned to',
-  'tasks.detail.technical.unassigned': 'Unassigned',
   'tasks.detail.technical.createdBy': 'Created by',
   'tasks.detail.technical.role': 'Role',
   'tasks.detail.technical.resolutionNote': 'Resolution note',

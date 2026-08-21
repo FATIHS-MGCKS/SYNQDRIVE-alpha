@@ -1,8 +1,8 @@
 # P2.2.16C.1 — Task Detail Chrome & View-Model Presentation
 
-**Date:** 2026-08-22  
-**Baseline:** `3d0dc9067efcbcb2f56e17317ddebc4c39dcb0f1` (post-P2.2.16B.2)  
-**Branch:** `cursor/p2216c1-task-detail-chrome-i18n-3c10`  
+**Date:** 2026-08-22
+**Baseline:** `3d0dc9067efcbcb2f56e17317ddebc4c39dcb0f1` (post-P2.2.16B.2)
+**Branch:** `cursor/p2216c1-task-detail-chrome-i18n-3c10`
 **Verdict:** Implementation complete — ready for independent re-audit
 
 ## Scope (C.1 enforce-clean — 8 paths)
@@ -37,7 +37,7 @@
 ## Dictionary
 
 - Baseline: 7773 EN / 7773 DE
-- After C.1: 7835 EN / 7835 DE (+62, 100% parity)
+- After C.1: 7834 EN / 7834 DE (+61, 100% parity)
 - New keys: `tasks.detail.drawerTitle`, `tasks.detail.section.*`, `tasks.detail.linked.*`, `tasks.detail.technical.*`, `tasks.detail.timing.*`, `tasks.detail.notes.*`, `tasks.detail.activity.*`, `tasks.detail.checklist.*`, `tasks.sheet.orgNotLoaded`
 
 ## Scanner / debt
