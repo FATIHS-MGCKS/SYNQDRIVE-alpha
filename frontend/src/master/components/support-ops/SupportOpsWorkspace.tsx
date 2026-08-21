@@ -17,6 +17,7 @@ import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patter
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import { SupportTechnicalContextCard } from '../../../components/support/SupportTechnicalContextCard';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   api,
   type SupportTicket,
@@ -26,20 +27,22 @@ import {
   type SupportTicketStatus,
 } from '../../../lib/api';
 import {
-  SUPPORT_CATEGORY_LABEL,
-  SUPPORT_PRIORITY_LABEL,
-  formatDateTime,
-  formatRelativeTime,
-  getMessageSenderLabel,
+  formatSupportDateTime,
+  formatSupportRelativeTime,
+  labelMessageSender,
+  labelRelatedEntity,
+  labelSupportCategory,
+  labelSupportPriority,
+  labelSupportStatus,
+} from './support-ops-i18n';
+import {
   getTicketCode,
   isTerminalStatus,
   normalizeCategoryKey,
   normalizePriorityKey,
   normalizeStatusKey,
-  relatedEntityLabel,
   sop,
   supportPriorityTone,
-  supportStatusLabel,
 } from './support-ops.utils';
 
 interface AssigneeOption {
@@ -89,6 +92,7 @@ export function SupportOpsWorkspace({
   onClose,
   className,
 }: SupportOpsWorkspaceProps) {
+  const { t, locale } = useLanguage();
   const [composerTab, setComposerTab] = useState<ComposerTab>('reply');
   const [reply, setReply] = useState('');
   const [internalNote, setInternalNote] = useState('');
@@ -125,7 +129,7 @@ export function SupportOpsWorkspace({
   if (error) {
     return (
       <div className={cn(sop.workspaceCol, className)}>
-        <ErrorState compact title="Ticket konnte nicht geladen werden" description={error} />
+        <ErrorState compact title={t('support.ops.workspace.errorLoad')} description={error} />
       </div>
     );
   }
@@ -133,7 +137,11 @@ export function SupportOpsWorkspace({
   if (!ticket) {
     return (
       <div className={cn(sop.workspaceCol, 'items-center justify-center p-8', className)}>
-        <EmptyState compact title="Ticket auswählen" description="Wähle ein Ticket aus der Inbox, um den Workspace zu öffnen." />
+        <EmptyState
+          compact
+          title={t('support.ops.workspace.selectTitle')}
+          description={t('support.ops.workspace.selectDescription')}
+        />
       </div>
     );
   }
@@ -143,7 +151,7 @@ export function SupportOpsWorkspace({
   const category = normalizeCategoryKey(ticket);
   const terminal = isTerminalStatus(status);
   const messages = ticket.messages ?? [];
-  const related = relatedEntityLabel(ticket.relatedEntityType ?? null, ticket.relatedEntityId);
+  const related = labelRelatedEntity(locale, ticket.relatedEntityType ?? null, ticket.relatedEntityId);
 
   const patchTicket = async (
     patch: {
@@ -162,8 +170,8 @@ export function SupportOpsWorkspace({
       onTicketUpdate(updated);
       toast.success(successMsg);
       if (patch.status === 'RESOLVED' || patch.status === 'CLOSED') {
-        toast.message('Status aktualisiert', {
-          description: 'Eine Systemnachricht wurde im Thread erstellt.',
+        toast.message(t('support.ops.toast.statusUpdated'), {
+          description: t('support.ops.toast.systemMessageCreated'),
         });
       }
     } catch (e) {
@@ -176,8 +184,8 @@ export function SupportOpsWorkspace({
   const handleReply = async () => {
     if (sending || (!reply.trim() && !imageFile)) return;
     if (terminal) {
-      toast.error('Öffentliche Antwort nicht möglich', {
-        description: 'Bitte Status zuerst auf „In Bearbeitung“ setzen oder Ticket wieder öffnen.',
+      toast.error(t('support.ops.toast.publicReplyBlocked'), {
+        description: t('support.ops.toast.publicReplyBlockedDesc'),
       });
       return;
     }
@@ -190,16 +198,18 @@ export function SupportOpsWorkspace({
       }
       await api.support.addMessage(ticket.id, { content: reply.trim(), body: reply.trim(), imageUrl });
       if (status === 'OPEN') {
-        toast.message('Ticket in Bearbeitung', { description: 'Status wurde automatisch aktualisiert.' });
+        toast.message(t('support.ops.toast.ticketInProgress'), {
+          description: t('support.ops.toast.autoStatusUpdated'),
+        });
       }
       setReply('');
       setImageFile(null);
       setImagePreview(null);
       const updated = await api.support.getTicket(ticket.id);
       onTicketUpdate(updated);
-      toast.success('Antwort gesendet');
+      toast.success(t('support.ops.toast.replySent'));
     } catch (e) {
-      toast.error('Nachricht konnte nicht gesendet werden', { description: e instanceof Error ? e.message : undefined });
+      toast.error(t('support.ops.toast.replyFailed'), { description: e instanceof Error ? e.message : undefined });
     } finally {
       setSending(false);
     }
@@ -213,9 +223,9 @@ export function SupportOpsWorkspace({
       setInternalNote('');
       const updated = await api.support.getTicket(ticket.id);
       onTicketUpdate(updated);
-      toast.success('Interne Notiz gespeichert');
+      toast.success(t('support.ops.toast.noteSaved'));
     } catch (e) {
-      toast.error('Interne Notiz konnte nicht gespeichert werden', {
+      toast.error(t('support.ops.toast.noteFailed'), {
         description: e instanceof Error ? e.message : undefined,
       });
     } finally {
@@ -263,11 +273,11 @@ export function SupportOpsWorkspace({
         bookingId,
         metadata: { supportTicketId: ticket.id, supportTicketCode: getTicketCode(ticket) },
       });
-      toast.success('Aufgabe erstellt', {
-        description: 'Follow-up-Aufgabe wurde in der Organisation angelegt.',
+      toast.success(t('support.ops.toast.taskCreated'), {
+        description: t('support.ops.toast.taskCreatedDesc'),
       });
     } catch (e) {
-      toast.error('Aufgabe konnte nicht erstellt werden', {
+      toast.error(t('support.ops.toast.taskFailed'), {
         description: e instanceof Error ? e.message : undefined,
       });
     } finally {
@@ -283,18 +293,18 @@ export function SupportOpsWorkspace({
             <div className="flex flex-wrap items-center gap-1">
               <span className="text-[10px] font-bold text-[color:var(--brand)]">{getTicketCode(ticket)}</span>
               <StatusChip tone={supportStatusTone(status)} dot className="text-[9px]">
-                {supportStatusLabel(status, 'admin')}
+                {labelSupportStatus(locale, status, 'admin')}
               </StatusChip>
               <StatusChip tone={supportPriorityTone(priority)} className="text-[9px]">
-                {SUPPORT_PRIORITY_LABEL[priority]}
+                {labelSupportPriority(locale, priority)}
               </StatusChip>
               <StatusChip tone="neutral" className="text-[9px]">
-                {SUPPORT_CATEGORY_LABEL[category]}
+                {labelSupportCategory(locale, category)}
               </StatusChip>
             </div>
             <h2 className="mt-1 text-[14px] font-semibold leading-snug text-foreground">{ticket.subject}</h2>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {orgName} · {formatRelativeTime(ticket.lastMessageAt || ticket.lastActivityAt)}
+              {orgName} · {formatSupportRelativeTime(locale, ticket.lastMessageAt || ticket.lastActivityAt)}
             </p>
           </div>
           {onClose && (
@@ -306,46 +316,64 @@ export function SupportOpsWorkspace({
 
         <div className="flex flex-wrap gap-1.5">
           <ActionSelect
-            label="Status"
+            label={t('support.filter.statusLabel')}
             value={status}
             disabled={updating}
-            options={STATUSES.map((s) => ({ value: s, label: supportStatusLabel(s, 'admin') }))}
-            onChange={(v) => void patchTicket({ status: v as SupportTicketStatus }, 'Status geändert', 'Status konnte nicht geändert werden')}
+            options={STATUSES.map((s) => ({ value: s, label: labelSupportStatus(locale, s, 'admin') }))}
+            onChange={(v) =>
+              void patchTicket(
+                { status: v as SupportTicketStatus },
+                t('support.ops.toast.statusChanged'),
+                t('support.ops.toast.statusFailed'),
+              )
+            }
           />
           <ActionSelect
-            label="Priorität"
+            label={t('support.filter.priorityLabel')}
             value={priority}
             disabled={updating}
-            options={PRIORITIES.map((p) => ({ value: p, label: SUPPORT_PRIORITY_LABEL[p] }))}
-            onChange={(v) => void patchTicket({ priority: v as SupportTicketPriority }, 'Priorität geändert', 'Priorität konnte nicht geändert werden')}
+            options={PRIORITIES.map((p) => ({ value: p, label: labelSupportPriority(locale, p) }))}
+            onChange={(v) =>
+              void patchTicket(
+                { priority: v as SupportTicketPriority },
+                t('support.ops.toast.priorityChanged'),
+                t('support.ops.toast.priorityFailed'),
+              )
+            }
           />
           <ActionSelect
-            label="Kategorie"
+            label={t('support.filter.categoryLabel')}
             value={category}
             disabled={updating}
-            options={CATEGORIES.map((c) => ({ value: c, label: SUPPORT_CATEGORY_LABEL[c] }))}
-            onChange={(v) => void patchTicket({ category: v as SupportTicketCategory }, 'Kategorie geändert', 'Kategorie konnte nicht geändert werden')}
+            options={CATEGORIES.map((c) => ({ value: c, label: labelSupportCategory(locale, c) }))}
+            onChange={(v) =>
+              void patchTicket(
+                { category: v as SupportTicketCategory },
+                t('support.ops.toast.categoryChanged'),
+                t('support.ops.toast.categoryFailed'),
+              )
+            }
           />
           <ActionSelect
-            label="Assignee"
+            label={t('support.ops.filter.assignee')}
             value={ticket.assignedToUserId || ''}
             disabled={updating}
             options={[
-              { value: '', label: 'Nicht zugewiesen' },
+              { value: '', label: t('support.ops.workspace.unassigned') },
               ...assignees.map((a) => ({ value: a.id, label: a.name })),
             ]}
             onChange={(v) =>
               void patchTicket(
                 { assignedToUserId: v || null },
-                v ? 'Ticket zugewiesen' : 'Zuweisung entfernt',
-                'Zuweisung konnte nicht gespeichert werden',
+                v ? t('support.ops.toast.assigned') : t('support.ops.toast.unassigned'),
+                t('support.ops.toast.assignFailed'),
               )
             }
           />
           {onNavigateToOrg && ticket.organizationId && (
             <Button type="button" variant="outline" size="sm" className="h-8 text-[10px]" onClick={() => onNavigateToOrg(ticket.organizationId)}>
               <Building2 className="h-3 w-3" />
-              Organisation
+              {t('support.ops.filter.organization')}
             </Button>
           )}
         </div>
@@ -354,7 +382,7 @@ export function SupportOpsWorkspace({
       <div className="grid min-h-0 flex-1 grid-rows-[1fr_auto]">
         <div className="overflow-y-auto p-3 space-y-2.5">
           {messages.length === 0 ? (
-            <p className="text-center text-[11px] text-muted-foreground">Kein Verlauf vorhanden.</p>
+            <p className="text-center text-[11px] text-muted-foreground">{t('support.detail.noMessages')}</p>
           ) : (
             messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
           )}
@@ -371,7 +399,7 @@ export function SupportOpsWorkspace({
                 composerTab === 'reply' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground',
               )}
             >
-              Antwort an Kunden
+              {t('support.ops.workspace.tabReply')}
             </button>
             <button
               type="button"
@@ -381,7 +409,7 @@ export function SupportOpsWorkspace({
                 composerTab === 'internal' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground',
               )}
             >
-              Interne Notiz
+              {t('support.ops.workspace.tabInternal')}
             </button>
           </div>
 
@@ -389,13 +417,21 @@ export function SupportOpsWorkspace({
             <>
               {terminal && (
                 <p className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2 text-[10px] text-muted-foreground">
-                  Ticket ist gelöst/geschlossen. Status ändern, bevor du öffentlich antwortest.
+                  {t('support.ops.workspace.terminalNotice')}
                 </p>
               )}
               {imagePreview && <AttachmentPreview src={imagePreview} onRemove={() => { setImageFile(null); setImagePreview(null); }} />}
               <div className="flex items-end gap-1.5">
                 <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleImage} />
-                <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => fileRef.current?.click()} disabled={terminal} aria-label="Anhang hinzufügen">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={terminal}
+                  aria-label={t('support.detail.addAttachmentAria')}
+                >
                   <Paperclip className="h-3.5 w-3.5" />
                 </Button>
                 <textarea
@@ -404,11 +440,18 @@ export function SupportOpsWorkspace({
                   onKeyDown={handleReplyKeyDown}
                   rows={2}
                   disabled={terminal}
-                  placeholder="Öffentliche Antwort…"
-                  aria-label="Öffentliche Antwort an Kunden"
+                  placeholder={t('support.ops.workspace.replyPlaceholder')}
+                  aria-label={t('support.ops.workspace.replyAria')}
                   className="min-h-[40px] flex-1 resize-none rounded-lg border border-border/60 bg-background/80 px-2.5 py-2 text-[11px] outline-none disabled:opacity-50"
                 />
-                <Button type="button" size="icon" className="h-9 w-9 shrink-0" disabled={sending || terminal || (!reply.trim() && !imageFile)} onClick={() => void handleReply()} aria-label="Antwort senden">
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  disabled={sending || terminal || (!reply.trim() && !imageFile)}
+                  onClick={() => void handleReply()}
+                  aria-label={t('support.ops.workspace.sendReplyAria')}
+                >
                   {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </Button>
               </div>
@@ -417,18 +460,18 @@ export function SupportOpsWorkspace({
             <>
               <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Lock className="h-3 w-3" />
-                Nicht sichtbar für Kunden
+                {t('support.ops.workspace.internalNotice')}
               </p>
               <textarea
                 value={internalNote}
                 onChange={(e) => setInternalNote(e.target.value)}
                 rows={3}
-                placeholder="Interne Notiz für das Support-Team…"
-                aria-label="Interne Notiz"
+                placeholder={t('support.ops.workspace.internalPlaceholder')}
+                aria-label={t('support.ops.workspace.internalAria')}
                 className="w-full resize-none rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-[11px] outline-none focus:border-amber-500/40"
               />
               <Button type="button" size="sm" className="w-full" disabled={savingNote || !internalNote.trim()} onClick={() => void handleInternalNote()}>
-                {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Notiz speichern'}
+                {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('support.ops.workspace.saveNote')}
               </Button>
             </>
           )}
@@ -440,21 +483,21 @@ export function SupportOpsWorkspace({
         onClick={() => setMetaOpen((v) => !v)}
         className="flex w-full items-center justify-between border-t border-border/40 px-3 py-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/30"
       >
-        Kontext & Meta
+        {t('support.ops.workspace.contextMeta')}
         <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', metaOpen && 'rotate-180')} />
       </button>
 
       {metaOpen && (
         <div className="max-h-[220px] overflow-y-auto border-t border-border/30 px-3 py-2.5 text-[10px] space-y-2">
-          <MetaRow label="Ersteller" value={`${ticket.reporterName || '—'} (${ticket.reporterEmail})`} />
-          <MetaRow label="Assignee" value={assigneeName(ticket.assignedToUserId)} />
-          <MetaRow label="Erstellt" value={formatDateTime(ticket.createdAt)} />
-          <MetaRow label="Letzte Nachricht" value={formatDateTime(ticket.lastMessageAt || ticket.lastActivityAt)} />
-          <MetaRow label="Erste Antwort" value={formatDateTime(ticket.firstResponseAt)} />
-          <MetaRow label="Gelöst" value={formatDateTime(ticket.resolvedAt)} />
+          <MetaRow label={t('support.ops.workspace.metaCreator')} value={`${ticket.reporterName || '—'} (${ticket.reporterEmail})`} />
+          <MetaRow label={t('support.ops.workspace.metaAssignee')} value={assigneeName(ticket.assignedToUserId)} />
+          <MetaRow label={t('support.ops.workspace.metaCreated')} value={formatSupportDateTime(locale, ticket.createdAt)} />
+          <MetaRow label={t('support.ops.workspace.metaLastMessage')} value={formatSupportDateTime(locale, ticket.lastMessageAt || ticket.lastActivityAt)} />
+          <MetaRow label={t('support.ops.workspace.metaFirstResponse')} value={formatSupportDateTime(locale, ticket.firstResponseAt)} />
+          <MetaRow label={t('support.ops.workspace.metaResolved')} value={formatSupportDateTime(locale, ticket.resolvedAt)} />
           {related && (
             <div className="rounded-lg border border-border/40 bg-muted/20 p-2">
-              <p className="font-semibold text-foreground">Verknüpftes Objekt</p>
+              <p className="font-semibold text-foreground">{t('support.ops.workspace.linkedObject')}</p>
               <p className="mt-0.5 text-muted-foreground">{related}</p>
               {ticket.relatedEntityId && (
                 <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">{ticket.relatedEntityId}</p>
@@ -470,7 +513,7 @@ export function SupportOpsWorkspace({
             onClick={() => void handleCreateTask()}
           >
             {creatingTask ? <Loader2 className="h-3 w-3 animate-spin" /> : <ClipboardList className="h-3 w-3" />}
-            Aufgabe erstellen
+            {t('support.ops.workspace.createTask')}
           </Button>
         </div>
       )}
@@ -522,12 +565,13 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 }
 
 function MessageBubble({ message }: { message: SupportTicketMessage }) {
+  const { t, locale } = useLanguage();
   const isInternal = message.isInternal;
   const isSystem = message.senderRole === 'system';
   const isAdmin = message.senderRole === 'admin';
   const text = message.body || message.content;
   const attachments = [
-    ...(message.imageUrl ? [{ url: message.imageUrl, fileName: 'Anhang' }] : []),
+    ...(message.imageUrl ? [{ url: message.imageUrl, fileName: t('support.previewAttachment') }] : []),
     ...(message.attachments ?? []),
   ];
 
@@ -536,7 +580,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
       <div className="flex justify-center">
         <div className="max-w-[95%] rounded-md bg-muted/40 px-2 py-1 text-center text-[9px] text-muted-foreground">
           {text}
-          <span className="mt-0.5 block opacity-70">{formatRelativeTime(message.createdAt)}</span>
+          <span className="mt-0.5 block opacity-70">{formatSupportRelativeTime(locale, message.createdAt)}</span>
         </div>
       </div>
     );
@@ -547,8 +591,8 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
       <div className="rounded-lg border border-amber-500/25 bg-amber-500/8 px-2.5 py-2">
         <div className="mb-1 flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-300">
           <Lock className="h-3 w-3" />
-          Intern · {message.senderName}
-          <span className="font-normal text-muted-foreground">· {formatRelativeTime(message.createdAt)}</span>
+          {t('support.ops.workspace.internalPrefix')} · {message.senderName}
+          <span className="font-normal text-muted-foreground">· {formatSupportRelativeTime(locale, message.createdAt)}</span>
         </div>
         <p className="whitespace-pre-wrap text-[11px] text-foreground">{text}</p>
       </div>
@@ -559,10 +603,8 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
     <div className={cn('flex', isAdmin ? 'justify-end' : 'justify-start')}>
       <div className="max-w-[90%]">
         <div className={cn('mb-0.5 flex items-center gap-1.5 text-[9px]', isAdmin && 'justify-end')}>
-          <span className="font-semibold text-foreground">
-            {getMessageSenderLabel(message, 'admin')}
-          </span>
-          <span className="text-muted-foreground">{formatRelativeTime(message.createdAt)}</span>
+          <span className="font-semibold text-foreground">{labelMessageSender(locale, message, 'admin')}</span>
+          <span className="text-muted-foreground">{formatSupportRelativeTime(locale, message.createdAt)}</span>
         </div>
         <div
           className={cn(
@@ -576,7 +618,7 @@ function MessageBubble({ message }: { message: SupportTicketMessage }) {
           {attachments.map((att, i) => (
             <a key={i} href={att.url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1 text-[10px] underline">
               <ExternalLink className="h-3 w-3" />
-              {att.fileName || 'Anhang'}
+              {att.fileName || t('support.previewAttachment')}
             </a>
           ))}
         </div>

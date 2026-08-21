@@ -167,6 +167,15 @@ const P29_ENFORCE_CLEAN_EXACT = new Set([
   'components/support/CreateSupportTicketDialog.tsx',
 ]);
 
+const P210_ENFORCE_CLEAN_EXACT = new Set([
+  'master/components/support-ops/support-ops.utils.ts',
+  'master/components/support-ops/SupportOpsWorkspace.tsx',
+  'master/components/support-ops/SupportOpsInbox.tsx',
+  'master/components/support-ops/SupportOpsQueue.tsx',
+  'master/components/support-ops/SupportOpsKpis.tsx',
+  'components/support/SupportTechnicalContextCard.tsx',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -406,6 +415,10 @@ function isP29EnforceCleanPath(relPath) {
   return P29_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP210EnforceCleanPath(relPath) {
+  return P210_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -434,6 +447,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (surface === 'RENTAL' && isP27BEnforceCleanPath(relPath)) return true;
   if (surface === 'RENTAL' && isP28EnforceCleanPath(relPath)) return true;
   if (isP29EnforceCleanPath(relPath)) return true;
+  if (isP210EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -444,6 +458,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP23EnforceCleanPath(relPath)) return 'P2.2.3';
   if (isP27BEnforceCleanPath(relPath)) return 'P2.2.7B';
   if (isP28EnforceCleanPath(relPath)) return 'P2.2.8';
+  if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
   if (isP26EnforceCleanPath(relPath)) return 'P2.2.6';

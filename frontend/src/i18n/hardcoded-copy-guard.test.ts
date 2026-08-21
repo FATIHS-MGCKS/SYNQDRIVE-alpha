@@ -180,6 +180,15 @@ const P29_ENFORCE_CLEAN_EXACT = [
   'components/support/CreateSupportTicketDialog.tsx',
 ];
 
+const P210_ENFORCE_CLEAN_EXACT = [
+  'master/components/support-ops/support-ops.utils.ts',
+  'master/components/support-ops/SupportOpsWorkspace.tsx',
+  'master/components/support-ops/SupportOpsInbox.tsx',
+  'master/components/support-ops/SupportOpsQueue.tsx',
+  'master/components/support-ops/SupportOpsKpis.tsx',
+  'components/support/SupportTechnicalContextCard.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -194,6 +203,10 @@ function isP28EnforceCleanPath(relPath: string): boolean {
 
 function isP29EnforceCleanPath(relPath: string): boolean {
   return P29_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP210EnforceCleanPath(relPath: string): boolean {
+  return P210_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -219,7 +232,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -302,6 +315,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p29Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.10 enforce-clean findings to Master Support Ops only', () => {
+    const p210Debt = inventory.findings.filter((finding) =>
+      isP210EnforceCleanPath(finding.file),
+    );
+    expect(p210Debt).toHaveLength(0);
+  });
+
   it('keeps whatsapp.ops.ts free of user-facing presentation literals', () => {
     const source = readFileSync(
       join(__dirname, '../rental/components/whatsapp/whatsapp.ops.ts'),
@@ -341,5 +361,52 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     }
     expect(source).toContain('TranslationKey');
     expect(source).toContain('QUICK_ISSUE_CARD_DEFS');
+  });
+
+  it('keeps support-ops.utils.ts free of user-facing presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../master/components/support-ops/support-ops.utils.ts'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /MASTER_SUPPORT_LOCALE/,
+      /support-i18n/,
+      /label:\s*'Alle offenen'/,
+      /label:\s*'Kritisch'/,
+      /return\s+'< 1 min'/,
+      /OPEN:\s*'Neu'/,
+      /SUPPORT_QUEUES/,
+      /SUPPORT_STATUS_LABEL/,
+      /formatDurationMs/,
+      /formatDateTime/,
+      /'Queues'/,
+      /'Ø Erstantwort'/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('SUPPORT_QUEUE_DEFS');
+  });
+
+  it('keeps SupportTechnicalContextCard free of hardcoded presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../components/support/SupportTechnicalContextCard.tsx'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /Technischer Kontext/,
+      /Quellseite/,
+      /Nicht verfügbar/,
+      /label:\s*'Fahrzeug/,
+      /'Ja'\s*:\s*'Nein'/,
+      /formatDateTimeDe/,
+      /support-ops\.utils/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('support.ops.technicalContext.title');
+    expect(source).toContain('useLanguage');
   });
 });

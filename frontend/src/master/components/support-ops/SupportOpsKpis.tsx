@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import { Clock, Flame, Inbox, Mail, Sparkles } from 'lucide-react';
 import type { SupportTicketStats } from '../../../lib/api';
 import { cn } from '../../../components/ui/utils';
-import { formatDurationMs, sop } from './support-ops.utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { formatSupportOpsDurationMs } from './support-ops-i18n';
+import { sop } from './support-ops.utils';
 
 interface SupportOpsKpisProps {
   stats: SupportTicketStats | null;
@@ -32,6 +34,8 @@ function KpiCell({
 }
 
 export function SupportOpsKpis({ stats, loading }: SupportOpsKpisProps) {
+  const { t, locale } = useLanguage();
+
   if (loading && !stats) {
     return (
       <div className={cn(sop.kpiStrip, 'animate-pulse h-14')} aria-hidden />
@@ -40,28 +44,28 @@ export function SupportOpsKpis({ stats, loading }: SupportOpsKpisProps) {
 
   return (
     <div className={cn(sop.kpiStrip, 'grid grid-cols-2 gap-1 sm:grid-cols-4 xl:grid-cols-7')}>
-      <KpiCell label="Offen" value={stats?.totalOpen ?? stats?.open ?? 0} icon={<Inbox className="h-3.5 w-3.5" />} />
-      <KpiCell label="Neu" value={stats?.newTickets ?? stats?.open ?? 0} icon={<Sparkles className="h-3.5 w-3.5" />} />
+      <KpiCell label={t('support.ops.kpi.open')} value={stats?.totalOpen ?? stats?.open ?? 0} icon={<Inbox className="h-3.5 w-3.5" />} />
+      <KpiCell label={t('support.statusNew')} value={stats?.newTickets ?? stats?.open ?? 0} icon={<Sparkles className="h-3.5 w-3.5" />} />
       <KpiCell
-        label="Kritisch"
+        label={t('support.ops.kpi.critical')}
         value={stats?.criticalOpen ?? 0}
         icon={<Flame className="h-3.5 w-3.5" />}
         accent={(stats?.criticalOpen ?? 0) > 0}
       />
       <KpiCell
-        label="Wartet auf Kunde"
+        label={t('support.ops.kpi.waitingCustomer')}
         value={stats?.waitingForCustomer ?? stats?.waiting ?? 0}
         icon={<Clock className="h-3.5 w-3.5" />}
       />
-      <KpiCell label="Ungelesen" value={stats?.unreadForAdmin ?? 0} icon={<Mail className="h-3.5 w-3.5" />} />
+      <KpiCell label={t('support.ops.kpi.unread')} value={stats?.unreadForAdmin ?? 0} icon={<Mail className="h-3.5 w-3.5" />} />
       <KpiCell
-        label="Ø Erstantwort"
-        value={formatDurationMs(stats?.avgFirstResponseTimeMs)}
+        label={t('support.ops.kpi.avgFirstResponse')}
+        value={formatSupportOpsDurationMs(locale, stats?.avgFirstResponseTimeMs)}
         icon={<Clock className="h-3.5 w-3.5" />}
       />
       <KpiCell
-        label="Ø Lösung"
-        value={formatDurationMs(stats?.avgResolutionTimeMs)}
+        label={t('support.ops.kpi.avgResolution')}
+        value={formatSupportOpsDurationMs(locale, stats?.avgResolutionTimeMs)}
         icon={<Clock className="h-3.5 w-3.5" />}
       />
     </div>

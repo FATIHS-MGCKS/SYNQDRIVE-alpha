@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-master-support-ops-p2-2-10-2026-08-20',
+    version: '4.9.932',
+    title: 'Master i18n — P2.2.10 Support Ops localization',
+    summary: [
+      'Master Support Ops surface (queue, inbox, workspace, KPIs, utils blind spot) migrated to canonical `support.ops.{en,de}.ts` with Master-owned `support-ops-i18n.ts`; removed Rental `support-i18n` coupling and `MASTER_SUPPORT_LOCALE = de` adapter.',
+      'Scanner P2.2.10 enforce-clean exact scope reports 0 findings (~15+ utils blind-spot literals remediated); +91 EN+DE keys (7018→7106); reused established `support.status*`, `support.prio*`, `support.cat*`, `support.time.*` families.',
+      'Phase B deferred: `SupportTechnicalContextCard` remains German-hardcoded (residual EN mixed-language in workspace footer); import-only fix to `formatDateTimeDe`. Presentation-only — queue/filter/API machine semantics unchanged; shim 29 unchanged.',
+    ],
+    reason:
+      'P2.2.10 pre-flight audit GO verdict scoped five Master Support Ops paths with ~15+ scanner-invisible literals in `support-ops.utils.ts` and Master→Rental i18n architectural debt.',
+    previousBehavior:
+      'Master Support Ops pinned to German via Rental `support-i18n` import; hardcoded queue/KPI/duration labels in utils invisible to scanner; no EN/DE Master Support Ops regression tests.',
+    details:
+      'master/components/support-ops/*; support.ops translations; support-ops-i18n.ts; i18n-hardcoded-scan.mjs P210 boundary; master-support-ops-localization.test.tsx; architecture/I18N_MASTER_SUPPORT_OPS_P2_2_10_2026-08-20.md; docs/audits/i18n-p2-2-10-master-support-ops-implementation-2026-08-20.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-20T21:30:00.000Z',
+  },
+  {
     id: 'i18n-rental-support-center-p2-2-9-2026-08-20',
     version: '4.9.931',
     title: 'Rental i18n — P2.2.9 Support Center localization',

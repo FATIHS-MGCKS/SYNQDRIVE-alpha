@@ -111,20 +111,20 @@
     }
   },
   "summary": {
-    "total": 1920,
+    "total": 1899,
     "bySurface": {
-      "MASTER": 1069,
+      "MASTER": 1049,
       "OPERATOR": 180,
       "RENTAL": 610,
       "SHARED": 35,
-      "SHELL": 26
+      "SHELL": 25
     },
     "byCategory": {
-      "ARIA": 80,
-      "TITLE": 277,
-      "TEXT": 1325,
+      "ARIA": 74,
+      "TITLE": 273,
+      "TEXT": 1317,
       "LABEL": 109,
-      "PLACEHOLDER": 121,
+      "PLACEHOLDER": 118,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
@@ -377,7 +377,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1472,
+      "line": 1480,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -405,7 +405,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23346,
+      "line": 23382,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -657,7 +657,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27231,
+      "line": 27267,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1451,48 +1451,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 398,
-      "surface": "MASTER",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Anhang hinzufügen",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 373,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Antwort an Kunden",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 411,
-      "surface": "MASTER",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Antwort senden",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
       "file": "master/components/HealthTrackingView.tsx",
       "line": 273,
       "surface": "MASTER",
@@ -1648,7 +1606,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27176,
+      "line": 27212,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1789,7 +1747,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 943,
+      "line": 951,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1803,7 +1761,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23650,
+      "line": 23686,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1845,7 +1803,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1562,
+      "line": 1570,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2770,7 +2728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1683,
+      "line": 1691,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2854,7 +2812,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 992,
+      "line": 1000,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3148,7 +3106,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1573,
+      "line": 1581,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3270,7 +3228,7 @@
         "master/components/billing/BillingPublishModal.tsx",
         "master/components/billing/MasterContractPreviewPanel.tsx",
         "master/components/billing/admin-billing.utils.ts",
-        "master/components/support-ops/support-ops.utils.ts",
+        "master/components/support-ops/support-ops-i18n.ts",
         "master/connected-vehicles/cv.utils.ts",
         "master/dashboard/dashboard.utils.ts",
         "master/organizations/org.utils.ts"
@@ -3474,7 +3432,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1477,
+      "line": 1485,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3530,7 +3488,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1631,
+      "line": 1639,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3544,7 +3502,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1633,
+      "line": 1641,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4149,17 +4107,18 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24618,
+      "line": 24654,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
       "sample": "en-US",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 3,
+      "occurrences": 4,
       "files": [
         "master/components/ChangesView.tsx",
-        "master/components/ProspectsView.tsx"
+        "master/components/ProspectsView.tsx",
+        "master/components/support-ops/support-ops-i18n.ts"
       ]
     },
     {
@@ -4178,7 +4137,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1457,
+      "line": 1465,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4192,7 +4151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1601,
+      "line": 1609,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4683,7 +4642,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27166,
+      "line": 27202,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4718,24 +4677,9 @@
       "sample": "Filter zurücksetzen",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 2,
-      "files": [
-        "master/components/OrganizationsView.tsx",
-        "master/components/support-ops/SupportOpsInbox.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsInbox.tsx",
-      "line": 218,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TITLE",
-      "sample": "filtersActive ?",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
       "occurrences": 1,
       "files": [
-        "master/components/support-ops/SupportOpsInbox.tsx"
+        "master/components/OrganizationsView.tsx"
       ]
     },
     {
@@ -4894,7 +4838,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1681,
+      "line": 1689,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5203,7 +5147,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 21959,
+      "line": 21995,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5651,7 +5595,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23260,
+      "line": 23296,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5917,20 +5861,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsInbox.tsx",
-      "line": 119,
-      "surface": "MASTER",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Inbox aktualisieren",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsInbox.tsx"
-      ]
-    },
-    {
       "file": "master/components/MasterDashboardView.tsx",
       "line": 517,
       "surface": "MASTER",
@@ -6169,48 +6099,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 427,
-      "surface": "MASTER",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Interne Notiz",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 383,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Interne Notiz",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 426,
-      "surface": "MASTER",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Interne Notiz für das Support-Team…",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
       "file": "master/components/VehicleRegistrationModal.tsx",
       "line": 1122,
       "surface": "MASTER",
@@ -6282,7 +6170,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1520,
+      "line": 1528,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6297,7 +6185,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 960,
+      "line": 968,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6503,20 +6391,6 @@
       "occurrences": 1,
       "files": [
         "master/connected-vehicles/ConnectedVehiclesListView.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 357,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Kein Verlauf vorhanden.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
       ]
     },
     {
@@ -7196,20 +7070,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 442,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Kontext & Meta",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
       "file": "master/platform-integrations/components/TestEmailDialog.tsx",
       "line": 61,
       "surface": "MASTER",
@@ -7762,7 +7622,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1536,
+      "line": 1544,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7986,7 +7846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1526,
+      "line": 1534,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8028,7 +7888,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27201,
+      "line": 27237,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8323,7 +8183,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23326,
+      "line": 23362,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8561,7 +8421,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1513,
+      "line": 1521,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8925,20 +8785,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 419,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Nicht sichtbar für Kunden",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
       "file": "master/platform-ops/tabs/PlatformOpsResilienceTab.tsx",
       "line": 46,
       "surface": "MASTER",
@@ -9095,7 +8941,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27188,
+      "line": 27224,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9109,7 +8955,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27205,
+      "line": 27241,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9530,7 +9376,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26882,
+      "line": 26918,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9681,34 +9527,6 @@
       "occurrences": 1,
       "files": [
         "master/components/MasterDashboardView.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 408,
-      "surface": "MASTER",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Öffentliche Antwort an Kunden",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 407,
-      "surface": "MASTER",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Öffentliche Antwort…",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
       ]
     },
     {
@@ -10194,7 +10012,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1501,
+      "line": 1509,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10712,7 +10530,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1637,
+      "line": 1645,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10726,7 +10544,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1634,
+      "line": 1642,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10740,7 +10558,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1630,
+      "line": 1638,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11637,7 +11455,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1534,
+      "line": 1542,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11847,7 +11665,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1684,
+      "line": 1692,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12477,7 +12295,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1435,
+      "line": 1443,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12884,20 +12702,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsInbox.tsx",
-      "line": 130,
-      "surface": "MASTER",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Suche Betreff, E-Mail, Ticketnr…",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsInbox.tsx"
-      ]
-    },
-    {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
       "line": 147,
       "surface": "MASTER",
@@ -12951,20 +12755,6 @@
       "occurrences": 1,
       "files": [
         "master/components/SupportView.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsInbox.tsx",
-      "line": 131,
-      "surface": "MASTER",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Support-Tickets durchsuchen",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsInbox.tsx"
       ]
     },
     {
@@ -13067,7 +12857,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27155,
+      "line": 27191,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13081,7 +12871,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1231,
+      "line": 1239,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13179,7 +12969,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1574,
+      "line": 1582,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13517,62 +13307,6 @@
       ]
     },
     {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 136,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Ticket auswählen",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 391,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Ticket ist gelöst/geschlossen. Status ändern, bevor du öffentlich antwortest.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 128,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Ticket konnte nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsInbox.tsx",
-      "line": 214,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Tickets konnten nicht geladen werden",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsInbox.tsx"
-      ]
-    },
-    {
       "file": "master/components/PartsAccessoriesAdminView.tsx",
       "line": 369,
       "surface": "MASTER",
@@ -13756,7 +13490,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1431,
+      "line": 1439,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13854,7 +13588,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1564,
+      "line": 1572,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13940,7 +13674,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1479,
+      "line": 1487,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14122,7 +13856,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24620,
+      "line": 24656,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14164,7 +13898,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23346,
+      "line": 23382,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -14192,7 +13926,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1435,
+      "line": 1443,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14206,7 +13940,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1436,
+      "line": 1444,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14249,7 +13983,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1378,
+      "line": 1386,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14263,7 +13997,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1402,
+      "line": 1410,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14305,7 +14039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1561,
+      "line": 1569,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14428,20 +14162,6 @@
       "occurrences": 1,
       "files": [
         "master/connected-vehicles/ConnectedVehiclesHub.tsx"
-      ]
-    },
-    {
-      "file": "master/components/support-ops/SupportOpsWorkspace.tsx",
-      "line": 457,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Verknüpftes Objekt",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "master/components/support-ops/SupportOpsWorkspace.tsx"
       ]
     },
     {
@@ -14657,7 +14377,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23386,
+      "line": 23422,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14825,7 +14545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1684,
+      "line": 1692,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -27209,20 +26929,6 @@
       "occurrences": 1,
       "files": [
         "components/mfa/MfaEnrollmentPanel.tsx"
-      ]
-    },
-    {
-      "file": "components/support/SupportTechnicalContextCard.tsx",
-      "line": 61,
-      "surface": "SHELL",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Technischer Kontext",
-      "severity": "debt",
-      "migrationPhase": "P2.1",
-      "occurrences": 1,
-      "files": [
-        "components/support/SupportTechnicalContextCard.tsx"
       ]
     },
     {
