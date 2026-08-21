@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ListTodo } from 'lucide-react';
-import { SkeletonRows, ErrorState } from '../../../components/patterns';
+import { ErrorState } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import type { ApiTask } from '../../../lib/api';
@@ -13,6 +13,7 @@ import type { DashboardViewModel } from './dashboardTypes';
 import { useDashboardTasksOverview } from './useDashboardTasksOverview';
 import { buildFleetVehicleById, isTaskDueToday } from './dashboardTasksOverview.utils';
 import { useRentalOrg } from '../../RentalContext';
+import { NotificationCardSkeleton } from './notifications/NotificationCardSkeleton';
 import { NOTIFICATION_PANEL_TYPO } from './notifications/notificationPanelTypography';
 
 interface DashboardTasksOverviewPanelProps {
@@ -20,26 +21,30 @@ interface DashboardTasksOverviewPanelProps {
   onOpenTasks?: () => void;
 }
 
-interface StatusChipProps {
-  label: string;
-  value: number;
-  tone?: 'critical' | 'watch' | 'neutral';
+function severityBadgeTone(task: ApiTask): string {
+  if (deriveTaskIsOverdue(task) || task.priority === 'CRITICAL') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_12%,transparent)] text-[color:var(--status-critical)]';
+  }
+  if (isTaskDueToday(task) || task.priority === 'HIGH') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
+  }
+  return 'bg-muted/60 text-muted-foreground';
 }
 
-function StatusChip({ label, value, tone = 'neutral' }: StatusChipProps) {
-  return (
-    <span
-      className={cn(
-        NOTIFICATION_PANEL_TYPO.metaBadge,
-        'gap-1 border border-border/45 bg-muted/20 px-2 py-1 tabular-nums text-muted-foreground',
-        tone === 'critical' && value > 0 && 'border-[color:var(--status-critical)]/25 text-[color:var(--status-critical)]',
-        tone === 'watch' && value > 0 && 'border-[color:var(--status-watch)]/25 text-[color:var(--status-watch)]',
-      )}
-    >
-      <span>{label}</span>
-      <span className="font-semibold text-foreground">{value}</span>
-    </span>
-  );
+function taskIconTone(task: ApiTask): string {
+  if (deriveTaskIsOverdue(task) || task.priority === 'CRITICAL') return 'sq-tone-critical';
+  if (isTaskDueToday(task) || task.priority === 'HIGH') return 'sq-tone-watch';
+  return 'bg-muted/50 text-muted-foreground';
+}
+
+function taskEntrySurface(task: ApiTask): string {
+  if (deriveTaskIsOverdue(task) || task.priority === 'CRITICAL') {
+    return 'border-[color:color-mix(in_srgb,var(--status-critical)_22%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),transparent)]';
+  }
+  if (isTaskDueToday(task) || task.priority === 'HIGH') {
+    return 'border-[color:color-mix(in_srgb,var(--status-watch)_20%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_6%,transparent),transparent)]';
+  }
+  return 'border-border/30 bg-card/40';
 }
 
 function formatTaskDueLabel(
@@ -62,7 +67,18 @@ function formatTaskDueLabel(
   return t('dashboardTasksOverview.noDueDate');
 }
 
-function TaskPreviewRow({
+function resolvePrimaryStatusLabel(
+  task: ApiTask,
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string,
+): string | null {
+  if (deriveTaskIsOverdue(task)) return t('dashboardTasksOverview.overdue');
+  if (isTaskDueToday(task)) return t('dashboardTasksOverview.today');
+  if (task.status === 'IN_PROGRESS') return t('dashboardTasksOverview.inProgress');
+  if (!task.assignedUserId) return t('dashboardTasksOverview.unassigned');
+  return null;
+}
+
+function TaskPreviewCard({
   task,
   vehicleById,
   t,
@@ -80,39 +96,125 @@ function TaskPreviewRow({
   const assignee = task.assignedUserId
     ? task.assignedUserName?.trim() || t('dashboardTasksOverview.unassignedAssignee')
     : t('dashboardTasksOverview.unassignedAssignee');
-  const showPriority =
-    task.priority === 'CRITICAL' || task.priority === 'HIGH';
+  const showPriority = task.priority === 'CRITICAL' || task.priority === 'HIGH';
+  const primaryStatusLabel = resolvePrimaryStatusLabel(task, t);
+  const entityLine = [linked.primary, linked.secondary].filter(Boolean).join(' · ');
 
   return (
-    <div className="border-b border-border/30 px-3 py-2.5 last:border-b-0">
-      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-        <div className="min-w-0 flex-1">
-          <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'truncate')}>{task.title?.trim() || '—'}</p>
-          <p className={cn(NOTIFICATION_PANEL_TYPO.entity, 'mt-0.5 truncate')}>
-            {linked.primary}
-            {linked.secondary ? ` · ${linked.secondary}` : ''}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 sm:justify-end">
-          <span
-            className={cn(
-              NOTIFICATION_PANEL_TYPO.meta,
-              deriveTaskIsOverdue(task) && 'font-medium text-[color:var(--status-critical)]',
-              isTaskDueToday(task) && !deriveTaskIsOverdue(task) && 'font-medium text-[color:var(--status-watch)]',
-            )}
-          >
-            {formatTaskDueLabel(task, t, locale)}
-          </span>
-          {showPriority ? (
-            <span className={cn(NOTIFICATION_PANEL_TYPO.metaBadge, 'bg-muted/30 uppercase')}>
-              {task.priority === 'CRITICAL'
-                ? t('dashboardTasksOverview.priorityCritical')
-                : t('dashboardTasksOverview.priorityHigh')}
-            </span>
-          ) : null}
-          <span className={NOTIFICATION_PANEL_TYPO.meta}>{assignee}</span>
+    <article
+      className={cn(
+        'overflow-hidden rounded-xl border transition-colors motion-reduce:transition-none',
+        taskEntrySurface(task),
+      )}
+    >
+      <div className="px-3 py-2.5">
+        <div className="flex w-full items-start gap-2.5 text-left">
+          <div className="relative shrink-0" aria-hidden>
+            <div className={cn(NOTIFICATION_PANEL_TYPO.iconWrap, taskIconTone(task))}>
+              <ListTodo className={NOTIFICATION_PANEL_TYPO.icon} />
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {primaryStatusLabel ? (
+                  <span className={cn(NOTIFICATION_PANEL_TYPO.metaBadge, severityBadgeTone(task))}>
+                    {primaryStatusLabel}
+                  </span>
+                ) : null}
+                {showPriority ? (
+                  <span className={cn(NOTIFICATION_PANEL_TYPO.metaBadge, 'bg-muted/60 uppercase text-muted-foreground')}>
+                    {task.priority === 'CRITICAL'
+                      ? t('dashboardTasksOverview.priorityCritical')
+                      : t('dashboardTasksOverview.priorityHigh')}
+                  </span>
+                ) : null}
+              </div>
+              <span className={cn(NOTIFICATION_PANEL_TYPO.lastSeen, 'shrink-0 tabular-nums')}>
+                {formatTaskDueLabel(task, t, locale)}
+              </span>
+            </div>
+
+            <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'mt-0.5')}>
+              {task.title?.trim() || '—'}
+            </p>
+
+            {entityLine ? (
+              <p className={cn(NOTIFICATION_PANEL_TYPO.description, 'mt-1 line-clamp-2')}>
+                {entityLine}
+              </p>
+            ) : null}
+
+            <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-1 truncate')}>
+              {assignee}
+            </p>
+          </div>
         </div>
       </div>
+    </article>
+  );
+}
+
+function TasksOverviewCountsRow({
+  counts,
+  canViewUnassigned,
+  t,
+}: {
+  counts: {
+    overdue: number;
+    today: number;
+    inProgress: number;
+    unassigned: number;
+  };
+  canViewUnassigned: boolean;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+}) {
+  const items = [
+    {
+      label: t('dashboardTasksOverview.overdue'),
+      value: counts.overdue,
+      tone: counts.overdue > 0 ? 'critical' as const : 'neutral' as const,
+    },
+    {
+      label: t('dashboardTasksOverview.today'),
+      value: counts.today,
+      tone: counts.today > 0 ? 'watch' as const : 'neutral' as const,
+    },
+    {
+      label: t('dashboardTasksOverview.inProgress'),
+      value: counts.inProgress,
+      tone: 'neutral' as const,
+    },
+    ...(canViewUnassigned
+      ? [{
+          label: t('dashboardTasksOverview.unassigned'),
+          value: counts.unassigned,
+          tone: 'neutral' as const,
+        }]
+      : []),
+  ];
+
+  return (
+    <div
+      className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1"
+      data-testid="dashboard-tasks-overview-status-chips"
+    >
+      {items.map((item) => (
+        <span
+          key={item.label}
+          className={cn(
+            NOTIFICATION_PANEL_TYPO.meta,
+            'tabular-nums',
+            item.tone === 'critical' && item.value > 0 && 'font-medium text-[color:var(--status-critical)]',
+            item.tone === 'watch' && item.value > 0 && 'font-medium text-[color:var(--status-watch)]',
+          )}
+        >
+          {item.label}
+          {' '}
+          <span className="font-semibold text-foreground">{item.value}</span>
+        </span>
+      ))}
     </div>
   );
 }
@@ -152,25 +254,33 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
 
   return (
     <section
-      className={cn(panelShellClass('secondary'), 'min-w-0 animate-fade-up')}
+      className={cn(panelShellClass('tertiary'), 'min-w-0 animate-fade-up')}
       aria-label={t('dashboardTasksOverview.title')}
       data-testid="dashboard-tasks-overview-panel"
     >
       <div className="shrink-0 border-b border-border/35 px-3.5 py-2.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand)]/10"
-                aria-hidden
-              >
-                <ListTodo className="h-4 w-4 text-[color:var(--brand)]" />
-              </span>
-              <h2 className={NOTIFICATION_PANEL_TYPO.boxTitle}>{t('dashboardTasksOverview.title')}</h2>
-            </div>
+            <h2 className={NOTIFICATION_PANEL_TYPO.boxTitle}>{t('dashboardTasksOverview.title')}</h2>
             <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-0.5 text-muted-foreground')}>
               {subtitle}
             </p>
+            {overview.countsLoading ? (
+              <div className="mt-2 flex flex-wrap gap-2" data-testid="dashboard-tasks-overview-loading">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <span
+                    key={index}
+                    className="inline-block h-4 w-20 animate-pulse rounded-md bg-muted/40"
+                  />
+                ))}
+              </div>
+            ) : overview.error ? null : overview.counts ? (
+              <TasksOverviewCountsRow
+                counts={overview.counts}
+                canViewUnassigned={overview.canViewUnassigned}
+                t={t}
+              />
+            ) : null}
           </div>
           {onOpenTasks ? (
             <Button
@@ -189,43 +299,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
         </div>
       </div>
 
-      <div className="border-b border-border/35 px-3.5 py-2.5">
-        {overview.countsLoading ? (
-          <div className="flex flex-wrap gap-2" data-testid="dashboard-tasks-overview-loading">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <span
-                key={index}
-                className="inline-block h-7 w-24 animate-pulse rounded-lg bg-muted/40"
-              />
-            ))}
-          </div>
-        ) : overview.error ? null : overview.counts ? (
-          <div className="flex flex-wrap gap-2" data-testid="dashboard-tasks-overview-status-chips">
-            <StatusChip
-              label={t('dashboardTasksOverview.overdue')}
-              value={overview.counts.overdue}
-              tone="critical"
-            />
-            <StatusChip
-              label={t('dashboardTasksOverview.today')}
-              value={overview.counts.today}
-              tone="watch"
-            />
-            <StatusChip
-              label={t('dashboardTasksOverview.inProgress')}
-              value={overview.counts.inProgress}
-            />
-            {overview.canViewUnassigned ? (
-              <StatusChip
-                label={t('dashboardTasksOverview.unassigned')}
-                value={overview.counts.unassigned}
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="min-w-0 px-0 py-0">
+      <div className="min-h-0 flex-1">
         {overview.error ? (
           <div className="px-3.5 py-4">
             <ErrorState
@@ -236,26 +310,39 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
             />
           </div>
         ) : overview.previewLoading ? (
-          <div className="px-3.5 py-3" data-testid="dashboard-tasks-overview-preview-loading">
-            <SkeletonRows rows={4} />
+          <div data-testid="dashboard-tasks-overview-preview-loading">
+            <NotificationCardSkeleton rows={3} />
           </div>
         ) : overview.previewReady && overview.counts && overview.counts.open === 0 ? (
-          <div className="px-3.5 py-6 text-center">
-            <p className={NOTIFICATION_PANEL_TYPO.emptyTitle}>{t('dashboardTasksOverview.emptyTitle')}</p>
-            <p className={cn(NOTIFICATION_PANEL_TYPO.emptyBody, 'mt-1')}>{t('dashboardTasksOverview.emptyDescription')}</p>
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-xl sq-tone-success"
+              aria-hidden
+            >
+              <ListTodo className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <p className={NOTIFICATION_PANEL_TYPO.emptyTitle}>{t('dashboardTasksOverview.emptyTitle')}</p>
+              <p className={NOTIFICATION_PANEL_TYPO.emptyBody}>{t('dashboardTasksOverview.emptyDescription')}</p>
+            </div>
           </div>
         ) : overview.previewReady ? (
-          <div data-testid="dashboard-tasks-overview-preview">
+          <ul
+            className="flex flex-col gap-2 px-2 py-2 sm:px-2.5"
+            role="list"
+            data-testid="dashboard-tasks-overview-preview"
+          >
             {overview.previewTasks.map((task) => (
-              <TaskPreviewRow
-                key={task.id}
-                task={task}
-                vehicleById={vehicleById}
-                t={t}
-                locale={intlLocale}
-              />
+              <li key={task.id} className="list-none">
+                <TaskPreviewCard
+                  task={task}
+                  vehicleById={vehicleById}
+                  t={t}
+                  locale={intlLocale}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         ) : null}
       </div>
     </section>

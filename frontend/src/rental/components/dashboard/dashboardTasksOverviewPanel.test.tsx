@@ -208,6 +208,9 @@ describe('DashboardTasksOverviewPanel', () => {
     expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.meta');
     expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.cta');
     expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.cardTitle');
+    expect(panelSrc).toContain('NotificationCardSkeleton');
+    expect(panelSrc).toContain('rounded-xl border');
+    expect(panelSrc).toContain("panelShellClass('tertiary')");
     expect(panelSrc).not.toContain('DashboardPanelHeader');
   });
 });
