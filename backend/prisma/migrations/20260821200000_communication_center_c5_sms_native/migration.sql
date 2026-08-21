@@ -105,7 +105,6 @@ CREATE UNIQUE INDEX "sms_messages_provider_message_id_key" ON "sms_messages"("pr
 CREATE UNIQUE INDEX "sms_messages_organization_id_business_operation_id_key" ON "sms_messages"("organization_id", "business_operation_id");
 CREATE INDEX "sms_messages_conversation_id_created_at_idx" ON "sms_messages"("conversation_id", "created_at");
 CREATE INDEX "sms_messages_organization_id_idx" ON "sms_messages"("organization_id");
-CREATE INDEX "sms_messages_provider_message_id_idx" ON "sms_messages"("provider_message_id");
 
 CREATE UNIQUE INDEX "sms_webhook_events_external_event_id_key" ON "sms_webhook_events"("external_event_id");
 CREATE INDEX "sms_webhook_events_organization_id_created_at_idx" ON "sms_webhook_events"("organization_id", "created_at");

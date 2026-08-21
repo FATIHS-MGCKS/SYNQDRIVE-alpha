@@ -66,10 +66,11 @@ C5.1 documents `inbound_number` as the conversation contact key. C5.2 inbound ha
 `SmsWebhookSecurityService.verifyIngress`:
 
 1. Requires signature headers
-2. Resolves tenant (`webhookEndpointId` → `findUnique`, fallback `providerMessageId` / `account_id`)
-3. **Requires configured signing secret** — if missing → `403 Forbidden`
-4. Verifies HMAC — invalid → `401 Unauthorized`
-5. No native mutation occurs before verification (security service is read-only)
+2. Resolves tenant **only** via authoritative `X-Webhook-ID` → `OrgSmsConfig.webhookEndpointId` (`findUnique`); unknown endpoint → `403`
+3. Asserts payload `account_id` / `message_id` agree with the endpoint org (no cross-org fallback routing)
+4. **Requires configured signing secret** — if missing → `403 Forbidden`
+5. Verifies HMAC — invalid → `401 Unauthorized`
+6. No native mutation occurs before verification (security service is read-only)
 
 **No unsigned downgrade path.**
 
@@ -99,13 +100,17 @@ Hardening:
 |-------|---------|
 | `PENDING` | Durable row created; provider not yet claimed |
 | `DISPATCHING` | Dispatch lease held (`dispatchAttemptedAt`) |
-| `DISPATCH_AMBIGUOUS` | Retryable transport/unknown outcome — **not** terminal FAILED |
+| `DISPATCH_AMBIGUOUS` | Retryable transport/unknown outcome — **not** terminal FAILED; reclaimable within idempotency window |
 | `QUEUED` | Provider accepted; `providerMessageId` set |
 | `FAILED` | Terminal provider rejection only |
 
-Stale threshold: `SMS_DISPATCH_STALE_MS` (120s). After stale, `claimProviderDispatch` reclaims lease.
+Stale threshold: `SMS_DISPATCH_STALE_MS` (120s). After stale, `claimProviderDispatch` reclaims `DISPATCHING` lease.
 
-**Idempotency:** C5.2 must reuse same `businessOperationId` as sent.dm `Idempotency-Key` (24h provider window per sent.dm docs).
+**Idempotency window:** `SENT_DM_IDEMPOTENCY_WINDOW_MS` (24h). Anchor: `dispatchAttemptedAt ?? createdAt`.
+
+- Within window: `PENDING`, stale `DISPATCHING`, and `DISPATCH_AMBIGUOUS` may reclaim the **same** `SmsMessage` row / `businessOperationId` / sent.dm `Idempotency-Key`.
+- Outside window: `claimProviderDispatch` returns `idempotency_expired` — no silent reset to `PENDING`, no duplicate outbound row.
+- Acceptance path: `DISPATCH_AMBIGUOUS` → reclaim → `DISPATCHING` → `recordProviderAcceptance` → `QUEUED`.
 
 ---
 

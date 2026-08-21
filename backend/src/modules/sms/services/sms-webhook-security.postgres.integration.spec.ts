@@ -235,4 +235,159 @@ describePg('SMS webhook security postgres (C5.1)', () => {
       }),
     ).rejects.toMatchObject({ code: 'P2002' });
   });
+
+  it('rejects endpoint org A + account org B payload mismatch', async () => {
+    if (!schemaReady) return;
+    const req = buildSignedRequest({
+      field: 'message',
+      event: 'message.delivered',
+      timestamp: '2026-08-21T10:00:00Z',
+      payload: {
+        message_id: 'msg-tenant-account',
+        message_status: 'DELIVERED',
+        account_id: `acc-${orgBId}`,
+        updated_at: '2026-08-21T10:00:01Z',
+      },
+    });
+    await expect(security.verifyIngress(req)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects endpoint org A + message org B payload mismatch', async () => {
+    if (!schemaReady) return;
+    const convoB = await prisma.smsConversation.create({
+      data: {
+        organizationId: orgBId,
+        contactPhone: '+491708888888',
+        contactPhoneNormalized: '491708888888',
+      },
+    });
+    await prisma.smsMessage.create({
+      data: {
+        organizationId: orgBId,
+        conversationId: convoB.id,
+        direction: 'outgoing',
+        senderType: 'system',
+        content: 'other org',
+        providerMessageId: 'msg-tenant-message-b',
+        businessOperationId: 'biz-tenant-b',
+        status: SmsMessageDeliveryStatus.QUEUED,
+      },
+    });
+
+    const req = buildSignedRequest({
+      field: 'message',
+      event: 'message.delivered',
+      timestamp: '2026-08-21T10:00:00Z',
+      payload: {
+        message_id: 'msg-tenant-message-b',
+        message_status: 'DELIVERED',
+        account_id: accountId,
+        updated_at: '2026-08-21T10:00:01Z',
+      },
+    });
+    await expect(security.verifyIngress(req)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('accepts known endpoint org A with matching account and message bindings', async () => {
+    if (!schemaReady) return;
+    const convo = await prisma.smsConversation.create({
+      data: {
+        organizationId: orgId,
+        contactPhone: '+491707777777',
+        contactPhoneNormalized: '491707777777',
+      },
+    });
+    await prisma.smsMessage.create({
+      data: {
+        organizationId: orgId,
+        conversationId: convo.id,
+        direction: 'outgoing',
+        senderType: 'system',
+        content: 'same org',
+        providerMessageId: 'msg-tenant-match',
+        businessOperationId: 'biz-tenant-match',
+        status: SmsMessageDeliveryStatus.QUEUED,
+      },
+    });
+
+    const req = buildSignedRequest({
+      field: 'message',
+      event: 'message.delivered',
+      timestamp: '2026-08-21T10:00:00Z',
+      payload: {
+        message_id: 'msg-tenant-match',
+        message_status: 'DELIVERED',
+        account_id: accountId,
+        updated_at: '2026-08-21T10:00:01Z',
+      },
+    });
+    const verified = await security.verifyIngress(req);
+    expect(verified.organizationId).toBe(orgId);
+  });
+
+  it('rejects unknown webhook endpoint even when account/message exist elsewhere', async () => {
+    if (!schemaReady) return;
+    const convoB = await prisma.smsConversation.create({
+      data: {
+        organizationId: orgBId,
+        contactPhone: '+491706666666',
+        contactPhoneNormalized: '491706666666',
+      },
+    });
+    await prisma.orgSmsConfig.create({
+      data: {
+        organizationId: orgBId,
+        isActive: true,
+        webhookSigningSecretConfigured: true,
+        webhookEndpointId: `wh-${orgBId}`,
+        sentDmAccountId: `acc-${orgBId}`,
+      },
+    });
+    await prisma.smsMessage.create({
+      data: {
+        organizationId: orgBId,
+        conversationId: convoB.id,
+        direction: 'outgoing',
+        senderType: 'system',
+        content: 'fallback probe',
+        providerMessageId: 'msg-fallback-b',
+        businessOperationId: 'biz-fallback-b',
+        status: SmsMessageDeliveryStatus.QUEUED,
+      },
+    });
+    process.env[`SENT_DM_WEBHOOK_SIGNING_SECRET_${orgBId}`] = signingSecret;
+
+    const rawBody = Buffer.from(JSON.stringify({
+      field: 'message',
+      event: 'message.delivered',
+      timestamp: '2026-08-21T10:00:00Z',
+      payload: {
+        message_id: 'msg-fallback-b',
+        message_status: 'DELIVERED',
+        account_id: `acc-${orgBId}`,
+        updated_at: '2026-08-21T10:00:01Z',
+      },
+    }));
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const unknownEndpointId = 'wh-unknown-endpoint';
+    const signature = computeSentDmWebhookSignature({
+      rawBody,
+      webhookId: unknownEndpointId,
+      timestamp,
+      signingSecret,
+    })!;
+
+    await expect(
+      security.verifyIngress({
+        rawBody,
+        headers: {
+          'x-webhook-id': unknownEndpointId,
+          'x-webhook-timestamp': timestamp,
+          'x-webhook-signature': signature,
+        },
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    delete process.env[`SENT_DM_WEBHOOK_SIGNING_SECRET_${orgBId}`];
+  });
 });

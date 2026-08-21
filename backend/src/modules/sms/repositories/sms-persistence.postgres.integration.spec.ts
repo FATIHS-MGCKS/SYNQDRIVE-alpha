@@ -174,7 +174,10 @@ describePg('SMS persistence postgres (C5.1)', () => {
     if (!msg) throw new Error('message missing');
 
     const claimed = await messages.claimProviderDispatch(msg.id, orgId);
-    expect(claimed?.status).toBe(SmsMessageDeliveryStatus.DISPATCHING);
+    expect(claimed.outcome).toBe('claimed');
+    if (claimed.outcome === 'claimed') {
+      expect(claimed.message.status).toBe(SmsMessageDeliveryStatus.DISPATCHING);
+    }
 
     await prisma.smsMessage.update({
       where: { id: msg.id },
@@ -182,7 +185,7 @@ describePg('SMS persistence postgres (C5.1)', () => {
     });
 
     const reclaimed = await messages.claimProviderDispatch(msg.id, orgId);
-    expect(reclaimed).not.toBeNull();
+    expect(reclaimed.outcome).toBe('claimed');
   });
 
   it('ambiguous failure does not mark terminal FAILED', async () => {
@@ -199,7 +202,8 @@ describePg('SMS persistence postgres (C5.1)', () => {
       senderType: 'system',
     });
     if (!msg) throw new Error('message missing');
-    await messages.claimProviderDispatch(msg.id, orgId);
+    const claim = await messages.claimProviderDispatch(msg.id, orgId);
+    expect(claim.outcome).toBe('claimed');
     await messages.recordAmbiguousDispatchFailure(msg.id, orgId, 'HTTP_503');
     const updated = await prisma.smsMessage.findUniqueOrThrow({ where: { id: msg.id } });
     expect(updated.status).toBe(SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS);

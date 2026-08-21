@@ -11596,7 +11596,6 @@ model SmsMessage {
   @@unique([organizationId, businessOperationId], name: "sms_messages_org_business_operation")
   @@index([conversationId, createdAt])
   @@index([organizationId])
-  @@index([providerMessageId])
   @@map("sms_messages")
 }
 

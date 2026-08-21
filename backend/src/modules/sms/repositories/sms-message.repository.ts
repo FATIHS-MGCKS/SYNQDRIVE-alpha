@@ -2,6 +2,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, SmsMessage, SmsMessageDeliveryStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { SMS_DISPATCH_STALE_MS } from '../sms.constants';
+import {
+  buildIdempotencyWindowStart,
+  getSmsIdempotencyAnchorAt,
+  isSmsDispatchReclaimableStatus,
+  isWithinSentDmIdempotencyWindow,
+  SMS_NON_RECLAIMABLE_DISPATCH_STATUSES,
+} from '../sms-dispatch-state';
 import type { SmsMessageDirection, SmsSenderType } from '../sms.constants';
 
 export interface CreateOutboundSmsMessageInput {
@@ -19,6 +26,12 @@ export interface RecordProviderAcceptanceInput {
   providerStatus: string;
   acceptedAt: Date;
 }
+
+export type SmsDispatchClaimResult =
+  | { outcome: 'claimed'; message: SmsMessage }
+  | { outcome: 'held_by_peer' }
+  | { outcome: 'idempotency_expired'; message: SmsMessage }
+  | { outcome: 'not_claimable'; message?: SmsMessage };
 
 @Injectable()
 export class SmsMessageRepository {
@@ -66,46 +79,118 @@ export class SmsMessageRepository {
   }
 
   /**
-   * Claims provider dispatch lease. Returns null when another worker holds a fresh DISPATCHING lease.
-   * Reclaims stale DISPATCHING rows for idempotent retry with the same businessOperationId.
+   * Claims an active provider dispatch lease on the SAME SmsMessage row.
+   * Reuses businessOperationId / sent.dm Idempotency-Key only while within the 24h window.
    */
-  async claimProviderDispatch(messageId: string, organizationId: string): Promise<SmsMessage | null> {
+  async claimProviderDispatch(messageId: string, organizationId: string): Promise<SmsDispatchClaimResult> {
+    const message = await this.prisma.smsMessage.findFirst({
+      where: { id: messageId, organizationId },
+    });
+    if (!message) {
+      return { outcome: 'not_claimable' };
+    }
+    if (message.providerMessageId) {
+      return { outcome: 'not_claimable', message };
+    }
+    if (SMS_NON_RECLAIMABLE_DISPATCH_STATUSES.has(message.status)) {
+      return { outcome: 'not_claimable', message };
+    }
+    if (!isSmsDispatchReclaimableStatus(message.status)) {
+      return { outcome: 'not_claimable', message };
+    }
+
     const now = new Date();
     const staleBefore = new Date(now.getTime() - SMS_DISPATCH_STALE_MS);
+    const idempotencyWindowStart = buildIdempotencyWindowStart(now);
+    const withinIdempotencyWindow = isWithinSentDmIdempotencyWindow(
+      getSmsIdempotencyAnchorAt(message),
+      now,
+    );
 
-    const freshClaim = await this.prisma.smsMessage.updateMany({
-      where: {
-        id: messageId,
-        organizationId,
-        providerMessageId: null,
-        status: SmsMessageDeliveryStatus.PENDING,
-      },
-      data: {
-        status: SmsMessageDeliveryStatus.DISPATCHING,
-        dispatchAttemptedAt: now,
-      },
-    });
-    if (freshClaim.count === 1) {
-      return this.prisma.smsMessage.findUniqueOrThrow({ where: { id: messageId } });
+    if (
+      (message.status === SmsMessageDeliveryStatus.DISPATCHING
+        || message.status === SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS)
+      && !withinIdempotencyWindow
+    ) {
+      return { outcome: 'idempotency_expired', message };
     }
 
-    const staleReclaim = await this.prisma.smsMessage.updateMany({
-      where: {
-        id: messageId,
-        organizationId,
-        providerMessageId: null,
-        status: SmsMessageDeliveryStatus.DISPATCHING,
-        dispatchAttemptedAt: { lt: staleBefore },
-      },
-      data: {
-        dispatchAttemptedAt: now,
-      },
-    });
-    if (staleReclaim.count === 1) {
-      return this.prisma.smsMessage.findUniqueOrThrow({ where: { id: messageId } });
+    if (message.status === SmsMessageDeliveryStatus.PENDING) {
+      const claimed = await this.prisma.smsMessage.updateMany({
+        where: {
+          id: messageId,
+          organizationId,
+          providerMessageId: null,
+          status: SmsMessageDeliveryStatus.PENDING,
+        },
+        data: {
+          status: SmsMessageDeliveryStatus.DISPATCHING,
+          dispatchAttemptedAt: now,
+        },
+      });
+      if (claimed.count === 1) {
+        return {
+          outcome: 'claimed',
+          message: await this.prisma.smsMessage.findUniqueOrThrow({ where: { id: messageId } }),
+        };
+      }
+      return { outcome: 'held_by_peer' };
     }
 
-    return null;
+    if (message.status === SmsMessageDeliveryStatus.DISPATCHING) {
+      if (message.dispatchAttemptedAt && message.dispatchAttemptedAt >= staleBefore) {
+        return { outcome: 'held_by_peer' };
+      }
+
+      const reclaimed = await this.prisma.smsMessage.updateMany({
+        where: {
+          id: messageId,
+          organizationId,
+          providerMessageId: null,
+          status: SmsMessageDeliveryStatus.DISPATCHING,
+          dispatchAttemptedAt: { lt: staleBefore, gte: idempotencyWindowStart },
+        },
+        data: { dispatchAttemptedAt: now },
+      });
+      if (reclaimed.count === 1) {
+        return {
+          outcome: 'claimed',
+          message: await this.prisma.smsMessage.findUniqueOrThrow({ where: { id: messageId } }),
+        };
+      }
+      return { outcome: 'held_by_peer' };
+    }
+
+    if (message.status === SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS) {
+      const reclaimed = await this.prisma.smsMessage.updateMany({
+        where: {
+          id: messageId,
+          organizationId,
+          providerMessageId: null,
+          status: SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS,
+          OR: [
+            { dispatchAttemptedAt: { gte: idempotencyWindowStart } },
+            {
+              dispatchAttemptedAt: null,
+              createdAt: { gte: idempotencyWindowStart },
+            },
+          ],
+        },
+        data: {
+          status: SmsMessageDeliveryStatus.DISPATCHING,
+          dispatchAttemptedAt: now,
+        },
+      });
+      if (reclaimed.count === 1) {
+        return {
+          outcome: 'claimed',
+          message: await this.prisma.smsMessage.findUniqueOrThrow({ where: { id: messageId } }),
+        };
+      }
+      return { outcome: 'held_by_peer' };
+    }
+
+    return { outcome: 'not_claimable', message };
   }
 
   async recordProviderAcceptance(input: RecordProviderAcceptanceInput) {
@@ -114,7 +199,7 @@ export class SmsMessageRepository {
         id: input.messageId,
         organizationId: input.organizationId,
         providerMessageId: null,
-        status: { in: [SmsMessageDeliveryStatus.PENDING, SmsMessageDeliveryStatus.DISPATCHING] },
+        status: SmsMessageDeliveryStatus.DISPATCHING,
       },
       data: {
         providerMessageId: input.providerMessageId,
@@ -159,13 +244,12 @@ export class SmsMessageRepository {
         id: messageId,
         organizationId,
         providerMessageId: null,
-        status: { in: [SmsMessageDeliveryStatus.PENDING, SmsMessageDeliveryStatus.DISPATCHING] },
+        status: SmsMessageDeliveryStatus.DISPATCHING,
       },
       data: {
         status: SmsMessageDeliveryStatus.DISPATCH_AMBIGUOUS,
         failureCode: failureCode.slice(0, 64),
         failureReason: 'dispatch_ambiguous',
-        dispatchAttemptedAt: null,
       },
     });
   }

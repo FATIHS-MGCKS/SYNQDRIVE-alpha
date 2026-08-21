@@ -27,8 +27,8 @@ export class SmsWebhookSecurityService {
   ) {}
 
   /**
-   * Fail-closed ingress gate. No mutation may proceed unless signature verification succeeds
-   * against a configured per-org signing secret.
+   * Fail-closed ingress gate. X-Webhook-ID is authoritative tenant routing identity.
+   * No mutation may proceed unless signature verification succeeds against that org secret.
    */
   async verifyIngress(input: {
     rawBody: Buffer;
@@ -52,15 +52,14 @@ export class SmsWebhookSecurityService {
       throw new BadRequestException('Invalid SMS webhook payload');
     }
 
-    const orgConfig = await this.resolveOrgConfig({
-      webhookEndpointId,
-      accountId: parsed.payload.account_id,
-      providerMessageId: parsed.payload.message_id,
+    const orgConfig = await this.prisma.orgSmsConfig.findUnique({
+      where: { webhookEndpointId },
     });
-
-    if (!orgConfig) {
-      throw new ForbiddenException('SMS webhook tenant could not be resolved');
+    if (!orgConfig?.isActive) {
+      throw new ForbiddenException('SMS webhook endpoint is not registered for an active organization');
     }
+
+    await this.assertPayloadTenantConsistency(orgConfig, parsed);
 
     const signingSecret = this.resolveSigningSecret(orgConfig);
     if (!signingSecret) {
@@ -76,14 +75,6 @@ export class SmsWebhookSecurityService {
     });
     if (!signatureValid) {
       throw new UnauthorizedException('Invalid SMS webhook signature');
-    }
-
-    if (
-      parsed.payload.account_id
-      && orgConfig.sentDmAccountId
-      && parsed.payload.account_id !== orgConfig.sentDmAccountId
-    ) {
-      throw new ForbiddenException('SMS webhook account binding mismatch');
     }
 
     const occurredAt = resolveAuthoritativeOccurredAt(parsed);
@@ -108,40 +99,30 @@ export class SmsWebhookSecurityService {
     return this.configService.get<string>('sms.globalWebhookSigningSecret', '')?.trim() || null;
   }
 
-  private async resolveOrgConfig(input: {
-    webhookEndpointId: string;
-    accountId?: string;
-    providerMessageId?: string;
-  }): Promise<OrgSmsConfig | null> {
-    const byEndpoint = await this.prisma.orgSmsConfig.findUnique({
-      where: { webhookEndpointId: input.webhookEndpointId },
+  private async assertPayloadTenantConsistency(
+    orgConfig: OrgSmsConfig,
+    parsed: ParsedSentDmWebhookEvent,
+  ): Promise<void> {
+    const accountId = parsed.payload.account_id?.trim();
+    if (accountId && orgConfig.sentDmAccountId && accountId !== orgConfig.sentDmAccountId) {
+      throw new ForbiddenException('SMS webhook account binding mismatch');
+    }
+    if (accountId && !orgConfig.sentDmAccountId) {
+      throw new ForbiddenException('SMS webhook account binding is not configured');
+    }
+
+    const providerMessageId = parsed.payload.message_id?.trim();
+    if (!providerMessageId) {
+      return;
+    }
+
+    const message = await this.prisma.smsMessage.findUnique({
+      where: { providerMessageId },
+      select: { organizationId: true },
     });
-    if (byEndpoint?.isActive) {
-      return byEndpoint;
+    if (message && message.organizationId !== orgConfig.organizationId) {
+      throw new ForbiddenException('SMS webhook message binding mismatch');
     }
-
-    if (input.providerMessageId?.trim()) {
-      const message = await this.prisma.smsMessage.findUnique({
-        where: { providerMessageId: input.providerMessageId.trim() },
-        select: { organizationId: true },
-      });
-      if (message) {
-        const config = await this.prisma.orgSmsConfig.findUnique({
-          where: { organizationId: message.organizationId },
-        });
-        if (config?.isActive) {
-          return config;
-        }
-      }
-    }
-
-    if (input.accountId?.trim()) {
-      return this.prisma.orgSmsConfig.findUnique({
-        where: { sentDmAccountId: input.accountId.trim() },
-      });
-    }
-
-    return null;
   }
 }
 
