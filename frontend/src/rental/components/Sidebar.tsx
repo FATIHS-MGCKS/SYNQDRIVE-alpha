@@ -358,7 +358,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           </button>
 
           {/* Centered Logo */}
-          <SynqLogo className="h-[25px] w-auto object-contain" />
+          <SynqLogo className="h-4 w-auto object-contain" />
 
           {/* Spacer for symmetry */}
           <div className="w-10" />
@@ -394,11 +394,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
       }`}>
         {!isCollapsed && (
           <div className="relative flex items-center justify-center border-b border-sidebar-border transition-all duration-300 shrink-0 px-[30px] py-[30px]">
-            {/* V4.6.90 — refreshed SYNQDRIVE wordmark (new iconic X-badge + larger type weight)
-                has an aspect ratio of ~5.7:1 (1024x180). h-[27px] keeps the horizontal footprint
-                at ~154px so the brand row stays visually identical to the previous logo inside
-                the 260px sidebar. */}
-            <SynqLogo className="h-[27px] w-auto object-contain" />
+            {/* synqdrive-logo-v2-blau (~6.9:1). h-[18px] keeps the wordmark near ~125px wide
+                inside the 260px sidebar. */}
+            <SynqLogo className="h-[18px] w-auto object-contain" />
           </div>
         )}
 

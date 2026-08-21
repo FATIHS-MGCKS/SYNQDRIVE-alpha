@@ -383,7 +383,7 @@ export function Sidebar({
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <SynqDriveBrandLogo className="h-4 w-auto object-contain" />
+          <SynqDriveBrandLogo className="h-3.5 w-auto object-contain" />
           <div className="w-11" />
         </div>
 
@@ -421,7 +421,10 @@ export function Sidebar({
         )}
       >
         <div className={cn('border-b border-sidebar-border shrink-0 flex flex-col items-center gap-1.5', isCollapsed ? 'px-2 py-3' : 'px-4 py-3')}>
-          <SynqDriveBrandLogo className={cn('w-auto object-contain', isCollapsed ? 'h-5' : 'h-7')} />
+          <SynqDriveBrandLogo
+            variant={isCollapsed ? 'mark' : 'full'}
+            className="h-[18px] w-auto object-contain"
+          />
           {!isCollapsed && brandChip}
         </div>
 
