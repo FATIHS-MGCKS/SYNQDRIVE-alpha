@@ -158,6 +158,43 @@ export class CommunicationConversationRepository {
     });
   }
 
+  /**
+   * Atomically increments unreadCount for org-scoped conversation rows.
+   * Used by projection replay-safe path — delta must be a positive integer.
+   */
+  async incrementUnreadCount(
+    organizationId: string,
+    id: string,
+    delta: number,
+    tx?: CommunicationTx,
+  ): Promise<CommunicationConversation> {
+    if (!Number.isInteger(delta) || delta <= 0) {
+      throw new BadRequestException('unread increment delta must be a positive integer');
+    }
+
+    const existing = await this.findById(organizationId, id, tx);
+    if (!existing) {
+      throw new BadRequestException('Communication conversation not found');
+    }
+
+    try {
+      return await this.client(tx).communicationConversation.update({
+        where: { id: existing.id },
+        data: {
+          unreadCount: { increment: delta },
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError
+        && error.code === 'P2004'
+      ) {
+        throw new BadRequestException('unreadCount must be >= 0');
+      }
+      throw error;
+    }
+  }
+
   private assertUnreadCount(unreadCount: number | undefined): void {
     if (unreadCount !== undefined && unreadCount < 0) {
       throw new BadRequestException('unreadCount must be >= 0');

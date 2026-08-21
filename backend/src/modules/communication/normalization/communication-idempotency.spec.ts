@@ -24,7 +24,7 @@ describe('buildCanonicalIdempotencyKey', () => {
       providerMessageId: 'wamid-1',
     });
     expect(a).toBe(b);
-    expect(a).toBe('org-1:WHATSAPP:META_WHATSAPP:MESSAGE_RECEIVED:wa-native-1:msg:wamid-1');
+    expect(a).toMatch(/^cc1:[a-f0-9]{64}$/);
   });
 
   it('differs by event type when sharing providerMessageId', () => {
@@ -59,12 +59,31 @@ describe('buildCanonicalIdempotencyKey', () => {
     expect(a).not.toBe(b);
   });
 
+  it('treats colon-containing providerEventId as unambiguous via digest', () => {
+    const withColons = buildCanonicalIdempotencyKey({
+      ...base,
+      channel: CommunicationChannel.VOICE,
+      providerIdentity: CommunicationProviderIdentity.TWILIO,
+      eventType: CommunicationEventType.CALL_CONNECTED,
+      providerEventId: 'CA1:status:ringing',
+    });
+    const withoutColons = buildCanonicalIdempotencyKey({
+      ...base,
+      channel: CommunicationChannel.VOICE,
+      providerIdentity: CommunicationProviderIdentity.TWILIO,
+      eventType: CommunicationEventType.CALL_CONNECTED,
+      providerEventId: 'CA1statusringing',
+    });
+    expect(withColons).toMatch(/^cc1:[a-f0-9]{64}$/);
+    expect(withColons).not.toBe(withoutColons);
+  });
+
   it('does not embed PII/content in key', () => {
     const key = buildCanonicalIdempotencyKey({
       ...base,
       providerMessageId: 'wamid-abc',
     });
     expect(key).not.toMatch(/hello|\+49|customer@/i);
-    expect(key).toContain('wamid-abc');
+    expect(key).not.toContain('wamid-abc');
   });
 });

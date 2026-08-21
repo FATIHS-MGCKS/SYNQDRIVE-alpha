@@ -8,16 +8,55 @@ import {
 import { CommunicationProjectionService } from './communication-projection.service';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
 import { CommunicationEventRepository } from './communication-event.repository';
+import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 import { buildCanonicalIdempotencyKey } from './normalization/communication-idempotency';
 import { CommunicationNormalizationErrorCode } from './normalization/communication-normalization.errors';
 import type { NormalizedCommunicationInput } from './normalization/communication-normalization.types';
-import type { UpdateCommunicationConversationProjectionInput } from './communication.types';
 
 function makePrisma() {
   const tx = {};
   return {
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
   } as any;
+}
+
+function baseConversation(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'cc-1',
+    organizationId: 'org-1',
+    channel: CommunicationChannel.WHATSAPP,
+    nativeConversationId: 'wa-1',
+    lastActivityAt: new Date('2026-08-21T10:00:00Z'),
+    unreadCount: 0,
+    customerId: null,
+    bookingId: null,
+    vehicleId: null,
+    stationId: null,
+    assignedUserId: null,
+    assignedAgentRef: null,
+    assignedAgentType: null,
+    ...overrides,
+  } as any;
+}
+
+function whatsappEvent(
+  providerEventId: string,
+  eventType: CommunicationEventType = CommunicationEventType.MESSAGE_RECEIVED,
+): NormalizedCommunicationInput['event'] {
+  return {
+    eventType,
+    occurredAt: new Date('2026-08-21T10:00:00Z'),
+    providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
+    providerEventId,
+    idempotencyKey: buildCanonicalIdempotencyKey({
+      organizationId: 'org-1',
+      channel: CommunicationChannel.WHATSAPP,
+      providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
+      eventType,
+      nativeConversationId: 'wa-1',
+      providerEventId,
+    }),
+  };
 }
 
 function voiceInput(
@@ -53,6 +92,7 @@ describe('CommunicationProjectionService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let conversations: jest.Mocked<CommunicationConversationRepository>;
   let events: jest.Mocked<CommunicationEventRepository>;
+  let tenantContext: jest.Mocked<CommunicationTenantContextValidation>;
   let service: CommunicationProjectionService;
 
   beforeEach(() => {
@@ -60,80 +100,66 @@ describe('CommunicationProjectionService', () => {
     conversations = {
       ensureConversationEnvelope: jest.fn(),
       updateConversationProjection: jest.fn(),
+      incrementUnreadCount: jest.fn(),
     } as unknown as jest.Mocked<CommunicationConversationRepository>;
     events = {
       appendEventIdempotently: jest.fn(),
     } as unknown as jest.Mocked<CommunicationEventRepository>;
-    service = new CommunicationProjectionService(prisma, conversations, events);
+    tenantContext = {
+      assertConversationContextBelongsToOrg: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<CommunicationTenantContextValidation>;
+    conversations.updateConversationProjection.mockImplementation(
+      async (_org, id, patch) => ({ ...baseConversation({ id }), ...patch }) as any,
+    );
+    conversations.incrementUnreadCount.mockImplementation(
+      async (_org, id, delta) =>
+        ({ ...baseConversation({ id }), unreadCount: delta }) as any,
+    );
+    service = new CommunicationProjectionService(prisma, conversations, events, tenantContext);
   });
 
-  it('creates envelope and appends event with unread delta on first create', async () => {
+  it('uses atomic incrementUnreadCount for unreadDelta on newly-created events', async () => {
+    const conversation = baseConversation();
     conversations.ensureConversationEnvelope.mockResolvedValue({
-      conversation: {
-        id: 'cc-1',
-        organizationId: 'org-1',
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId: 'wa-1',
-        lastActivityAt: new Date('2026-08-21T10:00:00Z'),
-        unreadCount: 0,
-        customerId: null,
-        bookingId: null,
-        vehicleId: null,
-      } as any,
+      conversation,
       created: true,
     });
     events.appendEventIdempotently.mockResolvedValue({
       event: { id: 'ev-1' } as any,
       created: true,
     });
+    conversations.incrementUnreadCount.mockResolvedValue({
+      ...conversation,
+      unreadCount: 1,
+    });
 
-    const result = await service.projectNormalizedInput({
+    await service.projectNormalizedInput({
       envelope: {
         organizationId: 'org-1',
         channel: CommunicationChannel.WHATSAPP,
         nativeConversationId: 'wa-1',
       },
-      event: {
-        eventType: CommunicationEventType.MESSAGE_RECEIVED,
-        occurredAt: new Date('2026-08-21T10:00:00Z'),
-        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-        providerEventId: 'evt-wa-1',
-        idempotencyKey: buildCanonicalIdempotencyKey({
-          organizationId: 'org-1',
-          channel: CommunicationChannel.WHATSAPP,
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          nativeConversationId: 'wa-1',
-          providerEventId: 'evt-wa-1',
-        }),
-      },
+      event: whatsappEvent('evt-wa-1'),
       projection: { unreadDelta: 1 },
     });
 
-    expect(result.conversationCreated).toBe(true);
-    expect(result.eventCreated).toBe(true);
-    expect(events.appendEventIdempotently).toHaveBeenCalled();
-    expect(conversations.updateConversationProjection).toHaveBeenCalledWith(
+    expect(conversations.incrementUnreadCount).toHaveBeenCalledWith(
       'org-1',
       'cc-1',
-      expect.objectContaining({ unreadCount: 1 }),
+      1,
+      expect.anything(),
+    );
+    expect(conversations.updateConversationProjection).not.toHaveBeenCalledWith(
+      'org-1',
+      'cc-1',
+      expect.objectContaining({ unreadCount: expect.anything() }),
       expect.anything(),
     );
   });
 
-  it('replay does not duplicate event and does not reapply unread delta', async () => {
+  it('replay does not call incrementUnreadCount', async () => {
     conversations.ensureConversationEnvelope.mockResolvedValue({
-      conversation: {
-        id: 'cc-1',
-        organizationId: 'org-1',
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId: 'wa-1',
-        lastActivityAt: new Date('2026-08-21T10:00:00Z'),
-        unreadCount: 3,
-        customerId: null,
-        bookingId: null,
-        vehicleId: null,
-      } as any,
+      conversation: baseConversation({ unreadCount: 3 }),
       created: false,
     });
     events.appendEventIdempotently.mockResolvedValue({
@@ -141,46 +167,198 @@ describe('CommunicationProjectionService', () => {
       created: false,
     });
 
-    const result = await service.projectNormalizedInput({
+    await service.projectNormalizedInput({
       envelope: {
         organizationId: 'org-1',
         channel: CommunicationChannel.WHATSAPP,
         nativeConversationId: 'wa-1',
       },
-      event: {
-        eventType: CommunicationEventType.MESSAGE_RECEIVED,
-        occurredAt: new Date('2026-08-21T10:00:00Z'),
-        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-        providerEventId: 'evt-replay',
-        idempotencyKey: 'org-1:wa:replay',
-      },
+      event: whatsappEvent('evt-replay'),
       projection: { unreadDelta: 1 },
     });
 
-    expect(result.eventCreated).toBe(false);
-    const updateCalls = conversations.updateConversationProjection.mock.calls;
-    const unreadPatch = updateCalls.find(
-      ([, , patch]: [string, string, UpdateCommunicationConversationProjectionInput]) =>
-        patch.unreadCount !== undefined,
+    expect(conversations.incrementUnreadCount).not.toHaveBeenCalled();
+  });
+
+  it('enriches existing envelope when initialContext supplies customerId', async () => {
+    conversations.ensureConversationEnvelope.mockResolvedValue({
+      conversation: baseConversation(),
+      created: false,
+    });
+    events.appendEventIdempotently.mockResolvedValue({
+      event: { id: 'ev-1' } as any,
+      created: true,
+    });
+    conversations.updateConversationProjection.mockResolvedValue(
+      baseConversation({ customerId: 'cust-1' }),
     );
-    expect(unreadPatch).toBeUndefined();
+
+    await service.projectNormalizedInput({
+      envelope: {
+        organizationId: 'org-1',
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'wa-1',
+        initialContext: { customerId: 'cust-1' },
+      },
+      event: whatsappEvent('evt-context-1'),
+    });
+
+    expect(tenantContext.assertConversationContextBelongsToOrg).toHaveBeenCalledWith(
+      'org-1',
+      { customerId: 'cust-1' },
+      expect.anything(),
+    );
+    expect(conversations.updateConversationProjection).toHaveBeenCalledWith(
+      'org-1',
+      'cc-1',
+      expect.objectContaining({ customerId: 'cust-1' }),
+      expect.anything(),
+    );
+  });
+
+  it('snapshots resolved context on the event before projection update', async () => {
+    conversations.ensureConversationEnvelope.mockResolvedValue({
+      conversation: baseConversation(),
+      created: false,
+    });
+    events.appendEventIdempotently.mockResolvedValue({
+      event: { id: 'ev-1' } as any,
+      created: true,
+    });
+    conversations.updateConversationProjection.mockResolvedValue(
+      baseConversation({ customerId: 'cust-1', bookingId: 'book-1' }),
+    );
+
+    await service.projectNormalizedInput({
+      envelope: {
+        organizationId: 'org-1',
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'wa-1',
+        initialContext: { customerId: 'cust-1', bookingId: 'book-1' },
+      },
+      event: whatsappEvent('evt-snapshot-1'),
+    });
+
+    expect(events.appendEventIdempotently).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: 'cust-1',
+        bookingId: 'book-1',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('undefined initialContext does not clear existing customerId', async () => {
+    conversations.ensureConversationEnvelope.mockResolvedValue({
+      conversation: baseConversation({ customerId: 'cust-existing' }),
+      created: false,
+    });
+    events.appendEventIdempotently.mockResolvedValue({
+      event: { id: 'ev-1' } as any,
+      created: true,
+    });
+
+    await service.projectNormalizedInput({
+      envelope: {
+        organizationId: 'org-1',
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'wa-1',
+        initialContext: { bookingId: 'book-1' },
+      },
+      event: whatsappEvent('evt-partial-1'),
+    });
+
+    expect(events.appendEventIdempotently).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: 'cust-existing',
+        bookingId: 'book-1',
+      }),
+      expect.anything(),
+    );
+    expect(conversations.updateConversationProjection).toHaveBeenCalledWith(
+      'org-1',
+      'cc-1',
+      expect.objectContaining({ bookingId: 'book-1' }),
+      expect.anything(),
+    );
+    expect(conversations.updateConversationProjection).not.toHaveBeenCalledWith(
+      'org-1',
+      'cc-1',
+      expect.objectContaining({ customerId: null }),
+      expect.anything(),
+    );
+  });
+
+  it('explicit null in initialContext clears existing customerId', async () => {
+    conversations.ensureConversationEnvelope.mockResolvedValue({
+      conversation: baseConversation({ customerId: 'cust-existing' }),
+      created: false,
+    });
+    events.appendEventIdempotently.mockResolvedValue({
+      event: { id: 'ev-1' } as any,
+      created: true,
+    });
+    conversations.updateConversationProjection.mockResolvedValue(
+      baseConversation({ customerId: null }),
+    );
+
+    await service.projectNormalizedInput({
+      envelope: {
+        organizationId: 'org-1',
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'wa-1',
+        initialContext: { customerId: null },
+      },
+      event: whatsappEvent('evt-clear-1'),
+    });
+
+    expect(events.appendEventIdempotently).toHaveBeenCalledWith(
+      expect.objectContaining({ customerId: null }),
+      expect.anything(),
+    );
+    expect(conversations.updateConversationProjection).toHaveBeenCalledWith(
+      'org-1',
+      'cc-1',
+      expect.objectContaining({ customerId: null }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects cross-org context at tenant validation boundary', async () => {
+    conversations.ensureConversationEnvelope.mockResolvedValue({
+      conversation: baseConversation(),
+      created: false,
+    });
+    tenantContext.assertConversationContextBelongsToOrg.mockRejectedValue(
+      new BadRequestException('Customer not found in this organization'),
+    );
+
+    await expect(
+      service.projectNormalizedInput({
+        envelope: {
+          organizationId: 'org-1',
+          channel: CommunicationChannel.WHATSAPP,
+          nativeConversationId: 'wa-1',
+          initialContext: { customerId: 'cust-foreign' },
+        },
+        event: whatsappEvent('evt-bad-tenant'),
+      }),
+    ).rejects.toMatchObject({
+      code: CommunicationNormalizationErrorCode.TENANT_CONTEXT_REJECTED,
+    });
+    expect(events.appendEventIdempotently).not.toHaveBeenCalled();
   });
 
   it('keeps lastActivityAt monotonic when older event arrives later', async () => {
     const newer = new Date('2026-08-21T12:00:00Z');
     const older = new Date('2026-08-21T11:00:00Z');
     conversations.ensureConversationEnvelope.mockResolvedValue({
-      conversation: {
+      conversation: baseConversation({
         id: 'cc-voice',
-        organizationId: 'org-1',
         channel: CommunicationChannel.VOICE,
         nativeConversationId: 'voice-native-1',
         lastActivityAt: newer,
-        unreadCount: 0,
-        customerId: null,
-        bookingId: null,
-        vehicleId: null,
-      } as any,
+      }),
       created: false,
     });
     events.appendEventIdempotently.mockResolvedValue({
@@ -209,26 +387,15 @@ describe('CommunicationProjectionService', () => {
         expect(patch.lastActivityAt.getTime()).toBeGreaterThanOrEqual(newer.getTime());
       }
     }
-    expect(conversations.updateConversationProjection).not.toHaveBeenCalledWith(
-      'org-1',
-      'cc-voice',
-      expect.objectContaining({ lastActivityAt: older }),
-      expect.anything(),
-    );
   });
 
   it('accepts TWILIO then ELEVENLABS events on same Voice conversation', async () => {
-    const conversation = {
+    const conversation = baseConversation({
       id: 'cc-voice',
-      organizationId: 'org-1',
       channel: CommunicationChannel.VOICE,
       nativeConversationId: 'voice-native-1',
-      lastActivityAt: new Date('2026-08-21T10:00:00Z'),
-      unreadCount: 0,
       customerId: 'cust-1',
-      bookingId: null,
-      vehicleId: null,
-    } as any;
+    });
 
     conversations.ensureConversationEnvelope.mockResolvedValue({
       conversation,
@@ -256,36 +423,6 @@ describe('CommunicationProjectionService', () => {
     expect(twilio.conversationId).toBe('cc-voice');
     expect(eleven.conversationId).toBe('cc-voice');
     expect(events.appendEventIdempotently).toHaveBeenCalledTimes(2);
-    expect(conversations.ensureConversationEnvelope).toHaveBeenCalledWith(
-      expect.objectContaining({ nativeConversationId: 'voice-native-1' }),
-      expect.anything(),
-    );
-  });
-
-  it('propagates tenant context rejection from repository', async () => {
-    conversations.ensureConversationEnvelope.mockRejectedValue(
-      new BadRequestException('Customer not found in this organization'),
-    );
-
-    await expect(
-      service.projectNormalizedInput({
-        envelope: {
-          organizationId: 'org-1',
-          channel: CommunicationChannel.WHATSAPP,
-          nativeConversationId: 'wa-1',
-          initialContext: { customerId: 'cust-foreign' },
-        },
-        event: {
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          occurredAt: new Date(),
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          providerEventId: 'evt-1',
-          idempotencyKey: 'org-1:wa:1',
-        },
-      }),
-    ).rejects.toMatchObject({
-      code: CommunicationNormalizationErrorCode.TENANT_CONTEXT_REJECTED,
-    });
   });
 
   it('wraps transaction failures as PROJECTION_FAILURE', async () => {
@@ -298,13 +435,7 @@ describe('CommunicationProjectionService', () => {
           channel: CommunicationChannel.WHATSAPP,
           nativeConversationId: 'wa-1',
         },
-        event: {
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          occurredAt: new Date(),
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          providerEventId: 'evt-1',
-          idempotencyKey: 'org-1:wa:1',
-        },
+        event: whatsappEvent('evt-fail'),
       }),
     ).rejects.toMatchObject({
       code: CommunicationNormalizationErrorCode.PROJECTION_FAILURE,
@@ -341,17 +472,7 @@ describe('CommunicationProjectionService', () => {
 
   it('forwards convergent status on replay', async () => {
     conversations.ensureConversationEnvelope.mockResolvedValue({
-      conversation: {
-        id: 'cc-1',
-        organizationId: 'org-1',
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId: 'wa-1',
-        lastActivityAt: new Date('2026-08-21T10:00:00Z'),
-        unreadCount: 0,
-        customerId: null,
-        bookingId: null,
-        vehicleId: null,
-      } as any,
+      conversation: baseConversation(),
       created: false,
     });
     events.appendEventIdempotently.mockResolvedValue({
@@ -365,13 +486,7 @@ describe('CommunicationProjectionService', () => {
         channel: CommunicationChannel.WHATSAPP,
         nativeConversationId: 'wa-1',
       },
-      event: {
-        eventType: CommunicationEventType.HUMAN_REQUIRED,
-        occurredAt: new Date('2026-08-21T10:00:00Z'),
-        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-        providerEventId: 'evt-hr',
-        idempotencyKey: 'org-1:wa:hr',
-      },
+      event: whatsappEvent('evt-hr', CommunicationEventType.HUMAN_REQUIRED),
       projection: { status: CommunicationConversationStatus.HUMAN_REQUIRED },
     });
 

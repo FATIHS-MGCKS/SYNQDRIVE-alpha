@@ -8,7 +8,14 @@ import { CommunicationConversation, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
 import { CommunicationEventRepository } from './communication-event.repository';
+import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 import type { UpdateCommunicationConversationProjectionInput } from './communication.types';
+import {
+  conversationToContextPatch,
+  diffConversationContextPatch,
+  mergeConversationContext,
+  pickDefinedConversationContext,
+} from './normalization/communication-context-merge';
 import { CommunicationNormalizationError, CommunicationNormalizationErrorCode } from './normalization/communication-normalization.errors';
 import type {
   CommunicationProjectionResult,
@@ -25,6 +32,7 @@ export class CommunicationProjectionService {
     private readonly prisma: PrismaService,
     private readonly conversations: CommunicationConversationRepository,
     private readonly events: CommunicationEventRepository,
+    private readonly tenantContext: CommunicationTenantContextValidation,
   ) {}
 
   /**
@@ -57,7 +65,7 @@ export class CommunicationProjectionService {
     tx: Prisma.TransactionClient,
   ): Promise<CommunicationProjectionResult> {
     const { envelope, event, projection } = input;
-    const initialContext = envelope.initialContext ?? {};
+    const createContext = pickDefinedConversationContext(envelope.initialContext);
 
     const envelopeResult = await this.conversations.ensureConversationEnvelope(
       {
@@ -65,24 +73,39 @@ export class CommunicationProjectionService {
         channel: envelope.channel,
         nativeConversationId: envelope.nativeConversationId,
         status: envelope.initialStatus,
-        customerId: initialContext.customerId,
-        bookingId: initialContext.bookingId,
-        vehicleId: initialContext.vehicleId,
-        stationId: initialContext.stationId,
-        assignedUserId: initialContext.assignedUserId,
-        assignedAgentRef: initialContext.assignedAgentRef,
-        assignedAgentType: initialContext.assignedAgentType,
+        customerId: createContext.customerId,
+        bookingId: createContext.bookingId,
+        vehicleId: createContext.vehicleId,
+        stationId: createContext.stationId,
+        assignedUserId: createContext.assignedUserId,
+        assignedAgentRef: createContext.assignedAgentRef,
+        assignedAgentType: createContext.assignedAgentType,
         lastActivityAt: event.occurredAt,
       },
       tx,
     );
 
-    const conversation = envelopeResult.conversation;
+    let conversation = envelopeResult.conversation;
 
     if (conversation.channel !== envelope.channel) {
       throw new CommunicationNormalizationError(
         CommunicationNormalizationErrorCode.CHANNEL_MISMATCH,
         `Conversation channel ${conversation.channel} does not match envelope channel ${envelope.channel}`,
+      );
+    }
+
+    const effectiveContext = mergeConversationContext(
+      conversationToContextPatch(conversation),
+      envelope.initialContext,
+      projection?.context,
+    );
+
+    const contextPatch = diffConversationContextPatch(conversation, effectiveContext);
+    if (contextPatch) {
+      await this.tenantContext.assertConversationContextBelongsToOrg(
+        envelope.organizationId,
+        contextPatch,
+        tx,
       );
     }
 
@@ -100,9 +123,9 @@ export class CommunicationProjectionService {
         idempotencyKey: event.idempotencyKey,
         actorType: event.actorType,
         actorId: event.actorId,
-        customerId: conversation.customerId,
-        bookingId: conversation.bookingId,
-        vehicleId: conversation.vehicleId,
+        customerId: effectiveContext.customerId ?? null,
+        bookingId: effectiveContext.bookingId ?? null,
+        vehicleId: effectiveContext.vehicleId ?? null,
         metadata: event.metadata as Prisma.InputJsonValue | undefined,
       },
       tx,
@@ -113,13 +136,23 @@ export class CommunicationProjectionService {
       projection,
       appendResult.created,
       event.occurredAt,
+      contextPatch,
     );
 
     if (projectionPatch) {
-      await this.conversations.updateConversationProjection(
+      conversation = await this.conversations.updateConversationProjection(
         envelope.organizationId,
         conversation.id,
         projectionPatch,
+        tx,
+      );
+    }
+
+    if (appendResult.created && projection?.unreadDelta !== undefined) {
+      conversation = await this.conversations.incrementUnreadCount(
+        envelope.organizationId,
+        conversation.id,
+        projection.unreadDelta,
         tx,
       );
     }
@@ -149,6 +182,7 @@ export class CommunicationProjectionService {
     patch: ConversationProjectionPatch | undefined,
     eventCreated: boolean,
     eventOccurredAt: Date,
+    contextPatch: ReturnType<typeof diffConversationContextPatch>,
   ): UpdateCommunicationConversationProjectionInput | null {
     const candidateActivity = patch?.lastActivityAt ?? eventOccurredAt;
     const lastActivityAt = maxDate(existing.lastActivityAt, candidateActivity);
@@ -164,19 +198,19 @@ export class CommunicationProjectionService {
       hasMutation = true;
     }
 
-    if (patch?.context) {
-      if (patch.context.customerId !== undefined) update.customerId = patch.context.customerId;
-      if (patch.context.bookingId !== undefined) update.bookingId = patch.context.bookingId;
-      if (patch.context.vehicleId !== undefined) update.vehicleId = patch.context.vehicleId;
-      if (patch.context.stationId !== undefined) update.stationId = patch.context.stationId;
-      if (patch.context.assignedUserId !== undefined) {
-        update.assignedUserId = patch.context.assignedUserId;
+    if (contextPatch) {
+      if (contextPatch.customerId !== undefined) update.customerId = contextPatch.customerId;
+      if (contextPatch.bookingId !== undefined) update.bookingId = contextPatch.bookingId;
+      if (contextPatch.vehicleId !== undefined) update.vehicleId = contextPatch.vehicleId;
+      if (contextPatch.stationId !== undefined) update.stationId = contextPatch.stationId;
+      if (contextPatch.assignedUserId !== undefined) {
+        update.assignedUserId = contextPatch.assignedUserId;
       }
-      if (patch.context.assignedAgentRef !== undefined) {
-        update.assignedAgentRef = patch.context.assignedAgentRef;
+      if (contextPatch.assignedAgentRef !== undefined) {
+        update.assignedAgentRef = contextPatch.assignedAgentRef;
       }
-      if (patch.context.assignedAgentType !== undefined) {
-        update.assignedAgentType = patch.context.assignedAgentType;
+      if (contextPatch.assignedAgentType !== undefined) {
+        update.assignedAgentType = contextPatch.assignedAgentType;
       }
       hasMutation = true;
     }
@@ -189,8 +223,10 @@ export class CommunicationProjectionService {
     if (patch?.unreadCountAbsolute !== undefined) {
       update.unreadCount = patch.unreadCountAbsolute;
       hasMutation = true;
-    } else if (eventCreated && patch?.unreadDelta !== undefined) {
-      update.unreadCount = existing.unreadCount + patch.unreadDelta;
+    }
+
+    if (eventCreated && patch?.unreadDelta !== undefined) {
+      // unreadDelta is applied via atomic incrementUnreadCount — not here.
       hasMutation = true;
     }
 

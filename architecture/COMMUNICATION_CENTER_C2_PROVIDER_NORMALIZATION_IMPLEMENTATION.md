@@ -5,7 +5,7 @@
 **Branch:** `feature/communication-center-c2-provider-normalization`  
 **Depends on:** C1 persistence (`architecture/COMMUNICATION_CENTER_C1_PERSISTENCE_IMPLEMENTATION.md`), C0.2 RBAC
 
-**Note:** Referenced docs `docs/audits/communication-center-canonical-architecture-audit-2026-08.md` and `architecture/COMMUNICATION_CENTER_CANONICAL_CONTRACT_V1.md` are not present in-repo at implementation time; C2 follows merged C1 on `main` and C0.2/C1 implementation records.
+**Note:** C0.1 governance artifacts are restored on `main` via separate PR **#1118** (see §13d). C2 follows merged C1 on `main` and C0.2/C1 implementation records.
 
 ---
 
@@ -181,16 +181,20 @@ Provider IDs belong on **events** (`providerEventId`, `providerMessageId`) and n
 
 ## 10. Idempotency strategy
 
-**`buildCanonicalIdempotencyKey()`** — centralized deterministic format:
+**`buildCanonicalIdempotencyKey()`** — centralized deterministic SHA-256 digest:
 
 ```
-{organizationId}:{channel}:{providerIdentity}:{eventType}:{nativeConversationId}:{evt|msg|state}:{id}
+cc1:{sha256(JSON canonical payload v1)}
 ```
+
+Payload includes: `organizationId`, `channel`, `providerIdentity`, `eventType`, `nativeConversationId`, `identityKind` (`evt`|`msg`|`state`), `identityValue`.
+
+**Why digest instead of colon-delimited tuples:** Twilio `externalEventId` values may contain `:` (e.g. `CA1:status:ringing`). Keys are never parsed back — opaque digest only.
 
 - Prefer `providerEventId` when present
 - Else `providerMessageId` (eventType disambiguates delivered vs read)
 - Else `providerLifecycleState`
-- Max 512 chars, no PII/content
+- Max 512 chars (`cc1:` + 64 hex), no PII/content
 - DB scoping: `@@unique([organizationId, idempotencyKey])`
 
 Compound provider unique still subject to PostgreSQL NULL semantics (C1) — always set idempotency key for projection dedupe.
@@ -215,9 +219,61 @@ Normalization and projection **must not** persist communication content in canon
 
 ## 13. Transaction strategy
 
-`CommunicationProjectionService` wraps envelope + event append + projection update in **`prisma.$transaction`**.
+`CommunicationProjectionService` wraps the full projection in **`prisma.$transaction`**:
 
-On failure → mapped to `CommunicationNormalizationError` (`PROJECTION_FAILURE`, `TENANT_CONTEXT_REJECTED`, etc.).
+1. `ensureConversationEnvelope` (create with defined `initialContext` fields; existing rows enriched later in step 2)
+2. Merge effective context (`existing` + `envelope.initialContext` + `projection.context`)
+3. Tenant-validate context diff
+4. `appendEventIdempotently` with **effective context snapshot**
+5. `updateConversationProjection` (status, metadata, context, absolute unread, monotonic `lastActivityAt`)
+6. `incrementUnreadCount` (atomic `{ increment: delta }`) **only when** `eventCreated === true`
+
+On failure → mapped to `CommunicationNormalizationError`. Partial writes roll back together.
+
+---
+
+## 13a. Concurrency-safe unread semantics
+
+`unreadDelta` must be a **positive integer**. Applied via `CommunicationConversationRepository.incrementUnreadCount()` using Prisma `{ increment: delta }` — not read-modify-write.
+
+| Scenario | Behavior |
+|----------|----------|
+| Concurrent distinct new events | Each `eventCreated` path atomically increments — no lost updates |
+| Replay (`eventCreated: false`) | `incrementUnreadCount` **not called** |
+| Reset/read convergent ops | Use `unreadCountAbsolute` on projection patch |
+| Negative delta | **Rejected** at validation — not supported in C2 |
+
+DB `CHECK (unread_count >= 0)` remains the final guard.
+
+---
+
+## 13b. Context enrichment semantics
+
+`envelope.initialContext` is **not CREATE-only**. For existing envelopes:
+
+- `undefined` field → leave existing value unchanged
+- non-null value → enrich/update via tenant-validated projection
+- explicit `null` → clear field (documented adapter contract)
+
+`projection.context` follows the same merge rules. Adapters may pass newly resolved IDs in either `initialContext` or `projection.context`.
+
+---
+
+## 13c. Event context snapshot semantics
+
+Per normalization operation, **effective context** is computed before event append:
+
+```
+effective = merge(existing conversation, initialContext, projection.context)
+```
+
+`CommunicationEvent.customerId/bookingId/vehicleId` snapshot **effective context** at append time — not stale pre-enrichment conversation state. Conversation projection receives the same effective context diff in the same transaction.
+
+---
+
+## 13d. C0.1 artifact dependency
+
+Frozen governance artifacts were not on `main` during initial C2 delivery. Restored via separate doc-only PR **#1118** (cherry-picked from commits `6211a1d4`, `42cebfda`). **C3 must not proceed until #1118 merges to `main`.**
 
 ---
 
@@ -225,7 +281,7 @@ On failure → mapped to `CommunicationNormalizationError` (`PROJECTION_FAILURE`
 
 | Field | On event replay (`eventCreated: false`) |
 |-------|----------------------------------------|
-| `unreadDelta` | **Not applied** |
+| `unreadDelta` | **Not applied** (no atomic increment) |
 | `unreadCountAbsolute`, `status`, context | Applied (convergent) |
 | `lastActivityAt` | Monotonic max only — never regresses |
 
@@ -281,9 +337,11 @@ C2 contracts (`SMS` + `SENT_DM`) are ready at normalization layer.
 | `communication-idempotency.spec.ts` | 4 | Deterministic keys |
 | `communication-metadata.spec.ts` | 3 | Allowlist/PII |
 | `communication-provider-capability.registry.spec.ts` | 3 | V1 capabilities |
-| `communication-projection.service.spec.ts` | 8 | Orchestration, replay, monotonic, multi-provider |
+| `communication-projection.service.spec.ts` | 11 | Orchestration, replay, monotonic, multi-provider, context enrichment, event snapshot |
+| `communication-projection.postgres.integration.spec.ts` | 2 | Concurrent unread increment + replay (requires `DATABASE_URL`) |
+| `communication-context-merge.spec.ts` | 3 | Merge/clear semantics |
 
-**Total: 56 passing** (`npm test -- --testPathPattern='modules/communication'`)
+**Total: 65 unit (63 passed, 2 skipped postgres integration when `DATABASE_URL` unset) + 2 postgres integration when DB available** (`npm test -- --testPathPattern='modules/communication'`)
 
 ---
 

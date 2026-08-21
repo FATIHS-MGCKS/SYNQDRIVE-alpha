@@ -75,11 +75,13 @@ function validateProjectionPatch(
     );
   }
 
-  if (patch.unreadDelta !== undefined && !Number.isInteger(patch.unreadDelta)) {
-    throw new CommunicationNormalizationError(
-      CommunicationNormalizationErrorCode.INVALID_NORMALIZED_INPUT,
-      'projection.unreadDelta must be an integer',
-    );
+  if (patch.unreadDelta !== undefined) {
+    if (!Number.isInteger(patch.unreadDelta) || patch.unreadDelta <= 0) {
+      throw new CommunicationNormalizationError(
+        CommunicationNormalizationErrorCode.INVALID_NORMALIZED_INPUT,
+        'projection.unreadDelta must be a positive integer',
+      );
+    }
   }
 
   if (patch.unreadCountAbsolute !== undefined && patch.unreadCountAbsolute < 0) {

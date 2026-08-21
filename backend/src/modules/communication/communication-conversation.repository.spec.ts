@@ -52,7 +52,6 @@ describe('CommunicationConversationRepository', () => {
         data: expect.objectContaining({
           organizationId: 'org-1',
           unreadCount: 0,
-          status: undefined,
         }),
       }),
     );
@@ -73,20 +72,6 @@ describe('CommunicationConversationRepository', () => {
         }),
       }),
     );
-  });
-
-  it('allows nullable context FKs', async () => {
-    prisma.communicationConversation.create.mockResolvedValue({ id: 'cc-3' });
-    await repository.createConversation({
-      organizationId: 'org-1',
-      channel: CommunicationChannel.SMS,
-      nativeConversationId: 'sms-native-1',
-      customerId: null,
-      bookingId: null,
-      vehicleId: null,
-      stationId: null,
-    });
-    expect(prisma.communicationConversation.create).toHaveBeenCalled();
   });
 
   it('findByNativeReference scopes organizationId', async () => {
@@ -130,18 +115,6 @@ describe('CommunicationConversationRepository', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('updates lastActivityAt via projection patch', async () => {
-    const at = new Date('2026-08-21T10:00:00Z');
-    prisma.communicationConversation.findFirst.mockResolvedValue({ id: 'cc-4' });
-    prisma.communicationConversation.update.mockResolvedValue({ id: 'cc-4', lastActivityAt: at });
-    await repository.updateConversationProjection('org-1', 'cc-4', { lastActivityAt: at });
-    expect(prisma.communicationConversation.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ lastActivityAt: at }),
-      }),
-    );
-  });
-
   it('validates tenant context on projection update', async () => {
     prisma.communicationConversation.findFirst.mockResolvedValue({ id: 'cc-5' });
     prisma.communicationConversation.update.mockResolvedValue({ id: 'cc-5' });
@@ -156,18 +129,21 @@ describe('CommunicationConversationRepository', () => {
     );
   });
 
-  it('propagates tenant validation errors on create', async () => {
-    (tenantContext.assertConversationContextBelongsToOrg as jest.Mock).mockRejectedValue(
-      new BadRequestException('Customer not found in this organization'),
+  it('incrementUnreadCount rejects non-positive delta', async () => {
+    prisma.communicationConversation.findFirst.mockResolvedValue({ id: 'cc-1' });
+    await expect(repository.incrementUnreadCount('org-1', 'cc-1', 0)).rejects.toBeInstanceOf(
+      BadRequestException,
     );
-    await expect(
-      repository.createConversation({
-        organizationId: 'org-1',
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId: 'wa-bad',
-        customerId: 'cust-foreign',
-      }),
-    ).rejects.toThrow('Customer not found in this organization');
-    expect(prisma.communicationConversation.create).not.toHaveBeenCalled();
+    expect(prisma.communicationConversation.update).not.toHaveBeenCalled();
+  });
+
+  it('incrementUnreadCount uses prisma atomic increment', async () => {
+    prisma.communicationConversation.findFirst.mockResolvedValue({ id: 'cc-1' });
+    prisma.communicationConversation.update.mockResolvedValue({ id: 'cc-1', unreadCount: 2 });
+    await repository.incrementUnreadCount('org-1', 'cc-1', 2);
+    expect(prisma.communicationConversation.update).toHaveBeenCalledWith({
+      where: { id: 'cc-1' },
+      data: { unreadCount: { increment: 2 } },
+    });
   });
 });

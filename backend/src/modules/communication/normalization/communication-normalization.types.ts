@@ -44,7 +44,7 @@ export interface ConversationContextPatch {
 export interface ConversationProjectionPatch {
   status?: CommunicationConversationStatus;
   lastActivityAt?: Date;
-  /** Increment applied only on newly-created events. */
+  /** Positive increment applied atomically only on newly-created events. */
   unreadDelta?: number;
   /** Convergent absolute unread value — safe on replay. */
   unreadCountAbsolute?: number;
@@ -58,6 +58,10 @@ export interface NormalizedCommunicationEnvelope {
   channel: CommunicationChannel;
   nativeConversationId: string;
   initialStatus?: CommunicationConversationStatus;
+  /**
+   * Context known at normalization time. Merged into existing envelopes when
+   * provided (undefined = unchanged, null = explicit clear). Not CREATE-only.
+   */
   initialContext?: ConversationContextPatch;
 }
 
