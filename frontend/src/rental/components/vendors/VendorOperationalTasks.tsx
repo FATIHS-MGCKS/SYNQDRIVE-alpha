@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState, PriorityBadge, SkeletonCard, StatusChip } from '../../../components/patterns';
-import { api, type ApiTask } from '../../../lib/api';
+import { api, type ApiTask, type ApiTaskStatus } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { formatTaskDueDate, mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
-import { taskTypeLabel, TASK_STATUS_LABEL_DE } from '../../lib/service-task-semantics';
+import { taskTypeLabel } from '../../lib/service-task-semantics';
+import { formatVendorDirectoryDate, vdi } from '../../lib/vendor-directory-i18n';
 
 interface VendorOperationalTasksProps {
   orgId: string;
@@ -10,15 +13,27 @@ interface VendorOperationalTasksProps {
   onCreateTask?: () => void;
 }
 
+const TASK_STATUS_LABEL_KEYS: Record<ApiTaskStatus, TranslationKey> = {
+  OPEN: 'tasks.filter.status.OPEN',
+  IN_PROGRESS: 'tasks.filter.status.IN_PROGRESS',
+  WAITING: 'tasks.filter.status.WAITING',
+  DONE: 'tasks.filter.status.DONE',
+  CANCELLED: 'tasks.filter.status.CANCELLED',
+};
+
 function TaskList({
   tasks,
   emptyTitle,
   emptyDescription,
+  locale,
 }: {
   tasks: ApiTask[];
   emptyTitle: string;
   emptyDescription: string;
+  locale: string;
 }) {
+  const { t } = useLanguage();
+
   if (tasks.length === 0) {
     return <EmptyState compact title={emptyTitle} description={emptyDescription} />;
   }
@@ -31,18 +46,22 @@ function TaskList({
         >
           <div className="flex flex-wrap items-center gap-1.5 mb-1">
             <StatusChip tone={task.status === 'DONE' ? 'success' : task.isOverdue ? 'critical' : 'info'}>
-              {TASK_STATUS_LABEL_DE[task.status]}
+              {t(TASK_STATUS_LABEL_KEYS[task.status])}
             </StatusChip>
             <PriorityBadge
               priority={mapApiPriority(task.priority)}
-              label={vehicleTaskPriorityLabel(mapApiPriority(task.priority))}
+              label={vehicleTaskPriorityLabel(mapApiPriority(task.priority), locale)}
             />
           </div>
           <p className="text-[12px] font-semibold text-foreground">{task.title}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {taskTypeLabel(task)}
-            {task.dueDate ? ` · Fällig ${formatTaskDueDate(task.dueDate)}` : ''}
-            {task.completedAt ? ` · Erledigt ${formatTaskDueDate(task.completedAt)}` : ''}
+            {task.dueDate
+              ? ` · ${vdi(locale, 'vendors.directory.tasks.due', { date: formatTaskDueDate(task.dueDate) })}`
+              : ''}
+            {task.completedAt
+              ? ` · ${vdi(locale, 'vendors.directory.tasks.completed', { date: formatTaskDueDate(task.completedAt) })}`
+              : ''}
           </p>
         </div>
       ))}
@@ -51,6 +70,7 @@ function TaskList({
 }
 
 export function VendorOperationalTasks({ orgId, vendorId, onCreateTask }: VendorOperationalTasksProps) {
+  const { locale, t } = useLanguage();
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -112,36 +132,48 @@ export function VendorOperationalTasks({ orgId, vendorId, onCreateTask }: Vendor
     <div className="space-y-4">
       {lastActivity && (
         <p className="text-[10px] text-muted-foreground">
-          Letzte Aktivität: {lastActivity.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {vdi(locale, 'vendors.directory.tasks.lastActivity', {
+            date: formatVendorDirectoryDate(locale, lastActivity, {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            }),
+          })}
         </p>
       )}
 
       <section className="surface-premium rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-[12px] font-semibold text-foreground">Offene Partner-Aufgaben</h3>
+          <h3 className="text-[12px] font-semibold text-foreground">
+            {t('vendors.directory.tasks.openTitle')}
+          </h3>
           {onCreateTask && (
             <button
               type="button"
               onClick={onCreateTask}
               className="text-[10px] font-semibold text-[color:var(--brand-ink)] hover:underline"
             >
-              + Service-Aufgabe
+              {t('vendors.directory.tasks.create')}
             </button>
           )}
         </div>
         <TaskList
           tasks={openTasks}
-          emptyTitle="Keine offenen Aufgaben"
-          emptyDescription="Service- und Reparaturaufgaben für diesen Partner erscheinen hier, sobald sie zugeordnet sind."
+          locale={locale}
+          emptyTitle={t('vendors.directory.tasks.openEmpty.title')}
+          emptyDescription={t('vendors.directory.tasks.openEmpty.description')}
         />
       </section>
 
       <section className="surface-premium rounded-xl p-4 space-y-3">
-        <h3 className="text-[12px] font-semibold text-foreground">Zuletzt erledigt</h3>
+        <h3 className="text-[12px] font-semibold text-foreground">
+          {t('vendors.directory.tasks.completedTitle')}
+        </h3>
         <TaskList
           tasks={completedTasks}
-          emptyTitle="Noch keine erledigten Aufgaben"
-          emptyDescription="Abgeschlossene Service-Fälle werden aus dem Task-System angezeigt — keine separate Service-History."
+          locale={locale}
+          emptyTitle={t('vendors.directory.tasks.completedEmpty.title')}
+          emptyDescription={t('vendors.directory.tasks.completedEmpty.description')}
         />
       </section>
     </div>

@@ -111,26 +111,26 @@
     }
   },
   "summary": {
-    "total": 1817,
+    "total": 1756,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 158,
-      "RENTAL": 550,
+      "RENTAL": 489,
       "SHARED": 35,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 63,
-      "TITLE": 271,
-      "TEXT": 1271,
-      "LABEL": 102,
-      "PLACEHOLDER": 102,
+      "TITLE": 264,
+      "TEXT": 1241,
+      "LABEL": 93,
+      "PLACEHOLDER": 87,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 397,
-      "Finance/Billing": 125,
-      "Tasks": 17,
+      "other Rental areas": 337,
+      "Finance/Billing": 126,
+      "Tasks": 15,
       "Bookings": 2,
       "Documents": 8,
       "App / routing shell": 1
@@ -17328,20 +17328,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 803,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Activity History",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/MarkRepairedDialog.tsx",
       "line": 92,
       "surface": "RENTAL",
@@ -17412,20 +17398,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 329,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add Partner",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageAiIntakeDialog.tsx",
       "line": 190,
       "surface": "RENTAL",
@@ -17451,20 +17423,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 693,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Add Vendor",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -18288,90 +18246,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 483,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Clear filters",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 795,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Company / Vendor Name *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 795,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Company / Vendor Name *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 801,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Company name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 387,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Company Name *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 387,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Company Name *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 356,
       "surface": "RENTAL",
@@ -18425,49 +18299,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 889,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Contact notes (availability, preferences...)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 463,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Contact notes...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 455,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Contact Person",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -18788,7 +18619,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 83,
+      "occurrences": 76,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
@@ -18798,7 +18629,6 @@
         "rental/components/PartsAccessoriesView.tsx",
         "rental/components/ScheduleBox.tsx",
         "rental/components/VehicleInsightsCard.tsx",
-        "rental/components/VendorDetailView.tsx",
         "rental/components/billing/billing.utils.ts",
         "rental/components/booking-detail/bookingDetailUtils.ts",
         "rental/components/booking-payment/BookingPaymentCard.tsx",
@@ -18825,7 +18655,6 @@
         "rental/components/settings/data-authorization/data-authorization.utils.ts",
         "rental/components/support/support-i18n.ts",
         "rental/components/users-roles/utils.ts",
-        "rental/components/vendors/VendorOperationalTasks.tsx",
         "rental/components/voice-assistant/VoiceUsageAnalyticsPanel.tsx",
         "rental/components/voice-assistant/VoiceWizardPlanStep.tsx",
         "rental/components/workflow-automation/workflow-runtime.utils.ts",
@@ -18841,21 +18670,8 @@
         "rental/lib/rpm-webhook-ui.ts",
         "rental/lib/task-detail.utils.ts",
         "rental/lib/task-list.utils.ts",
-        "rental/lib/task-operator.utils.ts"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 728,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Delete Vendor",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
+        "rental/lib/task-operator.utils.ts",
+        "rental/lib/vendor-directory-i18n.ts"
       ]
     },
     {
@@ -18957,20 +18773,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 343,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Dienstleister & Werkstätten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantPaymentMethodsSection.tsx",
       "line": 126,
       "surface": "RENTAL",
@@ -19024,36 +18826,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 461,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Direct Email",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 460,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Direct Phone",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -19167,34 +18939,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateDamageDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 370,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Edit Vendor",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 717,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "editVendor ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -19324,20 +19068,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 496,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "embeddedInServiceCenter ?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/SendInvoiceDialog.tsx",
       "line": 105,
       "surface": "RENTAL",
@@ -19410,7 +19140,7 @@
       "sample": "en-US",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 18,
+      "occurrences": 19,
       "files": [
         "rental/components/FinancialInsightsView.tsx",
         "rental/components/ScheduleBox.tsx",
@@ -19424,7 +19154,8 @@
         "rental/components/voice-assistant/VoiceUsageAnalyticsPanel.tsx",
         "rental/components/voice-assistant/VoiceWizardPlanStep.tsx",
         "rental/lib/fines-i18n.ts",
-        "rental/lib/invoice-list-i18n.ts"
+        "rental/lib/invoice-list-i18n.ts",
+        "rental/lib/vendor-directory-i18n.ts"
       ]
     },
     {
@@ -19580,20 +19311,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/RentalStressAnalysisCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 645,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Fahrzeug verknüpfen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {
@@ -19850,21 +19567,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 458,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Full Name",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
       "line": 242,
       "surface": "RENTAL",
@@ -19946,20 +19648,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/insights/InsightsCockpit.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 347,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Go back",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {
@@ -20100,20 +19788,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 850,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "https://...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -20285,64 +19959,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 468,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Internal Notes",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 468,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Internal Notes",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 904,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Internal notes about this vendor...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 469,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Internal notes...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceDetailSecondary.tsx",
       "line": 194,
       "surface": "RENTAL",
@@ -20357,26 +19973,25 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 620,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Interne Notizen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/invoices/InvoiceNotes.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceNotes.tsx",
       "line": 80,
       "surface": "RENTAL",
       "module": "Finance/Billing",
       "category": "ARIA",
+      "sample": "Interne Notizen",
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 1,
+      "files": [
+        "rental/components/invoices/InvoiceNotes.tsx"
+      ]
+    },
+    {
+      "file": "rental/components/invoices/InvoiceNotes.tsx",
+      "line": 51,
+      "surface": "RENTAL",
+      "module": "Finance/Billing",
+      "category": "TEXT",
       "sample": "Interne Notizen",
       "severity": "debt",
       "migrationPhase": "P2.2",
@@ -20836,20 +20451,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 580,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Kontakt & Adresse",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillingOverviewTab.tsx",
       "line": 116,
       "surface": "RENTAL",
@@ -20935,20 +20536,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 575,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Letzte Nutzung",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UserDetailDrawer.tsx",
       "line": 365,
       "surface": "RENTAL",
@@ -21002,20 +20589,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinancialInsightsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 907,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Link notes...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {
@@ -21100,21 +20673,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 399,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Local Business",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -21370,20 +20928,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 765,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Name, Branche oder Adresse eingeben…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageWorkQueue.tsx",
       "line": 269,
       "surface": "RENTAL",
@@ -21566,20 +21110,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 808,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "No activity recorded yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/ScheduleBox.tsx",
       "line": 400,
       "surface": "RENTAL",
@@ -21620,20 +21150,6 @@
       "files": [
         "rental/components/damages/CreateRepairTaskDialog.tsx",
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 768,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "No documents yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {
@@ -21707,20 +21223,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 731,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "No invoices linked to this vendor yet",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 632,
       "surface": "RENTAL",
@@ -21732,20 +21234,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinancialInsightsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 776,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No matches — enter details manually.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -22016,20 +21504,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 655,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Noch keine Fahrzeuge verknüpft",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/InvoiceNotes.tsx",
       "line": 105,
       "surface": "RENTAL",
@@ -22185,20 +21659,6 @@
       ]
     },
     {
-      "file": "rental/components/vendors/VendorOperationalTasks.tsx",
-      "line": 121,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Offene Partner-Aufgaben",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/vendors/VendorOperationalTasks.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillingProblemPanel.tsx",
       "line": 58,
       "surface": "RENTAL",
@@ -22238,21 +21698,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/BusinessInsightsBox.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 400,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Online Vendor",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -22617,21 +22062,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 410,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Postal Code",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -23071,34 +22501,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 876,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Relation Type",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 876,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Relation Type",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageRentalSections.tsx",
       "line": 77,
       "surface": "RENTAL",
@@ -23239,21 +22641,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 459,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Role / Function",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/RolesTab.tsx",
       "line": 188,
       "surface": "RENTAL",
@@ -23366,48 +22753,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 473,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Search active",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 757,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Search business (Mapbox)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 757,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Search business (Mapbox)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 351,
       "surface": "RENTAL",
@@ -23419,20 +22764,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 774,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Search failed. Try again or enter manually.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -23478,20 +22809,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 848,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Search vehicles...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/InsurancesView.tsx",
       "line": 587,
       "surface": "RENTAL",
@@ -23503,20 +22820,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 772,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Searching…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -23672,50 +22975,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 431,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Service Areas",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 431,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Service Areas",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/VendorDetailView.tsx",
-        "rental/components/VendorManagementView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 692,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Service-Aufgabe für dieses Fahrzeug",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {
@@ -24345,24 +23604,9 @@
       "sample": "Valid From",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/InsurancesView.tsx",
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 896,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Valid From",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/VendorDetailView.tsx"
+        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -24374,24 +23618,9 @@
       "sample": "Valid Until",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/InsurancesView.tsx",
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 900,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Valid Until",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
       "occurrences": 1,
       "files": [
-        "rental/components/VendorDetailView.tsx"
+        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -24409,34 +23638,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 847,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Vehicle *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 847,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Vehicle *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/VehicleInsightsCard.tsx",
       "line": 231,
       "surface": "RENTAL",
@@ -24448,20 +23649,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorManagementView.tsx",
-      "line": 896,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Vehicle links (relation type, preferred, notes) are managed on the vendor detail page after saving.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorManagementView.tsx"
       ]
     },
     {
@@ -24490,20 +23677,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 340,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Vendor not found",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {
@@ -24717,20 +23890,6 @@
       ]
     },
     {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 724,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "You do not have permission to view financials.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/documents/DocumentUploadDuplicatePanel.tsx",
       "line": 58,
       "surface": "RENTAL",
@@ -24858,20 +24017,6 @@
       ]
     },
     {
-      "file": "rental/components/vendors/VendorOperationalTasks.tsx",
-      "line": 140,
-      "surface": "RENTAL",
-      "module": "Tasks",
-      "category": "TEXT",
-      "sample": "Zuletzt erledigt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/vendors/VendorOperationalTasks.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 685,
       "surface": "RENTAL",
@@ -24904,20 +24049,6 @@
         "rental/components/invoices/CreateInvoiceDialog.tsx",
         "rental/components/invoices/InvoiceDetail.tsx",
         "rental/components/new-booking/MobileBookingFooter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/VendorDetailView.tsx",
-      "line": 490,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Zurück zum Partnerverzeichnis",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/VendorDetailView.tsx"
       ]
     },
     {

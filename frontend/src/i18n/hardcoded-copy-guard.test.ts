@@ -231,6 +231,15 @@ const P214_ENFORCE_CLEAN_EXACT = [
   'rental/lib/invoice-list-i18n.ts',
 ];
 
+const P215_ENFORCE_CLEAN_EXACT = [
+  'rental/components/VendorManagementView.tsx',
+  'rental/components/VendorDetailView.tsx',
+  'rental/components/vendors/VendorOperationalTasks.tsx',
+  'rental/components/vendors/VendorDirectoryCard.tsx',
+  'rental/lib/vendor-directory.utils.ts',
+  'rental/lib/vendor-directory-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -267,6 +276,10 @@ function isP214EnforceCleanPath(relPath: string): boolean {
   return P214_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
+function isP215EnforceCleanPath(relPath: string): boolean {
+  return P215_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
 function isP26EnforceCleanPath(relPath: string): boolean {
   return P26_ENFORCE_CLEAN_PREFIXES.some(
     (prefix) => relPath === prefix || relPath.startsWith(prefix),
@@ -290,7 +303,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 + P2.2.14 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 + P2.2.14 + P2.2.15 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -406,6 +419,45 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP214EnforceCleanPath(finding.file),
     );
     expect(p214Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.15 enforce-clean findings to Rental Vendor Directory only', () => {
+    const p215Debt = inventory.findings.filter((finding) =>
+      isP215EnforceCleanPath(finding.file),
+    );
+    expect(p215Debt).toHaveLength(0);
+  });
+
+  it('keeps vendor-directory-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/vendor-directory-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('VENDOR_CATEGORY_LABEL_KEY_ENTRIES');
+    expect(source).toContain('tasks.vendor.category.WORKSHOP');
+    expect(source).not.toMatch(/label:\s*'Werkstatt'/);
+    expect(source).not.toMatch(/toLocaleDateString\('de-DE'/);
+  });
+
+  it('keeps vendor-directory.utils.ts as machine-only config', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/vendor-directory.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('VENDOR_CATEGORIES');
+    expect(source).not.toMatch(/label:\s*'/);
+    expect(source).not.toMatch(/getVendorCategoryLabel/);
+  });
+
+  it('keeps VendorManagementView free of bilingual embeddedInServiceCenter copy ternaries', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/VendorManagementView.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/embeddedInServiceCenter \? '/);
+    expect(source).toContain("t('vendors.directory.");
+    expect(source).toContain('useLanguage');
   });
 
   it('keeps invoice-list-i18n.ts on canonical translation keys', () => {

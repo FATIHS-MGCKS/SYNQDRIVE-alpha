@@ -1,7 +1,4 @@
-import {
-  Briefcase, Building2, Car, Cog, Eye, Factory, FileSearch, Globe, Mail, MapPin,
-  Paintbrush, Phone, Shield, ShieldCheck, ShoppingCart, Sparkles, Tag, Truck, User, Wrench, ClipboardList,
-} from 'lucide-react';
+import { ClipboardList, Globe, Mail, MapPin, Phone, Tag, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback } from 'react';
 
@@ -11,6 +8,7 @@ import type {
   Vendor, VendorCategory, VendorSourceType, VendorVehicleRelationType,
   VendorLinkedVehicle, VendorVehicleLinkInput, VendorInvoiceRow, VendorAuditEntry,
 } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { ServiceTaskCreateModal } from './service-center/ServiceTaskCreateModal';
@@ -18,46 +16,28 @@ import { VendorOperationalTasks, useVendorTaskStats } from './vendors/VendorOper
 import {
   formatVendorAddress,
   getVendorCategoryIcon,
-  getVendorCategoryLabel,
   VENDOR_CATEGORIES,
   VENDOR_SERVICE_AREAS,
 } from '../lib/vendor-directory.utils';
+import {
+  formatVendorDirectoryAmount,
+  formatVendorDirectoryDate,
+  formatVendorDirectoryDateTime,
+  labelVendorCategory,
+  labelVendorDetailTab,
+  labelVendorRelationType,
+  labelVendorServiceArea,
+  labelVendorSourceType,
+  vdi,
+  VENDOR_DETAIL_TAB_VALUES,
+  VENDOR_RELATION_VALUES,
+  VENDOR_SOURCE_TYPE_VALUES,
+  type VendorDetailTab,
+} from '../lib/vendor-directory-i18n';
 
 // ── shared constants ───────────────────────────────────
 
-const CATEGORIES = VENDOR_CATEGORIES;
 const SERVICE_AREA_OPTIONS = [...VENDOR_SERVICE_AREAS];
-
-const RELATION_TYPES: { value: VendorVehicleRelationType; label: string }[] = [
-  { value: 'PRIMARY_WORKSHOP', label: 'Primary Workshop' },
-  { value: 'TIRE_PARTNER', label: 'Tire Partner' },
-  { value: 'BODY_SHOP', label: 'Body Shop' },
-  { value: 'GLASS_REPAIR', label: 'Glass Repair' },
-  { value: 'CLEANING_PARTNER', label: 'Cleaning Partner' },
-  { value: 'INSPECTION_PARTNER', label: 'Inspection Partner' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-function getCategoryLabel(cat: VendorCategory) {
-  return getVendorCategoryLabel(cat);
-}
-function getCategoryIcon(cat: VendorCategory) {
-  return getVendorCategoryIcon(cat);
-}
-function getRelationLabel(rel: VendorVehicleRelationType) {
-  return RELATION_TYPES.find((r) => r.value === rel)?.label ?? rel;
-}
-
-type DetailTab = 'overview' | 'vehicles' | 'tasks' | 'invoices' | 'documents' | 'history';
-
-const TABS: { value: DetailTab; label: string }[] = [
-  { value: 'overview', label: 'Übersicht' },
-  { value: 'vehicles', label: 'Fahrzeuge' },
-  { value: 'tasks', label: 'Aufgaben' },
-  { value: 'invoices', label: 'Rechnungen' },
-  { value: 'documents', label: 'Dokumente' },
-  { value: 'history', label: 'Aktivität' },
-];
 
 // ── types ──────────────────────────────────────────────
 
@@ -103,13 +83,14 @@ const emptyLinkForm: LinkFormData = {
 
 // ── component ──────────────────────────────────────────
 
-function formatRecordDate(value: unknown): string | null {
+function formatRecordDate(locale: string, value: unknown): string | null {
   if (value == null || value === '') return null;
   const d = new Date(String(value));
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('de-DE') : null;
+  return Number.isFinite(d.getTime()) ? formatVendorDirectoryDate(locale, d) : null;
 }
 
 export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
+  const { locale, t } = useLanguage();
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const canManage = hasPermission('vendor-management', 'write');
@@ -117,7 +98,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const [activeTab, setActiveTab] = useState<VendorDetailTab>('overview');
 
   // editing master data
   const [editing, setEditing] = useState(false);
@@ -337,15 +318,15 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
       <div className={cardClass}>
         <EmptyState
           icon={<Icon name="store" className="h-5 w-5" />}
-          title="Vendor not found"
-          description="This vendor may have been removed or you may not have access."
+          title={t('vendors.directory.detail.notFound.title')}
+          description={t('vendors.directory.detail.notFound.description')}
           action={(
             <button
               type="button"
               onClick={onBack}
               className="text-xs font-medium text-[color:var(--brand)] hover:opacity-80"
             >
-              Go back
+              {t('vendors.directory.detail.notFound.back')}
             </button>
           )}
         />
@@ -353,7 +334,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
     );
   }
 
-  const CatIcon = getCategoryIcon(vendor.category);
+  const CatIcon = getVendorCategoryIcon(vendor.category);
   const address = formatVendorAddress(vendor);
 
   // ── edit mode (master data) ──────────────────────────
@@ -367,16 +348,16 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
               className={`p-2 rounded-lg transition ${'hover:bg-muted text-muted-foreground'}`}>
               <Icon name="arrow-left" className="w-4 h-4" />
             </button>
-            <h2 className={`text-lg font-bold ${'text-foreground'}`}>Edit Vendor</h2>
+            <h2 className={`text-lg font-bold ${'text-foreground'}`}>{t('vendors.directory.detail.editTitle')}</h2>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => { setEditing(false); setForm(null); }}
               className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-medium">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button onClick={handleSave} disabled={saving || !form.name.trim()}
               className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-medium disabled:opacity-50">
-              {saving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : 'Save Changes'}
+              {saving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : t('vendors.directory.action.saveChanges')}
             </button>
           </div>
         </div>
@@ -384,51 +365,54 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
         <div className={`${cardClass} p-5 space-y-4`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Company Name *</label>
+              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.companyName')}</label>
               <input value={form.name} onChange={(e) => setForm((f) => f ? { ...f, name: e.target.value } : f)} className={inputClass} />
             </div>
             <div>
-              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Category</label>
+              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.category')}</label>
               <select value={form.category} onChange={(e) => setForm((f) => f ? { ...f, category: e.target.value as VendorCategory } : f)} className={inputClass}>
-                {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {VENDOR_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{labelVendorCategory(locale, c.value)}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Type</label>
+              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.type')}</label>
               <select value={form.sourceType} onChange={(e) => setForm((f) => f ? { ...f, sourceType: e.target.value as VendorSourceType } : f)} className={inputClass}>
-                <option value="LOCAL_BUSINESS">Local Business</option>
-                <option value="ONLINE_VENDOR">Online Vendor</option>
+                {VENDOR_SOURCE_TYPE_VALUES.map((sourceType) => (
+                  <option key={sourceType} value={sourceType}>{labelVendorSourceType(locale, sourceType)}</option>
+                ))}
               </select>
             </div>
           </div>
 
           <div>
-            <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Address</label>
+            <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.address')}</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input value={form.street} onChange={(e) => setForm((f) => f ? { ...f, street: e.target.value } : f)} placeholder="Street" className={inputClass} />
-              <input value={form.city} onChange={(e) => setForm((f) => f ? { ...f, city: e.target.value } : f)} placeholder="City" className={inputClass} />
-              <input value={form.postalCode} onChange={(e) => setForm((f) => f ? { ...f, postalCode: e.target.value } : f)} placeholder="Postal Code" className={inputClass} />
-              <input value={form.country} onChange={(e) => setForm((f) => f ? { ...f, country: e.target.value } : f)} placeholder="Country" className={inputClass} />
+              <input value={form.street} onChange={(e) => setForm((f) => f ? { ...f, street: e.target.value } : f)} placeholder={t('vendors.directory.form.street')} className={inputClass} />
+              <input value={form.city} onChange={(e) => setForm((f) => f ? { ...f, city: e.target.value } : f)} placeholder={t('vendors.directory.form.city')} className={inputClass} />
+              <input value={form.postalCode} onChange={(e) => setForm((f) => f ? { ...f, postalCode: e.target.value } : f)} placeholder={t('vendors.directory.form.postalCode')} className={inputClass} />
+              <input value={form.country} onChange={(e) => setForm((f) => f ? { ...f, country: e.target.value } : f)} placeholder={t('vendors.directory.form.country')} className={inputClass} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div>
-              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Phone</label>
+              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.phone')}</label>
               <input value={form.phone} onChange={(e) => setForm((f) => f ? { ...f, phone: e.target.value } : f)} className={inputClass} />
             </div>
             <div>
-              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Email</label>
+              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.email')}</label>
               <input value={form.email} onChange={(e) => setForm((f) => f ? { ...f, email: e.target.value } : f)} className={inputClass} />
             </div>
             <div>
-              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Website</label>
+              <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.website')}</label>
               <input value={form.website} onChange={(e) => setForm((f) => f ? { ...f, website: e.target.value } : f)} className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Service Areas</label>
+            <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.serviceAreas')}</label>
             <div className="flex flex-wrap gap-1.5">
               {SERVICE_AREA_OPTIONS.map((sa) => {
                 const active = form.serviceAreas.includes(sa);
@@ -443,7 +427,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                         ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] border border-transparent'
                         : 'surface-premium text-muted-foreground border border-border hover:text-foreground'
                     }`}>
-                    {sa}
+                    {labelVendorServiceArea(locale, sa)}
                   </button>
                 );
               })}
@@ -452,21 +436,21 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
           <div className={`p-4 rounded-lg ${'bg-muted/40 border border-border'}`}>
             <h4 className={`text-[11px] font-semibold mb-3 flex items-center gap-1.5 ${'text-muted-foreground'}`}>
-              <Icon name="user" className="w-3.5 h-3.5" /> Contact Person
+              <Icon name="user" className="w-3.5 h-3.5" /> {t('vendors.directory.form.contactPerson')}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input value={form.contactName} onChange={(e) => setForm((f) => f ? { ...f, contactName: e.target.value } : f)} placeholder="Full Name" className={inputClass} />
-              <input value={form.contactRole} onChange={(e) => setForm((f) => f ? { ...f, contactRole: e.target.value } : f)} placeholder="Role / Function" className={inputClass} />
-              <input value={form.contactPhone} onChange={(e) => setForm((f) => f ? { ...f, contactPhone: e.target.value } : f)} placeholder="Direct Phone" className={inputClass} />
-              <input value={form.contactEmail} onChange={(e) => setForm((f) => f ? { ...f, contactEmail: e.target.value } : f)} placeholder="Direct Email" className={inputClass} />
+              <input value={form.contactName} onChange={(e) => setForm((f) => f ? { ...f, contactName: e.target.value } : f)} placeholder={t('vendors.directory.form.contactName')} className={inputClass} />
+              <input value={form.contactRole} onChange={(e) => setForm((f) => f ? { ...f, contactRole: e.target.value } : f)} placeholder={t('vendors.directory.form.contactRole')} className={inputClass} />
+              <input value={form.contactPhone} onChange={(e) => setForm((f) => f ? { ...f, contactPhone: e.target.value } : f)} placeholder={t('vendors.directory.form.contactPhone')} className={inputClass} />
+              <input value={form.contactEmail} onChange={(e) => setForm((f) => f ? { ...f, contactEmail: e.target.value } : f)} placeholder={t('vendors.directory.form.contactEmail')} className={inputClass} />
             </div>
-            <textarea value={form.contactNotes} onChange={(e) => setForm((f) => f ? { ...f, contactNotes: e.target.value } : f)} placeholder="Contact notes..."
+            <textarea value={form.contactNotes} onChange={(e) => setForm((f) => f ? { ...f, contactNotes: e.target.value } : f)} placeholder={t('vendors.directory.form.contactNotes')}
               rows={2} className={`${inputClass} mt-2 resize-none`} />
           </div>
 
           <div>
-            <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Internal Notes</label>
-            <textarea value={form.notes} onChange={(e) => setForm((f) => f ? { ...f, notes: e.target.value } : f)} placeholder="Internal notes..."
+            <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.internalNotes')}</label>
+            <textarea value={form.notes} onChange={(e) => setForm((f) => f ? { ...f, notes: e.target.value } : f)} placeholder={t('vendors.directory.form.internalNotesPlaceholder')}
               rows={3} className={`${inputClass} resize-none`} />
           </div>
         </div>
@@ -487,19 +471,19 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             className="inline-flex items-center gap-1.5 p-1.5 rounded-lg transition hover:bg-muted text-muted-foreground hover:text-foreground"
           >
             <Icon name="arrow-left" className="w-4 h-4" />
-            <span>Zurück zum Partnerverzeichnis</span>
+            <span>{t('vendors.directory.action.backToDirectory')}</span>
           </button>
         )}
         title={vendor.name}
-        description={getCategoryLabel(vendor.category)}
+        description={labelVendorCategory(locale, vendor.category)}
         icon={<CatIcon className="w-4 h-4 text-[color:var(--brand)]" />}
         status={(
           <>
             {!vendor.isActive && (
-              <StatusChip tone="watch">Inaktiv</StatusChip>
+              <StatusChip tone="watch">{t('vendors.directory.status.inactive')}</StatusChip>
             )}
             {vendor.source === 'MAPBOX' && (
-              <StatusChip tone="info">Mapbox</StatusChip>
+              <StatusChip tone="info">{t('vendors.directory.status.mapbox')}</StatusChip>
             )}
           </>
         )}
@@ -510,7 +494,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
               onClick={() => openCreateTask()}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:opacity-90"
             >
-              <ClipboardList className="w-3.5 h-3.5" /> Service-Aufgabe
+              <ClipboardList className="w-3.5 h-3.5" /> {t('vendors.directory.action.serviceTask')}
             </button>
             {canManage && (
               <button
@@ -518,7 +502,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                 onClick={startEdit}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition bg-muted text-foreground hover:bg-accent"
               >
-                <Icon name="edit-3" className="w-3.5 h-3.5" /> Bearbeiten
+                <Icon name="edit-3" className="w-3.5 h-3.5" /> {t('vendors.directory.action.edit')}
               </button>
             )}
           </div>
@@ -527,20 +511,20 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
       {/* Tab bar */}
       <div className={`flex items-center gap-1 overflow-x-auto border-b ${'border-border'}`}>
-        {TABS.map((t) => {
+        {VENDOR_DETAIL_TAB_VALUES.map((tabValue) => {
           const count =
-            t.value === 'vehicles' ? vendor.linkedVehicleCount :
-            t.value === 'invoices' ? vendor.invoiceCount :
-            t.value === 'tasks' ? taskStats.open : undefined;
-          const active = activeTab === t.value;
+            tabValue === 'vehicles' ? vendor.linkedVehicleCount :
+            tabValue === 'invoices' ? vendor.invoiceCount :
+            tabValue === 'tasks' ? taskStats.open : undefined;
+          const active = activeTab === tabValue;
           return (
-            <button key={t.value} onClick={() => setActiveTab(t.value)}
+            <button key={tabValue} onClick={() => setActiveTab(tabValue)}
               className={`relative px-3 py-2.5 text-xs font-medium whitespace-nowrap transition ${
                 active
                   ? ('text-foreground')
                   : 'text-muted-foreground hover:text-foreground'
               }`}>
-              {t.label}
+              {labelVendorDetailTab(locale, tabValue)}
               {count != null && count > 0 && (
                 <StatusChip tone="neutral" className="ml-1.5 text-[10px]">{count}</StatusChip>
               )}
@@ -556,44 +540,44 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-lg font-bold tabular-nums text-foreground">{taskStats.open}</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Offen</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{t('vendors.directory.kpi.openTasks')}</p>
             </div>
             <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-lg font-bold tabular-nums text-foreground">{taskStats.completed}</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Erledigt</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{t('vendors.directory.kpi.completedTasks')}</p>
             </div>
             <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-lg font-bold tabular-nums text-foreground">{vendor.linkedVehicleCount}</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fahrzeuge</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{t('vendors.directory.kpi.linkedVehicles')}</p>
             </div>
             <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-[11px] font-semibold text-foreground">
                 {taskStats.lastActivity
-                  ? taskStats.lastActivity.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
-                  : '—'}
+                  ? formatVendorDirectoryDate(locale, taskStats.lastActivity, { day: 'numeric', month: 'short' })
+                  : vdi(locale, 'vendors.directory.emptyValue')}
               </p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Letzte Nutzung</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">{t('vendors.directory.kpi.lastActivity')}</p>
             </div>
           </div>
 
           <div className={`${cardClass} p-5`}>
-            <h3 className={`text-xs font-semibold mb-4 ${'text-muted-foreground'}`}>Kontakt & Adresse</h3>
+            <h3 className={`text-xs font-semibold mb-4 ${'text-muted-foreground'}`}>{t('vendors.directory.detail.contactAddress')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {address && <InfoRow icon={MapPin} label="Address" value={address} />}
-              {vendor.phone && <InfoRow icon={Phone} label="Phone" value={vendor.phone} href={`tel:${vendor.phone}`} />}
-              {vendor.email && <InfoRow icon={Mail} label="Email" value={vendor.email} href={`mailto:${vendor.email}`} />}
-              {vendor.website && <InfoRow icon={Globe} label="Website" value={vendor.website} href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`} external />}
+              {address && <InfoRow icon={MapPin} label={t('vendors.directory.detail.label.address')} value={address} />}
+              {vendor.phone && <InfoRow icon={Phone} label={t('vendors.directory.detail.label.phone')} value={vendor.phone} href={`tel:${vendor.phone}`} />}
+              {vendor.email && <InfoRow icon={Mail} label={t('vendors.directory.detail.label.email')} value={vendor.email} href={`mailto:${vendor.email}`} />}
+              {vendor.website && <InfoRow icon={Globe} label={t('vendors.directory.detail.label.website')} value={vendor.website} href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`} external />}
               {(vendor.latitude != null && vendor.longitude != null) && (
-                <InfoRow icon={MapPin} label="Coordinates" value={`${vendor.latitude.toFixed(5)}, ${vendor.longitude.toFixed(5)}`} />
+                <InfoRow icon={MapPin} label={t('vendors.directory.detail.label.coordinates')} value={`${vendor.latitude.toFixed(5)}, ${vendor.longitude.toFixed(5)}`} />
               )}
             </div>
 
             {vendor.serviceAreas.length > 0 && (
               <div className="mt-5">
-                <h4 className={`text-[11px] font-medium mb-2 ${'text-muted-foreground'}`}>Leistungsbereiche</h4>
+                <h4 className={`text-[11px] font-medium mb-2 ${'text-muted-foreground'}`}>{t('vendors.directory.detail.serviceAreas')}</h4>
                 <div className="flex flex-wrap gap-1.5">
                   {vendor.serviceAreas.map((sa) => (
-                    <StatusChip key={sa} tone="info">{sa}</StatusChip>
+                    <StatusChip key={sa} tone="info">{labelVendorServiceArea(locale, sa)}</StatusChip>
                   ))}
                 </div>
               </div>
@@ -603,13 +587,13 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
           {vendor.contactName && (
             <div className={`${cardClass} p-5`}>
               <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
-                <Icon name="user" className="w-3.5 h-3.5" /> Ansprechpartner
+                <Icon name="user" className="w-3.5 h-3.5" /> {t('vendors.directory.detail.contactPerson')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoRow icon={User} label="Name" value={vendor.contactName} />
-                {vendor.contactRole && <InfoRow icon={Tag} label="Role" value={vendor.contactRole} />}
-                {vendor.contactPhone && <InfoRow icon={Phone} label="Phone" value={vendor.contactPhone} href={`tel:${vendor.contactPhone}`} />}
-                {vendor.contactEmail && <InfoRow icon={Mail} label="Email" value={vendor.contactEmail} href={`mailto:${vendor.contactEmail}`} />}
+                <InfoRow icon={User} label={t('vendors.directory.detail.label.name')} value={vendor.contactName} />
+                {vendor.contactRole && <InfoRow icon={Tag} label={t('vendors.directory.detail.label.role')} value={vendor.contactRole} />}
+                {vendor.contactPhone && <InfoRow icon={Phone} label={t('vendors.directory.detail.label.phone')} value={vendor.contactPhone} href={`tel:${vendor.contactPhone}`} />}
+                {vendor.contactEmail && <InfoRow icon={Mail} label={t('vendors.directory.detail.label.email')} value={vendor.contactEmail} href={`mailto:${vendor.contactEmail}`} />}
               </div>
               {vendor.contactNotes && <p className={`mt-3 text-[11px] ${'text-muted-foreground'}`}>{vendor.contactNotes}</p>}
             </div>
@@ -617,14 +601,14 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
           {vendor.notes && (
             <div className={`${cardClass} p-5`}>
-              <h3 className={`text-xs font-semibold mb-3 ${'text-muted-foreground'}`}>Interne Notizen</h3>
+              <h3 className={`text-xs font-semibold mb-3 ${'text-muted-foreground'}`}>{t('vendors.directory.detail.internalNotes')}</h3>
               <p className={`text-xs whitespace-pre-wrap ${'text-foreground/80'}`}>{vendor.notes}</p>
             </div>
           )}
 
           <div className={`text-[10px] flex items-center gap-4 px-1 ${'text-muted-foreground/60'}`}>
-            <span>Created {new Date(vendor.createdAt).toLocaleDateString('de-DE')}</span>
-            <span>Updated {new Date(vendor.updatedAt).toLocaleDateString('de-DE')}</span>
+            <span>{vdi(locale, 'vendors.directory.detail.created', { date: formatVendorDirectoryDate(locale, vendor.createdAt) })}</span>
+            <span>{vdi(locale, 'vendors.directory.detail.updated', { date: formatVendorDirectoryDate(locale, vendor.updatedAt) })}</span>
           </div>
         </div>
       )}
@@ -634,7 +618,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
         <div className={`${cardClass} p-5`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-xs font-semibold flex items-center gap-2 ${'text-muted-foreground'}`}>
-              <Icon name="car" className="w-3.5 h-3.5" /> Verknüpfte Fahrzeuge ({vendor.linkedVehicleCount})
+              <Icon name="car" className="w-3.5 h-3.5" /> {vdi(locale, 'vendors.directory.vehicles.title', { count: vendor.linkedVehicleCount })}
             </h3>
             <div className="flex items-center gap-2">
               {canManage && (
@@ -642,7 +626,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                   className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition ${
                     'bg-muted text-foreground hover:bg-accent'
                   }`}>
-                  <Icon name="plus" className="w-3 h-3" /> Fahrzeug verknüpfen
+                  <Icon name="plus" className="w-3 h-3" /> {t('vendors.directory.vehicles.link')}
                 </button>
               )}
             </div>
@@ -652,15 +636,15 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             <EmptyState
               compact
               icon={<Icon name="car" className="h-5 w-5" />}
-              title="Noch keine Fahrzeuge verknüpft"
-              description="Verknüpfen Sie Flottenfahrzeuge, um bevorzugte Werkstätten und Service-Beziehungen zu pflegen."
+              title={t('vendors.directory.vehicles.empty.title')}
+              description={t('vendors.directory.vehicles.empty.description')}
               action={canManage ? (
                 <button
                   type="button"
                   onClick={openCreateLink}
                   className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1.5 text-[10px] font-medium text-foreground hover:bg-accent transition"
                 >
-                  <Icon name="plus" className="w-3 h-3" /> Fahrzeug verknüpfen
+                  <Icon name="plus" className="w-3 h-3" /> {t('vendors.directory.vehicles.link')}
                 </button>
               ) : undefined}
             />
@@ -674,12 +658,12 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                         {lv.make} {lv.model} {lv.year ? `(${lv.year})` : ''}
                       </span>
                       <span className={`text-[10px] ${'text-muted-foreground'}`}>{lv.licensePlate ?? lv.vin}</span>
-                      <StatusChip tone="neutral">{getRelationLabel(lv.relationType)}</StatusChip>
+                      <StatusChip tone="neutral">{labelVendorRelationType(locale, lv.relationType)}</StatusChip>
                       {lv.isPreferred && (
-                        <StatusChip tone="info">Bevorzugt</StatusChip>
+                        <StatusChip tone="info">{t('vendors.directory.card.preferred')}</StatusChip>
                       )}
                       {lv.priority != null && (
-                        <span className={`text-[9px] ${'text-muted-foreground'}`}>Prio {lv.priority}</span>
+                        <span className={`text-[9px] ${'text-muted-foreground'}`}>{vdi(locale, 'vendors.directory.vehicles.priority', { priority: lv.priority })}</span>
                       )}
                     </div>
                     {lv.notes && <p className={`mt-1 text-[10px] ${'text-muted-foreground'}`}>{lv.notes}</p>}
@@ -689,10 +673,10 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                         type="button"
                         onClick={() => openCreateTask(lv.id)}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-semibold border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]"
-                        title="Service-Aufgabe für dieses Fahrzeug"
+                        title={t('vendors.directory.action.serviceTaskForVehicle')}
                       >
                         <ClipboardList className="w-3 h-3" />
-                        Aufgabe
+                        {t('vendors.directory.action.createTask')}
                       </button>
                       {canManage && (
                         <>
@@ -718,17 +702,17 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
       {activeTab === 'invoices' && (
         <div className={`${cardClass} p-5`}>
           <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
-            <Icon name="file-text" className="w-3.5 h-3.5" /> Invoices ({vendor.invoiceCount})
+            <Icon name="file-text" className="w-3.5 h-3.5" /> {vdi(locale, 'vendors.directory.invoices.title', { count: vendor.invoiceCount })}
           </h3>
           {!canViewFinancials ? (
-            <p className={`text-[11px] ${'text-muted-foreground'}`}>You do not have permission to view financials.</p>
+            <p className={`text-[11px] ${'text-muted-foreground'}`}>{t('vendors.directory.invoices.noPermission')}</p>
           ) : invoicesLoading ? (
             <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
           ) : invoices.length === 0 ? (
             <EmptyState
               compact
               icon={<Icon name="file-text" className="h-5 w-5" />}
-              title="No invoices linked to this vendor yet"
+              title={t('vendors.directory.invoices.empty')}
             />
           ) : (
             <div className="space-y-1.5">
@@ -740,11 +724,11 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                       <span className={`text-[11px] truncate ${'text-foreground/80'}`}>{inv.title}</span>
                     </div>
                     <div className={`text-[10px] ${'text-muted-foreground'}`}>
-                      {new Date(inv.invoiceDate).toLocaleDateString('de-DE')} · {inv.status}
+                      {formatVendorDirectoryDate(locale, inv.invoiceDate)} · {inv.status}
                     </div>
                   </div>
                   <span className={`text-xs font-semibold shrink-0 ${'text-foreground'}`}>
-                    {(inv.totalCents / 100).toLocaleString('de-DE', { style: 'currency', currency: inv.currency || 'EUR' })}
+                    {formatVendorDirectoryAmount(locale, inv.totalCents, inv.currency || 'EUR')}
                   </span>
                 </div>
               ))}
@@ -757,7 +741,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
       {activeTab === 'documents' && (
         <div className={`${cardClass} p-5`}>
           <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
-            <Icon name="file-text" className="w-3.5 h-3.5" /> Documents
+            <Icon name="file-text" className="w-3.5 h-3.5" /> {t('vendors.directory.documents.title')}
           </h3>
           {documentsLoading ? (
             <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
@@ -765,17 +749,17 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             <EmptyState
               compact
               icon={<Icon name="file-text" className="h-5 w-5" />}
-              title="No documents yet"
-              description="Contracts, quotes and warranty documents linked to this vendor will appear here."
+              title={t('vendors.directory.documents.empty.title')}
+              description={t('vendors.directory.documents.empty.description')}
             />
           ) : (
             <div className="space-y-2">
               {documents.map((doc, idx) => {
-                const createdLabel = formatRecordDate(doc.createdAt);
+                const createdLabel = formatRecordDate(locale, doc.createdAt);
                 return (
                 <div key={String(doc.id ?? idx)} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium text-foreground truncate">{String(doc.title ?? doc.name ?? 'Document')}</p>
+                    <p className="text-[11px] font-medium text-foreground truncate">{String(doc.title ?? doc.name ?? t('vendors.directory.documents.fallbackTitle'))}</p>
                     {createdLabel != null && (
                       <p className="text-[10px] text-muted-foreground">{createdLabel}</p>
                     )}
@@ -800,12 +784,12 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
       {activeTab === 'history' && (
         <div className={`${cardClass} p-5`}>
           <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
-            <Icon name="clock" className="w-3.5 h-3.5" /> Activity History
+            <Icon name="clock" className="w-3.5 h-3.5" /> {t('vendors.directory.history.title')}
           </h3>
           {auditLoading ? (
             <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
           ) : audit.length === 0 ? (
-            <EmptyState compact title="No activity recorded yet" />
+            <EmptyState compact title={t('vendors.directory.history.empty')} />
           ) : (
             <div className="space-y-2">
               {audit.map((a) => (
@@ -817,7 +801,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                     <p className={`text-[11px] ${'text-foreground/90'}`}>{a.description}</p>
                     {a.changeSummary && <p className={`text-[10px] ${'text-muted-foreground'}`}>{a.changeSummary}</p>}
                     <p className={`text-[10px] ${'text-muted-foreground/60'}`}>
-                      {new Date(a.createdAt).toLocaleString('de-DE')}
+                      {formatVendorDirectoryDateTime(locale, a.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -835,7 +819,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             onClick={(e) => e.stopPropagation()}>
             <div className={`flex items-center justify-between p-4 border-b ${'border-border'}`}>
               <h3 className={`text-sm font-bold ${'text-foreground'}`}>
-                {linkModal.mode === 'create' ? 'Link Vehicle' : 'Edit Link'}
+                {linkModal.mode === 'create' ? t('vendors.directory.linkModal.createTitle') : t('vendors.directory.linkModal.editTitle')}
               </h3>
               <button onClick={() => setLinkModal(null)} className={`p-1 rounded ${'hover:bg-muted text-muted-foreground'}`}>
                 <Icon name="x" className="w-4 h-4" />
@@ -844,12 +828,12 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             <div className="p-4 space-y-3">
               {linkModal.mode === 'create' && (
                 <div>
-                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Vehicle *</label>
-                  <input value={linkSearch} onChange={(e) => setLinkSearch(e.target.value)} placeholder="Search vehicles..." className={`${inputClass} mb-2`} />
+                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.detail.label.vehicle')} *</label>
+                  <input value={linkSearch} onChange={(e) => setLinkSearch(e.target.value)} placeholder={t('vendors.directory.linkModal.searchPlaceholder')} className={`${inputClass} mb-2`} />
                   <div className="max-h-40 overflow-y-auto rounded-lg border border-border">
                     {filteredToLink.length === 0 ? (
                       <p className={`p-3 text-[11px] ${'text-muted-foreground'}`}>
-                        {availableToLink.length === 0 ? 'All vehicles already linked' : 'No matching vehicles'}
+                        {availableToLink.length === 0 ? t('vendors.directory.linkModal.allLinked') : t('vendors.directory.linkModal.noMatches')}
                       </p>
                     ) : filteredToLink.map((v) => {
                       const selected = linkForm.vehicleId === v.id;
@@ -873,49 +857,51 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
               )}
 
               <div>
-                <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Relation Type</label>
+                <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.detail.label.relationType')}</label>
                 <select value={linkForm.relationType} onChange={(e) => setLinkForm((f) => ({ ...f, relationType: e.target.value as VendorVehicleRelationType }))} className={inputClass}>
-                  {RELATION_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  {VENDOR_RELATION_VALUES.map((relationType) => (
+                    <option key={relationType} value={relationType}>{labelVendorRelationType(locale, relationType)}</option>
+                  ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Priority</label>
-                  <input type="number" value={linkForm.priority} onChange={(e) => setLinkForm((f) => ({ ...f, priority: e.target.value }))} placeholder="—" className={inputClass} />
+                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.detail.label.priority')}</label>
+                  <input type="number" value={linkForm.priority} onChange={(e) => setLinkForm((f) => ({ ...f, priority: e.target.value }))} placeholder={vdi(locale, 'vendors.directory.emptyValue')} className={inputClass} />
                 </div>
                 <label className={`flex items-center gap-2 mt-6 cursor-pointer text-xs ${'text-foreground/80'}`}>
                   <input type="checkbox" checked={linkForm.isPreferred} onChange={(e) => setLinkForm((f) => ({ ...f, isPreferred: e.target.checked }))}
                     className="rounded border-border accent-[color:var(--brand)] w-3.5 h-3.5" />
-                  Preferred
+                  {t('vendors.directory.detail.label.preferred')}
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Valid From</label>
+                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.detail.label.validFrom')}</label>
                   <input type="date" value={linkForm.validFrom} onChange={(e) => setLinkForm((f) => ({ ...f, validFrom: e.target.value }))} className={inputClass} />
                 </div>
                 <div>
-                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Valid Until</label>
+                  <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.detail.label.validUntil')}</label>
                   <input type="date" value={linkForm.validUntil} onChange={(e) => setLinkForm((f) => ({ ...f, validUntil: e.target.value }))} className={inputClass} />
                 </div>
               </div>
 
               <div>
-                <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>Notes</label>
-                <textarea value={linkForm.notes} onChange={(e) => setLinkForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Link notes..."
+                <label className={`text-[11px] font-medium mb-1 block ${'text-muted-foreground'}`}>{t('vendors.directory.detail.label.notes')}</label>
+                <textarea value={linkForm.notes} onChange={(e) => setLinkForm((f) => ({ ...f, notes: e.target.value }))} placeholder={t('vendors.directory.linkModal.notesPlaceholder')}
                   rows={2} className={`${inputClass} resize-none`} />
               </div>
             </div>
             <div className={`flex items-center justify-end gap-2 p-4 border-t ${'border-border'}`}>
               <button onClick={() => setLinkModal(null)}
                 className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-medium">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={submitLink} disabled={linkSaving || (linkModal.mode === 'create' && !linkForm.vehicleId)}
                 className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-medium disabled:opacity-50">
-                {linkSaving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : linkModal.mode === 'create' ? 'Link Vehicle' : 'Save'}
+                {linkSaving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : linkModal.mode === 'create' ? t('vendors.directory.action.linkVehicle') : t('vendors.directory.action.saveLink')}
               </button>
             </div>
           </div>

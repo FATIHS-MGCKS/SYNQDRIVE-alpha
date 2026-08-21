@@ -1,12 +1,13 @@
 import { ClipboardList, Eye, Pencil, Star } from 'lucide-react';
 import { StatusChip } from '../../../components/patterns';
 import type { Vendor } from '../../../lib/api';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   formatVendorAddress,
   getVendorCategoryIcon,
-  getVendorCategoryLabel,
   vendorHasPreferredLink,
 } from '../../lib/vendor-directory.utils';
+import { labelVendorCategory, labelVendorServiceArea, vdi } from '../../lib/vendor-directory-i18n';
 import { Icon } from '../ui/Icon';
 
 interface VendorDirectoryCardProps {
@@ -22,6 +23,7 @@ export function VendorDirectoryCard({
   onEdit,
   onCreateTask,
 }: VendorDirectoryCardProps) {
+  const { locale, t } = useLanguage();
   const CatIcon = getVendorCategoryIcon(vendor.category);
   const isPreferred = vendorHasPreferredLink(vendor);
   const address = formatVendorAddress(vendor);
@@ -48,12 +50,14 @@ export function VendorDirectoryCard({
                 {isPreferred && (
                   <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[9px] font-semibold sq-tone-brand">
                     <Star className="w-3 h-3" />
-                    Bevorzugt
+                    {t('vendors.directory.card.preferred')}
                   </span>
                 )}
-                {!vendor.isActive && <StatusChip tone="watch">Inaktiv</StatusChip>}
+                {!vendor.isActive && (
+                  <StatusChip tone="watch">{t('vendors.directory.card.inactive')}</StatusChip>
+                )}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{getVendorCategoryLabel(vendor.category)}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{labelVendorCategory(locale, vendor.category)}</p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                 {address && (
                   <span className="inline-flex items-center gap-1 max-w-full">
@@ -77,10 +81,16 @@ export function VendorDirectoryCard({
               {vendor.serviceAreas.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {vendor.serviceAreas.slice(0, 4).map((sa) => (
-                    <StatusChip key={sa} tone="info" className="text-[9px]">{sa}</StatusChip>
+                    <StatusChip key={sa} tone="info" className="text-[9px]">
+                      {labelVendorServiceArea(locale, sa)}
+                    </StatusChip>
                   ))}
                   {vendor.serviceAreas.length > 4 && (
-                    <span className="text-[9px] text-muted-foreground self-center">+{vendor.serviceAreas.length - 4}</span>
+                    <span className="text-[9px] text-muted-foreground self-center">
+                      {vdi(locale, 'vendors.directory.card.moreServiceAreas', {
+                        count: vendor.serviceAreas.length - 4,
+                      })}
+                    </span>
                   )}
                 </div>
               )}
@@ -91,7 +101,9 @@ export function VendorDirectoryCard({
         <div className="flex items-center gap-3 shrink-0 lg:flex-col lg:items-end">
           <div className="text-center lg:text-right">
             <p className="text-lg font-bold tabular-nums text-foreground">{vendor.linkedVehicleCount}</p>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fahrzeuge</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">
+              {t('vendors.directory.card.vehicles')}
+            </p>
           </div>
           <div className="flex flex-wrap gap-1">
             <button
@@ -100,7 +112,7 @@ export function VendorDirectoryCard({
               className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold border border-border/60 hover:bg-muted/40"
             >
               <Eye className="w-3 h-3" />
-              Ansehen
+              {t('vendors.directory.action.view')}
             </button>
             {onEdit && (
               <button
@@ -109,7 +121,7 @@ export function VendorDirectoryCard({
                 className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold border border-border/60 hover:bg-muted/40"
               >
                 <Pencil className="w-3 h-3" />
-                Bearbeiten
+                {t('vendors.directory.action.edit')}
               </button>
             )}
             {onCreateTask && (
@@ -119,7 +131,7 @@ export function VendorDirectoryCard({
                 className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-semibold border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]"
               >
                 <ClipboardList className="w-3 h-3" />
-                Aufgabe
+                {t('vendors.directory.action.createTask')}
               </button>
             )}
           </div>

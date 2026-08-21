@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { api } from '../../lib/api';
 import type { Vendor, VendorCategory, VendorSource, VendorSourceType, VendorInput, VendorMapboxSuggestion } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { PageHeader, StatusChip, EmptyState, SkeletonCard, FormDialog } from '../../components/patterns';
@@ -11,21 +12,26 @@ import { ServiceTaskCreateModal } from './service-center/ServiceTaskCreateModal'
 import { VendorDirectoryCard } from './vendors/VendorDirectoryCard';
 import {
   filterVendorDirectory,
-  getVendorCategoryLabel,
   VENDOR_CATEGORIES,
   VENDOR_SERVICE_AREAS,
   vendorHasPreferredLink,
   type VendorDirectoryScope,
 } from '../lib/vendor-directory.utils';
+import {
+  labelVendorCategory,
+  labelVendorCategoryFilter,
+  labelVendorScope,
+  labelVendorServiceArea,
+  labelVendorServiceAreaFilter,
+  labelVendorSourceType,
+  vdi,
+  VENDOR_SOURCE_TYPE_VALUES,
+} from '../lib/vendor-directory-i18n';
 
 // ── constants ──────────────────────────────────────────
 
 const CATEGORIES = VENDOR_CATEGORIES;
 const SERVICE_AREA_OPTIONS = [...VENDOR_SERVICE_AREAS];
-
-function getCategoryLabel(cat: VendorCategory): string {
-  return getVendorCategoryLabel(cat);
-}
 
 // ── types ──────────────────────────────────────────────
 
@@ -80,6 +86,7 @@ export function VendorManagementView({
   embedded = false,
   embeddedInServiceCenter = false,
 }: VendorManagementViewProps) {
+  const { locale, t } = useLanguage();
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const canManage = hasPermission('vendor-management', 'write');
@@ -153,18 +160,9 @@ export function VendorManagementView({
   const serviceAreaCount = (area: string | 'ALL') =>
     area === 'ALL' ? vendors.length : vendors.filter((v) => v.serviceAreas?.includes(area)).length;
   const inactiveCount = vendors.filter((vendor) => !vendor.isActive).length;
-  const activeCategoryLabel = catFilter === 'ALL'
-    ? (embeddedInServiceCenter ? 'Alle Kategorien' : 'All categories')
-    : getCategoryLabel(catFilter);
-  const activeScopeLabel =
-    scopeFilter === 'ACTIVE' ? (embeddedInServiceCenter ? 'Aktive Partner' : 'Active partners') :
-    scopeFilter === 'INACTIVE' ? (embeddedInServiceCenter ? 'Inaktive Partner' : 'Inactive partners') :
-    scopeFilter === 'LINKED' ? (embeddedInServiceCenter ? 'Mit Fahrzeugen' : 'Vehicle-linked') :
-    scopeFilter === 'PREFERRED' ? (embeddedInServiceCenter ? 'Bevorzugte Partner' : 'Preferred partners') :
-    (embeddedInServiceCenter ? 'Alle Partner' : 'All partners');
-  const activeServiceAreaLabel = serviceAreaFilter === 'ALL'
-    ? (embeddedInServiceCenter ? 'Alle Leistungen' : 'All service areas')
-    : serviceAreaFilter;
+  const activeCategoryLabel = labelVendorCategoryFilter(locale, catFilter);
+  const activeScopeLabel = labelVendorScope(locale, scopeFilter);
+  const activeServiceAreaLabel = labelVendorServiceAreaFilter(locale, serviceAreaFilter);
   const hasActiveFilters =
     Boolean(search.trim()) || catFilter !== 'ALL' || serviceAreaFilter !== 'ALL' || scopeFilter !== 'ALL';
   const clearFilters = () => {
@@ -327,7 +325,7 @@ export function VendorManagementView({
       className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"
     >
       <Icon name="plus" className="h-4 w-4" />
-      Add Partner
+      {t('vendors.directory.action.addPartner')}
     </button>
   ) : undefined;
 
@@ -338,10 +336,10 @@ export function VendorManagementView({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Partnerverzeichnis
+                {t('vendors.directory.page.embeddedEyebrow')}
               </p>
               <h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground">
-                Dienstleister & Werkstätten
+                {t('vendors.directory.page.embeddedTitle')}
               </h3>
             </div>
             {addVendorAction}
@@ -351,7 +349,7 @@ export function VendorManagementView({
         ) : null
       ) : (
       <PageHeader
-        title="Service"
+        title={t('vendors.directory.page.service')}
         actions={addVendorAction}
       />
       )}
@@ -361,36 +359,40 @@ export function VendorManagementView({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
           {
-            label: 'Total Partners',
+            id: 'total',
+            label: t('vendors.directory.kpi.totalPartners'),
             value: stats.total,
-            helper: `${filtered.length} currently visible`,
+            helper: t('vendors.directory.kpi.visibleCount', { count: filtered.length }),
             icon: Briefcase,
             tone: 'sq-tone-neutral',
             action: () => clearFilters(),
             active: !hasActiveFilters,
           },
           {
-            label: 'Active',
+            id: 'active',
+            label: t('vendors.directory.kpi.active'),
             value: stats.active,
-            helper: `${inactiveCount} inactive partners`,
+            helper: t('vendors.directory.kpi.inactivePartners', { count: inactiveCount }),
             icon: Wrench,
             tone: stats.active > 0 ? 'sq-tone-success' : 'sq-tone-neutral',
             action: () => setScopeFilter(scopeFilter === 'ACTIVE' ? 'ALL' : 'ACTIVE'),
             active: scopeFilter === 'ACTIVE',
           },
           {
-            label: 'Categories',
+            id: 'categories',
+            label: t('vendors.directory.kpi.categories'),
             value: stats.categories,
-            helper: `${CATEGORIES.length} configured types`,
+            helper: t('vendors.directory.kpi.configuredTypes', { count: CATEGORIES.length }),
             icon: Tag,
             tone: 'sq-tone-brand',
             action: () => setShowCategoryFilter(true),
             active: catFilter !== 'ALL',
           },
           {
-            label: 'Vehicle-Linked',
+            id: 'linked',
+            label: t('vendors.directory.kpi.vehicleLinked'),
             value: stats.withVehicles,
-            helper: `${fleetVehicles.length} fleet vehicles`,
+            helper: t('vendors.directory.kpi.fleetVehicles', { count: fleetVehicles.length }),
             icon: Car,
             tone: stats.withVehicles > 0 ? 'sq-tone-warning' : 'sq-tone-neutral',
             action: () => setScopeFilter(scopeFilter === 'LINKED' ? 'ALL' : 'LINKED'),
@@ -400,7 +402,7 @@ export function VendorManagementView({
           const MetricIcon = metric.icon;
           return (
             <button
-              key={metric.label}
+              key={metric.id}
               type="button"
               onClick={metric.action}
               className={`group surface-premium sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
@@ -432,12 +434,10 @@ export function VendorManagementView({
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
             <div className="min-w-0">
               <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
-                {embeddedInServiceCenter ? 'Partnerverzeichnis filtern' : 'Filters'}
+                {t('vendors.directory.filters.title')}
               </h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                {embeddedInServiceCenter
-                  ? `${filtered.length} von ${vendors.length} Partnern`
-                  : `Showing ${filtered.length} of ${vendors.length} partners`}
+                {t('vendors.directory.filters.showing', { visible: filtered.length, total: vendors.length })}
               </p>
             </div>
           </div>
@@ -448,7 +448,7 @@ export function VendorManagementView({
                 onClick={() => setCatFilter('ALL')}
                 className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand"
               >
-                {activeCategoryLabel} active ×
+                {t('vendors.directory.filters.chipActive', { label: activeCategoryLabel })}
               </button>
             )}
             {serviceAreaFilter !== 'ALL' && (
@@ -457,7 +457,7 @@ export function VendorManagementView({
                 onClick={() => setServiceAreaFilter('ALL')}
                 className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-info"
               >
-                {activeServiceAreaLabel} ×
+                {t('vendors.directory.filters.chipActive', { label: activeServiceAreaLabel })}
               </button>
             )}
             {scopeFilter !== 'ALL' && (
@@ -466,12 +466,12 @@ export function VendorManagementView({
                 onClick={() => setScopeFilter('ALL')}
                 className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-success"
               >
-                {activeScopeLabel} active ×
+                {t('vendors.directory.filters.chipActive', { label: activeScopeLabel })}
               </button>
             )}
             {search.trim() && (
               <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
-                Search active
+                {t('vendors.directory.filters.searchActive')}
               </span>
             )}
             {hasActiveFilters && (
@@ -481,7 +481,7 @@ export function VendorManagementView({
                 className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-[10px] font-semibold transition-all sq-tone-critical hover:opacity-90"
               >
                 <Icon name="x" className="h-3.5 w-3.5" />
-                Clear filters
+                {t('vendors.directory.filters.clear')}
               </button>
             )}
           </div>
@@ -493,9 +493,7 @@ export function VendorManagementView({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={embeddedInServiceCenter
-                ? 'Partner, Ort, Kontakt oder Leistung suchen…'
-                : 'Search vendors, city, contact or service area...'}
+              placeholder={t('vendors.directory.filters.searchPlaceholder')}
               className="w-full rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs outline-none transition-all focus:border-[color:var(--brand)]"
             />
           </div>
@@ -520,11 +518,11 @@ export function VendorManagementView({
             {showScopeFilter && (
               <div className="absolute right-0 top-full z-50 mt-2 min-w-[220px] overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-2)] sm:left-0 sm:right-auto">
                 {[
-                  { value: 'ALL' as const, label: embeddedInServiceCenter ? 'Alle Partner' : 'All partners', icon: Briefcase },
-                  { value: 'ACTIVE' as const, label: embeddedInServiceCenter ? 'Aktive Partner' : 'Active partners', icon: Wrench },
-                  { value: 'INACTIVE' as const, label: embeddedInServiceCenter ? 'Inaktive Partner' : 'Inactive partners', icon: Tag },
-                  { value: 'LINKED' as const, label: embeddedInServiceCenter ? 'Mit Fahrzeugen' : 'Vehicle-linked', icon: Car },
-                  { value: 'PREFERRED' as const, label: embeddedInServiceCenter ? 'Bevorzugte Partner' : 'Preferred partners', icon: Star },
+                  { value: 'ALL' as const, icon: Briefcase },
+                  { value: 'ACTIVE' as const, icon: Wrench },
+                  { value: 'INACTIVE' as const, icon: Tag },
+                  { value: 'LINKED' as const, icon: Car },
+                  { value: 'PREFERRED' as const, icon: Star },
                 ].map((scope) => {
                   const ScopeIcon = scope.icon;
                   const selected = scopeFilter === scope.value;
@@ -544,7 +542,7 @@ export function VendorManagementView({
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <ScopeIcon className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{scope.label}</span>
+                        <span className="truncate">{labelVendorScope(locale, scope.value)}</span>
                       </span>
                       <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
                         {scopeCount(scope.value)}
@@ -587,7 +585,7 @@ export function VendorManagementView({
                       : 'text-foreground hover:bg-muted'
                   }`}
                 >
-                  <span>{embeddedInServiceCenter ? 'Alle Leistungen' : 'All service areas'}</span>
+                  <span>{labelVendorServiceAreaFilter(locale, 'ALL')}</span>
                   <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
                     {serviceAreaCount('ALL')}
                   </span>
@@ -608,7 +606,7 @@ export function VendorManagementView({
                           : 'text-foreground hover:bg-muted'
                       }`}
                     >
-                      <span className="truncate">{area}</span>
+                      <span className="truncate">{labelVendorServiceArea(locale, area)}</span>
                       <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
                         {serviceAreaCount(area)}
                       </span>
@@ -638,7 +636,7 @@ export function VendorManagementView({
             </button>
             {showCategoryFilter && (
               <div className="absolute right-0 top-full z-50 mt-2 min-w-[250px] overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-2)] sm:left-0 sm:right-auto">
-                {([{ value: 'ALL' as const, label: 'All categories', icon: Briefcase }, ...CATEGORIES]).map((cat) => {
+                {([{ value: 'ALL' as const, icon: Briefcase }, ...CATEGORIES]).map((cat) => {
                   const CatIcon = cat.icon;
                   const selected = catFilter === cat.value;
                   return (
@@ -657,7 +655,7 @@ export function VendorManagementView({
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <CatIcon className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{cat.label}</span>
+                        <span className="truncate">{labelVendorCategoryFilter(locale, cat.value)}</span>
                       </span>
                       <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
                         {categoryCount(cat.value)}
@@ -682,8 +680,8 @@ export function VendorManagementView({
         <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)]">
           <EmptyState
             icon={<Icon name="store" className="h-5 w-5" />}
-            title={vendors.length === 0 ? 'No service partners yet' : 'No matching vendors'}
-            description={vendors.length === 0 ? 'Add your first workshop, tire dealer, or service partner.' : 'Try adjusting your search or filter.'}
+            title={vendors.length === 0 ? t('vendors.directory.empty.noPartners.title') : t('vendors.directory.empty.noMatches.title')}
+            description={vendors.length === 0 ? t('vendors.directory.empty.noPartners.description') : t('vendors.directory.empty.noMatches.description')}
             action={vendors.length === 0 && canManage ? (
               <button
                 type="button"
@@ -691,7 +689,7 @@ export function VendorManagementView({
                 className="sq-3d-btn sq-3d-btn--primary inline-flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"
               >
                 <Icon name="plus" className="h-4 w-4" />
-                Add Vendor
+                {t('vendors.directory.action.addVendor')}
               </button>
             ) : undefined}
           />
@@ -714,8 +712,8 @@ export function VendorManagementView({
         open={showCreate}
         onOpenChange={(open) => { if (!open) closeModal(); }}
         maxWidthClassName="sm:max-w-2xl"
-        title={editVendor ? 'Edit Vendor' : 'Add New Vendor'}
-        description={editVendor ? 'Update vendor master data — vehicles are linked on the detail page' : 'Search a business to prefill, or fill in the details manually'}
+        title={editVendor ? t('vendors.directory.form.editTitle') : t('vendors.directory.form.createTitle')}
+        description={editVendor ? t('vendors.directory.form.editDescription') : t('vendors.directory.form.createDescription')}
         bodyClassName="p-0"
         footer={(
           <div className="flex w-full items-center justify-between">
@@ -726,7 +724,7 @@ export function VendorManagementView({
                   onClick={() => { handleDelete(editVendor.id); closeModal(); }}
                   className="sq-3d-btn sq-3d-btn--destructive px-3 py-2 text-[11px] font-semibold"
                 >
-                  Delete Vendor
+                  {t('vendors.directory.action.deleteVendor')}
                 </button>
               )}
             </div>
@@ -736,7 +734,7 @@ export function VendorManagementView({
                 onClick={closeModal}
                 className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-xs font-medium"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -744,7 +742,7 @@ export function VendorManagementView({
                 disabled={saving || !form.name.trim() || !canManage}
                 className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-medium disabled:opacity-50"
               >
-                {saving ? <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> : editVendor ? 'Save Changes' : 'Create Vendor'}
+                {saving ? <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> : editVendor ? t('vendors.directory.action.saveChanges') : t('vendors.directory.action.createVendor')}
               </button>
             </div>
           </div>
@@ -755,25 +753,25 @@ export function VendorManagementView({
               {!editVendor && (
                 <div>
                   <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>
-                    Search business (Mapbox)
+                    {t('vendors.directory.form.mapboxSearchLabel')}
                   </label>
                   <div className="relative">
                     <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${'text-muted-foreground'}`} />
                     <input value={poiQuery} onChange={(e) => handlePoiQueryChange(e.target.value)}
                       onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                      placeholder="Name, Branche oder Adresse eingeben…"
+                      placeholder={t('vendors.directory.form.mapboxSearchPlaceholder')}
                       className={`${inputClass} pl-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]`} />
                     {sugLoading && <Icon name="loader-2" className={`absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin ${'text-muted-foreground'}`} />}
 
                     {showSuggestions && (
                       <div className="sq-overlay absolute z-20 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto">
                         {sugLoading && suggestions.length === 0 ? (
-                          <p className={`px-3 py-2.5 text-[11px] ${'text-muted-foreground'}`}>Searching…</p>
+                          <p className={`px-3 py-2.5 text-[11px] ${'text-muted-foreground'}`}>{t('vendors.directory.form.searching')}</p>
                         ) : sugError ? (
-                          <p className="px-3 py-2.5 text-[11px] text-[color:var(--status-critical)]">Search failed. Try again or enter manually.</p>
+                          <p className="px-3 py-2.5 text-[11px] text-[color:var(--status-critical)]">{t('vendors.directory.form.searchFailed')}</p>
                         ) : suggestions.length === 0 && poiQuery.trim().length >= 3 ? (
-                          <p className={`px-3 py-2.5 text-[11px] ${'text-muted-foreground'}`}>No matches — enter details manually.</p>
+                          <p className={`px-3 py-2.5 text-[11px] ${'text-muted-foreground'}`}>{t('vendors.directory.form.noMatches')}</p>
                         ) : suggestions.map((s) => (
                           <button key={s.mapboxId} onMouseDown={() => selectSuggestion(s)}
                             className="w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-inset">
@@ -793,14 +791,14 @@ export function VendorManagementView({
               {/* Company Name */}
               <div>
                 <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>
-                  Company / Vendor Name *
+                  {t('vendors.directory.form.companyName')}
                 </label>
                 <div className="relative">
                   <Icon name="building-2" className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${'text-muted-foreground'}`} />
                   <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="Company name" className={`${inputClass} pl-9`} />
+                    placeholder={t('vendors.directory.form.companyNamePlaceholder')} className={`${inputClass} pl-9`} />
                   {form.source === 'MAPBOX' && (
-                    <StatusChip tone="info" className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px]">MAPBOX</StatusChip>
+                    <StatusChip tone="info" className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px]">{t('vendors.directory.status.mapbox')}</StatusChip>
                   )}
                 </div>
               </div>
@@ -808,52 +806,53 @@ export function VendorManagementView({
               {/* Category + Source Type row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Category</label>
+                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.category')}</label>
                   <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as VendorCategory }))}
                     className={inputClass}>
-                    {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{labelVendorCategory(locale, c.value)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Type</label>
+                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.type')}</label>
                   <select value={form.sourceType} onChange={(e) => setForm((f) => ({ ...f, sourceType: e.target.value as VendorSourceType }))}
                     className={inputClass}>
-                    <option value="LOCAL_BUSINESS">Local Business</option>
-                    <option value="ONLINE_VENDOR">Online Vendor</option>
+                    {VENDOR_SOURCE_TYPE_VALUES.map((sourceType) => (
+                      <option key={sourceType} value={sourceType}>{labelVendorSourceType(locale, sourceType)}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               {/* Address section */}
               <div>
-                <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Address</label>
+                <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.address')}</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input value={form.street} onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))} placeholder="Street" className={inputClass} />
-                  <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} placeholder="City" className={inputClass} />
-                  <input value={form.postalCode} onChange={(e) => setForm((f) => ({ ...f, postalCode: e.target.value }))} placeholder="Postal Code" className={inputClass} />
-                  <input value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} placeholder="Country" className={inputClass} />
+                  <input value={form.street} onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))} placeholder={t('vendors.directory.form.street')} className={inputClass} />
+                  <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} placeholder={t('vendors.directory.form.city')} className={inputClass} />
+                  <input value={form.postalCode} onChange={(e) => setForm((f) => ({ ...f, postalCode: e.target.value }))} placeholder={t('vendors.directory.form.postalCode')} className={inputClass} />
+                  <input value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} placeholder={t('vendors.directory.form.country')} className={inputClass} />
                 </div>
               </div>
 
               {/* Contact row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Phone</label>
-                  <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Phone" className={inputClass} />
+                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.phone')}</label>
+                  <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t('vendors.directory.form.phone')} className={inputClass} />
                 </div>
                 <div>
-                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Email</label>
-                  <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="Email" className={inputClass} />
+                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.email')}</label>
+                  <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder={t('vendors.directory.form.email')} className={inputClass} />
                 </div>
                 <div>
-                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Website</label>
-                  <input value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder="https://..." className={inputClass} />
+                  <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.website')}</label>
+                  <input value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder={t('vendors.directory.form.websitePlaceholder')} className={inputClass} />
                 </div>
               </div>
 
               {/* Service areas */}
               <div>
-                <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Service Areas</label>
+                <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.serviceAreas')}</label>
                 <div className="flex flex-wrap gap-1.5">
                   {SERVICE_AREA_OPTIONS.map((sa) => {
                     const active = form.serviceAreas.includes(sa);
@@ -868,7 +867,7 @@ export function VendorManagementView({
                             ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] border-transparent'
                             : 'surface-premium text-muted-foreground border-border hover:text-foreground'
                         }`}>
-                        {sa}
+                        {labelVendorServiceArea(locale, sa)}
                       </button>
                     );
                   })}
@@ -878,15 +877,15 @@ export function VendorManagementView({
               {/* Contact person */}
               <div className="p-4 rounded-lg bg-muted/40 border border-border">
                 <h4 className="text-[11px] font-semibold mb-3 flex items-center gap-1.5 text-muted-foreground">
-                  <Icon name="user" className="w-3.5 h-3.5" /> Contact Person
+                  <Icon name="user" className="w-3.5 h-3.5" /> {t('vendors.directory.form.contactPerson')}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} placeholder="Full Name" className={inputClass} />
-                  <input value={form.contactRole} onChange={(e) => setForm((f) => ({ ...f, contactRole: e.target.value }))} placeholder="Role / Function" className={inputClass} />
-                  <input value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder="Direct Phone" className={inputClass} />
-                  <input value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} placeholder="Direct Email" className={inputClass} />
+                  <input value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} placeholder={t('vendors.directory.form.contactName')} className={inputClass} />
+                  <input value={form.contactRole} onChange={(e) => setForm((f) => ({ ...f, contactRole: e.target.value }))} placeholder={t('vendors.directory.form.contactRole')} className={inputClass} />
+                  <input value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder={t('vendors.directory.form.contactPhone')} className={inputClass} />
+                  <input value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} placeholder={t('vendors.directory.form.contactEmail')} className={inputClass} />
                 </div>
-                <textarea value={form.contactNotes} onChange={(e) => setForm((f) => ({ ...f, contactNotes: e.target.value }))} placeholder="Contact notes (availability, preferences...)"
+                <textarea value={form.contactNotes} onChange={(e) => setForm((f) => ({ ...f, contactNotes: e.target.value }))} placeholder={t('vendors.directory.form.contactNotes')}
                   rows={2} className={`${inputClass} mt-2 resize-none`} />
               </div>
 
@@ -894,14 +893,14 @@ export function VendorManagementView({
               <div className="flex items-start gap-2.5 rounded-lg p-3 bg-[color:var(--status-info-soft)] border border-transparent">
                 <Icon name="car" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${'text-[color:var(--brand)]'}`} />
                 <p className={`text-[11px] leading-relaxed ${'text-muted-foreground'}`}>
-                  Vehicle links (relation type, preferred, notes) are managed on the vendor detail page after saving.
+                  {t('vendors.directory.form.vehicleLinksHint')}
                 </p>
               </div>
 
               {/* Notes */}
               <div>
-                <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>Internal Notes</label>
-                <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Internal notes about this vendor..."
+                <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.internalNotes')}</label>
+                <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder={t('vendors.directory.form.internalNotesPlaceholder')}
                   rows={2} className={`${inputClass} resize-none`} />
               </div>
             </div>

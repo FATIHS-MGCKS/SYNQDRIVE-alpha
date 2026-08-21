@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-vendor-directory-p2-2-15-2026-08-21',
+    version: '4.9.937',
+    title: 'Rental i18n — P2.2.15 Vendor Directory localization',
+    summary: [
+      'Rental Vendor Directory surface (list + detail + card + operational tasks + vendor-directory utils/i18n P215 boundary) migrated to canonical `vendors.directory.{en,de}.ts` with presentation adapter.',
+      'Scanner P2.2.15 enforce-clean exact scope reports 0 findings (~62 scanner + ~50 hidden literals in category/service-area maps, bilingual embedded ternaries, fixed de-DE formatting remediated); +178 EN+DE keys (7542→7720); reused `tasks.vendor.category.*`, `tasks.vendor.allCategories/allServiceAreas`, `tasks.filter.status.*`, `common.*`.',
+      'Presentation-only — VendorCategory/scope/service-area/relation/source machine values, filter/search state, API payloads, permissions, and stored serviceAreas tokens unchanged.',
+    ],
+    reason:
+      'P2.2.15 pre-flight GO verdict scoped tightly coupled list+detail vendor directory with Category E=0 on English service-area tokens and enum filters.',
+    previousBehavior:
+      'Vendor list/detail hardcoded mixed EN/DE; `embeddedInServiceCenter` bilingual ternaries; category labels in utils; service areas displayed as raw stored English tokens without label map.',
+    details:
+      'rental/components/VendorManagementView.tsx; VendorDetailView.tsx; vendors/VendorDirectoryCard.tsx; VendorOperationalTasks.tsx; rental/lib/vendor-directory.utils.ts; vendor-directory-i18n.ts; vendors.directory translations; i18n-hardcoded-scan.mjs P215 boundary; rental-vendor-directory-localization.test.tsx; architecture/I18N_RENTAL_VENDOR_DIRECTORY_P2_2_15_2026-08-21.md; docs/audits/i18n-p2-2-15-rental-vendor-directory-implementation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-08-21T06:15:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-list-p2-2-14-2026-08-21',
     version: '4.9.936',
     title: 'Rental i18n — P2.2.14 Invoice List + Filters localization',

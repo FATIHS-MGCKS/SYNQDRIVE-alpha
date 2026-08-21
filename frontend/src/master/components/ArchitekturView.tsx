@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Vendor Directory (P2.2.15 — V4.9.937)', icon: Globe,
+    endpoint: 'VendorManagementView, VendorDetailView, VendorDirectoryCard, VendorOperationalTasks, vendor-directory-i18n.ts, vendors.directory.{en,de}.ts.',
+    service: '**Helper:** `vendor-directory-i18n.ts` (`vdi`, category/scope/service-area/relation/tab label maps, locale-aware date/amount formatters, machine constants). **Keys:** +178 EN+DE (`vendors.directory.{en,de}.ts`; 7542→7720); reused `tasks.vendor.category.*`, `tasks.vendor.allCategories/allServiceAreas`, `tasks.filter.status.*`, `common.*`. **Guardrails:** P2.2.15 enforce-clean exact (6 paths) — 0 findings; vendor-directory.utils + vendor-directory-i18n blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-vendor-directory-localization.test.tsx` (21). **Semantics:** VendorCategory/scope/service-area/relation/source machine values, stored serviceAreas English tokens, filter/search/API payloads unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-15-preflight-2026-08-21.md; architecture/I18N_RENTAL_VENDOR_DIRECTORY_P2_2_15_2026-08-21.md' },
   { name: 'Platform i18n Rental Invoice List (P2.2.14 — V4.9.936)', icon: Globe,
     endpoint: 'InvoicesPage list stack, InvoiceFilters, InvoiceList table/mobile, invoice-list-i18n.ts, invoices.list.{en,de}.ts.',
     service: '**Helper:** `invoice-list-i18n.ts` (`ili`, status/document/send label maps, filter/sort option resolvers, locale-aware amount/date formatters, machine filter constants). **Keys:** +125 EN+DE (`invoices.list.{en,de}.ts`; 7417→7542); reused `nav.customerInvoices`, legacy `invoices.*` column/KPI keys where exact. **Guardrails:** P2.2.14 enforce-clean exact (12 paths) — 0 findings; invoiceConstants machine re-exports + invoice-list-i18n blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-invoice-list-localization.test.tsx`. **Semantics:** status/type/send/document filter machine values, sort keys, API query params, URL sync, cents/currency unchanged; Invoice Detail deferred.',
