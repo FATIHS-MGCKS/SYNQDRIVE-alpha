@@ -1,6 +1,11 @@
 import { Disc3, Gauge, Fuel } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { HandoverDialogBookingInfo, HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
+import {
+  formatOperatorNumber,
+  oh,
+} from './operator-handover-i18n';
 import {
   operatorFieldClass,
   operatorTextareaClass,
@@ -14,7 +19,6 @@ interface Props {
   booking: HandoverDialogBookingInfo;
   form: OperatorHandoverFormApi;
   onTireMeasure?: () => void;
-  tireMeasureHint?: string;
 }
 
 export function OperatorHandoverStepCondition({
@@ -22,20 +26,24 @@ export function OperatorHandoverStepCondition({
   booking,
   form,
   onTireMeasure,
-  tireMeasureHint,
 }: Props) {
-  const fuelLabel = form.state.fuelFull ? 'Voll' : `${form.state.fuelPercent}%`;
+  const { locale, t } = useLanguage();
+  const fuelLabel = form.state.fuelFull
+    ? oh(locale, 'handover.operator.condition.fuelFull')
+    : `${form.state.fuelPercent}%`;
   const odometerError =
     kind === 'RETURN' &&
     booking.pickupOdometerKm != null &&
     form.state.odometerKm &&
     Number(form.state.odometerKm) < booking.pickupOdometerKm
-      ? `Mindestens ${booking.pickupOdometerKm.toLocaleString('de-DE')} km (Pickup)`
+      ? oh(locale, 'handover.operator.condition.odometerMinAtPickup', {
+          pickupKm: booking.pickupOdometerKm,
+        })
       : undefined;
 
   return (
     <div className="space-y-4">
-      <OperatorHandoverField label="Kilometerstand *" error={odometerError}>
+      <OperatorHandoverField label={`${t('handover.protocol.odometer')} *`} error={odometerError}>
         <div className="flex items-center gap-2">
           <Gauge className="h-4 w-4 text-muted-foreground" />
           <input
@@ -43,19 +51,23 @@ export function OperatorHandoverStepCondition({
             inputMode="numeric"
             value={form.state.odometerKm}
             onChange={(e) => form.patchState({ odometerKm: e.target.value })}
-            placeholder="z. B. 48500"
+            placeholder={t('handover.protocol.odometerPlaceholder')}
             className={operatorFieldClass}
           />
-          <span className="text-sm font-semibold text-muted-foreground">km</span>
+          <span className="text-sm font-semibold text-muted-foreground">
+            {t('handover.protocol.kmUnit')}
+          </span>
         </div>
         {kind === 'RETURN' && booking.pickupOdometerKm != null && (
           <p className="text-[11px] text-muted-foreground">
-            Pickup: {booking.pickupOdometerKm.toLocaleString('de-DE')} km
+            {oh(locale, 'handover.operator.condition.pickupOdometerAt', {
+              value: formatOperatorNumber(locale, booking.pickupOdometerKm),
+            })}
           </p>
         )}
         {form.telemetryPrefill.odometerFromTelemetry && (
           <p className="text-[11px] text-muted-foreground">
-            Automatisch aus aktueller Fahrzeugtelemetrie übernommen — bei Abweichung anpassbar.
+            {t('handover.protocol.telemetryOdometerHint')}
           </p>
         )}
       </OperatorHandoverField>
@@ -64,7 +76,7 @@ export function OperatorHandoverStepCondition({
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm font-semibold">
             <Fuel className="h-4 w-4" />
-            Tank / SoC *
+            {t('handover.protocol.fuelSoc')} *
           </span>
           <span className="text-sm font-bold tabular-nums">{fuelLabel}</span>
         </div>
@@ -81,7 +93,7 @@ export function OperatorHandoverStepCondition({
           className="w-full accent-[color:var(--brand)]"
         />
         <OperatorToggleRow
-          label="Tank voll / vollständig geladen"
+          label={t('handover.protocol.tankFullCheckbox')}
           checked={form.state.fuelFull}
           onChange={() =>
             form.patchState({
@@ -92,32 +104,32 @@ export function OperatorHandoverStepCondition({
         />
         {form.telemetryPrefill.fuelFromTelemetry && (
           <p className="text-[11px] text-muted-foreground">
-            Tank / SoC aus aktueller Fahrzeugtelemetrie übernommen.
+            {t('handover.protocol.telemetryFuelHint')}
           </p>
         )}
       </div>
 
       <div className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Fahrzeugkontrolle
+          {oh(locale, 'handover.operator.condition.vehicleCheck')}
         </p>
         <OperatorToggleRow
-          label="Außen sauber"
+          label={t('handover.protocol.exteriorClean')}
           checked={form.state.checks.exteriorClean}
           onChange={() => form.toggleCheck('exteriorClean')}
         />
         <OperatorToggleRow
-          label="Innen sauber"
+          label={t('handover.protocol.interiorClean')}
           checked={form.state.checks.interiorClean}
           onChange={() => form.toggleCheck('interiorClean')}
         />
         <OperatorToggleRow
-          label="Reifen saisonal okay"
+          label={oh(locale, 'handover.operator.condition.tiresSeasonOk')}
           checked={form.state.checks.tiresSeasonOk}
           onChange={() => form.toggleCheck('tiresSeasonOk')}
         />
         <OperatorToggleRow
-          label="Warnleuchten aktiv"
+          label={t('handover.protocol.warningLightsOn')}
           checked={form.state.checks.warningLightsOn}
           onChange={() => form.toggleCheck('warningLightsOn')}
           danger
@@ -125,11 +137,11 @@ export function OperatorHandoverStepCondition({
       </div>
 
       {form.state.checks.warningLightsOn && (
-        <OperatorHandoverField label="Warnleuchten — Beschreibung *">
+        <OperatorHandoverField label={oh(locale, 'handover.operator.condition.warningLightsField')}>
           <textarea
             value={form.state.warningLightsNotes}
             onChange={(e) => form.patchState({ warningLightsNotes: e.target.value })}
-            placeholder="Welche Warnleuchten / Meldungen?"
+            placeholder={t('handover.protocol.warningLightsPlaceholder')}
             className={operatorTextareaClass}
           />
         </OperatorHandoverField>
@@ -143,9 +155,11 @@ export function OperatorHandoverStepCondition({
         >
           <Disc3 className="h-5 w-5 text-muted-foreground" />
           <span>
-            <span className="block text-sm font-semibold">Reifenprofil messen</span>
+            <span className="block text-sm font-semibold">
+              {oh(locale, 'handover.operator.condition.tireMeasureTitle')}
+            </span>
             <span className="text-[11px] text-muted-foreground">
-              Optional — gespeichert über Tire-Health-Pipeline
+              {oh(locale, 'handover.operator.condition.tireMeasureHint')}
             </span>
           </span>
         </button>
@@ -153,17 +167,17 @@ export function OperatorHandoverStepCondition({
 
       {form.state.tireMeasurementCaptured && (
         <p className="rounded-xl border border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.06] px-3 py-2 text-xs text-[color:var(--status-success)]">
-          {tireMeasureHint ?? 'Reifenprofilmessung erfasst — wird im Protokoll vermerkt.'}
+          {oh(locale, 'handover.operator.condition.tireMeasureCaptured')}
         </p>
       )}
 
       <OperatorHandoverTechnicalObservationsSection form={form} />
 
-      <OperatorHandoverField label="Notizen">
+      <OperatorHandoverField label={t('handover.protocol.notes')}>
         <textarea
           value={form.state.notes}
           onChange={(e) => form.patchState({ notes: e.target.value })}
-          placeholder="Zusätzliche Bemerkungen"
+          placeholder={oh(locale, 'handover.operator.condition.notesPlaceholder')}
           className={operatorTextareaClass}
         />
       </OperatorHandoverField>

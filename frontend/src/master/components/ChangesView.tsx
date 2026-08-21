@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-handover-p2-2-13-2026-08-21',
+    version: '4.9.935',
+    title: 'Operator i18n — P2.2.13 Handover localization',
+    summary: [
+      'Operator Handover wizard (`operator/handover/*` P213 boundary) migrated to canonical `handover.operator.{en,de}.ts` with `operator-handover-i18n.ts` presentation adapter.',
+      'Scanner P2.2.13 enforce-clean exact scope reports 0 findings (~60 blind-spot literals in validation messages, observation chips, step labels, fixed de-DE formatting remediated); +125 EN+DE keys (7292→7417); reused `handover.protocol.*`, `bookings.handover.*`, `common.*`, rental damage label helpers.',
+      'Presentation-only — PICKUP/RETURN kinds, damage enums, reportedBy Handover fallback, tire measurement persisted note, odometer/fuel payloads, signature semantics unchanged.',
+    ],
+    reason:
+      'P2.2.13 pre-flight GO verdict scoped Operator Handover with Category E risk on machine handover kinds, damage enums, and persisted protocol note strings.',
+    previousBehavior:
+      'OperatorHandoverFlow and steps hardcoded German throughout; validation returned German message strings; observation quick chips stored presentation labels inline; fixed de-DE date/number formatting.',
+    details:
+      'operator/handover/* (11-path P213 boundary); handover.operator translations; i18n-hardcoded-scan.mjs P213 boundary; operator-handover-localization.test.tsx; architecture/I18N_OPERATOR_HANDOVER_P2_2_13_2026-08-21.md; docs/audits/i18n-p2-2-13-operator-handover-implementation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Operator Operations',
+    createdAt: '2026-08-21T02:35:00.000Z',
+  },
+  {
     id: 'i18n-rental-fines-p2-2-12-2026-08-21',
     version: '4.9.934',
     title: 'Rental i18n — P2.2.12 Fines localization',

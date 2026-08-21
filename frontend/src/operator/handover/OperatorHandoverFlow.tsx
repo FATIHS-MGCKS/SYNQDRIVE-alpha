@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type {
   HandoverDialogBookingInfo,
   HandoverDialogKind,
@@ -16,6 +17,12 @@ import {
   validateOperatorHandoverStep,
   type OperatorHandoverStepId,
 } from './operatorHandoverPayload';
+import {
+  labelOperatorHandoverKind,
+  labelOperatorHandoverStep,
+  oh,
+  resolveOperatorValidationMessage,
+} from './operator-handover-i18n';
 import { OperatorHandoverStepCondition } from './OperatorHandoverStepCondition';
 import { OperatorHandoverStepDamages } from './OperatorHandoverStepDamages';
 import { OperatorHandoverStepDocuments } from './OperatorHandoverStepDocuments';
@@ -23,15 +30,6 @@ import { OperatorHandoverStepReview } from './OperatorHandoverStepReview';
 import { OperatorHandoverStepSignatures } from './OperatorHandoverStepSignatures';
 import { OperatorHandoverStepVehicle } from './OperatorHandoverStepVehicle';
 import { useOperatorHandoverForm } from './useOperatorHandoverForm';
-
-const STEP_LABELS: Record<OperatorHandoverStepId, string> = {
-  vehicle: 'Fahrzeug',
-  condition: 'Zustand',
-  damages: 'Schäden',
-  documents: 'Dokumente',
-  signatures: 'Unterschriften',
-  review: 'Abschluss',
-};
 
 interface OperatorHandoverFlowProps {
   isOpen: boolean;
@@ -54,6 +52,7 @@ export function OperatorHandoverFlow({
   isDarkMode,
   onSuccess,
 }: OperatorHandoverFlowProps) {
+  const { locale, t } = useLanguage();
   const isTablet = useOperatorTabletLayout();
   const { openSheet } = useOperatorShell();
   const [step, setStep] = useState<OperatorHandoverStepId>('vehicle');
@@ -106,7 +105,11 @@ export function OperatorHandoverFlow({
   const goNext = useCallback(() => {
     if (!canAdvanceFromStep(step, kind, bookingRef, form.state)) {
       const issues = validateOperatorHandoverStep(step, kind, bookingRef, form.state);
-      setStepError(issues[0]?.message ?? 'Bitte Pflichtfelder ausfüllen');
+      setStepError(
+        issues[0]
+          ? resolveOperatorValidationMessage(locale, issues[0])
+          : oh(locale, 'handover.operator.flow.fillRequired'),
+      );
       return;
     }
     setStepError(null);
@@ -114,7 +117,7 @@ export function OperatorHandoverFlow({
     if (idx < OPERATOR_HANDOVER_STEPS.length - 1) {
       setStep(OPERATOR_HANDOVER_STEPS[idx + 1]);
     }
-  }, [step, kind, bookingRef, form.state]);
+  }, [step, kind, bookingRef, form.state, locale]);
 
   const goBack = useCallback(() => {
     setStepError(null);
@@ -125,7 +128,7 @@ export function OperatorHandoverFlow({
   const handleSubmit = async () => {
     if (!booking || !bookingRef || submitting) return;
     if (allIssues.length > 0) {
-      setSubmitError(allIssues[0].message);
+      setSubmitError(resolveOperatorValidationMessage(locale, allIssues[0]));
       setStep(allIssues[0].step);
       return;
     }
@@ -147,8 +150,13 @@ export function OperatorHandoverFlow({
       void form.reloadDocuments();
     } catch (err: unknown) {
       const e = err as { data?: { message?: string }; message?: string };
-      const msg = e?.data?.message ?? e?.message ?? 'Übergabe konnte nicht gespeichert werden';
-      setSubmitError(typeof msg === 'string' ? msg : 'Übergabe fehlgeschlagen');
+      const msg =
+        e?.data?.message ??
+        e?.message ??
+        oh(locale, 'handover.operator.flow.saveFailed');
+      setSubmitError(
+        typeof msg === 'string' ? msg : oh(locale, 'handover.operator.flow.failed'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -184,9 +192,14 @@ export function OperatorHandoverFlow({
 
   if (!isOpen) return null;
 
-  const title = kind === 'PICKUP' ? 'Pickup' : 'Return';
+  const title = labelOperatorHandoverKind(locale, kind);
   const progress = ((stepIndex(step) + 1) / OPERATOR_HANDOVER_STEPS.length) * 100;
   const isReview = step === 'review';
+  const stepLabel = labelOperatorHandoverStep(locale, step);
+  const submitLabel =
+    kind === 'PICKUP'
+      ? t('handover.protocol.confirmPickupActivate')
+      : t('handover.protocol.confirmReturnComplete');
 
   const stepContent = !booking ? (
     <div className="flex items-center justify-center py-16">
@@ -214,7 +227,7 @@ export function OperatorHandoverFlow({
           form={form}
           staffOptions={staffOptions}
           isDarkMode={isDarkMode}
-          stepErrors={currentStepIssues.map((i) => i.message)}
+          stepErrors={currentStepIssues}
         />
       )}
       {step === 'review' && (
@@ -236,10 +249,12 @@ export function OperatorHandoverFlow({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Handover · {title}
+              {oh(locale, 'handover.operator.flow.contextLabel')} · {title}
             </p>
             <h1 className="truncate font-display text-lg font-bold">
-              {booking ? `${booking.vehicleName} · ${booking.plate}` : 'Laden…'}
+              {booking
+                ? `${booking.vehicleName} · ${booking.plate}`
+                : oh(locale, 'handover.operator.flow.loading')}
             </h1>
           </div>
           <button
@@ -247,7 +262,7 @@ export function OperatorHandoverFlow({
             onClick={onClose}
             disabled={submitting}
             className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
+            aria-label={oh(locale, 'handover.operator.flow.closeAria')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -259,7 +274,11 @@ export function OperatorHandoverFlow({
           />
         </div>
         <p className="mt-2 text-[11px] font-semibold text-muted-foreground">
-          Schritt {stepIndex(step) + 1}/{OPERATOR_HANDOVER_STEPS.length}: {STEP_LABELS[step]}
+          {oh(locale, 'handover.operator.flow.stepProgress', {
+            current: stepIndex(step) + 1,
+            total: OPERATOR_HANDOVER_STEPS.length,
+            label: stepLabel,
+          })}
         </p>
       </header>
 
@@ -281,7 +300,7 @@ export function OperatorHandoverFlow({
                         : 'text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    {STEP_LABELS[s]}
+                    {labelOperatorHandoverStep(locale, s)}
                   </button>
                 </li>
               ))}
@@ -309,7 +328,7 @@ export function OperatorHandoverFlow({
               disabled={submitting}
               className="sq-3d-btn sq-3d-btn--neutral min-h-[52px] flex-1 font-semibold"
             >
-              Zurück
+              {t('common.back')}
             </button>
           )}
           {!isReview ? (
@@ -319,7 +338,7 @@ export function OperatorHandoverFlow({
               disabled={!booking}
               className="sq-3d-btn sq-3d-btn--primary min-h-[52px] flex-[2] font-semibold disabled:opacity-50"
             >
-              Weiter
+              {t('common.next')}
             </button>
           ) : (
             <button
@@ -330,9 +349,7 @@ export function OperatorHandoverFlow({
               className="sq-3d-btn sq-3d-btn--primary flex min-h-[52px] flex-[2] items-center justify-center gap-2 font-semibold disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {kind === 'PICKUP'
-                ? 'Pickup bestätigen & Buchung aktivieren'
-                : 'Rückgabe bestätigen & abschließen'}
+              {submitLabel}
             </button>
           )}
         </div>

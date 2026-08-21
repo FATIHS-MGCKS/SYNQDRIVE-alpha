@@ -1,7 +1,9 @@
 import { Car, Clock, MapPin, User } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { HandoverDialogBookingInfo, HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import { stationLabel } from '../../rental/lib/stationBookingUtils';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
+import { formatOperatorDateTime, oh } from './operator-handover-i18n';
 import { operatorFieldClass, OperatorHandoverField } from './operatorHandoverUi';
 
 interface Props {
@@ -11,6 +13,7 @@ interface Props {
 }
 
 export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
+  const { locale, t } = useLanguage();
   const scheduled = kind === 'PICKUP' ? booking.startDate : booking.endDate;
   const stationName =
     kind === 'PICKUP'
@@ -23,19 +26,26 @@ export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
     <div className="space-y-4">
       <div className="rounded-2xl border border-border/60 surface-premium p-4 space-y-3">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          {kind === 'PICKUP' ? 'Fahrzeugübergabe' : 'Fahrzeugrückgabe'}
+          {kind === 'PICKUP'
+            ? oh(locale, 'handover.operator.vehicle.pickupSection')
+            : oh(locale, 'handover.operator.vehicle.returnSection')}
         </p>
         <div className="grid gap-3">
-          <Fact icon={Car} label="Fahrzeug" value={`${booking.vehicleName} · ${booking.plate}`} />
-          <Fact icon={User} label="Kunde" value={booking.customerName} />
-          <Fact icon={MapPin} label="Station" value={stationName} />
+          <Fact
+            icon={Car}
+            label={t('handover.protocol.vehicle')}
+            value={`${booking.vehicleName} · ${booking.plate}`}
+          />
+          <Fact icon={User} label={t('handover.protocol.customer')} value={booking.customerName} />
+          <Fact icon={MapPin} label={oh(locale, 'handover.operator.vehicle.station')} value={stationName} />
           <Fact
             icon={Clock}
-            label={kind === 'PICKUP' ? 'Abholung' : 'Rückgabe'}
-            value={new Date(scheduled).toLocaleString('de-DE', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-            })}
+            label={
+              kind === 'PICKUP'
+                ? oh(locale, 'handover.operator.vehicle.pickupTimeLabel')
+                : oh(locale, 'handover.operator.vehicle.returnTimeLabel')
+            }
+            value={formatOperatorDateTime(locale, scheduled)}
           />
         </div>
         {instructions && (
@@ -46,13 +56,13 @@ export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
       </div>
 
       {form.stationOptions.length > 0 && (
-        <OperatorHandoverField label="Tatsächliche Station">
+        <OperatorHandoverField label={t('handover.protocol.actualStation')}>
           <select
             value={form.state.actualStationId}
             onChange={(e) => form.patchState({ actualStationId: e.target.value })}
             className={operatorFieldClass}
           >
-            <option value="">Geplante Station übernehmen</option>
+            <option value="">{t('handover.protocol.usePlannedStation')}</option>
             {form.stationOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {stationLabel(s)}
@@ -64,8 +74,8 @@ export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
 
       {kind === 'PICKUP' && (
         <OperatorHandoverField
-          label="Tatsächlicher Pickup-Zeitpunkt"
-          hint="Optional — leer = jetzt. Max. 7 Tage rückwirkend (Server-Validierung)."
+          label={t('handover.protocol.actualPickupTime')}
+          hint={oh(locale, 'handover.operator.vehicle.actualPickupHint')}
         >
           <input
             type="datetime-local"

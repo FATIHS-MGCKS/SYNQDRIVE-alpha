@@ -1,8 +1,8 @@
 import type {
   TechnicalObservationAffectedArea,
   TechnicalObservationCategory,
-  TechnicalObservationSeverity,
 } from '../../lib/api';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 
 export type OperatorHandoverObservationOrigin = 'manual' | 'warning_lights';
@@ -12,7 +12,7 @@ export interface OperatorHandoverObservationDraft {
   description: string;
   category: TechnicalObservationCategory;
   affectedArea?: TechnicalObservationAffectedArea;
-  severity: TechnicalObservationSeverity;
+  severity: import('../../lib/api').TechnicalObservationSeverity;
   blocksRental: boolean;
   origin: OperatorHandoverObservationOrigin;
 }
@@ -21,55 +21,63 @@ export interface HandoverTechnicalObservationPayloadItem {
   description: string;
   category?: TechnicalObservationCategory;
   affectedArea?: TechnicalObservationAffectedArea;
-  severity?: TechnicalObservationSeverity;
+  severity?: import('../../lib/api').TechnicalObservationSeverity;
   blocksRental?: boolean;
 }
 
 export const OPERATOR_OBSERVATION_QUICK_CHIPS: {
-  label: string;
+  id: string;
+  labelKey: TranslationKey;
+  placeholderKey: TranslationKey;
   category: TechnicalObservationCategory;
   affectedArea?: TechnicalObservationAffectedArea;
-  placeholder: string;
 }[] = [
   {
-    label: 'Scheibenwischer',
+    id: 'wipers',
+    labelKey: 'handover.operator.chip.wipers.label',
+    placeholderKey: 'handover.operator.chip.wipers.placeholder',
     category: 'wipers_windows',
     affectedArea: 'front',
-    placeholder: 'z. B. Wischer verschlissen, Spritzdüse defekt',
   },
   {
-    label: 'Licht',
+    id: 'lights',
+    labelKey: 'handover.operator.chip.lights.label',
+    placeholderKey: 'handover.operator.chip.lights.placeholder',
     category: 'lights',
     affectedArea: 'lights',
-    placeholder: 'z. B. Abblendlicht defekt, Blinker hinten',
   },
   {
-    label: 'Knopf/Bedienteil',
+    id: 'controls',
+    labelKey: 'handover.operator.chip.controls.label',
+    placeholderKey: 'handover.operator.chip.controls.placeholder',
     category: 'electronics_controls',
     affectedArea: 'dashboard',
-    placeholder: 'z. B. Fensterheber-Knopf lose',
   },
   {
-    label: 'Geräusch',
+    id: 'noise',
+    labelKey: 'handover.operator.chip.noise.label',
+    placeholderKey: 'handover.operator.chip.noise.placeholder',
     category: 'noise_vibration',
-    placeholder: 'z. B. quietschende Bremse, Klappern',
   },
   {
-    label: 'Innenraum',
+    id: 'interior',
+    labelKey: 'handover.operator.chip.interior.label',
+    placeholderKey: 'handover.operator.chip.interior.placeholder',
     category: 'interior',
     affectedArea: 'interior',
-    placeholder: 'z. B. Geruch, Verschmutzung, Sitz defekt',
   },
   {
-    label: 'Elektronik',
+    id: 'electronics',
+    labelKey: 'handover.operator.chip.electronics.label',
+    placeholderKey: 'handover.operator.chip.electronics.placeholder',
     category: 'electronics_controls',
     affectedArea: 'dashboard',
-    placeholder: 'z. B. Display, Klima, Ladeanschluss',
   },
   {
-    label: 'Sonstiges',
+    id: 'other',
+    labelKey: 'handover.operator.chip.other.label',
+    placeholderKey: 'handover.operator.chip.other.placeholder',
     category: 'other',
-    placeholder: 'Technische Beobachtung beschreiben',
   },
 ];
 
@@ -141,8 +149,4 @@ export function collectTechnicalObservationsForPayload(
   }
 
   return items;
-}
-
-export function handoverObservationSourceLabel(kind: HandoverDialogKind): string {
-  return kind === 'RETURN' ? 'Rückgabe' : 'Übergabe';
 }

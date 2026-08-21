@@ -1,0 +1,155 @@
+export const handoverOperatorDe = {
+  'handover.operator.step.vehicle': 'Fahrzeug',
+  'handover.operator.step.condition': 'Zustand',
+  'handover.operator.step.damages': 'Schäden',
+  'handover.operator.step.documents': 'Dokumente',
+  'handover.operator.step.signatures': 'Unterschriften',
+  'handover.operator.step.review': 'Abschluss',
+
+  'handover.operator.flow.contextLabel': 'Handover',
+  'handover.operator.flow.loading': 'Laden…',
+  'handover.operator.flow.stepProgress': 'Schritt {current}/{total}: {label}',
+  'handover.operator.flow.closeAria': 'Schließen',
+  'handover.operator.flow.fillRequired': 'Bitte Pflichtfelder ausfüllen',
+  'handover.operator.flow.saveFailed': 'Übergabe konnte nicht gespeichert werden',
+  'handover.operator.flow.failed': 'Übergabe fehlgeschlagen',
+
+  'handover.operator.vehicle.pickupSection': 'Fahrzeugübergabe',
+  'handover.operator.vehicle.returnSection': 'Fahrzeugrückgabe',
+  'handover.operator.vehicle.station': 'Station',
+  'handover.operator.vehicle.pickupTimeLabel': 'Abholung',
+  'handover.operator.vehicle.returnTimeLabel': 'Rückgabe',
+  'handover.operator.vehicle.actualPickupHint':
+    'Optional — leer = jetzt. Max. 7 Tage rückwirkend (Server-Validierung).',
+
+  'handover.operator.condition.odometerMinAtPickup': 'Mindestens {pickupKm} km (Pickup)',
+  'handover.operator.condition.pickupOdometerAt': 'Pickup: {value} km',
+  'handover.operator.condition.warningLightsField': 'Warnleuchten — Beschreibung *',
+  'handover.operator.condition.fuelFull': 'Voll',
+  'handover.operator.condition.vehicleCheck': 'Fahrzeugkontrolle',
+  'handover.operator.condition.tiresSeasonOk': 'Reifen saisonal okay',
+  'handover.operator.condition.tireMeasureTitle': 'Reifenprofil messen',
+  'handover.operator.condition.tireMeasureHint':
+    'Optional — gespeichert über Tire-Health-Pipeline',
+  'handover.operator.condition.tireMeasureCaptured':
+    'Reifenprofilmessung erfasst — wird im Protokoll vermerkt.',
+  'handover.operator.condition.notesPlaceholder': 'Zusätzliche Bemerkungen',
+
+  'handover.operator.damages.title': 'Schäden ({selected}/{total})',
+  'handover.operator.damages.hintPickup':
+    'Bestehende Schäden beim Pickup bestätigen oder neue mit Foto erfassen.',
+  'handover.operator.damages.hintReturn':
+    'Beim Return Schäden mit Foto dokumentieren oder bestehende markieren.',
+  'handover.operator.damages.empty': 'Keine aktiven Schäden dokumentiert.',
+  'handover.operator.damages.loading': 'Laden…',
+
+  'handover.operator.documents.ackShort':
+    'Mietvertrag, Fahrzeugschein und Übergabedokumente wurden mit dem Kunden durchgesprochen.',
+  'handover.operator.documents.ackRequired':
+    'Pflichtbestätigung — ohne Häkchen kein Abschluss der Übergabe.',
+
+  'handover.operator.signatures.handoverBy': 'Übergabe durch *',
+  'handover.operator.signatures.selectStaff': 'Mitarbeiter wählen',
+  'handover.operator.signatures.staffNamePlaceholder': 'Name des Mitarbeiters',
+  'handover.operator.signatures.staffNameOptional': 'Name ergänzen (optional)',
+  'handover.operator.signatures.customerTab': 'Kunde',
+  'handover.operator.signatures.staffTab': 'Mitarbeiter',
+  'handover.operator.signatures.customerPadLabel': 'Unterschrift Kunde *',
+  'handover.operator.signatures.staffPadLabel': 'Unterschrift Mitarbeiter *',
+  'handover.operator.signatures.customerHelper':
+    'Zeichnen ist Pflicht — Name ergänzt nur das Protokoll.',
+  'handover.operator.signatures.staffHelper': 'Zeichnen ist Pflicht.',
+
+  'handover.operator.review.intro':
+    'Prüfe alle Angaben vor dem Abschluss. Der Server setzt den Buchungsstatus ({status}).',
+  'handover.operator.review.damagesMarked': 'Schäden markiert',
+  'handover.operator.review.observations': 'Technische Beobachtungen',
+  'handover.operator.review.observationsNone': 'Keine',
+  'handover.operator.review.observationsWithWarning':
+    '{count} (inkl. Warnleuchten)',
+  'handover.operator.review.documentsConfirmed': 'Dokumente bestätigt',
+  'handover.operator.review.customerSignature': 'Kundenunterschrift',
+  'handover.operator.review.staffSignature': 'Mitarbeiterunterschrift',
+  'handover.operator.review.staff': 'Mitarbeiter',
+  'handover.operator.review.captured': 'Erfasst',
+  'handover.operator.review.missing': 'Fehlt',
+  'handover.operator.review.openIssues': 'Noch offen',
+  'handover.operator.review.observationsSection': 'Technische Beobachtungen',
+  'handover.operator.review.blocksRental': 'Blockiert Vermietung',
+
+  'handover.operator.observations.title': 'Technische Beobachtungen',
+  'handover.operator.observations.subtitle':
+    'Technische Auffälligkeiten — nicht jede Beobachtung ist ein Schaden.',
+  'handover.operator.observations.quickSelect': 'Schnellauswahl',
+  'handover.operator.observations.description': 'Beschreibung *',
+  'handover.operator.observations.descriptionFallback': 'Was ist aufgefallen?',
+  'handover.operator.observations.category': 'Kategorie',
+  'handover.operator.observations.area': 'Bereich',
+  'handover.operator.observations.areaOptional': 'Optional',
+  'handover.operator.observations.noArea': 'Kein Bereich',
+  'handover.operator.observations.severity': 'Schweregrad',
+  'handover.operator.observations.blockRental': 'Vermietung blockieren',
+  'handover.operator.observations.add': 'Beobachtung hinzufügen',
+  'handover.operator.observations.removeAria': 'Beobachtung entfernen',
+  'handover.operator.observations.minLength': 'Bitte mindestens 3 Zeichen beschreiben',
+  'handover.operator.observations.sourcePickup': 'Übergabe',
+  'handover.operator.observations.sourceReturn': 'Rückgabe',
+
+  'handover.operator.chip.wipers.label': 'Scheibenwischer',
+  'handover.operator.chip.wipers.placeholder': 'z. B. Wischer verschlissen, Spritzdüse defekt',
+  'handover.operator.chip.lights.label': 'Licht',
+  'handover.operator.chip.lights.placeholder': 'z. B. Abblendlicht defekt, Blinker hinten',
+  'handover.operator.chip.controls.label': 'Knopf/Bedienteil',
+  'handover.operator.chip.controls.placeholder': 'z. B. Fensterheber-Knopf lose',
+  'handover.operator.chip.noise.label': 'Geräusch',
+  'handover.operator.chip.noise.placeholder': 'z. B. quietschende Bremse, Klappern',
+  'handover.operator.chip.interior.label': 'Innenraum',
+  'handover.operator.chip.interior.placeholder': 'z. B. Geruch, Verschmutzung, Sitz defekt',
+  'handover.operator.chip.electronics.label': 'Elektronik',
+  'handover.operator.chip.electronics.placeholder': 'z. B. Display, Klima, Ladeanschluss',
+  'handover.operator.chip.other.label': 'Sonstiges',
+  'handover.operator.chip.other.placeholder': 'Technische Beobachtung beschreiben',
+
+  'handover.operator.observation.category.exterior': 'Außen',
+  'handover.operator.observation.category.interior': 'Innenraum',
+  'handover.operator.observation.category.lights': 'Licht',
+  'handover.operator.observation.category.wipers_windows': 'Scheiben/Wischer',
+  'handover.operator.observation.category.wheels_tires': 'Reifen/Räder',
+  'handover.operator.observation.category.electronics_controls': 'Elektronik/Bedienelemente',
+  'handover.operator.observation.category.noise_vibration': 'Geräusch/Vibration',
+  'handover.operator.observation.category.driving_behavior': 'Fahrverhalten',
+  'handover.operator.observation.category.comfort': 'Komfort',
+  'handover.operator.observation.category.other': 'Sonstiges',
+
+  'handover.operator.observation.area.front': 'vorne',
+  'handover.operator.observation.area.rear': 'hinten',
+  'handover.operator.observation.area.left': 'links',
+  'handover.operator.observation.area.right': 'rechts',
+  'handover.operator.observation.area.interior': 'Innenraum',
+  'handover.operator.observation.area.dashboard': 'Armaturenbrett',
+  'handover.operator.observation.area.lights': 'Licht',
+  'handover.operator.observation.area.wheels': 'Räder',
+  'handover.operator.observation.area.tires': 'Reifen',
+  'handover.operator.observation.area.engine_bay': 'Motorraum',
+  'handover.operator.observation.area.trunk': 'Kofferraum',
+  'handover.operator.observation.area.unknown': 'unbekannt',
+
+  'handover.operator.observation.severity.low': 'Niedrig',
+  'handover.operator.observation.severity.medium': 'Mittel',
+  'handover.operator.observation.severity.high': 'Hoch',
+  'handover.operator.observation.severity.critical': 'Kritisch',
+
+  'handover.operator.validation.bookingNotLoaded': 'Buchung nicht geladen',
+  'handover.operator.validation.odometerRequired': 'Kilometerstand ist Pflicht',
+  'handover.operator.validation.odometerBelowPickup':
+    'Kilometerstand darf nicht unter Pickup ({pickupKm} km) liegen',
+  'handover.operator.validation.fuelRange': 'Tank/SoC muss zwischen 0 und 100 % liegen',
+  'handover.operator.validation.warningLightsDescription': 'Bitte Warnleuchten beschreiben',
+  'handover.operator.validation.documentsAckRequired': 'Dokumentbestätigung ist Pflicht',
+  'handover.operator.validation.staffRequired':
+    'Mitarbeiter muss ausgewählt oder erfasst werden',
+  'handover.operator.validation.customerSignatureRequired':
+    'Kundenunterschrift (zeichnen) ist Pflicht',
+  'handover.operator.validation.staffSignatureRequired':
+    'Mitarbeiterunterschrift (zeichnen) ist Pflicht',
+} as const;

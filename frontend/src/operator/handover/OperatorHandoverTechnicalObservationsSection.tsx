@@ -1,20 +1,24 @@
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import {
-  OBSERVATION_AREAS,
-  OBSERVATION_CATEGORIES,
-  OBSERVATION_SEVERITIES,
-  observationAreaLabel,
-  observationCategoryLabel,
-  observationSeverityLabel,
-  severityChipClass,
-} from '../../rental/lib/technical-observations-ui';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type {
+  TechnicalObservationAffectedArea,
+  TechnicalObservationCategory,
+  TechnicalObservationSeverity,
+} from '../../lib/api';
+import { severityChipClass } from '../../rental/lib/technical-observations-ui';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
 import {
   createEmptyObservationDraft,
   OPERATOR_OBSERVATION_QUICK_CHIPS,
   type OperatorHandoverObservationDraft,
 } from './operatorHandoverTechnicalObservations';
+import {
+  labelOperatorObservationArea,
+  labelOperatorObservationCategory,
+  labelOperatorObservationSeverity,
+  oh,
+} from './operator-handover-i18n';
 import { OperatorHandoverField, operatorTextareaClass } from './operatorHandoverUi';
 
 interface Props {
@@ -24,6 +28,7 @@ interface Props {
 const EMPTY_EDITOR = createEmptyObservationDraft();
 
 export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
+  const { locale } = useLanguage();
   const [editor, setEditor] = useState<OperatorHandoverObservationDraft>(EMPTY_EDITOR);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [activePicker, setActivePicker] = useState<'category' | 'area' | null>(null);
@@ -31,8 +36,10 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
   const drafts = form.state.technicalObservationDrafts;
   const chipPlaceholder = useMemo(() => {
     const chip = OPERATOR_OBSERVATION_QUICK_CHIPS.find((c) => c.category === editor.category);
-    return chip?.placeholder ?? 'Was ist aufgefallen?';
-  }, [editor.category]);
+    return chip
+      ? oh(locale, chip.placeholderKey)
+      : oh(locale, 'handover.operator.observations.descriptionFallback');
+  }, [editor.category, locale]);
 
   const resetEditor = () => {
     setEditor(createEmptyObservationDraft());
@@ -53,7 +60,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
   const addDraft = () => {
     const description = editor.description.trim();
     if (description.length < 3) {
-      setEditorError('Bitte mindestens 3 Zeichen beschreiben');
+      setEditorError(oh(locale, 'handover.operator.observations.minLength'));
       return;
     }
     form.addTechnicalObservationDraft({
@@ -64,12 +71,42 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
     resetEditor();
   };
 
+  const categoryOptions: TechnicalObservationCategory[] = [
+    'exterior',
+    'interior',
+    'lights',
+    'wipers_windows',
+    'wheels_tires',
+    'electronics_controls',
+    'noise_vibration',
+    'driving_behavior',
+    'comfort',
+    'other',
+  ];
+
+  const areaOptions: TechnicalObservationAffectedArea[] = [
+    'front',
+    'rear',
+    'left',
+    'right',
+    'interior',
+    'dashboard',
+    'lights',
+    'wheels',
+    'tires',
+    'engine_bay',
+    'trunk',
+    'unknown',
+  ];
+
+  const severityOptions: TechnicalObservationSeverity[] = ['low', 'medium', 'high', 'critical'];
+
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 surface-premium p-4">
       <div>
-        <p className="text-sm font-semibold">Technische Beobachtungen</p>
+        <p className="text-sm font-semibold">{oh(locale, 'handover.operator.observations.title')}</p>
         <p className="text-[11px] text-muted-foreground">
-          Technische Auffälligkeiten — nicht jede Beobachtung ist ein Schaden.
+          {oh(locale, 'handover.operator.observations.subtitle')}
         </p>
       </div>
 
@@ -85,22 +122,22 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
                   <p className="text-sm font-medium leading-snug">{d.description}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {observationCategoryLabel(d.category)}
+                      {labelOperatorObservationCategory(locale, d.category)}
                     </span>
                     {d.affectedArea && (
                       <span className="text-[10px] text-muted-foreground">
-                        {observationAreaLabel(d.affectedArea)}
+                        {labelOperatorObservationArea(locale, d.affectedArea)}
                       </span>
                     )}
                     <span
                       className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${severityChipClass(d.severity)}`}
                     >
-                      {observationSeverityLabel(d.severity)}
+                      {labelOperatorObservationSeverity(locale, d.severity)}
                     </span>
                     {d.blocksRental && (
                       <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[color:var(--status-critical)]">
                         <AlertTriangle className="h-3 w-3" />
-                        Blockiert Vermietung
+                        {oh(locale, 'handover.operator.review.blocksRental')}
                       </span>
                     )}
                   </div>
@@ -109,7 +146,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
                   type="button"
                   onClick={() => form.removeTechnicalObservationDraft(d.id)}
                   className="sq-press flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/60 text-muted-foreground"
-                  aria-label="Beobachtung entfernen"
+                  aria-label={oh(locale, 'handover.operator.observations.removeAria')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -121,12 +158,12 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
 
       <div className="space-y-3 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Schnellauswahl
+          {oh(locale, 'handover.operator.observations.quickSelect')}
         </p>
         <div className="flex flex-wrap gap-2">
           {OPERATOR_OBSERVATION_QUICK_CHIPS.map((chip) => (
             <button
-              key={chip.label}
+              key={chip.id}
               type="button"
               onClick={() => applyQuickChip(chip)}
               className={`sq-press min-h-[40px] rounded-full border px-3 text-xs font-semibold ${
@@ -135,12 +172,12 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
                   : 'border-border surface-premium text-foreground'
               }`}
             >
-              {chip.label}
+              {oh(locale, chip.labelKey)}
             </button>
           ))}
         </div>
 
-        <OperatorHandoverField label="Beschreibung *">
+        <OperatorHandoverField label={oh(locale, 'handover.operator.observations.description')}>
           <textarea
             value={editor.description}
             onChange={(e) => {
@@ -159,9 +196,11 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
             className="sq-press min-h-[48px] rounded-xl border border-border surface-premium px-3 text-left text-sm"
           >
             <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
-              Kategorie
+              {oh(locale, 'handover.operator.observations.category')}
             </span>
-            <span className="font-medium">{observationCategoryLabel(editor.category)}</span>
+            <span className="font-medium">
+              {labelOperatorObservationCategory(locale, editor.category)}
+            </span>
           </button>
           <button
             type="button"
@@ -169,31 +208,33 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
             className="sq-press min-h-[48px] rounded-xl border border-border surface-premium px-3 text-left text-sm"
           >
             <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
-              Bereich
+              {oh(locale, 'handover.operator.observations.area')}
             </span>
             <span className="font-medium">
-              {editor.affectedArea ? observationAreaLabel(editor.affectedArea) : 'Optional'}
+              {editor.affectedArea
+                ? labelOperatorObservationArea(locale, editor.affectedArea)
+                : oh(locale, 'handover.operator.observations.areaOptional')}
             </span>
           </button>
         </div>
 
         {activePicker === 'category' && (
           <div className="grid grid-cols-2 gap-2">
-            {OBSERVATION_CATEGORIES.map((c) => (
+            {categoryOptions.map((value) => (
               <button
-                key={c.value}
+                key={value}
                 type="button"
                 onClick={() => {
-                  setEditor((prev) => ({ ...prev, category: c.value }));
+                  setEditor((prev) => ({ ...prev, category: value }));
                   setActivePicker(null);
                 }}
                 className={`sq-press min-h-[44px] rounded-lg border px-2 text-xs font-semibold ${
-                  editor.category === c.value
+                  editor.category === value
                     ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
                     : 'border-border surface-premium'
                 }`}
               >
-                {c.label}
+                {labelOperatorObservationCategory(locale, value)}
               </button>
             ))}
           </div>
@@ -209,23 +250,23 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
               }}
               className="sq-press min-h-[44px] rounded-lg border border-border surface-premium px-2 text-xs font-semibold"
             >
-              Kein Bereich
+              {oh(locale, 'handover.operator.observations.noArea')}
             </button>
-            {OBSERVATION_AREAS.map((a) => (
+            {areaOptions.map((value) => (
               <button
-                key={a.value}
+                key={value}
                 type="button"
                 onClick={() => {
-                  setEditor((prev) => ({ ...prev, affectedArea: a.value }));
+                  setEditor((prev) => ({ ...prev, affectedArea: value }));
                   setActivePicker(null);
                 }}
                 className={`sq-press min-h-[44px] rounded-lg border px-2 text-xs font-semibold ${
-                  editor.affectedArea === a.value
+                  editor.affectedArea === value
                     ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
                     : 'border-border surface-premium'
                 }`}
               >
-                {a.label}
+                {labelOperatorObservationArea(locale, value)}
               </button>
             ))}
           </div>
@@ -233,21 +274,21 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Schweregrad
+            {oh(locale, 'handover.operator.observations.severity')}
           </p>
           <div className="grid grid-cols-4 gap-2">
-            {OBSERVATION_SEVERITIES.map((s) => (
+            {severityOptions.map((value) => (
               <button
-                key={s.value}
+                key={value}
                 type="button"
-                onClick={() => setEditor((prev) => ({ ...prev, severity: s.value }))}
+                onClick={() => setEditor((prev) => ({ ...prev, severity: value }))}
                 className={`sq-press min-h-[44px] rounded-lg border text-xs font-semibold ${
-                  editor.severity === s.value
+                  editor.severity === value
                     ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
                     : 'border-border surface-premium'
                 }`}
               >
-                {s.label}
+                {labelOperatorObservationSeverity(locale, value)}
               </button>
             ))}
           </div>
@@ -264,7 +305,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
               : 'border-border surface-premium'
           }`}
         >
-          <span>Vermietung blockieren</span>
+          <span>{oh(locale, 'handover.operator.observations.blockRental')}</span>
           <span
             className={`flex h-6 w-11 items-center rounded-full p-0.5 ${
               editor.blocksRental ? 'bg-[color:var(--status-critical)]' : 'bg-muted'
@@ -288,7 +329,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
           className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center gap-2 text-sm font-semibold"
         >
           <Plus className="h-4 w-4" />
-          Beobachtung hinzufügen
+          {oh(locale, 'handover.operator.observations.add')}
         </button>
       </div>
     </div>
