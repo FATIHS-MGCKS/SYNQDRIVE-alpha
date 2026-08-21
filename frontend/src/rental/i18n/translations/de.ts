@@ -1074,10 +1074,10 @@ export const de: Record<TranslationKey, string> = {
 
   // ─── Dashboard attention split (P3.1) ───
   'dashboardAttention.stackLabel': 'Dashboard-Aufmerksamkeit',
-  'dashboardAttention.operations.title': 'Betrieb',
-  'dashboardAttention.operations.subtitle': 'Übergaben, Buchungen, Abrechnung und Stationsaufgaben',
-  'dashboardAttention.fleetReadiness.title': 'Flotten-Einsatzbereitschaft',
-  'dashboardAttention.fleetReadiness.subtitle': 'Fahrzeuge nicht bereit oder nicht auswertbar im Scope',
+  'dashboardAttention.operations.title': 'Betriebsmeldungen',
+  'dashboardAttention.operations.subtitle': 'Warnungen und Meldungen rund um den Betrieb',
+  'dashboardAttention.fleetReadiness.title': 'Flottenmeldungen',
+  'dashboardAttention.fleetReadiness.subtitle': 'Warnungen und Meldungen rund um die Fahrzeuge',
   'dashboardAttention.fleetReadiness.moreCausesPossible': 'Weitere Ursachen können vorhanden sein — „Mehr laden“ zeigt den vollständigen Fahrzeugkontext.',
   'dashboardAttention.fleetSummary.unavailable': 'Flotten-Einsatzbereitschaft nicht verfügbar.',
   'dashboardAttention.fleetSummary.ready': '{ready} von {total} bereit',
