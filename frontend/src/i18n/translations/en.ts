@@ -7,6 +7,7 @@ import { supportEn } from './support.en';
 import { finesEn } from './fines.en';
 import { handoverProtocolEn } from './handover.protocol.en';
 import { handoverOperatorEn } from './handover.operator.en';
+import { invoicesListEn } from './invoices.list.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
 
@@ -5375,6 +5376,7 @@ export const en = {
   ...finesEn,
   ...handoverProtocolEn,
   ...handoverOperatorEn,
+  ...invoicesListEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

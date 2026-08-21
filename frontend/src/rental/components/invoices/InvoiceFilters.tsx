@@ -1,17 +1,23 @@
 import { useMemo } from 'react';
 
 import type { Station } from '../../../lib/api';
-import { Icon } from '../ui/Icon';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  INVOICE_DIRECTION_OPTIONS,
-  INVOICE_DOCUMENT_STATUS_FILTER_OPTIONS,
-  INVOICE_SEND_STATUS_FILTER_OPTIONS,
-  INVOICE_SORT_OPTIONS,
+  INVOICE_DIRECTION_VALUES,
+  INVOICE_DOCUMENT_STATUS_FILTER_VALUES,
+  INVOICE_SEND_STATUS_FILTER_VALUES,
+  INVOICE_SORT_VALUES,
   INVOICE_STATUS_FILTER_OPTIONS,
-  INVOICE_TYPE_FILTER_OPTIONS,
+  INVOICE_TYPE_FILTER_VALUES,
+  labelInvoiceListDirection,
+  labelInvoiceListDocumentFilter,
+  labelInvoiceListSendFilter,
+  labelInvoiceListSortField,
+  labelInvoiceListStatus,
+  labelInvoiceListType,
   type InvoiceDirectionFilter,
-} from './invoiceConstants';
-import { STATUS_MAP } from './invoiceFormatters';
+} from '../../lib/invoice-list-i18n';
+import { Icon } from '../ui/Icon';
 import type { InvoiceListFilters } from './invoiceListState';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 
@@ -53,77 +59,78 @@ export function InvoiceFilters({
   hasActiveFilters,
   onClearFilters,
 }: InvoiceFiltersProps) {
+  const { locale, t } = useLanguage();
+
   const activeChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
     if (filters.direction !== 'all') {
       chips.push({
         key: 'direction',
-        label: INVOICE_DIRECTION_OPTIONS.find((o) => o.value === filters.direction)?.label ?? filters.direction,
+        label: labelInvoiceListDirection(locale, filters.direction),
         onClear: () => onPatchFilters({ direction: 'all' }),
       });
     }
     if (filters.status !== 'all') {
       chips.push({
         key: 'status',
-        label: STATUS_MAP[filters.status]?.label ?? filters.status,
+        label: labelInvoiceListStatus(locale, filters.status),
         onClear: () => onPatchFilters({ status: 'all', overdue: false }),
       });
     }
     if (filters.type !== 'all') {
       chips.push({
         key: 'type',
-        label: INVOICE_TYPE_FILTER_OPTIONS.find((o) => o.value === filters.type)?.label ?? filters.type,
+        label: labelInvoiceListType(locale, filters.type),
         onClear: () => onPatchFilters({ type: 'all' }),
       });
     }
     if (filters.documentStatus !== 'all') {
       chips.push({
         key: 'documentStatus',
-        label:
-          INVOICE_DOCUMENT_STATUS_FILTER_OPTIONS.find((o) => o.value === filters.documentStatus)?.label ??
-          filters.documentStatus,
+        label: labelInvoiceListDocumentFilter(locale, filters.documentStatus),
         onClear: () => onPatchFilters({ documentStatus: 'all' }),
       });
     }
     if (filters.sendStatus !== 'all') {
       chips.push({
         key: 'sendStatus',
-        label:
-          INVOICE_SEND_STATUS_FILTER_OPTIONS.find((o) => o.value === filters.sendStatus)?.label ??
-          filters.sendStatus,
+        label: labelInvoiceListSendFilter(locale, filters.sendStatus),
         onClear: () => onPatchFilters({ sendStatus: 'all' }),
       });
     }
     if (filters.stationId) {
       chips.push({
         key: 'station',
-        label: stationLabel ?? 'Station',
+        label: stationLabel ?? t('invoices.list.filters.stationFallback'),
         onClear: () => onPatchFilters({ stationId: '' }),
       });
     }
     if (filters.dateFrom || filters.dateTo) {
       chips.push({
         key: 'period',
-        label: `Zeitraum ${filters.dateFrom || '…'} – ${filters.dateTo || '…'}`,
+        label: t('invoices.list.filters.chip.period', {
+          from: filters.dateFrom || '…',
+          to: filters.dateTo || '…',
+        }),
         onClear: () => onPatchFilters({ dateFrom: '', dateTo: '' }),
       });
     }
     if (filters.overdue) {
       chips.push({
         key: 'overdue',
-        label: 'Überfällig',
+        label: t('invoices.list.filters.chip.overdue'),
         onClear: () => onPatchFilters({ overdue: false, status: 'all' }),
       });
     }
     if (searchTerm.trim()) {
       chips.push({
         key: 'search',
-        label: `Suche: ${searchTerm.trim()}`,
+        label: t('invoices.list.filters.chip.search', { term: searchTerm.trim() }),
         onClear: () => onSearchTermChange(''),
       });
     }
     return chips;
-  }, [filters, onPatchFilters, onSearchTermChange, searchTerm, stationLabel]);
+  }, [filters, locale, onPatchFilters, onSearchTermChange, searchTerm, stationLabel, t]);
 
   return (
     <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
@@ -131,9 +138,11 @@ export function InvoiceFilters({
         <div className="flex min-w-0 items-center gap-2.5">
           <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
           <div>
-            <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filter</h2>
+            <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
+              {t('invoices.list.filters.title')}
+            </h2>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {filteredCount} von {totalCount} Rechnungen
+              {t('invoices.list.filters.showing', { visible: filteredCount, total: totalCount })}
             </p>
           </div>
         </div>
@@ -148,13 +157,13 @@ export function InvoiceFilters({
             }`}
           >
             <Icon name="x" className="h-3.5 w-3.5" />
-            Filter zurücksetzen
+            {t('invoices.list.filters.clear')}
           </button>
         )}
       </div>
 
       {activeChips.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5" aria-label="Aktive Filter">
+        <div className="mb-3 flex flex-wrap gap-1.5" aria-label={t('invoices.list.filters.activeAria')}>
           {activeChips.map((chip) => (
             <button
               key={chip.key}
@@ -177,8 +186,8 @@ export function InvoiceFilters({
           />
           <input
             type="search"
-            aria-label="Rechnungen durchsuchen"
-            placeholder="Nr., Kunde, Buchung, Kennzeichen…"
+            aria-label={t('invoices.list.filters.searchAria')}
+            placeholder={t('invoices.list.filters.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => onSearchTermChange(e.target.value)}
             className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
@@ -190,25 +199,25 @@ export function InvoiceFilters({
         </div>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Richtung
+          {t('invoices.list.filters.direction')}
           <select
-            aria-label="Richtung filtern"
+            aria-label={t('invoices.list.filters.directionAria')}
             value={filters.direction}
             onChange={(e) => onPatchFilters({ direction: e.target.value as InvoiceDirectionFilter })}
             className={selectClass(isDarkMode)}
           >
-            {INVOICE_DIRECTION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label} ({directionCount(option.value)})
+            {INVOICE_DIRECTION_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {labelInvoiceListDirection(locale, value)} ({directionCount(value)})
               </option>
             ))}
           </select>
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Status
+          {t('invoices.list.filters.status')}
           <select
-            aria-label="Status filtern"
+            aria-label={t('invoices.list.filters.statusAria')}
             value={filters.status}
             onChange={(e) =>
               onPatchFilters({
@@ -220,34 +229,38 @@ export function InvoiceFilters({
           >
             {INVOICE_STATUS_FILTER_OPTIONS.map((status) => (
               <option key={status} value={status}>
-                {status === 'all' ? 'Alle Status' : STATUS_MAP[status]?.label || status} (
-                {statusCount(status)})
+                {status === 'all'
+                  ? t('invoices.list.filters.allStatuses')
+                  : labelInvoiceListStatus(locale, status)}{' '}
+                ({statusCount(status)})
               </option>
             ))}
           </select>
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Rechnungstyp
+          {t('invoices.list.filters.type')}
           <select
-            aria-label="Rechnungstyp filtern"
+            aria-label={t('invoices.list.filters.typeAria')}
             value={filters.type}
             onChange={(e) => onPatchFilters({ type: e.target.value })}
             className={selectClass(isDarkMode)}
           >
-            {INVOICE_TYPE_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            {INVOICE_TYPE_FILTER_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {value === 'all'
+                  ? t('invoices.list.filters.allTypes')
+                  : labelInvoiceListType(locale, value)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Sortierung
+          {t('invoices.list.filters.sort')}
           <div className="flex gap-1.5">
             <select
-              aria-label="Sortierung"
+              aria-label={t('invoices.list.filters.sortAria')}
               value={filters.sortBy}
               onChange={(e) =>
                 onPatchFilters({
@@ -256,14 +269,14 @@ export function InvoiceFilters({
               }
               className={selectClass(isDarkMode)}
             >
-              {INVOICE_SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {INVOICE_SORT_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {labelInvoiceListSortField(locale, value)}
                 </option>
               ))}
             </select>
             <select
-              aria-label="Sortierrichtung"
+              aria-label={t('invoices.list.filters.sortOrderAria')}
               value={filters.sortOrder}
               onChange={(e) =>
                 onPatchFilters({
@@ -272,8 +285,8 @@ export function InvoiceFilters({
               }
               className={selectClass(isDarkMode)}
             >
-              <option value="desc">Absteigend</option>
-              <option value="asc">Aufsteigend</option>
+              <option value="desc">{t('invoices.list.filters.sortDesc')}</option>
+              <option value="asc">{t('invoices.list.filters.sortAsc')}</option>
             </select>
           </div>
         </label>
@@ -281,9 +294,9 @@ export function InvoiceFilters({
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Dokument
+          {t('invoices.list.filters.document')}
           <select
-            aria-label="Dokumentstatus filtern"
+            aria-label={t('invoices.list.filters.documentAria')}
             value={filters.documentStatus}
             onChange={(e) =>
               onPatchFilters({
@@ -292,18 +305,18 @@ export function InvoiceFilters({
             }
             className={selectClass(isDarkMode)}
           >
-            {INVOICE_DOCUMENT_STATUS_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            {INVOICE_DOCUMENT_STATUS_FILTER_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {labelInvoiceListDocumentFilter(locale, value)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Versand
+          {t('invoices.list.filters.send')}
           <select
-            aria-label="Versandstatus filtern"
+            aria-label={t('invoices.list.filters.sendAria')}
             value={filters.sendStatus}
             onChange={(e) =>
               onPatchFilters({
@@ -312,23 +325,23 @@ export function InvoiceFilters({
             }
             className={selectClass(isDarkMode)}
           >
-            {INVOICE_SEND_STATUS_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            {INVOICE_SEND_STATUS_FILTER_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {labelInvoiceListSendFilter(locale, value)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Station
+          {t('invoices.list.filters.station')}
           <select
-            aria-label="Station filtern"
+            aria-label={t('invoices.list.filters.stationAria')}
             value={filters.stationId}
             onChange={(e) => onPatchFilters({ stationId: e.target.value })}
             className={selectClass(isDarkMode)}
           >
-            <option value="">Alle Stationen</option>
+            <option value="">{t('invoices.list.filters.stationAll')}</option>
             {stations.map((station) => (
               <option key={station.id} value={station.id}>
                 {station.name}
@@ -338,10 +351,10 @@ export function InvoiceFilters({
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Von
+          {t('invoices.list.filters.dateFrom')}
           <input
             type="date"
-            aria-label="Rechnungsdatum von"
+            aria-label={t('invoices.list.filters.dateFromAria')}
             value={filters.dateFrom}
             onChange={(e) => onPatchFilters({ dateFrom: e.target.value })}
             className={selectClass(isDarkMode)}
@@ -349,10 +362,10 @@ export function InvoiceFilters({
         </label>
 
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Bis
+          {t('invoices.list.filters.dateTo')}
           <input
             type="date"
-            aria-label="Rechnungsdatum bis"
+            aria-label={t('invoices.list.filters.dateToAria')}
             value={filters.dateTo}
             onChange={(e) => onPatchFilters({ dateTo: e.target.value })}
             className={selectClass(isDarkMode)}

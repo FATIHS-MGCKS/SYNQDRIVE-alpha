@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Invoice List (P2.2.14 — V4.9.936)', icon: Globe,
+    endpoint: 'InvoicesPage list stack, InvoiceFilters, InvoiceList table/mobile, invoice-list-i18n.ts, invoices.list.{en,de}.ts.',
+    service: '**Helper:** `invoice-list-i18n.ts` (`ili`, status/document/send label maps, filter/sort option resolvers, locale-aware amount/date formatters, machine filter constants). **Keys:** +125 EN+DE (`invoices.list.{en,de}.ts`; 7417→7542); reused `nav.customerInvoices`, legacy `invoices.*` column/KPI keys where exact. **Guardrails:** P2.2.14 enforce-clean exact (12 paths) — 0 findings; invoiceConstants machine re-exports + invoice-list-i18n blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-invoice-list-localization.test.tsx`. **Semantics:** status/type/send/document filter machine values, sort keys, API query params, URL sync, cents/currency unchanged; Invoice Detail deferred.',
+    dataSource: 'docs/audits/i18n-p2-2-14-preflight-2026-08-21.md; architecture/I18N_RENTAL_INVOICE_LIST_P2_2_14_2026-08-21.md' },
   { name: 'Platform i18n Operator Handover (P2.2.13 — V4.9.935)', icon: Globe,
     endpoint: 'OperatorHandoverFlow 6-step wizard, operator-handover-i18n.ts, handover.operator.{en,de}.ts.',
     service: '**Helper:** `operator-handover-i18n.ts` (`oh`, step/kind labels, validation resolver, observation category/area/severity maps, damage label reuse via rental `handover-i18n`). **Keys:** +125 EN+DE (`handover.operator.{en,de}.ts`; 7292→7417); reused `handover.protocol.*`, `bookings.handover.*`, `common.*`. **Validation:** domain `messageKey` + params; UI resolves via `resolveOperatorValidationMessage`. **Guardrails:** P2.2.13 enforce-clean exact (11 paths) — 0 findings; payload + observations + flow blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `operator-handover-localization.test.tsx` (12). **Semantics:** PICKUP/RETURN, damage enums, reportedBy Handover fallback, tire measurement persisted note, signature payloads unchanged.',

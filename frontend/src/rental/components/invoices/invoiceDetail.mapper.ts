@@ -1,4 +1,4 @@
-import { INVOICE_TYPE_MAP } from './invoiceConstants';
+import { INVOICE_TYPE_MAP } from './invoice-detail.constants';
 import {
   STATUS_MAP,
   canCancelInvoice,

@@ -1,6 +1,9 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { LanguageProvider } from '../../i18n/LanguageContext';
+import { de } from '../../i18n/translations/de';
 import { InvoiceListMobileCards } from './InvoiceListMobileCards';
 import type { InvoiceListItem } from './invoiceTypes';
 
@@ -39,19 +42,23 @@ const item: InvoiceListItem = {
 describe('InvoiceListMobileCards', () => {
   it('shows prominent number, status, customer and amounts', () => {
     const html = renderToStaticMarkup(
-      <InvoiceListMobileCards items={[item]} onSelect={vi.fn()} />,
+      <LanguageProvider>
+        <InvoiceListMobileCards items={[item]} onSelect={vi.fn()} />
+      </LanguageProvider>,
     );
     expect(html).toContain('2026-0042');
     expect(html).toContain('Anna Schmidt');
-    expect(html).toContain('Überfällig');
+    expect(html).toContain(de['invoices.list.status.OVERDUE']);
     expect(html).toContain('BK-555555');
-    expect(html).toContain('Offen');
-    expect(html).toContain('Gesamt');
+    expect(html).toContain(de['invoices.list.col.outstanding']);
+    expect(html).toContain(de['invoices.list.col.total']);
   });
 
   it('uses button elements for accessible row activation', () => {
     const html = renderToStaticMarkup(
-      <InvoiceListMobileCards items={[item]} onSelect={vi.fn()} />,
+      <LanguageProvider>
+        <InvoiceListMobileCards items={[item]} onSelect={vi.fn()} />
+      </LanguageProvider>,
     );
     expect(html).toContain('<button');
     expect(html).toContain('focus-visible:ring-2');

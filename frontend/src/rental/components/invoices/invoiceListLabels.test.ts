@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 import {
   counterpartyDisplayName,
-  documentStatusLabelDe,
-  sendStatusLabelDe,
+  documentStatusLabel,
+  sendStatusLabel,
   vehicleDisplayLine,
 } from './invoiceListLabels';
 import type { InvoiceListItem } from './invoiceTypes';
@@ -42,17 +44,18 @@ const sample: InvoiceListItem = {
 
 describe('invoiceListLabels', () => {
   it('prefers customer for outgoing counterparty', () => {
-    expect(counterpartyDisplayName(sample)).toBe('Max Mustermann');
+    expect(counterpartyDisplayName(sample, 'de')).toBe('Max Mustermann');
   });
 
   it('formats vehicle line with plate', () => {
-    expect(vehicleDisplayLine(sample)).toBe('BMW 320d · KS-SD 100');
+    expect(vehicleDisplayLine(sample, 'de')).toBe('BMW 320d · KS-SD 100');
   });
 
-  it('localizes technical enums', () => {
-    expect(documentStatusLabelDe('GENERATED')).toBe('Erstellt');
-    expect(documentStatusLabelDe(null)).toBe('Kein Dokument');
-    expect(sendStatusLabelDe('FAILED')).toBe('Fehlgeschlagen');
-    expect(sendStatusLabelDe(null)).toBe('Nicht versendet');
+  it('localizes technical enums via locale', () => {
+    expect(documentStatusLabel('de', 'GENERATED')).toBe(de['invoices.list.documentStatus.GENERATED']);
+    expect(documentStatusLabel('de', null)).toBe(de['invoices.list.documentStatus.none']);
+    expect(sendStatusLabel('de', 'FAILED')).toBe(de['invoices.list.sendStatus.FAILED']);
+    expect(sendStatusLabel('de', null)).toBe(de['invoices.list.sendStatus.none']);
+    expect(documentStatusLabel('en', 'GENERATED')).toBe(en['invoices.list.documentStatus.GENERATED']);
   });
 });

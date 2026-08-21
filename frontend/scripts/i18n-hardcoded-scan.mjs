@@ -203,6 +203,21 @@ const P213_ENFORCE_CLEAN_EXACT = new Set([
   'operator/handover/operator-handover-i18n.ts',
 ]);
 
+const P214_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/invoices/InvoicesPage.tsx',
+  'rental/components/invoices/InvoiceList.tsx',
+  'rental/components/invoices/InvoiceListTable.tsx',
+  'rental/components/invoices/InvoiceListMobileCards.tsx',
+  'rental/components/invoices/InvoiceListPagination.tsx',
+  'rental/components/invoices/InvoiceFilters.tsx',
+  'rental/components/invoices/InvoiceKpiGrid.tsx',
+  'rental/components/invoices/InvoiceKpiCard.tsx',
+  'rental/components/invoices/hooks/useInvoices.ts',
+  'rental/components/invoices/invoiceListLabels.ts',
+  'rental/components/invoices/invoiceConstants.ts',
+  'rental/lib/invoice-list-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -458,6 +473,10 @@ function isP213EnforceCleanPath(relPath) {
   return P213_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP214EnforceCleanPath(relPath) {
+  return P214_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -490,6 +509,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP211EnforceCleanPath(relPath)) return true;
   if (isP212EnforceCleanPath(relPath)) return true;
   if (isP213EnforceCleanPath(relPath)) return true;
+  if (isP214EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -503,6 +523,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP211EnforceCleanPath(relPath)) return 'P2.2.11';
   if (isP212EnforceCleanPath(relPath)) return 'P2.2.12';
   if (isP213EnforceCleanPath(relPath)) return 'P2.2.13';
+  if (isP214EnforceCleanPath(relPath)) return 'P2.2.14';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

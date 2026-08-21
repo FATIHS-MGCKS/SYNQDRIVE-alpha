@@ -2,9 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { api, type Station } from '../../../../lib/api';
+import {
+  ili,
+  INVOICE_LIST_LOAD_ERROR_KEY,
+  labelInvoiceListDirection,
+  labelInvoiceListStatus,
+  type InvoiceDirectionFilter,
+} from '../../../lib/invoice-list-i18n';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
-import type { InvoiceDirectionFilter } from '../invoiceConstants';
-import { STATUS_MAP } from '../invoiceFormatters';
 import {
   buildInvoiceListApiParams,
   DEFAULT_INVOICE_LIST_FILTERS,
@@ -14,6 +19,7 @@ import {
   type InvoiceListFilters,
 } from '../invoiceListState';
 import type { InvoiceListItem, InvoiceStats, PaginatedInvoiceList } from '../invoiceTypes';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface InvoiceLookupVehicle {
   id: string;
@@ -32,6 +38,8 @@ export interface InvoiceLookupData {
 }
 
 export function useInvoices(orgId: string | undefined) {
+  const { locale, t } = useLanguage();
+  const loadErrorMessage = t(INVOICE_LIST_LOAD_ERROR_KEY);
   const [filters, setFilters] = useState<InvoiceListFilters>(() => ({
     ...DEFAULT_INVOICE_LIST_FILTERS,
     ...readInvoiceListFiltersFromUrl(),
@@ -77,17 +85,17 @@ export function useInvoices(orgId: string | undefined) {
       setStats(iStats);
     } catch (e: unknown) {
       if (generation !== fetchGeneration.current) return;
-      const message = e instanceof Error ? e.message : 'Rechnungen konnten nicht geladen werden';
+      const message = e instanceof Error ? e.message : loadErrorMessage;
       setError(message);
       setItems([]);
       setMeta(null);
-      toast.error('Rechnungen konnten nicht geladen werden');
+      toast.error(loadErrorMessage);
     } finally {
       if (generation === fetchGeneration.current) {
         setLoading(false);
       }
     }
-  }, [orgId, filters, debouncedSearch]);
+  }, [orgId, filters, debouncedSearch, loadErrorMessage]);
 
   useEffect(() => {
     void reload();
@@ -176,13 +184,13 @@ export function useInvoices(orgId: string | undefined) {
 
   const activeDirectionLabel =
     filters.direction === 'all'
-      ? 'Alle Richtungen'
-      : filters.direction === 'outgoing'
-        ? 'Ausgehend'
-        : 'Eingehend';
+      ? labelInvoiceListDirection(locale, 'all')
+      : labelInvoiceListDirection(locale, filters.direction);
 
   const activeStatusLabel =
-    filters.status === 'all' ? 'Alle Status' : STATUS_MAP[filters.status]?.label || filters.status;
+    filters.status === 'all'
+      ? ili(locale, 'invoices.list.filters.allStatuses')
+      : labelInvoiceListStatus(locale, filters.status);
 
   const hasActiveFilters = hasActiveInvoiceListFilters(
     { ...filters, search: debouncedSearch },
@@ -193,8 +201,8 @@ export function useInvoices(orgId: string | undefined) {
 
   const stationLabel = useMemo(() => {
     if (!filters.stationId) return null;
-    return stations.find((s) => s.id === filters.stationId)?.name ?? 'Station';
-  }, [filters.stationId, stations]);
+    return stations.find((s) => s.id === filters.stationId)?.name ?? t('invoices.list.filters.stationFallback');
+  }, [filters.stationId, stations, t]);
 
   return {
     items,

@@ -1,6 +1,9 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import { LanguageProvider } from '../../i18n/LanguageContext';
+import { de } from '../../i18n/translations/de';
 import { InvoiceList } from './InvoiceList';
 import type { InvoiceListItem } from './invoiceTypes';
 
@@ -36,65 +39,67 @@ const item: InvoiceListItem = {
   hasOpenTask: false,
 };
 
+function renderList(props: React.ComponentProps<typeof InvoiceList>) {
+  return renderToStaticMarkup(
+    <LanguageProvider>
+      <InvoiceList {...props} />
+    </LanguageProvider>,
+  );
+}
+
 describe('InvoiceList', () => {
   it('renders empty state when no items match filters', () => {
-    const html = renderToStaticMarkup(
-      <InvoiceList
-        items={[]}
-        loading={false}
-        error={null}
-        hasActiveFilters
-        searchTerm="test"
-        meta={{ total: 0, page: 1, limit: 20, totalPages: 0 }}
-        onSelect={vi.fn()}
-        onRetry={vi.fn()}
-        onPageChange={vi.fn()}
-        onClearFilters={vi.fn()}
-      />,
-    );
-    expect(html).toContain('Keine Rechnungen gefunden');
-    expect(html).toContain('Filter zurücksetzen');
+    const html = renderList({
+      items: [],
+      loading: false,
+      error: null,
+      hasActiveFilters: true,
+      searchTerm: 'test',
+      meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
+      onSelect: vi.fn(),
+      onRetry: vi.fn(),
+      onPageChange: vi.fn(),
+      onClearFilters: vi.fn(),
+    });
+    expect(html).toContain(de['invoices.list.empty.title']);
+    expect(html).toContain(de['invoices.list.empty.clearFilters']);
   });
 
   it('renders error state with retry action', () => {
-    const html = renderToStaticMarkup(
-      <InvoiceList
-        items={[]}
-        loading={false}
-        error="Netzwerkfehler"
-        hasActiveFilters={false}
-        searchTerm=""
-        meta={null}
-        onSelect={vi.fn()}
-        onRetry={vi.fn()}
-        onPageChange={vi.fn()}
-        onClearFilters={vi.fn()}
-      />,
-    );
-    expect(html).toContain('Rechnungen konnten nicht geladen werden');
-    expect(html).toContain('Erneut laden');
+    const html = renderList({
+      items: [],
+      loading: false,
+      error: 'Netzwerkfehler',
+      hasActiveFilters: false,
+      searchTerm: '',
+      meta: null,
+      onSelect: vi.fn(),
+      onRetry: vi.fn(),
+      onPageChange: vi.fn(),
+      onClearFilters: vi.fn(),
+    });
+    expect(html).toContain(de['invoices.list.error.loadFailed']);
+    expect(html).toContain(de['invoices.list.retry']);
   });
 
   it('renders desktop table headers and mobile card content', () => {
-    const html = renderToStaticMarkup(
-      <InvoiceList
-        items={[item]}
-        loading={false}
-        error={null}
-        hasActiveFilters={false}
-        searchTerm=""
-        meta={{ total: 40, page: 1, limit: 20, totalPages: 2 }}
-        onSelect={vi.fn()}
-        onRetry={vi.fn()}
-        onPageChange={vi.fn()}
-        onClearFilters={vi.fn()}
-      />,
-    );
-    expect(html).toContain('Rechnungsnr.');
-    expect(html).toContain('Kunde / Lieferant');
-    expect(html).toContain('Versand');
+    const html = renderList({
+      items: [item],
+      loading: false,
+      error: null,
+      hasActiveFilters: false,
+      searchTerm: '',
+      meta: { total: 40, page: 1, limit: 20, totalPages: 2 },
+      onSelect: vi.fn(),
+      onRetry: vi.fn(),
+      onPageChange: vi.fn(),
+      onClearFilters: vi.fn(),
+    });
+    expect(html).toContain(de['invoices.list.col.invoiceNumber']);
+    expect(html).toContain(de['invoices.list.col.party']);
+    expect(html).toContain(de['invoices.list.col.send']);
     expect(html).toContain('2026-0001');
     expect(html).toContain('Max Mustermann');
-    expect(html).toContain('Seite 1 / 2');
+    expect(html).toContain(de['invoices.list.pagination.page'].replace('{page}', '1').replace('{totalPages}', '2'));
   });
 });

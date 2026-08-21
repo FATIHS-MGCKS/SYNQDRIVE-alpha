@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { invoiceListPaginationLabel } from '../../lib/invoice-list-i18n';
 import {
   buildInvoiceListApiParams,
   DEFAULT_INVOICE_LIST_FILTERS,
   hasActiveInvoiceListFilters,
-  paginationLabel,
 } from './invoiceListState';
 
 describe('invoiceListState', () => {
@@ -58,9 +58,12 @@ describe('invoiceListState', () => {
     expect(hasActiveInvoiceListFilters(DEFAULT_INVOICE_LIST_FILTERS, 'ACME')).toBe(true);
   });
 
-  it('formats pagination label', () => {
+  it('formats pagination label via i18n helper', () => {
     expect(
-      paginationLabel({ total: 42, page: 2, limit: 20, totalPages: 3 }),
+      invoiceListPaginationLabel('de', { total: 42, page: 2, limit: 20, totalPages: 3 }),
     ).toBe('21–40 von 42');
+    expect(
+      invoiceListPaginationLabel('en', { total: 42, page: 2, limit: 20, totalPages: 3 }),
+    ).toBe('21–40 of 42');
   });
 });

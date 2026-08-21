@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 import { api } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
-import { INVOICE_TEMPLATES } from './invoiceConstants';
+import { INVOICE_TEMPLATES } from './invoice-detail.constants';
 import { formatAmount, isOutgoing } from './invoiceFormatters';
 import type { InvoiceLookupData, InvoiceLookupVehicle } from './hooks/useInvoices';
 import type { Invoice } from './invoiceTypes';
