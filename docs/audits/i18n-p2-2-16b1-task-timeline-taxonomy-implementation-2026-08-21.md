@@ -3,11 +3,13 @@
 **Date:** 2026-08-21
 **Baseline SHA:** `1370a3841e15a506be57cd45a5cf7f2fdf2841a9`
 **Branch:** `cursor/p2216b1-task-timeline-taxonomy-i18n-3c10`
-**Verdict:** A — IMPLEMENTATION COMPLETE — READY FOR INDEPENDENT P2.2.16B.1 RE-AUDIT
+**Verdict:** A — IMPLEMENTATION COMPLETE — READY FOR INDEPENDENT P2.2.16B.1 RE-AUDIT (superseded by audit #1120 verdict C; see correction section below)
 
 ## Scope delivered
 
 P2.2.16B.1 extracts hardcoded German timeline presentation from `taskTimeline.utils.ts` into canonical `tasks.timeline.*` TranslationKey metadata and a locale-aware presentation adapter. Machine event codes, ordering, and task semantics are unchanged.
+
+**Event taxonomy:** 13 explicit machine `event.type` switch arms (`CREATED` through `UPDATED`) plus generic fallback for unknown types (e.g. `ESCALATED`).
 
 ## Baseline hidden debt (pre-edit)
 
@@ -101,3 +103,38 @@ Category E: 0
 ### Unrelated baseline debt (not fixed)
 
 `VehiclePickerStep.tsx` — 2 enforce-clean findings (`Alle Stationen`, `Filter zurücksetzen`) — unchanged from baseline.
+
+## Independent re-audit correction (PR #1120)
+
+**Audit verdict:** C — CORRECTIONS REQUIRED  
+**Blocking cause:** `ArchitekturView.tsx` P2.2.16B.1 `FRONTEND_FLOWS` entry missing required `endpoint` field → `npm run build` / frontend CI failure.
+
+### Correction applied
+
+| Item | Change |
+|---|---|
+| `ArchitekturView.tsx` | Added `endpoint: 'task-timeline-presentation-i18n.ts, taskTimeline.utils.ts, taskDetailView.utils.ts, TaskDetailNotesActivitySection.'` |
+| Event taxonomy docs | Corrected to **13 explicit event types + generic fallback** (was incorrectly documented as 15) |
+| `humanizeResolutionReason` | **No code change** — see classification below |
+
+### humanizeResolutionReason classification
+
+**P216B.1-introduced minor presentation drift (non-blocking):** baseline `humanizeResolutionReason` applied `Booking → Buchung` / `Invoice → Rechnung` prefix substitution for unmapped raw reason strings. PR #1119 adapter strips bracket prefixes only. Mapped `resolutionCode` paths (7 canonical keys) are unaffected. Acceptable fallback until B.2 locale-aware resolution wiring.
+
+### Post-correction validation
+
+| Check | Result |
+|---|---|
+| `npm run build` | PASS |
+| Timeline presentation tests | 20/20 |
+| `taskTimeline.utils` tests | 6/6 |
+| P216A regression | 18/18 |
+| P216B1 enforce-clean | 0 |
+| P216A enforce-clean | 0 |
+| Shim inventory | 29 (unchanged) |
+| `git diff --check` | PASS |
+| `i18n:check` | Fails only on unchanged VehiclePickerStep baseline (2 findings) |
+| Business/runtime modifications | 0 |
+| Category E | 0 |
+
+**Post-correction verdict:** Ready for P2.2.16B.1 re-verification.

@@ -24,7 +24,7 @@ Shared task timeline presentation taxonomy and adapter for Task Detail timeline/
 - `buildTaskTimelineItems`, `resolveTimelineTone`
 - B.1 bridge wrappers defaulting to `de` until B.2 host locale threading (`TASK_TIMELINE_BRIDGE_LOCALE`)
 
-## Event taxonomy (15 machine event types)
+## Event taxonomy (13 explicit event types + generic fallback)
 
 | Machine code | titleKey family |
 |---|---|

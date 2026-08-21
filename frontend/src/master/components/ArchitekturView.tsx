@@ -397,6 +397,7 @@ interface FrontendFlowEntry {
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'Platform i18n Task Timeline Taxonomy (P2.2.16B.1 — V4.9.939)', icon: Globe,
+    endpoint: 'task-timeline-presentation-i18n.ts, taskTimeline.utils.ts, taskDetailView.utils.ts, TaskDetailNotesActivitySection.',
     service: '**Helper:** `task-timeline-presentation-i18n.ts` (event descriptors, actor/resolution maps, datetime formatting via `getFormattingLocale`). **Machine:** `taskTimeline.utils.ts` orchestration + B.1 `de` bridge until B.2. **Keys:** +40 EN+DE `tasks.timeline.*` (7733→7773); reuses `tasks.filter.status.*`. **Guardrails:** P2.2.16B.1 enforce-clean exact (2 paths) — 0 findings. **Tests:** `task-timeline-presentation-localization.test.ts` (20). **Deferred B.2:** host locale threading through task detail.',
     dataSource: 'docs/audits/i18n-p2-2-16b-task-timeline-preflight-2026-08-21.md; architecture/I18N_TASK_TIMELINE_TAXONOMY_P2_2_16B1_2026-08-21.md' },
   { name: 'Platform i18n Shared Service Task Presentation (P2.2.16A — V4.9.938)', icon: Globe,

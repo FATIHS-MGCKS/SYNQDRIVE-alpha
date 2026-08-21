@@ -40,7 +40,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.939',
     title: 'Platform i18n — P2.2.16B.1 Task Timeline event taxonomy & presentation adapter',
     summary: [
-      'Hardcoded German timeline sentences removed from `taskTimeline.utils.ts`; new canonical adapter `task-timeline-presentation-i18n.ts` resolves 15 machine event types to `tasks.timeline.*` TranslationKey descriptors with EN/DE dictionary coverage.',
+      'Hardcoded German timeline sentences removed from `taskTimeline.utils.ts`; new canonical adapter `task-timeline-presentation-i18n.ts` resolves 13 explicit machine event types plus generic fallback to `tasks.timeline.*` TranslationKey descriptors with EN/DE dictionary coverage.',
       'P216B1 enforce-clean exact scope (2 paths) reports 0 findings; +40 EN+DE keys (7733→7773); reused `tasks.filter.status.*` for status interpolation. B.1 bridge keeps German timeline copy for hosts until B.2 locale threading.',
       'Presentation-only — timeline event codes, ordering, metadata, status machine values, API payloads unchanged. Task detail host locale wiring deferred to P2.2.16B.2.',
     ],
