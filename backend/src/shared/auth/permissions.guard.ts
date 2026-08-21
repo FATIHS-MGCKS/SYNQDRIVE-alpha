@@ -13,7 +13,27 @@ import {
   RequiredPermission,
 } from '@shared/decorators/require-permission.decorator';
 import {
-  evaluateModulePermission,
+  COMMUNICATION_COMPAT_CONTEXT_KEY,
+  type CommunicationCompatRouteContext,
+} from '@shared/decorators/require-communication-permission.decorator';
+import {
+  VOICE_ASSISTANT_COMPAT_CONTEXT_KEY,
+  type VoiceAssistantCompatRouteContext,
+} from '@shared/decorators/require-voice-assistant-permission.decorator';
+import {
+  COMMUNICATION_PERMISSION_MODULE,
+  VOICE_ASSISTANT_PERMISSION_MODULE,
+} from './communication-permission.constants';
+import {
+  isCommunicationPermissionGranted,
+  isInternalAiAssistantPermissionGranted,
+  isVoiceAssistantPermissionGranted,
+} from './communication-permission.compat';
+import {
+  computeEffectiveAccess,
+  isModuleAccessAllowed,
+} from '@modules/users/policies/effective-access-engine';
+import {
   normalizeMembershipPermissions,
   resolvePermissionOrgId,
 } from './permission.util';
@@ -75,10 +95,30 @@ export class PermissionsGuard implements CanActivate {
     if (membership.role === 'ORG_ADMIN') return true;
 
     const permissions = normalizeMembershipPermissions(membership.permissions);
-    const granted = evaluateModulePermission(
-      permissions,
-      required.module,
-      required.level,
+    const access = computeEffectiveAccess({
+      platformRole: user.platformRole,
+      membership: {
+        organizationId: orgId,
+        role: membership.role,
+        status: 'ACTIVE',
+        permissions,
+      },
+      resourceContext: { organizationId: orgId },
+    });
+
+    const communicationCompat = this.reflector.getAllAndOverride<
+      CommunicationCompatRouteContext | undefined
+    >(COMMUNICATION_COMPAT_CONTEXT_KEY, [context.getHandler(), context.getClass()]);
+
+    const voiceAssistantCompat = this.reflector.getAllAndOverride<
+      VoiceAssistantCompatRouteContext | undefined
+    >(VOICE_ASSISTANT_COMPAT_CONTEXT_KEY, [context.getHandler(), context.getClass()]);
+
+    const granted = this.isPermissionGranted(
+      access,
+      required,
+      communicationCompat,
+      voiceAssistantCompat,
     );
 
     if (!granted) {
@@ -92,5 +132,30 @@ export class PermissionsGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private isPermissionGranted(
+    access: ReturnType<typeof computeEffectiveAccess>,
+    required: RequiredPermission,
+    communicationCompat?: CommunicationCompatRouteContext,
+    voiceAssistantCompat?: VoiceAssistantCompatRouteContext,
+  ): boolean {
+    if (required.module === COMMUNICATION_PERMISSION_MODULE) {
+      return isCommunicationPermissionGranted(access, required.level, {
+        voiceOperationalLegacy: communicationCompat?.voiceOperationalLegacy ?? false,
+      });
+    }
+
+    if (required.module === VOICE_ASSISTANT_PERMISSION_MODULE) {
+      return isVoiceAssistantPermissionGranted(access, required.level, {
+        voiceAdminLegacy: voiceAssistantCompat?.voiceAdminLegacy ?? false,
+      });
+    }
+
+    if (required.module === 'ai-assistant') {
+      return isInternalAiAssistantPermissionGranted(access, required.level);
+    }
+
+    return isModuleAccessAllowed(access, required.module, required.level);
   }
 }

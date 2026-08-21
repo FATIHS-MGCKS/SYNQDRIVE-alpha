@@ -3,6 +3,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { RequireCommunicationPermission } from '@shared/decorators/require-communication-permission.decorator';
 import { WhatsAppService } from './whatsapp.service';
 import { WhatsAppTemplateService } from './whatsapp-template.service';
 import { WhatsAppConversationContextService } from './whatsapp-conversation-context.service';
@@ -15,6 +16,7 @@ import { SimulateIncomingDto } from './dto/simulate-incoming.dto';
 import { CreateWhatsAppTemplateDto } from './dto/create-whatsapp-template.dto';
 import { WhatsAppQuickActionDto, WHATSAPP_QUICK_ACTION_IDS } from './dto/whatsapp-quick-action.dto';
 import type { WhatsAppQuickActionId } from './whatsapp-conversation-context.types';
+
 @Controller('organizations/:orgId/whatsapp')
 @UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
 export class WhatsAppController {
@@ -29,13 +31,13 @@ export class WhatsAppController {
   ) {}
 
   @Get('config')
-  @RequirePermission('ai-assistant', 'read')
+  @RequireCommunicationPermission('read')
   async getConfig(@Param('orgId') orgId: string) {
     return this.whatsAppService.getConfig(orgId);
   }
 
   @Put('config')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('manage')
   async updateConfig(@Param('orgId') orgId: string, @Body() body: UpdateWhatsAppConfigDto) {
     return this.whatsAppService.updateConfig(orgId, body);
   }
@@ -53,13 +55,13 @@ export class WhatsAppController {
   }
 
   @Get('conversations')
-  @RequirePermission('ai-assistant', 'read')
+  @RequireCommunicationPermission('read')
   async getConversations(@Param('orgId') orgId: string) {
     return this.whatsAppService.getConversations(orgId);
   }
 
   @Get('conversations/:conversationId/context')
-  @RequirePermission('ai-assistant', 'read')
+  @RequireCommunicationPermission('read')
   async getConversationContext(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -68,7 +70,7 @@ export class WhatsAppController {
   }
 
   @Post('conversations/:conversationId/actions/:actionId')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('write')
   async executeQuickAction(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -130,7 +132,7 @@ export class WhatsAppController {
   }
 
   @Get('conversations/:conversationId/messages')
-  @RequirePermission('ai-assistant', 'read')
+  @RequireCommunicationPermission('read')
   async getMessages(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -139,7 +141,7 @@ export class WhatsAppController {
   }
 
   @Post('conversations/:conversationId/messages')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('write')
   async sendMessage(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -152,7 +154,7 @@ export class WhatsAppController {
   }
 
   @Post('conversations/:conversationId/ai-suggestion')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('write')
   async getAiSuggestion(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -161,7 +163,7 @@ export class WhatsAppController {
   }
 
   @Post('conversations/:conversationId/human-review')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('write')
   async requestHumanReview(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -175,7 +177,7 @@ export class WhatsAppController {
   }
 
   @Post('conversations/:conversationId/ai-reply')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('write')
   async sendAiReply(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
@@ -188,7 +190,7 @@ export class WhatsAppController {
   }
 
   @Post('simulate-incoming')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('write')
   async simulateIncoming(@Param('orgId') orgId: string, @Body() body: SimulateIncomingDto) {
     if (!body.contactPhone || !body.content) {
       throw new BadRequestException('contactPhone and content are required');
@@ -197,19 +199,19 @@ export class WhatsAppController {
   }
 
   @Get('stats')
-  @RequirePermission('ai-assistant', 'read')
+  @RequireCommunicationPermission('read')
   async getStats(@Param('orgId') orgId: string) {
     return this.whatsAppService.getStats(orgId);
   }
 
   @Get('templates')
-  @RequirePermission('ai-assistant', 'read')
+  @RequireCommunicationPermission('read')
   async listTemplates(@Param('orgId') orgId: string) {
     return this.templateService.listTemplates(orgId);
   }
 
   @Post('templates')
-  @RequirePermission('ai-assistant', 'write')
+  @RequireCommunicationPermission('manage')
   async createTemplate(@Param('orgId') orgId: string, @Body() body: CreateWhatsAppTemplateDto) {
     return this.templateService.createDraft(orgId, body);
   }

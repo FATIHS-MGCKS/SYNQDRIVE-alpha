@@ -17,6 +17,8 @@ export const PERMISSION_MODULE_KEYS = [
   'tasks',
   'vendor-management',
   'ai-assistant',
+  'communication',
+  'voice-assistant',
   'workflow-automation',
   'workflow-emergency-override',
   'document-upload',

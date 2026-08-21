@@ -14,6 +14,10 @@ import {
   NavComingSoonBadge,
 } from '../../components/shell';
 import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
+import {
+  hasCommunicationPermission,
+  hasVoiceNavigationAccess,
+} from '../lib/communication-permissions';
 
 function SynqLogo({ className }: { className?: string }) {
   return <SynqDriveBrandLogo className={className} />;
@@ -34,13 +38,15 @@ interface SidebarProps {
 
 export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onViewChange, onFleetTabChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse, supportUnreadCount = 0 }: SidebarProps) {
   const { t } = useLanguage();
-  const { hasPermission } = useRentalOrg();
+  const { hasPermission, userRole } = useRentalOrg();
   const { uiEnabled: stationsUiEnabled, loading: stationsFlagsLoading } = useStationsV2FeatureFlags();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
   const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
   const canCustomerPayments = hasPermission('payments-connect', 'read');
   const canBillingSubscription = hasPermission('billing', 'read');
   const canRentalRules = hasPermission('rental-rules', 'read');
+  const canCommunication = hasCommunicationPermission(hasPermission, 'read', userRole);
+  const canVoiceAssistant = hasVoiceNavigationAccess(hasPermission, userRole);
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||
@@ -191,12 +197,16 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
             <Zap className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.workflowAutomation')}</span>
           </button>
           )}
+          {canVoiceAssistant && (
           <button onClick={() => handleViewChange('ai-voice-assistant')} className={subNavBtnClass(currentView === 'ai-voice-assistant')}>
             <MessageSquare className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.aiVoiceAssistant')}</span>
           </button>
+          )}
+          {canCommunication && (
           <button onClick={() => handleViewChange('whatsapp-business')} className={subNavBtnClass(currentView === 'whatsapp-business')}>
             <Phone className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.whatsappBusiness')}</span>
           </button>
+          )}
         </nav>
       )}
 

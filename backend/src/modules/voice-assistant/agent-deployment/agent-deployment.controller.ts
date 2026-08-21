@@ -10,8 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
-import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireVoiceAssistantPermission } from '@shared/decorators/require-voice-assistant-permission.decorator';
 import { AgentDeploymentService } from './agent-deployment.service';
 import {
   DeployAgentDeploymentDto,
@@ -20,17 +21,18 @@ import {
 } from './dto/agent-deployment.dto';
 
 @Controller('organizations/:orgId/voice-assistant/agent-deployment')
-@UseGuards(OrgScopingGuard, RolesGuard)
-@Roles('ORG_ADMIN', 'SUB_ADMIN', 'MASTER_ADMIN')
+@UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
 export class AgentDeploymentController {
   constructor(private readonly deployments: AgentDeploymentService) {}
 
   @Get('draft')
+  @RequireVoiceAssistantPermission('read')
   async getDraft(@Param('orgId') orgId: string) {
     return this.deployments.getDraft(orgId);
   }
 
   @Patch('draft')
+  @RequireVoiceAssistantPermission('write')
   async saveDraft(
     @Param('orgId') orgId: string,
     @Body() body: SaveAgentDeploymentDraftDto,
@@ -40,16 +42,19 @@ export class AgentDeploymentController {
   }
 
   @Get('readiness')
+  @RequireVoiceAssistantPermission('read')
   async getReadiness(@Param('orgId') orgId: string) {
     return this.deployments.getReadiness(orgId);
   }
 
   @Get('diff')
+  @RequireVoiceAssistantPermission('read')
   async getDiff(@Param('orgId') orgId: string) {
     return this.deployments.getDiff(orgId);
   }
 
   @Post('deploy')
+  @RequireVoiceAssistantPermission('manage')
   async deploy(
     @Param('orgId') orgId: string,
     @Body() body: DeployAgentDeploymentDto,
@@ -64,6 +69,7 @@ export class AgentDeploymentController {
   }
 
   @Post('rollback')
+  @RequireVoiceAssistantPermission('manage')
   async rollback(
     @Param('orgId') orgId: string,
     @Body() body: RollbackAgentDeploymentDto,
