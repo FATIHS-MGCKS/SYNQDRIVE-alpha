@@ -5,6 +5,7 @@ import {
   DashboardAttentionStack,
   DashboardControlHeader,
   DashboardDrilldownDrawer,
+  DashboardTasksOverviewPanel,
   DASHBOARD_LAYOUT,
   FinanceKpiStrip,
   FocusDataFreshnessBanner,
@@ -29,6 +30,7 @@ export function DashboardView({
   onOpenFinanceView,
   onOpenInvoiceById,
   onOpenPriceTariffs,
+  onOpenTasks,
 }: DashboardViewProps) {
   const vm = useDashboardViewModel({
     onVehicleSelect,
@@ -155,6 +157,7 @@ export function DashboardView({
             )}
           </div>
         </div>
+        <DashboardTasksOverviewPanel vm={vm} onOpenTasks={onOpenTasks} />
       </div>
       <DashboardDrilldownDrawer
         activeTargetId={activeDrawerTargetId}
