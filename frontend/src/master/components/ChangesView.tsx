@@ -36,13 +36,32 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-handover-protocol-p2-2-11-2026-08-21',
+    version: '4.9.933',
+    title: 'Rental i18n — P2.2.11 Handover Protocol localization',
+    summary: [
+      'Rental Handover Protocol surface (dialog, signature pad, booking handover tab, gate utils blind spot) migrated to canonical `handover.protocol.{en,de}.ts` with `handover-i18n.ts` presentation helpers; gate reasons return `TranslationKey` metadata resolved in UI.',
+      'Scanner P2.2.11 enforce-clean exact scope reports 0 findings (~55 blind-spot literals in gates/tab/dialog remediated); +96 EN+DE keys (7114→7210); reused `bookings.handover.*`, `common.cancel`, `common.add`.',
+      'Presentation-only — PICKUP/RETURN enums, signature payloads, damage API values, and persisted `reportedBy: Handover` unchanged; operator handover module explicitly out of scope.',
+    ],
+    reason:
+      'P2.2.11 pre-flight GO verdict scoped Rental pickup/return protocol with P23 scanner false-negative blind spots in `bookingHandoverGates.ts` and `BookingHandoverTab.tsx`.',
+    previousBehavior:
+      'Handover dialog/tab/gates hardcoded German; P23 enforce-clean reported 0 while ~55 presentation literals remained; damage type/severity shown as raw machine codes in UI.',
+    details:
+      'rental/components/handover/*; booking-detail/BookingHandoverTab.tsx; rental/lib/bookingHandoverGates.ts; handover.protocol translations; handover-i18n.ts; i18n-hardcoded-scan.mjs P211 boundary; rental-handover-localization.test.tsx; architecture/I18N_RENTAL_HANDOVER_P2_2_11_2026-08-21.md; docs/audits/i18n-p2-2-11-handover-implementation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Rental Operations',
+    createdAt: '2026-08-21T00:55:00.000Z',
+  },
+  {
     id: 'i18n-master-support-ops-p2-2-10-2026-08-20',
     version: '4.9.932',
     title: 'Master i18n — P2.2.10 Support Ops localization',
     summary: [
       'Master Support Ops surface (queue, inbox, workspace, KPIs, utils blind spot) migrated to canonical `support.ops.{en,de}.ts` with Master-owned `support-ops-i18n.ts`; removed Rental `support-i18n` coupling and `MASTER_SUPPORT_LOCALE = de` adapter.',
-      'Scanner P2.2.10 enforce-clean exact scope reports 0 findings (~15+ utils blind-spot literals remediated); +91 EN+DE keys (7018→7106); reused established `support.status*`, `support.prio*`, `support.cat*`, `support.time.*` families.',
-      'Phase B deferred: `SupportTechnicalContextCard` remains German-hardcoded (residual EN mixed-language in workspace footer); import-only fix to `formatDateTimeDe`. Presentation-only — queue/filter/API machine semantics unchanged; shim 29 unchanged.',
+      'Scanner P2.2.10 enforce-clean exact scope reports 0 findings (~15+ utils blind-spot literals remediated); +96 EN+DE keys (7018→7114); reused established `support.status*`, `support.prio*`, `support.cat*`, `support.time.*` families.',
+      'Phase B complete: `SupportTechnicalContextCard` localized via `support.ops.technicalContext.*` (mixed-language EN footer eliminated). Presentation-only — queue/filter/API machine semantics unchanged; shim 29 unchanged.',
     ],
     reason:
       'P2.2.10 pre-flight audit GO verdict scoped five Master Support Ops paths with ~15+ scanner-invisible literals in `support-ops.utils.ts` and Master→Rental i18n architectural debt.',
