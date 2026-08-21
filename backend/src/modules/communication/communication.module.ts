@@ -7,6 +7,8 @@ import { WhatsAppCommunicationProjectionIntegration } from './adapters/whatsapp/
 import { ElevenLabsVoiceCommunicationAdapter } from './adapters/voice/elevenlabs-voice-communication.adapter';
 import { TwilioVoiceCommunicationAdapter } from './adapters/voice/twilio-voice-communication.adapter';
 import { VoiceCommunicationProjectionIntegration } from './adapters/voice/voice-communication-projection.integration';
+import { SentDmSmsCommunicationAdapter } from './adapters/sms/sentdm-sms-communication.adapter';
+import { SmsCommunicationProjectionIntegration } from './adapters/sms/sms-communication-projection.integration';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
 import { CommunicationEventRepository } from './communication-event.repository';
 import { CommunicationPersistenceService } from './communication-persistence.service';
@@ -32,6 +34,8 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
     TwilioVoiceCommunicationAdapter,
     ElevenLabsVoiceCommunicationAdapter,
     VoiceCommunicationProjectionIntegration,
+    SentDmSmsCommunicationAdapter,
+    SmsCommunicationProjectionIntegration,
   ],
   exports: [
     CommunicationTenantContextValidation,
@@ -45,6 +49,8 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
     TwilioVoiceCommunicationAdapter,
     ElevenLabsVoiceCommunicationAdapter,
     VoiceCommunicationProjectionIntegration,
+    SentDmSmsCommunicationAdapter,
+    SmsCommunicationProjectionIntegration,
   ],
 })
 export class CommunicationModule {}

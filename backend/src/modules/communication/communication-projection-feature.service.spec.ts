@@ -21,6 +21,7 @@ describe('CommunicationProjectionFeatureService', () => {
       get: (key: string, fallback?: unknown) => {
         if (key === 'communicationProjection.whatsappEnabled') return config.whatsappEnabled;
         if (key === 'communicationProjection.voiceEnabled') return config.voiceEnabled;
+        if (key === 'communicationProjection.smsEnabled') return config.smsEnabled;
         if (key === 'communicationProjection.orgAllowlist') return config.orgAllowlist;
         return fallback;
       },
@@ -82,5 +83,12 @@ describe('CommunicationProjectionFeatureService', () => {
       COMMUNICATION_CENTER_VOICE_PROJECTION_ENABLED: 'true',
     });
     expect(service.isVoiceProjectionEnabled('org-1')).toBe(true);
+  });
+
+  it('is enabled when SMS projection flag is ON', () => {
+    const service = createService({
+      COMMUNICATION_CENTER_SMS_PROJECTION_ENABLED: 'true',
+    });
+    expect(service.isSmsProjectionEnabled('org-1')).toBe(true);
   });
 });
