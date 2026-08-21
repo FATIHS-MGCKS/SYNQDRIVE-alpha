@@ -247,6 +247,11 @@ const P216A_ENFORCE_CLEAN_EXACT = new Set([
   'rental/components/service-center/ServiceCenterContextBar.tsx',
 ]);
 
+const P216B1_ENFORCE_CLEAN_EXACT = new Set([
+  'lib/tasks/taskTimeline.utils.ts',
+  'lib/tasks/task-timeline-presentation-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -514,6 +519,10 @@ function isP216AEnforceCleanPath(relPath) {
   return P216A_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP216B1EnforceCleanPath(relPath) {
+  return P216B1_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -549,6 +558,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP214EnforceCleanPath(relPath)) return true;
   if (isP215EnforceCleanPath(relPath)) return true;
   if (isP216AEnforceCleanPath(relPath)) return true;
+  if (isP216B1EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -565,6 +575,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP214EnforceCleanPath(relPath)) return 'P2.2.14';
   if (isP215EnforceCleanPath(relPath)) return 'P2.2.15';
   if (isP216AEnforceCleanPath(relPath)) return 'P2.2.16A';
+  if (isP216B1EnforceCleanPath(relPath)) return 'P2.2.16B.1';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

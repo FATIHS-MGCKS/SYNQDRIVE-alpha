@@ -24227,11 +24227,10 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 7,
+      "occurrences": 6,
       "files": [
         "lib/formatVehicleDisplay.ts",
-        "lib/money.ts",
-        "lib/tasks/taskTimeline.utils.ts"
+        "lib/money.ts"
       ]
     },
     {
