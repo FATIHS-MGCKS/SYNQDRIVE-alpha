@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-task-timeline-taxonomy-p2-2-16b1-2026-08-21',
+    version: '4.9.939',
+    title: 'Platform i18n — P2.2.16B.1 Task Timeline event taxonomy & presentation adapter',
+    summary: [
+      'Hardcoded German timeline sentences removed from `taskTimeline.utils.ts`; new canonical adapter `task-timeline-presentation-i18n.ts` resolves 15 machine event types to `tasks.timeline.*` TranslationKey descriptors with EN/DE dictionary coverage.',
+      'P216B1 enforce-clean exact scope (2 paths) reports 0 findings; +40 EN+DE keys (7733→7773); reused `tasks.filter.status.*` for status interpolation. B.1 bridge keeps German timeline copy for hosts until B.2 locale threading.',
+      'Presentation-only — timeline event codes, ordering, metadata, status machine values, API payloads unchanged. Task detail host locale wiring deferred to P2.2.16B.2.',
+    ],
+    reason:
+      'P2.2.16B pre-flight GO-BUT-SPLIT selected taxonomy/presentation adapter slice first to remove scanner-blind German timeline debt with Category E=0 and independent merge safety.',
+    previousBehavior:
+      '`taskTimeline.utils.ts` owned ~38 German presentation literals, `RESOLUTION_CODE_LABELS`, `taskStatusLabelDe`, and fixed `de-DE` datetime formatting; EN product locale could receive German timeline prose.',
+    details:
+      'lib/tasks/task-timeline-presentation-i18n.ts; lib/tasks/taskTimeline.utils.ts; task-timeline-presentation-localization.test.ts; P216B1_ENFORCE_CLEAN_EXACT; architecture/I18N_TASK_TIMELINE_TAXONOMY_P2_2_16B1_2026-08-21.md; docs/audits/i18n-p2-2-16b1-task-timeline-taxonomy-implementation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-08-21T21:20:00.000Z',
+  },
+  {
     id: 'i18n-shared-service-task-presentation-p2-2-16a-2026-08-21',
     version: '4.9.938',
     title: 'Platform i18n — P2.2.16A Shared Service Task presentation utilities',

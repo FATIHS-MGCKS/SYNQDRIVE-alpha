@@ -260,6 +260,11 @@ const P216A_ENFORCE_CLEAN_EXACT = [
   'rental/components/service-center/ServiceCenterContextBar.tsx',
 ];
 
+const P216B1_ENFORCE_CLEAN_EXACT = [
+  'lib/tasks/taskTimeline.utils.ts',
+  'lib/tasks/task-timeline-presentation-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -304,6 +309,10 @@ function isP216AEnforceCleanPath(relPath: string): boolean {
   return P216A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
+function isP216B1EnforceCleanPath(relPath: string): boolean {
+  return P216B1_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
 function isP26EnforceCleanPath(relPath: string): boolean {
   return P26_ENFORCE_CLEAN_PREFIXES.some(
     (prefix) => relPath === prefix || relPath.startsWith(prefix),
@@ -327,7 +336,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 + P2.2.14 + P2.2.15 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 + P2.2.14 + P2.2.15 + P2.2.16A + P2.2.16B.1 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -457,6 +466,37 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP216AEnforceCleanPath(finding.file),
     );
     expect(p216aDebt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.16B.1 enforce-clean findings to task timeline taxonomy only', () => {
+    const p216b1Debt = inventory.findings.filter((finding) =>
+      isP216B1EnforceCleanPath(finding.file),
+    );
+    expect(p216b1Debt).toHaveLength(0);
+  });
+
+  it('keeps taskTimeline.utils.ts machine/descriptor-only without German prose maps', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/taskTimeline.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('resolveTimelineTone');
+    expect(source).toContain('buildTaskTimelineItems');
+    expect(source).not.toContain('RESOLUTION_CODE_LABELS');
+    expect(source).not.toContain('taskStatusLabelDe');
+    expect(source).not.toMatch(/hat die Aufgabe erstellt/);
+    expect(source).not.toMatch(/locale \?\? 'de-DE'/);
+  });
+
+  it('keeps task-timeline-presentation-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/task-timeline-presentation-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('tasks.timeline.event.created.user');
+    expect(source).not.toContain('RESOLUTION_CODE_LABELS');
+    expect(source).not.toMatch(/label:\s*'Offen'/);
   });
 
   it('keeps service-task-semantics.ts as machine-only utilities', () => {
