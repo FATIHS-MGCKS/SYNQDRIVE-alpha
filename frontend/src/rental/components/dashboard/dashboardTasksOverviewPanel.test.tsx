@@ -197,6 +197,19 @@ describe('DashboardTasksOverviewPanel', () => {
       expect.objectContaining({ selectedStationId: 'st-1' }),
     );
   });
+
+  it('uses notification panel typography tokens for header and CTA', () => {
+    const panelSrc = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), './DashboardTasksOverviewPanel.tsx'),
+      'utf8',
+    );
+
+    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.boxTitle');
+    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.meta');
+    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.cta');
+    expect(panelSrc).toContain('NOTIFICATION_PANEL_TYPO.cardTitle');
+    expect(panelSrc).not.toContain('DashboardPanelHeader');
+  });
 });
 
 describe('DashboardView integration contract', () => {
@@ -206,7 +219,7 @@ describe('DashboardView integration contract', () => {
   it('renders tasks overview below controlFinanceGrid in standard layout only', () => {
     expect(dashboardViewSrc).toMatch(/controlFinanceGrid[\s\S]*DashboardTasksOverviewPanel/);
     const focusBranch = dashboardViewSrc.match(
-      /if \(vm\.operatorFocusMode\) \{[\s\S]*?\n  \}\n\n  return/,
+      /if \(vm\.operatorFocusMode\) \{[\s\S]*?\n {2}\}\n\n {2}return/,
     )?.[0];
     expect(focusBranch).toBeTruthy();
     expect(focusBranch).not.toContain('DashboardTasksOverviewPanel');

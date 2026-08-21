@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api';
 import { unwrapTaskListPage } from '../../tasks-pagination';
 import { matchesTaskListInvalidation, subscribeTaskQueryInvalidation } from '../invalidate';
-import { taskQueryKeys } from '../query-keys';
+import { taskListQuerySignature, taskQueryKeys } from '../query-keys';
 import type { ApiTask, TaskBucket, TaskListFilters } from '../types';
 
 export interface UseTaskListOptions {
@@ -45,9 +45,16 @@ export function useTaskList({
     tasksRef.current = tasks;
   }, [tasks]);
 
-  const queryKey = bucket
-    ? taskQueryKeys.listBucket(orgId ?? '', bucket, filters)
-    : taskQueryKeys.list(orgId ?? '', filters);
+  const querySignature = taskListQuerySignature(orgId, bucket, filters);
+  const queryKey = useMemo(
+    () =>
+      bucket
+        ? taskQueryKeys.listBucket(orgId ?? '', bucket, filters)
+        : taskQueryKeys.list(orgId ?? '', filters),
+    // filters object identity is intentionally excluded; querySignature is the semantic key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- querySignature encodes filter semantics
+    [orgId, bucket, querySignature],
+  );
 
   const reload = useCallback(async (): Promise<ApiTask[]> => {
     if (!orgId || !enabled) {
@@ -108,7 +115,7 @@ export function useTaskList({
 
   useEffect(() => {
     void reload();
-  }, [reload, queryKey]);
+  }, [reload, querySignature]);
 
   useEffect(() => {
     if (!orgId) return undefined;
