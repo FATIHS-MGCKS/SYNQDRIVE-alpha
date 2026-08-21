@@ -9,10 +9,12 @@ import {
   type ServiceHistoryFilters,
 } from '../../lib/service-history.utils';
 import {
-  buildVehicleLabel,
   SERVICE_MAINTENANCE_TYPES,
-  TASK_TYPE_LABEL_DE,
 } from '../../lib/service-task-semantics';
+import {
+  serviceTaskTypeLabelForType,
+  serviceVehicleLabel,
+} from '../../../lib/tasks/service-task-presentation-i18n';
 import { sc } from './service-center-ui';
 import { ServiceHistoryTimelineRow } from './ServiceHistoryTimelineRow';
 import { useServiceTaskLookups } from './useServiceTaskLookups';
@@ -42,7 +44,7 @@ export function ServiceHistoryPanel({
   onOpenVendor,
   initialVehicleId,
 }: ServiceHistoryPanelProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const lookups = useServiceTaskLookups(vendors);
   const [filters, setFilters] = useState<ServiceHistoryFilters>(DEFAULT_SERVICE_HISTORY_FILTERS);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -70,9 +72,9 @@ export function ServiceHistoryPanel({
       if (task.vehicleId) ids.add(task.vehicleId);
     }
     return [...ids]
-      .map((id) => ({ id, label: buildVehicleLabel(lookups.vehicleMap.get(id) ?? null) }))
+      .map((id) => ({ id, label: serviceVehicleLabel(locale, lookups.vehicleMap.get(id) ?? null) }))
       .sort((a, b) => a.label.localeCompare(b.label, 'de'));
-  }, [localTasks, lookups.vehicleMap]);
+  }, [localTasks, lookups.vehicleMap, locale]);
 
   const selectClass =
     'rounded-lg border border-border surface-premium px-2 py-1.5 text-[10px] text-foreground min-w-0';
@@ -123,7 +125,7 @@ export function ServiceHistoryPanel({
           >
             <option value="ALL">{t('serviceCenter.history.allTypes')}</option>
             {HISTORY_TYPES.map((taskType) => (
-              <option key={taskType} value={taskType}>{TASK_TYPE_LABEL_DE[taskType]}</option>
+              <option key={taskType} value={taskType}>{serviceTaskTypeLabelForType(locale, taskType)}</option>
             ))}
           </select>
           <input
@@ -176,7 +178,7 @@ export function ServiceHistoryPanel({
                   <ServiceHistoryTimelineRow
                     key={task.id}
                     task={task}
-                    vehicleLabel={buildVehicleLabel(lookups.resolveVehicle(task))}
+                    vehicleLabel={serviceVehicleLabel(locale, lookups.resolveVehicle(task))}
                     vendorName={lookups.resolveVendorName(task)}
                     assigneeName={lookups.resolveAssigneeName(task)}
                     onOpenTask={(id) => {

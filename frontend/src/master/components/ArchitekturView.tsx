@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Shared Service Task Presentation (P2.2.16A — V4.9.938)', icon: Globe,
+    status: 'active',
+    service: '**Helper:** `service-task-presentation-i18n.ts` (type/status/priority/board/vehicle label maps; reuses `tasks.type.*`, `tasks.filter.*`). **Machine:** `service-task-semantics.ts` stripped to boardColumnForTask / maintenance detection only. **Keys:** +13 EN+DE (7720→7733). **Guardrails:** P2.2.16A enforce-clean exact (17 paths) — 0 findings; blind-spot guards forbid `TASK_*_LABEL_DE`. **Tests:** `service-task-presentation-localization.test.tsx` (9). **Fix:** EN locale no longer shows German task type labels in vendor/service-center consumers.',
+    dataSource: 'docs/audits/i18n-p2-2-16-preflight-2026-08-21.md; architecture/I18N_SHARED_SERVICE_TASK_PRESENTATION_P2_2_16A_2026-08-21.md' },
   { name: 'Platform i18n Rental Vendor Directory (P2.2.15 — V4.9.937)', icon: Globe,
     endpoint: 'VendorManagementView, VendorDetailView, VendorDirectoryCard, VendorOperationalTasks, vendor-directory-i18n.ts, vendors.directory.{en,de}.ts.',
     service: '**Helper:** `vendor-directory-i18n.ts` (`vdi`, category/scope/service-area/relation/tab label maps, locale-aware date/amount formatters, machine constants). **Keys:** +178 EN+DE (`vendors.directory.{en,de}.ts`; 7542→7720); reused `tasks.vendor.category.*`, `tasks.vendor.allCategories/allServiceAreas`, `tasks.filter.status.*`, `common.*`. **Guardrails:** P2.2.15 enforce-clean exact (6 paths) — 0 findings; vendor-directory.utils + vendor-directory-i18n blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-vendor-directory-localization.test.tsx` (21). **Semantics:** VendorCategory/scope/service-area/relation/source machine values, stored serviceAreas English tokens, filter/search/API payloads unchanged.',

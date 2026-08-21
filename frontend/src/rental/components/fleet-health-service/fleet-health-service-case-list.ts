@@ -8,7 +8,8 @@ import type { VehicleData } from '../../data/vehicles';
 import type { SupportedLocale } from '../../../i18n/locales';
 import { vehicleFormattingLocaleOrDefault } from '../vehicle/vehicle-i18n';
 import { buildMMY } from '../../lib/vehicleMmy';
-import { formatCostCents, TASK_PRIORITY_LABEL_DE } from '../../lib/service-task-semantics';
+import { formatCostCents } from '../../lib/service-task-semantics';
+import { serviceTaskPriorityLabel } from '../../../lib/tasks/service-task-presentation-i18n';
 import { isActiveServiceCase } from './fleet-health-service-case.view-model';
 
 export type FleetHealthServiceCaseFilter =
@@ -166,6 +167,7 @@ export function buildFleetHealthServiceCaseListRows(input: {
   vehicleById: Map<string, VehicleData>;
   vendorById: Map<string, Vendor>;
   filter: FleetHealthServiceCaseFilter;
+  locale: string;
 }): FleetHealthServiceCaseListRow[] {
   const filtered = filterServiceCasesByWorkFilter(input.serviceCases, input.filter);
 
@@ -187,7 +189,7 @@ export function buildFleetHealthServiceCaseListRows(input: {
         titleLine: serviceCase.title,
         categoryLabel: SERVICE_CASE_CATEGORY_LABEL_DE[serviceCase.category],
         statusLabel: SERVICE_CASE_STATUS_LABEL_DE[serviceCase.status],
-        priorityLabel: TASK_PRIORITY_LABEL_DE[serviceCase.priority],
+        priorityLabel: serviceTaskPriorityLabel(input.locale, serviceCase.priority),
         vendorName,
         scheduledAtLabel: formatServiceCaseDateTime(serviceCase.scheduledAt),
         expectedReadyAtLabel: formatServiceCaseDateTime(serviceCase.expectedReadyAt),

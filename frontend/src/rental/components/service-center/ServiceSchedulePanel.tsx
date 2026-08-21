@@ -8,7 +8,7 @@ import {
   SCHEDULE_BUCKET_TONE,
   selectScheduleTasks,
 } from '../../lib/service-schedule.utils';
-import { buildVehicleLabel } from '../../lib/service-task-semantics';
+import { serviceVehicleLabel } from '../../../lib/tasks/service-task-presentation-i18n';
 import { sc } from './service-center-ui';
 import { ServiceScheduleRow } from './ServiceScheduleRow';
 import { useServiceTaskLookups } from './useServiceTaskLookups';
@@ -28,7 +28,7 @@ export function ServiceSchedulePanel({
   loading,
   onSelectTask,
 }: ServiceSchedulePanelProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const lookups = useServiceTaskLookups(vendors);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -89,7 +89,7 @@ export function ServiceSchedulePanel({
                     <ServiceScheduleRow
                       key={task.id}
                       task={task}
-                      vehicleLabel={buildVehicleLabel(lookups.resolveVehicle(task))}
+                      vehicleLabel={serviceVehicleLabel(locale, lookups.resolveVehicle(task))}
                       vendorName={lookups.resolveVendorName(task)}
                       assigneeName={lookups.resolveAssigneeName(task)}
                       onOpen={openTask}

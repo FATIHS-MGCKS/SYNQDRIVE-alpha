@@ -10,9 +10,9 @@ import {
   vehicleTaskStatusTone,
 } from '../../lib/task-display.utils';
 import {
-  buildVehicleLabel,
-  taskTypeLabel,
-} from '../../lib/service-task-semantics';
+  serviceTaskTypeLabel,
+  serviceVehicleLabel,
+} from '../../../lib/tasks/service-task-presentation-i18n';
 import { taskTypeIcon } from '../../lib/service-task-icons';
 import {
   formatAppointmentLabel,
@@ -43,7 +43,7 @@ export function ServiceScheduleRow({
   assigneeName,
   onOpen,
 }: ServiceScheduleRowProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const Icon = taskTypeIcon(task.type);
   const appointment = taskScheduledAppointment(task);
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
@@ -67,7 +67,7 @@ export function ServiceScheduleRow({
             />
           </div>
           <p className="text-[10px] text-muted-foreground truncate">
-            {vehicleLabel} · {taskTypeLabel(task)}
+            {vehicleLabel} · {serviceTaskTypeLabel(locale, task)}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
             {task.dueDate && (

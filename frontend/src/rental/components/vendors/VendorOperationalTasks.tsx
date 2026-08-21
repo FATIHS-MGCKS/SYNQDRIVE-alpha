@@ -4,7 +4,7 @@ import { api, type ApiTask, type ApiTaskStatus } from '../../../lib/api';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TranslationKey } from '../../../i18n/translations/en';
 import { formatTaskDueDate, mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
-import { taskTypeLabel } from '../../lib/service-task-semantics';
+import { serviceTaskTypeLabel } from '../../../lib/tasks/service-task-presentation-i18n';
 import { formatVendorDirectoryDate, vdi } from '../../lib/vendor-directory-i18n';
 
 interface VendorOperationalTasksProps {
@@ -55,7 +55,7 @@ function TaskList({
           </div>
           <p className="text-[12px] font-semibold text-foreground">{task.title}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            {taskTypeLabel(task)}
+            {serviceTaskTypeLabel(locale, task)}
             {task.dueDate
               ? ` · ${vdi(locale, 'vendors.directory.tasks.due', { date: formatTaskDueDate(task.dueDate) })}`
               : ''}

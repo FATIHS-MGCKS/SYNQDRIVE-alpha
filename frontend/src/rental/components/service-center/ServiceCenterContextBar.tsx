@@ -2,7 +2,11 @@ import { X } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { useFleetVehicles } from '../../FleetContext';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
-import { buildVehicleLabel } from '../../lib/service-task-semantics';
+import {
+  serviceContextVehiclePrefix,
+  serviceTaskTypeLabelForType,
+  serviceVehicleLabel,
+} from '../../../lib/tasks/service-task-presentation-i18n';
 import { sc } from './service-center-ui';
 
 interface ServiceCenterContextBarProps {
@@ -16,16 +20,16 @@ export function ServiceCenterContextBar({
   vendorName,
   onClear,
 }: ServiceCenterContextBarProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const vehicle = context.vehicleId
     ? fleetVehicles.find((v) => v.id === context.vehicleId)
     : null;
 
   const parts: string[] = [];
-  if (vehicle) parts.push(`Fahrzeug: ${buildVehicleLabel(vehicle)}`);
+  if (vehicle) parts.push(`${serviceContextVehiclePrefix(locale)} ${serviceVehicleLabel(locale, vehicle)}`);
   if (context.vendorId && vendorName) parts.push(`Partner: ${vendorName}`);
-  if (context.taskType) parts.push(`Typ: ${context.taskType.replace(/_/g, ' ')}`);
+  if (context.taskType) parts.push(`Typ: ${serviceTaskTypeLabelForType(locale, context.taskType)}`);
   if (context.taskFilter && context.taskFilter !== 'all') {
     parts.push(`Filter: ${context.taskFilter}`);
   }

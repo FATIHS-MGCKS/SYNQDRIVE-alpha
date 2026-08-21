@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from './ui/Icon';
 import type { ApiTask, ApiTaskPriority, ApiTaskStatus } from '../../lib/api';
-import { taskTypeLabel, TASK_STATUS_LABEL_DE, TASK_PRIORITY_LABEL_DE } from '../lib/service-task-semantics';
+import {
+  serviceTaskPriorityLabel,
+  serviceTaskStatusLabel,
+  serviceTaskTypeLabel,
+} from '../../lib/tasks/service-task-presentation-i18n';
 
 /**
  * Reusable embeddable task list for entity detail pages (Vehicle / Booking /
@@ -22,7 +27,9 @@ interface EntityTasksSectionProps {
   activeOnly?: boolean;
 }
 
-const STATUS_LABEL: Record<ApiTaskStatus, string> = TASK_STATUS_LABEL_DE;
+function statusLabel(locale: string, status: ApiTaskStatus): string {
+  return serviceTaskStatusLabel(locale, status);
+}
 
 function statusTone(status: ApiTaskStatus, isDark: boolean): string {
   switch (status) {
@@ -53,8 +60,8 @@ function priorityTone(priority: ApiTaskPriority): string {
   }
 }
 
-function priorityLabel(priority: ApiTaskPriority): string {
-  return TASK_PRIORITY_LABEL_DE[priority] ?? priority;
+function priorityLabel(locale: string, priority: ApiTaskPriority): string {
+  return serviceTaskPriorityLabel(locale, priority);
 }
 
 function fmt(iso: string | null): string {
@@ -69,6 +76,7 @@ function fmtCents(cents: number | null): string | null {
 }
 
 export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTasks, deps, onOpenTask, activeOnly }: EntityTasksSectionProps) {
+  const { locale, t } = useLanguage();
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
@@ -115,18 +123,18 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
           <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-muted-foreground' : 'text-gray-300'}`} />
         </div>
       ) : errored ? (
-        <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Tasks konnten nicht geladen werden.</p>
+        <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{t('tasks.entity.loadError')}</p>
       ) : tasks.length === 0 ? (
         <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{emptyHint}</p>
       ) : (
         <div className="space-y-2">
-          {tasks.map((t) => {
-            const cost = fmtCents(t.actualCostCents ?? t.estimatedCostCents);
+          {tasks.map((task) => {
+            const cost = fmtCents(task.actualCostCents ?? task.estimatedCostCents);
             return (
               <button
-                key={t.id}
+                key={task.id}
                 type="button"
-                onClick={() => onOpenTask?.(t.id)}
+                onClick={() => onOpenTask?.(task.id)}
                 className={`w-full text-left rounded-xl border p-3 transition-colors ${
                   isDark ? 'bg-muted/30 border-border/60 hover:bg-muted/50' : 'bg-gray-50/80 border-gray-200/50 hover:bg-gray-100'
                 } ${onOpenTask ? 'cursor-pointer' : 'cursor-default'}`}
@@ -134,22 +142,22 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-semibold truncate ${textPrimary}`}>{t.title}</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusTone(t.status, isDark)}`}>
-                        {STATUS_LABEL[t.status]}
+                      <span className={`text-xs font-semibold truncate ${textPrimary}`}>{task.title}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusTone(task.status, isDark)}`}>
+                        {statusLabel(locale, task.status)}
                       </span>
-                      {t.isOverdue && (
+                      {task.isOverdue && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-red-100 text-red-700 border-red-200">
-                          Überfällig
+                          {t('tasks.vehicleStatus.overdue')}
                         </span>
                       )}
-                      <span className={`text-[10px] font-semibold ${priorityTone(t.priority)}`}>· {priorityLabel(t.priority)}</span>
+                      <span className={`text-[10px] font-semibold ${priorityTone(task.priority)}`}>· {priorityLabel(locale, task.priority)}</span>
                     </div>
                     <div className={`mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] ${textSecondary}`}>
                       <span className="inline-flex items-center gap-1">
-                        <Icon name="calendar" className="w-3 h-3" /> Fällig {fmt(t.dueDate)}
+                        <Icon name="calendar" className="w-3 h-3" /> {t('tasks.entity.duePrefix')} {fmt(task.dueDate)}
                       </span>
-                      <span>{taskTypeLabel(t)}</span>
+                      <span>{serviceTaskTypeLabel(locale, task)}</span>
                       {cost && (
                         <span className="inline-flex items-center gap-1">
                           <Icon name="euro" className="w-3 h-3" /> {cost}

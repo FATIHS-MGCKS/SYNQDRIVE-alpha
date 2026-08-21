@@ -5,7 +5,7 @@ import type { VehicleData } from '../../data/vehicles';
 import { formatTaskDueDate } from '../../lib/task-display.utils';
 import { groupTasksByDueDate } from './service-center.utils';
 import { sc } from './service-center-ui';
-import { buildVehicleLabel, taskTypeLabel } from '../../lib/service-task-semantics';
+import { serviceTaskTypeLabel, serviceVehicleLabel } from '../../../lib/tasks/service-task-presentation-i18n';
 
 interface ServiceTasksCalendarProps {
   tasks: ApiTask[];
@@ -18,7 +18,7 @@ export function ServiceTasksCalendar({
   resolveVehicle,
   onOpen,
 }: ServiceTasksCalendarProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const withDue = useMemo(
     () => tasks.filter((t) => t.dueDate && t.status !== 'CANCELLED'),
     [tasks],
@@ -48,7 +48,7 @@ export function ServiceTasksCalendar({
               >
                 <p className="text-[11px] font-medium">{task.title}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {buildVehicleLabel(resolveVehicle(task))} · {taskTypeLabel(task)}
+                  {serviceVehicleLabel(locale, resolveVehicle(task))} · {serviceTaskTypeLabel(locale, task)}
                   {task.dueDate ? ` · ${formatTaskDueDate(task.dueDate)}` : ''}
                 </p>
               </button>

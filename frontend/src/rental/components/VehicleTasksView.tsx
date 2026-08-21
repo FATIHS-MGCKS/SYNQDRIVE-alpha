@@ -19,7 +19,8 @@ import {
   vehicleTaskStatusTone,
   type VehicleTaskFilter,
 } from '../lib/task-display.utils';
-import { isServiceMaintenanceTask, taskTypeLabel } from '../lib/service-task-semantics';
+import { isServiceMaintenanceTask } from '../lib/service-task-semantics';
+import { serviceTaskTypeLabel } from '../../lib/tasks/service-task-presentation-i18n';
 import { isActiveTask } from '../components/service-center/service-center.utils';
 import {
   countBlockingTasks,
@@ -86,7 +87,7 @@ export function VehicleTasksView({
   onOpenServiceCenter,
   tasksRefreshToken,
 }: VehicleTasksViewProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [filter, setFilter] = useState<VehicleTaskFilter>('all');
   const [rows, setRows] = useState<ApiTask[]>([]);
@@ -576,6 +577,7 @@ function TaskRow({
   checklist?: { done: number; total: number };
   onClick: () => void;
 }) {
+  const { locale } = useLanguage();
   const tone = vehicleTaskStatusTone(task.displayStatus, task.isOverdue);
   const label = vehicleTaskStatusLabel(task.displayStatus, task.isOverdue);
   const chipTone = statusToneToChip(tone);
@@ -625,7 +627,11 @@ function TaskRow({
           </p>
           {isServiceMaintenanceTask({ type: task.apiType, category: task.category }) && (
             <p className="text-[10px] text-muted-foreground truncate">
-              {taskTypeLabel({ type: task.apiType, category: task.category, metadata: task.metadata })}
+              {serviceTaskTypeLabel(locale, {
+                type: task.apiType,
+                category: task.category,
+                metadata: task.metadata,
+              })}
             </p>
           )}
 

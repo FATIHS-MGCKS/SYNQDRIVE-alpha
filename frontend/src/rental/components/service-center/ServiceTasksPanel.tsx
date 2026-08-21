@@ -13,10 +13,14 @@ import {
 } from '../../lib/service-task-filters';
 import {
   SERVICE_MAINTENANCE_TYPES,
-  TASK_PRIORITY_LABEL_DE,
-  TASK_STATUS_LABEL_DE,
-  TASK_TYPE_LABEL_DE,
 } from '../../lib/service-task-semantics';
+import {
+  SERVICE_TASK_PRIORITY_VALUES,
+  SERVICE_TASK_STATUS_VALUES,
+  serviceTaskPriorityLabel,
+  serviceTaskStatusLabel,
+  serviceTaskTypeLabelForType,
+} from '../../../lib/tasks/service-task-presentation-i18n';
 import { VehicleTaskDetailDrawer } from '../tasks/VehicleTaskDetailDrawer';
 import { Icon } from '../ui/Icon';
 import { sc } from './service-center-ui';
@@ -58,7 +62,7 @@ export function ServiceTasksPanel({
   focusTaskId,
   initialAdvancedFilters,
 }: ServiceTasksPanelProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const [localTasks, setLocalTasks] = useState(tasks);
@@ -275,8 +279,8 @@ export function ServiceTasksPanel({
           >
             <option value="ACTIVE">{t('serviceCenter.tasks.filter.statusActive')}</option>
             <option value="ALL">{t('serviceCenter.tasks.filter.statusAll')}</option>
-            {(Object.keys(TASK_STATUS_LABEL_DE) as ApiTaskStatus[]).map((s) => (
-              <option key={s} value={s}>{TASK_STATUS_LABEL_DE[s]}</option>
+            {(SERVICE_TASK_STATUS_VALUES).map((s) => (
+              <option key={s} value={s}>{serviceTaskStatusLabel(locale, s)}</option>
             ))}
           </select>
           <select
@@ -287,8 +291,8 @@ export function ServiceTasksPanel({
             className={selectClass}
           >
             <option value="ALL">{t('serviceCenter.tasks.filter.priorityAll')}</option>
-            {(Object.keys(TASK_PRIORITY_LABEL_DE) as ApiTaskPriority[]).map((p) => (
-              <option key={p} value={p}>{TASK_PRIORITY_LABEL_DE[p]}</option>
+            {(SERVICE_TASK_PRIORITY_VALUES).map((p) => (
+              <option key={p} value={p}>{serviceTaskPriorityLabel(locale, p)}</option>
             ))}
           </select>
           <select
@@ -299,8 +303,8 @@ export function ServiceTasksPanel({
             className={selectClass}
           >
             <option value="ALL">{t('serviceCenter.tasks.filter.typeAll')}</option>
-            {SERVICE_MAINTENANCE_TYPES.map((t) => (
-              <option key={t} value={t}>{TASK_TYPE_LABEL_DE[t]}</option>
+            {SERVICE_MAINTENANCE_TYPES.map((type) => (
+              <option key={type} value={type}>{serviceTaskTypeLabelForType(locale, type)}</option>
             ))}
           </select>
           <select

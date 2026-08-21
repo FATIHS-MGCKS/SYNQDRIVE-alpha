@@ -106,6 +106,7 @@ describe('fleet-health-service-case-list', () => {
       vehicleById: new Map([['v1', vehicle]]),
       vendorById: new Map([['vendor-1', { id: 'vendor-1', name: 'Werkstatt Nord' } as never]]),
       filter: 'scheduled',
+      locale: 'de',
     });
 
     expect(rows).toHaveLength(1);

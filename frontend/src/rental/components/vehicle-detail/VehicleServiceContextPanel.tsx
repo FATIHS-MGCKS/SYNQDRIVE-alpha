@@ -16,7 +16,7 @@ import {
   selectOpenVehicleMaintenanceTasks,
   summarizeVehicleMaintenanceTasks,
 } from '../../lib/vehicle-service-tasks.utils';
-import { taskTypeLabel } from '../../lib/service-task-semantics';
+import { serviceTaskTypeLabel } from '../../../lib/tasks/service-task-presentation-i18n';
 import { ServiceTaskCreateModal } from '../service-center/ServiceTaskCreateModal';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
@@ -43,6 +43,7 @@ function MaintenanceTaskRow({
   task: ApiTask;
   onOpen: () => void;
 }) {
+  const { locale } = useLanguage();
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
   const tone = vehicleTaskStatusTone(displayStatus, task.isOverdue);
   const priority = mapApiPriority(task.priority);
@@ -73,7 +74,7 @@ function MaintenanceTaskRow({
           </div>
           <p className="text-[12px] font-semibold text-foreground truncate">{task.title}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            {taskTypeLabel(task)}
+            {serviceTaskTypeLabel(locale, task)}
             {dueLabel ? ` · ${dueLabel}` : ''}
           </p>
         </div>

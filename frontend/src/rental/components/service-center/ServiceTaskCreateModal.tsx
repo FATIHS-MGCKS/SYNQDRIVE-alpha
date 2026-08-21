@@ -8,9 +8,11 @@ import { useRentalOrg } from '../../RentalContext';
 import { checklistPreviewForType } from '../../lib/task-templates';
 import {
   SERVICE_MAINTENANCE_TYPES,
-  TASK_PRIORITY_LABEL_DE,
-  TASK_TYPE_LABEL_DE,
 } from '../../lib/service-task-semantics';
+import {
+  serviceTaskPriorityLabel,
+  serviceTaskTypeLabelForType,
+} from '../../../lib/tasks/service-task-presentation-i18n';
 import type { ApiTaskPriority } from '../../../lib/api';
 import { TaskVendorPicker } from '../tasks/TaskVendorPicker';
 import type { HealthTaskPrefill } from '../../lib/health-task-bridge.utils';
@@ -36,7 +38,7 @@ export function ServiceTaskCreateModal({
   defaultVendorId,
   healthPrefill,
 }: ServiceTaskCreateModalProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const [title, setTitle] = useState('');
@@ -202,8 +204,8 @@ export function ServiceTaskCreateModal({
               onChange={(e) => setTaskType(e.target.value as ApiTaskType)}
               className={inputClass}
             >
-              {SERVICE_MAINTENANCE_TYPES.map((t) => (
-                <option key={t} value={t}>{TASK_TYPE_LABEL_DE[t]}</option>
+              {SERVICE_MAINTENANCE_TYPES.map((type) => (
+                <option key={type} value={type}>{serviceTaskTypeLabelForType(locale, type)}</option>
               ))}
             </select>
           </div>
@@ -215,7 +217,7 @@ export function ServiceTaskCreateModal({
               className={inputClass}
             >
               {PRIORITIES.map((p) => (
-                <option key={p} value={p}>{TASK_PRIORITY_LABEL_DE[p]}</option>
+                <option key={p} value={p}>{serviceTaskPriorityLabel(locale, p)}</option>
               ))}
             </select>
           </div>

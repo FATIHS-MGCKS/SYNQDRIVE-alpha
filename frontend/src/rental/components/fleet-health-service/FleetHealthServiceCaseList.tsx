@@ -131,7 +131,7 @@ export function FleetHealthServiceCaseList({
   error,
   onReload,
 }: FleetHealthServiceCaseListProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const [activeFilter, setActiveFilter] = useState<FleetHealthServiceCaseFilter>('open');
 
@@ -151,8 +151,9 @@ export function FleetHealthServiceCaseList({
         vehicleById,
         vendorById,
         filter: activeFilter,
+        locale,
       }),
-    [serviceCases, vehicleById, vendorById, activeFilter],
+    [serviceCases, vehicleById, vendorById, activeFilter, locale],
   );
 
   const columns = useMemo(

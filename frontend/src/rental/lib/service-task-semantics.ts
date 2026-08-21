@@ -1,5 +1,4 @@
-import type { ApiTask, ApiTaskPriority, ApiTaskSource, ApiTaskStatus, ApiTaskType } from '../../lib/api';
-import { getFormattingLocale } from '../../i18n/locales';
+import type { ApiTask, ApiTaskType } from '../../lib/api';
 import { vehicleFormattingLocaleOrDefault } from '../components/vehicle/vehicle-i18n';
 import { deriveTaskSourceBadge, taskSourceBadgeLabel } from './task-operator.utils';
 
@@ -42,52 +41,6 @@ export function isServiceMaintenanceTask(task: Pick<ApiTask, 'type' | 'category'
   );
 }
 
-export const TASK_TYPE_LABEL_DE: Record<ApiTaskType, string> = {
-  VEHICLE_SERVICE: 'Fahrzeug-Service / Wartung',
-  REPAIR: 'Reparatur',
-  VEHICLE_INSPECTION: 'TÜV/HU & Inspektion',
-  TIRE_CHECK: 'Reifen prüfen / wechseln',
-  BRAKE_CHECK: 'Bremsen prüfen',
-  BATTERY_CHECK: 'Batterie prüfen',
-  VEHICLE_CLEANING: 'Reinigung / Aufbereitung',
-  BOOKING_PREPARATION: 'Buchungsvorbereitung',
-  BOOKING_PICKUP: 'Fahrzeugübergabe',
-  BOOKING_RETURN: 'Fahrzeugrückgabe',
-  DOCUMENT_REVIEW: 'Dokumentenprüfung',
-  INVOICE_REQUIRED: 'Rechnung erforderlich',
-  CUSTOMER_FOLLOWUP: 'Kunden-Nachverfolgung',
-  CUSTOM: 'Allgemeine Instandhaltung',
-};
-
-export function taskTypeLabel(task: Pick<ApiTask, 'type' | 'metadata' | 'category'>): string {
-  const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : null;
-  if (task.type === 'REPAIR' && meta && ('damageId' in meta || meta.origin === 'DAMAGE')) {
-    return 'Schadenreparatur';
-  }
-  if (task.category?.trim()) {
-    const cat = task.category.trim();
-    if (cat.toLowerCase().includes('fehler') || cat.toLowerCase().includes('dtc')) {
-      return 'Diagnose / Fehlercodes';
-    }
-  }
-  return TASK_TYPE_LABEL_DE[task.type] ?? task.type.replace(/_/g, ' ');
-}
-
-export const TASK_PRIORITY_LABEL_DE: Record<ApiTaskPriority, string> = {
-  LOW: 'Niedrig',
-  NORMAL: 'Normal',
-  HIGH: 'Hoch',
-  CRITICAL: 'Kritisch',
-};
-
-export const TASK_STATUS_LABEL_DE: Record<ApiTaskStatus, string> = {
-  OPEN: 'Offen',
-  IN_PROGRESS: 'In Bearbeitung',
-  WAITING: 'Wartet',
-  DONE: 'Erledigt',
-  CANCELLED: 'Storniert',
-};
-
 export type ServiceBoardColumn =
   | 'open'
   | 'scheduled'
@@ -95,12 +48,12 @@ export type ServiceBoardColumn =
   | 'waiting-vendor'
   | 'done';
 
-export const SERVICE_BOARD_COLUMNS: Array<{ id: ServiceBoardColumn; label: string }> = [
-  { id: 'open', label: 'Offen' },
-  { id: 'scheduled', label: 'Geplant' },
-  { id: 'in-progress', label: 'In Bearbeitung' },
-  { id: 'waiting-vendor', label: 'Wartet Partner' },
-  { id: 'done', label: 'Erledigt' },
+export const SERVICE_BOARD_COLUMN_IDS: ServiceBoardColumn[] = [
+  'open',
+  'scheduled',
+  'in-progress',
+  'waiting-vendor',
+  'done',
 ];
 
 export function boardColumnForTask(task: ApiTask): ServiceBoardColumn {
@@ -128,23 +81,6 @@ export function checklistProgress(task: ApiTask): { done: number; total: number 
 export function formatCostCents(cents: number | null | undefined): string | null {
   if (cents == null || !Number.isFinite(cents)) return null;
   return new Intl.NumberFormat(vehicleFormattingLocaleOrDefault(), { style: 'currency', currency: 'EUR' }).format(cents / 100);
-}
-
-export function buildVehicleLabel(vehicle: {
-  license?: string;
-  make?: string;
-  model?: string;
-  year?: number;
-} | null | undefined): string {
-  if (!vehicle) return 'Fahrzeug unbekannt';
-  const plate = vehicle.license?.trim();
-  const isUuid =
-    plate &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(plate);
-  const mmy = [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ');
-  if (plate && !isUuid) return `${plate}${mmy ? ` · ${mmy}` : ''}`;
-  if (mmy) return mmy;
-  return 'Fahrzeug ohne Kennzeichen';
 }
 
 /** Preferred vendors for a vehicle from vendor master links. */
