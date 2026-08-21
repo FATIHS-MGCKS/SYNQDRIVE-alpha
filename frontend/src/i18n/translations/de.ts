@@ -6,6 +6,7 @@ import { settingsAdminDe } from './settings-admin.de';
 import { stationsTabDe } from './stations-tab.de';
 import { voiceAssistantDe } from './voice-assistant.de';
 import { supportDe } from './support.de';
+import { finesDe } from './fines.de';
 import { handoverProtocolDe } from './handover.protocol.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
@@ -2326,19 +2327,6 @@ export const de: Record<TranslationKey, string> = {
   'invoices.tax': 'Steuer',
   'invoices.amountPaid': 'Bezahlter Betrag',
   'invoices.noInvoices': 'Keine Rechnungen gefunden',
-
-  // ─── Fines ───
-  'fines.title': 'Bussen',
-  'fines.searchPlaceholder': 'Bussen suchen...',
-  'fines.uploadFine': 'Busse hochladen',
-  'fines.totalFines': 'Bussen gesamt',
-  'fines.openFines': 'Offene Bussen',
-  'fines.totalAmount': 'Gesamtbetrag',
-  'fines.points': 'Punkte',
-  'fines.fineNumber': 'Bussennummer',
-  'fines.noFines': 'Keine Bussen gefunden',
-  'fines.uploadNotice': 'Bussgeld hochladen',
-  'fines.drivingBan': 'Fahrverbot',
 
   // ─── Price Tariffs ───
   'priceTariffs.title': 'Preise & Tarife',
@@ -5383,5 +5371,6 @@ export const de: Record<TranslationKey, string> = {
   ...whatsappDe,
   ...supportDe,
   ...supportOpsDe,
+  ...finesDe,
   ...handoverProtocolDe,
 } satisfies CompleteTranslationDictionary;

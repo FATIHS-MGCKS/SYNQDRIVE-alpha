@@ -4,6 +4,7 @@ import { settingsAdminEn } from './settings-admin.en';
 import { stationsTabEn } from './stations-tab.en';
 import { voiceAssistantEn } from './voice-assistant.en';
 import { supportEn } from './support.en';
+import { finesEn } from './fines.en';
 import { handoverProtocolEn } from './handover.protocol.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -2227,19 +2228,6 @@ export const en = {
   'invoices.tax': 'Tax',
   'invoices.amountPaid': 'Amount Paid',
   'invoices.noInvoices': 'No invoices found',
-
-  // ─── Fines ───
-  'fines.title': 'Fines',
-  'fines.searchPlaceholder': 'Search fines...',
-  'fines.uploadFine': 'Upload Fine',
-  'fines.totalFines': 'Total Fines',
-  'fines.openFines': 'Open Fines',
-  'fines.totalAmount': 'Total Amount',
-  'fines.points': 'Points',
-  'fines.fineNumber': 'Fine Number',
-  'fines.noFines': 'No fines found',
-  'fines.uploadNotice': 'Upload Fine Notice',
-  'fines.drivingBan': 'Driving Ban',
 
   // ─── Price Tariffs ───
   'priceTariffs.title': 'Pricing & Tariffs',
@@ -5383,6 +5371,7 @@ export const en = {
   ...whatsappEn,
   ...supportEn,
   ...supportOpsEn,
+  ...finesEn,
   ...handoverProtocolEn,
 } as const;
 
