@@ -20,6 +20,7 @@ import {
   WhatsAppProviderNotConfiguredException,
   WhatsAppSimulationDisabledException,
 } from './utils/whatsapp-errors';
+import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
 
 @Injectable()
 export class WhatsAppService {
@@ -34,6 +35,7 @@ export class WhatsAppService {
     private readonly policy: WhatsAppMessagePolicyService,
     private readonly matcher: WhatsAppConversationMatcherService,
     private readonly audit: AuditService,
+    private readonly communicationProjection: WhatsAppCommunicationProjectionIntegration,
   ) {}
 
   async getConfig(orgId: string) {
@@ -205,7 +207,13 @@ export class WhatsAppService {
     return messages.map((m) => this.mapMessage(m));
   }
 
-  async sendMessage(orgId: string, conversationId: string, content: string, senderName?: string) {
+  async sendMessage(
+    orgId: string,
+    conversationId: string,
+    content: string,
+    senderName?: string,
+    options?: { skipCanonicalProjection?: boolean },
+  ) {
     const config = await this.requireConfig(orgId);
     const convo = await this.requireConversation(orgId, conversationId);
 
@@ -236,9 +244,13 @@ export class WhatsAppService {
 
     if (!this.provider.isConfigured(config)) {
       failureReason = 'WHATSAPP_PROVIDER_NOT_CONFIGURED';
-      await this.prisma.whatsAppMessage.update({
+      const failed = await this.prisma.whatsAppMessage.update({
         where: { id: msg.id },
         data: { status: WhatsAppMessageDeliveryStatus.FAILED, failureReason },
+      });
+      void this.communicationProjection.projectOutboundFailed({
+        conversation: convo,
+        message: failed,
       });
       throw new WhatsAppProviderNotConfiguredException();
     }
@@ -269,6 +281,20 @@ export class WhatsAppService {
       where: { id: conversationId },
       data: { lastMessageAt: new Date(), lastMessagePreview: content.slice(0, 120) },
     });
+
+    if (!options?.skipCanonicalProjection) {
+      if (finalStatus === WhatsAppMessageDeliveryStatus.SENT) {
+        void this.communicationProjection.projectOutboundAccepted({
+          conversation: convo,
+          message: updated,
+        });
+      } else {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: updated,
+        });
+      }
+    }
 
     void this.audit.record({
       actorOrganizationId: orgId,
@@ -397,20 +423,31 @@ export class WhatsAppService {
       }
     }
 
-    const sent = await this.sendMessage(orgId, conversationId, content, 'SynqDrive AI');
+    const sent = await this.sendMessage(orgId, conversationId, content, 'SynqDrive AI', {
+      skipCanonicalProjection: true,
+    });
 
     if (latestSuggestion) {
       await this.prisma.whatsAppAiSuggestion.update({
         where: { id: latestSuggestion.id },
         data: { sentMessageId: sent.id },
       });
-      await this.prisma.whatsAppMessage.update({
-        where: { id: sent.id },
-        data: { aiGenerated: true, aiSuggested: true },
-      });
     }
 
-    return sent;
+    const aiMessage = await this.prisma.whatsAppMessage.update({
+      where: { id: sent.id },
+      data: {
+        aiGenerated: true,
+        ...(latestSuggestion ? { aiSuggested: true } : {}),
+      },
+    });
+
+    void this.communicationProjection.projectOutboundAccepted({
+      conversation: convo,
+      message: aiMessage,
+    });
+
+    return this.mapMessage(aiMessage);
   }
 
   async requestHumanReview(orgId: string, conversationId: string, reason: string, userId?: string) {
@@ -468,7 +505,7 @@ export class WhatsAppService {
       },
     });
 
-    await this.prisma.whatsAppConversation.update({
+    convo = await this.prisma.whatsAppConversation.update({
       where: { id: convo.id },
       data: {
         lastMessageAt: new Date(),
@@ -477,6 +514,13 @@ export class WhatsAppService {
         unreadCount: { increment: 1 },
         contactName: body.contactName || convo.contactName,
       },
+    });
+
+    void this.communicationProjection.projectInbound({
+      conversation: convo,
+      message: msg,
+      webhookExternalEventId: `sim:${msg.id}`,
+      occurredAt: msg.createdAt,
     });
 
     await this.consent.processInboundConsentKeywords(

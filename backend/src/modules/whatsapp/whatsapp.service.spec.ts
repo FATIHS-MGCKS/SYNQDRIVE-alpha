@@ -16,6 +16,11 @@ describe('WhatsAppService simulation', () => {
   const matcher = { matchContext: jest.fn() };
   const consent = { processInboundConsentKeywords: jest.fn() };
   const audit = { record: jest.fn() };
+  const communicationProjection = {
+    projectInbound: jest.fn(),
+    projectOutboundAccepted: jest.fn(),
+    projectOutboundFailed: jest.fn(),
+  };
 
   let service: WhatsAppService;
 
@@ -30,6 +35,7 @@ describe('WhatsAppService simulation', () => {
       {} as any,
       matcher as any,
       audit as any,
+      communicationProjection as any,
     );
   });
 
@@ -86,6 +92,10 @@ describe('WhatsAppService sendMessage provider guard', () => {
       policy as any,
       {} as any,
       audit as any,
+      {
+        projectOutboundAccepted: jest.fn(),
+        projectOutboundFailed: jest.fn(),
+      } as any,
     );
 
     await expect(service.sendMessage('org-1', 'convo-1', 'Hello')).rejects.toBeInstanceOf(

@@ -8,6 +8,7 @@ import { WhatsAppConversationMatcherService } from './whatsapp-conversation-matc
 import { WhatsAppConsentService } from './whatsapp-consent.service';
 import { normalizePhoneNumber } from './utils/whatsapp-phone.util';
 import { WhatsAppService } from './whatsapp.service';
+import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
 
 @Injectable()
 export class WhatsAppWebhookService {
@@ -21,6 +22,7 @@ export class WhatsAppWebhookService {
     private readonly audit: AuditService,
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsAppService: WhatsAppService,
+    private readonly communicationProjection: WhatsAppCommunicationProjectionIntegration,
   ) {}
 
   async verifySubscription(
@@ -124,9 +126,12 @@ export class WhatsAppWebhookService {
 
     try {
       if (entry.inboundMessage && orgId) {
-        await this.handleInboundMessage(orgId, phoneNumberId, entry.inboundMessage);
+        await this.handleInboundMessage(orgId, phoneNumberId, entry.inboundMessage, entry.externalEventId);
       } else if (entry.statusUpdate && orgId) {
-        await this.handleStatusUpdate(orgId, entry.statusUpdate);
+        await this.handleStatusUpdate(orgId, {
+          ...entry.statusUpdate,
+          webhookExternalEventId: entry.externalEventId,
+        });
       }
 
       await this.prisma.whatsAppWebhookEvent.update({
@@ -153,6 +158,7 @@ export class WhatsAppWebhookService {
       body: string;
       timestamp: Date;
     },
+    webhookExternalEventId: string,
   ) {
     const phoneNormalized = normalizePhoneNumber(inbound.fromPhone);
     if (!phoneNormalized) return;
@@ -208,7 +214,7 @@ export class WhatsAppWebhookService {
       });
     }
 
-    await this.prisma.whatsAppMessage.create({
+    const createdMessage = await this.prisma.whatsAppMessage.create({
       data: {
         organizationId: orgId,
         conversationId: convo.id,
@@ -220,6 +226,13 @@ export class WhatsAppWebhookService {
         providerMessageId: inbound.providerMessageId,
         status: WhatsAppMessageDeliveryStatus.DELIVERED,
       },
+    });
+
+    void this.communicationProjection.projectInbound({
+      conversation: convo,
+      message: createdMessage,
+      webhookExternalEventId,
+      occurredAt: inbound.timestamp,
     });
 
     await this.consent.processInboundConsentKeywords(
@@ -249,11 +262,14 @@ export class WhatsAppWebhookService {
     update: {
       providerMessageId: string;
       status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+      timestamp: Date;
       failureReason?: string;
+      webhookExternalEventId: string;
     },
   ) {
     const msg = await this.prisma.whatsAppMessage.findFirst({
       where: { organizationId: orgId, providerMessageId: update.providerMessageId },
+      include: { conversation: true },
     });
     if (!msg) return;
 
@@ -264,12 +280,25 @@ export class WhatsAppWebhookService {
       FAILED: WhatsAppMessageDeliveryStatus.FAILED,
     };
 
-    await this.prisma.whatsAppMessage.update({
+    const updatedMessage = await this.prisma.whatsAppMessage.update({
       where: { id: msg.id },
       data: {
         status: statusMap[update.status],
         failureReason: update.failureReason ?? msg.failureReason,
       },
+    });
+
+    if (update.status === 'SENT') {
+      return;
+    }
+
+    void this.communicationProjection.projectStatusUpdate({
+      conversation: msg.conversation,
+      message: updatedMessage,
+      status: update.status,
+      webhookExternalEventId: update.webhookExternalEventId,
+      occurredAt: update.timestamp,
+      failureReason: update.failureReason ?? updatedMessage.failureReason,
     });
   }
 

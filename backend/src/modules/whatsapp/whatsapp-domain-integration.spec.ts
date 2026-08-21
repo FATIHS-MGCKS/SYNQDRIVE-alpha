@@ -16,6 +16,7 @@ describe('WhatsAppQuickActionsService', () => {
   const aiContext = { load: jest.fn() };
   const aiTools = { getPickupInstructions: jest.fn() };
   const audit = { record: jest.fn() };
+  const communicationProjection = { projectConversationResolved: jest.fn() };
 
   let service: WhatsAppQuickActionsService;
 
@@ -30,6 +31,7 @@ describe('WhatsAppQuickActionsService', () => {
       aiContext as any,
       aiTools as any,
       audit as any,
+      communicationProjection as any,
     );
   });
 

@@ -7,6 +7,7 @@ import { DocumentsModule } from '@modules/documents/documents.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { CommunicationModule } from '@modules/communication/communication.module';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppWebhookController } from './whatsapp-webhook.controller';
 import { WhatsAppService } from './whatsapp.service';
@@ -28,6 +29,7 @@ import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
 @Module({
   imports: [
     ConfigModule.forFeature(whatsappConfig),
+    CommunicationModule,
     ActivityLogModule,
     BookingsModule,
     DocumentsModule,
