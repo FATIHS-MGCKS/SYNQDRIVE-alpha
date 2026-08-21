@@ -41,20 +41,21 @@ export const TaskPreviewCard = memo(function TaskPreviewCard({
           t={t}
           locale={locale}
           expanded={expanded}
+          controlsId={contentId}
           onToggle={() => setExpanded((value) => !value)}
         />
       </div>
 
-      {expanded ? (
-        <div id={contentId}>
+      <div id={contentId} hidden={!expanded}>
+        {expanded ? (
           <TaskQuickDetailPanel
             task={task}
             vehicleById={vehicleById}
             t={t}
             onOpenTask={() => onOpenTask(task.id)}
           />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </article>
   );
 });

@@ -22,6 +22,7 @@ export interface TaskSummaryRowProps {
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
   locale: string;
   expanded: boolean;
+  controlsId: string;
   onToggle: () => void;
 }
 
@@ -60,6 +61,7 @@ export const TaskSummaryRow = memo(function TaskSummaryRow({
   t,
   locale,
   expanded,
+  controlsId,
   onToggle,
 }: TaskSummaryRowProps) {
   const priority = resolveTaskPreviewPriority(task);
@@ -110,6 +112,7 @@ export const TaskSummaryRow = memo(function TaskSummaryRow({
                 expanded && 'rotate-180',
               )}
               aria-expanded={expanded}
+              aria-controls={controlsId}
               aria-label={expanded ? t('notification.collapseDetails') : t('notification.expandDetails')}
               onClick={(event) => {
                 event.stopPropagation();

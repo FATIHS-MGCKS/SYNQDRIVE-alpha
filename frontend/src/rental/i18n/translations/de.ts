@@ -1110,6 +1110,7 @@ export const de: Record<TranslationKey, string> = {
   'dashboardTasksOverview.priorityLow': 'Niedrig',
   'dashboardTasksOverview.openTasksSubtitle': '{count} offene Aufgaben',
   'dashboardTasksOverview.inProgressShort': 'In Bearb.',
+  'dashboardTasksOverview.unassignedShort': 'Nicht zugew.',
   'dashboardTasksOverview.assignedTo': 'Zugewiesen an: {name}',
   'dashboardTasksOverview.notAssigned': 'Nicht zugewiesen',
   'dashboardTasksOverview.openTask': 'Aufgabe öffnen',

@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from '../../../../components/ui/button';
 import { cn } from '../../../../components/ui/utils';
 import type { TranslationKey } from '../../../i18n/translations/en';
@@ -29,14 +30,19 @@ function MetricCell({
   tone,
   onClick,
 }: {
-  label: string;
+  label: ReactNode;
   value: number | string;
   tone?: 'critical' | 'watch' | 'neutral';
   onClick?: () => void;
 }) {
   const content = (
     <>
-      <span className={cn(NOTIFICATION_PANEL_TYPO.meta, 'block truncate text-center text-muted-foreground')}>
+      <span
+        className={cn(
+          NOTIFICATION_PANEL_TYPO.meta,
+          'block text-center text-[10px] leading-3 text-muted-foreground min-[390px]:text-xs min-[390px]:leading-4',
+        )}
+      >
         {label}
       </span>
       <span
@@ -53,13 +59,13 @@ function MetricCell({
   );
 
   if (!onClick) {
-    return <div className="min-w-0 px-1">{content}</div>;
+    return <div className="min-w-0 px-0.5 sm:px-1">{content}</div>;
   }
 
   return (
     <button
       type="button"
-      className="min-w-0 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      className="min-h-11 min-w-0 rounded-md px-0.5 py-1 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:min-h-0 sm:px-1 sm:py-0.5"
       onClick={onClick}
     >
       {content}
@@ -114,7 +120,7 @@ export function TasksOverviewHeader({
         </div>
       ) : showMetrics && counts ? (
         <div
-          className="mt-2 grid grid-cols-4 divide-x divide-border/35"
+          className="mt-2 grid min-w-0 grid-cols-4 divide-x divide-border/35 overflow-hidden"
           data-testid="dashboard-tasks-overview-status-chips"
         >
           <MetricCell
@@ -147,7 +153,12 @@ export function TasksOverviewHeader({
             }
           />
           <MetricCell
-            label={t('dashboardTasksOverview.unassigned')}
+            label={
+              <>
+                <span className="min-[390px]:hidden">{t('dashboardTasksOverview.unassignedShort')}</span>
+                <span className="hidden min-[390px]:inline">{t('dashboardTasksOverview.unassigned')}</span>
+              </>
+            }
             value={canViewUnassigned ? counts.unassigned : '—'}
             onClick={
               canViewUnassigned && onFilterSelect

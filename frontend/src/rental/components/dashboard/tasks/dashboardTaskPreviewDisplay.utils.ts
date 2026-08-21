@@ -28,16 +28,8 @@ export function resolveDashboardTaskDomainKey(task: ApiTask): TranslationKey {
   ) {
     return 'dashboardTasksOverview.domain.booking';
   }
-  if (
-    task.vehicleId ||
-    type.startsWith('VEHICLE_') ||
-    type === 'REPAIR' ||
-    type === 'TIRE_CHECK' ||
-    type === 'BRAKE_CHECK' ||
-    type === 'BATTERY_CHECK'
-  ) {
-    return 'dashboardTasksOverview.domain.vehicle';
-  }
+
+  // Maintenance / service semantics before generic vehicleId — vehicleId must not downgrade these.
   if (task.vendorId || task.serviceCaseId || isServiceMaintenanceTask(task)) {
     return 'dashboardTasksOverview.domain.maintenance';
   }
@@ -48,6 +40,11 @@ export function resolveDashboardTaskDomainKey(task: ApiTask): TranslationKey {
   }
   if (category === 'Damage' || category === 'Repair' || category === 'Maintenance' || category === 'TÜV') {
     return 'dashboardTasksOverview.domain.maintenance';
+  }
+
+  // Generic vehicle-linked tasks (no maintenance/service semantics).
+  if (task.vehicleId || type.startsWith('VEHICLE_')) {
+    return 'dashboardTasksOverview.domain.vehicle';
   }
   if (category === 'Cleaning') {
     return 'dashboardTasksOverview.domain.vehicle';

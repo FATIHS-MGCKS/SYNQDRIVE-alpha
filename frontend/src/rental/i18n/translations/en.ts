@@ -1010,6 +1010,7 @@ export const en = {
   'dashboardTasksOverview.priorityLow': 'Low',
   'dashboardTasksOverview.openTasksSubtitle': '{count} open tasks',
   'dashboardTasksOverview.inProgressShort': 'In prog.',
+  'dashboardTasksOverview.unassignedShort': 'Unasgd.',
   'dashboardTasksOverview.assignedTo': 'Assigned to: {name}',
   'dashboardTasksOverview.notAssigned': 'Not assigned',
   'dashboardTasksOverview.openTask': 'Open task',

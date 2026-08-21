@@ -170,4 +170,11 @@ describe('TaskPreviewCard', () => {
     });
     expect(onOpenTask).not.toHaveBeenCalled();
   });
+
+  it('wires chevron aria-controls to the detail panel id', () => {
+    renderCard();
+    const chevron = container.querySelector('button[aria-expanded="false"]') as HTMLButtonElement;
+    expect(chevron.getAttribute('aria-controls')).toBe('dashboard-task-preview-task-1');
+    expect(document.getElementById('dashboard-task-preview-task-1')).not.toBeNull();
+  });
 });
