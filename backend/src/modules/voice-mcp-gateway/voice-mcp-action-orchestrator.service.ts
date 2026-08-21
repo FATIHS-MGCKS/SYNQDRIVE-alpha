@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import {
-  VoiceToolExecutionRepository,
-} from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
+import { Injectable, Optional } from '@nestjs/common';
+import { Prisma, VoiceConversationLifecycleState, VoiceConversationOutcome } from '@prisma/client';
+import { VoiceToolExecutionRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
+import { PrismaService } from '@shared/database/prisma.service';
+import { VoiceCommunicationProjectionIntegration } from '@modules/communication/adapters/voice/voice-communication-projection.integration';
 import { VoiceMcpApprovalService } from './voice-mcp-approval.service';
 import { VoiceMcpConfirmationService } from './voice-mcp-confirmation.service';
 import { VoiceMcpWriteToolsService } from './voice-mcp-write-tools.service';
@@ -20,6 +20,8 @@ export class VoiceMcpActionOrchestratorService {
     private readonly approval: VoiceMcpApprovalService,
     private readonly writeTools: VoiceMcpWriteToolsService,
     private readonly executions: VoiceToolExecutionRepository,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly voiceProjection?: VoiceCommunicationProjectionIntegration,
   ) {}
 
   async executeWriteTool(
@@ -105,20 +107,55 @@ export class VoiceMcpActionOrchestratorService {
     }
 
     const started = Date.now();
+    const priorConversation = await this.prisma.voiceConversation.findFirst({
+      where: { id: context.conversationId, organizationId: context.organizationId },
+      select: { escalationReason: true },
+    });
+
     try {
       await this.executions.markRunning(context.organizationId, execution.id);
       const result = await this.writeTools.executeDomainAction(toolName, context, args);
       const redacted = redactToolOutput(result);
-      await this.executions.complete({
+      const completedExecution = await this.executions.complete({
         organizationId: context.organizationId,
         id: execution.id,
         status: 'SUCCEEDED',
         redactedOutput: redacted as Prisma.InputJsonValue,
         durationMs: Date.now() - started,
       });
+
+      if (toolName === 'create_callback_request') {
+        const updated = await this.prisma.voiceConversation.update({
+          where: { id: context.conversationId },
+          data: {
+            escalationReason: 'CALLBACK_REQUESTED',
+            outcome: VoiceConversationOutcome.ESCALATED,
+            lifecycleState: VoiceConversationLifecycleState.TRANSFERRING,
+          },
+        });
+        void this.voiceProjection?.projectEscalationTransition(
+          updated,
+          'CALLBACK_REQUESTED',
+          priorConversation?.escalationReason ?? null,
+        );
+      }
+
+      if (this.voiceProjection) {
+        const conversation = await this.prisma.voiceConversation.findFirst({
+          where: { id: context.conversationId, organizationId: context.organizationId },
+        });
+        if (conversation) {
+          void this.voiceProjection.projectToolExecution({
+            conversation,
+            execution: completedExecution,
+            occurredAt: completedExecution.updatedAt,
+          });
+        }
+      }
+
       return { status: 'completed', ...redacted };
     } catch (error) {
-      await this.executions.complete({
+      const failed = await this.executions.complete({
         organizationId: context.organizationId,
         id: execution.id,
         status: 'FAILED',

@@ -13,6 +13,7 @@ import { SupportModule } from '@modules/support/support.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
+import { CommunicationModule } from '@modules/communication/communication.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceMcpGatewayController } from './voice-mcp-gateway.controller';
 import { VoiceMcpApprovalController } from './voice-mcp-approval.controller';
@@ -56,6 +57,7 @@ import {
     OutboundEmailModule,
     DocumentsModule,
     VoiceWebhookIngestionModule,
+    CommunicationModule,
   ],
   controllers: [VoiceMcpGatewayController, VoiceMcpApprovalController],
   providers: [

@@ -20,6 +20,7 @@ describe('CommunicationProjectionFeatureService', () => {
     const configService = {
       get: (key: string, fallback?: unknown) => {
         if (key === 'communicationProjection.whatsappEnabled') return config.whatsappEnabled;
+        if (key === 'communicationProjection.voiceEnabled') return config.voiceEnabled;
         if (key === 'communicationProjection.orgAllowlist') return config.orgAllowlist;
         return fallback;
       },
@@ -66,5 +67,20 @@ describe('CommunicationProjectionFeatureService', () => {
       COMMUNICATION_CENTER_PROJECTION_ORG_ALLOWLIST: 'org-allowed,org-two',
     });
     expect(service.isWhatsAppProjectionEnabled('org-allowed')).toBe(true);
+  });
+
+  it('is disabled when voice flag and global flag are OFF', () => {
+    const service = createService({
+      COMMUNICATION_CENTER_PROJECTION_ENABLED: undefined,
+      COMMUNICATION_CENTER_VOICE_PROJECTION_ENABLED: undefined,
+    });
+    expect(service.isVoiceProjectionEnabled('org-1')).toBe(false);
+  });
+
+  it('is enabled when voice flag is ON', () => {
+    const service = createService({
+      COMMUNICATION_CENTER_VOICE_PROJECTION_ENABLED: 'true',
+    });
+    expect(service.isVoiceProjectionEnabled('org-1')).toBe(true);
   });
 });

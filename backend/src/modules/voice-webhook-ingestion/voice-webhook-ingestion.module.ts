@@ -17,6 +17,7 @@ import {
   VoiceWebhookReplayService,
 } from './voice-webhook-processing.service';
 import { VoiceInternalEventIngestService } from './voice-internal-event-ingest.service';
+import { CommunicationModule } from '@modules/communication/communication.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { VoiceInternalEventIngestService } from './voice-internal-event-ingest.s
     SharedGuardsModule,
     VoiceBillingModule,
     VoiceProtectionModule,
+    CommunicationModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.VOICE_WEBHOOK_PROCESS }),
   ],
   controllers: [ElevenLabsWebhookController, VoiceWebhookReplayController],

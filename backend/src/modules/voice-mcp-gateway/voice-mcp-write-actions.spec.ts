@@ -29,11 +29,24 @@ describe('VoiceMcpActionOrchestratorService', () => {
     complete: jest.fn(),
   } as unknown as VoiceToolExecutionRepository;
 
+  const prisma = {
+    voiceConversation: {
+      findFirst: jest.fn().mockResolvedValue({ escalationReason: null }),
+      update: jest.fn().mockResolvedValue({
+        id: 'conv-1',
+        organizationId: 'org-1',
+        escalationReason: 'CALLBACK_REQUESTED',
+        updatedAt: new Date(),
+      }),
+    },
+  };
+
   const orchestrator = new VoiceMcpActionOrchestratorService(
     confirmation,
     approval,
     writeTools,
     executions,
+    prisma as never,
   );
 
   const context = {
@@ -52,6 +65,20 @@ describe('VoiceMcpActionOrchestratorService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (executions.markRunning as jest.Mock).mockResolvedValue(undefined);
+    (executions.complete as jest.Mock).mockImplementation(async (input) => ({
+      id: input.id,
+      status: input.status,
+      toolName: 'create_callback_request',
+      updatedAt: new Date(),
+    }));
+    prisma.voiceConversation.findFirst.mockResolvedValue({ escalationReason: null });
+    prisma.voiceConversation.update.mockResolvedValue({
+      id: 'conv-1',
+      organizationId: 'org-1',
+      escalationReason: 'CALLBACK_REQUESTED',
+      updatedAt: new Date(),
+    });
   });
 
   it('requires customer confirmation on first call', async () => {
