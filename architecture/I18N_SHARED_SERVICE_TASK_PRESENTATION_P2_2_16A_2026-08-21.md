@@ -1,7 +1,7 @@
 # Platform i18n — Shared Service Task Presentation (P2.2.16A)
 
-**Version:** V4.9.938  
-**Date:** 2026-08-21  
+**Version:** V4.9.938
+**Date:** 2026-08-21
 **Baseline:** `467f47a5` (post–P2.2.15 Vendor Directory)
 
 ## Surface

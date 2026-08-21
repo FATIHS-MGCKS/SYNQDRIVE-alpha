@@ -1,7 +1,7 @@
 # P2.2.16A — Shared Service Task Presentation Utilities — Implementation Report
 
-**Date:** 2026-08-21  
-**Branch:** `cursor/p2216a-shared-service-task-presentation-i18n-3c10`  
+**Date:** 2026-08-21
+**Branch:** `cursor/p2216a-shared-service-task-presentation-i18n-3c10`
 **Baseline:** `467f47a58871313c8ffd87d86680c46d1ee63c24`
 
 ## Bug reproduced (pre-fix)
