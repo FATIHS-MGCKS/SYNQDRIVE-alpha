@@ -2,9 +2,9 @@ import { BadRequestException } from '@nestjs/common';
 import {
   CommunicationChannel,
   CommunicationConversationStatus,
-  CommunicationEventType,
 } from '@prisma/client';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
+import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 
 function makePrisma() {
   return {
@@ -19,11 +19,15 @@ function makePrisma() {
 
 describe('CommunicationConversationRepository', () => {
   let prisma: ReturnType<typeof makePrisma>;
+  let tenantContext: CommunicationTenantContextValidation;
   let repository: CommunicationConversationRepository;
 
   beforeEach(() => {
     prisma = makePrisma();
-    repository = new CommunicationConversationRepository(prisma);
+    tenantContext = {
+      assertConversationContextBelongsToOrg: jest.fn().mockResolvedValue(undefined),
+    } as unknown as CommunicationTenantContextValidation;
+    repository = new CommunicationConversationRepository(prisma, tenantContext);
   });
 
   it('creates canonical conversation with unreadCount default path', async () => {
@@ -38,6 +42,11 @@ describe('CommunicationConversationRepository', () => {
       nativeConversationId: 'wa-native-1',
     });
 
+    expect(tenantContext.assertConversationContextBelongsToOrg).toHaveBeenCalledWith(
+      'org-1',
+      expect.objectContaining({ nativeConversationId: 'wa-native-1' }),
+      undefined,
+    );
     expect(prisma.communicationConversation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -131,5 +140,34 @@ describe('CommunicationConversationRepository', () => {
         data: expect.objectContaining({ lastActivityAt: at }),
       }),
     );
+  });
+
+  it('validates tenant context on projection update', async () => {
+    prisma.communicationConversation.findFirst.mockResolvedValue({ id: 'cc-5' });
+    prisma.communicationConversation.update.mockResolvedValue({ id: 'cc-5' });
+    await repository.updateConversationProjection('org-1', 'cc-5', {
+      assignedUserId: 'user-1',
+      customerId: 'cust-1',
+    });
+    expect(tenantContext.assertConversationContextBelongsToOrg).toHaveBeenCalledWith(
+      'org-1',
+      { assignedUserId: 'user-1', customerId: 'cust-1' },
+      undefined,
+    );
+  });
+
+  it('propagates tenant validation errors on create', async () => {
+    (tenantContext.assertConversationContextBelongsToOrg as jest.Mock).mockRejectedValue(
+      new BadRequestException('Customer not found in this organization'),
+    );
+    await expect(
+      repository.createConversation({
+        organizationId: 'org-1',
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'wa-bad',
+        customerId: 'cust-foreign',
+      }),
+    ).rejects.toThrow('Customer not found in this organization');
+    expect(prisma.communicationConversation.create).not.toHaveBeenCalled();
   });
 });

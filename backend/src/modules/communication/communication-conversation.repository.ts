@@ -5,6 +5,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 import type {
   CommunicationTx,
   CreateCommunicationConversationInput,
@@ -14,7 +15,10 @@ import type {
 
 @Injectable()
 export class CommunicationConversationRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantContext: CommunicationTenantContextValidation,
+  ) {}
 
   private client(tx?: CommunicationTx) {
     return tx ?? this.prisma;
@@ -25,6 +29,11 @@ export class CommunicationConversationRepository {
     tx?: CommunicationTx,
   ): Promise<CommunicationConversation> {
     this.assertUnreadCount(input.unreadCount);
+    await this.tenantContext.assertConversationContextBelongsToOrg(
+      input.organizationId,
+      input,
+      tx,
+    );
     return this.client(tx).communicationConversation.create({
       data: {
         organizationId: input.organizationId,
@@ -124,6 +133,12 @@ export class CommunicationConversationRepository {
     if (!existing) {
       throw new BadRequestException('Communication conversation not found');
     }
+
+    await this.tenantContext.assertConversationContextBelongsToOrg(
+      organizationId,
+      patch,
+      tx,
+    );
 
     return this.client(tx).communicationConversation.update({
       where: { id: existing.id },

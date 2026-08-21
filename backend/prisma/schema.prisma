@@ -1886,6 +1886,7 @@ model User {
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
   brakeRentalHealthReviewGrants       BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
+  assignedCommunicationConversations  CommunicationConversation[]             @relation("CommunicationConversationAssignee")
 
   @@map("users")
 }
@@ -14499,6 +14500,8 @@ model CommunicationConversation {
   booking        Booking?              @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   vehicle        Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   station        Station?              @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  /// Human handoff assignee — canonical User.id; org membership validated at service boundary.
+  assignedUser   User?                 @relation("CommunicationConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
   events         CommunicationEvent[]
 
   @@unique([organizationId, channel, nativeConversationId], name: "communication_conversations_org_channel_native")

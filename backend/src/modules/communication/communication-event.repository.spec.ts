@@ -1,6 +1,5 @@
 import {
   CommunicationChannel,
-  CommunicationDirection,
   CommunicationEventType,
   CommunicationProviderIdentity,
 } from '@prisma/client';
@@ -34,7 +33,6 @@ describe('CommunicationEventRepository', () => {
       channel: CommunicationChannel.WHATSAPP,
       eventType: CommunicationEventType.MESSAGE_RECEIVED,
       occurredAt: new Date('2026-08-21T09:00:00Z'),
-      direction: CommunicationDirection.INBOUND,
       providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
       providerMessageId: 'wamid-1',
     });
@@ -79,6 +77,22 @@ describe('CommunicationEventRepository', () => {
       idempotencyKey: 'org-1:wa:delivered:wamid-shared',
     });
 
+    expect(prisma.communicationEvent.create).toHaveBeenCalled();
+  });
+
+  it('does not dedupe by provider-event unique when provider fields are null', async () => {
+    prisma.communicationEvent.findUnique.mockResolvedValue(null);
+    prisma.communicationEvent.create.mockResolvedValue({ id: 'ev-null-provider' });
+
+    await repository.appendEventIdempotently({
+      organizationId: 'org-1',
+      conversationId: 'cc-1',
+      channel: CommunicationChannel.WHATSAPP,
+      eventType: CommunicationEventType.MESSAGE_RECEIVED,
+      occurredAt: new Date(),
+    });
+
+    expect(prisma.communicationEvent.findUnique).not.toHaveBeenCalled();
     expect(prisma.communicationEvent.create).toHaveBeenCalled();
   });
 

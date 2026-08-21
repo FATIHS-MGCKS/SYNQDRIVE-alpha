@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { CommunicationConversation } from '@prisma/client';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
 import { CommunicationEventRepository } from './communication-event.repository';
 import type {
@@ -47,14 +48,28 @@ export class CommunicationPersistenceService {
   }
 
   async appendEventIdempotently(input: AppendCommunicationEventInput) {
-    await this.assertConversationTenantMatch(input.organizationId, input.conversationId);
-    return this.events.appendEventIdempotently(input);
+    const conversation = await this.assertConversationForEventAppend(
+      input.organizationId,
+      input.conversationId,
+      input.channel,
+    );
+
+    const eventInput: AppendCommunicationEventInput = {
+      ...input,
+      // C1: event context is copied from tenant-validated conversation — never arbitrary cross-org IDs.
+      customerId: conversation.customerId,
+      bookingId: conversation.bookingId,
+      vehicleId: conversation.vehicleId,
+    };
+
+    return this.events.appendEventIdempotently(eventInput);
   }
 
-  private async assertConversationTenantMatch(
+  private async assertConversationForEventAppend(
     organizationId: string,
     conversationId: string,
-  ): Promise<void> {
+    channel: AppendCommunicationEventInput['channel'],
+  ): Promise<CommunicationConversation> {
     const conversation = await this.conversations.findById(organizationId, conversationId);
     if (!conversation) {
       throw new ForbiddenException('Communication conversation not found in organization');
@@ -62,5 +77,11 @@ export class CommunicationPersistenceService {
     if (conversation.organizationId !== organizationId) {
       throw new ForbiddenException('Cross-organization communication access denied');
     }
+    if (conversation.channel !== channel) {
+      throw new BadRequestException(
+        `Event channel ${channel} does not match conversation channel ${conversation.channel}`,
+      );
+    }
+    return conversation;
   }
 }

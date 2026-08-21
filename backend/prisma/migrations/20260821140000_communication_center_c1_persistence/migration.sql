@@ -59,7 +59,8 @@ CREATE TABLE "communication_conversations" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "communication_conversations_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "communication_conversations_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "communication_conversations_unread_count_check" CHECK ("unread_count" >= 0)
 );
 
 -- CreateTable
@@ -146,6 +147,9 @@ ALTER TABLE "communication_conversations" ADD CONSTRAINT "communication_conversa
 
 -- AddForeignKey
 ALTER TABLE "communication_conversations" ADD CONSTRAINT "communication_conversations_station_id_fkey" FOREIGN KEY ("station_id") REFERENCES "stations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "communication_conversations" ADD CONSTRAINT "communication_conversations_assigned_user_id_fkey" FOREIGN KEY ("assigned_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "communication_events" ADD CONSTRAINT "communication_events_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;

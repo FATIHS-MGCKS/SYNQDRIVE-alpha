@@ -60,7 +60,9 @@ Append-oriented canonical timeline projection linked to `CommunicationConversati
 | `providerEventId` | Stable webhook/event id for provider dedupe |
 | `providerMessageId` | Message identifier — **multiple lifecycle events may share** (delivered/read) |
 
-Compound unique: `(organizationId, channel, providerIdentity, providerEventId)` for webhook replay safety.
+Compound unique: `(organizationId, channel, providerIdentity, providerEventId)` for webhook replay safety when all provider fields are non-null.
+
+**PostgreSQL NULL semantics:** the compound provider unique allows multiple rows when `providerIdentity` or `providerEventId` is NULL. C3+ projection **must** set `idempotencyKey` whenever dedupe is required; do not rely on the provider compound unique alone when provider fields may be absent.
 
 Repositories use append-only idempotent create (no in-place mutation of prior events).
 
@@ -72,6 +74,7 @@ Repositories use append-only idempotent create (no in-place mutation of prior ev
 |----------|----------|
 | Organization | Cascade |
 | Customer, Booking, Vehicle, Station (conversation) | SetNull |
+| Assigned user (`assignedUserId` → `User`) | SetNull |
 | CommunicationConversation → events | Cascade |
 | Customer, Booking, Vehicle (event context) | SetNull |
 
@@ -91,13 +94,48 @@ Indexes align with future inbox/dashboard queries (C7/C12):
 
 ---
 
-## 7. Tenant invariants
+## 7. Tenant invariants (pre-merge hardening)
 
-- All rows require `organizationId`
-- Repository/service APIs require explicit `organizationId` — no unscoped `findById(id)`
-- `CommunicationPersistenceService.appendEventIdempotently` verifies conversation belongs to org before append
+### Assignee identity
+
+| Decision | Detail |
+|----------|--------|
+| Canonical reference | **`User.id`** in `assignedUserId` (same as `OrgTask`, task automation overrides) |
+| Why not `OrganizationMembership.id` | Repo-wide assignment fields store `User.id`; membership is validated at service boundary |
+| DB integrity | FK `assigned_user_id` → `users.id` with `ON DELETE SET NULL` |
+| Service validation | `CommunicationTenantContextValidation` requires user exists **and** active org membership before create/projection update |
+| Cross-org protection | Rejected with `BadRequestException` at repository/service boundary |
+
+Human handoff workflow is **not** implemented in C1 — only persistence invariants.
+
+### Event channel invariant
+
+`CommunicationPersistenceService.appendEventIdempotently` rejects when:
+
+- conversation missing in org → `ForbiddenException`
+- `event.channel !== conversation.channel` → `BadRequestException`
+
+### Tenant context validation
+
+**Conversation envelope** (`createConversation`, `updateConversationProjection`, `ensureConversationEnvelope` create path):
+
+- `customerId`, `bookingId`, `vehicleId`, `stationId` must belong to `organizationId`
+- `assignedUserId` must reference existing user with org membership
+- Implemented in `CommunicationTenantContextValidation` (mirrors `TasksService.assertLinksBelongToOrg`)
+
+**Event context** (option B — derive from conversation):
+
+- `appendEventIdempotently` copies `customerId` / `bookingId` / `vehicleId` from the tenant-validated conversation
+- Arbitrary cross-org event context IDs in the input are ignored — cannot attach foreign tenant entities to canonical events
 
 Prisma cannot enforce event/conversation org equality; service layer does.
+
+### Unread count DB invariant
+
+| Layer | Enforcement |
+|-------|-------------|
+| Repository | Rejects `unreadCount < 0` with `BadRequestException` |
+| Database | `CHECK (unread_count >= 0)` — consistent with billing/rental-rules migrations |
 
 ---
 
@@ -113,11 +151,29 @@ Future C3+ wiring should gate writes via `COMMUNICATION_CENTER_PROJECTION_ENABLE
 
 **File:** `20260821140000_communication_center_c1_persistence`
 
-- Additive only (new enums + tables + indexes + FKs)
+- Additive only (new enums + tables + indexes + FKs + unread CHECK)
+- Includes `assigned_user_id` → `users` FK
 - No data backfill
 - Safe on empty production (tables start empty)
 
 **Rollback:** drop `communication_events`, `communication_conversations`, then enums (documented in migration SQL comments).
+
+### Real migration validation
+
+Script: `backend/scripts/test/communication-center-c1-migration-test.sh`
+
+Validates against disposable PostgreSQL:
+
+- `prisma migrate deploy` from empty DB
+- `prisma validate` + `prisma generate`
+- tables/enums/indexes/FKs exist
+- native reference unique enforced
+- idempotency unique enforced
+- multiple NULL provider-event rows allowed (documents idempotencyKey requirement)
+- unread_count CHECK enforced
+- assigned_user_id FK present
+
+Run: `npm run test:communication-center:migration` (requires local Postgres, e.g. `npm run infra:up`).
 
 ---
 
@@ -128,6 +184,7 @@ backend/src/modules/communication/
   communication.module.ts
   communication.constants.ts
   communication.types.ts
+  communication-tenant-context.validation.ts
   communication-conversation.repository.ts
   communication-event.repository.ts
   communication-persistence.service.ts
@@ -142,11 +199,12 @@ Registered in `AppModule` — **no controller**.
 
 | Suite | Coverage |
 |-------|----------|
-| `communication-conversation.repository.spec.ts` | create, status, nullable FKs, native lookup, envelope idempotency, unread guard, lastActivityAt |
-| `communication-event.repository.spec.ts` | append, idempotent replay, shared providerMessageId, org-scoped list, no payload |
-| `communication-persistence.service.spec.ts` | cross-org rejection, delegated envelope, event append |
+| `communication-tenant-context.validation.spec.ts` | same-org context, cross-org customer/booking/vehicle/station, assignee user/membership |
+| `communication-conversation.repository.spec.ts` | create, status, nullable FKs, native lookup, envelope idempotency, unread guard, tenant validation on create/update |
+| `communication-event.repository.spec.ts` | append, idempotent replay, shared providerMessageId, null provider dedupe behavior, org-scoped list |
+| `communication-persistence.service.spec.ts` | cross-org rejection, channel invariant (WHATSAPP/SMS/VOICE), event context derivation, delegated envelope |
 
-Integration tests against real DB not required for C1 (repository unit tests with mocked Prisma).
+Migration validation: `communication-center-c1-migration-test.sh` against real PostgreSQL.
 
 ---
 
@@ -154,7 +212,7 @@ Integration tests against real DB not required for C1 (repository unit tests wit
 
 1. Compound provider-event unique allows multiple NULL provider fields (PostgreSQL semantics) — projection must always set `idempotencyKey` when dedupe required
 2. `assignedAgentType` is string-validated in TS only until unified agent registry
-3. Station resolution not enforced until C6
+3. Station resolution not enforced until C6 (ownership validation only in C1)
 4. Empty canonical tables until C3/C4 projection phases
 5. Enum evolution requires migration for new event types (accepted tradeoff vs unbounded strings)
 
@@ -162,4 +220,4 @@ Integration tests against real DB not required for C1 (repository unit tests wit
 
 ## 13. C2 readiness
 
-**READY FOR C2** — persistence foundation, tenant-scoped repositories, and idempotency hooks are in place for projection contract design and native-reference mapping without changing provider tables.
+**READY FOR C2** — persistence foundation, tenant-scoped repositories, assignee/context/channel invariants, and idempotency hooks are in place for projection contract design and native-reference mapping without changing provider tables.
