@@ -846,7 +846,7 @@ export function VendorManagementView({
                 </div>
                 <div>
                   <label className={`text-[11px] font-medium mb-1.5 block ${'text-muted-foreground'}`}>{t('vendors.directory.form.website')}</label>
-                  <input value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder="https://..." className={inputClass} />
+                  <input value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder={t('vendors.directory.form.websitePlaceholder')} className={inputClass} />
                 </div>
               </div>
 

@@ -218,6 +218,15 @@ const P214_ENFORCE_CLEAN_EXACT = new Set([
   'rental/lib/invoice-list-i18n.ts',
 ]);
 
+const P215_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/VendorManagementView.tsx',
+  'rental/components/VendorDetailView.tsx',
+  'rental/components/vendors/VendorOperationalTasks.tsx',
+  'rental/components/vendors/VendorDirectoryCard.tsx',
+  'rental/lib/vendor-directory.utils.ts',
+  'rental/lib/vendor-directory-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -477,6 +486,10 @@ function isP214EnforceCleanPath(relPath) {
   return P214_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP215EnforceCleanPath(relPath) {
+  return P215_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -510,6 +523,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP212EnforceCleanPath(relPath)) return true;
   if (isP213EnforceCleanPath(relPath)) return true;
   if (isP214EnforceCleanPath(relPath)) return true;
+  if (isP215EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -524,6 +538,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP212EnforceCleanPath(relPath)) return 'P2.2.12';
   if (isP213EnforceCleanPath(relPath)) return 'P2.2.13';
   if (isP214EnforceCleanPath(relPath)) return 'P2.2.14';
+  if (isP215EnforceCleanPath(relPath)) return 'P2.2.15';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

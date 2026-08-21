@@ -5,23 +5,23 @@ import {
   Shield, ShieldCheck, ShoppingCart, Sparkles, Tag, Truck, Wrench,
 } from 'lucide-react';
 
-export const VENDOR_CATEGORIES: { value: VendorCategory; label: string; icon: LucideIcon }[] = [
-  { value: 'WORKSHOP', label: 'Werkstatt', icon: Wrench },
-  { value: 'SERVICE_PARTNER', label: 'Service Partner', icon: Cog },
-  { value: 'PAINT_SHOP', label: 'Lackiererei', icon: Paintbrush },
-  { value: 'BODY_REPAIR', label: 'Karosserie', icon: Car },
-  { value: 'AUTO_GLASS', label: 'Autoglas', icon: Eye },
-  { value: 'TIRE_DEALER', label: 'Reifenhändler', icon: Truck },
-  { value: 'PARTS_DEALER', label: 'Teilehandel', icon: ShoppingCart },
-  { value: 'DETAILING', label: 'Detailing', icon: Sparkles },
-  { value: 'TUV_STATION', label: 'TÜV-Station', icon: Shield },
-  { value: 'ONLINE_SUPPLIER', label: 'Online', icon: Globe },
-  { value: 'INSURANCE', label: 'Versicherung', icon: ShieldCheck },
-  { value: 'APPRAISER', label: 'Gutachter', icon: FileSearch },
-  { value: 'TOWING', label: 'Abschleppdienst', icon: Truck },
-  { value: 'DEALERSHIP', label: 'Autohaus', icon: Building2 },
-  { value: 'OEM_SERVICE', label: 'OEM Service', icon: Factory },
-  { value: 'OTHER', label: 'Sonstige', icon: Briefcase },
+export const VENDOR_CATEGORIES: { value: VendorCategory; icon: LucideIcon }[] = [
+  { value: 'WORKSHOP', icon: Wrench },
+  { value: 'SERVICE_PARTNER', icon: Cog },
+  { value: 'PAINT_SHOP', icon: Paintbrush },
+  { value: 'BODY_REPAIR', icon: Car },
+  { value: 'AUTO_GLASS', icon: Eye },
+  { value: 'TIRE_DEALER', icon: Truck },
+  { value: 'PARTS_DEALER', icon: ShoppingCart },
+  { value: 'DETAILING', icon: Sparkles },
+  { value: 'TUV_STATION', icon: Shield },
+  { value: 'ONLINE_SUPPLIER', icon: Globe },
+  { value: 'INSURANCE', icon: ShieldCheck },
+  { value: 'APPRAISER', icon: FileSearch },
+  { value: 'TOWING', icon: Truck },
+  { value: 'DEALERSHIP', icon: Building2 },
+  { value: 'OEM_SERVICE', icon: Factory },
+  { value: 'OTHER', icon: Briefcase },
 ];
 
 export const VENDOR_SERVICE_AREAS = [
@@ -32,10 +32,6 @@ export const VENDOR_SERVICE_AREAS = [
 ] as const;
 
 export type VendorDirectoryScope = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'LINKED' | 'PREFERRED';
-
-export function getVendorCategoryLabel(cat: VendorCategory): string {
-  return VENDOR_CATEGORIES.find((c) => c.value === cat)?.label ?? cat;
-}
 
 export function getVendorCategoryIcon(cat: VendorCategory) {
   return VENDOR_CATEGORIES.find((c) => c.value === cat)?.icon ?? Briefcase;
