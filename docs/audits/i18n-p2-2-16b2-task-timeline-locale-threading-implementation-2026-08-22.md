@@ -1,9 +1,9 @@
 # P2.2.16B.2 — Task Timeline Locale Threading — Implementation Report
 
-**Date:** 2026-08-22  
-**Baseline SHA:** `8941158c7d05ebad929ccbc35dbd2e4d6fccd7ce` (PR #1119)  
-**Pre-flight:** PR #1124 / `docs/audits/i18n-p2-2-16b2-task-timeline-locale-threading-preflight-2026-08-22.md`  
-**Branch:** `cursor/p2216b2-task-timeline-locale-threading-3c10`  
+**Date:** 2026-08-22
+**Baseline SHA:** `8941158c7d05ebad929ccbc35dbd2e4d6fccd7ce` (PR #1119)
+**Pre-flight:** PR #1124 / `docs/audits/i18n-p2-2-16b2-task-timeline-locale-threading-preflight-2026-08-22.md`
+**Branch:** `cursor/p2216b2-task-timeline-locale-threading-3c10`
 **Verdict:** **IMPLEMENTATION COMPLETE — READY FOR INDEPENDENT RE-AUDIT**
 
 ---
