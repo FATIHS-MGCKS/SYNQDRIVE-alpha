@@ -1,4 +1,5 @@
 import type { BookingDetailDto } from '../../../lib/api';
+import type { BookingHandoverGate } from '../../lib/bookingHandoverGates';
 
 export type { BookingDetailDto };
 
@@ -35,7 +36,15 @@ export type BookingActionGate = {
   reason?: string;
 };
 
-export type BookingActionMatrix = Record<BookingActionKey, BookingActionGate>;
+export type BookingActionMatrix = {
+  edit: BookingActionGate;
+  cancel: BookingActionGate;
+  no_show: BookingActionGate;
+  pickup: BookingHandoverGate;
+  return: BookingHandoverGate;
+  final_invoice: BookingActionGate;
+  add_note: BookingActionGate;
+};
 
 export type BookingPrimaryAction =
   | { key: 'pickup'; label: string }

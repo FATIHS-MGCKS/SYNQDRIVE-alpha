@@ -6,6 +6,7 @@ import { settingsAdminDe } from './settings-admin.de';
 import { stationsTabDe } from './stations-tab.de';
 import { voiceAssistantDe } from './voice-assistant.de';
 import { supportDe } from './support.de';
+import { handoverProtocolDe } from './handover.protocol.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 
@@ -5382,4 +5383,5 @@ export const de: Record<TranslationKey, string> = {
   ...whatsappDe,
   ...supportDe,
   ...supportOpsDe,
+  ...handoverProtocolDe,
 } satisfies CompleteTranslationDictionary;

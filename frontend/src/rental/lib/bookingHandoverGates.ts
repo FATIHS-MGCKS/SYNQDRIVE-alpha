@@ -1,6 +1,7 @@
 import type { TodayBookingApiRow } from '../components/dashboard/dashboardTypes';
 import { normalizeBookingStatus } from '../components/bookings/bookingStatus';
 import type { VehicleHealthResponse } from '../../lib/api';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export interface BookingHandoverGateInput {
   statusEnum?: string | null;
@@ -16,33 +17,40 @@ export interface BookingHandoverGateInput {
 
 export interface BookingHandoverGate {
   allowed: boolean;
-  reason?: string;
+  reasonKey?: TranslationKey;
+  reasonParams?: Record<string, string | number>;
 }
 
-function gate(allowed: boolean, reason?: string): BookingHandoverGate {
-  return allowed ? { allowed: true } : { allowed: false, reason };
+function gate(
+  allowed: boolean,
+  reasonKey?: TranslationKey,
+  reasonParams?: Record<string, string | number>,
+): BookingHandoverGate {
+  return allowed ? { allowed: true } : { allowed: false, reasonKey, reasonParams };
 }
 
 /** Canonical pickup gate — shared by Rental booking detail and Operator today/quick views. */
 export function deriveBookingPickupGate(input: BookingHandoverGateInput): BookingHandoverGate {
   const status = normalizeBookingStatus(input.statusEnum, input.status);
   if (status !== 'confirmed' && status !== 'pending') {
-    return gate(false, 'Pickup nur bei bestätigter oder ausstehender Buchung möglich');
+    return gate(false, 'handover.gates.pickupWrongStatus');
   }
   if (input.hasPickupProtocol) {
-    return gate(false, 'Pickup-Protokoll bereits vorhanden');
+    return gate(false, 'handover.gates.pickupProtocolExists');
   }
   if (input.rentalBlocked) {
-    return gate(
-      false,
-      `Pickup nicht möglich: ${input.blockingReasons?.join(' · ') || 'Fahrzeug rental_blocked'}`,
-    );
+    const reasons = input.blockingReasons?.join(' · ');
+    if (reasons) {
+      return gate(false, 'handover.gates.pickupBlockedWithReasons', { reasons });
+    }
+    return gate(false, 'handover.gates.pickupVehicleRentalBlocked');
   }
   if (input.canStartRental === false) {
-    return gate(
-      false,
-      input.eligibilityBlockingReasons?.join(' · ') || 'Kunde nicht mietberechtigt',
-    );
+    const reasons = input.eligibilityBlockingReasons?.join(' · ');
+    if (reasons) {
+      return gate(false, 'handover.gates.customerNotEligibleWithReasons', { reasons });
+    }
+    return gate(false, 'handover.gates.customerNotEligible');
   }
   return gate(true);
 }
@@ -51,13 +59,13 @@ export function deriveBookingPickupGate(input: BookingHandoverGateInput): Bookin
 export function deriveBookingReturnGate(input: BookingHandoverGateInput): BookingHandoverGate {
   const status = normalizeBookingStatus(input.statusEnum, input.status);
   if (status !== 'active') {
-    return gate(false, 'Return nicht möglich, weil Buchung nicht aktiv ist');
+    return gate(false, 'handover.gates.returnNotActive');
   }
   if (!input.hasPickupProtocol) {
-    return gate(false, 'Return erst nach Pickup möglich');
+    return gate(false, 'handover.gates.returnNeedsPickup');
   }
   if (input.hasReturnProtocol) {
-    return gate(false, 'Rückgabe bereits erfasst');
+    return gate(false, 'handover.gates.returnAlreadyRecorded');
   }
   return gate(true);
 }

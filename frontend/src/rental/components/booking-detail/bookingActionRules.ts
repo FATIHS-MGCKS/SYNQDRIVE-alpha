@@ -3,7 +3,6 @@ import { normalizeBookingStatus } from '../bookings/bookingStatus';
 import {
   deriveBookingPickupGate,
   deriveBookingReturnGate,
-  type BookingHandoverGate,
 } from '../../lib/bookingHandoverGates';
 import type {
   BookingActionGate,
@@ -11,7 +10,7 @@ import type {
   BookingPrimaryAction,
 } from './bookingDetailTypes';
 
-function gate(allowed: boolean, reason?: string): BookingHandoverGate {
+function actionGate(allowed: boolean, reason?: string): BookingActionGate {
   return allowed ? { allowed: true } : { allowed: false, reason };
 }
 
@@ -25,30 +24,30 @@ export function getBookingActionMatrix(detail: BookingDetailDto): BookingActionM
 
   const edit: BookingActionGate = (() => {
     if (status === 'cancelled' || status === 'no_show') {
-      return gate(false, 'Stornierte oder No-Show-Buchungen sind nicht bearbeitbar');
+      return actionGate(false, 'Stornierte oder No-Show-Buchungen sind nicht bearbeitbar');
     }
     if (status === 'completed') {
-      return gate(false, 'Abgeschlossene Buchungen sind schreibgeschützt');
+      return actionGate(false, 'Abgeschlossene Buchungen sind schreibgeschützt');
     }
     if (status === 'active') {
-      return gate(false, 'Während aktiver Vermietung nur begrenzte Änderungen — Notizen separat');
+      return actionGate(false, 'Während aktiver Vermietung nur begrenzte Änderungen — Notizen separat');
     }
-    return gate(true);
+    return actionGate(true);
   })();
 
   const cancel: BookingActionGate = (() => {
     if (status === 'active' || status === 'completed' || status === 'cancelled' || status === 'no_show') {
-      return gate(false, 'Stornierung in diesem Status nicht möglich');
+      return actionGate(false, 'Stornierung in diesem Status nicht möglich');
     }
-    return gate(true);
+    return actionGate(true);
   })();
 
   const no_show: BookingActionGate = (() => {
     if (status !== 'confirmed' && status !== 'pending') {
-      return gate(false, 'No-Show nur bei bestätigten oder ausstehenden Buchungen möglich');
+      return actionGate(false, 'No-Show nur bei bestätigten oder ausstehenden Buchungen möglich');
     }
-    if (hasPickup) return gate(false, 'Pickup bereits erfasst — No-Show nicht möglich');
-    return gate(true);
+    if (hasPickup) return actionGate(false, 'Pickup bereits erfasst — No-Show nicht möglich');
+    return actionGate(true);
   })();
 
   const pickup = deriveBookingPickupGate({
@@ -71,23 +70,23 @@ export function getBookingActionMatrix(detail: BookingDetailDto): BookingActionM
 
   const final_invoice: BookingActionGate = (() => {
     if (status !== 'completed' && status !== 'active') {
-      return gate(false, 'Schlussrechnung erst nach Rückgabe bzw. bei abgeschlossener Buchung');
+      return actionGate(false, 'Schlussrechnung erst nach Rückgabe bzw. bei abgeschlossener Buchung');
     }
     if (!hasReturn && status !== 'completed') {
-      return gate(false, 'Schlussrechnung erst nach Rückgabe möglich');
+      return actionGate(false, 'Schlussrechnung erst nach Rückgabe möglich');
     }
     if (detail.finance.finalInvoiceStatus === 'PAID' || detail.finance.finalInvoiceStatus === 'SENT') {
-      return gate(false, 'Schlussrechnung bereits erstellt');
+      return actionGate(false, 'Schlussrechnung bereits erstellt');
     }
-    return gate(true);
+    return actionGate(true);
   })();
 
   const add_note: BookingActionGate = (() => {
     if (status === 'cancelled' || status === 'no_show') {
-      return gate(true);
+      return actionGate(true);
     }
-    if (status === 'completed') return gate(true);
-    return gate(true);
+    if (status === 'completed') return actionGate(true);
+    return actionGate(true);
   })();
 
   void legalOk;
@@ -110,10 +109,10 @@ export function getPrimaryBookingAction(
 export function canGenerateContract(detail: BookingDetailDto): BookingActionGate {
   const status = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   if (status === 'cancelled' || status === 'no_show') {
-    return gate(false, 'Dokumente für stornierte Buchungen nicht verfügbar');
+    return actionGate(false, 'Dokumente für stornierte Buchungen nicht verfügbar');
   }
   if (!detail.documents.legalTermsAttached || !detail.documents.legalWithdrawalAttached) {
-    return gate(false, 'Mietvertrag kann nicht erstellt werden, weil AGB/Widerruf in Administration fehlt');
+    return actionGate(false, 'Mietvertrag kann nicht erstellt werden, weil AGB/Widerruf in Administration fehlt');
   }
-  return gate(true);
+  return actionGate(true);
 }

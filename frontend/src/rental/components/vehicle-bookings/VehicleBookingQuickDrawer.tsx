@@ -363,7 +363,7 @@ function DrawerFooter({
   onDocuments?: () => void;
   canOpenFull: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   return (
     <div className="flex w-full flex-wrap items-center justify-end gap-2" role="group" aria-label={t('vehicle.bookings.handoverActions')}>
       <button type="button" onClick={onClose} className={vbActionClass(false)}>
@@ -373,7 +373,6 @@ function DrawerFooter({
         <button
           type="button"
           onClick={onPickup}
-          title={matrix.pickup.reason}
           className={vbActionClass(false)}
         >
           {t('vehicle.bookings.startPickup')}
@@ -383,7 +382,6 @@ function DrawerFooter({
         <button
           type="button"
           onClick={onReturn}
-          title={matrix.return.reason}
           className={vbActionClass(false)}
         >
           {t('vehicle.bookings.startReturn')}
