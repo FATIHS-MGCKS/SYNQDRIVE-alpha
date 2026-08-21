@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
@@ -28,6 +29,7 @@ import { buildElevenLabsConversationMetadata } from '@modules/voice-assistant/vo
 import { buildCanonicalVoiceMcpGatewayUrl } from '@modules/voice-mcp-gateway/voice-mcp-canonical-url';
 import { VoiceMcpTokenService } from '@modules/voice-mcp-gateway/voice-mcp-token.service';
 import { VoiceInternalEventIngestService } from '@modules/voice-webhook-ingestion/voice-internal-event-ingest.service';
+import { VoiceCommunicationProjectionIntegration } from '@modules/communication/adapters/voice/voice-communication-projection.integration';
 import { buildInboundFallbackTwiml, buildLegacyDiagnosticTwiml } from '@modules/twilio/twilio-voice-twiml.util';
 import { VoiceCallPolicyService } from './voice-call-policy.service';
 import { VoiceBudgetEnforcementService } from '@modules/voice-protection/voice-budget-enforcement.service';
@@ -60,6 +62,7 @@ export class VoiceCallOrchestrationService {
     private readonly protection: VoiceBudgetEnforcementService,
     private readonly mcpTokens: VoiceMcpTokenService,
     private readonly internalEvents: VoiceInternalEventIngestService,
+    @Optional() private readonly voiceProjection?: VoiceCommunicationProjectionIntegration,
   ) {}
 
   async evaluateInboundReadiness(organizationId: string): Promise<VoiceInboundReadiness> {
@@ -302,6 +305,11 @@ export class VoiceCallOrchestrationService {
       providerCallRef: providerResult.maskedCallRef,
     });
 
+    void this.projectOutboundCallStarted(
+      conversation,
+      `outbound:${conversation.id}:started`,
+    );
+
     await this.bindConversationMcpIfEnabled({
       organizationId: request.organizationId,
       voiceAssistantId: assistant.id,
@@ -433,6 +441,21 @@ export class VoiceCallOrchestrationService {
         },
       },
     });
+  }
+
+  private projectOutboundCallStarted(
+    conversation: Awaited<ReturnType<VoiceCallOrchestrationService['createOutboundConversation']>>,
+    providerEventId: string,
+  ): void {
+    void this.voiceProjection
+      ?.projectCallStarted({
+        conversation,
+        providerEventId,
+        occurredAt: conversation.startedAt,
+        telephonyStatusCode: 'outbound_initiated',
+        includeInitialStatus: true,
+      })
+      .catch(() => undefined);
   }
 
   private async createOutboundConversation(params: {

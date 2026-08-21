@@ -3,6 +3,7 @@ import { PrismaModule } from '@shared/database/prisma.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { VoiceMcpGatewayModule } from '@modules/voice-mcp-gateway/voice-mcp-gateway.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
+import { CommunicationModule } from '@modules/communication/communication.module';
 import { VoiceProtectionModule } from '@modules/voice-protection/voice-protection.module';
 import { VoicePhoneNumberRepository } from '@modules/voice-assistant/control-plane/voice-control-plane.repository';
 import { VoiceCallOrchestrationService } from './voice-call-orchestration.service';
@@ -14,6 +15,7 @@ import { VoiceCallPolicyService } from './voice-call-policy.service';
     forwardRef(() => VoiceAssistantModule),
     forwardRef(() => VoiceMcpGatewayModule),
     VoiceWebhookIngestionModule,
+    CommunicationModule,
     VoiceProtectionModule,
   ],
   providers: [

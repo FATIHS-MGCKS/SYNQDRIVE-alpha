@@ -1,5 +1,7 @@
 import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { VoiceWebhookErrorClass } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import { VoiceCommunicationProjectionIntegration } from '@modules/communication/adapters/voice/voice-communication-projection.integration';
 import { VoiceMetricsService } from '@modules/observability/voice-metrics.service';
 import { buildVoiceLogPayload } from '@modules/voice-assistant/security/voice-structured-log.util';
 import { VoiceProviderWebhookEventRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
@@ -19,7 +21,9 @@ export class VoiceWebhookProcessingService {
     private readonly lifecycle: VoiceConversationLifecycleService,
     private readonly correlation: VoiceWebhookCorrelationService,
     private readonly queue: VoiceWebhookQueueProducer,
+    private readonly prisma: PrismaService,
     @Optional() private readonly voiceMetrics?: VoiceMetricsService,
+    @Optional() private readonly voiceProjection?: VoiceCommunicationProjectionIntegration,
   ) {}
 
   async processEventId(eventId: string, replay = false): Promise<void> {
@@ -81,6 +85,24 @@ export class VoiceWebhookProcessingService {
           event.receivedAt,
           new Date(),
         );
+      }
+
+      if (lifecycleResult.conversationId && event.organizationId && this.voiceProjection) {
+        const conversation = await this.prisma.voiceConversation.findFirst({
+          where: { id: lifecycleResult.conversationId, organizationId: event.organizationId },
+        });
+        if (conversation) {
+          void this.voiceProjection
+            .projectFromProcessedWebhook({
+              organizationId: event.organizationId,
+              eventType: event.eventType ?? 'unknown',
+              externalEventId: event.externalEventId,
+              provider: event.provider,
+              conversation,
+              payload: redactedPayload,
+            })
+            .catch(() => undefined);
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown processing error';

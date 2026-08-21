@@ -35,6 +35,7 @@ describe('Voice webhook ingestion pipeline', () => {
   let correlation: VoiceWebhookCorrelationService;
   let lifecycle: VoiceConversationLifecycleService;
   let prisma: any;
+  let voiceProjection: { projectFromProcessedWebhook: jest.Mock };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -47,6 +48,9 @@ describe('Voice webhook ingestion pipeline', () => {
       voiceAssistant: { findFirst: jest.fn() },
       voiceAgentDeployment: { findFirst: jest.fn() },
       voiceToolExecution: { findFirst: jest.fn() },
+    };
+    voiceProjection = {
+      projectFromProcessedWebhook: jest.fn().mockResolvedValue(undefined),
     };
 
     correlation = new VoiceWebhookCorrelationService(prisma);
@@ -64,6 +68,9 @@ describe('Voice webhook ingestion pipeline', () => {
       lifecycle,
       correlation,
       queue as never,
+      prisma,
+      undefined,
+      voiceProjection as never,
     );
 
     process.env.VOICE_WEBHOOK_INGESTION_ENABLED = 'true';
@@ -105,6 +112,50 @@ describe('Voice webhook ingestion pipeline', () => {
 
     expect(result.duplicate).toBe(true);
     expect(queue.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('marks webhook processed when canonical projection throws', async () => {
+    const conversation = {
+      id: 'conv-1',
+      organizationId: ORG,
+      twilioCallSid: 'CA1',
+      lifecycleState: VoiceConversationLifecycleState.CONNECTED,
+      status: VoiceConversationStatus.ACTIVE,
+      outcome: VoiceConversationOutcome.PENDING,
+      durationSeconds: null,
+      metadata: {},
+      transcript: null,
+      updatedAt: new Date(),
+      startedAt: new Date(),
+    };
+
+    events.findById.mockResolvedValue({
+      id: EVENT_ID,
+      organizationId: ORG,
+      eventType: VOICE_WEBHOOK_EVENT_TYPES.TWILIO_STATUS,
+      externalEventId: 'CA1:status:in-progress',
+      status: 'QUEUED',
+      retryCount: 0,
+      redactedPayload: { CallSid: 'CA1', CallStatus: 'in-progress' },
+      voiceConversationId: 'conv-1',
+      twilioCallSid: 'CA1',
+      elevenLabsConversationId: null,
+      agentDeploymentId: null,
+      phoneNumberId: null,
+      customerId: null,
+      bookingId: null,
+      provider: VoiceControlPlaneProvider.TWILIO,
+    });
+
+    prisma.voiceConversation.findFirst.mockResolvedValue(conversation);
+    prisma.voiceConversation.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+      ...conversation,
+      ...data,
+    }));
+    voiceProjection.projectFromProcessedWebhook.mockRejectedValue(new Error('projection exploded'));
+
+    await expect(processing.processEventId(EVENT_ID)).resolves.toBeUndefined();
+    expect(events.markProcessed).toHaveBeenCalledWith(EVENT_ID);
   });
 
   it('applies out-of-order twilio status without regressing lifecycle', async () => {

@@ -4,10 +4,15 @@ import { COMMUNICATION_PROJECTION_RUNTIME_FLAG } from '@modules/communication/co
 export const COMMUNICATION_WHATSAPP_PROJECTION_FLAG =
   'COMMUNICATION_CENTER_WHATSAPP_PROJECTION_ENABLED';
 
+export const COMMUNICATION_VOICE_PROJECTION_FLAG =
+  'COMMUNICATION_CENTER_VOICE_PROJECTION_ENABLED';
+
 export default registerAs('communicationProjection', () => {
   const globalEnabled = process.env[COMMUNICATION_PROJECTION_RUNTIME_FLAG] === 'true';
   const whatsappEnabled =
     process.env[COMMUNICATION_WHATSAPP_PROJECTION_FLAG] === 'true' || globalEnabled;
+  const voiceEnabled =
+    process.env[COMMUNICATION_VOICE_PROJECTION_FLAG] === 'true' || globalEnabled;
 
   const allowlistRaw = process.env.COMMUNICATION_CENTER_PROJECTION_ORG_ALLOWLIST ?? '';
   const orgAllowlist = allowlistRaw
@@ -17,6 +22,7 @@ export default registerAs('communicationProjection', () => {
 
   return {
     whatsappEnabled,
+    voiceEnabled,
     globalEnabled,
     orgAllowlist,
   };

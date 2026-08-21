@@ -4,6 +4,9 @@ import communicationProjectionConfig from '@config/communication-projection.conf
 import { PrismaModule } from '@shared/database/prisma.module';
 import { MetaWhatsAppCommunicationAdapter } from './adapters/whatsapp/meta-whatsapp-communication.adapter';
 import { WhatsAppCommunicationProjectionIntegration } from './adapters/whatsapp/whatsapp-communication-projection.integration';
+import { ElevenLabsVoiceCommunicationAdapter } from './adapters/voice/elevenlabs-voice-communication.adapter';
+import { TwilioVoiceCommunicationAdapter } from './adapters/voice/twilio-voice-communication.adapter';
+import { VoiceCommunicationProjectionIntegration } from './adapters/voice/voice-communication-projection.integration';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
 import { CommunicationEventRepository } from './communication-event.repository';
 import { CommunicationPersistenceService } from './communication-persistence.service';
@@ -26,6 +29,9 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
     CommunicationProjectionFeatureService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
+    TwilioVoiceCommunicationAdapter,
+    ElevenLabsVoiceCommunicationAdapter,
+    VoiceCommunicationProjectionIntegration,
   ],
   exports: [
     CommunicationTenantContextValidation,
@@ -36,6 +42,9 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
     CommunicationProjectionFeatureService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
+    TwilioVoiceCommunicationAdapter,
+    ElevenLabsVoiceCommunicationAdapter,
+    VoiceCommunicationProjectionIntegration,
   ],
 })
 export class CommunicationModule {}
