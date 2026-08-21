@@ -202,6 +202,20 @@ const P212_ENFORCE_CLEAN_EXACT = [
   'rental/lib/fines-i18n.ts',
 ];
 
+const P213_ENFORCE_CLEAN_EXACT = [
+  'operator/handover/OperatorHandoverFlow.tsx',
+  'operator/handover/OperatorHandoverStepVehicle.tsx',
+  'operator/handover/OperatorHandoverStepCondition.tsx',
+  'operator/handover/OperatorHandoverStepDamages.tsx',
+  'operator/handover/OperatorHandoverStepDocuments.tsx',
+  'operator/handover/OperatorHandoverStepSignatures.tsx',
+  'operator/handover/OperatorHandoverStepReview.tsx',
+  'operator/handover/OperatorHandoverTechnicalObservationsSection.tsx',
+  'operator/handover/operatorHandoverPayload.ts',
+  'operator/handover/operatorHandoverTechnicalObservations.ts',
+  'operator/handover/operator-handover-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -230,6 +244,10 @@ function isP212EnforceCleanPath(relPath: string): boolean {
   return P212_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
+function isP213EnforceCleanPath(relPath: string): boolean {
+  return P213_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
 function isP26EnforceCleanPath(relPath: string): boolean {
   return P26_ENFORCE_CLEAN_PREFIXES.some(
     (prefix) => relPath === prefix || relPath.startsWith(prefix),
@@ -253,7 +271,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 + P2.2.12 + P2.2.13 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -357,6 +375,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p212Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.13 enforce-clean findings to Operator Handover only', () => {
+    const p213Debt = inventory.findings.filter((finding) =>
+      isP213EnforceCleanPath(finding.file),
+    );
+    expect(p213Debt).toHaveLength(0);
+  });
+
   it('keeps FinesView free of hardcoded presentation literals', () => {
     const source = readFileSync(
       join(__dirname, '../rental/components/FinesView.tsx'),
@@ -390,6 +415,70 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).toContain('FINE_OFFENSE_TYPE_VALUES');
     expect(source).toContain('fines.status.NEW');
     expect(source).not.toMatch(/label:\s*'Neu'/);
+  });
+
+  it('keeps operatorHandoverPayload.ts on messageKey validation issues', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/handover/operatorHandoverPayload.ts'),
+      'utf8',
+    );
+    expect(source).toContain('messageKey:');
+    expect(source).toContain('OPERATOR_HANDOVER_TIRE_MEASUREMENT_NOTE');
+    expect(source).not.toMatch(/message:\s*'/);
+    expect(source).not.toMatch(/Bitte Pflichtfelder/);
+  });
+
+  it('keeps operatorHandoverTechnicalObservations.ts on labelKey chips', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/handover/operatorHandoverTechnicalObservations.ts'),
+      'utf8',
+    );
+    expect(source).toContain('labelKey:');
+    expect(source).toContain('placeholderKey:');
+    expect(source).not.toMatch(/label:\s*'Wischer'/);
+  });
+
+  it('keeps operator-handover-i18n.ts on canonical keys and machine constants', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/handover/operator-handover-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain("HANDOVER_REPORTED_BY_FALLBACK");
+    expect(source).toContain('OPERATOR_HANDOVER_TIRE_MEASUREMENT_NOTE');
+    expect(source).toContain('handover.operator.');
+    expect(source).not.toMatch(/return\s+'Pickup'/);
+  });
+
+  it('keeps OperatorHandoverFlow free of hardcoded German presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/handover/OperatorHandoverFlow.tsx'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /STEP_LABELS/,
+      /Schritt \{/,
+      /Bitte Pflichtfelder/,
+      /Übergabe konnte nicht/,
+      /Zurück/,
+      /Weiter/,
+      /Schließen/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('resolveOperatorValidationMessage');
+    expect(source).toContain('labelOperatorHandoverStep');
+  });
+
+  it('keeps OperatorHandoverStepDamages on localized damage labels and Handover reportedBy', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/handover/OperatorHandoverStepDamages.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('HANDOVER_REPORTED_BY_FALLBACK');
+    expect(source).toContain('labelOperatorDamageType');
+    expect(source).not.toContain('formatDamageType');
+    expect(source).not.toMatch(/reportedBy:\s*form\.state\.staffName \|\| 'Handover'/);
   });
 
   it('keeps bookingHandoverGates.ts free of user-facing presentation literals', () => {

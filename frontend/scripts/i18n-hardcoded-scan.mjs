@@ -189,6 +189,20 @@ const P212_ENFORCE_CLEAN_EXACT = new Set([
   'rental/lib/fines-i18n.ts',
 ]);
 
+const P213_ENFORCE_CLEAN_EXACT = new Set([
+  'operator/handover/OperatorHandoverFlow.tsx',
+  'operator/handover/OperatorHandoverStepVehicle.tsx',
+  'operator/handover/OperatorHandoverStepCondition.tsx',
+  'operator/handover/OperatorHandoverStepDamages.tsx',
+  'operator/handover/OperatorHandoverStepDocuments.tsx',
+  'operator/handover/OperatorHandoverStepSignatures.tsx',
+  'operator/handover/OperatorHandoverStepReview.tsx',
+  'operator/handover/OperatorHandoverTechnicalObservationsSection.tsx',
+  'operator/handover/operatorHandoverPayload.ts',
+  'operator/handover/operatorHandoverTechnicalObservations.ts',
+  'operator/handover/operator-handover-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -440,6 +454,10 @@ function isP212EnforceCleanPath(relPath) {
   return P212_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP213EnforceCleanPath(relPath) {
+  return P213_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -471,6 +489,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP210EnforceCleanPath(relPath)) return true;
   if (isP211EnforceCleanPath(relPath)) return true;
   if (isP212EnforceCleanPath(relPath)) return true;
+  if (isP213EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -483,6 +502,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP28EnforceCleanPath(relPath)) return 'P2.2.8';
   if (isP211EnforceCleanPath(relPath)) return 'P2.2.11';
   if (isP212EnforceCleanPath(relPath)) return 'P2.2.12';
+  if (isP213EnforceCleanPath(relPath)) return 'P2.2.13';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

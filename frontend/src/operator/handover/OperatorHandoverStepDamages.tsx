@@ -1,13 +1,16 @@
 import { Camera, Loader2, ShieldAlert } from 'lucide-react';
-import { formatDamageType } from '../../rental/lib/damage.types';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { HANDOVER_REPORTED_BY_FALLBACK } from '../../rental/components/handover/handover-i18n';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
+import { labelOperatorDamageSeverity, labelOperatorDamageType, oh } from './operator-handover-i18n';
 
 interface Props {
   form: OperatorHandoverFormApi;
 }
 
 export function OperatorHandoverStepDamages({ form }: Props) {
+  const { locale, t } = useLanguage();
   const { openDamageCapture } = useOperatorDamageCapture();
   const { booking, kind } = form;
 
@@ -22,7 +25,7 @@ export function OperatorHandoverStepDamages({ form }: Props) {
       customerName: booking.customerName,
       bookingLabel: `${booking.customerName} · ${booking.startDate}`,
       handoverKind: kind,
-      reportedBy: form.state.staffName || 'Handover',
+      reportedBy: form.state.staffName || HANDOVER_REPORTED_BY_FALLBACK,
       skipVehicleConfirm: true,
       onCreated: (damage) => {
         form.registerCapturedDamage(damage);
@@ -37,7 +40,10 @@ export function OperatorHandoverStepDamages({ form }: Props) {
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold">
-            Schäden ({form.state.selectedDamageIds.size}/{form.damages.length})
+            {oh(locale, 'handover.operator.damages.title', {
+              selected: form.state.selectedDamageIds.size,
+              total: form.damages.length,
+            })}
           </p>
         </div>
         <button
@@ -47,14 +53,14 @@ export function OperatorHandoverStepDamages({ form }: Props) {
           className="sq-press inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[color:var(--brand)]/30 bg-[color:var(--brand-soft)] px-3 text-xs font-semibold text-[color:var(--brand-ink)] disabled:opacity-50"
         >
           <Camera className="h-4 w-4" />
-          Neuen Schaden erfassen
+          {t('handover.protocol.recordNewDamage')}
         </button>
       </div>
 
       <p className="text-xs text-muted-foreground">
         {kind === 'PICKUP'
-          ? 'Bestehende Schäden beim Pickup bestätigen oder neue mit Foto erfassen.'
-          : 'Beim Return Schäden mit Foto dokumentieren oder bestehende markieren.'}
+          ? oh(locale, 'handover.operator.damages.hintPickup')
+          : oh(locale, 'handover.operator.damages.hintReturn')}
       </p>
 
       {form.damageError && (
@@ -64,10 +70,10 @@ export function OperatorHandoverStepDamages({ form }: Props) {
       {form.loadingDamages ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Laden…
+          {oh(locale, 'handover.operator.damages.loading')}
         </div>
       ) : form.damages.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Keine aktiven Schäden dokumentiert.</p>
+        <p className="text-sm text-muted-foreground">{oh(locale, 'handover.operator.damages.empty')}</p>
       ) : (
         <div className="space-y-2">
           {form.damages.map((d) => {
@@ -84,7 +90,8 @@ export function OperatorHandoverStepDamages({ form }: Props) {
                 }`}
               >
                 <p className="text-sm font-semibold">
-                  {formatDamageType(d.damageType)} · {d.severity}
+                  {labelOperatorDamageType(locale, d.damageType)} ·{' '}
+                  {labelOperatorDamageSeverity(locale, d.severity)}
                 </p>
                 {d.locationLabel && (
                   <p className="text-xs text-muted-foreground">{d.locationLabel}</p>

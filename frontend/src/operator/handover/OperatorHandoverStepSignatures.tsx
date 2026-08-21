@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { SignaturePad } from '../../rental/components/handover/SignaturePad';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
+import type { OperatorHandoverValidationIssue } from './operatorHandoverPayload';
+import { oh, resolveOperatorValidationMessage } from './operator-handover-i18n';
 import { operatorFieldClass, OperatorHandoverField } from './operatorHandoverUi';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 
@@ -8,7 +11,7 @@ interface Props {
   form: OperatorHandoverFormApi;
   staffOptions: { id: string; name: string }[];
   isDarkMode: boolean;
-  stepErrors: string[];
+  stepErrors: OperatorHandoverValidationIssue[];
 }
 
 export function OperatorHandoverStepSignatures({
@@ -17,12 +20,13 @@ export function OperatorHandoverStepSignatures({
   isDarkMode,
   stepErrors,
 }: Props) {
+  const { locale } = useLanguage();
   const isTablet = useOperatorTabletLayout();
   const [mobileSigPhase, setMobileSigPhase] = useState<'customer' | 'staff'>('customer');
 
   return (
     <div className="space-y-4">
-      <OperatorHandoverField label="Übergabe durch *">
+      <OperatorHandoverField label={oh(locale, 'handover.operator.signatures.handoverBy')}>
         {staffOptions.length > 0 ? (
           <select
             value={form.state.staffId}
@@ -33,7 +37,7 @@ export function OperatorHandoverStepSignatures({
             }}
             className={operatorFieldClass}
           >
-            <option value="">Mitarbeiter wählen</option>
+            <option value="">{oh(locale, 'handover.operator.signatures.selectStaff')}</option>
             {staffOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -45,7 +49,7 @@ export function OperatorHandoverStepSignatures({
             type="text"
             value={form.state.staffName}
             onChange={(e) => form.patchState({ staffName: e.target.value })}
-            placeholder="Name des Mitarbeiters"
+            placeholder={oh(locale, 'handover.operator.signatures.staffNamePlaceholder')}
             className={operatorFieldClass}
           />
         )}
@@ -54,7 +58,7 @@ export function OperatorHandoverStepSignatures({
             type="text"
             value={form.state.staffName}
             onChange={(e) => form.patchState({ staffName: e.target.value })}
-            placeholder="Name ergänzen (optional)"
+            placeholder={oh(locale, 'handover.operator.signatures.staffNameOptional')}
             className={`mt-2 ${operatorFieldClass}`}
           />
         )}
@@ -68,7 +72,7 @@ export function OperatorHandoverStepSignatures({
             className="flex-1 min-h-[44px]"
             onClick={() => setMobileSigPhase('customer')}
           >
-            Kunde
+            {oh(locale, 'handover.operator.signatures.customerTab')}
           </button>
           <button
             type="button"
@@ -76,7 +80,7 @@ export function OperatorHandoverStepSignatures({
             className="flex-1 min-h-[44px]"
             onClick={() => setMobileSigPhase('staff')}
           >
-            Mitarbeiter
+            {oh(locale, 'handover.operator.signatures.staffTab')}
           </button>
         </div>
       )}
@@ -85,35 +89,37 @@ export function OperatorHandoverStepSignatures({
         {(!isTablet ? mobileSigPhase === 'customer' : true) && (
           <SignaturePad
             isDarkMode={isDarkMode}
-            label="Unterschrift Kunde *"
+            label={oh(locale, 'handover.operator.signatures.customerPadLabel')}
             typedName={form.state.customerSigName}
             onTypedNameChange={(v) => form.patchState({ customerSigName: v })}
             dataUrl={form.state.customerSigData}
             onDataUrlChange={(v) => form.patchState({ customerSigData: v })}
             required
             canvasHeight="min(42vh, 220px)"
-            helperText="Zeichnen ist Pflicht — Name ergänzt nur das Protokoll."
+            helperText={oh(locale, 'handover.operator.signatures.customerHelper')}
           />
         )}
         {(!isTablet ? mobileSigPhase === 'staff' : true) && (
           <SignaturePad
             isDarkMode={isDarkMode}
-            label="Unterschrift Mitarbeiter *"
+            label={oh(locale, 'handover.operator.signatures.staffPadLabel')}
             typedName={form.state.staffSigName}
             onTypedNameChange={(v) => form.patchState({ staffSigName: v })}
             dataUrl={form.state.staffSigData}
             onDataUrlChange={(v) => form.patchState({ staffSigData: v })}
             required
             canvasHeight="min(42vh, 220px)"
-            helperText="Zeichnen ist Pflicht."
+            helperText={oh(locale, 'handover.operator.signatures.staffHelper')}
           />
         )}
       </div>
 
       {stepErrors.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-3 py-2 text-xs text-[color:var(--status-critical)]">
-          {stepErrors.map((e) => (
-            <li key={e}>{e}</li>
+          {stepErrors.map((issue) => (
+            <li key={`${issue.field}-${issue.messageKey}`}>
+              {resolveOperatorValidationMessage(locale, issue)}
+            </li>
           ))}
         </ul>
       )}

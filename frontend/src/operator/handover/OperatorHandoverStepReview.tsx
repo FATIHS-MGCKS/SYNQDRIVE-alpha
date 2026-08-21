@@ -1,13 +1,16 @@
 import { AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { HandoverDialogBookingInfo, HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
-import {
-  observationCategoryLabel,
-  observationSeverityLabel,
-  severityChipClass,
-} from '../../rental/lib/technical-observations-ui';
+import { severityChipClass } from '../../rental/lib/technical-observations-ui';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
 import type { OperatorHandoverValidationIssue } from './operatorHandoverPayload';
 import { collectTechnicalObservationsForPayload } from './operatorHandoverTechnicalObservations';
+import {
+  labelOperatorObservationCategory,
+  labelOperatorObservationSeverity,
+  oh,
+  resolveOperatorValidationMessage,
+} from './operator-handover-i18n';
 
 interface Props {
   kind: HandoverDialogKind;
@@ -17,43 +20,75 @@ interface Props {
 }
 
 export function OperatorHandoverStepReview({ kind, booking, form, issues }: Props) {
+  const { locale, t } = useLanguage();
   const primaryLabel =
-    kind === 'PICKUP' ? 'Pickup bestätigen & Buchung aktivieren' : 'Rückgabe bestätigen & abschließen';
+    kind === 'PICKUP'
+      ? t('handover.protocol.confirmPickupActivate')
+      : t('handover.protocol.confirmReturnComplete');
 
   const observationPayload = collectTechnicalObservationsForPayload(kind, form.state);
   const manualDrafts = form.state.technicalObservationDrafts;
   const autoWarningCount = Math.max(0, observationPayload.length - manualDrafts.length);
 
   const rows = [
-    { label: 'Fahrzeug', value: `${booking.vehicleName} · ${booking.plate}` },
-    { label: 'Kunde', value: booking.customerName },
-    { label: 'Kilometerstand', value: `${form.state.odometerKm || '—'} km` },
+    { label: t('handover.protocol.vehicle'), value: `${booking.vehicleName} · ${booking.plate}` },
+    { label: t('handover.protocol.customer'), value: booking.customerName },
     {
-      label: 'Tank / SoC',
-      value: form.state.fuelFull ? 'Voll' : `${form.state.fuelPercent}%`,
+      label: t('handover.protocol.odometer'),
+      value: `${form.state.odometerKm || '—'} ${t('handover.protocol.kmUnit')}`,
     },
-    { label: 'Schäden markiert', value: String(form.state.selectedDamageIds.size) },
     {
-      label: 'Technische Beobachtungen',
+      label: t('handover.protocol.fuelSoc'),
+      value: form.state.fuelFull
+        ? oh(locale, 'handover.operator.condition.fuelFull')
+        : `${form.state.fuelPercent}%`,
+    },
+    {
+      label: oh(locale, 'handover.operator.review.damagesMarked'),
+      value: String(form.state.selectedDamageIds.size),
+    },
+    {
+      label: oh(locale, 'handover.operator.review.observations'),
       value:
         observationPayload.length === 0
-          ? 'Keine'
-          : `${observationPayload.length}${autoWarningCount > 0 ? ` (inkl. Warnleuchten)` : ''}`,
+          ? oh(locale, 'handover.operator.review.observationsNone')
+          : autoWarningCount > 0
+            ? oh(locale, 'handover.operator.review.observationsWithWarning', {
+                count: observationPayload.length,
+              })
+            : String(observationPayload.length),
     },
     {
-      label: 'Dokumente bestätigt',
-      value: form.state.checks.documentsAcknowledged ? 'Ja' : 'Nein',
+      label: oh(locale, 'handover.operator.review.documentsConfirmed'),
+      value: form.state.checks.documentsAcknowledged ? t('common.yes') : t('common.no'),
     },
-    { label: 'Kundenunterschrift', value: form.state.customerSigData ? 'Erfasst' : 'Fehlt' },
-    { label: 'Mitarbeiterunterschrift', value: form.state.staffSigData ? 'Erfasst' : 'Fehlt' },
-    { label: 'Mitarbeiter', value: form.state.staffName || form.state.staffId || '—' },
+    {
+      label: oh(locale, 'handover.operator.review.customerSignature'),
+      value: form.state.customerSigData
+        ? oh(locale, 'handover.operator.review.captured')
+        : oh(locale, 'handover.operator.review.missing'),
+    },
+    {
+      label: oh(locale, 'handover.operator.review.staffSignature'),
+      value: form.state.staffSigData
+        ? oh(locale, 'handover.operator.review.captured')
+        : oh(locale, 'handover.operator.review.missing'),
+    },
+    {
+      label: oh(locale, 'handover.operator.review.staff'),
+      value: form.state.staffName || form.state.staffId || '—',
+    },
   ];
+
+  const statusLabel =
+    kind === 'PICKUP'
+      ? t('handover.protocol.statusPickup')
+      : t('handover.protocol.statusReturn');
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Prüfe alle Angaben vor dem Abschluss. Der Server setzt den Buchungsstatus (
-        {kind === 'PICKUP' ? 'CONFIRMED → ACTIVE' : 'ACTIVE → COMPLETED'}).
+        {oh(locale, 'handover.operator.review.intro', { status: statusLabel })}
       </p>
 
       <div className="rounded-2xl border border-border/60 surface-premium divide-y divide-border/40">
@@ -67,7 +102,9 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
 
       {observationPayload.length > 0 && (
         <div className="rounded-2xl border border-border/60 surface-premium p-4 space-y-2">
-          <p className="text-sm font-semibold">Technische Beobachtungen</p>
+          <p className="text-sm font-semibold">
+            {oh(locale, 'handover.operator.review.observationsSection')}
+          </p>
           <ul className="space-y-2">
             {observationPayload.map((obs, idx) => (
               <li
@@ -78,19 +115,19 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
                   {obs.category && (
                     <span className="rounded-md bg-muted px-2 py-0.5 font-semibold uppercase tracking-wide text-muted-foreground">
-                      {observationCategoryLabel(obs.category)}
+                      {labelOperatorObservationCategory(locale, obs.category)}
                     </span>
                   )}
                   {obs.severity && (
                     <span
                       className={`rounded-md px-2 py-0.5 font-semibold ${severityChipClass(obs.severity)}`}
                     >
-                      {observationSeverityLabel(obs.severity)}
+                      {labelOperatorObservationSeverity(locale, obs.severity)}
                     </span>
                   )}
                   {obs.blocksRental && (
                     <span className="font-semibold text-[color:var(--status-critical)]">
-                      Blockiert Vermietung
+                      {oh(locale, 'handover.operator.review.blocksRental')}
                     </span>
                   )}
                 </div>
@@ -104,11 +141,13 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
         <div className="rounded-2xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[color:var(--status-critical)]">
             <AlertTriangle className="h-4 w-4" />
-            Noch offen
+            {oh(locale, 'handover.operator.review.openIssues')}
           </div>
           <ul className="space-y-1 text-xs text-muted-foreground">
             {issues.map((i) => (
-              <li key={`${i.field}-${i.message}`}>{i.message}</li>
+              <li key={`${i.field}-${i.messageKey}`}>
+                {resolveOperatorValidationMessage(locale, i)}
+              </li>
             ))}
           </ul>
         </div>

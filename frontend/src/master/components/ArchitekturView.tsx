@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Handover (P2.2.13 — V4.9.935)', icon: Globe,
+    endpoint: 'OperatorHandoverFlow 6-step wizard, operator-handover-i18n.ts, handover.operator.{en,de}.ts.',
+    service: '**Helper:** `operator-handover-i18n.ts` (`oh`, step/kind labels, validation resolver, observation category/area/severity maps, damage label reuse via rental `handover-i18n`). **Keys:** +125 EN+DE (`handover.operator.{en,de}.ts`; 7292→7417); reused `handover.protocol.*`, `bookings.handover.*`, `common.*`. **Validation:** domain `messageKey` + params; UI resolves via `resolveOperatorValidationMessage`. **Guardrails:** P2.2.13 enforce-clean exact (11 paths) — 0 findings; payload + observations + flow blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `operator-handover-localization.test.tsx` (12). **Semantics:** PICKUP/RETURN, damage enums, reportedBy Handover fallback, tire measurement persisted note, signature payloads unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-13-operator-handover-implementation-2026-08-21.md; architecture/I18N_OPERATOR_HANDOVER_P2_2_13_2026-08-21.md' },
   { name: 'Platform i18n Rental Fines (P2.2.12 — V4.9.934)', icon: Globe,
     endpoint: 'FinesView, fines-i18n.ts status/offense label maps, fines.{en,de}.ts.',
     service: '**Helper:** `fines-i18n.ts` (`fi`, `labelFineStatus`, `labelFineOffenseType`, `formatFineDate`, `formatFineAmount`, machine value constants). **Keys:** +82 EN+DE (`fines.{en,de}.ts`; 7210→7292); wired 11 legacy `fines.*`; reused `common.back/cancel/save/edit`, `tasks.filter.status.*`. **Offense types:** German machine values preserved in API payloads; display via `fines.offenseType.*`. **Guardrails:** P2.2.12 enforce-clean exact (2 paths) — 0 findings; FinesView + fines-i18n blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-fines-localization.test.tsx` (9). **Semantics:** status enums, offenseType strings, filter machine keys, document intake context unchanged.',

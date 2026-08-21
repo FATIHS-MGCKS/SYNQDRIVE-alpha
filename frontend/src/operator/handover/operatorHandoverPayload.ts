@@ -1,3 +1,4 @@
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import {
   buildHandoverTelemetryPrefill,
@@ -8,6 +9,9 @@ import {
   type HandoverTechnicalObservationPayloadItem,
   type OperatorHandoverObservationDraft,
 } from './operatorHandoverTechnicalObservations';
+
+/** Persisted protocol note — never translate for API payload append. */
+export const OPERATOR_HANDOVER_TIRE_MEASUREMENT_NOTE = 'Reifenprofilmessung erfasst.' as const;
 
 export type OperatorHandoverStepId =
   | 'vehicle'
@@ -98,7 +102,8 @@ export interface OperatorHandoverPayloadInput {
 export interface OperatorHandoverValidationIssue {
   step: OperatorHandoverStepId;
   field: string;
-  message: string;
+  messageKey: TranslationKey;
+  messageParams?: Record<string, string | number>;
 }
 
 export function createInitialHandoverState(
@@ -150,7 +155,7 @@ export function buildOperatorHandoverPayload(input: OperatorHandoverPayloadInput
 
   const noteParts = [state.notes.trim()];
   if (state.tireMeasurementCaptured) {
-    noteParts.push('Reifenprofilmessung erfasst.');
+    noteParts.push(OPERATOR_HANDOVER_TIRE_MEASUREMENT_NOTE);
   }
 
   return {
@@ -185,31 +190,44 @@ export function validateOperatorHandover(
 ): OperatorHandoverValidationIssue[] {
   const issues: OperatorHandoverValidationIssue[] = [];
   if (!booking) {
-    issues.push({ step: 'vehicle', field: 'booking', message: 'Buchung nicht geladen' });
+    issues.push({
+      step: 'vehicle',
+      field: 'booking',
+      messageKey: 'handover.operator.validation.bookingNotLoaded',
+    });
     return issues;
   }
 
   if (!state.odometerKm || Number.isNaN(Number(state.odometerKm))) {
-    issues.push({ step: 'condition', field: 'odometerKm', message: 'Kilometerstand ist Pflicht' });
+    issues.push({
+      step: 'condition',
+      field: 'odometerKm',
+      messageKey: 'handover.operator.validation.odometerRequired',
+    });
   } else if (kind === 'RETURN' && booking.pickupOdometerKm != null) {
     if (Number(state.odometerKm) < booking.pickupOdometerKm) {
       issues.push({
         step: 'condition',
         field: 'odometerKm',
-        message: `Kilometerstand darf nicht unter Pickup (${booking.pickupOdometerKm} km) liegen`,
+        messageKey: 'handover.operator.validation.odometerBelowPickup',
+        messageParams: { pickupKm: booking.pickupOdometerKm },
       });
     }
   }
 
   if (state.fuelPercent < 0 || state.fuelPercent > 100) {
-    issues.push({ step: 'condition', field: 'fuelPercent', message: 'Tank/SoC muss zwischen 0 und 100 % liegen' });
+    issues.push({
+      step: 'condition',
+      field: 'fuelPercent',
+      messageKey: 'handover.operator.validation.fuelRange',
+    });
   }
 
   if (state.checks.warningLightsOn && !state.warningLightsNotes.trim()) {
     issues.push({
       step: 'condition',
       field: 'warningLightsNotes',
-      message: 'Bitte Warnleuchten beschreiben',
+      messageKey: 'handover.operator.validation.warningLightsDescription',
     });
   }
 
@@ -217,19 +235,23 @@ export function validateOperatorHandover(
     issues.push({
       step: 'documents',
       field: 'documentsAcknowledged',
-      message: 'Dokumentbestätigung ist Pflicht',
+      messageKey: 'handover.operator.validation.documentsAckRequired',
     });
   }
 
   if (!state.staffId && !state.staffName.trim()) {
-    issues.push({ step: 'signatures', field: 'staff', message: 'Mitarbeiter muss ausgewählt oder erfasst werden' });
+    issues.push({
+      step: 'signatures',
+      field: 'staff',
+      messageKey: 'handover.operator.validation.staffRequired',
+    });
   }
 
   if (!state.customerSigData) {
     issues.push({
       step: 'signatures',
       field: 'customerSignature',
-      message: 'Kundenunterschrift (zeichnen) ist Pflicht',
+      messageKey: 'handover.operator.validation.customerSignatureRequired',
     });
   }
 
@@ -237,7 +259,7 @@ export function validateOperatorHandover(
     issues.push({
       step: 'signatures',
       field: 'staffSignature',
-      message: 'Mitarbeiterunterschrift (zeichnen) ist Pflicht',
+      messageKey: 'handover.operator.validation.staffSignatureRequired',
     });
   }
 
