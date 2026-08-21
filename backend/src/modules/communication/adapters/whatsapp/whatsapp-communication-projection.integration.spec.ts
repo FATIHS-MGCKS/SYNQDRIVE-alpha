@@ -84,4 +84,29 @@ describe('WhatsAppCommunicationProjectionIntegration', () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it('swallows adapter normalization failures without rejecting', async () => {
+    const throwingAdapter = {
+      fromInbound: jest.fn(() => {
+        throw new Error('normalization failed with PII');
+      }),
+    } as unknown as MetaWhatsAppCommunicationAdapter;
+
+    const unsafeIntegration = new WhatsAppCommunicationProjectionIntegration(
+      featureFlags,
+      throwingAdapter,
+      projection,
+    );
+
+    featureFlags.isWhatsAppProjectionEnabled.mockReturnValue(true);
+
+    await expect(
+      unsafeIntegration.projectInbound({
+        conversation,
+        message: inboundMessage,
+        webhookExternalEventId: 'msg:wamid.1',
+      }),
+    ).resolves.toBeUndefined();
+    expect(projection.projectNormalizedInput).not.toHaveBeenCalled();
+  });
 });

@@ -432,17 +432,22 @@ export class WhatsAppService {
         where: { id: latestSuggestion.id },
         data: { sentMessageId: sent.id },
       });
-      const aiMessage = await this.prisma.whatsAppMessage.update({
-        where: { id: sent.id },
-        data: { aiGenerated: true, aiSuggested: true },
-      });
-      void this.communicationProjection.projectOutboundAccepted({
-        conversation: convo,
-        message: aiMessage,
-      });
     }
 
-    return sent;
+    const aiMessage = await this.prisma.whatsAppMessage.update({
+      where: { id: sent.id },
+      data: {
+        aiGenerated: true,
+        ...(latestSuggestion ? { aiSuggested: true } : {}),
+      },
+    });
+
+    void this.communicationProjection.projectOutboundAccepted({
+      conversation: convo,
+      message: aiMessage,
+    });
+
+    return this.mapMessage(aiMessage);
   }
 
   async requestHumanReview(orgId: string, conversationId: string, reason: string, userId?: string) {

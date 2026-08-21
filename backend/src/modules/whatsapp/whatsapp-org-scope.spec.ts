@@ -68,6 +68,7 @@ describe('WhatsApp org scoping', () => {
         {} as any,
         {} as any,
         {} as any,
+        { projectConversationResolved: jest.fn() } as any,
       );
 
       await expect(

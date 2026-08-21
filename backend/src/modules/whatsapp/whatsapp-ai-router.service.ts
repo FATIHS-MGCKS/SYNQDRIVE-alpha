@@ -150,13 +150,25 @@ export class WhatsAppAiRouterService {
       humanReason,
     });
 
-    await this.prisma.whatsAppConversation.update({
+    const updated = await this.prisma.whatsAppConversation.update({
       where: { id: conversationId },
       data: {
         lastDetectedIntent: intent,
         status: humanRequired ? WhatsAppConversationStatus.PENDING_HUMAN : convo.status,
       },
     });
+
+    if (
+      humanRequired &&
+      convo.status !== WhatsAppConversationStatus.PENDING_HUMAN &&
+      updated.status === WhatsAppConversationStatus.PENDING_HUMAN
+    ) {
+      void this.communicationProjection.projectHumanRequired({
+        conversation: updated,
+        occurredAt: new Date(),
+        handoffReasonCode: sanitizeHandoffReason(humanReason ?? intent),
+      });
+    }
 
     void this.audit.record({
       actorOrganizationId: orgId,

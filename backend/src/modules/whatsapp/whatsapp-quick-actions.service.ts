@@ -15,6 +15,7 @@ import { WhatsAppAiContextService } from './whatsapp-ai-context.service';
 import { WhatsAppBookingReminderService } from './whatsapp-booking-reminder.service';
 import { WhatsAppService } from './whatsapp.service';
 import type { WhatsAppQuickActionId } from './whatsapp-conversation-context.types';
+import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
 
 export type TaskCategoryFromConversation =
   | 'CUSTOMER_COMMUNICATION'
@@ -35,6 +36,7 @@ export class WhatsAppQuickActionsService {
     private readonly aiContext: WhatsAppAiContextService,
     private readonly aiTools: WhatsAppAiToolsService,
     private readonly audit: AuditService,
+    private readonly communicationProjection: WhatsAppCommunicationProjectionIntegration,
   ) {}
 
   async execute(
@@ -279,11 +281,22 @@ export class WhatsAppQuickActionsService {
     conversationId: string,
     status: WhatsAppConversationStatus,
   ) {
-    await this.requireConversation(orgId, conversationId);
+    const convo = await this.requireConversation(orgId, conversationId);
     const updated = await this.prisma.whatsAppConversation.update({
       where: { id: conversationId },
       data: { status },
     });
+
+    if (
+      status === WhatsAppConversationStatus.CLOSED &&
+      convo.status !== WhatsAppConversationStatus.CLOSED
+    ) {
+      void this.communicationProjection.projectConversationResolved({
+        conversation: updated,
+        occurredAt: new Date(),
+      });
+    }
+
     return { ok: true, conversationId: updated.id, status: updated.status };
   }
 

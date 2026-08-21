@@ -26,11 +26,13 @@ export class WhatsAppCommunicationProjectionIntegration {
   }
 
   async projectInbound(source: MetaWhatsAppInboundProjectionSource): Promise<void> {
-    if (!this.isEnabled(source.conversation.organizationId)) {
-      return;
-    }
     await this.projectSafely(
-      () => this.projection.projectNormalizedInput(this.adapter.fromInbound(source)),
+      async () => {
+        if (!this.isEnabled(source.conversation.organizationId)) {
+          return;
+        }
+        await this.projection.projectNormalizedInput(this.adapter.fromInbound(source));
+      },
       {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
@@ -42,14 +44,16 @@ export class WhatsAppCommunicationProjectionIntegration {
   }
 
   async projectOutboundAccepted(source: MetaWhatsAppOutboundProjectionSource): Promise<void> {
-    if (!this.isEnabled(source.conversation.organizationId)) {
-      return;
-    }
-    if (source.message.status !== WhatsAppMessageDeliveryStatus.SENT) {
-      return;
-    }
     await this.projectSafely(
-      () => this.projection.projectNormalizedInput(this.adapter.fromOutboundAccepted(source)),
+      async () => {
+        if (!this.isEnabled(source.conversation.organizationId)) {
+          return;
+        }
+        if (source.message.status !== WhatsAppMessageDeliveryStatus.SENT) {
+          return;
+        }
+        await this.projection.projectNormalizedInput(this.adapter.fromOutboundAccepted(source));
+      },
       {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
@@ -61,14 +65,16 @@ export class WhatsAppCommunicationProjectionIntegration {
   }
 
   async projectOutboundFailed(source: MetaWhatsAppOutboundProjectionSource): Promise<void> {
-    if (!this.isEnabled(source.conversation.organizationId)) {
-      return;
-    }
-    if (source.message.status !== WhatsAppMessageDeliveryStatus.FAILED) {
-      return;
-    }
     await this.projectSafely(
-      () => this.projection.projectNormalizedInput(this.adapter.fromOutboundFailed(source)),
+      async () => {
+        if (!this.isEnabled(source.conversation.organizationId)) {
+          return;
+        }
+        if (source.message.status !== WhatsAppMessageDeliveryStatus.FAILED) {
+          return;
+        }
+        await this.projection.projectNormalizedInput(this.adapter.fromOutboundFailed(source));
+      },
       {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
@@ -80,44 +86,74 @@ export class WhatsAppCommunicationProjectionIntegration {
   }
 
   async projectStatusUpdate(source: MetaWhatsAppStatusProjectionSource): Promise<void> {
-    if (!this.isEnabled(source.conversation.organizationId)) {
-      return;
-    }
-    const normalized =
+    const providerEventId =
       source.status === 'FAILED'
-        ? this.adapter.normalizeFailure(source)
-        : this.adapter.normalizeDeliveryUpdate(source);
+        ? `wa-failed:${source.message.id}`
+        : source.webhookExternalEventId;
 
     await this.projectSafely(
-      () => this.projection.projectNormalizedInput(normalized),
+      async () => {
+        if (!this.isEnabled(source.conversation.organizationId)) {
+          return;
+        }
+        const normalized =
+          source.status === 'FAILED'
+            ? this.adapter.normalizeFailure(source)
+            : this.adapter.normalizeDeliveryUpdate(source);
+        await this.projection.projectNormalizedInput(normalized);
+      },
       {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
         providerMessageId: source.message.providerMessageId,
-        providerEventId: source.webhookExternalEventId,
-        eventType: normalized.event.eventType,
+        providerEventId,
+        eventType: source.status === 'FAILED' ? 'MESSAGE_FAILED' : source.status,
       },
     );
   }
 
   async projectHumanRequired(source: MetaWhatsAppHumanRequiredProjectionSource): Promise<void> {
-    if (!this.isEnabled(source.conversation.organizationId)) {
-      return;
-    }
     await this.projectSafely(
-      () => this.projection.projectNormalizedInput(this.adapter.fromHumanRequired(source)),
+      async () => {
+        if (!this.isEnabled(source.conversation.organizationId)) {
+          return;
+        }
+        await this.projection.projectNormalizedInput(this.adapter.fromHumanRequired(source));
+      },
       {
         organizationId: source.conversation.organizationId,
         nativeConversationId: source.conversation.id,
         providerMessageId: null,
-        providerEventId: source.webhookExternalEventId ?? null,
+        providerEventId: source.webhookExternalEventId ?? `wa-human:${source.conversation.id}`,
         eventType: 'HUMAN_REQUIRED',
       },
     );
   }
 
+  async projectConversationResolved(
+    source: MetaWhatsAppHumanRequiredProjectionSource,
+  ): Promise<void> {
+    await this.projectSafely(
+      async () => {
+        if (!this.isEnabled(source.conversation.organizationId)) {
+          return;
+        }
+        await this.projection.projectNormalizedInput(
+          this.adapter.fromConversationResolved(source),
+        );
+      },
+      {
+        organizationId: source.conversation.organizationId,
+        nativeConversationId: source.conversation.id,
+        providerMessageId: null,
+        providerEventId: source.webhookExternalEventId ?? `wa-resolved:${source.conversation.id}`,
+        eventType: 'CONVERSATION_RESOLVED',
+      },
+    );
+  }
+
   private async projectSafely(
-    operation: () => Promise<unknown>,
+    operation: () => Promise<void>,
     context: {
       organizationId: string;
       nativeConversationId: string;
@@ -129,7 +165,7 @@ export class WhatsAppCommunicationProjectionIntegration {
     try {
       await operation();
     } catch (error) {
-      const code =
+      const errorCode =
         error instanceof CommunicationNormalizationError
           ? error.code
           : 'PROJECTION_FAILURE';
@@ -142,8 +178,7 @@ export class WhatsAppCommunicationProjectionIntegration {
           providerMessageId: context.providerMessageId ?? null,
           providerEventId: context.providerEventId ?? null,
           eventType: context.eventType,
-          errorCode: code,
-          errorMessage: error instanceof Error ? error.message : 'unknown',
+          errorCode,
         }),
       );
     }

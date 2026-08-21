@@ -56,16 +56,12 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
     const providerEventId = source.webhookExternalEventId?.trim() || `wa-msg:${message.id}`;
 
     const projection: NormalizedCommunicationInput['projection'] = {};
-    const canonicalStatus = mapWhatsAppConversationStatus(conversation.status);
-    if (canonicalStatus) {
-      projection.status = canonicalStatus;
-    }
     if (message.direction === 'incoming') {
       projection.unreadDelta = 1;
     }
 
     return {
-      envelope: this.buildEnvelope(conversation),
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: true }),
       event: {
         eventType: CommunicationEventType.MESSAGE_RECEIVED,
         occurredAt,
@@ -102,7 +98,7 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
     const providerEventId = providerMessageId ? `wa-sent:${message.id}` : `wa-sent:${message.id}`;
 
     return {
-      envelope: this.buildEnvelope(conversation),
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
       event: {
         eventType: CommunicationEventType.MESSAGE_SENT,
         occurredAt,
@@ -128,7 +124,10 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
 
     const eventType = mapLifecycleStatusToEventType(status);
     const providerMessageId = this.requireProviderMessageId(message);
-    const providerEventId = source.webhookExternalEventId.trim();
+    const providerEventId =
+      status === 'FAILED'
+        ? `wa-failed:${message.id}`
+        : source.webhookExternalEventId.trim();
 
     const metadata =
       status === 'FAILED' && source.failureReason
@@ -136,7 +135,7 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
         : undefined;
 
     return {
-      envelope: this.buildEnvelope(conversation),
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
       event: {
         eventType,
         occurredAt: source.occurredAt,
@@ -172,7 +171,7 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
     const providerEventId = `wa-failed:${message.id}`;
 
     return {
-      envelope: this.buildEnvelope(conversation),
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
       event: {
         eventType: CommunicationEventType.MESSAGE_FAILED,
         occurredAt,
@@ -198,10 +197,10 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
   fromHumanRequired(source: MetaWhatsAppHumanRequiredProjectionSource): NormalizedCommunicationInput {
     const { conversation } = source;
     const providerEventId =
-      source.webhookExternalEventId?.trim() || `wa-human:${conversation.id}:${source.occurredAt.getTime()}`;
+      source.webhookExternalEventId?.trim() || `wa-human:${conversation.id}`;
 
     return {
-      envelope: this.buildEnvelope(conversation),
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
       event: {
         eventType: CommunicationEventType.HUMAN_REQUIRED,
         occurredAt: source.occurredAt,
@@ -224,12 +223,45 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
     };
   }
 
-  private buildEnvelope(conversation: WhatsAppConversation): NormalizedCommunicationInput['envelope'] {
+  fromConversationResolved(
+    source: MetaWhatsAppHumanRequiredProjectionSource,
+  ): NormalizedCommunicationInput {
+    const { conversation } = source;
+    const providerEventId =
+      source.webhookExternalEventId?.trim() || `wa-resolved:${conversation.id}`;
+
+    return {
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
+      event: {
+        eventType: CommunicationEventType.CONVERSATION_RESOLVED,
+        occurredAt: source.occurredAt,
+        direction: CommunicationDirection.INTERNAL,
+        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
+        providerEventId,
+        idempotencyKey: this.buildIdempotencyKey({
+          organizationId: conversation.organizationId,
+          nativeConversationId: conversation.id,
+          eventType: CommunicationEventType.CONVERSATION_RESOLVED,
+          providerEventId,
+        }),
+      },
+      projection: {
+        status: CommunicationConversationStatus.RESOLVED,
+      },
+    };
+  }
+
+  private buildEnvelope(
+    conversation: WhatsAppConversation,
+    options: { includeInitialStatus: boolean },
+  ): NormalizedCommunicationInput['envelope'] {
     return {
       organizationId: conversation.organizationId,
       channel: CommunicationChannel.WHATSAPP,
       nativeConversationId: conversation.id,
-      initialStatus: mapWhatsAppConversationStatus(conversation.status),
+      initialStatus: options.includeInitialStatus
+        ? mapWhatsAppConversationStatus(conversation.status)
+        : undefined,
       initialContext: {
         customerId: conversation.customerId,
         bookingId: conversation.bookingId,

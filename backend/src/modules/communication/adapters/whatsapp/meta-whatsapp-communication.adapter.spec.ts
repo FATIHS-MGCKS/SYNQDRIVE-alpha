@@ -73,11 +73,13 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
 
     expect(result.envelope.channel).toBe(CommunicationChannel.WHATSAPP);
     expect(result.envelope.nativeConversationId).toBe('wa-convo-1');
+    expect(result.envelope.initialStatus).toBe(CommunicationConversationStatus.AI_ACTIVE);
     expect(result.event.eventType).toBe(CommunicationEventType.MESSAGE_RECEIVED);
     expect(result.event.direction).toBe(CommunicationDirection.INBOUND);
     expect(result.event.providerIdentity).toBe(CommunicationProviderIdentity.META_WHATSAPP);
     expect(result.event.actorType).toBe(CommunicationActorType.CUSTOMER);
     expect(result.projection?.unreadDelta).toBe(1);
+    expect(result.projection?.status).toBeUndefined();
   });
 
   it('maps inbound media message without body duplication', () => {
@@ -110,6 +112,8 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
     expect(result.event.eventType).toBe(CommunicationEventType.MESSAGE_SENT);
     expect(result.event.direction).toBe(CommunicationDirection.OUTBOUND);
     expect(result.event.actorType).toBe(CommunicationActorType.AI_AGENT);
+    expect(result.envelope.initialStatus).toBeUndefined();
+    expect(result.projection?.status).toBeUndefined();
   });
 
   it('maps outbound human reply to MESSAGE_SENT with USER actor', () => {
@@ -141,6 +145,8 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
 
     expect(result.event.eventType).toBe(CommunicationEventType.MESSAGE_DELIVERED);
     expect(result.projection?.unreadDelta).toBeUndefined();
+    expect(result.projection?.status).toBeUndefined();
+    expect(result.envelope.initialStatus).toBeUndefined();
   });
 
   it('maps read lifecycle to MESSAGE_READ', () => {
@@ -156,6 +162,8 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
     });
 
     expect(result.event.eventType).toBe(CommunicationEventType.MESSAGE_READ);
+    expect(result.projection?.status).toBeUndefined();
+    expect(result.envelope.initialStatus).toBeUndefined();
   });
 
   it('maps failed lifecycle to MESSAGE_FAILED with safe failure code', () => {
@@ -172,7 +180,9 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
     });
 
     expect(result.event.eventType).toBe(CommunicationEventType.MESSAGE_FAILED);
+    expect(result.event.providerEventId).toBe('wa-failed:wa-msg-1');
     expect(result.event.metadata).toEqual({ failureCode: '131047_RE_ENGAGEMENT_MESSAGE' });
+    expect(result.projection?.status).toBeUndefined();
     expect(JSON.stringify(result.event.metadata)).not.toContain('Re-engagement');
   });
 
@@ -281,5 +291,74 @@ describe('MetaWhatsAppCommunicationAdapter', () => {
       providerEventId: 'msg:wamid.inbound.1',
     });
     expect(result.event.idempotencyKey).toBe(expected);
+  });
+
+  it('initializes PENDING_HUMAN conversation as HUMAN_REQUIRED on first inbound only', () => {
+    const result = adapter.fromInbound({
+      conversation: conversation({ status: WhatsAppConversationStatus.PENDING_HUMAN }),
+      message: message(),
+      webhookExternalEventId: 'msg:wamid.pending.1',
+    });
+    expect(result.envelope.initialStatus).toBe(CommunicationConversationStatus.HUMAN_REQUIRED);
+    expect(result.projection?.status).toBeUndefined();
+  });
+
+  it('does not patch canonical status on later ordinary inbound while native is OPEN', () => {
+    const result = adapter.fromInbound({
+      conversation: conversation({ status: WhatsAppConversationStatus.OPEN }),
+      message: message({ id: 'wa-msg-2' }),
+      webhookExternalEventId: 'msg:wamid.inbound.2',
+    });
+    expect(result.envelope.initialStatus).toBe(CommunicationConversationStatus.AI_ACTIVE);
+    expect(result.projection?.status).toBeUndefined();
+  });
+
+  it('HUMAN_REQUIRED event explicitly patches canonical status', () => {
+    const result = adapter.fromHumanRequired({
+      conversation: conversation(),
+      occurredAt: new Date('2026-08-21T10:05:00Z'),
+      handoffReasonCode: 'ACCIDENT',
+    });
+    expect(result.event.eventType).toBe(CommunicationEventType.HUMAN_REQUIRED);
+    expect(result.projection?.status).toBe(CommunicationConversationStatus.HUMAN_REQUIRED);
+    expect(result.envelope.initialStatus).toBeUndefined();
+  });
+
+  it('CONVERSATION_RESOLVED event explicitly patches canonical status', () => {
+    const result = adapter.fromConversationResolved({
+      conversation: conversation({ status: WhatsAppConversationStatus.CLOSED }),
+      occurredAt: new Date('2026-08-21T10:06:00Z'),
+    });
+    expect(result.event.eventType).toBe(CommunicationEventType.CONVERSATION_RESOLVED);
+    expect(result.projection?.status).toBe(CommunicationConversationStatus.RESOLVED);
+    expect(result.envelope.initialStatus).toBeUndefined();
+  });
+
+  it('converges sync and webhook MESSAGE_FAILED idempotency for the same native message', () => {
+    const outboundFailed = adapter.fromOutboundFailed({
+      conversation: conversation(),
+      message: message({
+        direction: 'outgoing',
+        status: WhatsAppMessageDeliveryStatus.FAILED,
+        providerMessageId: 'wamid.shared.1',
+        failureReason: 'provider timeout',
+      }),
+    });
+    const webhookFailed = adapter.fromStatusUpdate({
+      conversation: conversation(),
+      message: message({
+        direction: 'outgoing',
+        status: WhatsAppMessageDeliveryStatus.FAILED,
+        providerMessageId: 'wamid.shared.1',
+      }),
+      status: 'FAILED',
+      webhookExternalEventId: 'status:wamid.shared.1:failed:3',
+      occurredAt: new Date('2026-08-21T10:03:00Z'),
+      failureReason: '131047: Re-engagement message',
+    });
+
+    expect(outboundFailed.event.providerEventId).toBe('wa-failed:wa-msg-1');
+    expect(webhookFailed.event.providerEventId).toBe('wa-failed:wa-msg-1');
+    expect(outboundFailed.event.idempotencyKey).toBe(webhookFailed.event.idempotencyKey);
   });
 });
