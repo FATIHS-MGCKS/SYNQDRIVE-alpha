@@ -8,6 +8,8 @@ import type { OperatorHandoverKind, OperatorTodayBookingItem } from '../lib/oper
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorStatusChip } from './OperatorStatusChip';
 import { pickupDueBadge, returnDueBadge } from '../lib/operatorStatus';
+import { resolveHandoverGateReason } from '../../rental/components/handover/handover-i18n';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface OperatorBookingCardProps {
   item: OperatorTodayBookingItem;
@@ -22,11 +24,13 @@ export function OperatorBookingCard({
   onReturnStart,
   onDetails,
 }: OperatorBookingCardProps) {
+  const { locale } = useLanguage();
   const kind: OperatorHandoverKind = item.kind;
   const primaryAction =
     kind === 'PICKUP'
       ? { label: 'Pickup starten', gate: item.pickupGate, onClick: onPickupStart }
       : { label: 'Return starten', gate: item.returnGate, onClick: onReturnStart };
+  const gateReason = resolveHandoverGateReason(locale, primaryAction.gate);
 
   const dueBadge = kind === 'PICKUP' ? pickupDueBadge() : returnDueBadge();
 
@@ -85,7 +89,7 @@ export function OperatorBookingCard({
           <button
             type="button"
             disabled={!primaryAction.gate.allowed}
-            title={primaryAction.gate.reason}
+            title={gateReason}
             onClick={primaryAction.onClick}
             className="sq-press min-h-[48px] flex-1 rounded-xl bg-[color:var(--brand)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -102,9 +106,9 @@ export function OperatorBookingCard({
           )}
         </div>
       )}
-      {!item.isDone && !primaryAction.gate.allowed && primaryAction.gate.reason && (
+      {!item.isDone && !primaryAction.gate.allowed && gateReason && (
         <p className="border-t border-border/30 px-4 py-2 text-[11px] leading-snug text-muted-foreground">
-          {primaryAction.gate.reason}
+          {gateReason}
         </p>
       )}
     </OperatorGlassCard>

@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Handover Protocol (P2.2.11 — V4.9.933)', icon: Globe,
+    endpoint: 'HandoverProtocolDialog, SignaturePad, BookingHandoverTab, bookingHandoverGates.ts reason keys, handover-i18n.ts.',
+    service: '**Helper:** `handover-i18n.ts` (`ho`, gate reason resolver, damage type/severity display maps, `HANDOVER_REPORTED_BY_FALLBACK`). **Keys:** +96 EN+DE (`handover.protocol.{en,de}.ts`; 7114→7210); reused `bookings.handover.*`, `common.cancel`, `common.add`. **Gates:** machine booleans unchanged; `reasonKey` + params (backend blocking reasons pass through untranslated). **Guardrails:** P2.2.11 enforce-clean exact (5 paths) — 0 findings; gates/tab blind-spot grep guards. **Shim:** unchanged (29). **Tests:** `rental-handover-localization.test.tsx` (12). **Semantics:** PICKUP/RETURN, signature data URLs, damage API enums, persisted reportedBy unchanged.',
+    dataSource: 'docs/audits/i18n-p2-2-11-preflight-2026-08-21.md; architecture/I18N_RENTAL_HANDOVER_P2_2_11_2026-08-21.md' },
   { name: 'Platform i18n Master Support Ops (P2.2.10 — V4.9.932)', icon: Globe,
     endpoint: 'SupportView (Master), master/components/support-ops/*, support-ops.utils.ts translation-key defs, SupportTechnicalContextCard (Phase B).',
     service: '**Helper:** `support-ops-i18n.ts` (`so`, status/priority/category/sender/relative-time/duration label helpers). **Keys:** +96 net EN+DE (`support.ops.{en,de}.ts`; 7018→7114); reused `support.status*`, `support.prio*`, `support.cat*`, `support.time.*`, `common.*`. **Decoupling:** removed Rental `support-i18n` import + `MASTER_SUPPORT_LOCALE`. **Guardrails:** P2.2.10 enforce-clean exact (6 paths) — 0 findings; utils + Phase B blind-spot grep guards. **Phase B:** `SupportTechnicalContextCard` localized. **Shim:** unchanged (29). **Tests:** `master-support-ops-localization.test.tsx` (21). **Semantics:** SupportQueueId, buildTicketListParams, status/priority/category machine enums unchanged.',

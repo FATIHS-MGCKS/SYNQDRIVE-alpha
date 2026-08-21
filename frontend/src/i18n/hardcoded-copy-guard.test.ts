@@ -189,6 +189,14 @@ const P210_ENFORCE_CLEAN_EXACT = [
   'components/support/SupportTechnicalContextCard.tsx',
 ];
 
+const P211_ENFORCE_CLEAN_EXACT = [
+  'rental/components/handover/HandoverProtocolDialog.tsx',
+  'rental/components/handover/SignaturePad.tsx',
+  'rental/components/booking-detail/BookingHandoverTab.tsx',
+  'rental/lib/bookingHandoverGates.ts',
+  'rental/components/handover/handover-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -207,6 +215,10 @@ function isP29EnforceCleanPath(relPath: string): boolean {
 
 function isP210EnforceCleanPath(relPath: string): boolean {
   return P210_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP211EnforceCleanPath(relPath: string): boolean {
+  return P211_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -232,7 +244,7 @@ function isP21EnforceCleanPath(relPath: string): boolean {
   return P21_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
 }
 
-describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 enforce-clean surfaces)', () => {
+describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + P2.2.5 + P2.2.6 + P2.2.7A + P2.2.7B + P2.2.8 + P2.2.9 + P2.2.10 + P2.2.11 enforce-clean surfaces)', () => {
   it('keeps enforce-clean surface findings at zero in inventory', () => {
     expect(inventory.summary.enforceCleanRemaining).toBe(0);
   });
@@ -320,6 +332,64 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP210EnforceCleanPath(finding.file),
     );
     expect(p210Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.11 enforce-clean findings to Rental Handover Protocol only', () => {
+    const p211Debt = inventory.findings.filter((finding) =>
+      isP211EnforceCleanPath(finding.file),
+    );
+    expect(p211Debt).toHaveLength(0);
+  });
+
+  it('keeps bookingHandoverGates.ts free of user-facing presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/bookingHandoverGates.ts'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /Pickup nur bei/,
+      /Pickup-Protokoll bereits/,
+      /Pickup nicht möglich:/,
+      /Kunde nicht mietberechtigt/,
+      /Return nicht möglich/,
+      /Return erst nach Pickup/,
+      /Rückgabe bereits erfasst/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('reasonKey');
+    expect(source).toContain('handover.gates.');
+  });
+
+  it('keeps BookingHandoverTab free of hardcoded row/action presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/booking-detail/BookingHandoverTab.tsx'),
+      'utf8',
+    );
+    const bannedPatterns = [
+      /label="Zeitpunkt"/,
+      /label="Mitarbeiter"/,
+      /'Protokoll anzeigen'/,
+      /'Pickup starten'/,
+      /'Vollständig'/,
+      /'Voll'/,
+    ];
+    for (const pattern of bannedPatterns) {
+      expect(source, pattern.toString()).not.toMatch(pattern);
+    }
+    expect(source).toContain('handover.tab.');
+    expect(source).toContain('resolveHandoverGateReason');
+  });
+
+  it('keeps handover-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/handover/handover-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain("HANDOVER_REPORTED_BY_FALLBACK = 'Handover'");
+    expect(source).toContain('TranslationKey');
+    expect(source).not.toMatch(/return\s+'Kratzer'/);
   });
 
   it('keeps whatsapp.ops.ts free of user-facing presentation literals', () => {

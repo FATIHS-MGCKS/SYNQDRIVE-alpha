@@ -7,6 +7,15 @@ import { useHandoverVehicleTelemetryPrefill } from '../../lib/useHandoverVehicle
 import type { DamageSeverity } from '../../lib/damage.types';
 import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
 import { SignaturePad } from './SignaturePad';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  HANDOVER_DAMAGE_SEVERITY_OPTIONS,
+  HANDOVER_DAMAGE_TYPE_OPTIONS,
+  HANDOVER_REPORTED_BY_FALLBACK,
+  handoverFormattingLocale,
+  labelHandoverDamageSeverity,
+  labelHandoverDamageType,
+} from './handover-i18n';
 
 // V4.6.75 — Pickup / Return Übergabeprotokoll dialog.
 //
@@ -66,18 +75,6 @@ type CheckField =
   | 'warningLightsOn'
   | 'documentsAcknowledged';
 
-const DAMAGE_TYPE_OPTIONS = [
-  'SCRATCH',
-  'DENT',
-  'CHIP',
-  'CRACK',
-  'TEAR',
-  'STAIN',
-  'MECHANICAL',
-  'OTHER',
-];
-const DAMAGE_SEVERITY_OPTIONS = ['MINOR', 'MODERATE', 'MAJOR', 'CRITICAL'];
-
 export function HandoverProtocolDialog({
   isOpen,
   onClose,
@@ -88,6 +85,8 @@ export function HandoverProtocolDialog({
   isDarkMode,
   onSuccess,
 }: HandoverProtocolDialogProps) {
+  const { t, locale, formattingLocale } = useLanguage();
+  const fmtLocale = formattingLocale ?? handoverFormattingLocale(locale);
   const [animating, setAnimating] = useState(false);
   const [loadingDamages, setLoadingDamages] = useState(false);
   const [damages, setDamages] = useState<DamageRow[]>([]);
@@ -271,9 +270,12 @@ export function HandoverProtocolDialog({
     };
   }, [isOpen, booking?.vehicleId, kind]);
 
-  const title = kind === 'PICKUP' ? 'Fahrzeugübergabe (Pickup)' : 'Rücknahme (Return)';
+  const title =
+    kind === 'PICKUP' ? t('handover.protocol.dialogPickupTitle') : t('handover.protocol.dialogReturnTitle');
   const primaryLabel =
-    kind === 'PICKUP' ? 'Pickup bestätigen & Buchung aktivieren' : 'Rückgabe bestätigen & abschließen';
+    kind === 'PICKUP'
+      ? t('handover.protocol.confirmPickupActivate')
+      : t('handover.protocol.confirmReturnComplete');
   const primaryColor = kind === 'PICKUP' ? 'blue' : 'emerald';
 
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
@@ -336,7 +338,7 @@ export function HandoverProtocolDialog({
         severity: newDamage.severity as DamageSeverity,
         description: newDamage.description || undefined,
         locationLabel: newDamage.locationLabel || undefined,
-        reportedBy: staffName || 'Handover',
+        reportedBy: staffName || HANDOVER_REPORTED_BY_FALLBACK,
         source: kind === 'PICKUP' ? 'PICKUP_HANDOVER' : 'RETURN_HANDOVER',
         bookingId: booking.id,
         customerId: booking.customerId ?? undefined,
@@ -358,7 +360,7 @@ export function HandoverProtocolDialog({
       });
       setNewDamageOpen(false);
     } catch (err: any) {
-      setSubmitError(err?.message ?? 'Schaden konnte nicht angelegt werden');
+      setSubmitError(err?.message ?? t('handover.protocol.errorCreateDamage'));
     } finally {
       setCreatingDamage(false);
     }
@@ -415,8 +417,8 @@ export function HandoverProtocolDialog({
       const msg =
         err?.data?.message ??
         err?.message ??
-        'Übergabe konnte nicht gespeichert werden';
-      setSubmitError(typeof msg === 'string' ? msg : 'Übergabe fehlgeschlagen');
+        t('handover.protocol.errorSaveFailed');
+      setSubmitError(typeof msg === 'string' ? msg : t('handover.protocol.errorFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -424,7 +426,7 @@ export function HandoverProtocolDialog({
 
   if (!isOpen || !booking) return null;
 
-  const fuelLabel = fuelFull ? 'Voll' : `${fuelPercent}%`;
+  const fuelLabel = fuelFull ? t('handover.protocol.fuelFull') : `${fuelPercent}%`;
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center" onClick={onClose}>
@@ -500,9 +502,7 @@ export function HandoverProtocolDialog({
             >
               <Icon name="alert-triangle" className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
-                Für diese Buchung liegen {misuseCaseCount} Prüffall
-                {misuseCaseCount === 1 ? '' : 'e'} vor. Bitte in der Buchungsdetailansicht
-                einsehen — keine automatische Sperre.
+                {t('handover.protocol.misuseCasesBanner', { count: misuseCaseCount })}
               </span>
             </div>
           )}
@@ -510,11 +510,11 @@ export function HandoverProtocolDialog({
           {/* Quick facts */}
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              <Fact icon={Car} label="Fahrzeug" value={booking.vehicleName} mutedCls={textMuted} primaryCls={textPrimary} />
-              <Fact icon={User} label="Kunde" value={booking.customerName} mutedCls={textMuted} primaryCls={textPrimary} />
+              <Fact icon={Car} label={t('handover.protocol.vehicle')} value={booking.vehicleName} mutedCls={textMuted} primaryCls={textPrimary} />
+              <Fact icon={User} label={t('handover.protocol.customer')} value={booking.customerName} mutedCls={textMuted} primaryCls={textPrimary} />
               <Fact
                 icon={MapPin}
-                label={kind === 'PICKUP' ? 'Abholstation' : 'Rückgabestation'}
+                label={kind === 'PICKUP' ? t('handover.protocol.pickupStation') : t('handover.protocol.returnStation')}
                 value={
                   kind === 'PICKUP'
                     ? booking.pickupLocation || '—'
@@ -525,8 +525,8 @@ export function HandoverProtocolDialog({
               />
               <Fact
                 icon={Wrench}
-                label={kind === 'PICKUP' ? 'Abholung' : 'Rückgabe'}
-                value={new Date(kind === 'PICKUP' ? booking.startDate : booking.endDate).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
+                label={kind === 'PICKUP' ? t('handover.protocol.pickupTime') : t('handover.protocol.returnTime')}
+                value={new Date(kind === 'PICKUP' ? booking.startDate : booking.endDate).toLocaleString(fmtLocale, { dateStyle: 'short', timeStyle: 'short' })}
                 mutedCls={textMuted}
                 primaryCls={textPrimary}
               />
@@ -541,14 +541,14 @@ export function HandoverProtocolDialog({
           {orgStations.length > 0 && (
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
               <label className={`text-xs font-semibold block mb-2 ${textPrimary}`}>
-                Tatsächliche Station
+                {t('handover.protocol.actualStation')}
               </label>
               <select
                 value={actualStationId}
                 onChange={(e) => setActualStationId(e.target.value)}
                 className={`w-full px-3 py-2 rounded-lg border text-xs outline-none ${borderColor} ${cardBg} ${textPrimary}`}
               >
-                <option value="">Geplante Station übernehmen</option>
+                <option value="">{t('handover.protocol.usePlannedStation')}</option>
                 {(kind === 'PICKUP' ? stationsForPickup(orgStations) : stationsForReturn(orgStations)).map(
                   (s) => (
                     <option key={s.id} value={s.id}>
@@ -562,7 +562,7 @@ export function HandoverProtocolDialog({
                 actualStationId &&
                 actualStationId !== booking.returnStationId && (
                   <p className={`text-xs mt-2 sq-tone-warning px-2 py-1.5 rounded-lg`}>
-                    Rückgabe an abweichender Station — optional Transfer prüfen.
+                    {t('bookings.handover.returnDeviation')}
                   </p>
                 )}
             </div>
@@ -580,10 +580,10 @@ export function HandoverProtocolDialog({
               <div className="flex items-center gap-2 mb-2">
                 <Icon name="clock" className={`w-4 h-4 ${isDarkMode ? 'text-sky-400' : 'text-sky-500'}`} />
                 <label className={`text-xs font-semibold ${textPrimary}`}>
-                  Tatsächlicher Pickup-Zeitpunkt
+                  {t('handover.protocol.actualPickupTime')}
                 </label>
                 <span className={`text-[10px] uppercase tracking-wider ${textTertiary}`}>
-                  optional
+                  {t('handover.protocol.optional')}
                 </span>
               </div>
               <input
@@ -594,8 +594,7 @@ export function HandoverProtocolDialog({
                 className={inputCls}
               />
               <p className={`text-[11px] mt-1.5 ${textMuted}`}>
-                Leer lassen = jetzt. Nur ausfüllen, wenn die Übergabe früher stattgefunden hat
-                (z. B. Kunde war verspätet und wurde nachgetragen). Max. 7 Tage rückwirkend.
+                {t('handover.protocol.performedAtHint')}
               </p>
               {performedAtLocal && (() => {
                 const d = new Date(performedAtLocal);
@@ -613,7 +612,7 @@ export function HandoverProtocolDialog({
                     }`}
                   >
                     <Icon name="alert-triangle" className="w-3 h-3" />
-                    {label} nach geplantem Pickup — wird als Rückdatierung erfasst.
+                    {t('handover.protocol.backdateWarning', { label })}
                   </div>
                 );
               })()}
@@ -625,7 +624,7 @@ export function HandoverProtocolDialog({
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
               <div className="flex items-center gap-2 mb-2">
                 <Icon name="gauge" className={`w-4 h-4 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />
-                <label className={`text-xs font-semibold ${textPrimary}`}>Kilometerstand *</label>
+                <label className={`text-xs font-semibold ${textPrimary}`}>{t('handover.protocol.odometer')} *</label>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -633,24 +632,28 @@ export function HandoverProtocolDialog({
                   inputMode="numeric"
                   value={odometerKm}
                   onChange={(e) => setOdometerKm(e.target.value)}
-                  placeholder="z.B. 48500"
+                  placeholder={t('handover.protocol.odometerPlaceholder')}
                   className={inputCls}
                 />
-                <span className={`text-xs font-semibold ${textMuted}`}>km</span>
+                <span className={`text-xs font-semibold ${textMuted}`}>{t('handover.protocol.kmUnit')}</span>
               </div>
               {kind === 'RETURN' && booking.pickupOdometerKm != null && (
                 <p className={`text-[11px] mt-1.5 ${textMuted}`}>
-                  Stand bei Pickup: {booking.pickupOdometerKm.toLocaleString('de-DE')} km
+                  {t('handover.protocol.pickupOdometerAt', {
+                    value: booking.pickupOdometerKm.toLocaleString(fmtLocale),
+                  })}
                   {odometerKm && Number(odometerKm) >= booking.pickupOdometerKm && (
                     <span className={`ml-1.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                      · {Math.max(0, Number(odometerKm) - booking.pickupOdometerKm).toLocaleString('de-DE')} km gefahren
+                      {t('handover.protocol.kmDriven', {
+                        value: Math.max(0, Number(odometerKm) - booking.pickupOdometerKm).toLocaleString(fmtLocale),
+                      })}
                     </span>
                   )}
                 </p>
               )}
               {telemetryPrefill.odometerFromTelemetry && (
                 <p className={`text-[11px] mt-1.5 ${textMuted}`}>
-                  Automatisch aus aktueller Fahrzeugtelemetrie übernommen.
+                  {t('handover.protocol.telemetryOdometerHint')}
                 </p>
               )}
             </div>
@@ -659,7 +662,7 @@ export function HandoverProtocolDialog({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Icon name="fuel" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
-                  <label className={`text-xs font-semibold ${textPrimary}`}>Tankstand / SoC *</label>
+                  <label className={`text-xs font-semibold ${textPrimary}`}>{t('handover.protocol.fuelSoc')} *</label>
                 </div>
                 <span className={`text-xs font-bold ${textPrimary}`}>{fuelLabel}</span>
               </div>
@@ -687,11 +690,11 @@ export function HandoverProtocolDialog({
                   }}
                   className="w-3.5 h-3.5 accent-amber-500"
                 />
-                <span className={`text-[11px] ${textMuted}`}>Tank voll / vollständig geladen</span>
+                <span className={`text-[11px] ${textMuted}`}>{t('handover.protocol.tankFullCheckbox')}</span>
               </label>
               {telemetryPrefill.fuelFromTelemetry && (
                 <p className={`text-[11px] mt-1.5 ${textMuted}`}>
-                  Tank / SoC aus aktueller Fahrzeugtelemetrie übernommen.
+                  {t('handover.protocol.telemetryFuelHint')}
                 </p>
               )}
             </div>
@@ -701,19 +704,19 @@ export function HandoverProtocolDialog({
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="flex items-center gap-2 mb-3">
               <Icon name="sparkles" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
-              <h3 className={`text-xs font-semibold ${textPrimary}`}>Fahrzeugkontrolle</h3>
+              <h3 className={`text-xs font-semibold ${textPrimary}`}>{t('handover.protocol.vehicleCheck')}</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              <CheckRow isDarkMode={isDarkMode} label="Außen sauber" checked={checks.exteriorClean} onToggle={() => toggleCheck('exteriorClean')} />
-              <CheckRow isDarkMode={isDarkMode} label="Innen sauber" checked={checks.interiorClean} onToggle={() => toggleCheck('interiorClean')} />
-              <CheckRow isDarkMode={isDarkMode} label="Bereifung jahreszeitgerecht" checked={checks.tiresSeasonOk} onToggle={() => toggleCheck('tiresSeasonOk')} />
-              <CheckRow isDarkMode={isDarkMode} label="Warnleuchten aktiv" checked={checks.warningLightsOn} onToggle={() => toggleCheck('warningLightsOn')} accent="red" />
+              <CheckRow isDarkMode={isDarkMode} label={t('handover.protocol.exteriorClean')} checked={checks.exteriorClean} onToggle={() => toggleCheck('exteriorClean')} />
+              <CheckRow isDarkMode={isDarkMode} label={t('handover.protocol.interiorClean')} checked={checks.interiorClean} onToggle={() => toggleCheck('interiorClean')} />
+              <CheckRow isDarkMode={isDarkMode} label={t('handover.protocol.tiresSeasonOk')} checked={checks.tiresSeasonOk} onToggle={() => toggleCheck('tiresSeasonOk')} />
+              <CheckRow isDarkMode={isDarkMode} label={t('handover.protocol.warningLightsOn')} checked={checks.warningLightsOn} onToggle={() => toggleCheck('warningLightsOn')} accent="red" />
             </div>
             {checks.warningLightsOn && (
               <textarea
                 value={warningLightsNotes}
                 onChange={(e) => setWarningLightsNotes(e.target.value)}
-                placeholder="Welche Warnleuchten / Fehlermeldungen?"
+                placeholder={t('handover.protocol.warningLightsPlaceholder')}
                 rows={2}
                 className={`mt-3 ${inputCls}`}
               />
@@ -725,9 +728,12 @@ export function HandoverProtocolDialog({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Icon name="shield-alert" className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
-                <h3 className={`text-xs font-semibold ${textPrimary}`}>Schäden</h3>
+                <h3 className={`text-xs font-semibold ${textPrimary}`}>{t('handover.protocol.damages')}</h3>
                 <span className={`text-[10px] ${textTertiary}`}>
-                  ({selectedDamageIds.size}/{damages.length} ausgewählt)
+                  {t('handover.protocol.damagesSelected', {
+                    selected: selectedDamageIds.size,
+                    total: damages.length,
+                  })}
                 </span>
               </div>
               <button
@@ -740,7 +746,7 @@ export function HandoverProtocolDialog({
                 }`}
               >
                 <Icon name="plus" className="w-3 h-3" />
-                Neuen Schaden erfassen
+                {t('handover.protocol.recordNewDamage')}
               </button>
             </div>
 
@@ -752,9 +758,9 @@ export function HandoverProtocolDialog({
                     onChange={(e) => setNewDamage((d) => ({ ...d, damageType: e.target.value }))}
                     className={inputCls}
                   >
-                    {DAMAGE_TYPE_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {HANDOVER_DAMAGE_TYPE_OPTIONS.map((damageType) => (
+                      <option key={damageType} value={damageType}>
+                        {labelHandoverDamageType(locale, damageType)}
                       </option>
                     ))}
                   </select>
@@ -763,22 +769,22 @@ export function HandoverProtocolDialog({
                     onChange={(e) => setNewDamage((d) => ({ ...d, severity: e.target.value }))}
                     className={inputCls}
                   >
-                    {DAMAGE_SEVERITY_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
+                    {HANDOVER_DAMAGE_SEVERITY_OPTIONS.map((severity) => (
+                      <option key={severity} value={severity}>
+                        {labelHandoverDamageSeverity(locale, severity)}
                       </option>
                     ))}
                   </select>
                   <input
                     type="text"
-                    placeholder="Position (z.B. Stoßstange vorne links)"
+                    placeholder={t('handover.protocol.damageLocationPlaceholder')}
                     value={newDamage.locationLabel}
                     onChange={(e) => setNewDamage((d) => ({ ...d, locationLabel: e.target.value }))}
                     className={inputCls}
                   />
                   <input
                     type="text"
-                    placeholder="Beschreibung"
+                    placeholder={t('handover.protocol.damageDescriptionPlaceholder')}
                     value={newDamage.description}
                     onChange={(e) => setNewDamage((d) => ({ ...d, description: e.target.value }))}
                     className={inputCls}
@@ -792,7 +798,7 @@ export function HandoverProtocolDialog({
                       isDarkMode ? 'text-muted-foreground hover:bg-muted' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    Abbrechen
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="button"
@@ -805,7 +811,7 @@ export function HandoverProtocolDialog({
                     }`}
                   >
                     {creatingDamage ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="plus" className="w-3 h-3" />}
-                    Anlegen
+                    {t('common.add')}
                   </button>
                 </div>
               </div>
@@ -813,12 +819,16 @@ export function HandoverProtocolDialog({
 
             {loadingDamages ? (
               <div className={`flex items-center gap-2 text-xs ${textMuted}`}>
-                <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Schäden werden geladen…
+                <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> {t('handover.protocol.loadingDamages')}
               </div>
             ) : damages.length === 0 ? (
               <p className={`text-[11px] ${textMuted}`}>
-                Keine Schäden dokumentiert. Falls beim {kind === 'PICKUP' ? 'Pickup' : 'Return'} etwas auffällt, bitte
-                oben „Neuen Schaden erfassen" nutzen.
+                {t('handover.protocol.noDamagesHint', {
+                  phase:
+                    kind === 'PICKUP'
+                      ? t('handover.protocol.phasePickup')
+                      : t('handover.protocol.phaseReturn'),
+                })}
               </p>
             ) : (
               <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
@@ -845,7 +855,9 @@ export function HandoverProtocolDialog({
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-xs font-semibold ${textPrimary}`}>{d.damageType}</span>
+                          <span className={`text-xs font-semibold ${textPrimary}`}>
+                            {labelHandoverDamageType(locale, d.damageType)}
+                          </span>
                           <span
                             className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                               d.severity === 'MINOR'
@@ -861,7 +873,7 @@ export function HandoverProtocolDialog({
                                 : 'bg-red-100 text-red-700'
                             }`}
                           >
-                            {d.severity}
+                            {labelHandoverDamageSeverity(locale, d.severity)}
                           </span>
                           {d.locationLabel && (
                             <span className={`text-[10px] ${textMuted}`}>· {d.locationLabel}</span>
@@ -882,7 +894,7 @@ export function HandoverProtocolDialog({
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="flex items-center gap-2 mb-3">
               <Icon name="user" className={`w-4 h-4 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />
-              <h3 className={`text-xs font-semibold ${textPrimary}`}>Übergabe durch *</h3>
+              <h3 className={`text-xs font-semibold ${textPrimary}`}>{t('handover.protocol.handoverBy')} *</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {staffOptions.length > 0 ? (
@@ -896,7 +908,7 @@ export function HandoverProtocolDialog({
                   }}
                   className={inputCls}
                 >
-                  <option value="">— Mitarbeiter wählen —</option>
+                  <option value="">{t('handover.protocol.selectStaff')}</option>
                   {staffOptions.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -908,7 +920,7 @@ export function HandoverProtocolDialog({
                   type="text"
                   value={staffName}
                   onChange={(e) => setStaffName(e.target.value)}
-                  placeholder="Name"
+                  placeholder={t('handover.protocol.staffNamePlaceholder')}
                   className={inputCls}
                 />
               )}
@@ -917,7 +929,7 @@ export function HandoverProtocolDialog({
                   type="text"
                   value={staffName}
                   onChange={(e) => setStaffName(e.target.value)}
-                  placeholder="oder Name frei eingeben"
+                  placeholder={t('handover.protocol.orEnterName')}
                   className={inputCls}
                 />
               )}
@@ -926,12 +938,12 @@ export function HandoverProtocolDialog({
 
           {/* Notes */}
           <div>
-            <label className={`text-xs font-semibold ${textPrimary}`}>Notizen</label>
+            <label className={`text-xs font-semibold ${textPrimary}`}>{t('handover.protocol.notes')}</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Zusätzliche Bemerkungen zur Übergabe"
+              placeholder={t('handover.protocol.notesPlaceholder')}
               className={`mt-1.5 ${inputCls}`}
             />
           </div>
@@ -940,7 +952,7 @@ export function HandoverProtocolDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SignaturePad
               isDarkMode={isDarkMode}
-              label="Unterschrift Kunde"
+              label={t('handover.signature.customerLabel')}
               typedName={customerSigName}
               onTypedNameChange={setCustomerSigName}
               dataUrl={customerSigData}
@@ -949,7 +961,7 @@ export function HandoverProtocolDialog({
             />
             <SignaturePad
               isDarkMode={isDarkMode}
-              label="Unterschrift Mitarbeiter"
+              label={t('handover.signature.staffLabel')}
               typedName={staffSigName}
               onTypedNameChange={setStaffSigName}
               dataUrl={staffSigData}
@@ -967,8 +979,7 @@ export function HandoverProtocolDialog({
               className="mt-0.5 accent-blue-500"
             />
             <span className={`text-[11px] ${textMuted}`}>
-              Hiermit wird bestätigt, dass Mietvertrag, Fahrzeugschein und alle Übergabedokumente mit dem Kunden
-              durchgesprochen wurden und die Angaben zum Fahrzeugzustand, Kilometerstand und Tankstand korrekt sind. *
+              {t('handover.protocol.documentsAck')}
             </span>
           </label>
 
@@ -989,7 +1000,7 @@ export function HandoverProtocolDialog({
         {/* Footer */}
         <div className={`flex-shrink-0 px-6 py-4 border-t ${borderColor} flex items-center justify-between gap-3`}>
           <div className={`text-[11px] ${textTertiary}`}>
-            {kind === 'PICKUP' ? 'CONFIRMED → ACTIVE' : 'ACTIVE → COMPLETED'}
+            {kind === 'PICKUP' ? t('handover.protocol.statusPickup') : t('handover.protocol.statusReturn')}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1002,7 +1013,7 @@ export function HandoverProtocolDialog({
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
             <button
               type="button"

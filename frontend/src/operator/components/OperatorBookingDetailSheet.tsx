@@ -3,6 +3,8 @@ import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { api, type BookingDetailDto } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
+import { resolveHandoverGateReason } from '../../rental/components/handover/handover-i18n';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { getBookingActionMatrix } from '../../rental/components/booking-detail/bookingActionRules';
 import {
   bookingStatusLabel,
@@ -28,6 +30,7 @@ export function OperatorBookingDetailSheet({
   onReturnStart,
 }: OperatorBookingDetailSheetProps) {
   const { orgId } = useRentalOrg();
+  const { locale } = useLanguage();
   const { openSheet, triggerRefresh } = useOperatorShell();
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,6 +70,8 @@ export function OperatorBookingDetailSheet({
     ? normalizeBookingStatus(detail.core.statusEnum, detail.core.status)
     : item.status;
   const noShowGate = detail ? canOperatorMarkNoShow(detail) : { allowed: false };
+  const pickupGateReason = resolveHandoverGateReason(locale, pickupGate);
+  const returnGateReason = resolveHandoverGateReason(locale, returnGate);
 
   const openBookingAction = (
     type: 'booking-edit' | 'booking-cancel' | 'booking-no-show',
@@ -241,7 +246,7 @@ export function OperatorBookingDetailSheet({
           <button
             type="button"
             disabled={!pickupGate.allowed}
-            title={pickupGate.reason}
+            title={pickupGateReason}
             onClick={() => {
               onClose();
               onPickupStart(item);
@@ -253,7 +258,7 @@ export function OperatorBookingDetailSheet({
           <button
             type="button"
             disabled={!returnGate.allowed}
-            title={returnGate.reason}
+            title={returnGateReason}
             onClick={() => {
               onClose();
               onReturnStart(item);

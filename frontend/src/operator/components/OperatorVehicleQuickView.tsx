@@ -14,6 +14,8 @@ import { PriorityBadge, SkeletonRows, StatusChip } from '../../components/patter
 import { formatDamageType } from '../../rental/lib/damage.types';
 import { resolveFleetVehicleDisplayState } from '../../rental/lib/fleetVehicleDisplay';
 import { VehicleOperationalStatusCallout } from '../../rental/components/fleet/VehicleOperationalStatusCallout';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { resolveHandoverGateReason } from '../../rental/components/handover/handover-i18n';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
@@ -61,6 +63,7 @@ function SectionCard({
 }
 
 export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicleQuickViewProps) {
+  const { locale } = useLanguage();
   const { openSheet } = useOperatorShell();
   const { openHandover } = useOperatorHandover();
   const { openDamageCapture } = useOperatorDamageCapture();
@@ -205,8 +208,11 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
               <span className="block text-sm font-semibold">Pickup starten</span>
               <span className="block truncate text-[11px] text-muted-foreground">
                 {pickupItem.customerName}
-                {!data.pickupAction?.gate.allowed && data.pickupAction?.gate.reason
-                  ? ` · ${data.pickupAction.gate.reason}`
+                {!data.pickupAction?.gate.allowed && data.pickupAction?.gate
+                  ? (() => {
+                      const reason = resolveHandoverGateReason(locale, data.pickupAction!.gate);
+                      return reason ? ` · ${reason}` : '';
+                    })()
                   : ''}
               </span>
             </span>
@@ -224,8 +230,11 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
               <span className="block text-sm font-semibold">Return starten</span>
               <span className="block truncate text-[11px] text-muted-foreground">
                 {returnItem.customerName}
-                {!data.returnAction?.gate.allowed && data.returnAction?.gate.reason
-                  ? ` · ${data.returnAction.gate.reason}`
+                {!data.returnAction?.gate.allowed && data.returnAction?.gate
+                  ? (() => {
+                      const reason = resolveHandoverGateReason(locale, data.returnAction!.gate);
+                      return reason ? ` · ${reason}` : '';
+                    })()
                   : ''}
               </span>
             </span>
