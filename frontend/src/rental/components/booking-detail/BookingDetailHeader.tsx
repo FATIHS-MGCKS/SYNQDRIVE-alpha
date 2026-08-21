@@ -14,6 +14,7 @@ import {
   formatDateRange,
   handoverShortStatus,
 } from './bookingDetailUtils';
+import { resolveHandoverGateReason } from '../handover/handover-i18n';
 
 interface BookingDetailHeaderProps {
   detail: BookingDetailDto;
@@ -38,14 +39,14 @@ export function BookingDetailHeader({
   onNoShow,
   sticky = true,
 }: BookingDetailHeaderProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const uiStatus = normalizeBookingStatus(detail.core.statusEnum, detail.core.status);
   const primaryDisabled = primary.key === 'none';
   const primaryReason =
     primary.key === 'pickup'
-      ? matrix.pickup.reason
+      ? resolveHandoverGateReason(locale, matrix.pickup)
       : primary.key === 'return'
-        ? matrix.return.reason
+        ? resolveHandoverGateReason(locale, matrix.return)
         : primary.key === 'no_show'
           ? matrix.no_show.reason
           : primary.key === 'edit'

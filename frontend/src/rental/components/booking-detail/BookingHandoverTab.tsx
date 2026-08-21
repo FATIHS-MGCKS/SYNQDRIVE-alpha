@@ -6,6 +6,7 @@ import { BookingStationPanel } from './BookingStationPanel';
 import { bd } from './booking-detail-ui';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { bookingsFormattingLocaleOrDefault } from '../bookings-customers/bookings-i18n';
+import { resolveHandoverGateReason } from '../handover/handover-i18n';
 
 interface BookingHandoverTabProps {
   detail: BookingDetailDto;
@@ -23,6 +24,7 @@ function HandoverSide({
   onAction,
   noProtocolLabel,
   formattingLocale,
+  rowLabels,
 }: {
   title: string;
   side: BookingDetailDto['handover']['pickup'];
@@ -32,6 +34,17 @@ function HandoverSide({
   onAction: () => void;
   noProtocolLabel: string;
   formattingLocale: string;
+  rowLabels: {
+    timestamp: string;
+    staff: string;
+    odometer: string;
+    fuelSoc: string;
+    fuelFull: string;
+    damages: string;
+    signature: string;
+    signatureComplete: string;
+    signatureIncomplete: string;
+  };
 }) {
   const disabledTitle = !actionAllowed ? actionReason : undefined;
 
@@ -55,15 +68,21 @@ function HandoverSide({
         <p className="text-xs text-muted-foreground">{noProtocolLabel}</p>
       ) : (
         <dl className="space-y-2 text-xs">
-          <Row label="Zeitpunkt" value={formatDateTime(side.completedAt)} />
-          <Row label="Mitarbeiter" value={side.performedByName ?? EM_DASH} />
-          <Row label="Kilometerstand" value={`${side.odometerKm.toLocaleString(formattingLocale)} km`} />
+          <Row label={rowLabels.timestamp} value={formatDateTime(side.completedAt)} />
+          <Row label={rowLabels.staff} value={side.performedByName ?? EM_DASH} />
           <Row
-            label="Kraftstoff/SoC"
-            value={side.fuelFull ? 'Voll' : `${side.fuelPercent} %`}
+            label={rowLabels.odometer}
+            value={`${side.odometerKm.toLocaleString(formattingLocale)} km`}
           />
-          <Row label="Schäden" value={String(side.damageCount)} />
-          <Row label="Signatur" value={side.signatureComplete ? 'Vollständig' : 'Unvollständig'} />
+          <Row
+            label={rowLabels.fuelSoc}
+            value={side.fuelFull ? rowLabels.fuelFull : `${side.fuelPercent} %`}
+          />
+          <Row label={rowLabels.damages} value={String(side.damageCount)} />
+          <Row
+            label={rowLabels.signature}
+            value={side.signatureComplete ? rowLabels.signatureComplete : rowLabels.signatureIncomplete}
+          />
         </dl>
       )}
     </div>
@@ -73,6 +92,20 @@ function HandoverSide({
 export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: BookingHandoverTabProps) {
   const { t, locale, formattingLocale } = useLanguage();
   const fmtLocale = formattingLocale ?? bookingsFormattingLocaleOrDefault(locale);
+  const pickupReason = resolveHandoverGateReason(locale, matrix.pickup);
+  const returnReason = resolveHandoverGateReason(locale, matrix.return);
+
+  const rowLabels = {
+    timestamp: t('handover.tab.timestamp'),
+    staff: t('handover.tab.staff'),
+    odometer: t('handover.tab.odometer'),
+    fuelSoc: t('handover.tab.fuelSoc'),
+    fuelFull: t('handover.tab.fuelFull'),
+    damages: t('handover.tab.damages'),
+    signature: t('handover.tab.signature'),
+    signatureComplete: t('handover.tab.signatureComplete'),
+    signatureIncomplete: t('handover.tab.signatureIncomplete'),
+  };
 
   return (
     <div className="space-y-4">
@@ -88,27 +121,33 @@ export function BookingHandoverTab({ detail, matrix, onPickup, onReturn }: Booki
       <HandoverSide
         title={t('bookings.handover.pickupTitle')}
         side={detail.handover.pickup}
-        actionLabel={detail.handover.pickup ? 'Protokoll anzeigen' : 'Pickup starten'}
+        actionLabel={
+          detail.handover.pickup ? t('handover.tab.viewProtocol') : t('handover.tab.startPickup')
+        }
         actionAllowed={detail.handover.pickup ? true : matrix.pickup.allowed}
-        actionReason={matrix.pickup.reason}
+        actionReason={pickupReason}
         onAction={onPickup}
         noProtocolLabel={t('bookings.handover.noProtocol')}
         formattingLocale={fmtLocale}
+        rowLabels={rowLabels}
       />
       <HandoverSide
         title={t('bookings.handover.returnTitle')}
         side={detail.handover.return}
-        actionLabel={detail.handover.return ? 'Protokoll anzeigen' : 'Return starten'}
+        actionLabel={
+          detail.handover.return ? t('handover.tab.viewProtocol') : t('handover.tab.startReturn')
+        }
         actionAllowed={detail.handover.return ? true : matrix.return.allowed}
-        actionReason={matrix.return.reason}
+        actionReason={returnReason}
         onAction={onReturn}
         noProtocolLabel={t('bookings.handover.noProtocol')}
         formattingLocale={fmtLocale}
+        rowLabels={rowLabels}
       />
-      {!detail.handover.pickup && !matrix.pickup.allowed && matrix.pickup.reason && (
+      {!detail.handover.pickup && !matrix.pickup.allowed && pickupReason && (
         <div className="lg:col-span-2 flex items-start gap-2 text-xs text-muted-foreground px-1">
           <Icon name="info" className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>{matrix.pickup.reason}</span>
+          <span>{pickupReason}</span>
         </div>
       )}
       </div>
