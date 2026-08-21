@@ -44,4 +44,24 @@ export class CommunicationProjectionFeatureService {
 
     return allowlist.includes(organizationId);
   }
+
+  isSmsProjectionEnabled(organizationId: string): boolean {
+    const enabled = this.configService.get<boolean>(
+      'communicationProjection.smsEnabled',
+      false,
+    );
+    if (!enabled) {
+      return false;
+    }
+
+    const allowlist = this.configService.get<string[]>(
+      'communicationProjection.orgAllowlist',
+      [],
+    );
+    if (allowlist.length === 0) {
+      return true;
+    }
+
+    return allowlist.includes(organizationId);
+  }
 }

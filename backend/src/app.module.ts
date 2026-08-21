@@ -63,6 +63,7 @@ import { VoiceBillingModule } from '@modules/voice-billing/voice-billing.module'
 import { VoiceProtectionModule } from '@modules/voice-protection/voice-protection.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
+import { SmsModule } from '@modules/sms/sms.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
 import { EvaluationsMetricsModule } from '@modules/evaluations-metrics/evaluations-metric.module';
 import { EvaluationsAnalyticsModule } from '@modules/evaluations-analytics/evaluations-analytics.module';
@@ -259,6 +260,7 @@ export class AppModule {
         VoiceBillingModule,
         VoiceProtectionModule,
         WhatsAppModule,
+        SmsModule,
         BusinessInsightsModule,
         EvaluationsMetricsModule,
         EvaluationsAnalyticsModule,

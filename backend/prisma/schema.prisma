@@ -1626,6 +1626,10 @@ model Organization {
   whatsappConversations                  WhatsAppConversation[]
   whatsappMessages                       WhatsAppMessage[]
   whatsappWebhookEvents                  WhatsAppWebhookEvent[]
+  smsConfig                              OrgSmsConfig?
+  smsConversations                       SmsConversation[]
+  smsMessages                            SmsMessage[]
+  smsWebhookEvents                       SmsWebhookEvent[]
   whatsappConsents                       WhatsAppConsent[]
   whatsappTemplates                      WhatsAppTemplate[]
   whatsappAiSuggestions                  WhatsAppAiSuggestion[]
@@ -2982,6 +2986,7 @@ model Vehicle {
   brakeRentalHealthReviewOverrides       BrakeRentalHealthReviewOverride[]
   tireHealthAlerts                       TireHealthAlert[]
   whatsappConversations                  WhatsAppConversation[]
+  smsConversations                       SmsConversation[]
   communicationConversations             CommunicationConversation[]
   communicationEvents                    CommunicationEvent[]
   billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
@@ -5258,6 +5263,7 @@ model Customer {
 
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
+  smsConversations      SmsConversation[]
   whatsappConsents      WhatsAppConsent[]
   communicationConversations CommunicationConversation[]
   communicationEvents        CommunicationEvent[]
@@ -5726,6 +5732,7 @@ model Booking {
   pricingQuote            PricingQuote?               @relation("PricingQuoteConsumedBooking")
   vehicleDamages          VehicleDamage[]
   whatsappConversations   WhatsAppConversation[]
+  smsConversations        SmsConversation[]
   communicationConversations CommunicationConversation[]
   communicationEvents        CommunicationEvent[]
   outboundEmails          OutboundEmail[]
@@ -11492,6 +11499,120 @@ model WhatsAppWebhookEvent {
   @@index([organizationId, createdAt])
   @@index([phoneNumberId])
   @@map("whatsapp_webhook_events")
+}
+
+enum SmsConversationStatus {
+  OPEN
+  CLOSED
+}
+
+enum SmsMessageDeliveryStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  BLOCKED
+}
+
+model OrgSmsConfig {
+  id                         String   @id @default(uuid())
+  organizationId             String   @unique @map("organization_id")
+  isConnected                Boolean  @default(false) @map("is_connected")
+  isActive                   Boolean  @default(false) @map("is_active")
+  apiKeyConfigured           Boolean  @default(false) @map("api_key_configured")
+  webhookSigningSecretConfigured Boolean @default(false) @map("webhook_signing_secret_configured")
+  /// sent.dm webhook endpoint UUID (X-Webhook-ID) for tenant routing when message lookup is unavailable.
+  webhookEndpointId          String?  @map("webhook_endpoint_id")
+  senderProfileId            String?  @map("sender_profile_id")
+  lastWebhookAt              DateTime? @map("last_webhook_at")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([webhookEndpointId])
+  @@map("org_sms_configs")
+}
+
+model SmsConversation {
+  id                     String                @id @default(uuid())
+  organizationId         String                @map("organization_id")
+  contactPhone           String                @map("contact_phone")
+  contactPhoneNormalized String                @map("contact_phone_normalized")
+  contactName            String?               @map("contact_name")
+  customerId             String?               @map("customer_id")
+  bookingId              String?               @map("booking_id")
+  vehicleId              String?               @map("vehicle_id")
+  lastMessageAt          DateTime?             @map("last_message_at")
+  lastMessagePreview     String?               @map("last_message_preview")
+  lastCustomerMessageAt  DateTime?             @map("last_customer_message_at")
+  unreadCount            Int                   @default(0) @map("unread_count")
+  status                 SmsConversationStatus @default(OPEN)
+  createdAt              DateTime              @default(now()) @map("created_at")
+  updatedAt              DateTime              @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  booking      Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  messages     SmsMessage[]
+
+  @@unique([organizationId, contactPhoneNormalized])
+  @@index([organizationId])
+  @@index([organizationId, customerId])
+  @@index([organizationId, bookingId])
+  @@index([lastMessageAt])
+  @@map("sms_conversations")
+}
+
+model SmsMessage {
+  id                  String                   @id @default(uuid())
+  organizationId      String                   @map("organization_id")
+  conversationId      String                   @map("conversation_id")
+  direction           String
+  senderType          String                   @map("sender_type")
+  content             String
+  providerMessageId   String?                  @unique @map("provider_message_id")
+  /// Stable SynqDrive operation identity for pre-provider idempotency (unique per org).
+  businessOperationId String                   @map("business_operation_id")
+  providerStatus      String?                  @map("provider_status")
+  status              SmsMessageDeliveryStatus @default(PENDING)
+  failureCode         String?                  @map("failure_code")
+  failureReason       String?                  @map("failure_reason")
+  acceptedAt          DateTime?                @map("accepted_at")
+  deliveredAt         DateTime?                @map("delivered_at")
+  failedAt            DateTime?                @map("failed_at")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, businessOperationId], name: "sms_messages_org_business_operation")
+  @@index([conversationId, createdAt])
+  @@index([organizationId])
+  @@index([providerMessageId])
+  @@map("sms_messages")
+}
+
+model SmsWebhookEvent {
+  id              String    @id @default(uuid())
+  organizationId  String?   @map("organization_id")
+  webhookEndpointId String? @map("webhook_endpoint_id")
+  externalEventId String    @map("external_event_id")
+  eventType       String?   @map("event_type")
+  signatureValid  Boolean?  @map("signature_valid")
+  processedAt     DateTime? @map("processed_at")
+  processingError String?   @map("processing_error")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([externalEventId])
+  @@index([organizationId, createdAt])
+  @@index([webhookEndpointId])
+  @@map("sms_webhook_events")
 }
 
 model WhatsAppConsent {
