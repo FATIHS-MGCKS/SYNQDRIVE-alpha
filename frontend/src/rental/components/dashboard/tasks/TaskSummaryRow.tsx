@@ -71,67 +71,65 @@ export const TaskSummaryRow = memo(function TaskSummaryRow({
   const assigneeName = resolveAssigneeName(task, t);
 
   return (
-    <div className="flex w-full items-start gap-2 text-left">
-      <div className="relative mt-0.5 shrink-0" aria-hidden>
-        <div className={cn(NOTIFICATION_PANEL_TYPO.iconWrap, 'bg-muted/50 text-muted-foreground')}>
-          <ListTodo className={NOTIFICATION_PANEL_TYPO.icon} />
-        </div>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-1.5">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-            <span
-              className={cn(
-                NOTIFICATION_PANEL_TYPO.metaBadge,
-                'shrink-0 uppercase',
-                priorityBadgeClassName(priorityTone),
-              )}
-            >
-              {t(taskPreviewPriorityLabelKey(priority))}
-            </span>
-            <span className={cn(NOTIFICATION_PANEL_TYPO.eyebrow, 'min-w-0 truncate')}>
-              {t(domainKey)}
-            </span>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-0.5">
-            <span
-              className={cn(
-                NOTIFICATION_PANEL_TYPO.lastSeen,
-                'max-w-[5.5rem] truncate text-right tabular-nums sm:max-w-none',
-                dueToneClassName(dueTone),
-              )}
-            >
-              {formatTaskDueLabel(task, t, locale)}
-            </span>
-            <button
-              type="button"
-              className={cn(
-                'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] motion-reduce:transition-none',
-                expanded && 'rotate-180',
-              )}
-              aria-expanded={expanded}
-              aria-controls={controlsId}
-              aria-label={expanded ? t('notification.collapseDetails') : t('notification.expandDetails')}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggle();
-              }}
-            >
-              <Icon name="chevron-down" className="h-4 w-4" />
-            </button>
+    <div className="w-full text-left">
+      <div className="flex w-full items-center gap-2">
+        <div className="relative shrink-0 self-center" aria-hidden>
+          <div className={cn(NOTIFICATION_PANEL_TYPO.iconWrap, 'bg-muted/50 text-muted-foreground')}>
+            <ListTodo className={NOTIFICATION_PANEL_TYPO.icon} />
           </div>
         </div>
 
-        <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'mt-0.5 text-pretty')}>
-          {task.title?.trim() || '—'}
-        </p>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span
+            className={cn(
+              NOTIFICATION_PANEL_TYPO.metaBadge,
+              'max-w-[46%] shrink-0 whitespace-nowrap sm:max-w-none',
+              priorityBadgeClassName(priorityTone),
+            )}
+          >
+            {t(taskPreviewPriorityLabelKey(priority))}
+          </span>
+          <span className={cn(NOTIFICATION_PANEL_TYPO.eyebrow, 'min-w-0 truncate')}>
+            {t(domainKey)}
+          </span>
+        </div>
 
-        <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-1 text-muted-foreground')}>
-          {t('dashboardTasksOverview.assignedTo', { name: assigneeName })}
-        </p>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <span
+            className={cn(
+              NOTIFICATION_PANEL_TYPO.lastSeen,
+              'whitespace-nowrap text-right tabular-nums',
+              dueToneClassName(dueTone),
+            )}
+          >
+            {formatTaskDueLabel(task, t, locale)}
+          </span>
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-transform hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] motion-reduce:transition-none',
+              expanded && 'rotate-180',
+            )}
+            aria-expanded={expanded}
+            aria-controls={controlsId}
+            aria-label={expanded ? t('notification.collapseDetails') : t('notification.expandDetails')}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggle();
+            }}
+          >
+            <Icon name="chevron-down" className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
+      <p className={cn(NOTIFICATION_PANEL_TYPO.cardTitle, 'mt-1 text-pretty pl-10')}>
+        {task.title?.trim() || '—'}
+      </p>
+
+      <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mt-1 pl-10 text-muted-foreground')}>
+        {t('dashboardTasksOverview.assignedTo', { name: assigneeName })}
+      </p>
     </div>
   );
 });

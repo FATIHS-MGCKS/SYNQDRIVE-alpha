@@ -111,7 +111,30 @@ describe('TaskPreviewCard', () => {
     expect(container.textContent).not.toContain('KS FH 660E');
     expect(container.textContent).toContain(en['dashboardTasksOverview.priorityHigh']);
     expect(container.textContent).toContain(en['dashboardTasksOverview.dueOverdue']);
-    expect(container.querySelectorAll('[class*="uppercase"]').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('[class*="uppercase"]').length).toBe(0);
+  });
+
+  it('applies critical priority surface for HIGH tasks', () => {
+    renderCard({ priority: 'HIGH' });
+    const card = container.querySelector('[data-testid="dashboard-task-preview-card"]');
+    expect(card?.getAttribute('data-priority')).toBe('High');
+    expect(card?.className).toContain('--status-critical');
+  });
+
+  it('keeps overdue due label independent from medium priority tone', () => {
+    renderCard({ priority: 'NORMAL', isOverdue: true, invoiceId: null, type: 'CUSTOM' });
+    expect(container.textContent).toContain(en['dashboardTasksOverview.priorityMedium']);
+    expect(container.textContent).toContain(en['dashboardTasksOverview.dueOverdue']);
+    const card = container.querySelector('[data-testid="dashboard-task-preview-card"]');
+    expect(card?.className).toContain('--status-watch');
+  });
+
+  it('shows high priority with neutral no-due-date label', () => {
+    renderCard({ priority: 'HIGH', isOverdue: false, dueDate: null });
+    expect(container.textContent).toContain(en['dashboardTasksOverview.priorityHigh']);
+    expect(container.textContent).toContain(en['dashboardTasksOverview.noDueDate']);
+    const card = container.querySelector('[data-testid="dashboard-task-preview-card"]');
+    expect(card?.className).toContain('--status-critical');
   });
 
   it('expands on chevron click and shows description + linked object', () => {
