@@ -148,7 +148,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
   const intlLocale = locale === 'de' ? 'de-DE' : locale;
 
   const subtitle =
-    overview.loading || overview.error || !overview.counts
+    overview.countsLoading || overview.error || !overview.counts
       ? t('dashboardTasksOverview.subtitleLoading')
       : t('dashboardTasksOverview.subtitle', {
           openCount: overview.counts.open,
@@ -182,7 +182,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
       />
 
       <div className="border-b border-border/35 px-3.5 py-2.5">
-        {overview.loading ? (
+        {overview.countsLoading ? (
           <div className="flex flex-wrap gap-2" data-testid="dashboard-tasks-overview-loading">
             {Array.from({ length: 4 }).map((_, index) => (
               <span
@@ -218,11 +218,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
       </div>
 
       <div className="min-w-0 px-0 py-0">
-        {overview.loading ? (
-          <div className="px-3.5 py-3">
-            <SkeletonRows rows={4} />
-          </div>
-        ) : overview.error ? (
+        {overview.error ? (
           <div className="px-3.5 py-4">
             <ErrorState
               title={t('dashboardTasksOverview.error')}
@@ -231,12 +227,16 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
               compact
             />
           </div>
-        ) : overview.counts && overview.counts.open === 0 ? (
+        ) : overview.previewLoading ? (
+          <div className="px-3.5 py-3" data-testid="dashboard-tasks-overview-preview-loading">
+            <SkeletonRows rows={4} />
+          </div>
+        ) : overview.previewReady && overview.counts && overview.counts.open === 0 ? (
           <div className="px-3.5 py-6 text-center">
             <p className={ROW_TITLE_CLASS}>{t('dashboardTasksOverview.emptyTitle')}</p>
             <p className={cn(ROW_BODY_CLASS, 'mt-1')}>{t('dashboardTasksOverview.emptyDescription')}</p>
           </div>
-        ) : (
+        ) : overview.previewReady ? (
           <div data-testid="dashboard-tasks-overview-preview">
             {overview.previewTasks.map((task) => (
               <TaskPreviewRow
@@ -248,7 +248,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
               />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   );

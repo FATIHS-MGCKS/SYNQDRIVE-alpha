@@ -59,11 +59,14 @@ describe('DashboardTasksOverviewPanel', () => {
       counts: { open: 2, overdue: 1, today: 1, inProgress: 0, unassigned: 1 },
       previewTasks: [{ id: 't1', title: 'Test', status: 'OPEN', priority: 'NORMAL' }],
       loading: false,
+      countsLoading: false,
+      previewLoading: false,
+      previewReady: true,
       error: null,
       reload: vi.fn(),
       canViewUnassigned: true,
       stationScoped: false,
-      countsComplete: true,
+      listComplete: true,
     });
   });
 
@@ -92,11 +95,14 @@ describe('DashboardTasksOverviewPanel', () => {
       counts: null,
       previewTasks: [],
       loading: true,
+      countsLoading: true,
+      previewLoading: true,
+      previewReady: false,
       error: null,
       reload: vi.fn(),
       canViewUnassigned: true,
       stationScoped: false,
-      countsComplete: false,
+      listComplete: false,
     });
 
     act(() => {
@@ -108,16 +114,43 @@ describe('DashboardTasksOverviewPanel', () => {
     expect(container.textContent).not.toContain('0 offen');
   });
 
+  it('shows preview loading without rendering partial preview rows', () => {
+    mockOverview.mockReturnValue({
+      counts: { open: 3, overdue: 1, today: 1, inProgress: 0, unassigned: 1 },
+      previewTasks: [],
+      loading: true,
+      countsLoading: false,
+      previewLoading: true,
+      previewReady: false,
+      error: null,
+      reload: vi.fn(),
+      canViewUnassigned: true,
+      stationScoped: false,
+      listComplete: false,
+    });
+
+    act(() => {
+      root.render(createElement(DashboardTasksOverviewPanel, { vm: minimalVm() }));
+    });
+
+    expect(container.querySelector('[data-testid="dashboard-tasks-overview-preview"]')).toBeNull();
+    expect(container.querySelector('[data-testid="dashboard-tasks-overview-preview-loading"]')).not.toBeNull();
+    expect(container.textContent).toContain('3 open');
+  });
+
   it('shows error state without zero-count chips', () => {
     mockOverview.mockReturnValue({
       counts: null,
       previewTasks: [],
       loading: false,
+      countsLoading: false,
+      previewLoading: false,
+      previewReady: false,
       error: 'failed',
       reload: vi.fn(),
       canViewUnassigned: true,
       stationScoped: false,
-      countsComplete: true,
+      listComplete: false,
     });
 
     act(() => {
@@ -133,11 +166,14 @@ describe('DashboardTasksOverviewPanel', () => {
       counts: { open: 0, overdue: 0, today: 0, inProgress: 0, unassigned: 0 },
       previewTasks: [],
       loading: false,
+      countsLoading: false,
+      previewLoading: false,
+      previewReady: true,
       error: null,
       reload: vi.fn(),
       canViewUnassigned: true,
       stationScoped: false,
-      countsComplete: true,
+      listComplete: true,
     });
 
     act(() => {
@@ -190,6 +226,9 @@ describe('useDashboardTasksOverview station vs org-wide wiring', () => {
     expect(typeof useDashboardTasksOverview).toBe('function');
     expect(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), './useDashboardTasksOverview.ts'), 'utf8')).toMatch(
       /enabled: queryEnabled && !stationScoped/,
+    );
+    expect(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), './useDashboardTasksOverview.ts'), 'utf8')).toMatch(
+      /shouldPaginateList/,
     );
   });
 });
