@@ -177,7 +177,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
       expect(rendered.title).not.toMatch(/^tasks\./);
     });
 
-    it('renders DE dictionary strings for representative events via B.1 bridge', () => {
+    it('renders DE dictionary strings for representative events with explicit locale', () => {
       const rendered = formatTaskTimelineSentence(
         event({
           id: 'e-done',
@@ -187,6 +187,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
           actorUserId: 'u1',
           metadata: { resolutionKind: 'MANUAL' },
         }),
+        'de',
       );
       expect(rendered.title).toBe('Von Fatih Sero als erledigt markiert');
     });
@@ -198,6 +199,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
           type: 'AUTO_RESOLVED',
           metadata: { resolutionCode: 'INVOICE_PAID', reason: 'Invoice paid' },
         }),
+        'de',
       );
       expect(auto.title).toBe('Automatisch aufgelöst: Rechnung wurde bezahlt');
 
@@ -207,6 +209,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
           type: 'SUPERSEDED',
           metadata: { resolutionCode: 'BOOKING_CANCELLED' },
         }),
+        'de',
       );
       expect(superseded.title).toBe('Automatisch beendet: Buchung wurde storniert');
     });
@@ -222,6 +225,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
           actorUserId: 'u1',
           metadata: { field: 'isDone', title: 'Führerschein prüfen' },
         }),
+        'de',
       );
       expect(done.title).toBe('Von Sam Station hat „Führerschein prüfen" erledigt');
     });
@@ -235,11 +239,11 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
         metadata: { resolutionKind: 'AUTO_RESOLVED' },
       });
       expect(resolveTaskTimelineActorKind(automatic)).toBe('automatic');
-      expect(formatTaskTimelineActor(automatic)).toBe('Automatisch');
+      expect(formatTaskTimelineActor(automatic, 'de')).toBe('Automatisch');
 
       const system = event({ id: 'e-system', type: 'CREATED', metadata: { auto: true } });
       expect(resolveTaskTimelineActorKind(system)).toBe('system');
-      expect(formatTaskTimelineActor(system)).toBe('SynqDrive');
+      expect(formatTaskTimelineActor(system, 'de')).toBe('SynqDrive');
     });
 
     it('localizes actor labels under explicit locale without mutating event payload', () => {
@@ -312,6 +316,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
       for (const legacy of LEGACY_GERMAN_TIMELINE_LITERALS) {
         expect(utilsSource, 'taskTimeline.utils.ts').not.toContain(legacy);
       }
+      expect(utilsSource).not.toContain('TASK_TIMELINE_BRIDGE_LOCALE');
       for (const legacy of LEGACY_GERMAN_TIMELINE_LITERALS) {
         if (legacy === 'RESOLUTION_CODE_LABELS' || legacy === 'taskStatusLabelDe') {
           expect(adapterSource, 'task-timeline-presentation-i18n.ts').not.toContain(legacy);
@@ -329,6 +334,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
           actor: { id: 'u1', displayName: 'Alex Operator' },
           actorUserId: 'u1',
         }),
+        'en',
       );
       expect(rendered.title).not.toMatch(/^tasks\.timeline\./);
       expect(ttp('en', 'tasks.timeline.event.commentAdded.user', { actor: 'Alex Operator' })).not.toMatch(
@@ -349,7 +355,7 @@ describe('task timeline presentation localization (P2.2.16B.1)', () => {
             metadata: { bodyPreview: 'Kurze Notiz' },
           }),
         ],
-        { formatDateTime: (iso) => iso },
+        { locale: 'en', formatDateTime: (iso) => iso },
       );
       expect(items).toHaveLength(2);
       expect(items[0]?.id).toBe('new');

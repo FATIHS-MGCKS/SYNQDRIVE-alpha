@@ -38,6 +38,7 @@ describe('taskTimeline.utils', () => {
         actor: { id: 'user-1', displayName: 'Fatih Sero' },
         metadata: { resolutionKind: 'MANUAL' },
       }),
+      'de',
     );
     expect(sentence.title).toBe('Von Fatih Sero als erledigt markiert');
   });
@@ -49,6 +50,7 @@ describe('taskTimeline.utils', () => {
         type: 'AUTO_RESOLVED',
         metadata: { resolutionCode: 'INVOICE_PAID', reason: 'Invoice paid' },
       }),
+      'de',
     );
     expect(auto.title).toBe('Automatisch aufgelöst: Rechnung wurde bezahlt');
 
@@ -61,6 +63,7 @@ describe('taskTimeline.utils', () => {
           reason: 'Booking cancelled — lifecycle tasks superseded',
         },
       }),
+      'de',
     );
     expect(superseded.title).toBe('Automatisch beendet: Buchung wurde storniert');
   });
@@ -75,6 +78,7 @@ describe('taskTimeline.utils', () => {
         actor: { id: 'u1', displayName: 'Sam Station' },
         metadata: { field: 'isDone', title: 'Führerschein prüfen' },
       }),
+      'de',
     );
     expect(done.title).toBe('Von Sam Station hat „Führerschein prüfen" erledigt');
 
@@ -87,6 +91,7 @@ describe('taskTimeline.utils', () => {
         actor: { id: 'u1', displayName: 'Sam Station' },
         metadata: { field: 'isDone', title: 'Führerschein prüfen' },
       }),
+      'de',
     );
     expect(reopened.title).toBe('Von Sam Station hat „Führerschein prüfen" wieder geöffnet');
   });
@@ -95,11 +100,12 @@ describe('taskTimeline.utils', () => {
     expect(
       formatTaskTimelineActor(
         event({ id: 'e6', type: 'AUTO_RESOLVED', metadata: { resolutionKind: 'AUTO_RESOLVED' } }),
+        'de',
       ),
     ).toBe('Automatisch');
 
     expect(
-      formatTaskTimelineActor(event({ id: 'e7', type: 'CREATED', metadata: { auto: true } })),
+      formatTaskTimelineActor(event({ id: 'e7', type: 'CREATED', metadata: { auto: true } }), 'de'),
     ).toBe('SynqDrive');
   });
 
@@ -115,7 +121,7 @@ describe('taskTimeline.utils', () => {
           metadata: { bodyPreview: 'Kurze Notiz' },
         }),
       ],
-      { formatDateTime: (iso) => iso },
+      { locale: 'de', formatDateTime: (iso) => iso },
     );
 
     expect(items).toHaveLength(2);

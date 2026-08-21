@@ -265,6 +265,15 @@ const P216B1_ENFORCE_CLEAN_EXACT = [
   'lib/tasks/task-timeline-presentation-i18n.ts',
 ];
 
+const P216B2_ENFORCE_CLEAN_EXACT = [
+  'lib/tasks/taskDetailView.utils.ts',
+  'lib/tasks/taskTimeline.utils.ts',
+  'lib/tasks/task-timeline-presentation-i18n.ts',
+  'rental/components/tasks/GlobalTaskDetailPanel.tsx',
+  'rental/components/tasks/VehicleTaskDetailDrawer.tsx',
+  'operator/tasks/OperatorTaskDetail.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -311,6 +320,10 @@ function isP216AEnforceCleanPath(relPath: string): boolean {
 
 function isP216B1EnforceCleanPath(relPath: string): boolean {
   return P216B1_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP216B2EnforceCleanPath(relPath: string): boolean {
+  return P216B2_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -475,6 +488,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p216b1Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.16B.2 enforce-clean findings to task timeline locale threading only', () => {
+    const p216b2Debt = inventory.findings.filter((finding) =>
+      isP216B2EnforceCleanPath(finding.file),
+    );
+    expect(p216b2Debt).toHaveLength(0);
+  });
+
   it('keeps taskTimeline.utils.ts machine/descriptor-only without German prose maps', () => {
     const source = readFileSync(
       join(__dirname, '../lib/tasks/taskTimeline.utils.ts'),
@@ -482,6 +502,7 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     );
     expect(source).toContain('resolveTimelineTone');
     expect(source).toContain('buildTaskTimelineItems');
+    expect(source).not.toContain('TASK_TIMELINE_BRIDGE_LOCALE');
     expect(source).not.toContain('RESOLUTION_CODE_LABELS');
     expect(source).not.toContain('taskStatusLabelDe');
     expect(source).not.toMatch(/hat die Aufgabe erstellt/);

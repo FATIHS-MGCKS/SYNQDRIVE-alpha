@@ -102,12 +102,13 @@ export function GlobalTaskDetailPanel({
   const detailModel = useMemo(() => {
     if (!detail || !isNormalizedTaskDetail(detail)) return null;
     return buildTaskDetailViewModel(detail, {
+      locale,
       category: taskRow?.category ?? detail.category,
       priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority), locale),
       orgMembers,
       stationLabel: taskRow?.station || undefined,
     });
-  }, [detail, orgMembers, taskRow]);
+  }, [detail, locale, orgMembers, taskRow]);
 
   const normalizedDetail = detail && isNormalizedTaskDetail(detail) ? detail : null;
 
