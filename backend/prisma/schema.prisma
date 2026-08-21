@@ -1738,6 +1738,8 @@ model Organization {
   batteryRetentionAggregates             BatteryRetentionAggregate[]
   refreshTokens                          RefreshToken[]
   evaluationsEntityReferences            EvaluationsEntityReference[]
+  communicationConversations             CommunicationConversation[]
+  communicationEvents                    CommunicationEvent[]
 
   @@index([status])
   @@map("organizations")
@@ -1884,6 +1886,7 @@ model User {
   verifiedBatteryReferenceCapacities  VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges     VehicleBatteryReferenceCapacityChange[]
   brakeRentalHealthReviewGrants       BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
+  assignedCommunicationConversations  CommunicationConversation[]             @relation("CommunicationConversationAssignee")
 
   @@map("users")
 }
@@ -2745,6 +2748,7 @@ model Station {
   actualReturnBookings   Booking[]                @relation("BookingActualReturnStation")
   legalDocumentStations  OrganizationLegalDocumentStation[]
   userAccountPreferences UserAccountPreference[]
+  communicationConversations CommunicationConversation[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -2978,6 +2982,8 @@ model Vehicle {
   brakeRentalHealthReviewOverrides       BrakeRentalHealthReviewOverride[]
   tireHealthAlerts                       TireHealthAlert[]
   whatsappConversations                  WhatsAppConversation[]
+  communicationConversations             CommunicationConversation[]
+  communicationEvents                    CommunicationEvent[]
   billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
   billingQuantityEvents                  BillingQuantityEvent[]
   vehicleDrivingCapabilities             VehicleDrivingCapability[]
@@ -5253,6 +5259,8 @@ model Customer {
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
   whatsappConsents      WhatsAppConsent[]
+  communicationConversations CommunicationConversation[]
+  communicationEvents        CommunicationEvent[]
 
   @@index([organizationId])
   @@index([email])
@@ -5718,6 +5726,8 @@ model Booking {
   pricingQuote            PricingQuote?               @relation("PricingQuoteConsumedBooking")
   vehicleDamages          VehicleDamage[]
   whatsappConversations   WhatsAppConversation[]
+  communicationConversations CommunicationConversation[]
+  communicationEvents        CommunicationEvent[]
   outboundEmails          OutboundEmail[]
   legalDocumentDeliveryEvidence LegalDocumentDeliveryEvidence[]
   documentGenerationJobs        BookingDocumentGenerationJob[]
@@ -14394,4 +14404,154 @@ model HighMobilityCompatibilitySignal {
   @@index([app])
   @@index([coverage])
   @@map("hm_compatibility_signals")
+}
+
+// ── Communication Center canonical persistence (C1) ──
+// Operational envelope + cross-channel timeline projection.
+// Provider-native tables (WhatsAppConversation, VoiceConversation, etc.) remain authoritative.
+
+/// Cross-channel operational medium — not provider identity.
+enum CommunicationChannel {
+  WHATSAPP
+  VOICE
+  SMS
+  EMAIL
+}
+
+/// Canonical operational conversation state (projection-only).
+/// Does not replace WhatsAppConversationStatus or VoiceConversationLifecycleState.
+enum CommunicationConversationStatus {
+  AI_ACTIVE
+  WAITING_CUSTOMER
+  HUMAN_REQUIRED
+  HUMAN_ACTIVE
+  RESOLVED
+  FAILED
+}
+
+enum CommunicationDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
+enum CommunicationActorType {
+  CUSTOMER
+  AI_AGENT
+  USER
+  SYSTEM
+  PROVIDER
+}
+
+/// Infrastructure provider identity at event level — channel-agnostic integrations.
+enum CommunicationProviderIdentity {
+  META_WHATSAPP
+  SENT_DM
+  TWILIO
+  ELEVENLABS
+  RESEND
+}
+
+enum CommunicationEventType {
+  MESSAGE_RECEIVED
+  MESSAGE_SENT
+  MESSAGE_DELIVERED
+  MESSAGE_READ
+  MESSAGE_FAILED
+  CALL_STARTED
+  CALL_CONNECTED
+  CALL_ENDED
+  CALL_FAILED
+  AI_INTENT_DETECTED
+  AI_ACTION_STARTED
+  AI_ACTION_COMPLETED
+  AI_ACTION_FAILED
+  HUMAN_REQUIRED
+  HUMAN_ASSIGNED
+  HUMAN_TAKEOVER
+  CONVERSATION_RESOLVED
+  CONVERSATION_REOPENED
+  PROVIDER_ERROR
+}
+
+model CommunicationConversation {
+  id                   String                          @id @default(uuid())
+  organizationId       String                          @map("organization_id")
+  channel              CommunicationChannel
+  /// Authoritative native row id (WhatsAppConversation.id, VoiceConversation.id, …).
+  nativeConversationId String                          @map("native_conversation_id")
+  status               CommunicationConversationStatus @default(AI_ACTIVE)
+  customerId           String?                         @map("customer_id")
+  bookingId            String?                         @map("booking_id")
+  vehicleId            String?                         @map("vehicle_id")
+  stationId            String?                         @map("station_id")
+  assignedUserId       String?                         @map("assigned_user_id")
+  /// Opaque agent reference — no brittle FK across AI provider models.
+  assignedAgentRef     String?                         @map("assigned_agent_ref")
+  assignedAgentType    String?                         @map("assigned_agent_type")
+  lastActivityAt       DateTime                        @default(now()) @map("last_activity_at")
+  unreadCount          Int                             @default(0) @map("unread_count")
+  metadata             Json?
+  createdAt            DateTime                        @default(now()) @map("created_at")
+  updatedAt            DateTime                        @updatedAt @map("updated_at")
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  booking        Booking?              @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  vehicle        Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  station        Station?              @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  /// Human handoff assignee — canonical User.id; org membership validated at service boundary.
+  assignedUser   User?                 @relation("CommunicationConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  events         CommunicationEvent[]
+
+  @@unique([organizationId, channel, nativeConversationId], name: "communication_conversations_org_channel_native")
+  @@index([organizationId, lastActivityAt])
+  @@index([organizationId, status, lastActivityAt])
+  @@index([organizationId, channel, lastActivityAt])
+  @@index([organizationId, stationId, lastActivityAt])
+  @@index([organizationId, assignedUserId, status])
+  @@index([organizationId, customerId])
+  @@index([organizationId, bookingId])
+  @@index([organizationId, vehicleId])
+  @@map("communication_conversations")
+}
+
+/// Append-oriented canonical timeline row — metadata-minimal, no raw provider payloads.
+model CommunicationEvent {
+  id                 String                         @id @default(uuid())
+  organizationId     String                         @map("organization_id")
+  conversationId     String                         @map("conversation_id")
+  channel            CommunicationChannel
+  eventType          CommunicationEventType         @map("event_type")
+  direction          CommunicationDirection?
+  providerIdentity   CommunicationProviderIdentity? @map("provider_identity")
+  /// Stable provider webhook/event identifier for dedupe (distinct from message id).
+  providerEventId    String?                        @map("provider_event_id")
+  /// Provider message identifier — multiple delivery lifecycle events may share this.
+  providerMessageId  String?                        @map("provider_message_id")
+  /// Canonical idempotency key for projection upsert (computed at ingest in C3+).
+  idempotencyKey     String?                        @map("idempotency_key")
+  actorType          CommunicationActorType?        @map("actor_type")
+  actorId            String?                        @map("actor_id")
+  customerId         String?                        @map("customer_id")
+  bookingId          String?                        @map("booking_id")
+  vehicleId          String?                        @map("vehicle_id")
+  occurredAt         DateTime                       @map("occurred_at")
+  metadata           Json?
+  redactedPayloadRef String?                        @map("redacted_payload_ref")
+  createdAt          DateTime                       @default(now()) @map("created_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation CommunicationConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  customer       Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  booking        Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  vehicle        Vehicle?                  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey], name: "communication_events_org_idempotency_key")
+  @@unique([organizationId, channel, providerIdentity, providerEventId], name: "communication_events_org_provider_event")
+  @@index([organizationId, conversationId, occurredAt])
+  @@index([organizationId, eventType, occurredAt])
+  @@index([organizationId, channel, occurredAt])
+  @@index([organizationId, providerMessageId])
+  @@map("communication_events")
 }

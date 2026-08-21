@@ -84,6 +84,7 @@ import { AccountModule } from '@modules/account/account.module';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { CommunicationModule } from '@modules/communication/communication.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { SpaFallbackController } from './spa-fallback.controller';
@@ -212,6 +213,7 @@ export class AppModule {
         IamMfaModule,
         IamDataRetentionModule,
         NotificationsModule,
+        CommunicationModule,
         HealthModule,
 
         PlatformAdminModule,

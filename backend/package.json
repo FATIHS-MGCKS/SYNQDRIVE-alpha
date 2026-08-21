@@ -54,6 +54,7 @@
     "test:legal-documents:migration": "bash scripts/test/legal-documents-migration-test.sh all",
     "test:legal-documents:migration:empty": "bash scripts/test/legal-documents-migration-test.sh empty",
     "test:legal-documents:migration:legacy": "bash scripts/test/legal-documents-migration-test.sh legacy",
+    "test:communication-center:migration": "bash scripts/test/communication-center-c1-migration-test.sh",
     "test:bookings": "jest --testPathPattern='modules/bookings|booking-pickup-gate|booking-document-|booking-payment-request|rental-contract-legal' --testPathIgnorePatterns='postgres\\.invariants'",
     "test:bookings:security": "jest bookings-security-negative booking-controller-permissions.characterization",
     "test:bookings:integration": "jest booking-pickup-gate.integration booking-wizard-eligibility-e2e-flow",
