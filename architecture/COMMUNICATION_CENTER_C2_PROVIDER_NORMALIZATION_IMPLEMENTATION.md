@@ -221,12 +221,13 @@ Normalization and projection **must not** persist communication content in canon
 
 `CommunicationProjectionService` wraps the full projection in **`prisma.$transaction`**:
 
-1. `ensureConversationEnvelope` (create with defined `initialContext` fields; existing rows enriched later in step 2)
+1. `ensureConversationEnvelope` (createMany skipDuplicates + lookup; existing rows enriched later)
 2. Merge effective context (`existing` + `envelope.initialContext` + `projection.context`)
 3. Tenant-validate context diff
-4. `appendEventIdempotently` with **effective context snapshot**
-5. `updateConversationProjection` (status, metadata, context, absolute unread, monotonic `lastActivityAt`)
-6. `incrementUnreadCount` (atomic `{ increment: delta }`) **only when** `eventCreated === true`
+4. `appendEventIdempotently` with **effective context snapshot** (createMany skipDuplicates + lookup)
+5. `updateConversationProjection` (status, metadata, context, absolute unread — **not** lastActivityAt)
+6. `bumpLastActivityAt` (atomic PostgreSQL `GREATEST`)
+7. `incrementUnreadCount` (atomic `{ increment: delta }`) **only when** `eventCreated === true`
 
 On failure → mapped to `CommunicationNormalizationError`. Partial writes roll back together.
 
@@ -244,6 +245,50 @@ On failure → mapped to `CommunicationNormalizationError`. Partial writes roll 
 | Negative delta | **Rejected** at validation — not supported in C2 |
 
 DB `CHECK (unread_count >= 0)` remains the final guard.
+
+### Absolute vs delta concurrency contract
+
+| Field | Concurrency semantics |
+|-------|----------------------|
+| `unreadDelta` | Atomic `{ increment }` on `eventCreated === true` only — safe under concurrent distinct events |
+| `unreadCountAbsolute` | **Not concurrency-safe** against concurrent `unreadDelta` in separate transactions. Validation rejects both in one input, but cross-operation races are undefined. Marked for serialized/convergent policy before production read-receipt use (C9/C11). C3 inbound messages use `unreadDelta` only. |
+
+---
+
+## 13a1. Atomic envelope race semantics
+
+`ensureConversationEnvelope` uses Prisma `createMany({ skipDuplicates: true })` → PostgreSQL `INSERT ... ON CONFLICT DO NOTHING` on `communication_conversations_org_channel_native`. Concurrent first events for the same native conversation:
+
+- exactly one `CommunicationConversation` row
+- both callers succeed (`created: true` for winner, `false` for loser)
+- no transaction abort from unique-violation recovery
+
+---
+
+## 13a2. Atomic event replay semantics
+
+`appendEventIdempotently` uses `createMany({ skipDuplicates: true })` → PostgreSQL `ON CONFLICT DO NOTHING` on `communication_events_org_idempotency_key`. Concurrent identical events:
+
+- exactly one `CommunicationEvent` row
+- both callers succeed (`created: true` / `false`)
+- `unreadDelta` applied once (only when `created: true`)
+- append-only — existing events never mutated
+
+Replaces prior `create` + `P2002` catch + re-SELECT pattern that could abort interactive transactions in PostgreSQL.
+
+---
+
+## 13a3. Concurrent lastActivityAt guarantee
+
+`bumpLastActivityAt` executes:
+
+```sql
+UPDATE communication_conversations
+SET last_activity_at = GREATEST(last_activity_at, $candidate)
+WHERE id = $id AND organization_id = $organizationId
+```
+
+Concurrent transactions with candidates 12:00 and 11:00 always converge to 12:00 regardless of commit order. Application-level read-max-write is not the concurrency guarantee.
 
 ---
 
@@ -282,8 +327,8 @@ Frozen governance artifacts were not on `main` during initial C2 delivery. Resto
 | Field | On event replay (`eventCreated: false`) |
 |-------|----------------------------------------|
 | `unreadDelta` | **Not applied** (no atomic increment) |
-| `unreadCountAbsolute`, `status`, context | Applied (convergent) |
-| `lastActivityAt` | Monotonic max only — never regresses |
+| `unreadCountAbsolute`, `status`, context | Applied (convergent on replay; absolute unread not safe vs concurrent delta — see §13a) |
+| `lastActivityAt` | Bumped via atomic `GREATEST` — never regresses |
 
 Event append uses C1 idempotent create — returns existing row without mutation.
 
@@ -291,9 +336,7 @@ Event append uses C1 idempotent create — returns existing row without mutation
 
 ## 15. lastActivityAt ordering
 
-`lastActivityAt = max(existing.lastActivityAt, candidate)` where candidate is `projection.lastActivityAt ?? event.occurredAt`.
-
-Delayed older events cannot move activity backwards.
+`bumpLastActivityAt` applies `GREATEST(existing, candidate)` atomically at the database level. Delayed older events cannot move activity backwards even when their transaction commits after a newer event.
 
 ---
 
@@ -337,11 +380,24 @@ C2 contracts (`SMS` + `SENT_DM`) are ready at normalization layer.
 | `communication-idempotency.spec.ts` | 4 | Deterministic keys |
 | `communication-metadata.spec.ts` | 3 | Allowlist/PII |
 | `communication-provider-capability.registry.spec.ts` | 3 | V1 capabilities |
-| `communication-projection.service.spec.ts` | 11 | Orchestration, replay, monotonic, multi-provider, context enrichment, event snapshot |
-| `communication-projection.postgres.integration.spec.ts` | 2 | Concurrent unread increment + replay (requires `DATABASE_URL`) |
+| `communication-projection.service.spec.ts` | 11 | Orchestration, replay, multi-provider, context enrichment, event snapshot |
+| `communication-projection.postgres.integration.spec.ts` | 6 | PostgreSQL concurrency matrix A–F (requires `DATABASE_URL`) |
 | `communication-context-merge.spec.ts` | 3 | Merge/clear semantics |
+| `communication-event.repository.spec.ts` | 6 | Idempotent append via skipDuplicates |
+| `communication-conversation.repository.spec.ts` | 10 | Envelope skipDuplicates, bumpLastActivityAt, incrementUnreadCount |
 
-**Total: 65 unit (63 passed, 2 skipped postgres integration when `DATABASE_URL` unset) + 2 postgres integration when DB available** (`npm test -- --testPathPattern='modules/communication'`)
+**Total: 69 unit (67 passed, 2 skipped postgres integration when `DATABASE_URL` unset) + 6 postgres integration when DB available** (`npm test -- --testPathPattern='modules/communication'`)
+
+### PostgreSQL verification matrix
+
+| Test | Scenario |
+|------|----------|
+| A | Concurrent identical events → one row, unread once |
+| B | Concurrent first events same native conversation → one envelope, two events |
+| C | Concurrent first inbound messages → unreadCount = 2 |
+| D | Replay collision → unread increments once |
+| E | Concurrent/sequential lastActivityAt 12:00 vs 11:00 → final 12:00 |
+| F | Tenant validation failure → full transaction rollback |
 
 ---
 

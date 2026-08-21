@@ -4,7 +4,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { CommunicationConversation, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
 import { CommunicationEventRepository } from './communication-event.repository';
@@ -132,10 +132,8 @@ export class CommunicationProjectionService {
     );
 
     const projectionPatch = this.buildProjectionPatch(
-      conversation,
       projection,
       appendResult.created,
-      event.occurredAt,
       contextPatch,
     );
 
@@ -147,6 +145,14 @@ export class CommunicationProjectionService {
         tx,
       );
     }
+
+    const candidateActivity = projection?.lastActivityAt ?? event.occurredAt;
+    conversation = await this.conversations.bumpLastActivityAt(
+      envelope.organizationId,
+      conversation.id,
+      candidateActivity,
+      tx,
+    );
 
     if (appendResult.created && projection?.unreadDelta !== undefined) {
       conversation = await this.conversations.incrementUnreadCount(
@@ -178,20 +184,12 @@ export class CommunicationProjectionService {
   }
 
   private buildProjectionPatch(
-    existing: CommunicationConversation,
     patch: ConversationProjectionPatch | undefined,
     eventCreated: boolean,
-    eventOccurredAt: Date,
     contextPatch: ReturnType<typeof diffConversationContextPatch>,
   ): UpdateCommunicationConversationProjectionInput | null {
-    const candidateActivity = patch?.lastActivityAt ?? eventOccurredAt;
-    const lastActivityAt = maxDate(existing.lastActivityAt, candidateActivity);
-
-    const update: UpdateCommunicationConversationProjectionInput = {
-      lastActivityAt,
-    };
-
-    let hasMutation = lastActivityAt.getTime() !== existing.lastActivityAt.getTime();
+    const update: UpdateCommunicationConversationProjectionInput = {};
+    let hasMutation = false;
 
     if (patch?.status !== undefined) {
       update.status = patch.status;
@@ -298,8 +296,4 @@ export class CommunicationProjectionService {
       }),
     );
   }
-}
-
-function maxDate(a: Date, b: Date): Date {
-  return a.getTime() >= b.getTime() ? a : b;
 }

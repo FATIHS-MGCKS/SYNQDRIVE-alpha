@@ -7,13 +7,16 @@ import { CommunicationConversationRepository } from './communication-conversatio
 import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 
 function makePrisma() {
+  const executeRaw = jest.fn().mockResolvedValue(1);
   return {
     communicationConversation: {
       create: jest.fn(),
+      createMany: jest.fn(),
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    $executeRaw: executeRaw,
   } as any;
 }
 
@@ -101,7 +104,45 @@ describe('CommunicationConversationRepository', () => {
     });
     expect(result.created).toBe(false);
     expect(result.conversation).toEqual({ id: 'existing' });
-    expect(prisma.communicationConversation.create).not.toHaveBeenCalled();
+    expect(prisma.communicationConversation.createMany).not.toHaveBeenCalled();
+  });
+
+  it('ensureConversationEnvelope uses createMany skipDuplicates on first create', async () => {
+    prisma.communicationConversation.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'cc-new' });
+    prisma.communicationConversation.createMany.mockResolvedValue({ count: 1 });
+
+    const result = await repository.ensureConversationEnvelope({
+      organizationId: 'org-1',
+      channel: CommunicationChannel.WHATSAPP,
+      nativeConversationId: 'wa-new',
+    });
+
+    expect(prisma.communicationConversation.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          organizationId: 'org-1',
+          nativeConversationId: 'wa-new',
+        }),
+      ],
+      skipDuplicates: true,
+    });
+    expect(result.created).toBe(true);
+    expect(result.conversation).toEqual({ id: 'cc-new' });
+  });
+
+  it('bumpLastActivityAt uses atomic GREATEST SQL', async () => {
+    const candidate = new Date('2026-08-21T12:00:00Z');
+    prisma.$executeRaw.mockResolvedValue(1);
+    prisma.communicationConversation.findFirst.mockResolvedValue({
+      id: 'cc-1',
+      lastActivityAt: candidate,
+    });
+
+    await repository.bumpLastActivityAt('org-1', 'cc-1', candidate);
+
+    expect(prisma.$executeRaw).toHaveBeenCalled();
   });
 
   it('rejects negative unreadCount', async () => {

@@ -100,6 +100,7 @@ describe('CommunicationProjectionService', () => {
     conversations = {
       ensureConversationEnvelope: jest.fn(),
       updateConversationProjection: jest.fn(),
+      bumpLastActivityAt: jest.fn(),
       incrementUnreadCount: jest.fn(),
     } as unknown as jest.Mocked<CommunicationConversationRepository>;
     events = {
@@ -110,6 +111,10 @@ describe('CommunicationProjectionService', () => {
     } as unknown as jest.Mocked<CommunicationTenantContextValidation>;
     conversations.updateConversationProjection.mockImplementation(
       async (_org, id, patch) => ({ ...baseConversation({ id }), ...patch }) as any,
+    );
+    conversations.bumpLastActivityAt.mockImplementation(
+      async (_org, id, candidate) =>
+        ({ ...baseConversation({ id }), lastActivityAt: candidate }) as any,
     );
     conversations.incrementUnreadCount.mockImplementation(
       async (_org, id, delta) =>
@@ -349,7 +354,7 @@ describe('CommunicationProjectionService', () => {
     expect(events.appendEventIdempotently).not.toHaveBeenCalled();
   });
 
-  it('keeps lastActivityAt monotonic when older event arrives later', async () => {
+  it('bumps lastActivityAt atomically via repository', async () => {
     const newer = new Date('2026-08-21T12:00:00Z');
     const older = new Date('2026-08-21T11:00:00Z');
     conversations.ensureConversationEnvelope.mockResolvedValue({
@@ -382,10 +387,14 @@ describe('CommunicationProjectionService', () => {
       },
     });
 
+    expect(conversations.bumpLastActivityAt).toHaveBeenCalledWith(
+      'org-1',
+      'cc-voice',
+      older,
+      expect.anything(),
+    );
     for (const [, , patch] of conversations.updateConversationProjection.mock.calls) {
-      if (patch.lastActivityAt) {
-        expect(patch.lastActivityAt.getTime()).toBeGreaterThanOrEqual(newer.getTime());
-      }
+      expect(patch.lastActivityAt).toBeUndefined();
     }
   });
 

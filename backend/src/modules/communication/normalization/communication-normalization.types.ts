@@ -46,7 +46,7 @@ export interface ConversationProjectionPatch {
   lastActivityAt?: Date;
   /** Positive increment applied atomically only on newly-created events. */
   unreadDelta?: number;
-  /** Convergent absolute unread value — safe on replay. */
+  /** Convergent absolute unread value — not concurrency-safe against concurrent unreadDelta; requires serialized/convergent policy before production use (C9/C11). */
   unreadCountAbsolute?: number;
   context?: ConversationContextPatch;
   metadata?: CanonicalCommunicationMetadata;

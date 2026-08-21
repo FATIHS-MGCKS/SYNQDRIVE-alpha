@@ -11,9 +11,43 @@ import { CommunicationEventRepository } from './communication-event.repository';
 import { CommunicationProjectionService } from './communication-projection.service';
 import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 import { buildCanonicalIdempotencyKey } from './normalization/communication-idempotency';
+import { CommunicationNormalizationErrorCode } from './normalization/communication-normalization.errors';
+import type { NormalizedCommunicationInput } from './normalization/communication-normalization.types';
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
+
+function buildEventInput(
+  orgId: string,
+  nativeConversationId: string,
+  providerEventId: string,
+  occurredAt: Date,
+  unreadDelta?: number,
+): NormalizedCommunicationInput {
+  const eventType = CommunicationEventType.MESSAGE_RECEIVED;
+  return {
+    envelope: {
+      organizationId: orgId,
+      channel: CommunicationChannel.WHATSAPP,
+      nativeConversationId,
+    },
+    event: {
+      eventType,
+      occurredAt,
+      providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
+      providerEventId,
+      idempotencyKey: buildCanonicalIdempotencyKey({
+        organizationId: orgId,
+        channel: CommunicationChannel.WHATSAPP,
+        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
+        eventType,
+        nativeConversationId,
+        providerEventId,
+      }),
+    },
+    projection: unreadDelta !== undefined ? { unreadDelta } : undefined,
+  };
+}
 
 describePg('CommunicationProjectionService postgres concurrency', () => {
   let prisma: PrismaClient;
@@ -63,118 +97,192 @@ describePg('CommunicationProjectionService postgres concurrency', () => {
     await prisma.$disconnect();
   });
 
-  it('increments unreadCount twice for concurrent distinct new events', async () => {
-    await service.projectNormalizedInput({
-      envelope: {
-        organizationId: orgId,
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId,
-      },
-      event: {
-        eventType: CommunicationEventType.MESSAGE_RECEIVED,
-        occurredAt: new Date('2026-08-21T09:59:00Z'),
-        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-        providerEventId: 'evt-bootstrap',
-        idempotencyKey: buildCanonicalIdempotencyKey({
-          organizationId: orgId,
-          channel: CommunicationChannel.WHATSAPP,
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          nativeConversationId,
-          providerEventId: 'evt-bootstrap',
-        }),
-      },
-    });
-
-    const baseInput = {
-      envelope: {
-        organizationId: orgId,
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId,
-      },
-      projection: { unreadDelta: 1 },
-    };
+  it('A: concurrent identical events create one row and increment unread once', async () => {
+    const input = buildEventInput(
+      orgId,
+      nativeConversationId,
+      'evt-same',
+      new Date('2026-08-21T10:00:00Z'),
+      1,
+    );
 
     const [first, second] = await Promise.all([
-      service.projectNormalizedInput({
-        ...baseInput,
-        event: {
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          occurredAt: new Date('2026-08-21T10:00:00Z'),
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          providerEventId: 'evt-a',
-          idempotencyKey: buildCanonicalIdempotencyKey({
-            organizationId: orgId,
-            channel: CommunicationChannel.WHATSAPP,
-            providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-            eventType: CommunicationEventType.MESSAGE_RECEIVED,
-            nativeConversationId,
-            providerEventId: 'evt-a',
-          }),
-        },
-      }),
-      service.projectNormalizedInput({
-        ...baseInput,
-        event: {
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          occurredAt: new Date('2026-08-21T10:00:01Z'),
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          providerEventId: 'evt-b',
-          idempotencyKey: buildCanonicalIdempotencyKey({
-            organizationId: orgId,
-            channel: CommunicationChannel.WHATSAPP,
-            providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-            eventType: CommunicationEventType.MESSAGE_RECEIVED,
-            nativeConversationId,
-            providerEventId: 'evt-b',
-          }),
-        },
-      }),
+      service.projectNormalizedInput(input),
+      service.projectNormalizedInput(input),
     ]);
 
-    expect(first.eventCreated).toBe(true);
-    expect(second.eventCreated).toBe(true);
+    const createdCount = [first.eventCreated, second.eventCreated].filter(Boolean).length;
+    expect(createdCount).toBe(1);
+    expect(first.eventId).toBe(second.eventId);
     expect(first.conversationId).toBe(second.conversationId);
 
-    const conversation = await prisma.communicationConversation.findUnique({
-      where: { id: first.conversationId },
+    const events = await prisma.communicationEvent.findMany({
+      where: { organizationId: orgId, conversationId: first.conversationId },
     });
-    expect(conversation?.unreadCount).toBe(2);
-  });
-
-  it('does not double-increment unread on replay', async () => {
-    const input = {
-      envelope: {
-        organizationId: orgId,
-        channel: CommunicationChannel.WHATSAPP,
-        nativeConversationId,
-      },
-      event: {
-        eventType: CommunicationEventType.MESSAGE_RECEIVED,
-        occurredAt: new Date('2026-08-21T10:00:00Z'),
-        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-        providerEventId: 'evt-replay',
-        idempotencyKey: buildCanonicalIdempotencyKey({
-          organizationId: orgId,
-          channel: CommunicationChannel.WHATSAPP,
-          providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
-          eventType: CommunicationEventType.MESSAGE_RECEIVED,
-          nativeConversationId,
-          providerEventId: 'evt-replay',
-        }),
-      },
-      projection: { unreadDelta: 1 },
-    };
-
-    const first = await service.projectNormalizedInput(input);
-    const replay = await service.projectNormalizedInput(input);
-
-    expect(first.eventCreated).toBe(true);
-    expect(replay.eventCreated).toBe(false);
+    expect(events).toHaveLength(1);
 
     const conversation = await prisma.communicationConversation.findUnique({
       where: { id: first.conversationId },
     });
     expect(conversation?.unreadCount).toBe(1);
+  });
+
+  it('B: concurrent first events on same native conversation create one envelope and two events', async () => {
+    const [first, second] = await Promise.all([
+      service.projectNormalizedInput(
+        buildEventInput(orgId, nativeConversationId, 'evt-first-a', new Date('2026-08-21T10:00:00Z')),
+      ),
+      service.projectNormalizedInput(
+        buildEventInput(orgId, nativeConversationId, 'evt-first-b', new Date('2026-08-21T10:00:01Z')),
+      ),
+    ]);
+
+    expect(first.conversationId).toBe(second.conversationId);
+    expect(first.eventId).not.toBe(second.eventId);
+
+    const conversations = await prisma.communicationConversation.findMany({
+      where: {
+        organizationId: orgId,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId,
+      },
+    });
+    expect(conversations).toHaveLength(1);
+
+    const events = await prisma.communicationEvent.findMany({
+      where: { organizationId: orgId, conversationId: first.conversationId },
+    });
+    expect(events).toHaveLength(2);
+  });
+
+  it('C: concurrent first inbound messages create one envelope with unreadCount = 2', async () => {
+    const [first, second] = await Promise.all([
+      service.projectNormalizedInput(
+        buildEventInput(orgId, nativeConversationId, 'evt-msg-a', new Date('2026-08-21T10:00:00Z'), 1),
+      ),
+      service.projectNormalizedInput(
+        buildEventInput(orgId, nativeConversationId, 'evt-msg-b', new Date('2026-08-21T10:00:01Z'), 1),
+      ),
+    ]);
+
+    expect(first.conversationId).toBe(second.conversationId);
+
+    const conversations = await prisma.communicationConversation.findMany({
+      where: { organizationId: orgId, nativeConversationId },
+    });
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0]?.unreadCount).toBe(2);
+  });
+
+  it('D: replay collision increments unread exactly once', async () => {
+    const input = buildEventInput(
+      orgId,
+      nativeConversationId,
+      'evt-replay',
+      new Date('2026-08-21T10:00:00Z'),
+      1,
+    );
+
+    const first = await service.projectNormalizedInput(input);
+    const [replayA, replayB] = await Promise.all([
+      service.projectNormalizedInput(input),
+      service.projectNormalizedInput(input),
+    ]);
+
+    expect(first.eventCreated).toBe(true);
+    expect(replayA.eventCreated).toBe(false);
+    expect(replayB.eventCreated).toBe(false);
+
+    const events = await prisma.communicationEvent.findMany({
+      where: { organizationId: orgId, conversationId: first.conversationId },
+    });
+    expect(events).toHaveLength(1);
+
+    const conversation = await prisma.communicationConversation.findUnique({
+      where: { id: first.conversationId },
+    });
+    expect(conversation?.unreadCount).toBe(1);
+  });
+
+  it('E: concurrent lastActivityAt keeps GREATEST (12:00 over 11:00)', async () => {
+    const base = new Date('2026-08-21T10:00:00Z');
+    const later = new Date('2026-08-21T12:00:00Z');
+    const earlier = new Date('2026-08-21T11:00:00Z');
+
+    await service.projectNormalizedInput(
+      buildEventInput(orgId, nativeConversationId, 'evt-bootstrap', base),
+    );
+
+    await Promise.all([
+      service.projectNormalizedInput(
+        buildEventInput(orgId, nativeConversationId, 'evt-later', later),
+      ),
+      service.projectNormalizedInput(
+        buildEventInput(orgId, nativeConversationId, 'evt-earlier', earlier),
+      ),
+    ]);
+
+    const conversation = await prisma.communicationConversation.findUnique({
+      where: {
+        communication_conversations_org_channel_native: {
+          organizationId: orgId,
+          channel: CommunicationChannel.WHATSAPP,
+          nativeConversationId,
+        },
+      },
+    });
+    expect(conversation?.lastActivityAt.toISOString()).toBe(later.toISOString());
+
+    await service.projectNormalizedInput(
+      buildEventInput(orgId, nativeConversationId, 'evt-older-seq', earlier),
+    );
+    const afterOlder = await prisma.communicationConversation.findUnique({
+      where: { id: conversation!.id },
+    });
+    expect(afterOlder?.lastActivityAt.toISOString()).toBe(later.toISOString());
+  });
+
+  it('F: projection failure rolls back envelope, event, and unread mutations', async () => {
+    const foreignOrg = await prisma.organization.create({
+      data: {
+        companyName: `Comm PG Foreign ${Date.now()}`,
+        businessType: 'RENTAL',
+        status: 'ACTIVE',
+      },
+    });
+    const foreignCustomer = await prisma.customer.create({
+      data: {
+        organizationId: foreignOrg.id,
+        firstName: 'Foreign',
+        lastName: 'Customer',
+        email: `foreign-${Date.now()}@example.com`,
+      },
+    });
+
+    await expect(
+      service.projectNormalizedInput({
+        envelope: {
+          organizationId: orgId,
+          channel: CommunicationChannel.WHATSAPP,
+          nativeConversationId,
+          initialContext: { customerId: foreignCustomer.id },
+        },
+        event: buildEventInput(orgId, nativeConversationId, 'evt-fail', new Date()).event,
+        projection: { unreadDelta: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: CommunicationNormalizationErrorCode.TENANT_CONTEXT_REJECTED,
+    });
+
+    const conversations = await prisma.communicationConversation.findMany({
+      where: { organizationId: orgId },
+    });
+    const events = await prisma.communicationEvent.findMany({ where: { organizationId: orgId } });
+
+    expect(conversations).toHaveLength(0);
+    expect(events).toHaveLength(0);
+
+    await prisma.customer.delete({ where: { id: foreignCustomer.id } });
+    await prisma.organization.delete({ where: { id: foreignOrg.id } });
   });
 });
