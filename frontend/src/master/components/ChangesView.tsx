@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-fines-p2-2-12-2026-08-21',
+    version: '4.9.934',
+    title: 'Rental i18n — P2.2.12 Fines localization',
+    summary: [
+      'Rental Fines surface (`FinesView.tsx` + `fines-i18n.ts`) migrated to canonical `fines.{en,de}.ts` with presentation helpers for status/offense labels and locale-aware date/currency formatting.',
+      'Scanner P2.2.12 enforce-clean exact scope reports 0 findings (~60 blind-spot literals in status maps, offense options, KPI helpers remediated); +82 EN+DE keys (7210→7292); wired 11 legacy `fines.*` keys; reused `common.*`, `tasks.filter.status.*`.',
+      'Presentation-only — fine status enums, German offenseType machine values, API payloads, filters, and document intake context unchanged.',
+    ],
+    reason:
+      'P2.2.12 pre-flight GO verdict scoped Rental Fines with Category E risk on offense type values stored as German API strings; display localized via label maps while preserving machine values.',
+    previousBehavior:
+      'FinesView hardcoded German throughout; 11 canonical `fines.*` keys unwired; offense `<option>` labels duplicated machine strings; fixed de-DE formatting.',
+    details:
+      'rental/components/FinesView.tsx; rental/lib/fines-i18n.ts; fines translations; i18n-hardcoded-scan.mjs P212 boundary; rental-fines-localization.test.tsx; architecture/I18N_RENTAL_FINES_P2_2_12_2026-08-21.md; docs/audits/i18n-p2-2-12-rental-fines-implementation-2026-08-21.md.',
+    affectsArchitecture: true,
+    module: 'Rental Operations',
+    createdAt: '2026-08-21T01:45:00.000Z',
+  },
+  {
     id: 'i18n-rental-handover-protocol-p2-2-11-2026-08-21',
     version: '4.9.933',
     title: 'Rental i18n — P2.2.11 Handover Protocol localization',
