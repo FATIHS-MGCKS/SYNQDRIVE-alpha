@@ -196,6 +196,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(businessPulseSrc).not.toMatch(/financeKpiGrid/);
     expect(financeStripSrc).toMatch(/PRIMARY_BUSINESS_METRICS/);
     expect(financeStripSrc).toMatch(/controlFinanceKpiGrid/);
+    expect(financeStripSrc).not.toMatch(/dashboard\.openInvoices/);
     expect(readFileSync(resolve(testDir, './financeKpiCards.tsx'), 'utf8')).not.toMatch(/profitHint/);
     expect(businessPulseSrc).not.toMatch(/Slice based|Slice-basiert|Business Pulse ·|Dokumente/);
     expect(businessPulseSrc).not.toMatch(/Einträge|document\$\{/);
