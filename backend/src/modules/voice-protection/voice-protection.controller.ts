@@ -10,16 +10,17 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireVoiceAssistantPermission } from '@shared/decorators/require-voice-assistant-permission.decorator';
 import { VoiceBudgetPolicyRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { VoiceBudgetEnforcementService } from './voice-budget-enforcement.service';
 import { VoiceBudgetWarningService } from './voice-budget-warning.service';
 import { VoiceProtectionAuditService } from './voice-protection-audit.service';
 
 @Controller('organizations/:orgId/voice-assistant/protection')
-@UseGuards(OrgScopingGuard, RolesGuard)
-@Roles('ORG_ADMIN', 'SUB_ADMIN')
+@UseGuards(OrgScopingGuard, PermissionsGuard, RolesGuard)
 export class VoiceProtectionController {
   constructor(
     private readonly enforcement: VoiceBudgetEnforcementService,
@@ -29,6 +30,7 @@ export class VoiceProtectionController {
   ) {}
 
   @Get('status')
+  @RequireVoiceAssistantPermission('read')
   async status(@Param('orgId') orgId: string) {
     const [snapshot, forecast, policy] = await Promise.all([
       this.enforcement.getEnforcementSnapshot(orgId),
@@ -39,11 +41,13 @@ export class VoiceProtectionController {
   }
 
   @Get('audit')
+  @RequireVoiceAssistantPermission('read')
   auditTrail(@Param('orgId') orgId: string) {
     return this.audit.listByOrganization(orgId);
   }
 
   @Patch('budget-policy')
+  @RequireVoiceAssistantPermission('manage')
   async updateBudgetPolicy(
     @Param('orgId') orgId: string,
     @Body() body: Record<string, unknown>,

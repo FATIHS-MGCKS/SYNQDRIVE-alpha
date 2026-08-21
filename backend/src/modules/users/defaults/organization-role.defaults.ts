@@ -71,7 +71,7 @@ function adminPermissions(): MembershipPermissionsMap {
   const keys = [
     'dashboard', 'bookings', 'fleet', 'customers', 'stations', 'fleet-condition',
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
-    'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
+    'ai-assistant', 'communication', 'voice-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
   ] as const;
   const perms: MembershipPermissionsMap = {};
@@ -131,7 +131,7 @@ function workerReadPermissions(extraWrite: string[] = []): MembershipPermissions
   for (const key of [
     'dashboard', 'bookings', 'fleet', 'customers', 'stations', 'fleet-condition',
     'invoices', 'fines', 'price-tariffs', 'tasks', 'vendor-management',
-    'ai-assistant', 'workflow-automation', 'document-upload', 'company-info',
+    'ai-assistant', 'communication', 'voice-assistant', 'workflow-automation', 'document-upload', 'company-info',
     'users-roles', 'fleet-connectivity', 'data-analyse', 'data-authorization', 'billing', 'support',
   ]) {
     const canRead = readKeys.includes(key);

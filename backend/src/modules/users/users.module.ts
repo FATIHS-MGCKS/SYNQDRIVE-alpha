@@ -6,6 +6,7 @@ import { PublicInvitesController } from './public-invites.controller';
 import { UsersService } from './users.service';
 import { OrganizationInviteService } from './organization-invite.service';
 import { OrganizationRoleService } from './organization-role.service';
+import { CommunicationPermissionBackfillService } from './communication-permission-backfill.service';
 import { OrganizationRoleVersionService } from './organization-role-version.service';
 import { OrganizationRoleChangeService } from './organization-role-change.service';
 import { UserAccessAuditService } from './user-access-audit.service';
@@ -44,6 +45,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
+    CommunicationPermissionBackfillService,
     OrganizationRoleVersionService,
     OrganizationRoleChangeService,
     UserAccessAuditService,
@@ -68,6 +70,7 @@ import { AuthApiModule } from '@modules/auth/auth.module';
     UsersService,
     OrganizationInviteService,
     OrganizationRoleService,
+    CommunicationPermissionBackfillService,
     OrganizationRoleVersionService,
     OrganizationRoleChangeService,
     UserAccessAuditService,

@@ -1138,6 +1138,17 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Templates', detail: 'Local WhatsAppTemplate drafts + APPROVED provider status; SynqDrive categories' },
     ],
   },
+  {
+    name: 'Communication Center RBAC — C0.2 (V4.9.928)',
+    icon: ShieldCheck,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'communication.*', detail: 'External ops: WhatsApp conversations/replies, Voice conversations/analytics/outbound, MCP approvals — PermissionsGuard + legacy ai-assistant bridge (remove C13)' },
+      { label: 'voice-assistant.*', detail: 'Deep Voice admin: agent builder, telephony, phone numbers, deployment — separate from communication.manage' },
+      { label: 'ai-assistant.*', detail: 'Internal Fleet AI only — no communication bridge' },
+      { label: 'Backfill', detail: 'CommunicationPermissionBackfillService — idempotent ai-assistant → communication/voice-assistant when keys absent; skips DRIVER' },
+    ],
+  },
 ];
 
 /* ------------------------------------------------------------------ */

@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c0-2-rbac-2026-08-21',
+    version: '4.9.928',
+    title: 'Communication Center C0.2 — Canonical RBAC Foundation',
+    summary: [
+      'New permission modules: communication.read/write/manage (external ops) and voice-assistant.read/write/manage (deep Voice admin), separate from internal ai-assistant.',
+      'WhatsApp tenant routes migrated to communication.* with centralized ai-assistant legacy bridge (removal target C13).',
+      'Voice tenant routes hardened with PermissionsGuard; operational endpoints use communication.* + voiceOperationalLegacy staff bridge; telephony/admin uses voice-assistant.*.',
+      'Idempotent CommunicationPermissionBackfillService maps legacy ai-assistant → communication/voice-assistant when module keys absent; never grants communication.manage from ai-assistant alone; skips DRIVER.',
+      'Frontend Sidebar gates WhatsApp/Voice nav via communication-permissions helpers (backend remains authoritative).',
+      'Security suites: compat, guard matrix, backfill, voice characterization, frontend nav helpers.',
+    ],
+    reason:
+      'C0.2 security phase — establish Communication Center authorization before canonical persistence/UI (C1+). Preserve legitimate WhatsApp/Voice access via controlled legacy bridges.',
+    previousBehavior:
+      'WhatsApp coupled to ai-assistant.*; Voice tenant APIs largely org-membership-only; no communication/voice-assistant modules.',
+    details:
+      'backend/src/shared/auth/communication-permission.*, permissions.guard.ts, whatsapp.controller.ts, voice-assistant*.controller.ts, communication-permission-backfill.service.ts, frontend/src/rental/lib/communication-permissions.ts, architecture/COMMUNICATION_CENTER_C0_2_RBAC_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-08-21T12:00:00.000Z',
+  },
+  {
     id: 'dashboard-fleet-readiness-hardening-p33-2026-08-20',
     version: '4.9.927',
     title: 'Dashboard Fleet Readiness Production Hardening (P3.3)',

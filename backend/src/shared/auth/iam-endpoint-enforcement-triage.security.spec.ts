@@ -48,7 +48,7 @@ describe('IAM endpoint enforcement triage — confirmed guard hardening', () => 
       level: 'manage',
     });
     expect(handlerPermission(WhatsAppController, 'sendMessage')).toEqual({
-      module: 'ai-assistant',
+      module: 'communication',
       level: 'write',
     });
   });
