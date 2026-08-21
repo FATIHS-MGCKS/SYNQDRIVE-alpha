@@ -32,12 +32,8 @@ describe('VoiceMcpActionOrchestratorService', () => {
   const prisma = {
     voiceConversation: {
       findFirst: jest.fn().mockResolvedValue({ escalationReason: null }),
-      update: jest.fn().mockResolvedValue({
-        id: 'conv-1',
-        organizationId: 'org-1',
-        escalationReason: 'CALLBACK_REQUESTED',
-        updatedAt: new Date(),
-      }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      update: jest.fn(),
     },
   };
 
@@ -65,6 +61,7 @@ describe('VoiceMcpActionOrchestratorService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (confirmation.consume as jest.Mock).mockResolvedValue(undefined);
     (executions.markRunning as jest.Mock).mockResolvedValue(undefined);
     (executions.complete as jest.Mock).mockImplementation(async (input) => ({
       id: input.id,
@@ -72,13 +69,13 @@ describe('VoiceMcpActionOrchestratorService', () => {
       toolName: 'create_callback_request',
       updatedAt: new Date(),
     }));
-    prisma.voiceConversation.findFirst.mockResolvedValue({ escalationReason: null });
-    prisma.voiceConversation.update.mockResolvedValue({
+    prisma.voiceConversation.updateMany.mockResolvedValue({ count: 1 });
+    prisma.voiceConversation.findFirst.mockImplementation(async () => ({
       id: 'conv-1',
       organizationId: 'org-1',
       escalationReason: 'CALLBACK_REQUESTED',
       updatedAt: new Date(),
-    });
+    }));
   });
 
   it('requires customer confirmation on first call', async () => {
@@ -127,6 +124,13 @@ describe('VoiceMcpActionOrchestratorService', () => {
       expect.any(Object),
       expect.objectContaining({ preferredPhone: '+491701234567' }),
     );
+    expect(prisma.voiceConversation.updateMany).toHaveBeenCalledWith({
+      where: { id: 'conv-1', organizationId: 'org-1' },
+      data: {
+        escalationReason: 'CALLBACK_REQUESTED',
+        outcome: 'ESCALATED',
+      },
+    });
     expect(result.status).toBe('completed');
   });
 

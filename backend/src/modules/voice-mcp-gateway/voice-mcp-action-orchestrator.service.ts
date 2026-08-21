@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Prisma, VoiceConversationLifecycleState, VoiceConversationOutcome } from '@prisma/client';
+import { Prisma, VoiceConversationOutcome } from '@prisma/client';
 import { VoiceToolExecutionRepository } from '@modules/voice-assistant/control-plane/voice-audit-persistence.repository';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VoiceCommunicationProjectionIntegration } from '@modules/communication/adapters/voice/voice-communication-projection.integration';
@@ -125,19 +125,29 @@ export class VoiceMcpActionOrchestratorService {
       });
 
       if (toolName === 'create_callback_request') {
-        const updated = await this.prisma.voiceConversation.update({
-          where: { id: context.conversationId },
+        const escalationUpdate = await this.prisma.voiceConversation.updateMany({
+          where: { id: context.conversationId, organizationId: context.organizationId },
           data: {
             escalationReason: 'CALLBACK_REQUESTED',
             outcome: VoiceConversationOutcome.ESCALATED,
-            lifecycleState: VoiceConversationLifecycleState.TRANSFERRING,
           },
         });
-        void this.voiceProjection?.projectEscalationTransition(
-          updated,
-          'CALLBACK_REQUESTED',
-          priorConversation?.escalationReason ?? null,
-        );
+        if (escalationUpdate.count !== 1) {
+          throw new VoiceMcpError(
+            'DataUnavailable',
+            'Voice conversation not found for callback escalation.',
+          );
+        }
+        const updated = await this.prisma.voiceConversation.findFirst({
+          where: { id: context.conversationId, organizationId: context.organizationId },
+        });
+        if (updated) {
+          void this.voiceProjection?.projectEscalationTransition(
+            updated,
+            'CALLBACK_REQUESTED',
+            priorConversation?.escalationReason ?? null,
+          );
+        }
       }
 
       if (this.voiceProjection) {

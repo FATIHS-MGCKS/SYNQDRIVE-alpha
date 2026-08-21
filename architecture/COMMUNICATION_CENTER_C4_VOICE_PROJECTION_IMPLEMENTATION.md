@@ -12,7 +12,7 @@
 C4 wires the **existing** Voice runtime (Twilio telephony + ElevenLabs conversational AI + native `VoiceConversation`) into canonical Communication persistence as a **best-effort operational projection**:
 
 - `TwilioVoiceCommunicationAdapter` — telephony lifecycle normalization
-- `ElevenLabsVoiceCommunicationAdapter` — AI intent, tool actions, call end, escalation, resolution
+- `ElevenLabsVoiceCommunicationAdapter` — tool actions, call end, escalation, resolution (no fabricated AI intent)
 - `VoiceCommunicationProjectionIntegration` — feature flag, dispatch, failure isolation
 - Minimal attachment points in webhook processing, outbound orchestration, MCP tool orchestrator
 
@@ -30,7 +30,7 @@ C4 wires the **existing** Voice runtime (Twilio telephony + ElevenLabs conversat
 | Process | `VoiceWebhookProcessingService` | Correlation → `VoiceConversationLifecycleService.applyWebhookEvent` → **C4 projection hook** |
 | Native authority | `VoiceConversation` (Prisma) | Lifecycle, outcome, transcript, escalation, metadata context |
 | Tool audit | `VoiceToolExecution` | MCP tool lifecycle (RUNNING/SUCCEEDED/FAILED) |
-| Outbound | `VoiceCallOrchestrationService` | Creates native conversation → Twilio dial → **C4 CALL_STARTED** |
+| Outbound | `VoiceCallOrchestrationService` | **Real** outbound only: after `elevenLabs.startOutboundCall` succeeds → **C4 CALL_STARTED** (dry-run: zero projection) |
 | Escalation (repair) | `VoiceMcpActionOrchestratorService` | `create_callback_request` → native escalation fields → **C4 HUMAN_REQUIRED** |
 
 Provider identifiers (`twilioCallSid`, `elevenLabsConvId`) remain on native `VoiceConversation` and webhook events only — never as canonical `nativeConversationId`.
@@ -42,12 +42,13 @@ Provider identifiers (`twilioCallSid`, `elevenLabsConvId`) remain on native `Voi
 | Twilio status (native) | Canonical event | Source of truth |
 |------------------------|-----------------|-----------------|
 | Inbound webhook (`twilio.voice.inbound`) | `CALL_STARTED` (+ `initialStatus`) | Processed webhook after lifecycle persist |
-| `initiated` / `ringing` / `queued` | `CALL_STARTED` (no status patch) | Processed webhook |
+| `initiated` / `ringing` / `queued` | *(skipped — sub-states of same milestone)* | — |
 | `in-progress` / `answered` | `CALL_CONNECTED` | Processed webhook |
 | `busy` / `no-answer` / `failed` / `canceled` | `CALL_FAILED` | Processed webhook |
 | `completed` (ElevenLabs path) | *(skipped — ElevenLabs post-call owns CALL_ENDED)* | — |
 | `completed` (legacy TwiML metadata) | `CALL_ENDED` | Processed webhook |
-| Outbound conversation create | `CALL_STARTED` | `VoiceCallOrchestrationService` after native persist |
+| Outbound provider acceptance | `CALL_STARTED` | `VoiceCallOrchestrationService` after `startOutboundCall` + native persist |
+| Outbound dry-run | *(none)* | Dry-run creates native record only; **no canonical telephony events** |
 
 Twilio transfer events do **not** emit duplicate `HUMAN_REQUIRED`; telephony transfer remains operational call lifecycle only.
 
@@ -57,7 +58,7 @@ Twilio transfer events do **not** emit duplicate `HUMAN_REQUIRED`; telephony tra
 
 | Native source | Canonical event | Source of truth |
 |---------------|-----------------|-----------------|
-| `elevenlabs.conversation` status `in_progress`/`active` | `AI_INTENT_DETECTED` | Processed webhook |
+| `elevenlabs.conversation` active/in_progress | *(none in C4)* | **Deferred** — session active ≠ intent detected |
 | `elevenlabs.post_call` | `CALL_ENDED` | Processed webhook (authoritative for native AI path) |
 | Post-call + `outcome=RESOLVED` | `CONVERSATION_RESOLVED` | Processed webhook |
 | `VoiceToolExecution` RUNNING | `AI_ACTION_STARTED` | MCP orchestrator after native persist |
@@ -100,11 +101,12 @@ One `CommunicationConversation` per `VoiceConversation.id`:
 | Native source | Canonical event | Provider | Direction | Idempotency | Status patch | Metadata | Failure |
 |---------------|-----------------|----------|-----------|-------------|--------------|----------|---------|
 | Inbound accept | `CALL_STARTED` | TWILIO | INBOUND/OUTBOUND | `externalEventId` | `envelope.initialStatus` once | `providerLifecycleState` | Log + continue |
-| initiated/ringing | `CALL_STARTED` | TWILIO | native direction | `externalEventId` | none | `providerLifecycleState` | Log + continue |
+| initiated/ringing/queued | *(skipped)* | — | — | — | — | — | — |
 | in-progress | `CALL_CONNECTED` | TWILIO | native direction | `externalEventId` | none | `providerLifecycleState` | Log + continue |
 | busy/no-answer/failed/canceled | `CALL_FAILED` | TWILIO | native direction | `externalEventId` | none | `failureCode`, `outcomeCode`, `providerLifecycleState` | Log + continue |
 | completed (legacy TwiML) | `CALL_ENDED` | TWILIO | native direction | `externalEventId` | none | `durationSeconds`, `outcomeCode` | Log + continue |
-| Outbound create | `CALL_STARTED` | TWILIO | OUTBOUND | `outbound:{id}:started` | `initialStatus` | — | Log + continue |
+| Outbound live (post provider accept) | `CALL_STARTED` | TWILIO | OUTBOUND | `outbound:{id}:started` | `initialStatus` | `providerLifecycleState` | Log + continue |
+| Outbound dry-run | *(none)* | — | — | — | — | — | — |
 
 ---
 
@@ -112,7 +114,7 @@ One `CommunicationConversation` per `VoiceConversation.id`:
 
 | Native source | Canonical event | Provider | Direction | Idempotency | Status patch | Metadata | Failure |
 |---------------|-----------------|----------|-----------|-------------|--------------|----------|---------|
-| AI session active | `AI_INTENT_DETECTED` | ELEVENLABS | INTERNAL | `externalEventId` | none | `intentCode` | Log + continue |
+| AI session active | *(deferred — no truthful native intent signal in C4)* | — | — | — | — | — | — |
 | Post-call finalize | `CALL_ENDED` | ELEVENLABS | native direction | `{externalEventId}:ended` | none | `durationSeconds`, `outcomeCode` | Log + continue |
 | Resolved outcome | `CONVERSATION_RESOLVED` | ELEVENLABS | native direction | `{externalEventId}:resolved` | `RESOLVED` | `outcomeCode` | Log + continue |
 | Escalation transition | `HUMAN_REQUIRED` | ELEVENLABS | INTERNAL | `voice-human:{id}:{updatedAt}` | `HUMAN_REQUIRED` | `handoffReasonCode` | Log + continue |
@@ -133,7 +135,7 @@ One `CommunicationConversation` per `VoiceConversation.id`:
 | FAILED lifecycle/outcome | `FAILED` |
 | Default AI-active session | `AI_ACTIVE` |
 
-Ordinary lifecycle events (`CALL_CONNECTED`, `AI_INTENT_DETECTED`, etc.) do **not** patch canonical status. Explicit patches: `HUMAN_REQUIRED`, `CONVERSATION_RESOLVED` only.
+Ordinary lifecycle events (`CALL_CONNECTED`, etc.) do **not** patch canonical status. Explicit patches: `HUMAN_REQUIRED`, `CONVERSATION_RESOLVED` only. `AI_INTENT_DETECTED` is **not** emitted in C4 (no truthful native intent source).
 
 ---
 
@@ -143,23 +145,25 @@ Ordinary lifecycle events (`CALL_CONNECTED`, `AI_INTENT_DETECTED`, etc.) do **no
 |------|----------------|
 | `escalationReason` column | **UNUSED** before C4 (no writers) |
 | `ESCALATED` outcome | **UNUSED** before C4 |
-| `TRANSFERRING` lifecycle | **UNUSED** before C4 |
+| `TRANSFERRING` lifecycle | **UNUSED** — not set by callback request (not a live transfer) |
 | ElevenLabs agent escalation webhook | **DEFER TO C11** (no deterministic native transition yet) |
-| `create_callback_request` MCP tool | **PARTIALLY WIRED** — executed but did not persist escalation |
+| `create_callback_request` MCP tool | Creates **staff callback task** (`CUSTOMER_FOLLOWUP`) — human follow-up later, not live PSTN transfer |
 | Twilio transfer | **DEFER TO C11** for `HUMAN_ACTIVE`; no duplicate `HUMAN_REQUIRED` in C4 |
 
 ---
 
 ## 11. Escalation repair
 
-**Source of truth for `HUMAN_REQUIRED`:** AI-side escalation decision (MCP `create_callback_request`), not Twilio transfer webhooks.
+**Product evidence:** `VoiceMcpWriteToolsService.createCallbackRequest` creates a `CUSTOMER_FOLLOWUP` task via `tasksService.createManualTask` with `source: 'VOICE_CALLBACK'`. It does **not** initiate a live telephony transfer.
 
-On successful `create_callback_request`:
+**Source of truth for `HUMAN_REQUIRED`:** MCP `create_callback_request` success (AI-side human follow-up decision), not Twilio transfer webhooks.
+
+On successful `create_callback_request` (tenant-scoped `updateMany` where `{ id, organizationId }`, `count === 1`):
 
 ```text
 escalationReason = 'CALLBACK_REQUESTED'
 outcome = ESCALATED
-lifecycleState = TRANSFERRING
+(lifecycleState unchanged — call may remain AI_ACTIVE)
 → projectEscalationTransition (idempotent per updatedAt)
 ```
 
@@ -168,6 +172,17 @@ Idempotency key: `voice-human:{voiceConversationId}:{updatedAt.toISOString()}`
 Replay of same native transition → one canonical event. Later distinct transition (new `updatedAt`) → new `HUMAN_REQUIRED` allowed.
 
 `projectEscalationTransition` skips if `priorEscalationReason` already set (prevents duplicate on same logical escalation replay).
+
+---
+
+## 11b. Call end / resolution source of truth
+
+| Path | Native | Canonical |
+|------|--------|-----------|
+| ElevenLabs-managed call | Twilio `completed` sets native `status=COMPLETED` + `endedAt` but **not** canonical `CALL_ENDED` | `elevenlabs.post_call` → `CALL_ENDED` (+ `CONVERSATION_RESOLVED` when `outcome=RESOLVED`) |
+| Legacy TwiML | Twilio `completed` finalizes natively | Twilio `completed` → `CALL_ENDED` |
+
+**Gap (documented, not redesigned in C4):** If Twilio reports `completed` but `elevenlabs.post_call` never arrives, native row may show completed while canonical timeline lacks `CALL_ENDED`. No duplicate `CALL_ENDED` is emitted from Twilio on the ElevenLabs path. Future C11/reconciliation may address orphan finalization.
 
 ---
 
@@ -201,9 +216,9 @@ Projected from authoritative `VoiceToolExecution` records after native persist i
 
 Metadata allowlist: `toolName`, `actionName`, `failureCode`, `outcomeCode` — no input/output/PII.
 
-MCP webhook `MCP_TOOL_EXECUTION` events project completed/failed actions only (synthetic execution from redacted webhook payload).
+MCP webhook `MCP_TOOL_EXECUTION` events converge on the **same** idempotency key as orchestrator path via shared `buildVoiceToolProviderEventId(executionId, eventType)`.
 
-`AI_ACTION_STARTED` is projected when execution status is RUNNING (orchestrator path uses complete status primarily; start via markRunning not separately projected in C4 minimal scope).
+Orchestrator + webhook replay of the same `VoiceToolExecution` → exactly one `AI_ACTION_COMPLETED` or `AI_ACTION_FAILED`.
 
 ---
 
@@ -249,10 +264,12 @@ All keys via C2 `buildCanonicalIdempotencyKey` (`cc1:{sha256}`).
 `VoiceCommunicationProjectionIntegration.projectSafely`:
 
 - Catches normalization + projection errors
-- Logs `voice_canonical_projection_failed` with: `organizationId`, `nativeConversationId`, `providerIdentity`, `providerEventId`, `eventType`, `errorCode`
+- Logs `voice_canonical_projection_failed` with: `organizationId`, `nativeConversationId`, **`providerIdentity` (actual provider per event)**, `providerEventId`, `eventType`, `errorCode`
 - Never logs phone, transcript, prompt, raw payload, or unsanitized `Error.message`
 
-Webhook processing calls projection with `void` **after** `markProcessed` — native ack path unchanged.
+Webhook processing calls projection with `void` + `.catch(() => undefined)` **after** `markProcessed` — native ack path unchanged.
+
+Outbound orchestration: projection failure cannot block or retry `startOutboundCall`.
 
 ---
 
@@ -289,11 +306,13 @@ Service: `CommunicationProjectionFeatureService.isVoiceProjectionEnabled()`
 | Suite | Coverage |
 |-------|----------|
 | `twilio-voice-communication.adapter.spec.ts` | nativeConversationId, direction, status safety, HUMAN_REQUIRED occurrence keys |
-| `voice-communication-projection.integration.spec.ts` | flag OFF, normalization swallow, multi-provider dispatch |
-| `voice-communication-projection.postgres.integration.spec.ts` | multi-provider convergence, HUMAN_REQUIRED replay (requires `DATABASE_URL`) |
+| `voice-communication-projection.integration.spec.ts` | flag OFF, normalization swallow, provider-specific failure logs, CALL_STARTED dedupe, no fabricated AI intent |
+| `voice-communication-projection.postgres.integration.spec.ts` | **7 tests** on `synqdrive_comm_c1_mig`: multi-provider convergence, HUMAN_REQUIRED replay + distinct occurrence, tool dual-source dedupe, cross-org escalation guard, dry-run zero events, orchestrator tenant isolation |
+| `voice-call-orchestration.spec.ts` | dry-run no projection, live outbound one CALL_STARTED, projection failure isolation, provider failure no CALL_STARTED |
 | `voice-webhook-ingestion.pipeline.spec.ts` | native persist succeeds when projection throws |
-| `communication-projection-feature.service.spec.ts` | voice flag |
-| `voice-mcp-write-actions.spec.ts` | orchestrator with prisma (callback path) |
+| `voice-mcp-write-actions.spec.ts` | tenant-scoped `updateMany` on callback escalation |
+
+**PostgreSQL run (pre-merge):** `DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive_comm_c1_mig` → **7/7 passed**.
 
 ---
 
@@ -333,10 +352,10 @@ Set `COMMUNICATION_CENTER_VOICE_PROJECTION_ENABLED=false` (or remove org from al
 ## 25. Known risks
 
 1. ElevenLabs agent-initiated escalation (non-MCP) still lacks native transition → no canonical `HUMAN_REQUIRED` until C11
-2. `AI_ACTION_STARTED` not projected on `markRunning` — only completed/failed tool paths in orchestrator
-3. Postgres integration tests skipped in CI without `DATABASE_URL`
-4. Out-of-order Twilio/ElevenLabs events rely on `occurredAt` ordering, not strict pipeline order
-5. Historical Voice conversations invisible to Communication Center until C4.2 backfill
+2. `AI_INTENT_DETECTED` deferred — no truthful native intent classifier in current Voice runtime (C11 AI Activity)
+3. Orphan finalization if Twilio `completed` without `elevenlabs.post_call` — canonical timeline may lack `CALL_ENDED`
+4. Historical Voice conversations invisible to Communication Center until C4.2 backfill
+5. Out-of-order Twilio/ElevenLabs events rely on `occurredAt`, not pipeline ordering
 
 ---
 

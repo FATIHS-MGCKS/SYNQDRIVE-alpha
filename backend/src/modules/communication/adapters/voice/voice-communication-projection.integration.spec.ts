@@ -1,3 +1,4 @@
+import { CommunicationProviderIdentity } from '@prisma/client';
 import { CommunicationProjectionService } from '../../communication-projection.service';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { TwilioVoiceCommunicationAdapter } from './twilio-voice-communication.adapter';
@@ -16,6 +17,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
   } as unknown as jest.Mocked<CommunicationProjectionService>;
 
   let integration: VoiceCommunicationProjectionIntegration;
+  let warnSpy: jest.SpyInstance;
 
   const conversation = {
     id: 'voice-native-1',
@@ -38,6 +40,11 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       elevenLabsAdapter,
       projection,
     );
+    warnSpy = jest.spyOn(integration['logger'], 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
   });
 
   it('does not call projection when feature flag is OFF', async () => {
@@ -50,7 +57,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
     expect(projection.projectNormalizedInput).not.toHaveBeenCalled();
   });
 
-  it('swallows adapter normalization failures', async () => {
+  it('swallows adapter normalization failures without leaking error text', async () => {
     const throwingTwilio = {
       fromCallStarted: jest.fn(() => {
         throw new Error('sensitive transcript leak');
@@ -62,6 +69,7 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       elevenLabsAdapter,
       projection,
     );
+    const unsafeWarn = jest.spyOn(unsafe['logger'], 'warn').mockImplementation(() => undefined);
     featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
     await expect(
       unsafe.projectCallStarted({
@@ -71,9 +79,38 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       }),
     ).resolves.toBeUndefined();
     expect(projection.projectNormalizedInput).not.toHaveBeenCalled();
+    const payload = JSON.parse(unsafeWarn.mock.calls[0]?.[0] as string);
+    expect(payload.providerIdentity).toBe(CommunicationProviderIdentity.TWILIO);
+    expect(JSON.stringify(payload)).not.toContain('transcript');
+    unsafeWarn.mockRestore();
   });
 
-  it('projects multi-provider webhook sequence when flag ON', async () => {
+  it('logs ElevenLabs provider identity on post-call projection failure', async () => {
+    const throwingElevenLabs = {
+      fromCallEnded: jest.fn(() => {
+        throw new Error('elevenlabs normalization failed');
+      }),
+    } as unknown as ElevenLabsVoiceCommunicationAdapter;
+    const unsafe = new VoiceCommunicationProjectionIntegration(
+      featureFlags,
+      twilioAdapter,
+      throwingElevenLabs,
+      projection,
+    );
+    const unsafeWarn = jest.spyOn(unsafe['logger'], 'warn').mockImplementation(() => undefined);
+    featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
+    await unsafe.projectCallEnded({
+      conversation,
+      providerEventId: 'el:post:ended',
+      occurredAt: new Date(),
+    });
+    const payload = JSON.parse(unsafeWarn.mock.calls[0]?.[0] as string);
+    expect(payload.providerIdentity).toBe(CommunicationProviderIdentity.ELEVENLABS);
+    expect(payload.eventType).toBe('CALL_ENDED');
+    unsafeWarn.mockRestore();
+  });
+
+  it('projects Twilio inbound + connected without duplicate CALL_STARTED from ringing', async () => {
     featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
     projection.projectNormalizedInput.mockResolvedValue({
       conversationId: 'cc-1',
@@ -93,11 +130,36 @@ describe('VoiceCommunicationProjectionIntegration', () => {
     await integration.projectFromProcessedWebhook({
       organizationId: 'org-1',
       eventType: 'twilio.voice.status',
+      externalEventId: 'CA1:status:ringing',
+      provider: 'TWILIO',
+      conversation,
+      payload: { CallStatus: 'ringing' },
+    });
+    await integration.projectFromProcessedWebhook({
+      organizationId: 'org-1',
+      eventType: 'twilio.voice.status',
       externalEventId: 'CA1:status:in-progress',
       provider: 'TWILIO',
       conversation: { ...conversation, lifecycleState: VoiceConversationLifecycleState.CONNECTED },
       payload: { CallStatus: 'in-progress' },
     });
+
+    const eventTypes = projection.projectNormalizedInput.mock.calls.map(
+      (call) => call[0].event.eventType,
+    );
+    expect(eventTypes.filter((t) => t === 'CALL_STARTED')).toHaveLength(1);
+    expect(eventTypes).toContain('CALL_CONNECTED');
+  });
+
+  it('does not fabricate AI_INTENT_DETECTED from active ElevenLabs session alone', async () => {
+    featureFlags.isVoiceProjectionEnabled.mockReturnValue(true);
+    projection.projectNormalizedInput.mockResolvedValue({
+      conversationId: 'cc-1',
+      eventId: 'ev-1',
+      conversationCreated: false,
+      eventCreated: false,
+    });
+
     await integration.projectFromProcessedWebhook({
       organizationId: 'org-1',
       eventType: 'elevenlabs.conversation',
@@ -107,6 +169,6 @@ describe('VoiceCommunicationProjectionIntegration', () => {
       payload: { status: 'in_progress' },
     });
 
-    expect(projection.projectNormalizedInput).toHaveBeenCalledTimes(3);
+    expect(projection.projectNormalizedInput).not.toHaveBeenCalled();
   });
 });

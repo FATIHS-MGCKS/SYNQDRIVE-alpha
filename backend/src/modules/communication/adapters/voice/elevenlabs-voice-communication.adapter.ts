@@ -18,6 +18,7 @@ import {
   assertVoiceConversation,
   buildVoiceEnvelope,
   buildVoiceIdempotencyKey,
+  buildVoiceToolProviderEventId,
   buildVoiceTransitionProviderEventId,
   resolveVoiceDirection,
   sanitizeHandoffReasonCode,
@@ -208,7 +209,10 @@ export class ElevenLabsVoiceCommunicationAdapter
   ): NormalizedCommunicationInput {
     const { conversation, execution } = source;
     assertVoiceConversation(conversation);
-    const providerEventId = `voice-tool:${execution.id}:${eventType.toLowerCase()}`;
+    const providerEventId = buildVoiceToolProviderEventId(
+      execution.id,
+      eventType as 'AI_ACTION_STARTED' | 'AI_ACTION_COMPLETED' | 'AI_ACTION_FAILED',
+    );
     const occurredAt = source.occurredAt;
 
     return {

@@ -40,6 +40,7 @@ describe('VoiceCallOrchestrationService', () => {
   };
   const mcpTokens = { issue: jest.fn() };
   const internalEvents = { recordConversationLifecycle: jest.fn() };
+  const voiceProjection = { projectCallStarted: jest.fn().mockResolvedValue(undefined) };
 
   let service: VoiceCallOrchestrationService;
 
@@ -58,6 +59,7 @@ describe('VoiceCallOrchestrationService', () => {
       protection as never,
       mcpTokens as never,
       internalEvents as never,
+      voiceProjection as never,
     );
   });
 
@@ -101,7 +103,11 @@ describe('VoiceCallOrchestrationService', () => {
     });
     prisma.voiceAgentDeployment.findFirst.mockResolvedValue({ id: DEPLOY_ID });
     elevenLabs.prepareOutboundCall.mockResolvedValue({ ready: true, blockers: [] });
-    prisma.voiceConversation.create.mockResolvedValue({ id: 'conv-1' });
+    prisma.voiceConversation.create.mockResolvedValue({
+      id: 'conv-1',
+      organizationId: ORG,
+      startedAt: new Date(),
+    });
 
     const result = await service.orchestrateOutboundCall({
       organizationId: ORG,
@@ -112,6 +118,119 @@ describe('VoiceCallOrchestrationService', () => {
     expect(result.dryRun).toBe(true);
     expect(elevenLabs.startOutboundCall).not.toHaveBeenCalled();
     expect(prisma.voiceConversation.create).toHaveBeenCalled();
+    expect(voiceProjection.projectCallStarted).not.toHaveBeenCalled();
+  });
+
+  it('projects exactly one CALL_STARTED after real outbound provider acceptance', async () => {
+    process.env.VOICE_AI_PROVISIONING_STAGING_ENABLED = 'true';
+    prisma.voiceAssistant.findUnique.mockResolvedValue({
+      id: ASSISTANT_ID,
+      organizationId: ORG,
+      status: VoiceAssistantStatus.ACTIVE,
+      outboundEnabled: true,
+      phoneNumberId: PHONE_ID,
+    });
+    prisma.voiceConversation.findFirst.mockResolvedValue(null);
+    phoneNumbers.findById.mockResolvedValue({
+      id: PHONE_ID,
+      lifecycle: VoicePhoneNumberLifecycle.ACTIVE,
+      elevenLabsImportStatus: VoiceElevenLabsImportStatus.ASSIGNED,
+    });
+    prisma.voiceAgentDeployment.findFirst.mockResolvedValue({ id: DEPLOY_ID });
+    elevenLabs.prepareOutboundCall.mockResolvedValue({ ready: true, blockers: [] });
+    elevenLabs.startOutboundCall.mockResolvedValue({
+      maskedConversationRef: 'el-masked',
+      maskedCallRef: 'ca-masked',
+      status: 'initiated',
+    });
+    prisma.voiceConversation.create.mockResolvedValue({
+      id: 'conv-live-1',
+      organizationId: ORG,
+      startedAt: new Date('2026-08-21T10:00:00Z'),
+    });
+
+    const result = await service.orchestrateOutboundCall({
+      organizationId: ORG,
+      toE164: '+491701234567',
+      idempotencyKey: 'idem-live-1',
+    });
+
+    expect(result.dryRun).toBe(false);
+    expect(elevenLabs.startOutboundCall).toHaveBeenCalledTimes(1);
+    expect(voiceProjection.projectCallStarted).toHaveBeenCalledTimes(1);
+    expect(voiceProjection.projectCallStarted).toHaveBeenCalledWith(
+      expect.objectContaining({ providerEventId: 'outbound:conv-live-1:started' }),
+    );
+  });
+
+  it('invokes provider exactly once when canonical projection fails', async () => {
+    process.env.VOICE_AI_PROVISIONING_STAGING_ENABLED = 'true';
+    voiceProjection.projectCallStarted.mockRejectedValue(new Error('projection failed'));
+    prisma.voiceAssistant.findUnique.mockResolvedValue({
+      id: ASSISTANT_ID,
+      organizationId: ORG,
+      status: VoiceAssistantStatus.ACTIVE,
+      outboundEnabled: true,
+      phoneNumberId: PHONE_ID,
+    });
+    prisma.voiceConversation.findFirst.mockResolvedValue(null);
+    phoneNumbers.findById.mockResolvedValue({
+      id: PHONE_ID,
+      lifecycle: VoicePhoneNumberLifecycle.ACTIVE,
+      elevenLabsImportStatus: VoiceElevenLabsImportStatus.ASSIGNED,
+    });
+    prisma.voiceAgentDeployment.findFirst.mockResolvedValue({ id: DEPLOY_ID });
+    elevenLabs.prepareOutboundCall.mockResolvedValue({ ready: true, blockers: [] });
+    elevenLabs.startOutboundCall.mockResolvedValue({
+      maskedConversationRef: 'el-masked',
+      maskedCallRef: 'ca-masked',
+      status: 'initiated',
+    });
+    prisma.voiceConversation.create.mockResolvedValue({
+      id: 'conv-proj-fail',
+      organizationId: ORG,
+      startedAt: new Date(),
+    });
+
+    const result = await service.orchestrateOutboundCall({
+      organizationId: ORG,
+      toE164: '+491701234567',
+      idempotencyKey: 'idem-proj-fail',
+    });
+
+    expect(elevenLabs.startOutboundCall).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe('initiated');
+  });
+
+  it('does not project CALL_STARTED when provider invocation fails before native acceptance', async () => {
+    process.env.VOICE_AI_PROVISIONING_STAGING_ENABLED = 'true';
+    prisma.voiceAssistant.findUnique.mockResolvedValue({
+      id: ASSISTANT_ID,
+      organizationId: ORG,
+      status: VoiceAssistantStatus.ACTIVE,
+      outboundEnabled: true,
+      phoneNumberId: PHONE_ID,
+    });
+    prisma.voiceConversation.findFirst.mockResolvedValue(null);
+    phoneNumbers.findById.mockResolvedValue({
+      id: PHONE_ID,
+      lifecycle: VoicePhoneNumberLifecycle.ACTIVE,
+      elevenLabsImportStatus: VoiceElevenLabsImportStatus.ASSIGNED,
+    });
+    prisma.voiceAgentDeployment.findFirst.mockResolvedValue({ id: DEPLOY_ID });
+    elevenLabs.prepareOutboundCall.mockResolvedValue({ ready: true, blockers: [] });
+    elevenLabs.startOutboundCall.mockRejectedValue(new Error('provider unavailable'));
+
+    await expect(
+      service.orchestrateOutboundCall({
+        organizationId: ORG,
+        toE164: '+491701234567',
+        idempotencyKey: 'idem-provider-fail',
+      }),
+    ).rejects.toThrow('provider unavailable');
+
+    expect(prisma.voiceConversation.create).not.toHaveBeenCalled();
+    expect(voiceProjection.projectCallStarted).not.toHaveBeenCalled();
   });
 
   it('returns idempotent replay for duplicate outbound idempotency key', async () => {

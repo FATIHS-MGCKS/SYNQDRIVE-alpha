@@ -5,6 +5,7 @@ import {
   VoiceConversation,
   VoiceConversationOutcome,
   VoiceToolExecution,
+  VoiceToolExecutionStatus,
 } from '@prisma/client';
 import { isLegacyTwimlConversation } from '@modules/voice-assistant/voice-conversation-lifecycle.util';
 import { VOICE_WEBHOOK_EVENT_TYPES } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.constants';
@@ -15,6 +16,7 @@ import { ElevenLabsVoiceCommunicationAdapter } from './elevenlabs-voice-communic
 import { TwilioVoiceCommunicationAdapter } from './twilio-voice-communication.adapter';
 import {
   buildVoiceTransitionProviderEventId,
+  buildVoiceToolProviderEventId,
   resolveNativeTransitionVersion,
 } from './voice-communication.shared';
 import type {
@@ -45,7 +47,12 @@ export class VoiceCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) return;
         await this.projection.projectNormalizedInput(this.twilioAdapter.fromCallStarted(source));
       },
-      this.contextFromConversation(source.conversation, 'CALL_STARTED', source.providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'CALL_STARTED',
+        source.providerEventId,
+        CommunicationProviderIdentity.TWILIO,
+      ),
     );
   }
 
@@ -55,7 +62,12 @@ export class VoiceCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) return;
         await this.projection.projectNormalizedInput(this.twilioAdapter.fromCallConnected(source));
       },
-      this.contextFromConversation(source.conversation, 'CALL_CONNECTED', source.providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'CALL_CONNECTED',
+        source.providerEventId,
+        CommunicationProviderIdentity.TWILIO,
+      ),
     );
   }
 
@@ -65,7 +77,12 @@ export class VoiceCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) return;
         await this.projection.projectNormalizedInput(this.elevenLabsAdapter.fromCallEnded(source));
       },
-      this.contextFromConversation(source.conversation, 'CALL_ENDED', source.providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'CALL_ENDED',
+        source.providerEventId,
+        CommunicationProviderIdentity.ELEVENLABS,
+      ),
     );
   }
 
@@ -75,7 +92,12 @@ export class VoiceCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) return;
         await this.projection.projectNormalizedInput(this.twilioAdapter.fromCallEnded(source));
       },
-      this.contextFromConversation(source.conversation, 'CALL_ENDED', source.providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'CALL_ENDED',
+        source.providerEventId,
+        CommunicationProviderIdentity.TWILIO,
+      ),
     );
   }
 
@@ -85,7 +107,12 @@ export class VoiceCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) return;
         await this.projection.projectNormalizedInput(this.twilioAdapter.fromCallFailed(source));
       },
-      this.contextFromConversation(source.conversation, 'CALL_FAILED', source.providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'CALL_FAILED',
+        source.providerEventId,
+        CommunicationProviderIdentity.TWILIO,
+      ),
     );
   }
 
@@ -95,7 +122,12 @@ export class VoiceCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) return;
         await this.projection.projectNormalizedInput(this.elevenLabsAdapter.fromAiIntentDetected(source));
       },
-      this.contextFromConversation(source.conversation, 'AI_INTENT_DETECTED', source.providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'AI_INTENT_DETECTED',
+        source.providerEventId,
+        CommunicationProviderIdentity.ELEVENLABS,
+      ),
     );
   }
 
@@ -113,6 +145,7 @@ export class VoiceCommunicationProjectionIntegration {
         source.providerEventId.endsWith(':resolved')
           ? source.providerEventId
           : `${source.providerEventId}:resolved`,
+        CommunicationProviderIdentity.ELEVENLABS,
       ),
     );
   }
@@ -121,6 +154,10 @@ export class VoiceCommunicationProjectionIntegration {
     const providerEventId =
       source.providerEventId.trim() ||
       buildVoiceTransitionProviderEventId('voice-human', source.conversation);
+    const providerIdentity =
+      source.providerIdentity === 'TWILIO'
+        ? CommunicationProviderIdentity.TWILIO
+        : CommunicationProviderIdentity.ELEVENLABS;
 
     await this.projectSafely(
       async () => {
@@ -129,17 +166,23 @@ export class VoiceCommunicationProjectionIntegration {
           this.elevenLabsAdapter.fromHumanRequired({ ...source, providerEventId }),
         );
       },
-      this.contextFromConversation(source.conversation, 'HUMAN_REQUIRED', providerEventId),
+      this.contextFromConversation(
+        source.conversation,
+        'HUMAN_REQUIRED',
+        providerEventId,
+        providerIdentity,
+      ),
     );
   }
 
   async projectToolExecution(source: VoiceToolExecutionProjectionSource): Promise<void> {
     const eventType =
-      source.execution.status === 'RUNNING'
+      source.execution.status === VoiceToolExecutionStatus.RUNNING
         ? 'AI_ACTION_STARTED'
-        : source.execution.status === 'SUCCEEDED'
+        : source.execution.status === VoiceToolExecutionStatus.SUCCEEDED
           ? 'AI_ACTION_COMPLETED'
           : 'AI_ACTION_FAILED';
+    const providerEventId = buildVoiceToolProviderEventId(source.execution.id, eventType);
 
     await this.projectSafely(
       async () => {
@@ -151,7 +194,8 @@ export class VoiceCommunicationProjectionIntegration {
       this.contextFromConversation(
         source.conversation,
         eventType,
-        `voice-tool:${source.execution.id}:${eventType.toLowerCase()}`,
+        providerEventId,
+        CommunicationProviderIdentity.ELEVENLABS,
       ),
     );
   }
@@ -220,26 +264,13 @@ export class VoiceCommunicationProjectionIntegration {
         return;
       }
 
-      if (['initiated', 'ringing', 'queued'].includes(callStatus)) {
-        await this.projectCallStarted({
-          ...twilioBase,
-          includeInitialStatus: false,
-        });
-      }
+      // initiated / ringing / queued are provider sub-states; CALL_STARTED is emitted only
+      // from inbound accept or outbound provider acceptance (authoritative milestones).
       return;
     }
 
     if (eventType === VOICE_WEBHOOK_EVENT_TYPES.ELEVENLABS_CONVERSATION) {
-      const remoteStatus =
-        readString(payload, 'status') ?? readNestedString(payload, ['data', 'status']) ?? '';
-      if (['in_progress', 'active'].includes(remoteStatus.toLowerCase())) {
-        await this.projectAiIntent({
-          conversation,
-          providerEventId: externalEventId,
-          occurredAt,
-          intentCode: remoteStatus,
-        });
-      }
+      // Active ElevenLabs session status is not a deterministic intent signal — deferred to C11.
       return;
     }
 
@@ -273,7 +304,7 @@ export class VoiceCommunicationProjectionIntegration {
         organizationId: conversation.organizationId,
         voiceConversationId: conversation.id,
         toolName,
-        status: status === 'FAILED' ? 'FAILED' : 'SUCCEEDED',
+        status: status === 'FAILED' ? VoiceToolExecutionStatus.FAILED : VoiceToolExecutionStatus.SUCCEEDED,
         riskClass: 'READ_ONLY',
         requestHash: 'replay',
         idempotencyKey: `${conversation.id}:${toolExecutionId}`,
@@ -315,11 +346,12 @@ export class VoiceCommunicationProjectionIntegration {
     conversation: VoiceConversation,
     eventType: string,
     providerEventId: string,
+    providerIdentity: CommunicationProviderIdentity,
   ) {
     return {
       organizationId: conversation.organizationId,
       nativeConversationId: conversation.id,
-      providerIdentity: CommunicationProviderIdentity.TWILIO,
+      providerIdentity,
       providerEventId,
       eventType,
     };

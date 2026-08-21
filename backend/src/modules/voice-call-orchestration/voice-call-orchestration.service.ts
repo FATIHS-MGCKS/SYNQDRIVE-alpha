@@ -271,7 +271,6 @@ export class VoiceCallOrchestrationService {
         bookingId: request.bookingId,
         dryRun: true,
       });
-      void this.projectOutboundCallStarted(conversation, `outbound:${conversation.id}:started`);
       return {
         conversationId: conversation.id,
         maskedConversationRef: null,
@@ -448,13 +447,15 @@ export class VoiceCallOrchestrationService {
     conversation: Awaited<ReturnType<VoiceCallOrchestrationService['createOutboundConversation']>>,
     providerEventId: string,
   ): void {
-    void this.voiceProjection?.projectCallStarted({
-      conversation,
-      providerEventId,
-      occurredAt: conversation.startedAt,
-      telephonyStatusCode: 'outbound_initiated',
-      includeInitialStatus: true,
-    });
+    void this.voiceProjection
+      ?.projectCallStarted({
+        conversation,
+        providerEventId,
+        occurredAt: conversation.startedAt,
+        telephonyStatusCode: 'outbound_initiated',
+        includeInitialStatus: true,
+      })
+      .catch(() => undefined);
   }
 
   private async createOutboundConversation(params: {

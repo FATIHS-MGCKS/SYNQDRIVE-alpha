@@ -137,3 +137,10 @@ export function sanitizeHandoffReasonCode(reason: string): string {
     .slice(0, 64);
   return normalized || 'HUMAN_HANDOFF';
 }
+
+export function buildVoiceToolProviderEventId(
+  executionId: string,
+  eventType: 'AI_ACTION_STARTED' | 'AI_ACTION_COMPLETED' | 'AI_ACTION_FAILED',
+): string {
+  return `voice-tool:${executionId}:${eventType.toLowerCase()}`;
+}
