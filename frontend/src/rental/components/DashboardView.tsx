@@ -6,6 +6,7 @@ import {
   DashboardControlHeader,
   DashboardDrilldownDrawer,
   DashboardTasksOverviewPanel,
+  DashboardUtilizationPanel,
   DASHBOARD_LAYOUT,
   FinanceKpiStrip,
   FocusDataFreshnessBanner,
@@ -52,10 +53,12 @@ export function DashboardView({
     onOpenInvoiceById,
     onOpenPriceTariffs,
   };
-  const leftColumnRef = useRef<HTMLDivElement>(null);
-  const notificationsMaxHeight = useDashboardLeftColumnHeight(leftColumnRef, [
+  const notificationsColumnRef = useRef<HTMLDivElement>(null);
+  const tasksMaxHeight = useDashboardLeftColumnHeight(notificationsColumnRef, [
+    vm.dashboardAttention?.splitActive,
     vm.dataFreshness.invoicesLoaded,
     vm.dataFreshness.fleetLoading,
+    vm.dataFreshness.todayBookingsLoaded,
   ]);
   const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
   const focusedOperationsGroupId =
@@ -119,35 +122,49 @@ export function DashboardView({
   return (
     <>
       <div className={DASHBOARD_LAYOUT.shell}>
-        <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '0ms' }}>
-          <div ref={leftColumnRef} className={DASHBOARD_LAYOUT.controlLeftColumn}>
-            <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
-              <DashboardControlHeader vm={vm}>
-                <div className="space-y-3 sm:space-y-3.5">
-                  <ControlKpiStrip
-                    dashboardRuntime={vm.dashboardRuntime}
-                    activeSliceId={vm.activeDashboardSliceId}
-                    onSelectSlice={vm.openSliceDrilldown}
-                    embedded
-                    locale={vm.locale}
-                    dataFreshness={vm.dataFreshness}
-                  />
-                  <FinanceKpiStrip
-                    businessPulseSlices={vm.businessPulseSlices}
-                    onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
-                    activeBusinessMetricId={vm.activeBusinessMetricId}
-                    locale={vm.locale}
-                    currency="EUR"
-                    loading={!vm.dataFreshness.invoicesLoaded}
-                    error={vm.dataFreshness.invoicesError}
-                  />
-                </div>
-              </DashboardControlHeader>
+        <div className={`${DASHBOARD_LAYOUT.controlHeaderSlot} animate-fade-up`} style={{ animationDelay: '0ms' }}>
+          <DashboardControlHeader vm={vm}>
+            <div className="space-y-3 sm:space-y-3.5">
+              <div className={DASHBOARD_LAYOUT.controlOpsGrid}>
+                <ControlKpiStrip
+                  dashboardRuntime={vm.dashboardRuntime}
+                  activeSliceId={vm.activeDashboardSliceId}
+                  onSelectSlice={vm.openSliceDrilldown}
+                  embedded
+                  locale={vm.locale}
+                  dataFreshness={vm.dataFreshness}
+                  sliceIds={['ready-to-rent']}
+                  className="!grid-cols-1"
+                />
+                <ControlKpiStrip
+                  dashboardRuntime={vm.dashboardRuntime}
+                  activeSliceId={vm.activeDashboardSliceId}
+                  onSelectSlice={vm.openSliceDrilldown}
+                  embedded
+                  locale={vm.locale}
+                  dataFreshness={vm.dataFreshness}
+                  sliceIds={['active-rented']}
+                  className="!grid-cols-1"
+                />
+                <DashboardUtilizationPanel vm={vm} />
+              </div>
+              <FinanceKpiStrip
+                businessPulseSlices={vm.businessPulseSlices}
+                onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
+                activeBusinessMetricId={vm.activeBusinessMetricId}
+                locale={vm.locale}
+                currency="EUR"
+                loading={!vm.dataFreshness.invoicesLoaded}
+                error={vm.dataFreshness.invoicesError}
+              />
             </div>
-          </div>
+          </DashboardControlHeader>
+        </div>
+
+        <div className={DASHBOARD_LAYOUT.lowerAttentionGrid}>
           <div
+            ref={notificationsColumnRef}
             className={DASHBOARD_LAYOUT.notificationsSlot}
-            style={notificationsMaxHeight ? { maxHeight: notificationsMaxHeight } : undefined}
           >
             {vm.dashboardAttention?.splitActive ? (
               <DashboardAttentionStack vm={vm} handlers={handlers} t={vm.t} locale={vm.locale} layout="sidebar" />
@@ -155,8 +172,13 @@ export function DashboardView({
               <ActionQueue vm={vm} {...handlers} layout="sidebar" />
             )}
           </div>
+          <div
+            className={DASHBOARD_LAYOUT.tasksSlot}
+            style={tasksMaxHeight ? { maxHeight: tasksMaxHeight } : undefined}
+          >
+            <DashboardTasksOverviewPanel vm={vm} onOpenTasks={onOpenTasks} />
+          </div>
         </div>
-        <DashboardTasksOverviewPanel vm={vm} onOpenTasks={onOpenTasks} />
       </div>
       <DashboardDrilldownDrawer
         activeTargetId={activeDrawerTargetId}
