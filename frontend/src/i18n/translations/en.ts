@@ -11,6 +11,7 @@ import { handoverProtocolEn } from './handover.protocol.en';
 import { handoverOperatorEn } from './handover.operator.en';
 import { invoicesListEn } from './invoices.list.en';
 import { invoicesCreateEn } from './invoices.create.en';
+import { invoicesSendEn } from './invoices.send.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5573,6 +5574,7 @@ export const en = {
   ...handoverOperatorEn,
   ...invoicesListEn,
   ...invoicesCreateEn,
+  ...invoicesSendEn,
   ...vendorsDirectoryEn,
 } as const;
 
