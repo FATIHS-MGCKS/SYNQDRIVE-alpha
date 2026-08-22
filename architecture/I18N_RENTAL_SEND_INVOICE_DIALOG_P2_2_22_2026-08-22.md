@@ -1,6 +1,6 @@
 # P2.2.22 — Rental Send Invoice Dialog Localization
 
-**Date:** 2026-08-22  
+**Date:** 2026-08-22
 **Baseline:** `59b01928a09598f36045a61fad031f0e44dcc1fc` (PR #1167 / P2.2.21)
 
 ## Scope

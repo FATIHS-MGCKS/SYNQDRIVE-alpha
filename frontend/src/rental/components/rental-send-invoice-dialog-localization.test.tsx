@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { act, createElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider, useLanguage } from '../../i18n/LanguageContext';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
 import inventory from '../../i18n/hardcoded-copy-inventory.json';
@@ -165,6 +165,136 @@ describe('rental Send Invoice Dialog localization (P2.2.22)', () => {
       await act(async () => {});
       expect(portalText()).toContain(de['invoices.send.title']);
       expect(portalText()).not.toContain(en['invoices.send.title']);
+    });
+
+    it('updates chrome on same mounted dialog when locale switches EN → DE', async () => {
+      function LocaleSwitchButton({ target }: { target: 'de' | 'en' }) {
+        const { setLocale } = useLanguage();
+        return createElement(
+          'button',
+          {
+            type: 'button',
+            'data-testid': `switch-locale-${target}`,
+            onClick: () => setLocale(target),
+          },
+          target.toUpperCase(),
+        );
+      }
+
+      const view = renderWithLocale(
+        'en',
+        createElement(
+          'div',
+          null,
+          createElement(LocaleSwitchButton, { target: 'de' }),
+          createElement(SendInvoiceDialog, {
+            invoice: mockInvoice,
+            open: true,
+            onOpenChange: vi.fn(),
+            defaultToEmail: 'customer@example.com',
+            defaultSubject: 'Invoice FSM-2026-0042',
+            documentId: 'doc-1',
+            sending: false,
+            onSend: mockSend,
+          }),
+        ),
+      );
+      cleanup = view.cleanup;
+      await act(async () => {});
+      expect(portalText()).toContain(en['invoices.send.title']);
+      expect(portalText()).toContain(en['email.send.modal.subject']);
+
+      const switchBtn = document.querySelector('[data-testid="switch-locale-de"]') as HTMLButtonElement;
+      await act(async () => {
+        switchBtn.click();
+      });
+
+      expect(portalText()).toContain(de['invoices.send.title']);
+      expect(portalText()).toContain(de['email.send.modal.subject']);
+      expect(portalText()).not.toContain(en['invoices.send.title']);
+    });
+  });
+
+  describe('edited-content locale switch', () => {
+    it('preserves user-edited subject, body, and recipient across locale switch', async () => {
+      function LocaleSwitchButton({ target }: { target: 'de' | 'en' }) {
+        const { setLocale } = useLanguage();
+        return createElement(
+          'button',
+          {
+            type: 'button',
+            'data-testid': `switch-locale-${target}`,
+            onClick: () => setLocale(target),
+          },
+          target.toUpperCase(),
+        );
+      }
+
+      const view = renderWithLocale(
+        'en',
+        createElement(
+          'div',
+          null,
+          createElement(LocaleSwitchButton, { target: 'de' }),
+          createElement(LocaleSwitchButton, { target: 'en' }),
+          createElement(SendInvoiceDialog, {
+            invoice: mockInvoice,
+            open: true,
+            onOpenChange: vi.fn(),
+            defaultToEmail: 'anna.mueller@example.com',
+            defaultSubject: 'Ihre Rechnung FSM-2026-0042',
+            documentId: 'doc-77',
+            sending: false,
+            onSend: mockSend,
+          }),
+        ),
+      );
+      cleanup = view.cleanup;
+      await act(async () => {});
+
+      const emailInput = portalQuery<HTMLInputElement>('input[type="email"]');
+      const subjectInput = portalQuery<HTMLInputElement>('input[type="text"]');
+      const bodyTextarea = portalQuery<HTMLTextAreaElement>('textarea');
+
+      await act(async () => {
+        const inputSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          'value',
+        )?.set;
+        inputSetter?.call(subjectInput, 'Edited subject line');
+        subjectInput!.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const textareaSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLTextAreaElement.prototype,
+          'value',
+        )?.set;
+        textareaSetter?.call(bodyTextarea, 'Edited body content');
+        bodyTextarea!.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      expect(emailInput?.value).toBe('anna.mueller@example.com');
+      expect(subjectInput?.value).toBe('Edited subject line');
+      expect(bodyTextarea?.value).toBe('Edited body content');
+
+      const switchDe = document.querySelector('[data-testid="switch-locale-de"]') as HTMLButtonElement;
+      await act(async () => {
+        switchDe.click();
+      });
+
+      expect(portalText()).toContain(de['invoices.send.title']);
+      expect(emailInput?.value).toBe('anna.mueller@example.com');
+      expect(subjectInput?.value).toBe('Edited subject line');
+      expect(bodyTextarea?.value).toBe('Edited body content');
+
+      const switchEn = document.querySelector('[data-testid="switch-locale-en"]') as HTMLButtonElement;
+      await act(async () => {
+        switchEn.click();
+      });
+
+      expect(portalText()).toContain(en['invoices.send.title']);
+      expect(emailInput?.value).toBe('anna.mueller@example.com');
+      expect(subjectInput?.value).toBe('Edited subject line');
+      expect(bodyTextarea?.value).toBe('Edited body content');
     });
   });
 
