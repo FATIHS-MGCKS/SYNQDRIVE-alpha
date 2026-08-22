@@ -20,10 +20,12 @@ import { CommunicationContextBackfillService, CommunicationContextEnrichmentServ
 import { CommunicationContextResolverService } from './context/communication-context-resolver.service';
 import { CommunicationContextDuplicateAuditService } from './context/communication-context-duplicate-audit.service';
 import { CommunicationNativeContextLoader } from './context/communication-native-context.loader';
+import { CommunicationReadController } from './read/communication-read.controller';
+import { CommunicationReadRepository } from './read/communication-read.repository';
+import { CommunicationReadService } from './read/communication-read.service';
 
 /**
- * Canonical Communication Center persistence + normalization foundation (C1/C2/C3).
- * Repositories + internal services only — no HTTP controller.
+ * Canonical Communication Center persistence + normalization foundation (C1–C7).
  */
 @Module({
   imports: [PrismaModule, ConfigModule.forFeature(communicationProjectionConfig)],
@@ -47,7 +49,10 @@ import { CommunicationNativeContextLoader } from './context/communication-native
     VoiceCommunicationProjectionIntegration,
     SentDmSmsCommunicationAdapter,
     SmsCommunicationProjectionIntegration,
+    CommunicationReadRepository,
+    CommunicationReadService,
   ],
+  controllers: [CommunicationReadController],
   exports: [
     CommunicationTenantContextValidation,
     CommunicationConversationRepository,
@@ -66,6 +71,8 @@ import { CommunicationNativeContextLoader } from './context/communication-native
     VoiceCommunicationProjectionIntegration,
     SentDmSmsCommunicationAdapter,
     SmsCommunicationProjectionIntegration,
+    CommunicationReadRepository,
+    CommunicationReadService,
   ],
 })
 export class CommunicationModule {}
