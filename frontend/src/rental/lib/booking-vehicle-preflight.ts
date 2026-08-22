@@ -7,13 +7,26 @@ import {
   getVehicleTariffFromCatalog,
 } from '../pricing/pricingUtils';
 import type { FleetStatus, VehicleData } from '../data/vehicles';
-import { isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
+import { isVehicleOffline } from '../data/vehicles';
 import {
   VEHICLE_OPERATIONAL_STATUS,
   formatVehicleOperationalStatusLabel,
   selectIsStatusReliable,
   selectOperationalStatus,
 } from './vehicle-operational-state';
+import {
+  bookingVehicleCurrentlyRentedCautionLabel,
+  bookingVehicleHealthCriticalCautionLabel,
+  bookingVehicleHealthWarningCautionLabel,
+  bookingVehicleMaintenanceCautionLabel,
+  bookingVehicleNoActiveTariffLabel,
+  bookingVehicleNotRentableFallbackLabel,
+  bookingVehicleOfflineLabel,
+  bookingVehicleRentalUnverifiedLabel,
+  bookingVehicleReservedCautionLabel,
+  bookingVehicleStatusUnavailableLabel,
+  resolveBookingVehiclePreflightLocale,
+} from './booking-vehicle-preflight-presentation-i18n';
 
 export const UNCATEGORIZED_VEHICLE_LABEL = 'Nicht kategorisiert';
 
@@ -31,6 +44,10 @@ export interface BookingVehiclePreflight {
   blockingReason: string | null;
   cautionReason: string | null;
   muted: boolean;
+}
+
+export interface BookingVehiclePreflightOptions {
+  locale?: string | null;
 }
 
 export function vehicleStationId(vehicle: VehicleData): string | null {
@@ -73,7 +90,9 @@ export function resolveBookingVehiclePreflight(
   health: VehicleHealthResponse | null | undefined,
   hasTariff: boolean,
   catalogLoading: boolean,
+  options?: BookingVehiclePreflightOptions,
 ): BookingVehiclePreflight {
+  const locale = resolveBookingVehiclePreflightLocale(options?.locale);
   const offline = isVehicleOffline(vehicle);
   const rentalBlocked = health?.rental_blocked === true;
   const rentalUnverified = health != null && isRentalBlockedUnverified(health);
@@ -97,30 +116,33 @@ export function resolveBookingVehiclePreflight(
 
   if (offline) {
     hardBlockReason = 'offline';
-    blockingReason = VEHICLE_OFFLINE_LABEL;
+    blockingReason = bookingVehicleOfflineLabel(locale);
   } else if (rentalBlocked) {
     hardBlockReason = 'rental_blocked';
     blockingReason =
-      health?.blocking_reasons?.filter(Boolean).join(' · ') || 'Nicht vermietbar';
+      health?.blocking_reasons?.filter(Boolean).join(' · ') ||
+      bookingVehicleNotRentableFallbackLabel(locale);
   } else if (rentalUnverified) {
     hardBlockReason = 'rental_blocked';
-    blockingReason = 'Mietfreigabe nicht verifiziert';
+    blockingReason = bookingVehicleRentalUnverifiedLabel(locale);
   } else if (noTariff) {
     hardBlockReason = 'no_tariff';
-    blockingReason = 'Kein aktiver Tarif zugewiesen';
+    blockingReason = bookingVehicleNoActiveTariffLabel(locale);
   } else if (isUnknown || statusUnreliable) {
     hardBlockReason = 'rental_blocked';
-    blockingReason = 'Status nicht verfügbar';
+    blockingReason = bookingVehicleStatusUnavailableLabel(locale);
   } else if (isMaintenance) {
-    cautionReason = 'In Wartung — Auswahl mit Vorsicht';
+    cautionReason = bookingVehicleMaintenanceCautionLabel(locale);
   } else if (isRented) {
-    cautionReason = 'Aktuell vermietet';
+    cautionReason = bookingVehicleCurrentlyRentedCautionLabel(locale);
   } else if (isReserved) {
-    cautionReason = 'Reserviert';
+    cautionReason = bookingVehicleReservedCautionLabel(locale);
   } else if (healthWarningOnly) {
     cautionReason =
       health?.blocking_reasons?.[0] ??
-      (health?.overall_state === 'critical' ? 'Gesundheit kritisch' : 'Gesundheit Warnung');
+      (health?.overall_state === 'critical'
+        ? bookingVehicleHealthCriticalCautionLabel(locale)
+        : bookingVehicleHealthWarningCautionLabel(locale));
   }
 
   return {
@@ -148,10 +170,13 @@ export function isBookingVehicleHardBlocked(
   health: VehicleHealthResponse | null | undefined,
   hasTariff = true,
   catalogLoading = false,
+  options?: BookingVehiclePreflightOptions,
 ): boolean {
-  return !resolveBookingVehiclePreflight(vehicle, health, hasTariff, catalogLoading).isSelectable;
+  return !resolveBookingVehiclePreflight(vehicle, health, hasTariff, catalogLoading, options)
+    .isSelectable;
 }
 
+/** @deprecated Use `formatVehicleOperationalStatusLabel(status, locale)`. */
 export function fleetStatusLabelDe(status: FleetStatus): string {
   return formatVehicleOperationalStatusLabel(status, 'de');
 }
