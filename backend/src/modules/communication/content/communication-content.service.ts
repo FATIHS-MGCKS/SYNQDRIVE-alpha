@@ -6,6 +6,7 @@ import {
   type WhatsAppMessage,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { CommunicationContentIntegrityError } from './communication-content.errors';
 import {
   mapSmsMessageToContentInput,
   mapWhatsAppMessageToContentInput,
@@ -55,10 +56,7 @@ export class CommunicationContentService {
   async repairMissingContentForEvent(input: {
     organizationId: string;
     communicationEventId: string;
-    channel: CommunicationChannel;
     nativeMessageId: string;
-    eventType: CommunicationEventType;
-    occurredAt: Date;
   }): Promise<ContentProjectionResult> {
     const event = await this.prisma.communicationEvent.findFirst({
       where: {
@@ -70,7 +68,14 @@ export class CommunicationContentService {
       return { contentId: '', created: false, skipped: true };
     }
 
-    if (input.channel === CommunicationChannel.WHATSAPP) {
+    if (
+      event.eventType !== CommunicationEventType.MESSAGE_RECEIVED
+      && event.eventType !== CommunicationEventType.MESSAGE_SENT
+    ) {
+      return { contentId: '', created: false, skipped: true };
+    }
+
+    if (event.channel === CommunicationChannel.WHATSAPP) {
       const message = await this.prisma.whatsAppMessage.findFirst({
         where: { id: input.nativeMessageId, organizationId: input.organizationId },
       });
@@ -79,13 +84,13 @@ export class CommunicationContentService {
         organizationId: input.organizationId,
         conversationId: event.conversationId,
         communicationEventId: event.id,
-        eventType: input.eventType,
+        eventType: event.eventType,
         message,
-        occurredAt: input.occurredAt,
+        occurredAt: event.occurredAt,
       });
     }
 
-    if (input.channel === CommunicationChannel.SMS) {
+    if (event.channel === CommunicationChannel.SMS) {
       const message = await this.prisma.smsMessage.findFirst({
         where: { id: input.nativeMessageId, organizationId: input.organizationId },
       });
@@ -94,9 +99,9 @@ export class CommunicationContentService {
         organizationId: input.organizationId,
         conversationId: event.conversationId,
         communicationEventId: event.id,
-        eventType: input.eventType,
+        eventType: event.eventType,
         message,
-        occurredAt: input.occurredAt,
+        occurredAt: event.occurredAt,
       });
     }
 
@@ -123,6 +128,19 @@ export class CommunicationContentService {
       );
       return { contentId: result.contentId, created: result.created, skipped: false };
     } catch (error) {
+      if (error instanceof CommunicationContentIntegrityError) {
+        this.logger.warn(
+          JSON.stringify({
+            msg: 'communication_content_integrity_rejected',
+            organizationId: contentInput.organizationId,
+            conversationId: contentInput.conversationId,
+            communicationEventId: contentInput.communicationEventId,
+            channel,
+            code: error.code,
+          }),
+        );
+        return { contentId: '', created: false, skipped: true };
+      }
       this.logger.warn(
         JSON.stringify({
           msg: 'communication_content_projection_failed',

@@ -4,6 +4,7 @@ import type {
   CommunicationConversationStatus,
   CommunicationDirection,
   CommunicationEventType,
+  CommunicationMessageContentType,
   CommunicationProviderIdentity,
 } from '@prisma/client';
 import type {
@@ -38,7 +39,7 @@ export class CommunicationConversationDetailDto extends CommunicationConversatio
 
 export class CommunicationMessageContentDto {
   id!: string;
-  contentType!: string;
+  contentType!: CommunicationMessageContentType;
   text?: string | null;
   truncated?: boolean;
   hasAttachments!: boolean;

@@ -34,8 +34,9 @@ export interface CommunicationContentBackfillResult {
   eligible: number;
   wouldCreate: number;
   alreadyProjected: number;
-  unsupported: number;
+  unresolved: number;
   ambiguous: number;
+  missingCanonicalConversation: number;
   missingCanonicalEvent: number;
   failed: number;
   applied: number;

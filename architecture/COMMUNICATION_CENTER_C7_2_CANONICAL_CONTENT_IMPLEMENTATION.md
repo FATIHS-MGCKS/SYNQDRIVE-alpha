@@ -26,7 +26,7 @@ Introduces provider-neutral **canonical message content** for Communication Cent
 
 | Domain | Native authority | Body field | C7.2 action |
 |--------|------------------|------------|-------------|
-| WhatsApp | `WhatsAppMessage` | `content`, `messageType` | Project TEXT/media type |
+| WhatsApp | `WhatsAppMessage` | `content`, `messageType` | Project TEXT/media type; media text policy below |
 | SMS | `SmsMessage` | `content` | Project TEXT |
 | Voice | `VoiceConversation` | `transcript`, `summary` | **Not projected** |
 | Email | `OutboundEmail` | send log | Deferred |
@@ -52,8 +52,8 @@ One logical message per canonical message event. Delivery lifecycle events (`MES
 - `idempotencyKey` unique per org (`cmc1:{sha256}` from org+channel+nativeMessageId)
 
 ### `CommunicationConversation` additions
-- `lastMessagePreview` (max 120 chars, denormalized)
-- `lastContentAt`, `lastContentId` (monotonic preview state)
+- `lastMessagePreview` (max 120 chars, denormalized; may be null)
+- `lastContentAt`, `lastContentId` (monotonic canonical content chronology; independent of preview text)
 
 Migration: `20260822120000_communication_center_c7_2_canonical_content`
 
@@ -83,9 +83,9 @@ WhatsApp `messageType` mapped to provider-neutral enum. Unknown/sticker/reaction
 ## 7. Text policy
 
 - Preserve Unicode + line breaks
-- Max stored length: **4096** chars (`CANONICAL_MESSAGE_TEXT_MAX_LENGTH`, WhatsApp limit)
-- Overflow → truncate + `truncated: true` (never silent)
-- No HTML rendering; plain text only in V1
+- Max stored length: **4096 code points** (`CANONICAL_MESSAGE_TEXT_MAX_LENGTH`)
+- Truncation uses **Unicode code points** (`[...text]`), never splits surrogate pairs
+- Overflow → truncate + `truncated: true`
 
 ---
 
@@ -93,95 +93,122 @@ WhatsApp `messageType` mapped to provider-neutral enum. Unknown/sticker/reaction
 
 - **No binary blobs** in canonical DB
 - **No provider signed URLs** persisted
-- Media-only messages: `hasAttachments`, `attachmentCount`, semantic `contentType`
-- Preview uses semantic tokens: `[image]`, `[document]`, etc. (frontend i18n later)
+- Canonical `text` for media types is **null** unless safe user-visible caption passes `extractSafeUserVisibleText` (rejects URLs, JSON blobs)
+- WhatsApp `message.content` for media may contain provider URLs — **never copied**
+
+### Template messages
+
+WhatsApp `template`: if `message.content` is safe plain text (no URL/JSON), map as `TEXT`; otherwise `text` is null.
 
 ---
 
-## 9. Voice transcript boundary
+## 9. Preview semantic tokens
 
-Full ElevenLabs/Twilio transcripts are **not** copied into canonical content. Voice threads remain operational lifecycle events only.
+Machine tokens (not localized UI copy): `cc:IMAGE`, `cc:VIDEO`, `cc:AUDIO`, `cc:DOCUMENT`, `cc:LOCATION`, `cc:CONTACT`, `cc:MIXED`, `cc:UNSUPPORTED`.
 
----
+Frontend maps `cc:*` to localized labels.
 
-## 10. Projection integration
-
-**Transaction boundary:**
-1. Native message persist (authoritative)
-2. Canonical event projection (C3/C5)
-3. Canonical content projection (C7.2, best-effort, non-blocking)
-
-WhatsApp/SMS integrations call `CommunicationContentService` after successful `projectNormalizedInput`. Content failure is logged; native + event paths unaffected.
+`lastMessagePreview` may be null. `lastContentAt` / `lastContentId` still advance for chronological tracking.
 
 ---
 
-## 11. Idempotency
+## 10. Voice transcript boundary
+
+Not projected. Voice threads remain operational lifecycle events only.
+
+---
+
+## 11. Projection integration & atomicity
+
+**Canonical-content-only transaction** in `CommunicationContentRepository.projectMessageContentIdempotently`:
+1. Validate tenant/event/conversation integrity
+2. `$transaction`: insert content + `bumpConversationPreview`
+3. On idempotency replay: `assertImmutableIdentity` + `convergeConversationPreviewFromRow`
+
+Provider/native processing does **not** depend on this transaction.
+
+Content failure after native + event projection is logged; provider path unaffected.
+
+---
+
+## 12. Tenant / relational integrity
+
+`validateProjectionContext` verifies event + conversation org/channel/eventType alignment before create. Cross-org, wrong-conversation, and delivery-event attempts → `INTEGRITY_REJECTED`.
+
+---
+
+## 13. Idempotency
 
 Key: `cmc1:{sha256({v:1, organizationId, channel, nativeMessageId})}`
 
-Replay/concurrent projection converges to one row. Content is **immutable** V1 (no edit/recall handling).
+Immutable identity on replay: `organizationId`, `channel`, `nativeMessageId`, `communicationEventId`, `conversationId`. Mismatch → `DATA_INTEGRITY_CONFLICT`.
+
+`providerMessageId` nullable/late; not part of idempotency key.
+
+Concurrent create: `P2002` resolves to winner row; both converge.
 
 ---
 
-## 12. PII classification
+## 14. Preview monotonicity
 
-Message `text` is customer communication data (may contain PII). Authorized via existing `communication.read`. **Not** logged, not in cursors/metadata. Timeline returns `content.text` only to authorized readers.
+Tuple ordering — candidate wins iff:
+- `occurredAt > lastContentAt`, OR
+- `occurredAt == lastContentAt AND contentId > lastContentId`
 
----
-
-## 13. Retention
-
-Content cascades on `organization` / `conversation` / `event` delete (`onDelete: Cascade`). Customer GDPR anonymization policy remains **governance follow-up** — not blocking C7.2.
-
-Encryption: relies on DB-at-rest infrastructure; no ad-hoc field crypto.
+Null-preview content still updates `lastContentAt` / `lastContentId`.
 
 ---
 
-## 14. Backfill
+## 15. Repair authority
+
+`repairMissingContentForEvent({ organizationId, communicationEventId, nativeMessageId })` — all facts derived from loaded canonical event.
+
+---
+
+## 16. Retention / cascade / lastContentId
+
+Content cascades on org/conversation/event delete.
+
+`lastContentId` is **intentionally denormalized non-FK** (avoids cascade cycles). Repair via replay/convergence. Individual event delete not supported except via conversation/org cascade.
+
+---
+
+## 17. Backfill
 
 Script: `backend/scripts/ops/backfill-communication-content.ts`
 
-- Dry-run default; `--apply` for bounded apply
-- Matches native messages → canonical events via `providerMessageId` or `wa-sent:{id}` / `sms-sent:{id}`
-- Aggregate-only output (no message text)
-- No provider network calls
+- Dry-run default; batch size 1–500
+- Matching authority (no timestamp/text guessing):
+
+| Channel | Direction | Primary | Fallback |
+|---------|-----------|---------|----------|
+| WhatsApp | inbound | `providerMessageId` | `wa-msg:{nativeMessageId}` |
+| WhatsApp | outbound | `wa-sent:{nativeMessageId}` | — |
+| SMS | inbound | `providerMessageId` | — (unresolved if missing) |
+| SMS | outbound | `sms-sent:{nativeMessageId}` | — |
+
+Result counters: `unresolved`, `missingCanonicalConversation`, `missingCanonicalEvent` (no misleading `unsupported`).
 
 ---
 
-## 15. Read API integration
+## 18. Read API
 
-- `GET …/conversations` — adds `lastMessagePreview` (denormalized, no N+1)
-- `GET …/conversations/:id/events` — `content` on message events via single relation `select`
-- Summary unchanged (no content queries)
+- Timeline: single `findMany` with nested `messageContent` select
+- `contentType` typed as `CommunicationMessageContentType` in DTO
+- Canonical-only reads (no native federation)
 
----
-
-## 16. Query performance
-
-Timeline: one `findMany` with nested `messageContent` select — no per-event content queries.
-
-List: preview from `CommunicationConversation.lastMessagePreview` column.
+Measured: 50 events → 1 `communication_events` query (+ bounded total ≤8).
 
 ---
 
-## 17. Tests
+## 19. Tests
 
 | Suite | Count |
 |-------|-------|
-| C7.2 mapper unit | 3 |
-| C7.2 postgres integration | 11 |
-| C7 read regression | 37 |
-| Communication module regression (excl. pre-existing SMS adapter TS) | 278 |
-
----
-
-## 18. C8 readiness
-
-| Capability | Status |
-|------------|--------|
-| Rich Communication Center (message bodies in timeline) | **READY FOR RICH COMMUNICATION CENTER** |
-| Media download / attachment viewer | Deferred |
-| Voice transcript UI | Deferred (operational voice events only) |
+| Mapper + text util unit | 6 |
+| Backfill util unit | 5 |
+| Postgres integration | 29 |
+| **C7.2 total** | **40** |
 
 ---
 
@@ -189,8 +216,7 @@ List: preview from `CommunicationConversation.lastMessagePreview` column.
 
 | Path | Role |
 |------|------|
-| `backend/src/modules/communication/content/*` | Content service, repository, backfill |
-| `backend/scripts/ops/backfill-communication-content.ts` | Ops backfill |
+| `backend/src/modules/communication/content/*` | Service, repository, mapper, backfill, errors, text util |
 | `backend/prisma/migrations/20260822120000_*` | Schema migration |
 
-**Changes / Architektur updated:** this document.
+**Changes / Architektur updated:** this document (C7.2 hardening pass).

@@ -6,9 +6,10 @@ import {
 } from '@prisma/client';
 import type { SmsMessage, WhatsAppMessage } from '@prisma/client';
 import {
-  CANONICAL_MESSAGE_PREVIEW_MAX_LENGTH,
-  CANONICAL_MESSAGE_TEXT_MAX_LENGTH,
-} from './communication-content.constants';
+  extractSafeUserVisibleText,
+  normalizeCanonicalText,
+  truncatePreviewText,
+} from './communication-content-text.util';
 import type { ProjectMessageContentInput } from './communication-content.types';
 
 const WHATSAPP_MEDIA_TYPES = new Set([
@@ -45,20 +46,30 @@ export function mapWhatsAppMessageType(messageType: string): CommunicationMessag
   return CommunicationMessageContentType.UNSUPPORTED;
 }
 
-export function normalizeCanonicalText(
-  raw: string | null | undefined,
-): { text: string | null; truncated: boolean } {
-  if (raw === null || raw === undefined) {
-    return { text: null, truncated: false };
+/** Machine preview token — frontend maps to localized UI. */
+export function buildMessagePreviewToken(
+  contentType: CommunicationMessageContentType,
+): string | null {
+  switch (contentType) {
+    case CommunicationMessageContentType.IMAGE:
+      return 'cc:IMAGE';
+    case CommunicationMessageContentType.VIDEO:
+      return 'cc:VIDEO';
+    case CommunicationMessageContentType.AUDIO:
+      return 'cc:AUDIO';
+    case CommunicationMessageContentType.DOCUMENT:
+      return 'cc:DOCUMENT';
+    case CommunicationMessageContentType.LOCATION:
+      return 'cc:LOCATION';
+    case CommunicationMessageContentType.CONTACT:
+      return 'cc:CONTACT';
+    case CommunicationMessageContentType.MIXED:
+      return 'cc:MIXED';
+    case CommunicationMessageContentType.UNSUPPORTED:
+      return 'cc:UNSUPPORTED';
+    default:
+      return null;
   }
-  const normalized = raw.replace(/\r\n/g, '\n');
-  if (normalized.length <= CANONICAL_MESSAGE_TEXT_MAX_LENGTH) {
-    return { text: normalized, truncated: false };
-  }
-  return {
-    text: normalized.slice(0, CANONICAL_MESSAGE_TEXT_MAX_LENGTH),
-    truncated: true,
-  };
 }
 
 export function buildMessagePreview(
@@ -66,34 +77,12 @@ export function buildMessagePreview(
   text: string | null | undefined,
 ): string | null {
   if (text?.trim()) {
-    const collapsed = text.replace(/\s+/g, ' ').trim();
-    if (collapsed.length <= CANONICAL_MESSAGE_PREVIEW_MAX_LENGTH) {
-      return collapsed;
-    }
-    return `${collapsed.slice(0, CANONICAL_MESSAGE_PREVIEW_MAX_LENGTH - 1)}…`;
+    return truncatePreviewText(text);
   }
-
-  switch (contentType) {
-    case CommunicationMessageContentType.IMAGE:
-      return '[image]';
-    case CommunicationMessageContentType.VIDEO:
-      return '[video]';
-    case CommunicationMessageContentType.AUDIO:
-      return '[audio]';
-    case CommunicationMessageContentType.DOCUMENT:
-      return '[document]';
-    case CommunicationMessageContentType.LOCATION:
-      return '[location]';
-    case CommunicationMessageContentType.CONTACT:
-      return '[contact]';
-    case CommunicationMessageContentType.MIXED:
-      return '[attachment]';
-    case CommunicationMessageContentType.UNSUPPORTED:
-      return '[unsupported]';
-    default:
-      return null;
-  }
+  return buildMessagePreviewToken(contentType);
 }
+
+export { normalizeCanonicalText } from './communication-content-text.util';
 
 export function mapWhatsAppMessageToContentInput(input: {
   organizationId: string;
@@ -118,6 +107,11 @@ export function mapWhatsAppMessageToContentInput(input: {
   const hasMedia = contentType !== CommunicationMessageContentType.TEXT
     && contentType !== CommunicationMessageContentType.UNSUPPORTED;
 
+  const safeText = extractSafeUserVisibleText(
+    input.message.messageType,
+    input.message.content,
+  );
+
   return {
     organizationId: input.organizationId,
     conversationId: input.conversationId,
@@ -126,7 +120,7 @@ export function mapWhatsAppMessageToContentInput(input: {
     direction,
     eventType: input.eventType,
     contentType,
-    text: input.message.content,
+    text: safeText,
     nativeMessageId: input.message.id,
     providerMessageId: input.message.providerMessageId,
     providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,

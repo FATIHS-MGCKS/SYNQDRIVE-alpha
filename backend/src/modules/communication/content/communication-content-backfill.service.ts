@@ -2,9 +2,12 @@ import { Injectable } from '@nestjs/common';
 import {
   CommunicationChannel,
   CommunicationEventType,
-  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildBackfillEventMatchOr,
+  validateBackfillBatchSize,
+} from './communication-content-backfill.util';
 import { CommunicationContentService } from './communication-content.service';
 import type { CommunicationContentBackfillResult } from './communication-content.types';
 
@@ -23,15 +26,16 @@ export class CommunicationContentBackfillService {
     batchSize?: number;
     dryRun?: boolean;
   }): Promise<CommunicationContentBackfillResult> {
-    const batchSize = options.batchSize ?? 100;
+    const batchSize = validateBackfillBatchSize(options.batchSize);
     const dryRun = options.dryRun ?? true;
     const result: CommunicationContentBackfillResult = {
       scanned: 0,
       eligible: 0,
       wouldCreate: 0,
       alreadyProjected: 0,
-      unsupported: 0,
+      unresolved: 0,
       ambiguous: 0,
+      missingCanonicalConversation: 0,
       missingCanonicalEvent: 0,
       failed: 0,
       applied: 0,
@@ -82,7 +86,6 @@ export class CommunicationContentBackfillService {
           nativeMessageId: message.id,
           providerMessageId: message.providerMessageId,
           eventType,
-          occurredAt: message.createdAt,
           dryRun,
           result,
         });
@@ -120,7 +123,6 @@ export class CommunicationContentBackfillService {
           nativeMessageId: message.id,
           providerMessageId: message.providerMessageId,
           eventType,
-          occurredAt: message.createdAt,
           dryRun,
           result,
         });
@@ -135,7 +137,6 @@ export class CommunicationContentBackfillService {
     nativeMessageId: string;
     providerMessageId: string | null;
     eventType: CommunicationEventType;
-    occurredAt: Date;
     dryRun: boolean;
     result: CommunicationContentBackfillResult;
   }): Promise<void> {
@@ -163,29 +164,29 @@ export class CommunicationContentBackfillService {
       select: { id: true },
     });
     if (!canonicalConversation) {
-      input.result.missingCanonicalEvent += 1;
+      input.result.missingCanonicalConversation += 1;
       return;
     }
 
-    const eventWhere: Prisma.CommunicationEventWhereInput = {
-      organizationId: input.organizationId,
-      conversationId: canonicalConversation.id,
+    const matchOr = buildBackfillEventMatchOr({
+      channel: input.channel,
       eventType: input.eventType,
-      OR: [
-        ...(input.providerMessageId
-          ? [{ providerMessageId: input.providerMessageId }]
-          : []),
-        {
-          providerEventId:
-            input.channel === CommunicationChannel.WHATSAPP
-              ? `wa-sent:${input.nativeMessageId}`
-              : `sms-sent:${input.nativeMessageId}`,
-        },
-      ],
-    };
+      nativeMessageId: input.nativeMessageId,
+      providerMessageId: input.providerMessageId,
+    });
+
+    if (matchOr.length === 0) {
+      input.result.unresolved += 1;
+      return;
+    }
 
     const matches = await this.prisma.communicationEvent.findMany({
-      where: eventWhere,
+      where: {
+        organizationId: input.organizationId,
+        conversationId: canonicalConversation.id,
+        eventType: input.eventType,
+        OR: matchOr,
+      },
       select: { id: true },
       take: 2,
     });
@@ -209,10 +210,7 @@ export class CommunicationContentBackfillService {
       const projection = await this.contentService.repairMissingContentForEvent({
         organizationId: input.organizationId,
         communicationEventId: matches[0]!.id,
-        channel: input.channel,
         nativeMessageId: input.nativeMessageId,
-        eventType: input.eventType,
-        occurredAt: input.occurredAt,
       });
       if (projection.created) {
         input.result.applied += 1;
