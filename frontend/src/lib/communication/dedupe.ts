@@ -1,4 +1,4 @@
-import type { CommunicationConversationListItem } from './types';
+import type { CommunicationConversationListItem, CommunicationEvent } from './types';
 
 /** Defensive dedupe when flattening cursor pages — preserves first-seen order. */
 export function dedupeConversationsById(
@@ -6,6 +6,18 @@ export function dedupeConversationsById(
 ): CommunicationConversationListItem[] {
   const seen = new Set<string>();
   const result: CommunicationConversationListItem[] = [];
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    result.push(item);
+  }
+  return result;
+}
+
+/** Defensive dedupe for timeline events — preserves first-seen order. */
+export function dedupeEventsById(items: CommunicationEvent[]): CommunicationEvent[] {
+  const seen = new Set<string>();
+  const result: CommunicationEvent[] = [];
   for (const item of items) {
     if (seen.has(item.id)) continue;
     seen.add(item.id);

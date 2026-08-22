@@ -99,7 +99,7 @@ test.describe('Communication Center C8.2 inbox integration', () => {
       query: 'view=communication-center&communicationUnread=true',
     });
     await page.getByText('Max Mustermann').click();
-    await expect(page.getByTestId('communication-timeline-shell')).toBeVisible();
+    await expect(page.getByTestId('communication-timeline')).toBeVisible();
     await page.getByRole('button', { name: /Back to inbox|Zurück zum Posteingang/i }).click();
     await expect(page).toHaveURL(/communicationUnread=true/);
     await expect(page.getByTestId('communication-inbox-pane')).toBeVisible();

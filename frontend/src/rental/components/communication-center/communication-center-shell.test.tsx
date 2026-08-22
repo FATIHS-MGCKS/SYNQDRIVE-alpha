@@ -35,6 +35,25 @@ vi.mock('../../../lib/communication/hooks/useCommunicationInbox', () => ({
   COMMUNICATION_INBOX_PAGE_SIZE: 25,
 }));
 
+vi.mock('../../../lib/communication/hooks/useCommunicationConversation', () => ({
+  useCommunicationConversation: () => ({
+    conversation: null,
+    events: [],
+    detailLoading: false,
+    timelineLoading: false,
+    loadingOlder: false,
+    hasMore: false,
+    detailError: null,
+    detailNotFound: false,
+    timelineError: null,
+    paginationError: null,
+    reloadDetail: vi.fn(),
+    reloadTimeline: vi.fn(),
+    loadOlder: vi.fn(),
+    retryLoadOlder: vi.fn(),
+  }),
+}));
+
 function mockMatchMedia(width: number) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches:
@@ -100,7 +119,7 @@ describe('CommunicationCenterShell', () => {
     );
     renderShell();
     expect(container.querySelector('[data-testid="communication-context-pane"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="communication-timeline-shell"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-workspace-pane"]')).not.toBeNull();
   });
 
   it('normalizes settings tab URL to inbox shell', () => {

@@ -28,11 +28,39 @@ export function communicationInboxQuerySignature(
   });
 }
 
+export function communicationConversationSignature(
+  orgId: string | null | undefined,
+  conversationId: string | null | undefined,
+): string {
+  return JSON.stringify({
+    orgId: orgId ?? '',
+    conversationId: conversationId ?? '',
+  });
+}
+
+export function communicationTimelineSignature(
+  orgId: string | null | undefined,
+  conversationId: string | null | undefined,
+  cursor: string | null,
+): string {
+  return JSON.stringify({
+    orgId: orgId ?? '',
+    conversationId: conversationId ?? '',
+    cursor: cursor ?? '',
+  });
+}
+
 export const communicationQueryKeys = {
   list(orgId: string, filters: CommunicationConversationListQuery) {
     return ['communication', 'conversations', orgId, communicationInboxQuerySignature(orgId, filters)] as const;
   },
   summary(orgId: string, filters: CommunicationConversationListQuery) {
     return ['communication', 'conversations', 'summary', orgId, communicationInboxQuerySignature(orgId, filters)] as const;
+  },
+  detail(orgId: string, conversationId: string) {
+    return ['communication', 'conversation', orgId, conversationId] as const;
+  },
+  timeline(orgId: string, conversationId: string, cursor: string | null) {
+    return ['communication', 'timeline', orgId, conversationId, cursor ?? ''] as const;
   },
 };
