@@ -3,6 +3,20 @@ import type {
   CommunicationMobilePane,
   CommunicationPrimaryTab,
 } from './communication-center.types';
+import {
+  readCommunicationInboxFiltersFromUrl,
+  applyCommunicationInboxFiltersToSearchParams,
+  type CommunicationInboxFilters,
+  mergeCommunicationInboxFilters,
+} from './communication-inbox-state';
+
+export type { CommunicationInboxFilters };
+export {
+  buildCommunicationInboxApiQuery,
+  hasActiveCommunicationInboxFilters,
+  mergeCommunicationInboxFilters,
+  DEFAULT_COMMUNICATION_INBOX_FILTERS,
+} from './communication-inbox-state';
 
 export const COMMUNICATION_CENTER_VIEW = 'communication-center';
 
@@ -20,6 +34,7 @@ export interface CommunicationCenterUrlState {
   channel: CommunicationChannel;
   selectedConversationId: string | null;
   mobilePane: CommunicationMobilePane;
+  inboxFilters: CommunicationInboxFilters;
 }
 
 export const DEFAULT_COMMUNICATION_CENTER_URL_STATE: CommunicationCenterUrlState = {
@@ -27,6 +42,7 @@ export const DEFAULT_COMMUNICATION_CENTER_URL_STATE: CommunicationCenterUrlState
   channel: 'all',
   selectedConversationId: null,
   mobilePane: 'inbox',
+  inboxFilters: mergeCommunicationInboxFilters(),
 };
 
 function parseSearch(search = ''): URLSearchParams {
@@ -77,6 +93,8 @@ export function readCommunicationCenterStateFromUrl(
     next.mobilePane = 'conversation';
   }
 
+  next.inboxFilters = mergeCommunicationInboxFilters(readCommunicationInboxFiltersFromUrl(search));
+
   return next;
 }
 
@@ -90,6 +108,7 @@ export function mergeCommunicationCenterState(
   return {
     ...merged,
     primaryTab: normalizeCommunicationPrimaryTab(merged.primaryTab),
+    inboxFilters: mergeCommunicationInboxFilters(merged.inboxFilters),
   };
 }
 
@@ -115,6 +134,7 @@ export function syncCommunicationCenterStateToUrl(
   const normalized = mergeCommunicationCenterState(state);
   const url = new URL(window.location.href);
   url.searchParams.set(COMMUNICATION_VIEW_PARAM, COMMUNICATION_CENTER_VIEW);
+  applyCommunicationInboxFiltersToSearchParams(url.searchParams, normalized.inboxFilters);
 
   const entries: Array<[string, string | null]> = [
     [COMMUNICATION_TAB_PARAM, null],
@@ -148,6 +168,10 @@ export function clearCommunicationCenterUrlParams(search = ''): string {
   params.delete(COMMUNICATION_CHANNEL_PARAM);
   params.delete(COMMUNICATION_CONVERSATION_PARAM);
   params.delete(COMMUNICATION_MOBILE_PANE_PARAM);
+  params.delete('communicationSearch');
+  params.delete('communicationUnread');
+  params.delete('communicationStatus');
+  params.delete('communicationAssignment');
   const query = params.toString();
   return query ? `?${query}` : '';
 }

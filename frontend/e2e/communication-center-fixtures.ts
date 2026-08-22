@@ -1,11 +1,117 @@
 /**
- * Playwright fixtures for Communication Center C8.1 shell E2E.
+ * Playwright fixtures for Communication Center shell + inbox E2E.
  */
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow, installTaskMocks, mockUser, TEST_ORG_ID } from './task-fixtures';
 
 export { assertNoHorizontalOverflow, TEST_ORG_ID };
+
+export const MOCK_CONVERSATION_ID = '00000000-0000-4000-8000-000000000101';
+
+const mockConversations = [
+  {
+    id: MOCK_CONVERSATION_ID,
+    channel: 'WHATSAPP',
+    status: 'AI_ACTIVE',
+    unreadCount: 2,
+    lastActivityAt: '2026-08-22T10:30:00.000Z',
+    displayLabel: 'Max Mustermann',
+    lastMessagePreview: 'Pickup reminder sent',
+    customer: { id: 'cust-1', displayName: 'Max Mustermann' },
+    booking: { id: 'book-1', reference: 'BK-ABC123' },
+    vehicle: { id: 'veh-1', displayLabel: 'KS-AB 123' },
+    station: null,
+    assignedUser: null,
+    assignedAgent: null,
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000102',
+    channel: 'VOICE',
+    status: 'HUMAN_REQUIRED',
+    unreadCount: 0,
+    lastActivityAt: '2026-08-22T09:15:00.000Z',
+    displayLabel: 'Unknown contact',
+    lastMessagePreview: null,
+    customer: null,
+    booking: null,
+    vehicle: null,
+    station: null,
+    assignedUser: { id: 'user-1', displayName: 'Ops User' },
+    assignedAgent: null,
+  },
+];
+
+export async function installCommunicationMocks(
+  page: Page,
+  options?: { empty?: boolean; searchDelayMs?: number },
+) {
+  await page.route(`**/organizations/${TEST_ORG_ID}/communication/**`, async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+    if (method !== 'GET') return route.fallback();
+
+    if (url.includes('/communication/conversations/summary')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalUnreadMessages: options?.empty ? 0 : 2,
+          unreadConversations: options?.empty ? 0 : 1,
+          unassigned: options?.empty ? 0 : 1,
+          requiresAttention: options?.empty ? 0 : 1,
+          byChannel: options?.empty ? {} : { WHATSAPP: 1, VOICE: 1 },
+        }),
+      });
+    }
+
+    if (url.includes('/communication/conversations')) {
+      if (options?.searchDelayMs && url.includes('search=')) {
+        await new Promise((resolve) => setTimeout(resolve, options.searchDelayMs));
+      }
+
+      const search = new URL(url).searchParams.get('search') ?? '';
+      const channel = new URL(url).searchParams.get('channel');
+      const unreadOnly = new URL(url).searchParams.get('unreadOnly') === 'true';
+      const cursor = new URL(url).searchParams.get('cursor');
+
+      let items = options?.empty ? [] : [...mockConversations];
+      if (channel) items = items.filter((row) => row.channel === channel);
+      if (unreadOnly) items = items.filter((row) => row.unreadCount > 0);
+      if (search) {
+        items = items.filter((row) =>
+          row.displayLabel.toLowerCase().includes(search.toLowerCase()),
+        );
+      }
+
+      if (cursor === 'page-2') {
+        items = [];
+      } else if (!options?.empty && !cursor && items.length > 1) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: items.slice(0, 1),
+            nextCursor: 'page-2',
+            hasMore: items.length > 1,
+          }),
+        });
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items,
+          nextCursor: null,
+          hasMore: false,
+        }),
+      });
+    }
+
+    return route.fallback();
+  });
+}
 
 const mockUserWithCommunication = {
   ...mockUser,
@@ -41,11 +147,13 @@ export async function openCommunicationCenter(
     user?: typeof mockUser;
     query?: string;
     locale?: 'en' | 'de';
+    emptyInbox?: boolean;
   },
 ) {
   const user = options?.user ?? mockUserWithCommunication;
   await seedSession(page, user, options?.locale ?? 'en');
   await installTaskMocks(page);
+  await installCommunicationMocks(page, { empty: options?.emptyInbox });
   await page.route('**/auth/me', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     return route.fulfill({

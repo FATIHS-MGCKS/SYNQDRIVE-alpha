@@ -8,6 +8,33 @@ import { LanguageProvider } from '../../i18n/LanguageContext';
 import { CommunicationCenterShell } from './CommunicationCenterShell';
 import { COMMUNICATION_CHANNEL_PARAM } from './communication-center-navigation';
 
+vi.mock('../../RentalContext', () => ({
+  useRentalOrg: () => ({
+    orgId: 'org-communication-test',
+    loading: false,
+    hasPermission: () => true,
+    userRole: 'ADMIN',
+  }),
+}));
+
+vi.mock('../../../lib/communication/hooks/useCommunicationInbox', () => ({
+  useCommunicationInbox: () => ({
+    conversations: [],
+    summary: null,
+    loading: false,
+    loadingMore: false,
+    loadingSummary: false,
+    hasMore: false,
+    error: null,
+    paginationError: null,
+    isStale: false,
+    reload: vi.fn(),
+    loadMore: vi.fn(),
+    retryLoadMore: vi.fn(),
+  }),
+  COMMUNICATION_INBOX_PAGE_SIZE: 25,
+}));
+
 function mockMatchMedia(width: number) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches:
@@ -49,11 +76,11 @@ describe('CommunicationCenterShell', () => {
     });
   }
 
-  it('renders inbox workspace with structural list shell only', () => {
+  it('renders inbox workspace with search and filter controls', () => {
     renderShell();
     expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="communication-inbox-list-shell"]')).not.toBeNull();
-    expect(container.textContent).not.toContain('No conversations yet');
+    expect(container.querySelector('[data-testid="communication-inbox-search"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-filters"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
     expect(container.querySelector('[role="tablist"]')).toBeNull();
   });
