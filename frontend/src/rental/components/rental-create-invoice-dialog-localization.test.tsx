@@ -6,11 +6,13 @@ vi.mock('@iconify/react', () => ({
   disableCache: vi.fn(),
 }));
 
-const mockCreate = vi.fn(async () => ({
-  id: 'inv-1',
-  type: 'OUTGOING_MANUAL',
-  title: 'Test Invoice',
-  status: 'DRAFT',
+const { mockCreate } = vi.hoisted(() => ({
+  mockCreate: vi.fn(async () => ({
+    id: 'inv-1',
+    type: 'OUTGOING_MANUAL',
+    title: 'Test Invoice',
+    status: 'DRAFT',
+  })),
 }));
 
 vi.mock('../../lib/api', () => ({
