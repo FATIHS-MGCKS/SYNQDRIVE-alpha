@@ -46,7 +46,10 @@ export class CommunicationEventDto {
 }
 
 export class CommunicationConversationSummaryDto {
-  totalUnread!: number;
+  /** Sum of per-conversation unreadCount across the filtered inbox set. */
+  totalUnreadMessages!: number;
+  /** Count of conversations with unreadCount > 0 in the filtered inbox set. */
+  unreadConversations!: number;
   unassigned!: number;
   requiresAttention!: number;
   byChannel!: Partial<Record<CommunicationChannel, number>>;

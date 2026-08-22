@@ -1,5 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  assertCommunicationCursorIsoTimestamp,
+  assertCommunicationCursorLength,
+  assertCommunicationCursorUuid,
+} from './communication-read-cursor.validation';
 
 export const COMMUNICATION_INBOX_DEFAULT_LIMIT = 25;
 export const COMMUNICATION_INBOX_MAX_LIMIT = 100;
@@ -45,6 +50,7 @@ export function encodeCommunicationInboxCursor(payload: CommunicationInboxCursor
 }
 
 export function decodeCommunicationInboxCursor(cursor: string): CommunicationInboxCursorPayload {
+  assertCommunicationCursorLength(cursor);
   try {
     const raw = Buffer.from(cursor, 'base64url').toString('utf8');
     const parsed = JSON.parse(raw) as CommunicationInboxCursorPayload;
@@ -54,12 +60,16 @@ export function decodeCommunicationInboxCursor(cursor: string): CommunicationInb
       || parsed.v !== COMMUNICATION_INBOX_CURSOR_VERSION
       || typeof parsed.id !== 'string'
       || typeof parsed.lastActivityAt !== 'string'
-      || Number.isNaN(Date.parse(parsed.lastActivityAt))
     ) {
       throw new Error('invalid inbox cursor');
     }
+    assertCommunicationCursorUuid(parsed.id);
+    assertCommunicationCursorIsoTimestamp(parsed.lastActivityAt);
     return parsed;
-  } catch {
+  } catch (error) {
+    if (error instanceof BadRequestException) {
+      throw error;
+    }
     throw new BadRequestException({
       message: 'Invalid communication inbox cursor.',
       code: 'COMMUNICATION_INBOX_INVALID_CURSOR',
@@ -74,6 +84,7 @@ export function encodeCommunicationTimelineCursor(
 }
 
 export function decodeCommunicationTimelineCursor(cursor: string): CommunicationTimelineCursorPayload {
+  assertCommunicationCursorLength(cursor);
   try {
     const raw = Buffer.from(cursor, 'base64url').toString('utf8');
     const parsed = JSON.parse(raw) as CommunicationTimelineCursorPayload;
@@ -83,12 +94,16 @@ export function decodeCommunicationTimelineCursor(cursor: string): Communication
       || parsed.v !== COMMUNICATION_TIMELINE_CURSOR_VERSION
       || typeof parsed.id !== 'string'
       || typeof parsed.occurredAt !== 'string'
-      || Number.isNaN(Date.parse(parsed.occurredAt))
     ) {
       throw new Error('invalid timeline cursor');
     }
+    assertCommunicationCursorUuid(parsed.id);
+    assertCommunicationCursorIsoTimestamp(parsed.occurredAt);
     return parsed;
-  } catch {
+  } catch (error) {
+    if (error instanceof BadRequestException) {
+      throw error;
+    }
     throw new BadRequestException({
       message: 'Invalid communication timeline cursor.',
       code: 'COMMUNICATION_TIMELINE_INVALID_CURSOR',

@@ -1,8 +1,6 @@
 import type { Prisma } from '@prisma/client';
-import { userDisplayName } from '@modules/invoices/invoice-documents.labels';
 import {
   CANONICAL_COMMUNICATION_METADATA_KEYS,
-  sanitizeCanonicalMetadata,
   type CanonicalCommunicationMetadata,
 } from '../normalization/communication-metadata';
 import type {
@@ -75,7 +73,6 @@ export const CONVERSATION_LIST_SELECT = {
       name: true,
       firstName: true,
       lastName: true,
-      email: true,
     },
   },
 } satisfies Prisma.CommunicationConversationSelect;
@@ -99,7 +96,19 @@ export type CommunicationEventRow = Prisma.CommunicationEventGetPayload<{
 }>;
 
 export function bookingReference(bookingId: string): string {
+  // Repo-wide generated technical reference — Booking has no separate public number column.
   return `BK-${bookingId.slice(-6).toUpperCase()}`;
+}
+
+export function communicationUserDisplayName(user: {
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+} | null | undefined): string | null {
+  if (!user) return null;
+  if (user.name?.trim()) return user.name.trim();
+  const combined = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return combined || null;
 }
 
 export function mapCustomerRef(
@@ -148,7 +157,7 @@ export function mapAssignedUserRef(
   user: CommunicationConversationListRow['assignedUser'],
 ): CommunicationAssignedUserRefDto | null {
   if (!user) return null;
-  const displayName = userDisplayName(user);
+  const displayName = communicationUserDisplayName(user);
   if (!displayName) return null;
   return { id: user.id, displayName };
 }
@@ -243,7 +252,8 @@ export function collectForbiddenPublicKeys(
   path = '',
   hits: string[] = [],
 ): string[] {
-  const forbidden = /(?:^|\.)(phone|email|rawPayload|authorization|signature|providerResponse|transcript|body|text|content)(?:\.|$)/i;
+  const forbidden =
+    /(?:^|\.)(phone|email|rawPayload|authorization|signature|providerResponse|transcript|body|text|content|token|secret)(?:\.|$)/i;
   if (value === null || value === undefined) return hits;
   if (Array.isArray(value)) {
     value.forEach((entry, index) => collectForbiddenPublicKeys(entry, `${path}[${index}]`, hits));

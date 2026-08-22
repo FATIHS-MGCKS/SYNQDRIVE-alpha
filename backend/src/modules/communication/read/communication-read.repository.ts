@@ -29,7 +29,8 @@ import {
 import type { CommunicationConversationListQueryDto } from './dto/communication-read-shared.dto';
 
 export interface CommunicationConversationSummaryCounts {
-  totalUnread: number;
+  totalUnreadMessages: number;
+  unreadConversations: number;
   unassigned: number;
   requiresAttention: number;
   byChannel: Partial<Record<CommunicationChannel, number>>;
@@ -122,33 +123,22 @@ export class CommunicationReadRepository {
 
   async summarizeConversations(
     organizationId: string,
-    query: Pick<
-      CommunicationConversationListQueryDto,
-      | 'channel'
-      | 'status'
-      | 'customerId'
-      | 'bookingId'
-      | 'vehicleId'
-      | 'stationId'
-      | 'assignedUserId'
-      | 'unassigned'
-      | 'providerIdentity'
-      | 'dateFrom'
-      | 'dateTo'
-    >,
+    query: CommunicationConversationListQueryDto,
   ): Promise<CommunicationConversationSummaryCounts> {
     const where = this.buildConversationListWhere(organizationId, {
       ...query,
-      search: undefined,
       cursor: undefined,
       limit: undefined,
-      unreadOnly: undefined,
     });
 
-    const [unreadAgg, unassigned, requiresAttention, channelGroups] = await Promise.all([
+    const [unreadAgg, unreadConversations, unassigned, requiresAttention, channelGroups] =
+      await Promise.all([
       this.prisma.communicationConversation.aggregate({
         where,
         _sum: { unreadCount: true },
+      }),
+      this.prisma.communicationConversation.count({
+        where: { ...where, unreadCount: { gt: 0 } },
       }),
       this.prisma.communicationConversation.count({
         where: { ...where, assignedUserId: null },
@@ -169,7 +159,8 @@ export class CommunicationReadRepository {
     }
 
     return {
-      totalUnread: Math.max(0, unreadAgg._sum.unreadCount ?? 0),
+      totalUnreadMessages: Math.max(0, unreadAgg._sum.unreadCount ?? 0),
+      unreadConversations,
       unassigned,
       requiresAttention,
       byChannel,
@@ -210,6 +201,7 @@ export class CommunicationReadRepository {
       and.push({ assignedUserId: null });
     }
     if (query.providerIdentity?.length) {
+      // Operational filter: conversation has at least one canonical event from provider.
       and.push({
         events: {
           some: {
@@ -288,11 +280,19 @@ export class CommunicationReadRepository {
       {
         assignedUser: {
           is: {
-            OR: [
-              { name: insensitiveContains(term) },
-              { firstName: insensitiveContains(term) },
-              { lastName: insensitiveContains(term) },
-            ],
+            memberships: {
+              some: {
+                organizationId,
+                status: 'ACTIVE',
+              },
+            },
+            AND: terms.map((part) => ({
+              OR: [
+                { name: insensitiveContains(part) },
+                { firstName: insensitiveContains(part) },
+                { lastName: insensitiveContains(part) },
+              ],
+            })),
           },
         },
       },

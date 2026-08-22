@@ -4,6 +4,7 @@ import {
   mapConversationDetail,
   mapConversationListItem,
 } from './communication-read.mapper';
+import { validateCommunicationConversationListQuery } from './communication-read-query.validation';
 import { CommunicationReadRepository } from './communication-read.repository';
 import type { CommunicationConversationListQueryDto } from './dto/communication-read-shared.dto';
 import type {
@@ -24,6 +25,7 @@ export class CommunicationReadService {
     organizationId: string,
     query: CommunicationConversationListQueryDto,
   ): Promise<CommunicationConversationListResponseDto> {
+    validateCommunicationConversationListQuery(query);
     const started = Date.now();
     const page = await this.repository.listConversations(organizationId, query);
     this.logRead('list_conversations', organizationId, {
@@ -88,6 +90,7 @@ export class CommunicationReadService {
     organizationId: string,
     query: CommunicationConversationListQueryDto,
   ): Promise<CommunicationConversationSummaryDto> {
+    validateCommunicationConversationListQuery(query);
     const started = Date.now();
     const summary = await this.repository.summarizeConversations(organizationId, query);
     this.logRead('summarize_conversations', organizationId, {

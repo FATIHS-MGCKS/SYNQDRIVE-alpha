@@ -22,18 +22,10 @@ describePg('Communication read API postgres', () => {
 
   let orgA: string;
   let orgB: string;
-  let listQueryCount = 0;
 
   beforeAll(async () => {
     prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
     await prisma.$connect();
-    const baseFindMany = prisma.communicationConversation.findMany.bind(
-      prisma.communicationConversation,
-    );
-    jest.spyOn(prisma.communicationConversation, 'findMany').mockImplementation((...args) => {
-      listQueryCount += 1;
-      return baseFindMany(...args);
-    });
 
     const moduleRef = await Test.createTestingModule({
       providers: [PrismaService, CommunicationReadRepository, CommunicationReadService],
@@ -47,7 +39,6 @@ describePg('Communication read API postgres', () => {
   });
 
   beforeEach(async () => {
-    listQueryCount = 0;
     const ts = Date.now();
     const orgRowA = await prisma.organization.create({
       data: { companyName: `C7 A ${ts}`, businessType: 'RENTAL', status: 'ACTIVE' },
@@ -461,7 +452,8 @@ describePg('Communication read API postgres', () => {
     });
 
     const summary = await service.summarizeConversations(orgA, {});
-    expect(summary.totalUnread).toBe(3);
+    expect(summary.totalUnreadMessages).toBe(3);
+    expect(summary.unreadConversations).toBe(2);
     expect(summary.unassigned).toBeGreaterThanOrEqual(2);
 
     const searchA = await service.listConversations(orgA, { search: 'Unique Finder' });
@@ -480,7 +472,7 @@ describePg('Communication read API postgres', () => {
     expect(searchPage1.items[0]!.id).not.toBe(searchPage2.items[0]?.id ?? '');
   });
 
-  it('Y — list query uses bounded query count (no per-row N+1)', async () => {
+  it('Y — list issues bounded SQL queries (single join findMany)', async () => {
     const customer = await prisma.customer.create({
       data: {
         organizationId: orgA,
@@ -498,10 +490,25 @@ describePg('Communication read API postgres', () => {
       });
     }
 
-    listQueryCount = 0;
-    const list = await service.listConversations(orgA, { limit: 25 });
-    expect(list.items).toHaveLength(25);
-    expect(listQueryCount).toBe(1);
+    const queryLog: string[] = [];
+    const loggingPrisma = new PrismaClient({
+      datasources: { db: { url: databaseUrl } },
+      log: [{ emit: 'event', level: 'query' }],
+    });
+    loggingPrisma.$on('query', (event) => {
+      queryLog.push(event.query);
+    });
+    await loggingPrisma.$connect();
+
+    const loggingRepo = new CommunicationReadRepository(loggingPrisma as unknown as PrismaService);
+    const loggingService = new CommunicationReadService(loggingRepo);
+    await loggingService.listConversations(orgA, { limit: 25 });
+
+    const conversationQueries = queryLog.filter((q) => q.includes('communication_conversations'));
+    expect(conversationQueries.length).toBe(1);
+    expect(queryLog.length).toBeLessThanOrEqual(8);
+    expect(queryLog.length).toBeLessThan(15);
+    await loggingPrisma.$disconnect();
   });
 
   it('Z — canonical read does not require native provider tables', async () => {
@@ -519,5 +526,166 @@ describePg('Communication read API postgres', () => {
     expect(detail.id).toBe(conv.id);
     expect(events.items).toHaveLength(1);
     expect(await prisma.whatsAppConversation.count({ where: { organizationId: orgA } })).toBe(0);
+  });
+
+  it('H1 — assigned-user search requires ACTIVE org membership', async () => {
+    const outsider = await prisma.user.create({
+      data: {
+        email: `outsider-${orgA}-${Date.now()}@example.com`,
+        name: 'Outsider Searchable',
+      },
+    });
+    await prisma.organizationMembership.create({
+      data: {
+        organizationId: orgB,
+        userId: outsider.id,
+        role: 'WORKER',
+        status: 'ACTIVE',
+      },
+    });
+
+    await seedConversation({
+      orgId: orgA,
+      suffix: 'outsider-assigned',
+      assignedUserId: outsider.id,
+      lastActivityAt: new Date(),
+    });
+
+    const outsiderHits = await service.listConversations(orgA, { search: 'Outsider' });
+    expect(outsiderHits.items).toHaveLength(0);
+
+    const member = await prisma.user.create({
+      data: {
+        email: `member-${orgA}-${Date.now()}@example.com`,
+        name: 'Member Searchable',
+      },
+    });
+    await prisma.organizationMembership.create({
+      data: {
+        organizationId: orgA,
+        userId: member.id,
+        role: 'WORKER',
+        status: 'ACTIVE',
+      },
+    });
+    const memberConv = await seedConversation({
+      orgId: orgA,
+      suffix: 'member-assigned',
+      assignedUserId: member.id,
+      lastActivityAt: new Date(),
+    });
+
+    const memberHits = await service.listConversations(orgA, { search: 'Member Searchable' });
+    expect(memberHits.items.map((row) => row.id)).toEqual([memberConv.id]);
+  });
+
+  it('H2 — summary honors search and unreadOnly filters', async () => {
+    const customerA = await prisma.customer.create({
+      data: { organizationId: orgA, firstName: 'Summary', lastName: 'Alpha' },
+    });
+    const customerB = await prisma.customer.create({
+      data: { organizationId: orgA, firstName: 'Summary', lastName: 'Beta' },
+    });
+
+    await seedConversation({
+      orgId: orgA,
+      suffix: 'sum-alpha-unread',
+      customerId: customerA.id,
+      unreadCount: 4,
+      lastActivityAt: new Date('2026-08-21T12:00:00Z'),
+    });
+    await seedConversation({
+      orgId: orgA,
+      suffix: 'sum-beta-read',
+      customerId: customerB.id,
+      unreadCount: 0,
+      lastActivityAt: new Date('2026-08-21T11:00:00Z'),
+    });
+
+    const searchSummary = await service.summarizeConversations(orgA, { search: 'Alpha' });
+    expect(searchSummary.totalUnreadMessages).toBe(4);
+    expect(searchSummary.unreadConversations).toBe(1);
+    expect(Object.values(searchSummary.byChannel).reduce((a, b) => a + b, 0)).toBe(1);
+
+    const unreadSummary = await service.summarizeConversations(orgA, { unreadOnly: true });
+    expect(unreadSummary.unreadConversations).toBe(1);
+    expect(unreadSummary.totalUnreadMessages).toBe(4);
+  });
+
+  it('H3 — providerIdentity filter matches HAS ANY EVENT FROM PROVIDER', async () => {
+    const withTwilio = await seedConversation({
+      orgId: orgA,
+      suffix: 'twilio-event',
+      channel: CommunicationChannel.VOICE,
+      lastActivityAt: new Date('2026-08-21T12:00:00Z'),
+    });
+    await seedEvent({
+      orgId: orgA,
+      conversationId: withTwilio.id,
+      channel: CommunicationChannel.VOICE,
+      occurredAt: new Date(),
+      providerIdentity: CommunicationProviderIdentity.TWILIO,
+    });
+    await seedEvent({
+      orgId: orgA,
+      conversationId: withTwilio.id,
+      channel: CommunicationChannel.VOICE,
+      occurredAt: new Date(),
+      providerIdentity: CommunicationProviderIdentity.ELEVENLABS,
+    });
+
+    const onlyTwilio = await service.listConversations(orgA, {
+      providerIdentity: [CommunicationProviderIdentity.TWILIO],
+    });
+    expect(onlyTwilio.items.map((row) => row.id)).toEqual([withTwilio.id]);
+  });
+
+  it('H4 — rejects conflicting assignedUserId + unassigned', async () => {
+    await expect(
+      service.listConversations(orgA, {
+        assignedUserId: '00000000-0000-4000-8000-000000000001',
+        unassigned: true,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('H5 — rejects invalid date range', async () => {
+    await expect(
+      service.listConversations(orgA, {
+        dateFrom: '2026-08-22T00:00:00.000Z',
+        dateTo: '2026-08-21T00:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('H6 — recursive PII keys absent from public list/detail/events', async () => {
+    const conv = await seedConversation({
+      orgId: orgA,
+      suffix: 'pii-nested',
+      lastActivityAt: new Date(),
+      metadata: {
+        phone: '+49123',
+        secret: 'x',
+        intentCode: 'SUPPORT',
+        nested: { transcript: 'no', token: 'no' },
+      } as Prisma.InputJsonValue,
+    });
+    await seedEvent({
+      orgId: orgA,
+      conversationId: conv.id,
+      channel: CommunicationChannel.WHATSAPP,
+      occurredAt: new Date(),
+      metadata: {
+        body: 'secret',
+        content: 'secret',
+        providerResponse: { raw: true },
+        intentCode: 'SUPPORT',
+      } as Prisma.InputJsonValue,
+    });
+
+    const detail = await service.getConversation(orgA, conv.id);
+    const events = await service.listConversationEvents(orgA, conv.id, {});
+    const serialized = JSON.stringify({ detail, events });
+    expect(serialized).not.toMatch(/phone|email|rawPayload|authorization|signature|providerResponse|transcript|\"body\"|\"content\"|token|secret/i);
   });
 });

@@ -9,15 +9,18 @@ import {
   resolveCommunicationListLimit,
 } from './communication-read.cursor.util';
 
+const VALID_UUID = '11111111-1111-4111-8111-111111111111';
+const VALID_TS = '2026-08-21T12:00:00.000Z';
+
 describe('communication-read.cursor.util', () => {
   it('encodes and decodes inbox cursor', () => {
     const encoded = encodeCommunicationInboxCursor({
       v: 'inbox-v1',
-      id: 'conv-1',
-      lastActivityAt: '2026-08-21T12:00:00.000Z',
+      id: VALID_UUID,
+      lastActivityAt: VALID_TS,
     });
     const decoded = decodeCommunicationInboxCursor(encoded);
-    expect(decoded.id).toBe('conv-1');
+    expect(decoded.id).toBe(VALID_UUID);
   });
 
   it('rejects malformed inbox cursor', () => {
@@ -27,8 +30,8 @@ describe('communication-read.cursor.util', () => {
   it('builds stable inbox keyset predicate', () => {
     const where = buildCommunicationInboxCursorWhere({
       v: 'inbox-v1',
-      id: 'b',
-      lastActivityAt: '2026-08-21T12:00:00.000Z',
+      id: VALID_UUID,
+      lastActivityAt: VALID_TS,
     });
     expect(where.OR).toHaveLength(2);
   });
@@ -36,17 +39,17 @@ describe('communication-read.cursor.util', () => {
   it('encodes and decodes timeline cursor', () => {
     const encoded = encodeCommunicationTimelineCursor({
       v: 'timeline-v1',
-      id: 'evt-1',
-      occurredAt: '2026-08-21T12:00:00.000Z',
+      id: VALID_UUID,
+      occurredAt: VALID_TS,
     });
-    expect(decodeCommunicationTimelineCursor(encoded).id).toBe('evt-1');
+    expect(decodeCommunicationTimelineCursor(encoded).id).toBe(VALID_UUID);
   });
 
   it('builds timeline keyset predicate', () => {
     const where = buildCommunicationTimelineCursorWhere({
       v: 'timeline-v1',
-      id: 'evt-2',
-      occurredAt: '2026-08-21T12:00:00.000Z',
+      id: VALID_UUID,
+      occurredAt: VALID_TS,
     });
     expect(where.OR).toHaveLength(2);
   });
