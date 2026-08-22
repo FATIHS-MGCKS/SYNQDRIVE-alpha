@@ -14,35 +14,43 @@ import type {
 } from '../../lib/api';
 import { useFleetVehicles } from '../FleetContext';
 import type { VehicleData } from '../data/vehicles';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  PARTS_WIZARD_STEP_KEYS,
+  availabilityBadgeStyle,
+  descCategory,
+  fitmentBadgeStyle,
+  formatPartsDate,
+  formatPartsPrice,
+  labelAvailability,
+  labelCategory,
+  labelFitment,
+  labelSortOption,
+  labelWizardStep,
+  type PartsCategoryValue,
+} from '../lib/parts-accessories-i18n';
 
 interface PartsAccessoriesViewProps {
   isDarkMode: boolean;
 }
 
-type Category = 'TIRES' | 'PARTS' | 'ACCESSORIES';
+type Category = PartsCategoryValue;
 type SortOption = 'relevance' | 'price_asc' | 'price_desc';
 
-const STEP_LABELS = [
-  'Vehicle',
-  'Category',
-  'Provider',
-  'Authorization',
-  'Results',
-  'Detail',
-];
+const WIZARD_STEPS = PARTS_WIZARD_STEP_KEYS.slice(0, 5);
 
-const CATEGORY_META: { value: Category; label: string; description: string; Icon: typeof Circle }[] = [
-  { value: 'TIRES', label: 'Tires', description: 'Search for tires matching your vehicle specs', Icon: Circle },
-  { value: 'PARTS', label: 'Parts', description: 'OEM and aftermarket replacement parts', Icon: Wrench },
-  { value: 'ACCESSORIES', label: 'Accessories', description: 'Interior, exterior, and performance add-ons', Icon: Package },
+const CATEGORY_OPTIONS: { value: Category; Icon: typeof Circle }[] = [
+  { value: 'TIRES', Icon: Circle },
+  { value: 'PARTS', Icon: Wrench },
+  { value: 'ACCESSORIES', Icon: Package },
 ];
 
 function cls(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(' ');
 }
 
-function truncateVin(vin: string | undefined): string {
-  if (!vin) return '—';
+function truncateVin(vin: string | undefined, emptyValue: string): string {
+  if (!vin) return emptyValue;
   return vin.length > 11 ? vin.slice(0, 4) + '…' + vin.slice(-4) : vin;
 }
 
@@ -50,29 +58,6 @@ function healthDot(status: string) {
   if (status === 'healthy') return 'bg-emerald-500';
   if (status === 'degraded') return 'bg-amber-500';
   return 'bg-red-500';
-}
-
-function availabilityBadge(status: string, dk: boolean) {
-  if (status === 'in_stock')
-    return { label: 'In Stock', bg: dk ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700' };
-  if (status === 'limited')
-    return { label: 'Limited', bg: dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700' };
-  if (status === 'out_of_stock')
-    return { label: 'Out of Stock', bg: dk ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700' };
-  return { label: 'Unknown', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-muted text-muted-foreground' };
-}
-
-function fitmentBadge(status: string, dk: boolean) {
-  if (status === 'exact_fit')
-    return { label: 'Exact Fit', bg: dk ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700' };
-  if (status === 'likely_fit')
-    return { label: 'Likely Fit', bg: dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700' };
-  return { label: 'Universal', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-muted text-muted-foreground' };
-}
-
-function formatPrice(value: number | undefined, currency: string) {
-  if (value == null) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: currency || 'EUR' }).format(value);
 }
 
 // ── Skeleton helpers ───────────────────────────────────
@@ -101,6 +86,7 @@ function CardSkeleton({ dk }: { dk: boolean }) {
 
 // ── Main Component ─────────────────────────────────────
 export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewProps) {
+  const { t, locale } = useLanguage();
   const { fleetVehicles, loading: fleetLoading } = useFleetVehicles();
 
   const [step, setStep] = useState(1);
@@ -159,7 +145,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     setError(null);
     api.partsAccessories.providers()
       .then((data) => { if (!cancelled) setProviders(data); })
-      .catch((e) => { if (!cancelled) setError(e?.message || 'Failed to load providers'); })
+      .catch((e) => { if (!cancelled) setError(e?.message || t('partsAccessories.error.loadProviders')); })
       .finally(() => { if (!cancelled) setProvidersLoading(false); });
     return () => { cancelled = true; };
   }, [step]);
@@ -177,7 +163,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         setDisclosure(res.disclosure);
         setDisclosedFields(res.disclosedFields);
       })
-      .catch((e) => { if (!cancelled) setError(e?.message || 'Failed to load disclosure'); })
+      .catch((e) => { if (!cancelled) setError(e?.message || t('partsAccessories.error.loadDisclosure')); })
       .finally(() => { if (!cancelled) setDisclosureLoading(false); });
     return () => { cancelled = true; };
   }, [step, selectedProvider, selectedCategory]);
@@ -201,7 +187,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       setSearchResults(res);
       setSearchPage(page);
     } catch (e: any) {
-      setError(e?.message || 'Search failed');
+      setError(e?.message || t('partsAccessories.error.searchFailed'));
     } finally {
       setSearchLoading(false);
     }
@@ -226,7 +212,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       setCorrelationId(res.correlationId);
       setStep(5);
     } catch (e: any) {
-      setError(e?.message || 'Authorization failed');
+      setError(e?.message || t('partsAccessories.error.authorizationFailed'));
     } finally {
       setConfirmLoading(false);
     }
@@ -273,10 +259,11 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
   // ── Stepper bar ──────────────────────────────────────
   const renderStepper = () => (
     <div className="flex items-center gap-1 overflow-x-auto pb-1">
-      {STEP_LABELS.slice(0, 5).map((label, i) => {
+      {WIZARD_STEPS.map((stepKey, i) => {
         const s = i + 1;
         const isActive = s === step;
         const isDone = s < step;
+        const label = labelWizardStep(locale, stepKey);
         return (
           <div key={s} className="flex items-center gap-1">
             {i > 0 && (
@@ -320,7 +307,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         )}
         {selectedCategory && step > 2 && (
           <span className={cls('px-2 py-0.5 rounded-full', dk ? 'bg-brand-soft text-status-info' : 'bg-status-info-soft text-status-info')}>
-            {selectedCategory}
+            {labelCategory(locale, selectedCategory)}
           </span>
         )}
         {selectedProvider && step > 3 && (
@@ -332,15 +319,15 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     );
   };
 
-  // ── STEP 1 — Vehicle Selection ───────────────────────
+  // ── STEP 1 ───────────────────────────────────────────
   const renderVehicleSelection = () => (
     <div className="space-y-4">
       <div>
         <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
-          Select a Vehicle
+          {t('partsAccessories.vehicle.title')}
         </h2>
         <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
-          Choose the vehicle you'd like to find parts or accessories for.
+          {t('partsAccessories.vehicle.desc')}
         </p>
       </div>
       <div className="relative">
@@ -348,7 +335,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         <input
           value={vehicleSearch}
           onChange={(e) => setVehicleSearch(e.target.value)}
-          placeholder="Search by plate, make, or model…"
+          placeholder={t('partsAccessories.vehicle.searchPlaceholder')}
           className={cls(
             'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition',
             dk ? 'bg-white/[0.06] text-white placeholder:text-white/30 border border-white/[0.08] focus:border-brand/50'
@@ -366,7 +353,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       ) : filteredVehicles.length === 0 ? (
         <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-muted-foreground')}>
           <Icon name="car" className="w-10 h-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">No vehicles found</p>
+          <p className="text-sm">{t('partsAccessories.vehicle.empty')}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[56vh] overflow-y-auto pr-1">
@@ -385,7 +372,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 <div className="flex items-start justify-between">
                   <div>
                     <p className={cls('text-sm font-semibold', dk ? 'text-white' : 'text-gray-900')}>
-                      {v.license || '—'}
+                      {v.license || t('partsAccessories.emptyValue')}
                     </p>
                     <p className={cls('text-xs mt-0.5', dk ? 'text-white/50' : 'text-gray-500')}>
                       {v.make} {v.model} · {v.year}
@@ -398,7 +385,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   )}
                 </div>
                 <p className={cls('text-[10px] mt-2 font-mono', dk ? 'text-white/30' : 'text-muted-foreground')}>
-                  VIN {truncateVin((v as any).vin)}
+                  {t('partsAccessories.vehicle.vinPrefix')} {truncateVin((v as any).vin, t('partsAccessories.emptyValue'))}
                 </p>
               </button>
             );
@@ -408,19 +395,19 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     </div>
   );
 
-  // ── STEP 2 — Category Selection ──────────────────────
+  // ── STEP 2 ───────────────────────────────────────────
   const renderCategorySelection = () => (
     <div className="space-y-4">
       <div>
         <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
-          What are you looking for?
+          {t('partsAccessories.category.title')}
         </h2>
         <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
-          Select a product category to continue.
+          {t('partsAccessories.category.desc')}
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        {CATEGORY_META.map(({ value, label, description, Icon }) => {
+        {CATEGORY_OPTIONS.map(({ value, Icon: CategoryIcon }) => {
           const selected = selectedCategory === value;
           return (
             <button
@@ -438,12 +425,12 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   ? 'bg-brand text-brand-foreground'
                   : dk ? 'bg-white/[0.06] text-white/60' : 'bg-muted text-muted-foreground',
               )}>
-                <Icon className="w-5 h-5" />
+                <CategoryIcon className="w-5 h-5" />
               </div>
               <div>
-                <p className={cls('font-semibold', dk ? 'text-white' : 'text-gray-900')}>{label}</p>
+                <p className={cls('font-semibold', dk ? 'text-white' : 'text-gray-900')}>{labelCategory(locale, value)}</p>
                 <p className={cls('text-xs mt-1 leading-relaxed', dk ? 'text-white/40' : 'text-gray-500')}>
-                  {description}
+                  {descCategory(locale, value)}
                 </p>
               </div>
             </button>
@@ -453,15 +440,20 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     </div>
   );
 
-  // ── STEP 3 — Provider Selection ──────────────────────
-  const renderProviderSelection = () => (
+  // ── STEP 3 ───────────────────────────────────────────
+  const renderProviderSelection = () => {
+    const categoryLabel = selectedCategory
+      ? labelCategory(locale, selectedCategory)
+      : t('partsAccessories.provider.empty.fallbackCategory');
+
+    return (
     <div className="space-y-4">
       <div>
         <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
-          Choose a Provider
+          {t('partsAccessories.provider.title')}
         </h2>
         <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
-          Select where you want to search for {selectedCategory?.toLowerCase() || 'products'}.
+          {t('partsAccessories.provider.desc', { category: categoryLabel })}
         </p>
       </div>
 
@@ -474,8 +466,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       ) : filteredProviders.length === 0 ? (
         <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-muted-foreground')}>
           <Icon name="truck" className="w-10 h-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm font-medium">No providers available</p>
-          <p className="text-xs mt-1">No enabled providers support {selectedCategory || 'this category'}.</p>
+          <p className="text-sm font-medium">{t('partsAccessories.provider.empty.title')}</p>
+          <p className="text-xs mt-1">{t('partsAccessories.provider.empty.desc', { category: categoryLabel })}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -521,7 +513,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                         dk ? 'bg-white/[0.06] text-white/50' : 'bg-gray-100 text-gray-600',
                       )}
                     >
-                      {cat}
+                      {labelCategory(locale, cat.toUpperCase())}
                     </span>
                   ))}
                 </div>
@@ -534,17 +526,23 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         </div>
       )}
     </div>
-  );
+    );
+  };
 
-  // ── STEP 4 — Data Authorization ──────────────────────
-  const renderAuthorization = () => (
+  // ── STEP 4 ───────────────────────────────────────────
+  const renderAuthorization = () => {
+    const categoryLabel = selectedCategory
+      ? labelCategory(locale, selectedCategory)
+      : t('partsAccessories.provider.empty.fallbackCategory');
+
+    return (
     <div className="space-y-4 max-w-2xl mx-auto">
       <div>
         <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
-          Data Authorization
+          {t('partsAccessories.auth.title')}
         </h2>
         <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
-          Review what data will be shared before continuing.
+          {t('partsAccessories.auth.desc')}
         </p>
       </div>
 
@@ -571,7 +569,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 {selectedProvider?.displayName}
               </p>
               <p className={cls('text-xs', dk ? 'text-white/40' : 'text-gray-500')}>
-                Data disclosure notice
+                {t('partsAccessories.auth.disclosureNotice')}
               </p>
             </div>
           </div>
@@ -583,7 +581,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               dk ? 'bg-white/[0.04] text-white/70' : 'bg-gray-50 text-gray-700',
             )}>
               <p className={cls('font-medium mb-1 text-xs uppercase tracking-wide', dk ? 'text-white/40' : 'text-gray-500')}>
-                Purpose
+                {t('partsAccessories.auth.purpose')}
               </p>
               {disclosure.body}
             </div>
@@ -593,7 +591,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {disclosedFields && disclosedFields.fields.length > 0 && (
             <div>
               <p className={cls('text-xs font-medium mb-2 uppercase tracking-wide', dk ? 'text-white/40' : 'text-gray-500')}>
-                Data Fields Shared
+                {t('partsAccessories.auth.dataFields')}
               </p>
               <div className="space-y-1.5">
                 {disclosedFields.fields.map((field) => (
@@ -635,8 +633,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {/* Notice meta */}
           {disclosure && (
             <div className={cls('flex gap-4 text-[10px]', dk ? 'text-white/25' : 'text-muted-foreground')}>
-              <span>Version {disclosure.version}</span>
-              <span>Effective {new Date(disclosure.effectiveFrom).toLocaleDateString()}</span>
+              <span>{t('partsAccessories.auth.version', { version: disclosure.version })}</span>
+              <span>{t('partsAccessories.auth.effective', { date: formatPartsDate(locale, disclosure.effectiveFrom) })}</span>
             </div>
           )}
 
@@ -659,7 +657,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               onClick={() => setAuthorized(!authorized)}
               className={cls('text-sm leading-snug', dk ? 'text-white/70' : 'text-gray-700')}
             >
-              I understand and authorize this data transfer to {selectedProvider?.displayName} for the purpose of searching {selectedCategory?.toLowerCase()}.
+              {t('partsAccessories.auth.consent', {
+                provider: selectedProvider?.displayName ?? '',
+                category: categoryLabel,
+              })}
             </span>
           </label>
 
@@ -672,7 +673,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
               )}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               disabled={!authorized || confirmLoading}
@@ -685,15 +686,16 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               )}
             >
               {confirmLoading && <Icon name="loader-2" className="w-4 h-4 animate-spin" />}
-              Confirm & Search
+              {t('partsAccessories.auth.confirmSearch')}
             </button>
           </div>
         </div>
       )}
     </div>
-  );
+    );
+  };
 
-  // ── STEP 5 — Search Results ──────────────────────────
+  // ── STEP 5 ───────────────────────────────────────────
   const renderSearchResults = () => {
     const handleSort = (s: SortOption) => {
       setSortBy(s);
@@ -706,11 +708,16 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className={cls('text-lg font-semibold', dk ? 'text-white' : 'text-gray-900')}>
-              Search Results
+              {t('partsAccessories.results.title')}
             </h2>
             {searchResults && !searchLoading && (
               <p className={cls('text-xs mt-0.5', dk ? 'text-white/40' : 'text-gray-500')}>
-                {searchResults.totalCount} result{searchResults.totalCount !== 1 ? 's' : ''} · {searchResults.searchDurationMs}ms
+                {t(
+                  searchResults.totalCount === 1
+                    ? 'partsAccessories.results.summarySingular'
+                    : 'partsAccessories.results.summaryPlural',
+                  { count: searchResults.totalCount, ms: searchResults.searchDurationMs },
+                )}
               </p>
             )}
           </div>
@@ -727,9 +734,9 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   dk ? 'bg-white/[0.06] text-white border border-white/[0.08]' : 'bg-white text-gray-700 border border-gray-200',
                 )}
               >
-                <option value="relevance">Relevance</option>
-                <option value="price_asc">Price: Low → High</option>
-                <option value="price_desc">Price: High → Low</option>
+                <option value="relevance">{labelSortOption(locale, 'relevance')}</option>
+                <option value="price_asc">{labelSortOption(locale, 'price_asc')}</option>
+                <option value="price_desc">{labelSortOption(locale, 'price_desc')}</option>
               </select>
             </div>
           </div>
@@ -743,16 +750,16 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         ) : !searchResults || searchResults.results.length === 0 ? (
           <div className={cls('text-center py-20', dk ? 'text-white/40' : 'text-muted-foreground')}>
             <Icon name="search" className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="font-medium">No products found</p>
-            <p className="text-xs mt-1">Try adjusting your vehicle or category selection.</p>
+            <p className="font-medium">{t('partsAccessories.results.empty.title')}</p>
+            <p className="text-xs mt-1">{t('partsAccessories.results.empty.desc')}</p>
           </div>
         ) : (
           <>
             {/* Product grid */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {searchResults.results.map((product) => {
-                const avail = availabilityBadge(product.availabilityStatus, dk);
-                const fit = fitmentBadge(product.fitmentStatus, dk);
+                const availBg = availabilityBadgeStyle(product.availabilityStatus, dk);
+                const fitBg = fitmentBadgeStyle(product.fitmentStatus, dk);
                 return (
                   <div key={product.id} className={cls(card, 'overflow-hidden flex flex-col transition-all hover:scale-[1.005]')}>
                     {/* Image area */}
@@ -783,18 +790,18 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
 
                       {/* Badges */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        <span className={cls('px-2 py-0.5 rounded-full text-[10px] font-medium', avail.bg)}>
-                          {avail.label}
+                        <span className={cls('px-2 py-0.5 rounded-full text-[10px] font-medium', availBg)}>
+                          {labelAvailability(locale, product.availabilityStatus)}
                         </span>
-                        <span className={cls('px-2 py-0.5 rounded-full text-[10px] font-medium', fit.bg)}>
-                          {fit.label}
+                        <span className={cls('px-2 py-0.5 rounded-full text-[10px] font-medium', fitBg)}>
+                          {labelFitment(locale, product.fitmentStatus)}
                         </span>
                       </div>
 
                       {/* Seller */}
                       {product.sellerName && (
                         <p className={cls('text-[10px] mt-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
-                          Sold by {product.sellerName}
+                          {t('partsAccessories.results.soldBy', { seller: product.sellerName })}
                         </p>
                       )}
 
@@ -802,11 +809,11 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                       <div className="mt-auto pt-3 flex items-end justify-between">
                         <div>
                           <p className={cls('text-lg font-bold', dk ? 'text-white' : 'text-gray-900')}>
-                            {formatPrice(product.priceGross, product.currency)}
+                            {formatPartsPrice(locale, product.priceGross, product.currency)}
                           </p>
                           {product.priceNet != null && product.priceNet !== product.priceGross && (
                             <p className={cls('text-[10px]', dk ? 'text-white/30' : 'text-muted-foreground')}>
-                              {formatPrice(product.priceNet, product.currency)} net
+                              {formatPartsPrice(locale, product.priceNet, product.currency)} {t('partsAccessories.results.netLabel')}
                             </p>
                           )}
                         </div>
@@ -817,7 +824,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                             dk ? 'bg-brand-soft text-status-info hover:bg-brand-soft' : 'bg-brand-soft text-brand hover:bg-brand-soft',
                           )}
                         >
-                          <Icon name="eye" className="w-3 h-3" /> Details
+                          <Icon name="eye" className="w-3 h-3" /> {t('common.details')}
                         </button>
                       </div>
                     </div>
@@ -838,7 +845,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   )}
                 >
                   {searchLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="chevron-down" className="w-4 h-4" />}
-                  Load More
+                  {t('partsAccessories.results.loadMore')}
                 </button>
               </div>
             )}
@@ -848,7 +855,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     );
   };
 
-  // ── STEP 6 — Product Detail Drawer ───────────────────
+  // ── STEP 6 — detail drawer ───────────────────────────
   const renderDetailDrawer = () => {
     if (!showDetail) return null;
     return (
@@ -921,16 +928,16 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {/* Price breakdown */}
               <div className={cls(card, 'p-4 space-y-2')}>
                 <div className="flex justify-between items-baseline">
-                  <span className={cls('text-sm', dk ? 'text-white/50' : 'text-gray-500')}>Price (incl. tax)</span>
+                  <span className={cls('text-sm', dk ? 'text-white/50' : 'text-gray-500')}>{t('partsAccessories.detail.priceInclTax')}</span>
                   <span className={cls('text-2xl font-bold', dk ? 'text-white' : 'text-gray-900')}>
-                    {formatPrice(detailProduct.priceGross, detailProduct.currency)}
+                    {formatPartsPrice(locale, detailProduct.priceGross, detailProduct.currency)}
                   </span>
                 </div>
                 {detailProduct.priceNet != null && (
                   <div className="flex justify-between items-baseline">
-                    <span className={cls('text-xs', dk ? 'text-white/35' : 'text-muted-foreground')}>Net price</span>
+                    <span className={cls('text-xs', dk ? 'text-white/35' : 'text-muted-foreground')}>{t('partsAccessories.detail.netPrice')}</span>
                     <span className={cls('text-sm', dk ? 'text-white/60' : 'text-gray-600')}>
-                      {formatPrice(detailProduct.priceNet, detailProduct.currency)}
+                      {formatPartsPrice(locale, detailProduct.priceNet, detailProduct.currency)}
                     </span>
                   </div>
                 )}
@@ -943,8 +950,12 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
 
               {/* Badges row */}
               <div className="flex flex-wrap gap-2">
-                {(() => { const a = availabilityBadge(detailProduct.availabilityStatus, dk); return <span className={cls('px-3 py-1 rounded-full text-xs font-medium', a.bg)}>{a.label}</span>; })()}
-                {(() => { const f = fitmentBadge(detailProduct.fitmentStatus, dk); return <span className={cls('px-3 py-1 rounded-full text-xs font-medium', f.bg)}>{f.label}</span>; })()}
+                <span className={cls('px-3 py-1 rounded-full text-xs font-medium', availabilityBadgeStyle(detailProduct.availabilityStatus, dk))}>
+                  {labelAvailability(locale, detailProduct.availabilityStatus)}
+                </span>
+                <span className={cls('px-3 py-1 rounded-full text-xs font-medium', fitmentBadgeStyle(detailProduct.fitmentStatus, dk))}>
+                  {labelFitment(locale, detailProduct.fitmentStatus)}
+                </span>
                 {detailProduct.rating != null && (
                   <span className={cls('flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium', dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')}>
                     <Icon name="star" className="w-3 h-3" /> {detailProduct.rating.toFixed(1)}
@@ -960,7 +971,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-gray-600',
                 )}>
                   <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-white/30' : 'text-muted-foreground')}>
-                    Fitment Notes
+                    {t('partsAccessories.detail.fitmentNotes')}
                   </p>
                   {detailProduct.fitmentNotes}
                 </div>
@@ -970,7 +981,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {detailProduct.description && (
                 <div>
                   <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
-                    Description
+                    {t('partsAccessories.detail.description')}
                   </p>
                   <p className={cls('text-sm leading-relaxed', dk ? 'text-white/60' : 'text-gray-600')}>
                     {detailProduct.description}
@@ -982,7 +993,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {detailProduct.specifications && Object.keys(detailProduct.specifications).length > 0 && (
                 <div>
                   <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
-                    Specifications
+                    {t('partsAccessories.detail.specifications')}
                   </p>
                   <div className={cls(card, 'overflow-hidden divide-y', dk ? 'divide-white/[0.06]' : 'divide-gray-100')}>
                     {Object.entries(detailProduct.specifications).map(([key, val]) => (
@@ -1001,7 +1012,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   'p-3 rounded-xl text-xs',
                   dk ? 'bg-amber-500/10 text-amber-400/80 border border-amber-500/20' : 'bg-amber-50 text-amber-800 border border-amber-200',
                 )}>
-                  <p className="font-medium mb-0.5">Provider Notice</p>
+                  <p className="font-medium mb-0.5">{t('partsAccessories.detail.providerNotice')}</p>
                   {detailProduct.providerTermsNote}
                 </div>
               )}
@@ -1016,7 +1027,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl text-sm font-semibold bg-brand text-brand-foreground hover:bg-brand-hover transition"
                   >
                     <Icon name="credit-card" className="w-4 h-4" />
-                    Continue to Checkout
+                    {t('partsAccessories.detail.checkout')}
                     <Icon name="external-link" className="w-3.5 h-3.5 opacity-60" />
                   </a>
                 ) : (
@@ -1024,11 +1035,13 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     'text-center py-3 rounded-xl text-sm',
                     dk ? 'bg-white/[0.04] text-white/40' : 'bg-gray-50 text-gray-400',
                   )}>
-                    No checkout link available for this product.
+                    {t('partsAccessories.detail.noCheckout')}
                   </div>
                 )}
                 <p className={cls('text-[10px] text-center', dk ? 'text-white/20' : 'text-muted-foreground')}>
-                  You will be redirected to {selectedProvider?.displayName || 'the provider'}'s website.
+                  {t('partsAccessories.detail.redirectNotice', {
+                    provider: selectedProvider?.displayName || t('partsAccessories.detail.redirectFallbackProvider'),
+                  })}
                 </p>
               </div>
             </div>
@@ -1085,7 +1098,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               : dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
           )}
         >
-          <Icon name="chevron-left" className="w-4 h-4" /> Back
+          <Icon name="chevron-left" className="w-4 h-4" /> {t('common.back')}
         </button>
         <button
           onClick={goNext}
@@ -1097,7 +1110,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
           )}
         >
-          Continue <Icon name="chevron-right" className="w-4 h-4" />
+          {t('partsAccessories.actions.continue')} <Icon name="chevron-right" className="w-4 h-4" />
         </button>
       </div>
     );
@@ -1108,10 +1121,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       {/* Page header */}
       <div>
         <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
-          Parts & Accessories
+          {t('nav.partsAccessories')}
         </h1>
         <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>
-          Find and order parts, tires, and accessories for your fleet vehicles.
+          {t('partsAccessories.subtitle')}
         </p>
       </div>
 

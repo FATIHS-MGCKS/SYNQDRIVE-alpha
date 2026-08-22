@@ -111,24 +111,24 @@
     }
   },
   "summary": {
-    "total": 1665,
+    "total": 1640,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 156,
-      "RENTAL": 434,
+      "RENTAL": 409,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 58,
       "TITLE": 246,
-      "TEXT": 1180,
+      "TEXT": 1156,
       "LABEL": 91,
-      "PLACEHOLDER": 82,
+      "PLACEHOLDER": 81,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 285,
+      "other Rental areas": 260,
       "Finance/Billing": 127,
       "Tasks": 13,
       "Documents": 8,
@@ -377,7 +377,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1536,
+      "line": 1540,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -405,7 +405,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23648,
+      "line": 23667,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -657,7 +657,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27533,
+      "line": 27552,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1606,7 +1606,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27478,
+      "line": 27497,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1747,7 +1747,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1007,
+      "line": 1011,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1761,7 +1761,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23952,
+      "line": 23971,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1803,7 +1803,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1626,
+      "line": 1630,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2728,7 +2728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1747,
+      "line": 1751,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2812,7 +2812,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1056,
+      "line": 1060,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3106,7 +3106,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1637,
+      "line": 1641,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3432,7 +3432,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1541,
+      "line": 1545,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3488,7 +3488,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1695,
+      "line": 1699,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3502,7 +3502,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1697,
+      "line": 1701,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4107,7 +4107,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24920,
+      "line": 24939,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4137,7 +4137,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1521,
+      "line": 1525,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4151,7 +4151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1665,
+      "line": 1669,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4642,7 +4642,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27468,
+      "line": 27487,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4838,7 +4838,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1745,
+      "line": 1749,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5147,7 +5147,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 22261,
+      "line": 22280,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5595,7 +5595,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23562,
+      "line": 23581,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6170,7 +6170,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1584,
+      "line": 1588,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6185,7 +6185,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1024,
+      "line": 1028,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7622,7 +7622,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1600,
+      "line": 1604,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7846,7 +7846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1590,
+      "line": 1594,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7888,7 +7888,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27503,
+      "line": 27522,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8183,7 +8183,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23628,
+      "line": 23647,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8421,7 +8421,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1577,
+      "line": 1581,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8941,7 +8941,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27490,
+      "line": 27509,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8955,7 +8955,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27507,
+      "line": 27526,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9376,7 +9376,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27184,
+      "line": 27203,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10012,7 +10012,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1565,
+      "line": 1569,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10530,7 +10530,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1701,
+      "line": 1705,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10544,7 +10544,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1698,
+      "line": 1702,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10558,7 +10558,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1694,
+      "line": 1698,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11455,7 +11455,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1598,
+      "line": 1602,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11665,7 +11665,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1748,
+      "line": 1752,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12295,7 +12295,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1499,
+      "line": 1503,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12857,7 +12857,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27457,
+      "line": 27476,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12871,7 +12871,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1295,
+      "line": 1299,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12969,7 +12969,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1638,
+      "line": 1642,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13490,7 +13490,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1495,
+      "line": 1499,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13588,7 +13588,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1628,
+      "line": 1632,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13674,7 +13674,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1543,
+      "line": 1547,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13856,7 +13856,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24922,
+      "line": 24941,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13898,7 +13898,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23648,
+      "line": 23667,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -13926,7 +13926,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1499,
+      "line": 1503,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13940,7 +13940,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1500,
+      "line": 1504,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13983,7 +13983,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1442,
+      "line": 1446,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13997,7 +13997,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1466,
+      "line": 1470,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14039,7 +14039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1625,
+      "line": 1629,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14377,7 +14377,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23688,
+      "line": 23707,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14545,7 +14545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1748,
+      "line": 1752,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -18060,20 +18060,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 460,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Choose a Provider",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/AddDamagePhotoPanel.tsx",
       "line": 66,
       "surface": "RENTAL",
@@ -18085,20 +18071,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/AddDamagePhotoPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 342,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Choose the vehicle you'd like to find parts or accessories for.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {
@@ -18169,20 +18141,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 1018,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Continue to Checkout",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {
@@ -18411,48 +18369,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 543,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Data Authorization",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 573,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Data disclosure notice",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 595,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Data Fields Shared",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 389,
       "surface": "RENTAL",
@@ -18475,14 +18391,13 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 74,
+      "occurrences": 73,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
         "rental/components/EntityTasksSection.tsx",
         "rental/components/FinancialInsightsView.tsx",
         "rental/components/NewBookingView.tsx",
-        "rental/components/PartsAccessoriesView.tsx",
         "rental/components/ScheduleBox.tsx",
         "rental/components/VehicleInsightsCard.tsx",
         "rental/components/billing/billing.utils.ts",
@@ -19347,34 +19262,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/FinancialInsightsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 1113,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Find and order parts, tires, and accessories for your fleet vehicles.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 962,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Fitment Notes",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {
@@ -20641,20 +20528,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 931,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Net price",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
       "line": 452,
       "surface": "RENTAL",
@@ -20781,20 +20654,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 1026,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No checkout link available for this product.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
       "line": 130,
       "surface": "RENTAL",
@@ -20894,34 +20753,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 746,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No products found",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 477,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No providers available",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/RolesAccessTab.tsx",
       "line": 39,
       "surface": "RENTAL",
@@ -20947,20 +20778,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/SecurityAuditTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 369,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No vehicles found",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {
@@ -21400,20 +21217,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 1110,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Parts & Accessories",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/CreateUserWizard.tsx",
       "line": 328,
       "surface": "RENTAL",
@@ -21750,48 +21553,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 924,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Price (incl. tax)",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 732,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Price: High → Low",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 731,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Price: Low → High",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingPriceTierLadder.tsx",
       "line": 75,
       "surface": "RENTAL",
@@ -21817,20 +21578,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 1004,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Provider Notice",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {
@@ -22116,20 +21863,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 546,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Review what data will be shared before continuing.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/RolesTab.tsx",
       "line": 188,
       "surface": "RENTAL",
@@ -22242,34 +21975,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 351,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Search by plate, make, or model…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 708,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Search Results",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 794,
       "surface": "RENTAL",
@@ -22284,20 +21989,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 418,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select a product category to continue.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/RolesAccessTab.tsx",
       "line": 66,
       "surface": "RENTAL",
@@ -22309,20 +22000,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/RolesAccessTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 339,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select a Vehicle",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {
@@ -22718,20 +22395,6 @@
       ]
     },
     {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 747,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Try adjusting your vehicle or category selection.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingInvoiceSection.tsx",
       "line": 123,
       "surface": "RENTAL",
@@ -23010,20 +22673,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/PartsAccessoriesView.tsx",
-      "line": 415,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "What are you looking for?",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/PartsAccessoriesView.tsx"
       ]
     },
     {

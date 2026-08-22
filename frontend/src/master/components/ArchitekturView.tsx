@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Parts & Accessories View (P2.2.20 — V4.9.947)', icon: Globe,
+    endpoint: 'PartsAccessoriesView.tsx, parts-accessories-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → 5-step wizard, search results, product detail drawer; `parts-accessories-i18n.ts` label maps + `formatPartsPrice`/`formatPartsDate`. **Keys:** +68 EN+DE `partsAccessories.*` (8122→8190). **Machine values:** `PARTS_CATEGORY_VALUES`, `PARTS_SORT_VALUES`, availability/fitment status enums, search/disclosure API payloads frozen. **Guardrails:** P2.2.20 enforce-clean exact (2 paths) — 0 findings; blind-spot guards on category maps, sort options, badge labels. **Tests:** `rental-parts-accessories-localization.test.tsx` (10). **Semantics:** presentation-only; provider/product dynamic data raw; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-20-rental-parts-accessories-implementation-2026-08-22.md; architecture/I18N_RENTAL_PARTS_ACCESSORIES_P2_2_20_2026-08-22.md' },
   { name: 'Platform i18n Rental Insurances View (P2.2.19 — V4.9.946)', icon: Globe,
     endpoint: 'InsurancesView.tsx, insurances-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → overview KPIs, filters, sort, table, 8-step inquiry wizard, detail drawer; `insurances-i18n.ts` label maps + `formatInsuranceDate`. **Keys:** +199 EN+DE `insurances.*` (7925→8124). **Machine values:** `INSURANCE_STATUS_VALUES`, `INQUIRY_PURPOSE_VALUES`, `TIME_RANGE_VALUES`, filter `all` + status enums, inquiry API payloads frozen. **Guardrails:** P2.2.19 enforce-clean exact (2 paths) — 0 findings; blind-spot guards on status maps, filter options, KPI labels. **Tests:** `rental-insurances-localization.test.tsx` (10). **Semantics:** presentation-only; provider/policy/VIN/customer dynamic data raw; Category E=0.',

@@ -8,6 +8,7 @@ import { voiceAssistantDe } from './voice-assistant.de';
 import { supportDe } from './support.de';
 import { finesDe } from './fines.de';
 import { insurancesDe } from './insurances.de';
+import { partsAccessoriesDe } from './partsAccessories.de';
 import { handoverProtocolDe } from './handover.protocol.de';
 import { handoverOperatorDe } from './handover.operator.de';
 import { invoicesListDe } from './invoices.list.de';
@@ -5572,6 +5573,7 @@ export const de: Record<TranslationKey, string> = {
   ...supportOpsDe,
   ...finesDe,
   ...insurancesDe,
+  ...partsAccessoriesDe,
   ...handoverProtocolDe,
   ...handoverOperatorDe,
   ...invoicesListDe,
