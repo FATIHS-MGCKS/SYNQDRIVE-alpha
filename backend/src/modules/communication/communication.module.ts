@@ -19,6 +19,7 @@ import { CommunicationContextApplierService } from './context/communication-cont
 import { CommunicationContextBackfillService, CommunicationContextEnrichmentService } from './context/communication-context-enrichment.service';
 import { CommunicationContextResolverService } from './context/communication-context-resolver.service';
 import { CommunicationContextDuplicateAuditService } from './context/communication-context-duplicate-audit.service';
+import { CommunicationNativeContextLoader } from './context/communication-native-context.loader';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1/C2/C3).

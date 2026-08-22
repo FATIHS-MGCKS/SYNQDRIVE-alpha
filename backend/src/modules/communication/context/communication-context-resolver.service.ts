@@ -21,6 +21,11 @@ import {
   isBookingEligibleForCommunicationResolution,
 } from './booking-eligibility.util';
 import { communicationContextSourceStrength } from './communication-context-source.util';
+import {
+  hasTrustworthyOccurredAt,
+  isBookingSafeForCustomer,
+  resolveConservativeCustomerIdentity,
+} from './communication-identity-match.util';
 
 type Tx = Prisma.TransactionClient | PrismaService;
 
@@ -39,7 +44,7 @@ export class CommunicationContextResolverService {
     const resolved: CommunicationContextResolutionByField = {};
     const conflicts: CommunicationContextConflict[] = [];
 
-    const customer = await this.resolveCustomer(
+    const customerId = await this.resolveCustomer(
       client,
       input,
       existing,
@@ -49,19 +54,19 @@ export class CommunicationContextResolverService {
       conflicts,
     );
 
-    await this.resolveBooking(
+    const safeBookingId = await this.resolveBooking(
       client,
       input,
       existing,
       native,
-      customer,
+      customerId,
       resolved,
       conflicts,
     );
 
-    await this.resolveVehicle(client, input, existing, native, resolved, conflicts);
-    await this.resolveStation(client, input, existing, native, resolved, conflicts);
-    this.resolveUserAgent(existing, native, resolved, conflicts);
+    await this.resolveVehicle(client, input, existing, native, safeBookingId, resolved, conflicts);
+    await this.resolveStation(client, input, existing, native, safeBookingId, resolved, conflicts);
+    await this.resolveUserAgent(client, input.organizationId, existing, native, resolved, conflicts);
 
     const patch = this.buildEnrichmentPatch(existing, resolved);
     return { resolved, patch, conflicts };
@@ -142,60 +147,21 @@ export class CommunicationContextResolverService {
       hints.normalizedEmail,
     );
 
-    if (phoneMatch.status === 'ambiguous') {
-      conflicts.push({
-        field: 'customerId',
-        code: CommunicationContextAmbiguityReason.MULTIPLE_CUSTOMERS,
-      });
-    }
-    if (emailMatch.status === 'ambiguous') {
-      conflicts.push({
-        field: 'customerId',
-        code: CommunicationContextAmbiguityReason.MULTIPLE_CUSTOMERS,
-      });
-    }
+    const identity = resolveConservativeCustomerIdentity(hints, phoneMatch, emailMatch);
+    conflicts.push(...identity.conflicts);
 
-    const phoneCustomerId = phoneMatch.status === 'unique' ? phoneMatch.customerId : null;
-    const emailCustomerId = emailMatch.status === 'unique' ? emailMatch.customerId : null;
-
-    if (phoneCustomerId && emailCustomerId && phoneCustomerId !== emailCustomerId) {
-      conflicts.push({
-        field: 'customerId',
-        code: CommunicationContextAmbiguityReason.CONFLICTING_IDENTITIES,
-      });
+    if (!identity.customerId || !identity.source) {
       return null;
     }
 
-    if (phoneCustomerId) {
-      this.setField(resolved, 'customerId', {
-        value: phoneCustomerId,
-        source: CommunicationContextResolutionSource.EXACT_PHONE,
-      });
-      return phoneCustomerId;
-    }
-
-    if (emailCustomerId) {
-      this.setField(resolved, 'customerId', {
-        value: emailCustomerId,
-        source: CommunicationContextResolutionSource.EXACT_EMAIL,
-      });
-      return emailCustomerId;
-    }
-
-    if (
-      (hints.normalizedPhone || hints.normalizedEmail)
-      && !phoneCustomerId
-      && !emailCustomerId
-      && phoneMatch.status !== 'ambiguous'
-      && emailMatch.status !== 'ambiguous'
-    ) {
-      conflicts.push({
-        field: 'customerId',
-        code: CommunicationContextAmbiguityReason.NO_MATCH,
-      });
-    }
-
-    return null;
+    this.setField(resolved, 'customerId', {
+      value: identity.customerId,
+      source:
+        identity.source === 'EXACT_PHONE'
+          ? CommunicationContextResolutionSource.EXACT_PHONE
+          : CommunicationContextResolutionSource.EXACT_EMAIL,
+    });
+    return identity.customerId;
   }
 
   private async resolveBooking(
@@ -206,7 +172,9 @@ export class CommunicationContextResolverService {
     customerId: string | null,
     resolved: CommunicationContextResolutionByField,
     conflicts: CommunicationContextConflict[],
-  ): Promise<void> {
+  ): Promise<string | null> {
+    let safeBookingId: string | null = null;
+
     if (existing.bookingId) {
       const booking = await this.loadBookingInOrg(
         client,
@@ -218,6 +186,14 @@ export class CommunicationContextResolverService {
           value: existing.bookingId,
           source: CommunicationContextResolutionSource.EXISTING_CANONICAL,
         };
+        if (isBookingSafeForCustomer(booking.customerId, customerId)) {
+          safeBookingId = existing.bookingId;
+        } else if (customerId) {
+          conflicts.push({
+            field: 'bookingId',
+            code: 'BOOKING_CUSTOMER_MISMATCH',
+          });
+        }
       }
     }
 
@@ -228,17 +204,19 @@ export class CommunicationContextResolverService {
         native.bookingId,
       );
       if (booking) {
-        this.setField(resolved, 'bookingId', {
-          value: native.bookingId,
-          source: CommunicationContextResolutionSource.NATIVE_RELATION,
-        });
-        if (customerId && booking.customerId !== customerId) {
+        if (isBookingSafeForCustomer(booking.customerId, customerId)) {
+          this.setField(resolved, 'bookingId', {
+            value: native.bookingId,
+            source: CommunicationContextResolutionSource.NATIVE_RELATION,
+          });
+          safeBookingId = native.bookingId;
+        } else {
           conflicts.push({
             field: 'bookingId',
             code: 'BOOKING_CUSTOMER_MISMATCH',
           });
         }
-        return;
+        return safeBookingId;
       }
       conflicts.push({
         field: 'bookingId',
@@ -246,22 +224,21 @@ export class CommunicationContextResolverService {
       });
     }
 
-    if (resolved.bookingId?.value) {
-      return;
+    if (safeBookingId) {
+      return safeBookingId;
     }
 
-    if (!customerId) {
-      return;
+    if (!customerId || !hasTrustworthyOccurredAt(input.occurredAt)) {
+      return null;
     }
 
-    const eventAt = input.occurredAt ?? new Date();
     const timeWindowBookings = await client.booking.findMany({
       where: {
         organizationId: input.organizationId,
         customerId,
         status: { in: COMMUNICATION_ELIGIBLE_BOOKING_STATUSES },
-        startDate: { lte: eventAt },
-        endDate: { gte: eventAt },
+        startDate: { lte: input.occurredAt },
+        endDate: { gte: input.occurredAt },
       },
       select: { id: true, customerId: true },
       take: 3,
@@ -272,7 +249,7 @@ export class CommunicationContextResolverService {
         value: timeWindowBookings[0].id,
         source: CommunicationContextResolutionSource.BOOKING_TIME_WINDOW,
       });
-      return;
+      return timeWindowBookings[0].id;
     }
 
     if (timeWindowBookings.length > 1) {
@@ -281,6 +258,8 @@ export class CommunicationContextResolverService {
         code: CommunicationContextAmbiguityReason.MULTIPLE_BOOKINGS,
       });
     }
+
+    return null;
   }
 
   private async resolveVehicle(
@@ -288,6 +267,7 @@ export class CommunicationContextResolverService {
     input: CommunicationContextResolverInput,
     existing: ConversationContextPatch,
     native: NonNullable<CommunicationContextResolverInput['nativeContext']>,
+    safeBookingId: string | null,
     resolved: CommunicationContextResolutionByField,
     conflicts: CommunicationContextConflict[],
   ): Promise<void> {
@@ -328,10 +308,9 @@ export class CommunicationContextResolverService {
       return;
     }
 
-    const bookingId = resolved.bookingId?.value ?? existing.bookingId ?? native.bookingId ?? null;
-    if (!bookingId) return;
+    if (!safeBookingId) return;
 
-    const booking = await this.loadBookingInOrg(client, input.organizationId, bookingId);
+    const booking = await this.loadBookingInOrg(client, input.organizationId, safeBookingId);
     if (!booking?.vehicleId) return;
 
     const valid = await this.vehicleBelongsToOrg(
@@ -358,6 +337,7 @@ export class CommunicationContextResolverService {
     input: CommunicationContextResolverInput,
     existing: ConversationContextPatch,
     native: NonNullable<CommunicationContextResolverInput['nativeContext']>,
+    safeBookingId: string | null,
     resolved: CommunicationContextResolutionByField,
     conflicts: CommunicationContextConflict[],
   ): Promise<void> {
@@ -398,10 +378,9 @@ export class CommunicationContextResolverService {
       return;
     }
 
-    const bookingId = resolved.bookingId?.value ?? existing.bookingId ?? native.bookingId ?? null;
-    if (!bookingId) return;
+    if (!safeBookingId) return;
 
-    const booking = await this.loadBookingInOrg(client, input.organizationId, bookingId);
+    const booking = await this.loadBookingInOrg(client, input.organizationId, safeBookingId);
     if (!booking) return;
 
     const stationId = resolveDeterministicBookingStation(booking);
@@ -428,26 +407,47 @@ export class CommunicationContextResolverService {
     });
   }
 
-  private resolveUserAgent(
+  private async resolveUserAgent(
+    client: Tx,
+    organizationId: string,
     existing: ConversationContextPatch,
     native: NonNullable<CommunicationContextResolverInput['nativeContext']>,
     resolved: CommunicationContextResolutionByField,
     conflicts: CommunicationContextConflict[],
-  ): void {
+  ): Promise<void> {
     if (existing.assignedUserId) {
-      resolved.assignedUserId = {
-        value: existing.assignedUserId,
-        source: CommunicationContextResolutionSource.EXISTING_CANONICAL,
-      };
+      const valid = await this.assignedUserBelongsToOrg(
+        client,
+        organizationId,
+        existing.assignedUserId,
+      );
+      if (valid) {
+        resolved.assignedUserId = {
+          value: existing.assignedUserId,
+          source: CommunicationContextResolutionSource.EXISTING_CANONICAL,
+        };
+      }
     }
 
     if (native.assignedUserId) {
-      this.setField(resolved, 'assignedUserId', {
-        value: native.assignedUserId,
-        source: CommunicationContextResolutionSource.NATIVE_RELATION,
-      });
-      if (existing.assignedUserId && existing.assignedUserId !== native.assignedUserId) {
-        conflicts.push({ field: 'assignedUserId', code: 'ASSIGNMENT_CONFLICT' });
+      const valid = await this.assignedUserBelongsToOrg(
+        client,
+        organizationId,
+        native.assignedUserId,
+      );
+      if (valid) {
+        this.setField(resolved, 'assignedUserId', {
+          value: native.assignedUserId,
+          source: CommunicationContextResolutionSource.NATIVE_RELATION,
+        });
+        if (existing.assignedUserId && existing.assignedUserId !== native.assignedUserId) {
+          conflicts.push({ field: 'assignedUserId', code: 'ASSIGNMENT_CONFLICT' });
+        }
+      } else {
+        conflicts.push({
+          field: 'assignedUserId',
+          code: CommunicationContextAmbiguityReason.CROSS_ORG_REFERENCE,
+        });
       }
     }
 
@@ -575,6 +575,18 @@ export class CommunicationContextResolverService {
       select: { id: true },
     });
     return Boolean(row);
+  }
+
+  private async assignedUserBelongsToOrg(
+    client: Tx,
+    organizationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const membership = await client.organizationMembership.findFirst({
+      where: { organizationId, userId },
+      select: { id: true },
+    });
+    return Boolean(membership);
   }
 
   private async vehicleBelongsToOrg(

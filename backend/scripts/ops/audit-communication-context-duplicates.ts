@@ -6,6 +6,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../src/app.module';
 import { CommunicationContextDuplicateAuditService } from '../../src/modules/communication/context/communication-context-duplicate-audit.service';
+import { reportOpsScriptFailure } from './communication-ops-script.util';
 
 function readArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
+main().catch((error: unknown) => {
+  reportOpsScriptFailure(error);
   process.exit(1);
 });

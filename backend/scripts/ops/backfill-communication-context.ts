@@ -8,6 +8,7 @@ import { NestFactory } from '@nestjs/core';
 import { CommunicationChannel } from '@prisma/client';
 import { AppModule } from '../../src/app.module';
 import { CommunicationContextBackfillService } from '../../src/modules/communication/context/communication-context-enrichment.service';
+import { reportOpsScriptFailure } from './communication-ops-script.util';
 
 function readArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -61,7 +62,7 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
+main().catch((error: unknown) => {
+  reportOpsScriptFailure(error);
   process.exit(1);
 });

@@ -86,6 +86,9 @@ describePg('Communication context resolution postgres', () => {
       await prisma.customer.deleteMany({ where: { organizationId: orgId } });
       await prisma.vehicle.deleteMany({ where: { organizationId: orgId } });
       await prisma.station.deleteMany({ where: { organizationId: orgId } });
+      await prisma.user.deleteMany({
+        where: { email: { startsWith: 'outsider-' } },
+      });
       await prisma.organization.deleteMany({ where: { id: orgId } });
     }
   });
@@ -584,5 +587,355 @@ describePg('Communication context resolution postgres', () => {
     const result = await projection.projectNormalizedInput(input);
     expect(result.conversationId).toBeTruthy();
     expect(result.eventCreated).toBe(true);
+  });
+
+  it('Q: native customer A + native booking for customer B does not propagate booking/vehicle/station', async () => {
+    const customerA = await createCustomer(orgA, `4918700${Date.now()}`);
+    const customerB = await createCustomer(orgA, `4918701${Date.now()}`);
+    const vehicle = await createVehicle(orgA);
+    const station = await createStation(orgA, `SQ-${Date.now()}`);
+    const booking = await prisma.booking.create({
+      data: {
+        organizationId: orgA,
+        customerId: customerB.id,
+        vehicleId: vehicle.id,
+        pickupStationId: station.id,
+        returnStationId: station.id,
+        startDate: new Date('2026-08-20T00:00:00Z'),
+        endDate: new Date('2026-08-25T00:00:00Z'),
+        status: BookingStatus.ACTIVE,
+      },
+    });
+    const canonical = await createCanonicalConversation(orgA, `wa-q-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      nativeContext: { customerId: customerA.id, bookingId: booking.id },
+      existingCanonical: {},
+    });
+
+    expect(result.patch.bookingId).toBeUndefined();
+    expect(result.patch.vehicleId).toBeUndefined();
+    expect(result.patch.stationId).toBeUndefined();
+    expect(result.conflicts.some((c) => c.code === 'BOOKING_CUSTOMER_MISMATCH')).toBe(true);
+  });
+
+  it('R: existing customer A + existing booking for customer B quarantines propagation', async () => {
+    const customerA = await createCustomer(orgA, `4918800${Date.now()}`);
+    const customerB = await createCustomer(orgA, `4918801${Date.now()}`);
+    const vehicle = await createVehicle(orgA);
+    const booking = await prisma.booking.create({
+      data: {
+        organizationId: orgA,
+        customerId: customerB.id,
+        vehicleId: vehicle.id,
+        startDate: new Date('2026-08-20T00:00:00Z'),
+        endDate: new Date('2026-08-25T00:00:00Z'),
+        status: BookingStatus.ACTIVE,
+      },
+    });
+    const canonical = await createCanonicalConversation(orgA, `wa-r-${Date.now()}`, {
+      customerId: customerA.id,
+      bookingId: booking.id,
+    });
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      existingCanonical: { customerId: customerA.id, bookingId: booking.id },
+    });
+
+    expect(result.patch.vehicleId).toBeUndefined();
+    expect(result.conflicts.some((c) => c.code === 'BOOKING_CUSTOMER_MISMATCH')).toBe(true);
+  });
+
+  it('S: without trustworthy occurredAt, time-window booking inference does not run', async () => {
+    const customer = await createCustomer(orgA, `4918900${Date.now()}`);
+    const vehicle = await createVehicle(orgA);
+    await prisma.booking.create({
+      data: {
+        organizationId: orgA,
+        customerId: customer.id,
+        vehicleId: vehicle.id,
+        startDate: new Date('2026-08-20T00:00:00Z'),
+        endDate: new Date('2026-08-25T00:00:00Z'),
+        status: BookingStatus.ACTIVE,
+      },
+    });
+    const canonical = await createCanonicalConversation(orgA, `wa-s-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      existingCanonical: { customerId: customer.id },
+    });
+
+    expect(result.patch.bookingId).toBeUndefined();
+  });
+
+  it('T: historical occurredAt resolves booking via time window', async () => {
+    const customer = await createCustomer(orgA, `4919000${Date.now()}`);
+    const vehicle = await createVehicle(orgA);
+    const booking = await prisma.booking.create({
+      data: {
+        organizationId: orgA,
+        customerId: customer.id,
+        vehicleId: vehicle.id,
+        startDate: new Date('2026-08-20T00:00:00Z'),
+        endDate: new Date('2026-08-25T00:00:00Z'),
+        status: BookingStatus.CONFIRMED,
+      },
+    });
+    const canonical = await createCanonicalConversation(orgA, `wa-t-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      occurredAt: new Date('2026-08-21T12:00:00Z'),
+      existingCanonical: { customerId: customer.id },
+    });
+
+    expect(result.patch.bookingId).toBe(booking.id);
+    expect(result.resolved.bookingId?.source).toBe('BOOKING_TIME_WINDOW');
+  });
+
+  it('U: duplicate normalized phone emits MULTIPLE_CUSTOMERS', async () => {
+    const phone = `4919100${Date.now()}`;
+    await createCustomer(orgA, phone);
+    await createCustomer(orgA, phone);
+    const canonical = await createCanonicalConversation(orgA, `wa-u-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedPhone: phone },
+      existingCanonical: {},
+    });
+
+    expect(result.patch.customerId).toBeUndefined();
+    expect(result.conflicts.some((c) => c.code === 'MULTIPLE_CUSTOMERS')).toBe(true);
+  });
+
+  it('V: duplicate normalized email emits MULTIPLE_CUSTOMERS', async () => {
+    const email = `dup${Date.now()}@example.com`;
+    await createCustomer(orgA, `4919200${Date.now()}`, email);
+    await createCustomer(orgA, `4919201${Date.now()}`, email);
+    const canonical = await createCanonicalConversation(orgA, `wa-v-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedEmail: email },
+      existingCanonical: {},
+    });
+
+    expect(result.patch.customerId).toBeUndefined();
+    expect(result.conflicts.some((c) => c.code === 'MULTIPLE_CUSTOMERS')).toBe(true);
+  });
+
+  it('W: ambiguous phone + unique email stays unresolved', async () => {
+    const phone = `4919300${Date.now()}`;
+    const email = `unique${Date.now()}@example.com`;
+    await createCustomer(orgA, phone);
+    await createCustomer(orgA, phone);
+    const emailCustomer = await createCustomer(orgA, `4919301${Date.now()}`, email);
+    const canonical = await createCanonicalConversation(orgA, `wa-w-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedPhone: phone, normalizedEmail: email },
+      existingCanonical: {},
+    });
+
+    expect(result.patch.customerId).toBeUndefined();
+    expect(result.patch.customerId).not.toBe(emailCustomer.id);
+  });
+
+  it('X: native relation wins over weaker phone in both scheduling orders', async () => {
+    const phone = `4919400${Date.now()}`;
+    const nativeCustomer = await createCustomer(orgA, `4919401${Date.now()}`);
+    await createCustomer(orgA, phone);
+    const canonical = await createCanonicalConversation(orgA, `wa-x-${Date.now()}`);
+
+    const weakResolution = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedPhone: phone },
+      existingCanonical: {},
+    });
+    const nativeResolution = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      nativeContext: { customerId: nativeCustomer.id },
+      existingCanonical: {},
+    });
+
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical.id,
+      patch: weakResolution.patch,
+      resolved: weakResolution.resolved,
+    });
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical.id,
+      patch: nativeResolution.patch,
+      resolved: nativeResolution.resolved,
+    });
+
+    const firstOrder = await prisma.communicationConversation.findUnique({ where: { id: canonical.id } });
+    expect(firstOrder?.customerId).toBe(nativeCustomer.id);
+
+    const canonical2 = await createCanonicalConversation(orgA, `wa-x2-${Date.now()}`);
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical2.id,
+      patch: nativeResolution.patch,
+      resolved: nativeResolution.resolved,
+    });
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical2.id,
+      patch: weakResolution.patch,
+      resolved: weakResolution.resolved,
+    });
+    const secondOrder = await prisma.communicationConversation.findUnique({ where: { id: canonical2.id } });
+    expect(secondOrder?.customerId).toBe(nativeCustomer.id);
+  });
+
+  it('Y: weaker conflicting writers do not overwrite stronger incumbent', async () => {
+    const phoneA = `4919500${Date.now()}`;
+    const phoneB = `4919501${Date.now()}`;
+    const customerA = await createCustomer(orgA, phoneA);
+    const customerB = await createCustomer(orgA, phoneB);
+    const canonical = await createCanonicalConversation(orgA, `wa-y-${Date.now()}`);
+
+    const first = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedPhone: phoneA },
+      existingCanonical: {},
+    });
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical.id,
+      patch: first.patch,
+      resolved: first.resolved,
+    });
+
+    const second = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedPhone: phoneB },
+      existingCanonical: { customerId: customerA.id },
+    });
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical.id,
+      patch: second.patch,
+      resolved: second.resolved,
+    });
+
+    const refreshed = await prisma.communicationConversation.findUnique({ where: { id: canonical.id } });
+    expect(refreshed?.customerId).toBe(customerA.id);
+    expect(refreshed?.customerId).not.toBe(customerB.id);
+  });
+
+  it('Z: assignedUser without org membership is not applied', async () => {
+    const outsider = await prisma.user.create({
+      data: {
+        email: `outsider-${Date.now()}@example.com`,
+        name: 'Outsider',
+      },
+    });
+    const canonical = await createCanonicalConversation(orgA, `wa-z-${Date.now()}`);
+
+    const result = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      nativeContext: { assignedUserId: outsider.id },
+      existingCanonical: {},
+    });
+
+    expect(result.patch.assignedUserId).toBeUndefined();
+    const apply = await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical.id,
+      patch: result.patch,
+      resolved: result.resolved,
+    });
+    expect(apply.fieldsUpdated).not.toContain('assignedUserId');
+  });
+
+  it('AA: unrelated metadata keys are preserved on apply', async () => {
+    const phone = `4919600${Date.now()}`;
+    const customer = await createCustomer(orgA, phone);
+    const canonical = await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: `wa-aa-${Date.now()}`,
+        lastActivityAt: new Date('2026-08-21T10:00:00Z'),
+        metadata: { inboxLabel: 'priority', nested: { flag: true } },
+      },
+    });
+
+    const resolution = await resolver.resolve({
+      organizationId: orgA,
+      conversationId: canonical.id,
+      channel: CommunicationChannel.WHATSAPP,
+      identityHints: { normalizedPhone: phone },
+      existingCanonical: {},
+    });
+    await applier.applyResolvedContext({
+      organizationId: orgA,
+      communicationConversationId: canonical.id,
+      patch: resolution.patch,
+      resolved: resolution.resolved,
+    });
+
+    const refreshed = await prisma.communicationConversation.findUnique({ where: { id: canonical.id } });
+    expect(refreshed?.customerId).toBe(customer.id);
+    expect((refreshed?.metadata as Record<string, unknown>)?.inboxLabel).toBe('priority');
+    expect((refreshed?.metadata as { nested?: { flag?: boolean } })?.nested?.flag).toBe(true);
+  });
+
+  it('AB: backfill dry-run remains mutation-free', async () => {
+    const phone = `4919700${Date.now()}`;
+    await createCustomer(orgA, phone);
+    const wa = await prisma.whatsAppConversation.create({
+      data: {
+        organizationId: orgA,
+        contactPhone: `+${phone}`,
+        contactPhoneNormalized: phone,
+      },
+    });
+    await createCanonicalConversation(orgA, wa.id);
+
+    const dry = await backfill.backfillOrganization({
+      organizationId: orgA,
+      dryRun: true,
+      unresolvedOnly: true,
+    });
+
+    expect(dry.scanned).toBeGreaterThanOrEqual(1);
+    const rows = await prisma.communicationConversation.findMany({
+      where: { organizationId: orgA, nativeConversationId: wa.id },
+    });
+    expect(rows[0]?.customerId).toBeNull();
   });
 });

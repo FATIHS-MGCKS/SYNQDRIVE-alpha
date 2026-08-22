@@ -43,8 +43,8 @@ Booking has **no generic `stationId`** — pickup/return/actual roles may disagr
 1. **NATIVE_RELATION** — persisted native conversation/message links (same-org validated)
 2. **EXISTING_CANONICAL** — non-null canonical field already on `CommunicationConversation`
 3. **EXACT_PHONE / EXACT_EMAIL** — unique same-org customer match (`archivedAt: null`)
-4. **BOOKING_TIME_WINDOW** — exactly one eligible booking whose service window contains `occurredAt`
-5. **BOOKING_RELATION** — deterministic propagation from resolved booking (vehicle, unique station)
+4. **BOOKING_TIME_WINDOW** — exactly one eligible booking whose service window contains explicit `occurredAt`
+5. **BOOKING_RELATION** — deterministic propagation from **safe** resolved booking (vehicle, unique station)
 
 Otherwise: **unresolved** (null preferred over wrong).
 
@@ -55,8 +55,9 @@ Otherwise: **unresolved** (null preferred over wrong).
 - Native `customerId` → same-org validate → use
 - Exact `phoneNormalized` → unique active customer in org → use
 - Exact normalized email → unique active customer in org → use
+- Identity lookup result: `none` (NO_MATCH), `unique`, `ambiguous` (MULTIPLE_CUSTOMERS)
+- Conservative multi-hint policy: when both phone and email hints are present, **both** must be `unique` and agree; any ambiguous hint blocks resolution
 - Phone and email disagree → `CONFLICTING_IDENTITIES`, unresolved
-- Multiple phone matches → unresolved (no tie-breaking)
 - Cross-org native ID → `CROSS_ORG_REFERENCE`, rejected
 
 ---
@@ -71,26 +72,28 @@ Otherwise: **unresolved** (null preferred over wrong).
 
 ## 6. Booking resolution
 
-- Native `bookingId` → same-org validate → use
-- With resolved `customerId`: eligible statuses `PENDING`, `CONFIRMED`, `ACTIVE` only
-- Time window: `startDate <= occurredAt <= endDate` with exactly one match
-- No “latest booking” heuristic
-- Native booking customer mismatch → conflict logged, booking not applied
+- Native `bookingId` → same-org validate → use only when `booking.customerId === resolvedCustomerId`
+- Native booking/customer mismatch → `BOOKING_CUSTOMER_MISMATCH`; booking not applied; no propagation
+- Existing canonical booking may remain on conversation but is **quarantined** from vehicle/station propagation when customer mismatch
+- Time window: requires trustworthy explicit `occurredAt` (no `new Date()` / wall-clock fallback)
+- Eligible statuses: `PENDING`, `CONFIRMED`, `ACTIVE`
+- Inclusive window on `startDate` / `endDate` with exactly one match
+- Multiple overlaps → `MULTIPLE_BOOKINGS`
 
 ---
 
 ## 7. Time-window semantics
 
-- Anchor: event `occurredAt` from projection, else conversation `lastActivityAt`
-- Inclusive window on booking `startDate` / `endDate`
-- Multiple overlaps → `MULTIPLE_BOOKINGS`
+- Anchor: explicit event `occurredAt` passed into resolver (projection event time or conversation `lastActivityAt` in backfill)
+- **No wall-clock fallback** — if `occurredAt` is absent/invalid, `BOOKING_TIME_WINDOW` does not run
+- Inclusive window: `startDate <= occurredAt <= endDate`
 
 ---
 
 ## 8. Vehicle resolution
 
 - Native `vehicleId` (same-org) → use
-- Else resolved booking’s `vehicleId` → use
+- Else **safe booking only** → `booking.vehicleId`
 - No telemetry / recent-activity inference
 
 ---
@@ -98,15 +101,15 @@ Otherwise: **unresolved** (null preferred over wrong).
 ## 9. Station resolution
 
 - Native `stationId` (same-org) → use
-- Else collect booking station role IDs; **only if exactly one unique non-null** → use
+- Else **safe booking only** → unique non-null station role candidate
 - Pickup vs return ambiguity → `BOOKING_CONTEXT_UNCLEAR`, null
 
 ---
 
 ## 10. User/agent handling
 
-- Reuse native `assignedUserId` / `assignedAgentRef` when present
-- Preserve existing canonical assignment unless stronger native source
+- `assignedUserId` validated against `organizationMembership` before inclusion in patch
+- Reuse native `assignedAgentRef` when present
 - No inference from last sender or org admin
 
 ---
@@ -115,7 +118,7 @@ Otherwise: **unresolved** (null preferred over wrong).
 
 - Log safe structured conflicts (`field`, `code`) — no PII
 - Authoritative/native wins over weaker derived evidence
-- Do not silently reconcile impossible contradictions
+- `BOOKING_CUSTOMER_MISMATCH` quarantines propagation without silently reconciling contradictions
 
 ---
 
@@ -137,13 +140,15 @@ Every lookup includes `organizationId`. `CommunicationTenantContextValidation` r
 
 - Fill null fields with deterministic results
 - Overwrite only when new source is strictly stronger (recorded in `metadata.contextResolutionSources`)
-- Compare-and-set via conditional `updateMany` guards for concurrency
+- DB-authoritative conditional SQL updates for field values; metadata merged via `jsonb_set` preserving unrelated keys
 
 ---
 
 ## 15. Concurrency
 
-Concurrent enrichments use field-level null guards + source strength metadata; authoritative native context wins over weaker concurrent writers.
+- Native `NATIVE_RELATION` can replace weaker incumbent sources (`EXACT_PHONE`, `EXACT_EMAIL`, `BOOKING_*`) in either scheduling order
+- Equal/weaker concurrent writers cannot arbitrarily overwrite stronger incumbent context
+- `contextResolutionSources` updated atomically per field apply
 
 ---
 
@@ -159,6 +164,7 @@ Concurrent enrichments use field-level null guards + source strength metadata; a
 
 - org scope, optional channel filter, batch size, `unresolvedOnly` default
 - `--apply` for mutations; default dry-run aggregate counts only (no PII)
+- Ops scripts emit safe JSON error output (`error` name only) on failure
 
 ---
 
@@ -176,15 +182,19 @@ Existing indexes sufficient for C6:
 
 ## 19. Data duplicate audit
 
-Duplicate normalized phone/email per org is possible (no DB unique constraint). Resolver treats duplicates as ambiguous — aggregate duplicate frequency should be monitored via ops queries; no auto-cleanup in C6.
+`CommunicationContextDuplicateAuditService` + `scripts/ops/audit-communication-context-duplicates.ts` report aggregate org counts only.
 
 ---
 
 ## 20. Tests
 
-- Unit: `communication-context-resolver.spec.ts`
-- PostgreSQL matrix A–P: `communication-context-resolver.postgres.integration.spec.ts`
-- Projection enrichment isolation: `communication-projection.service.spec.ts`
+| Matrix | Coverage |
+|--------|----------|
+| A–P | Initial C6 resolver/applier/backfill/projection isolation |
+| Q–AB | Hardening: booking quarantine, no wall-clock, identity ambiguity, concurrency, membership, metadata preservation |
+
+Unit: `communication-context-resolver.spec.ts`, `communication-identity-match.util.spec.ts`  
+PostgreSQL: `communication-context-resolver.postgres.integration.spec.ts` (A–AB)
 
 ---
 
@@ -205,10 +215,10 @@ Revert/disable enrichment hook. Resolved context is not destructively cleared on
 
 ## 23. Known limitations
 
-- Voice caller phone only when stored on `VoiceConversation.callerNumber`
-- Station role ambiguity leaves `stationId` null
+- Voice context depends on `metadata` + `callerNumber` quality
+- Station remains null when booking has multiple station roles
 - Email channel projection deferred — resolver accepts email hints for future EMAIL channel
-- No probabilistic confidence scores
+- Duplicate normalized phone/email per org possible without DB unique constraint
 
 ---
 
@@ -224,11 +234,14 @@ Canonical conversations can be filtered by resolved `customerId` / `bookingId` /
 |------|------|
 | `context/communication-context.types.ts` | Types, ambiguity/source enums |
 | `context/communication-context-resolver.service.ts` | Deterministic resolver |
-| `context/communication-context-applier.service.ts` | Non-destructive apply + concurrency guards |
+| `context/communication-context-applier.service.ts` | DB-authoritative apply + concurrency guards |
 | `context/communication-context-enrichment.service.ts` | Post-projection hook + backfill |
 | `context/communication-native-context.loader.ts` | Channel native fact extraction |
 | `context/communication-phone.util.ts` | Shared phone normalization |
+| `context/communication-identity-match.util.ts` | Conservative identity lookup + occurredAt guard |
 | `context/booking-eligibility.util.ts` | Eligible booking statuses |
+| `context/communication-context-duplicate-audit.service.ts` | Aggregate duplicate phone/email audit |
+| `scripts/ops/communication-ops-script.util.ts` | Safe ops script failure output |
 
 **Changes updated:** yes (this document)  
 **Architektur updated:** yes (this document)
