@@ -291,7 +291,7 @@ describe('taskDetailChecklist.utils', () => {
         },
       },
     );
-    const completion = buildTaskCompletionControlModel(detail);
+    const completion = buildTaskCompletionControlModel(detail, 'de');
     expect(completion.canOverride).toBe(true);
     expect(completion.enabled).toBe(false);
     expect(completion.openRequiredTitles).toEqual(['Pflicht offen']);

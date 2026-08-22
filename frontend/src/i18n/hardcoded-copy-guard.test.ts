@@ -285,6 +285,18 @@ const P216C1_ENFORCE_CLEAN_EXACT = [
   'operator/components/OperatorTaskSheet.tsx',
 ];
 
+const P216C2A_ENFORCE_CLEAN_EXACT = [
+  'lib/tasks/taskDetailActions.utils.ts',
+  'lib/tasks/taskDetailCompletion.utils.ts',
+  'lib/tasks/taskCompleteForm.utils.ts',
+  'lib/tasks/taskResolution.utils.ts',
+  'lib/tasks/hooks/useTaskDetailActions.ts',
+  'lib/tasks/components/TaskDetailActionBar.tsx',
+  'lib/tasks/components/TaskDetailActionsHost.tsx',
+  'lib/tasks/components/TaskDetailCompleteDialog.tsx',
+  'lib/tasks/components/TaskDetailCompletionSummary.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -339,6 +351,10 @@ function isP216B2EnforceCleanPath(relPath: string): boolean {
 
 function isP216C1EnforceCleanPath(relPath: string): boolean {
   return P216C1_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP216C2AEnforceCleanPath(relPath: string): boolean {
+  return P216C2A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -515,6 +531,75 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP216C1EnforceCleanPath(finding.file),
     );
     expect(p216c1Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.16C.2A enforce-clean findings to shared task workflow core only', () => {
+    const p216c2aDebt = inventory.findings.filter((finding) =>
+      isP216C2AEnforceCleanPath(finding.file),
+    );
+    expect(p216c2aDebt).toHaveLength(0);
+  });
+
+  it('keeps task-detail-actions-presentation-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/task-detail-actions-presentation-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('tasks.detail.actions.start');
+    expect(source).not.toContain('RESOLUTION_CODE_LABELS');
+    expect(source).not.toMatch(/label:\s*'Starten'/);
+  });
+
+  it('keeps taskDetailActions.utils.ts free of hardcoded action labels', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/taskDetailActions.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('taskDetailActionLabel');
+    expect(source).not.toMatch(/'Starten'/);
+    expect(source).not.toMatch(/'Erledigen'/);
+    expect(source).not.toMatch(/'Kommentar'/);
+  });
+
+  it('keeps taskDetailCompletion.utils.ts threading locale into blocker labels', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/taskDetailCompletion.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('buildChecklistBlockerLabel(locale');
+    expect(source).not.toMatch(/buildChecklistBlockerLabel\(openRequiredTitles\)/);
+  });
+
+  it('keeps taskResolution.utils.ts free of hardcoded resolution label maps', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/taskResolution.utils.ts'),
+      'utf8',
+    );
+    expect(source).toContain('taskDetailResolutionCodeLabel');
+    expect(source).not.toContain('RESOLUTION_CODE_LABELS');
+    expect(source).not.toMatch(/Reifen ersetzt/);
+  });
+
+  it('keeps useTaskDetailActions.ts free of hardcoded toast copy', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/hooks/useTaskDetailActions.ts'),
+      'utf8',
+    );
+    expect(source).toContain('taskDetailToastStarted');
+    expect(source).not.toMatch(/Aufgabe gestartet/);
+    expect(source).not.toMatch(/Aktion fehlgeschlagen/);
+  });
+
+  it('keeps TaskDetailCompleteDialog.tsx free of hardcoded completion dialog copy', () => {
+    const source = readFileSync(
+      join(__dirname, '../lib/tasks/components/TaskDetailCompleteDialog.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('useLanguage');
+    expect(source).toContain('tasks.detail.completion.title');
+    expect(source).not.toMatch(/Aufgabe abschließen/);
+    expect(source).not.toMatch(/Abschluss-Code/);
   });
 
   it('keeps taskTimeline.utils.ts machine/descriptor-only without German prose maps', () => {

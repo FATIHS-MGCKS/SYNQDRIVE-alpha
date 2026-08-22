@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AppDialog } from '../../../components/patterns/app-dialog';
 import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { ApiTaskDetail } from '../types';
 import {
   buildCompleteTaskPayload,
@@ -24,6 +25,7 @@ export function TaskDetailCompleteDialog({
   submitError,
   onSubmit,
 }: TaskDetailCompleteDialogProps) {
+  const { t } = useLanguage();
   const { form, errors, model, patch, reset, validate, setErrors } = useTaskCompleteForm(detail);
 
   useEffect(() => {
@@ -45,15 +47,13 @@ export function TaskDetailCompleteDialog({
   return (
     <AppDialog open={open} onOpenChange={onOpenChange} maxWidthClassName="sm:max-w-lg" hideClose>
       <div className="p-5" data-testid="task-complete-dialog">
-        <h2 className="text-base font-semibold text-foreground">Aufgabe abschließen</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Prüfen Sie die Pflichtangaben, bevor Sie die Aufgabe erledigen.
-        </p>
+        <h2 className="text-base font-semibold text-foreground">{t('tasks.detail.completion.title')}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t('tasks.detail.completion.subtitle')}</p>
 
         {model.openRequiredTitles.length > 0 && (
           <div className="mt-3 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2">
             <p className="text-[11px] font-semibold text-[color:var(--status-watch)]">
-              Offene Pflichtpunkte
+              {t('tasks.detail.completion.openRequiredHeading')}
             </p>
             <ul className="mt-1 list-inside list-disc text-[11px] text-[color:var(--status-watch)]">
               {model.openRequiredTitles.map((title) => (
@@ -65,14 +65,14 @@ export function TaskDetailCompleteDialog({
 
         {model.requiresResolutionCode && (
           <label className="mt-3 block text-[11px] font-semibold text-muted-foreground">
-            Abschluss-Code *
+            {t('tasks.detail.completion.resolutionCodeLabel')} *
             <select
               value={form.resolutionCode}
               onChange={(event) => patch({ resolutionCode: event.target.value })}
               disabled={loading}
               className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-xs"
             >
-              <option value="">Bitte wählen …</option>
+              <option value="">{t('tasks.detail.completion.resolutionCodePlaceholder')}</option>
               {model.resolutionCodeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -88,14 +88,15 @@ export function TaskDetailCompleteDialog({
         )}
 
         <label className="mt-3 block text-[11px] font-semibold text-muted-foreground">
-          Abschluss-Notiz{model.requiresResolutionNote ? ' *' : ''}
+          {t('tasks.detail.completion.resolutionNoteLabel')}
+          {model.requiresResolutionNote ? ' *' : ''}
           <textarea
             value={form.resolutionNote}
             onChange={(event) => patch({ resolutionNote: event.target.value })}
             disabled={loading}
             rows={4}
             className="mt-1.5 w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
-            placeholder="Ergebnis / durchgeführte Maßnahmen dokumentieren"
+            placeholder={t('tasks.detail.completion.resolutionNotePlaceholder')}
           />
         </label>
         {errors.resolutionNote && (
@@ -106,7 +107,7 @@ export function TaskDetailCompleteDialog({
 
         {model.showsCostFields && (
           <label className="mt-3 block text-[11px] font-semibold text-muted-foreground">
-            Tatsächliche Kosten (EUR)
+            {t('tasks.detail.completion.actualCostLabel')}
             <input
               type="text"
               inputMode="decimal"
@@ -114,7 +115,7 @@ export function TaskDetailCompleteDialog({
               onChange={(event) => patch({ actualCostEuros: event.target.value })}
               disabled={loading}
               className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-xs"
-              placeholder="z. B. 149,00"
+              placeholder={t('tasks.detail.completion.actualCostPlaceholder')}
             />
           </label>
         )}
@@ -134,7 +135,7 @@ export function TaskDetailCompleteDialog({
                 disabled={loading}
                 className="mt-0.5"
               />
-              <span>Trotz offener Pflichtpunkte abschließen (Manager)</span>
+              <span>{t('tasks.detail.checklist.overrideManager')}</span>
             </label>
             {form.useOverride && (
               <textarea
@@ -143,7 +144,7 @@ export function TaskDetailCompleteDialog({
                 disabled={loading}
                 rows={3}
                 className="mt-2 w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
-                placeholder="Begründung für den Override"
+                placeholder={t('tasks.detail.completion.overrideReasonPlaceholder')}
               />
             )}
             {errors.overrideReason && (
@@ -162,10 +163,10 @@ export function TaskDetailCompleteDialog({
 
         <div className="mt-5 flex justify-end gap-2">
           <Button type="button" variant="neutral" size="sm" disabled={loading} onClick={() => onOpenChange(false)}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button type="button" size="sm" disabled={loading} onClick={() => void handleSubmit()}>
-            {loading ? 'Wird gespeichert …' : 'Abschließen'}
+            {loading ? t('tasks.detail.completion.submitting') : t('tasks.detail.completion.submit')}
           </Button>
         </div>
       </div>

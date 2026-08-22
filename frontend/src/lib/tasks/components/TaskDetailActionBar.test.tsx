@@ -13,6 +13,7 @@ describe('TaskDetailActionBar', () => {
           { kind: 'comment', label: 'Kommentar', enabled: true, emphasis: 'secondary' },
         ]}
         overflow={[{ kind: 'cancel', label: 'Abbrechen', enabled: true, emphasis: 'overflow' }]}
+        moreActionsAriaLabel="Weitere Aktionen"
         onAction={vi.fn()}
       />,
     );
@@ -33,6 +34,7 @@ describe('TaskDetailActionBar', () => {
         secondaries={[]}
         overflow={[]}
         blockerSummary="Pflichtpunkt offen: Reifen prüfen"
+        moreActionsAriaLabel="Weitere Aktionen"
         onAction={vi.fn()}
       />,
     );
@@ -51,6 +53,7 @@ describe('TaskDetailActionBar', () => {
         primary={{ kind: 'resume', label: 'Fortsetzen', enabled: true, emphasis: 'primary' }}
         secondaries={[]}
         overflow={[]}
+        moreActionsAriaLabel="Weitere Aktionen"
         onAction={vi.fn()}
       />,
     );

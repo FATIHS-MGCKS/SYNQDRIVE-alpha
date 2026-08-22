@@ -1,10 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment happy-dom
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
+import { LOCALE_STORAGE_KEY } from '../../../i18n/locales';
 import { TaskDetailCompletionSummary } from './TaskDetailCompletionSummary';
+
+function renderStaticWithLocale(locale: 'de' | 'en', ui: React.ReactNode) {
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  return renderToStaticMarkup(createElement(LanguageProvider, null, ui));
+}
 
 describe('TaskDetailCompletionSummary', () => {
   it('renders AUTO_RESOLVED reason', () => {
-    const html = renderToStaticMarkup(
+    const html = renderStaticWithLocale(
+      'de',
       <TaskDetailCompletionSummary
         summary={{
           status: 'DONE',
@@ -29,7 +39,8 @@ describe('TaskDetailCompletionSummary', () => {
   });
 
   it('renders successor task link for SUPERSEDED', () => {
-    const html = renderToStaticMarkup(
+    const html = renderStaticWithLocale(
+      'de',
       <TaskDetailCompletionSummary
         mobile
         onOpenSuccessorTask={vi.fn()}

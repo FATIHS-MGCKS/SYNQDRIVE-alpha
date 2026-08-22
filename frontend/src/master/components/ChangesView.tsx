@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-task-workflow-core-p2-2-16c2a-2026-08-22',
+    version: '4.9.942',
+    title: 'Platform i18n — P2.2.16C.2A Shared Task workflow core localization',
+    summary: [
+      'Introduced `task-detail-actions-presentation-i18n.ts` and localized shared workflow action labels, completion dialog, cancel confirmation, validation messages, resolution code labels, and success/error toasts across the 9-file C.2A enforce-clean boundary.',
+      'P216C2A enforce-clean exact scope (9 paths) reports 0 findings; +60 EN+DE keys (7834→7894); threads active locale into `buildChecklistBlockerLabel` production path (no implicit German fallback).',
+      'Presentation-only — action IDs, callbacks, mutation payloads, permissions, and workflow state unchanged. Host residuals deferred to P2.2.16C.2B. Category E=0.',
+    ],
+    reason:
+      'P2.2.16C.2 pre-flight GO-BUT-SPLIT selected shared workflow core (C.2A) before host residual copy (C.2B). C.1 completed chrome; C.2A completes action/completion presentation layer.',
+    previousBehavior:
+      'Workflow utils and components contained hardcoded German action labels, completion dialog copy, `RESOLUTION_CODE_LABELS`, validation messages, toasts, and `buildChecklistBlockerLabel` array-only overload defaulting to `de`.',
+    details:
+      'lib/tasks/task-detail-actions-presentation-i18n.ts; taskDetailActions.utils.ts; taskDetailCompletion.utils.ts; taskCompleteForm.utils.ts; taskResolution.utils.ts; useTaskDetailActions.ts; TaskDetailActionBar/ActionsHost/CompleteDialog/CompletionSummary; task-detail-actions-localization.test.tsx; P216C2A_ENFORCE_CLEAN_EXACT; architecture/I18N_TASK_WORKFLOW_CORE_P2_2_16C2A_2026-08-22.md; docs/audits/i18n-p2-2-16c2a-task-workflow-core-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T00:30:00.000Z',
+  },
+  {
     id: 'i18n-task-detail-chrome-p2-2-16c1-2026-08-22',
     version: '4.9.941',
     title: 'Platform i18n — P2.2.16C.1 Task Detail chrome & view-model presentation',

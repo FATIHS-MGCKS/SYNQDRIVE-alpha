@@ -121,11 +121,23 @@ describe('buildTaskCompletionControlModel', () => {
   it('blocks completion when required checklist items are open', () => {
     const model = buildTaskCompletionControlModel(
       detail({ id: 't1', title: 'Task', type: 'BOOKING_PICKUP' }),
+      'de',
     );
 
     expect(model.enabled).toBe(false);
     expect(model.openRequiredTitles).toEqual(['Pflicht offen']);
     expect(model.blockerSummary).toContain('Pflicht offen');
+  });
+
+  it('localizes blocker summary for EN locale without German fallback', () => {
+    const model = buildTaskCompletionControlModel(
+      detail({ id: 't1', title: 'Task', type: 'BOOKING_PICKUP' }),
+      'en',
+    );
+
+    expect(model.blockerSummary).toContain('Pflicht offen');
+    expect(model.blockerSummary).toMatch(/Required item open|required items open/i);
+    expect(model.blockerSummary).not.toContain('Pflichtpunkt offen');
   });
 
   it('allows manager override when backend grants overrideCompletion', () => {
@@ -134,6 +146,7 @@ describe('buildTaskCompletionControlModel', () => {
         { id: 't1', title: 'Task', type: 'BOOKING_PICKUP' },
         { overrideCompletion: { enabled: true } },
       ),
+      'de',
     );
 
     expect(model.canOverride).toBe(true);
@@ -151,6 +164,7 @@ describe('buildTaskCompletionControlModel', () => {
           },
         },
       ),
+      'de',
     );
 
     expect(model.canOverride).toBe(false);
@@ -179,6 +193,7 @@ describe('buildTaskCompletionControlModel', () => {
         },
         { complete: { enabled: true } },
       ),
+      'de',
     );
 
     expect(model.enabled).toBe(true);
