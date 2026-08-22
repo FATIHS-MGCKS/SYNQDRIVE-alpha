@@ -12,12 +12,22 @@ export interface CommunicationInboxFilters {
   assignment: CommunicationAssignmentFilter;
 }
 
+export const COMMUNICATION_SEARCH_MAX_LENGTH = 120;
+
 export const DEFAULT_COMMUNICATION_INBOX_FILTERS: CommunicationInboxFilters = {
   search: '',
   unreadOnly: false,
   status: 'all',
   assignment: 'all',
 };
+
+export function clampCommunicationSearchDraft(value: string): string {
+  return value.slice(0, COMMUNICATION_SEARCH_MAX_LENGTH);
+}
+
+export function normalizeCommunicationSearch(value: string): string {
+  return clampCommunicationSearchDraft(value.trim());
+}
 
 const STATUS_VALUES = new Set<string>([
   'AI_ACTIVE',
@@ -42,7 +52,7 @@ export function readCommunicationInboxFiltersFromUrl(
   const next: Partial<CommunicationInboxFilters> = {};
 
   const searchTerm = params.get(COMMUNICATION_SEARCH_PARAM);
-  if (searchTerm) next.search = searchTerm;
+  if (searchTerm) next.search = normalizeCommunicationSearch(searchTerm);
 
   const unread = params.get(COMMUNICATION_UNREAD_PARAM);
   if (unread === 'true') next.unreadOnly = true;
@@ -66,8 +76,12 @@ export function mergeCommunicationInboxFilters(
   return { ...DEFAULT_COMMUNICATION_INBOX_FILTERS, ...partial };
 }
 
-export function hasActiveCommunicationInboxFilters(filters: CommunicationInboxFilters): boolean {
+export function hasActiveCommunicationInboxFilters(
+  filters: CommunicationInboxFilters,
+  channel: CommunicationChannel = 'all',
+): boolean {
   return (
+    channel !== 'all' ||
     Boolean(filters.search.trim()) ||
     filters.unreadOnly ||
     filters.status !== 'all' ||
@@ -98,7 +112,8 @@ export function buildCommunicationInboxApiQuery(
   const query: import('../../../lib/communication/types').CommunicationConversationListQuery = {};
 
   if (apiChannel) query.channel = apiChannel;
-  if (filters.search.trim()) query.search = filters.search.trim();
+  const search = normalizeCommunicationSearch(filters.search);
+  if (search) query.search = search;
   if (filters.unreadOnly) query.unreadOnly = true;
   if (filters.status !== 'all') query.status = filters.status;
   if (filters.assignment === 'unassigned') query.unassigned = true;
@@ -111,7 +126,7 @@ export function applyCommunicationInboxFiltersToSearchParams(
   filters: CommunicationInboxFilters,
 ): void {
   const entries: Array<[string, string | null]> = [
-    [COMMUNICATION_SEARCH_PARAM, filters.search.trim() || null],
+    [COMMUNICATION_SEARCH_PARAM, normalizeCommunicationSearch(filters.search) || null],
     [COMMUNICATION_UNREAD_PARAM, filters.unreadOnly ? 'true' : null],
     [COMMUNICATION_STATUS_PARAM, filters.status !== 'all' ? filters.status : null],
     [COMMUNICATION_ASSIGNMENT_PARAM, filters.assignment !== 'all' ? filters.assignment : null],

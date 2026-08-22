@@ -20,6 +20,11 @@ export function resolveConversationPreview(
   return preview;
 }
 
-export function resolveConversationTitle(conversation: CommunicationConversationListItem): string {
-  return conversation.displayLabel?.trim() || '';
+export function resolveConversationTitle(
+  conversation: CommunicationConversationListItem,
+  t: (key: TranslationKey) => string,
+): string {
+  const label = conversation.displayLabel?.trim();
+  if (label) return label;
+  return t('communication.inbox.unknownContact');
 }

@@ -17,6 +17,19 @@ interface CommunicationConversationRowProps {
   onSelect: (conversationId: string) => void;
 }
 
+function channelLabelKey(channel: CommunicationApiChannel) {
+  switch (channel) {
+    case 'WHATSAPP':
+      return 'communication.channels.whatsapp' as const;
+    case 'VOICE':
+      return 'communication.channels.voice' as const;
+    case 'SMS':
+      return 'communication.channels.sms' as const;
+    default:
+      return 'communication.channels.all' as const;
+  }
+}
+
 function ChannelIcon({ channel }: { channel: CommunicationApiChannel }) {
   const className = 'h-3.5 w-3.5 shrink-0';
   switch (channel) {
@@ -39,10 +52,11 @@ export function CommunicationConversationRow({
 }: CommunicationConversationRowProps) {
   const { t } = useLanguage();
   const unread = conversation.unreadCount > 0;
-  const title = resolveConversationTitle(conversation);
+  const title = resolveConversationTitle(conversation, t);
   const preview = resolveConversationPreview(conversation, t);
   const contextLabel = buildConversationContextLabel(conversation);
-  const timestamp = formatCommunicationTimestamp(conversation.lastActivityAt, locale);
+  const timestamp = formatCommunicationTimestamp(conversation.lastActivityAt, locale, t);
+  const channelLabel = t(channelLabelKey(conversation.channel));
 
   return (
     <button
@@ -50,6 +64,7 @@ export function CommunicationConversationRow({
       data-testid="communication-conversation-row"
       data-conversation-id={conversation.id}
       aria-current={selected ? 'true' : undefined}
+      aria-label={`${channelLabel}: ${title}`}
       onClick={() => onSelect(conversation.id)}
       className={cn(
         'sq-press w-full rounded-lg border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40',
@@ -67,6 +82,7 @@ export function CommunicationConversationRow({
           )}
         >
           <ChannelIcon channel={conversation.channel} />
+          <span className="sr-only">{channelLabel}</span>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">

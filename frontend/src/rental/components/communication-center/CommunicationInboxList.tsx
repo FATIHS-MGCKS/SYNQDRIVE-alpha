@@ -1,22 +1,28 @@
 import { Loader2 } from 'lucide-react';
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
+import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { CommunicationConversationListItem } from '../../../lib/communication/types';
 import { CommunicationConversationRow } from './CommunicationConversationRow';
 import { CommunicationInboxSkeleton } from './skeletons/CommunicationInboxSkeleton';
-import { hasActiveCommunicationInboxFilters } from './communication-inbox-state';
-import type { CommunicationInboxFilters } from './communication-inbox-state';
+import {
+  hasActiveCommunicationInboxFilters,
+  type CommunicationInboxFilters,
+} from './communication-inbox-state';
+import type { CommunicationChannel } from './communication-center.types';
 
 interface CommunicationInboxListProps {
   conversations: CommunicationConversationListItem[];
   selectedConversationId: string | null;
   filters: CommunicationInboxFilters;
+  activeChannel: CommunicationChannel;
   locale: string;
   loading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
-  error: string | null;
-  paginationError: string | null;
+  error: CommunicationClientErrorCode | null;
+  paginationError: CommunicationClientErrorCode | null;
   onSelect: (conversationId: string) => void;
   onRetry: () => void;
   onLoadMore: () => void;
@@ -24,10 +30,28 @@ interface CommunicationInboxListProps {
   onClearFilters: () => void;
 }
 
+function mapInboxErrorDescription(
+  code: CommunicationClientErrorCode | null,
+  t: (key: TranslationKey) => string,
+): string {
+  switch (code) {
+    case 'network':
+      return t('communication.inbox.errorNetwork');
+    case 'invalid_query':
+      return t('communication.inbox.errorInvalidQuery');
+    case 'permission_denied':
+      return t('communication.inbox.errorPermissionDenied');
+    case 'unknown':
+    default:
+      return t('communication.inbox.errorUnknown');
+  }
+}
+
 export function CommunicationInboxList({
   conversations,
   selectedConversationId,
   filters,
+  activeChannel,
   locale,
   loading,
   loadingMore,
@@ -42,20 +66,37 @@ export function CommunicationInboxList({
 }: CommunicationInboxListProps) {
   const { t } = useLanguage();
 
-  if (loading && conversations.length === 0) {
+  if (loading) {
     return <CommunicationInboxSkeleton />;
+  }
+
+  if (error === 'permission_denied' && conversations.length === 0) {
+    return (
+      <div className="p-3" data-testid="communication-inbox-permission-denied">
+        <EmptyState
+          compact
+          title={t('communication.accessDenied.title')}
+          description={t('communication.inbox.errorPermissionDenied')}
+        />
+      </div>
+    );
   }
 
   if (error && conversations.length === 0) {
     return (
       <div className="p-3" data-testid="communication-inbox-error">
-        <ErrorState compact title={t('communication.inbox.errorTitle')} description={error} onRetry={onRetry} />
+        <ErrorState
+          compact
+          title={t('communication.inbox.errorTitle')}
+          description={mapInboxErrorDescription(error, t)}
+          onRetry={onRetry}
+        />
       </div>
     );
   }
 
   if (!loading && conversations.length === 0) {
-    const hasFilters = hasActiveCommunicationInboxFilters(filters);
+    const hasFilters = hasActiveCommunicationInboxFilters(filters, activeChannel);
     const hasSearch = Boolean(filters.search.trim());
     return (
       <div className="p-3" data-testid="communication-inbox-empty">
@@ -93,27 +134,29 @@ export function CommunicationInboxList({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div
+      <ul
         className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2"
         data-testid="communication-inbox-list"
-        role="list"
         aria-label={t('communication.inbox.listLabel')}
       >
         {conversations.map((conversation) => (
-          <CommunicationConversationRow
-            key={conversation.id}
-            conversation={conversation}
-            selected={conversation.id === selectedConversationId}
-            locale={locale}
-            onSelect={onSelect}
-          />
+          <li key={conversation.id}>
+            <CommunicationConversationRow
+              conversation={conversation}
+              selected={conversation.id === selectedConversationId}
+              locale={locale}
+              onSelect={onSelect}
+            />
+          </li>
         ))}
-      </div>
+      </ul>
 
       <div className="shrink-0 border-t border-border/30 p-2">
         {paginationError && (
-          <div className="mb-2 text-center">
-            <p className="text-[11px] text-muted-foreground">{paginationError}</p>
+          <div className="mb-2 text-center" data-testid="communication-inbox-pagination-error">
+            <p className="text-[11px] text-muted-foreground">
+              {mapInboxErrorDescription(paginationError, t)}
+            </p>
             <button
               type="button"
               onClick={onRetryLoadMore}

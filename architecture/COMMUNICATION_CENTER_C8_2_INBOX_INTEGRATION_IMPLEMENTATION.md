@@ -1,7 +1,7 @@
 # Communication Center C8.2 — Inbox Integration Implementation
 
 **Date:** 2026-08-22  
-**Phase:** C8.2 (Canonical inbox data integration)  
+**Phase:** C8.2 (Canonical inbox data integration, race-hardened final)
 **Branch:** `feature/communication-center-c8-2-inbox-integration`  
 **Depends on:** C7 read API, C7.2 canonical content, C8.1 UI shell
 
@@ -39,147 +39,187 @@ C8.2 connects the C8.1 Communication Center shell to the canonical C7 read API:
 | Cursor | opaque keyset; max limit 100; default used: **25** |
 | RBAC | `communication.read` |
 
+**Backend DTO source reviewed:** `backend/src/modules/communication/read/dto/communication-read-response.dto.ts` (`CommunicationConversationListItemDto`, `CommunicationConversationSummaryDto`). Status enum matches `CommunicationConversationStatus` in `backend/prisma/schema.prisma`: `AI_ACTIVE`, `WAITING_CUSTOMER`, `HUMAN_REQUIRED`, `HUMAN_ACTIVE`, `RESOLVED`, `FAILED`.
+
 No native WhatsApp/SMS/Voice API reads from inbox UI.
 
 ---
 
-## 3. API client
+## 3. API client authority
 
-`frontend/src/lib/api.ts` → `api.communication.listConversations`, `getConversationSummary`
+| Layer | Role |
+|-------|------|
+| `frontend/src/lib/api.ts` | Transport (`api.communication.*`) |
+| `frontend/src/lib/communication/communication-client.ts` | Typed wrapper + safe error code mapping (`network`, `invalid_query`, `permission_denied`, `unknown`) |
 
-Thin wrapper: `frontend/src/lib/communication/communication-client.ts`
-
----
-
-## 4. Query model
-
-Frontend `CommunicationConversationListQuery` maps to backend DTO. Shell channel `all` omits `channel` param.
-
-**Production UI filters:** channel, search, unreadOnly, status (select), assignment (all / unassigned only — backend has no “assigned-only” without `assignedUserId`).
+Query serialization lives in `communication-inbox-state.ts` / `query-keys.ts` — not duplicated in `api.ts`.
 
 ---
 
-## 5. URL state
+## 4. Query identity
 
-Extended C8.1 navigation (`communication-center-navigation.ts` + `communication-inbox-state.ts`):
+`communicationInboxQuerySignature` covers all production list dimensions:
 
-| Param | Purpose |
-|-------|---------|
-| `communicationChannel` | Shell channel filter |
-| `communicationSearch` | Search term (Tasks-style URL sync; follows `taskQ` convention) |
-| `communicationUnread` | `true` when unread-only |
-| `communicationStatus` | Canonical status enum |
-| `communicationAssignment` | `unassigned` |
-| `conversationId` | Selected conversation |
-| `communicationPane` | Mobile pane |
+- `orgId`
+- `channel` (normalized sorted arrays)
+- `status` (normalized sorted arrays)
+- `unreadOnly`
+- `unassigned`
+- `search` (trimmed)
+- `limit`
 
-Invalid values normalized to defaults. Single atomic `history.pushState` / `replaceState` per update (inbox filters merged into shell sync — no double-write race).
+**Cursor is not part of base identity.** Same semantic query → same signature.
 
 ---
 
-## 6. Search
+## 5. Org / filter committed-data isolation
+
+`useCommunicationInbox` stores list + summary with a committed `signature`. UI exposes rows/summary **only when** `committed.signature === currentQuerySignature`.
+
+On org or filter change:
+
+- Previous-org / previous-filter rows are not renderable (zero exposed rows immediately)
+- Previous summary is not renderable (null until matching result)
+- Cursor / hasMore reset for mismatched signature
+- List shows skeleton while loading for the new signature
+
+Load-more retains same-query rows; filter/org change hides all prior rows synchronously via signature gating (not merely stale-response rejection).
+
+---
+
+## 6. Independent list vs summary race control
+
+| Concern | Mechanism |
+|---------|-----------|
+| List reload | `listReloadGenerationRef` — invalidated on query signature change |
+| Summary | `summaryGenerationRef` — independent; summary completion never invalidates list reload or load-more |
+| Load more | Captures `baseSignature` at start; discards if signature changed; does not share list reload generation |
+| Load-more single-flight | `loadMoreInFlightCursorRef` — synchronous guard; duplicate same-cursor calls → one network request |
+
+---
+
+## 7. Cursor non-progress guard
+
+`resolveCommunicationPagination()` (`lib/communication/pagination.ts`):
+
+- If `hasMore=true` but `nextCursor` is null or equals requested cursor → `hasMore=false`, `stalled=true`, pagination error surfaced
+- Prevents infinite load-more loops on malformed backend pagination
+
+---
+
+## 8. Search
 
 - Debounce: **350ms** (`useDebouncedValue`, same as Tasks/Customers)
 - Server-side only — no client-side cross-page filtering
+- **Max length:** 120 chars (`COMMUNICATION_SEARCH_MAX_LENGTH`) — input `maxLength`, URL normalization, API query clamp
 - URL-synced as `communicationSearch`
 
+### URL search privacy decision
+
+**Kept URL-backed** (Tasks precedent: `tasksListState.ts` syncs `taskQ` to URL). Communication search may contain customer identifiers/PII; copied URLs and browser history may retain terms. Same tradeoff as Tasks — documented explicitly. No local-only precedent stronger than Tasks in this repo.
+
 ---
 
-## 7. Pagination
+## 9. Clear-filter semantics
 
-- Pattern: **Load more** button (Tasks-style cursor, not infinite scroll)
-- Uses `nextCursor` / `hasMore` exactly
+**Clear filters** resets:
+
+- Channel → `all`
+- Search → empty
+- Unread → false
+- Status → all
+- Assignment → all
+- Selected conversation → cleared
+
+`hasActiveCommunicationInboxFilters` includes active channel.
+
+---
+
+## 10. Safe frontend error copy
+
+Hook exposes `CommunicationClientErrorCode`, not raw `err.message`. UI maps to localized safe copy:
+
+- `network`, `invalid_query`, `permission_denied`, `unknown`
+
+**401/403:** `permission_denied` → access-denied style surface without infinite “retry conversations” (repository-consistent with notifications pattern).
+
+Pagination errors use the same safe mapping with inline retry.
+
+---
+
+## 11. Summary count semantics
+
+C7 summary honors current filters. Unread badge appears **only on the Unread-only filter control** (header duplicate removed). `aria-label` uses `communication.filters.unreadOnlyFilteredCount` to clarify filtered-scope semantics.
+
+---
+
+## 12. Timestamp i18n
+
+`classifyCommunicationTimestamp(iso, now?)` + `formatCommunicationTimestamp(iso, locale, t, now?)`:
+
+- Local timezone semantics (intentional)
+- Yesterday via `communication.time.yesterday` i18n key (no DE/EN binary ternary)
+- Injectable `now` for deterministic tests
+
+---
+
+## 13. Accessibility
+
+- Conversation list: semantic `<ul>/<li>` (no inconsistent `role=list` without `listitem`)
+- Row: `aria-current` when selected; `aria-label` includes channel + title
+- Channel: `sr-only` localized label (not icon-only)
+- Unread filter: accessible count label when summary loaded
+
+---
+
+## 14. Display label defense
+
+`resolveConversationTitle` → localized `communication.inbox.unknownContact` when `displayLabel` blank. Never reconstructs phone/provider ID.
+
+---
+
+## 15. Pagination
+
+- Pattern: **Load more** button (Tasks-style cursor)
 - Page size: **25**
 - Defensive dedupe by `id` when flattening pages
-- Pagination failure: keep page 1, inline retry for load more
+- Pagination failure: page 1 retained, inline retry; no full-page error overlay
 
 ---
 
-## 8. Race safety
+## 16. Tests
 
-`useRequestGeneration` in `useCommunicationInbox` — stale list responses cannot commit after filter/org change. Summary fetch does not bump list generation.
-
----
-
-## 9. Channel change invariant (C8.1 preserved)
-
-Changing channel clears `selectedConversationId` and resets mobile pane to inbox. Search/unread/status/assignment preserved.
-
----
-
-## 10. Conversation row hierarchy
-
-`CommunicationConversationRow.tsx`:
-
-- Title: `displayLabel` (never phone/providerIdentity)
-- Preview: C7.2 text or `cc:*` token → localized label; voice fallback “Call”
-- Context: `booking.reference · vehicle.displayLabel` (priority order)
-- Meta: timestamp, unread badge, channel icon, assignment/unassigned
-- Status: filter-only (not row badge clutter)
-
----
-
-## 11. Loading / empty / error
-
-| State | Behavior |
-|-------|----------|
-| Initial load | `CommunicationInboxSkeleton` |
-| Success zero | Differentiated empty: all / filtered / search |
-| Error (no rows) | `ErrorState` with retry |
-| Error (has rows) | `isStale` + existing rows kept |
-| Load more | Bottom loader + retry on failure |
-
----
-
-## 12. i18n
-
-Explicit EN + DE keys under `communication.inbox.*`, `communication.filters.*`, `communication.status.*`, `communication.preview.*`. Other locales inherit via `...en` spread.
-
----
-
-## 13. Performance
-
-- One list request per page + optional one summary request
-- No per-row detail fetch
-- No provider SDK imports
-
----
-
-## 14. Tests
-
-| Suite | Path | Count |
+| Suite | Path | Focus |
 |-------|------|-------|
-| Inbox state + contract | `lib/communication/communication-inbox.test.ts` | 8 |
-| Row display | `lib/communication/communication-inbox-display.test.ts` | 5 |
-| C8.1 shell/nav/RBAC | `communication-center/*.test.ts` | 22 |
-| Playwright shell | `e2e/communication-center-responsive.spec.ts` | 18 scenarios |
-| Playwright inbox | `e2e/communication-center-inbox.spec.ts` | 8 scenarios |
+| Inbox state + contract | `lib/communication/communication-inbox.test.ts` | URL normalization, signature, DTO fixture |
+| Hook race hardening | `lib/communication/hooks/useCommunicationInbox.race.test.ts` | Org/filter/summary race, load-more single-flight, cursor guard, 403 |
+| Pagination guard | `lib/communication/pagination.test.ts` | Non-progress cursor |
+| Timestamp | `lib/communication/format.test.ts` | Injectable now, i18n yesterday |
+| Row display | `lib/communication/communication-inbox-display.test.ts` | Title, preview, unknown contact |
+| C8.1 shell/nav/RBAC | `communication-center/*.test.ts` | Regression |
+| Playwright inbox | `e2e/communication-center-inbox.spec.ts` | Search A/AB race, pagination append, pagination failure retention, org switch, channel switch, no provider APIs, 390/1024/1440 |
+
+### Deterministic proofs
+
+- **Search race:** type A → wait for request → type AB → AB payload wins
+- **Pagination append:** page 2 returns overlapping A + new B → rendered A,B once each
+- **Org switch:** Org A hidden before Org B resolves; summary 9 never shown for Org B
+- **No provider APIs:** only `/communication/conversations` routes during inbox operations
 
 ---
 
-## 15. Dashboard non-regression
-
-No dashboard changes. E2E confirms tasks panel + nav unchanged.
-
----
-
-## 16. Known limitations
+## 17. Known limitations
 
 - Assignment filter: unassigned only (no backend “assigned-only” without user id)
 - Selected conversation not validated against loaded page (deep link preserved for C8.3 detail fetch)
-- Summary badge on unread filter only — not full header overload
 
 ---
 
-## 17. C8.3 readiness
+## 18. C8.3 readiness
 
-Shell + URL + list selection stable for:
+Shell + URL + list selection stable for detail/timeline integration.
 
-- `GET /communication/conversations/:id`
-- Event timeline integration
-- Context pane data resolution
-
-**Status:** READY FOR C8.3 conversation detail + timeline integration.
+**Status:** READY FOR FINAL REVIEW (C8.2 hardening complete). C8.3 not started.
 
 ---
 

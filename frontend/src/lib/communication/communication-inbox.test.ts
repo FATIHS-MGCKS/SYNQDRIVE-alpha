@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildCommunicationInboxApiQuery,
+  clampCommunicationSearchDraft,
+  COMMUNICATION_SEARCH_MAX_LENGTH,
   mapShellChannelToApiChannel,
   mergeCommunicationInboxFilters,
+  normalizeCommunicationSearch,
   readCommunicationInboxFiltersFromUrl,
 } from '../../rental/components/communication-center/communication-inbox-state';
 import {
@@ -71,6 +74,29 @@ describe('communication inbox state', () => {
     const sigB = communicationInboxQuerySignature('org-b', { search: 'x' });
     expect(sigA).not.toBe(sigB);
   });
+
+  it('normalizes search trim and max length', () => {
+    const long = 'x'.repeat(150);
+    expect(normalizeCommunicationSearch(`  ${long}  `)).toHaveLength(COMMUNICATION_SEARCH_MAX_LENGTH);
+    expect(clampCommunicationSearchDraft(long)).toHaveLength(COMMUNICATION_SEARCH_MAX_LENGTH);
+    expect(
+      readCommunicationInboxFiltersFromUrl(`?communicationSearch=${encodeURIComponent(long)}`),
+    ).toEqual({
+      search: 'x'.repeat(COMMUNICATION_SEARCH_MAX_LENGTH),
+    });
+  });
+
+  it('normalizes array enum ordering in query signature', () => {
+    const sigA = communicationInboxQuerySignature('org-1', {
+      channel: ['SMS', 'WHATSAPP'],
+      status: ['HUMAN_REQUIRED', 'AI_ACTIVE'],
+    });
+    const sigB = communicationInboxQuerySignature('org-1', {
+      channel: ['WHATSAPP', 'SMS'],
+      status: ['AI_ACTIVE', 'HUMAN_REQUIRED'],
+    });
+    expect(sigA).toBe(sigB);
+  });
 });
 
 describe('communication contract fixture', () => {
@@ -79,6 +105,23 @@ describe('communication contract fixture', () => {
     expect(COMMUNICATION_LIST_CONTRACT_FIXTURE.items[0].displayLabel).toBe('Max Mustermann');
     expect(COMMUNICATION_LIST_CONTRACT_FIXTURE.items[0].lastMessagePreview).toBeTruthy();
     expect(COMMUNICATION_LIST_CONTRACT_FIXTURE.hasMore).toBe(true);
+  });
+
+  it('matches backend DTO source fields (CommunicationConversationListItemDto)', () => {
+    const item = COMMUNICATION_LIST_CONTRACT_FIXTURE.items[0];
+    expect(item).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        channel: expect.stringMatching(/^(WHATSAPP|VOICE|SMS)$/),
+        status: expect.stringMatching(
+          /^(AI_ACTIVE|WAITING_CUSTOMER|HUMAN_REQUIRED|HUMAN_ACTIVE|RESOLVED|FAILED)$/,
+        ),
+        unreadCount: expect.any(Number),
+        lastActivityAt: expect.any(String),
+        displayLabel: expect.any(String),
+      }),
+    );
+    expect(item.assignedAgent).toBeNull();
   });
 
   it('dedupes overlapping pagination ids', () => {

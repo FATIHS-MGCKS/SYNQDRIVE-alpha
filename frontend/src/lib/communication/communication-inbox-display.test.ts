@@ -13,8 +13,14 @@ describe('communication inbox display', () => {
   const smsImage = COMMUNICATION_LIST_CONTRACT_FIXTURE.items[2];
 
   it('uses canonical displayLabel as title', () => {
-    expect(resolveConversationTitle(whatsapp)).toBe('Max Mustermann');
-    expect(resolveConversationTitle(whatsapp)).not.toContain('+');
+    expect(resolveConversationTitle(whatsapp, t)).toBe('Max Mustermann');
+    expect(resolveConversationTitle(whatsapp, t)).not.toContain('+');
+  });
+
+  it('falls back to localized unknown contact when displayLabel is blank', () => {
+    expect(
+      resolveConversationTitle({ ...whatsapp, displayLabel: '   ' }, t),
+    ).toBe('communication.inbox.unknownContact');
   });
 
   it('maps preview semantic tokens', () => {

@@ -95,7 +95,11 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
   }, []);
 
   const handleClearInboxFilters = useCallback(() => {
-    patchState({ inboxFilters: DEFAULT_COMMUNICATION_INBOX_FILTERS });
+    patchState({
+      channel: 'all',
+      inboxFilters: DEFAULT_COMMUNICATION_INBOX_FILTERS,
+      selectedConversationId: null,
+    });
   }, [patchState]);
 
   const handleSelectConversation = useCallback(

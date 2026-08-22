@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRequestGeneration } from '../../../rental/hooks/request-generation';
-import { communicationClient } from '../communication-client';
+import {
+  communicationClient,
+  CommunicationClientError,
+  type CommunicationClientErrorCode,
+} from '../communication-client';
 import { dedupeConversationsById } from '../dedupe';
+import { resolveCommunicationPagination } from '../pagination';
 import { communicationInboxQuerySignature } from '../query-keys';
 import type {
   CommunicationConversationListItem,
@@ -24,12 +28,40 @@ export interface UseCommunicationInboxResult {
   loadingMore: boolean;
   loadingSummary: boolean;
   hasMore: boolean;
-  error: string | null;
-  paginationError: string | null;
+  error: CommunicationClientErrorCode | null;
+  paginationError: CommunicationClientErrorCode | null;
   isStale: boolean;
   reload: () => Promise<CommunicationConversationListItem[]>;
   loadMore: () => Promise<CommunicationConversationListItem[]>;
   retryLoadMore: () => Promise<CommunicationConversationListItem[]>;
+}
+
+type CommittedListState = {
+  signature: string;
+  conversations: CommunicationConversationListItem[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};
+
+type CommittedSummaryState = {
+  signature: string;
+  summary: CommunicationConversationSummary | null;
+};
+
+const EMPTY_LIST: CommittedListState = {
+  signature: '',
+  conversations: [],
+  hasMore: false,
+  nextCursor: null,
+};
+
+const EMPTY_SUMMARY: CommittedSummaryState = {
+  signature: '',
+  summary: null,
+};
+
+function mapClientError(err: unknown): CommunicationClientErrorCode {
+  return err instanceof CommunicationClientError ? err.code : 'unknown';
 }
 
 export function useCommunicationInbox({
@@ -37,38 +69,49 @@ export function useCommunicationInbox({
   filters,
   enabled = true,
 }: UseCommunicationInboxOptions): UseCommunicationInboxResult {
-  const [conversations, setConversations] = useState<CommunicationConversationListItem[]>([]);
-  const [summary, setSummary] = useState<CommunicationConversationSummary | null>(null);
+  const [committedList, setCommittedList] = useState<CommittedListState>(EMPTY_LIST);
+  const [committedSummary, setCommittedSummary] = useState<CommittedSummaryState>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [paginationError, setPaginationError] = useState<string | null>(null);
-  const conversationsRef = useRef<CommunicationConversationListItem[]>([]);
+  const [error, setError] = useState<CommunicationClientErrorCode | null>(null);
+  const [paginationError, setPaginationError] = useState<CommunicationClientErrorCode | null>(null);
+
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
-  const { nextGeneration, isCurrent } = useRequestGeneration();
 
-  useEffect(() => {
-    conversationsRef.current = conversations;
-  }, [conversations]);
+  const committedListRef = useRef(committedList);
+  committedListRef.current = committedList;
+
+  const listReloadGenerationRef = useRef(0);
+  const summaryGenerationRef = useRef(0);
+  const loadMoreInFlightCursorRef = useRef<string | null>(null);
 
   const querySignature = communicationInboxQuerySignature(orgId, filters);
 
+  const listAligned = committedList.signature === querySignature;
+  const summaryAligned = committedSummary.signature === querySignature;
+
+  const conversations = listAligned ? committedList.conversations : [];
+  const hasMore = listAligned ? committedList.hasMore : false;
+  const summary = summaryAligned ? committedSummary.summary : null;
+
+  const visibleLoading = loading || !listAligned;
+  const visibleLoadingSummary = loadingSummary || !summaryAligned;
+
   const reload = useCallback(async (): Promise<CommunicationConversationListItem[]> => {
     if (!orgId || !enabled) {
-      setConversations([]);
-      setSummary(null);
+      setCommittedList({ ...EMPTY_LIST, signature: querySignature });
+      setCommittedSummary({ ...EMPTY_SUMMARY, signature: querySignature });
       setError(null);
       setPaginationError(null);
-      setHasMore(false);
-      setNextCursor(null);
+      setLoading(false);
+      setLoadingSummary(false);
       return [];
     }
 
-    const generation = nextGeneration();
+    const requestSignature = communicationInboxQuerySignature(orgId, filtersRef.current);
+    const generation = ++listReloadGenerationRef.current;
     setLoading(true);
     setError(null);
     setPaginationError(null);
@@ -76,75 +119,128 @@ export function useCommunicationInbox({
     try {
       const query = { ...filtersRef.current, limit: COMMUNICATION_INBOX_PAGE_SIZE };
       const page = await communicationClient.listConversations(orgId, query);
-      if (!isCurrent(generation)) return conversationsRef.current;
+      if (generation !== listReloadGenerationRef.current) {
+        return committedListRef.current.signature === requestSignature
+          ? committedListRef.current.conversations
+          : [];
+      }
 
+      const pagination = resolveCommunicationPagination(null, page);
       const items = dedupeConversationsById(page.items);
-      setConversations(items);
-      setHasMore(page.hasMore);
-      setNextCursor(page.nextCursor);
+      setCommittedList({
+        signature: requestSignature,
+        conversations: items,
+        hasMore: pagination.hasMore,
+        nextCursor: pagination.nextCursor,
+      });
+      if (pagination.stalled) {
+        setPaginationError('unknown');
+      }
       return items;
     } catch (err) {
-      if (!isCurrent(generation)) return conversationsRef.current;
-      const message =
-        err instanceof Error ? err.message : 'Communication inbox could not be loaded';
-      setError(message);
-      if (!conversationsRef.current.length) setConversations([]);
-      return conversationsRef.current;
+      if (generation !== listReloadGenerationRef.current) {
+        return committedListRef.current.signature === requestSignature
+          ? committedListRef.current.conversations
+          : [];
+      }
+      setError(mapClientError(err));
+      return committedListRef.current.signature === requestSignature
+        ? committedListRef.current.conversations
+        : [];
     } finally {
-      if (isCurrent(generation)) setLoading(false);
+      if (generation === listReloadGenerationRef.current) {
+        setLoading(false);
+      }
     }
-  }, [enabled, isCurrent, nextGeneration, orgId]);
+  }, [enabled, orgId, querySignature]);
 
   const loadSummary = useCallback(async () => {
     if (!orgId || !enabled) {
-      setSummary(null);
+      setCommittedSummary({ ...EMPTY_SUMMARY, signature: querySignature });
+      setLoadingSummary(false);
       return;
     }
+
+    const requestSignature = communicationInboxQuerySignature(orgId, filtersRef.current);
+    const generation = ++summaryGenerationRef.current;
     setLoadingSummary(true);
+
     try {
       const query = { ...filtersRef.current };
       const result = await communicationClient.getConversationSummary(orgId, query);
-      setSummary(result);
+      if (generation !== summaryGenerationRef.current) return;
+      setCommittedSummary({ signature: requestSignature, summary: result });
     } catch {
-      setSummary(null);
+      if (generation !== summaryGenerationRef.current) return;
+      setCommittedSummary({ signature: requestSignature, summary: null });
     } finally {
-      setLoadingSummary(false);
+      if (generation === summaryGenerationRef.current) {
+        setLoadingSummary(false);
+      }
     }
-  }, [enabled, orgId]);
+  }, [enabled, orgId, querySignature]);
 
   const loadMore = useCallback(async (): Promise<CommunicationConversationListItem[]> => {
-    if (!orgId || !enabled || !nextCursor || loadingMore) {
-      return conversationsRef.current;
+    const baseSignature = communicationInboxQuerySignature(orgId, filtersRef.current);
+    const currentList = committedListRef.current;
+
+    if (!orgId || !enabled || currentList.signature !== baseSignature || !currentList.nextCursor) {
+      return currentList.signature === baseSignature ? currentList.conversations : [];
     }
 
-    const generation = nextGeneration();
+    const cursor = currentList.nextCursor;
+    if (loadMoreInFlightCursorRef.current === cursor) {
+      return currentList.conversations;
+    }
+
+    loadMoreInFlightCursorRef.current = cursor;
     setLoadingMore(true);
     setPaginationError(null);
 
     try {
       const query = {
         ...filtersRef.current,
-        cursor: nextCursor,
+        cursor,
         limit: COMMUNICATION_INBOX_PAGE_SIZE,
       };
       const page = await communicationClient.listConversations(orgId, query);
-      if (!isCurrent(generation)) return conversationsRef.current;
 
-      const merged = dedupeConversationsById([...conversationsRef.current, ...page.items]);
-      setConversations(merged);
-      setHasMore(page.hasMore);
-      setNextCursor(page.nextCursor);
+      if (baseSignature !== communicationInboxQuerySignature(orgId, filtersRef.current)) {
+        return committedListRef.current.signature === baseSignature
+          ? committedListRef.current.conversations
+          : [];
+      }
+
+      const pagination = resolveCommunicationPagination(cursor, page);
+      const merged = dedupeConversationsById([
+        ...committedListRef.current.conversations,
+        ...page.items,
+      ]);
+      setCommittedList({
+        signature: baseSignature,
+        conversations: merged,
+        hasMore: pagination.hasMore,
+        nextCursor: pagination.nextCursor,
+      });
+      if (pagination.stalled) {
+        setPaginationError('unknown');
+      }
       return merged;
     } catch (err) {
-      if (!isCurrent(generation)) return conversationsRef.current;
-      const message =
-        err instanceof Error ? err.message : 'More conversations could not be loaded';
-      setPaginationError(message);
-      return conversationsRef.current;
+      if (baseSignature !== communicationInboxQuerySignature(orgId, filtersRef.current)) {
+        return committedListRef.current.signature === baseSignature
+          ? committedListRef.current.conversations
+          : [];
+      }
+      setPaginationError(mapClientError(err));
+      return committedListRef.current.conversations;
     } finally {
-      if (isCurrent(generation)) setLoadingMore(false);
+      if (loadMoreInFlightCursorRef.current === cursor) {
+        loadMoreInFlightCursorRef.current = null;
+      }
+      setLoadingMore(false);
     }
-  }, [enabled, isCurrent, loadingMore, nextCursor, nextGeneration, orgId]);
+  }, [enabled, orgId]);
 
   const retryLoadMore = useCallback(async () => {
     setPaginationError(null);
@@ -152,18 +248,25 @@ export function useCommunicationInbox({
   }, [loadMore]);
 
   useEffect(() => {
+    listReloadGenerationRef.current += 1;
+    summaryGenerationRef.current += 1;
+    loadMoreInFlightCursorRef.current = null;
+    setPaginationError(null);
     void reload();
     void loadSummary();
   }, [loadSummary, querySignature, reload]);
 
-  const isStale = useMemo(() => Boolean(error && conversations.length > 0), [conversations.length, error]);
+  const isStale = useMemo(
+    () => Boolean(error && listAligned && conversations.length > 0),
+    [conversations.length, error, listAligned],
+  );
 
   return {
     conversations,
     summary,
-    loading,
+    loading: visibleLoading,
     loadingMore,
-    loadingSummary,
+    loadingSummary: visibleLoadingSummary,
     hasMore,
     error,
     paginationError,

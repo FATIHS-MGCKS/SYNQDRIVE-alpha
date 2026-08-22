@@ -4,10 +4,11 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { CommunicationApiStatus } from '../../../lib/communication/types';
 import { CommunicationChannelFilters } from './CommunicationChannelFilters';
 import type { CommunicationChannel } from './communication-center.types';
-import type {
-  CommunicationAssignmentFilter,
-  CommunicationInboxFilters,
-  CommunicationStatusFilter,
+import {
+  COMMUNICATION_SEARCH_MAX_LENGTH,
+  type CommunicationAssignmentFilter,
+  type CommunicationInboxFilters,
+  type CommunicationStatusFilter,
 } from './communication-inbox-state';
 
 const STATUS_OPTIONS: CommunicationApiStatus[] = [
@@ -27,6 +28,7 @@ interface CommunicationInboxFiltersBarProps {
   onSearchDraftChange: (value: string) => void;
   onFiltersChange: (partial: Partial<CommunicationInboxFilters>) => void;
   unreadBadgeCount?: number | null;
+  unreadBadgeLoading?: boolean;
 }
 
 export function CommunicationInboxFiltersBar({
@@ -37,6 +39,7 @@ export function CommunicationInboxFiltersBar({
   onSearchDraftChange,
   onFiltersChange,
   unreadBadgeCount,
+  unreadBadgeLoading,
 }: CommunicationInboxFiltersBarProps) {
   const { t } = useLanguage();
 
@@ -50,6 +53,7 @@ export function CommunicationInboxFiltersBar({
         <input
           type="search"
           value={searchDraft}
+          maxLength={COMMUNICATION_SEARCH_MAX_LENGTH}
           onChange={(event) => onSearchDraftChange(event.target.value)}
           placeholder={t('communication.inbox.searchPlaceholder')}
           aria-label={t('communication.inbox.searchLabel')}
@@ -74,6 +78,11 @@ export function CommunicationInboxFiltersBar({
         <button
           type="button"
           aria-pressed={filters.unreadOnly}
+          aria-label={
+            unreadBadgeCount != null && unreadBadgeCount > 0 && !unreadBadgeLoading
+              ? t('communication.filters.unreadOnlyFilteredCount', { count: unreadBadgeCount })
+              : t('communication.filters.unreadOnly')
+          }
           data-testid="communication-filter-unread"
           onClick={() => onFiltersChange({ unreadOnly: !filters.unreadOnly })}
           className={cn(
@@ -84,8 +93,11 @@ export function CommunicationInboxFiltersBar({
           )}
         >
           {t('communication.filters.unreadOnly')}
-          {unreadBadgeCount != null && unreadBadgeCount > 0 && (
-            <span className="inline-flex min-w-[1rem] items-center justify-center rounded bg-[color:var(--brand)] px-1 text-[9px] font-bold text-white">
+          {unreadBadgeCount != null && unreadBadgeCount > 0 && !unreadBadgeLoading && (
+            <span
+              className="inline-flex min-w-[1rem] items-center justify-center rounded bg-[color:var(--brand)] px-1 text-[9px] font-bold text-white"
+              aria-hidden
+            >
               {unreadBadgeCount > 99 ? '99+' : unreadBadgeCount}
             </span>
           )}

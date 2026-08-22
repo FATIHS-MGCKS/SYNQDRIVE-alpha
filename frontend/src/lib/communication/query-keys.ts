@@ -1,4 +1,17 @@
-import type { CommunicationConversationListQuery } from './types';
+import type {
+  CommunicationApiChannel,
+  CommunicationApiStatus,
+  CommunicationConversationListQuery,
+} from './types';
+
+function normalizeEnumValue<T extends string>(value: T | T[] | undefined): string | null {
+  if (value == null) return null;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return null;
+    return [...value].sort().join(',');
+  }
+  return value;
+}
 
 export function communicationInboxQuerySignature(
   orgId: string | null | undefined,
@@ -6,8 +19,8 @@ export function communicationInboxQuerySignature(
 ): string {
   return JSON.stringify({
     orgId: orgId ?? '',
-    channel: filters.channel ?? null,
-    status: filters.status ?? null,
+    channel: normalizeEnumValue<CommunicationApiChannel>(filters.channel),
+    status: normalizeEnumValue<CommunicationApiStatus>(filters.status),
     unreadOnly: filters.unreadOnly ?? false,
     unassigned: filters.unassigned ?? false,
     search: filters.search?.trim() ?? '',
