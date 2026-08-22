@@ -220,3 +220,22 @@ Measured: 50 events → 1 `communication_events` query (+ bounded total ≤8).
 | `backend/prisma/migrations/20260822120000_*` | Schema migration |
 
 **Changes / Architektur updated:** this document (C7.2 hardening pass).
+
+---
+
+## 20. Final PostgreSQL validation (2026-08-22)
+
+Disposable PostgreSQL: **EXECUTED** (local PostgreSQL 16, isolated databases `synqdrive_c72_empty` / `synqdrive_c72_upgrade`)
+
+| Check | Result |
+|-------|--------|
+| Empty-schema migration | **PASS** (312 migrations incl. `20260822120000_communication_center_c7_2_canonical_content`) |
+| Pre-C7.2 upgrade migration | **PASS** (seeded org/conversation/event without content → C7.2 migration additive) |
+| C7.2 PostgreSQL Jest | **29 executed / 29 passed / 0 failed / 0 skipped** |
+| C7.2 unit Jest | **11 passed** |
+| 50-event timeline query count | **1** `communication_events` query; **≤8** total SQL statements (instrumented via Prisma query log) |
+| Canonical-only timeline read | **PASS** (native `WhatsAppMessage` deleted; timeline still returns canonical text) |
+| Failure isolation (WhatsApp + SMS) | **PASS** (postgres integration) |
+| FK / unique indexes | **PASS** (`communication_event_id` unique, `organization_id+idempotency_key` unique, org/conversation/event FKs with CASCADE) |
+
+Validation script: `backend/scripts/test/communication-center-c7-2-postgres-validation.sh`

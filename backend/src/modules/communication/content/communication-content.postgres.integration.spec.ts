@@ -503,7 +503,6 @@ describePg('Communication canonical content postgres (C7.2)', () => {
 
   it('crash convergence — replay repairs stale conversation preview', async () => {
     const waConvo = await seedWaConversation(orgA);
-    const canonical = await prisma.communicationConversation.findFirst({ where: { organizationId: orgA } });
     const waMessage = await prisma.whatsAppMessage.create({
       data: {
         organizationId: orgA,
@@ -527,6 +526,9 @@ describePg('Communication canonical content postgres (C7.2)', () => {
     });
     const existing = await prisma.communicationMessageContent.findFirst({ where: { organizationId: orgA } });
     expect(existing).toBeTruthy();
+
+    const canonical = await prisma.communicationConversation.findFirst({ where: { organizationId: orgA } });
+    expect(canonical).toBeTruthy();
 
     await prisma.communicationConversation.update({
       where: { id: canonical!.id },
@@ -591,7 +593,14 @@ describePg('Communication canonical content postgres (C7.2)', () => {
 
   it('rejects wrong-conversation event attachment', async () => {
     const waConvo = await seedWaConversation(orgA);
-    const canonical = await prisma.communicationConversation.findFirst({ where: { organizationId: orgA } });
+    const canonical = await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: waConvo.id,
+        lastActivityAt: new Date(),
+      },
+    });
     const otherCanonical = await prisma.communicationConversation.create({
       data: {
         organizationId: orgA,
@@ -600,14 +609,21 @@ describePg('Communication canonical content postgres (C7.2)', () => {
         lastActivityAt: new Date(),
       },
     });
-    const event = await prisma.communicationEvent.findFirst({
-      where: { organizationId: orgA, conversationId: canonical!.id },
+    const event = await prisma.communicationEvent.create({
+      data: {
+        organizationId: orgA,
+        conversationId: canonical.id,
+        channel: CommunicationChannel.WHATSAPP,
+        eventType: CommunicationEventType.MESSAGE_RECEIVED,
+        occurredAt: new Date(),
+        providerMessageId: `wamid.wrongconvo.${Date.now()}`,
+      },
     });
 
     const result = await contentService.projectWhatsAppMessage({
       organizationId: orgA,
       conversationId: otherCanonical.id,
-      communicationEventId: event!.id,
+      communicationEventId: event.id,
       eventType: CommunicationEventType.MESSAGE_RECEIVED,
       message: {
         id: 'native-wrong-convo',
@@ -615,20 +631,26 @@ describePg('Communication canonical content postgres (C7.2)', () => {
         messageType: 'text',
         direction: 'incoming',
       } as never,
-      occurredAt: event!.occurredAt,
+      occurredAt: event.occurredAt,
     });
 
     expect(result.skipped).toBe(true);
-    void waConvo;
   });
 
   it('rejects delivery-event content projection', async () => {
     const waConvo = await seedWaConversation(orgA);
-    const canonical = await prisma.communicationConversation.findFirst({ where: { organizationId: orgA } });
+    const canonical = await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: waConvo.id,
+        lastActivityAt: new Date(),
+      },
+    });
     const deliveryEvent = await prisma.communicationEvent.create({
       data: {
         organizationId: orgA,
-        conversationId: canonical!.id,
+        conversationId: canonical.id,
         channel: CommunicationChannel.WHATSAPP,
         eventType: CommunicationEventType.MESSAGE_DELIVERED,
         occurredAt: new Date(),
@@ -930,14 +952,21 @@ describePg('Communication canonical content postgres (C7.2)', () => {
 
   it('M — timeline list uses bounded query count for 50 events with content', async () => {
     const waConvo = await seedWaConversation(orgA);
-    const canonical = await prisma.communicationConversation.findFirst({ where: { organizationId: orgA } });
+    const canonical = await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: waConvo.id,
+        lastActivityAt: new Date(),
+      },
+    });
     const base = Date.now();
 
     for (let i = 0; i < 50; i += 1) {
       const event = await prisma.communicationEvent.create({
         data: {
           organizationId: orgA,
-          conversationId: canonical!.id,
+          conversationId: canonical.id,
           channel: CommunicationChannel.WHATSAPP,
           eventType: CommunicationEventType.MESSAGE_RECEIVED,
           occurredAt: new Date(base - i * 1000),
@@ -947,7 +976,7 @@ describePg('Communication canonical content postgres (C7.2)', () => {
       await prisma.communicationMessageContent.create({
         data: {
           organizationId: orgA,
-          conversationId: canonical!.id,
+          conversationId: canonical.id,
           communicationEventId: event.id,
           channel: CommunicationChannel.WHATSAPP,
           direction: 'INBOUND',
@@ -1076,6 +1105,14 @@ describePg('Communication canonical content postgres (C7.2)', () => {
 
   it('T — backfill without deterministic match stays unresolved', async () => {
     const smsConvo = await seedSmsConversation(orgA);
+    await prisma.communicationConversation.create({
+      data: {
+        organizationId: orgA,
+        channel: CommunicationChannel.SMS,
+        nativeConversationId: smsConvo.id,
+        lastActivityAt: new Date(),
+      },
+    });
     await prisma.smsMessage.create({
       data: {
         organizationId: orgA,

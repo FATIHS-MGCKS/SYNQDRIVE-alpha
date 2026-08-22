@@ -204,30 +204,30 @@ export class CommunicationContentRepository {
     tx?: Prisma.TransactionClient,
   ): Promise<void> {
     const client = tx ?? this.prisma;
+    const winCondition = Prisma.sql`
+      COALESCE(last_content_at, TIMESTAMP 'epoch') < ${input.occurredAt}
+      OR (last_content_at = ${input.occurredAt} AND COALESCE(last_content_id, '') < ${input.contentId})
+    `;
+
+    if (input.preview === null) {
+      await client.$executeRaw`
+        UPDATE communication_conversations
+        SET
+          last_content_at = CASE WHEN ${winCondition} THEN ${input.occurredAt} ELSE last_content_at END,
+          last_content_id = CASE WHEN ${winCondition} THEN ${input.contentId} ELSE last_content_id END,
+          updated_at = NOW()
+        WHERE id = ${input.conversationId}
+          AND organization_id = ${input.organizationId}
+      `;
+      return;
+    }
 
     await client.$executeRaw`
       UPDATE communication_conversations
       SET
-        last_content_at = CASE
-          WHEN COALESCE(last_content_at, TIMESTAMP 'epoch') < ${input.occurredAt}
-            OR (last_content_at = ${input.occurredAt} AND COALESCE(last_content_id, '') < ${input.contentId})
-            THEN ${input.occurredAt}
-          ELSE last_content_at
-        END,
-        last_content_id = CASE
-          WHEN COALESCE(last_content_at, TIMESTAMP 'epoch') < ${input.occurredAt}
-            OR (last_content_at = ${input.occurredAt} AND COALESCE(last_content_id, '') < ${input.contentId})
-            THEN ${input.contentId}
-          ELSE last_content_id
-        END,
-        last_message_preview = CASE
-          WHEN (
-            COALESCE(last_content_at, TIMESTAMP 'epoch') < ${input.occurredAt}
-            OR (last_content_at = ${input.occurredAt} AND COALESCE(last_content_id, '') < ${input.contentId})
-          ) AND ${input.preview} IS NOT NULL
-            THEN ${input.preview}
-          ELSE last_message_preview
-        END,
+        last_content_at = CASE WHEN ${winCondition} THEN ${input.occurredAt} ELSE last_content_at END,
+        last_content_id = CASE WHEN ${winCondition} THEN ${input.contentId} ELSE last_content_id END,
+        last_message_preview = CASE WHEN ${winCondition} THEN ${input.preview} ELSE last_message_preview END,
         updated_at = NOW()
       WHERE id = ${input.conversationId}
         AND organization_id = ${input.organizationId}
