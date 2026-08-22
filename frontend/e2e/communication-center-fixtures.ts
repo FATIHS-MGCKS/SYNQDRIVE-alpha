@@ -126,6 +126,16 @@ export async function installCommunicationMocks(
       });
     }
 
+    if (url.includes('/communication/conversations/attention-preview')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: options?.empty ? [] : mockConversations,
+        }),
+      });
+    }
+
     if (url.includes('/communication/conversations/') && url.includes('/events')) {
       const conversationId = url.match(/conversations\/([^/]+)\/events/)?.[1];
       const params = new URL(url).searchParams;
@@ -162,7 +172,11 @@ export async function installCommunicationMocks(
       });
     }
 
-    if (url.match(/\/communication\/conversations\/[^/]+$/) && !url.includes('/summary')) {
+    if (
+      url.match(/\/communication\/conversations\/[^/]+$/) &&
+      !url.includes('/summary') &&
+      !url.includes('attention-preview')
+    ) {
       const conversationId = url.match(/conversations\/([^/?]+)/)?.[1];
       if (options?.detailNotFound) {
         return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
@@ -211,6 +225,8 @@ export async function installCommunicationMocks(
       const channel = params.get('channel');
       const unreadOnly = params.get('unreadOnly') === 'true';
       const cursor = params.get('cursor');
+      const limit = Number(params.get('limit') ?? '0');
+      const returnFullList = limit >= 30;
 
       if (options?.searchRace && search) {
         const delayMs = search === 'A' ? 1500 : 100;
@@ -286,7 +302,7 @@ export async function installCommunicationMocks(
         });
       }
 
-      if (!options?.empty && !cursor && items.length > 0) {
+      if (!options?.empty && !cursor && items.length > 0 && !returnFullList) {
         return route.fulfill({
           status: 200,
           contentType: 'application/json',

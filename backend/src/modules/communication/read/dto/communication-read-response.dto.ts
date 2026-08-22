@@ -73,6 +73,10 @@ export class CommunicationConversationListResponseDto {
   hasMore!: boolean;
 }
 
+export class CommunicationAttentionPreviewResponseDto {
+  items!: CommunicationConversationListItemDto[];
+}
+
 export class CommunicationEventListResponseDto {
   items!: CommunicationEventDto[];
   nextCursor!: string | null;

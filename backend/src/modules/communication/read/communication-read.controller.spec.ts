@@ -7,6 +7,7 @@ describe('CommunicationReadController', () => {
     getConversation: jest.fn(),
     listConversationEvents: jest.fn(),
     summarizeConversations: jest.fn(),
+    listAttentionPreview: jest.fn(),
   } as unknown as CommunicationReadService;
 
   const controller = new CommunicationReadController(service);

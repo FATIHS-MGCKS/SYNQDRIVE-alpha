@@ -150,6 +150,15 @@ export class CommunicationConversationListQueryDto {
   limit?: number;
 }
 
+export class CommunicationAttentionPreviewQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  limit?: number;
+}
+
 export class CommunicationEventListQueryDto {
   @IsOptional()
   @Transform(trimEmptyToUndefined)

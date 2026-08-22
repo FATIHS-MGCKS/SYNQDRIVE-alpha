@@ -27,6 +27,7 @@ export { FinanceKpiStrip } from './FinanceKpiStrip';
 export { ActionQueue } from './ActionQueue';
 export { DashboardAttentionStack } from './attention/DashboardAttentionStack';
 export { DashboardTasksOverviewPanel } from './DashboardTasksOverviewPanel';
+export { CommunicationDashboardWidget } from './communication/CommunicationDashboardWidget';
 export { DashboardUtilizationPanel } from './utilization/DashboardUtilizationPanel';
 export { OperationsAttentionPanel } from './attention/OperationsAttentionPanel';
 export { FleetReadinessAttentionPanel } from './attention/FleetReadinessAttentionPanel';

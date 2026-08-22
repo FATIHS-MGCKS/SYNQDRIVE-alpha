@@ -662,6 +662,100 @@ describePg('Communication read API postgres', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('AP1 — attention preview returns HUMAN_REQUIRED outside recent list window', async () => {
+    const base = new Date('2026-08-22T12:00:00.000Z');
+    for (let index = 0; index < 35; index += 1) {
+      await seedConversation({
+        orgId: orgA,
+        suffix: `recent-${index}`,
+        status: CommunicationConversationStatus.AI_ACTIVE,
+        unreadCount: index % 3 === 0 ? 1 : 0,
+        lastActivityAt: new Date(base.getTime() + index * 60_000),
+        assignedUserId: index % 5 === 0 ? null : undefined,
+      });
+    }
+
+    const humanRequired = await seedConversation({
+      orgId: orgA,
+      suffix: 'human-outside-window',
+      status: CommunicationConversationStatus.HUMAN_REQUIRED,
+      unreadCount: 0,
+      lastActivityAt: new Date('2026-08-21T08:00:00.000Z'),
+    });
+
+    const preview = await service.listAttentionPreview(orgA, { limit: 5 });
+    expect(preview.items[0]!.id).toBe(humanRequired.id);
+    expect(preview.items).toHaveLength(5);
+  });
+
+  it('AP2 — attention preview fills tiers deterministically and dedupes', async () => {
+    const base = new Date('2026-08-22T10:00:00.000Z');
+    const humanA = await seedConversation({
+      orgId: orgA,
+      suffix: 'human-a',
+      status: CommunicationConversationStatus.HUMAN_REQUIRED,
+      lastActivityAt: new Date(base.getTime() + 4_000),
+    });
+    const humanB = await seedConversation({
+      orgId: orgA,
+      suffix: 'human-b',
+      status: CommunicationConversationStatus.HUMAN_REQUIRED,
+      lastActivityAt: new Date(base.getTime() + 3_000),
+    });
+    const unreadUnassignedA = await seedConversation({
+      orgId: orgA,
+      suffix: 'uu-a',
+      unreadCount: 2,
+      assignedUserId: null,
+      lastActivityAt: new Date(base.getTime() + 2_000),
+    });
+    const unreadUnassignedB = await seedConversation({
+      orgId: orgA,
+      suffix: 'uu-b',
+      unreadCount: 1,
+      assignedUserId: null,
+      lastActivityAt: new Date(base.getTime() + 1_000),
+    });
+    const unreadAssigned = await seedConversation({
+      orgId: orgA,
+      suffix: 'u-assigned',
+      unreadCount: 3,
+      lastActivityAt: new Date(base.getTime() + 5_000),
+    });
+    for (let index = 0; index < 5; index += 1) {
+      await seedConversation({
+        orgId: orgA,
+        suffix: `unassigned-${index}`,
+        assignedUserId: null,
+        unreadCount: 0,
+        lastActivityAt: new Date(base.getTime() - (index + 1) * 1_000),
+      });
+    }
+
+    const preview = await service.listAttentionPreview(orgA, { limit: 5 });
+    expect(preview.items.map((item) => item.id)).toEqual([
+      humanA.id,
+      humanB.id,
+      unreadUnassignedA.id,
+      unreadUnassignedB.id,
+      unreadAssigned.id,
+    ]);
+  });
+
+  it('AP3 — attention preview excludes terminal unassigned-only conversations', async () => {
+    await seedConversation({
+      orgId: orgA,
+      suffix: 'resolved-unassigned',
+      status: CommunicationConversationStatus.RESOLVED,
+      assignedUserId: null,
+      unreadCount: 0,
+      lastActivityAt: new Date('2026-08-22T10:00:00.000Z'),
+    });
+
+    const preview = await service.listAttentionPreview(orgA, { limit: 5 });
+    expect(preview.items).toHaveLength(0);
+  });
+
   it('H6 — recursive PII keys absent from public list/detail/events', async () => {
     const conv = await seedConversation({
       orgId: orgA,
