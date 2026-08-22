@@ -346,6 +346,12 @@ const P224_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-damage-capture-i18n.ts',
 ];
 
+const P225_ENFORCE_CLEAN_EXACT = [
+  'operator/verification/OperatorPickupCheckSheet.tsx',
+  'operator/lib/operator-pickup-check-i18n.ts',
+  'operator/verification/operatorPickupCheckPayload.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -440,6 +446,10 @@ function isP223EnforceCleanPath(relPath: string): boolean {
 
 function isP224EnforceCleanPath(relPath: string): boolean {
   return P224_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP225EnforceCleanPath(relPath: string): boolean {
+  return P225_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -686,6 +696,25 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP224EnforceCleanPath(finding.file),
     );
     expect(p224Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.25 enforce-clean findings to Operator Pickup Verification only', () => {
+    const p225Debt = inventory.findings.filter((finding) =>
+      isP225EnforceCleanPath(finding.file),
+    );
+    expect(p225Debt).toHaveLength(0);
+  });
+
+  it('keeps operator-pickup-check-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/lib/operator-pickup-check-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('operatorPickupCheckFieldLabel');
+    expect(source).not.toMatch(/'Ausweis gesehen'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps operator-damage-capture-i18n.ts on canonical translation keys', () => {

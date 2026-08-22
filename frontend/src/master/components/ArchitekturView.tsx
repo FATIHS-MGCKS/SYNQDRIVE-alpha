@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Pickup Verification (P2.2.25 — V4.9.952)', icon: Globe,
+    endpoint: 'OperatorPickupCheckSheet.tsx, operator-pickup-check-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → pickup manual verification sheet (`pickup-verification` action); `operator-pickup-check-i18n.ts` checklist field label map. **Keys:** +18 EN+DE `operator.pickupCheck.*` (8335→8353); reuses `common.cancel`, `common.close`, `common.saving`. **Machine values:** `ManualPickupCheckDto` boolean field keys, defaults, notes, customer/booking IDs frozen. **Guardrails:** P2.2.25 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-pickup-check-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-25-operator-pickup-verification-implementation-2026-08-23.md; architecture/I18N_OPERATOR_PICKUP_VERIFICATION_P2_2_25_2026-08-23.md' },
   { name: 'Platform i18n Operator Damage Capture (P2.2.24 — V4.9.951)', icon: Globe,
     endpoint: 'OperatorDamageCaptureFlow.tsx, operator-damage-capture-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → four-step damage capture wizard (photo/details/review/submit); `operator-damage-capture-i18n.ts` step + enum label maps + validation messages. **Keys:** +71 EN+DE `operator.damageCapture.*` (8264→8335); reuses `common.back`, `common.close`, `invoices.list.emptyValue`. **Machine values:** step IDs, damage type/severity/rental-impact enums, location chip IDs, photo upload refs, `buildOperatorDamagePayload` output frozen. **Guardrails:** P2.2.24 enforce-clean exact (6 paths) — 0 findings. **Tests:** `operator-damage-capture-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
