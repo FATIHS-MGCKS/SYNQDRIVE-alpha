@@ -4168,6 +4168,9 @@ export const api = {
     createTemplate: (orgId: string, data: WhatsAppTemplateCreatePayload) =>
       post<WhatsAppTemplate>(`/organizations/${orgId}/whatsapp/templates`, data),
   },
+  sms: {
+    getConfig: (orgId: string) => get<SmsConfig>(`/organizations/${orgId}/sms/config`),
+  },
   communication: {
     listConversations: (
       orgId: string,
@@ -11644,6 +11647,19 @@ export type FleetChatResponseType = (typeof FLEET_CHAT_RESPONSE_TYPES)[number];
 export interface ChatAgentInfo {
   agent: { agentName: string; dimoAgentId: string; createdAt: string } | null;
   messageCount: number;
+}
+
+export interface SmsConfig {
+  organizationId: string;
+  hasConfigRow: boolean;
+  isConnected: boolean;
+  isActive: boolean;
+  credentialsConfigured: boolean;
+  webhookSigningConfigured: boolean;
+  senderProfileConfigured: boolean;
+  webhookEndpointConfigured: boolean;
+  lastWebhookAt: string | null;
+  updatedAt: string | null;
 }
 
 export interface WhatsAppConfig {
