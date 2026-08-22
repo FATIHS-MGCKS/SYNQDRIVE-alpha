@@ -171,7 +171,7 @@ describe('taskDetailChecklist.utils', () => {
     const progress = inferTaskChecklistProgress(
       baseTask({ id: 't1', title: 'Check', type: 'CUSTOM', status: 'IN_PROGRESS' }),
     );
-    expect(formatChecklistProgressLabel(progress)).toBe('2 von 4 erledigt');
+    expect(formatChecklistProgressLabel('de', progress)).toBe('2 von 4 erledigt');
     expect(computeChecklistProgressPercent(progress)).toBe(50);
   });
 
@@ -180,7 +180,7 @@ describe('taskDetailChecklist.utils', () => {
       baseTask({ id: 't2', title: 'Check', type: 'CUSTOM', status: 'IN_PROGRESS' }),
     );
     expect(resolveChecklistDisplayMode(detail)).toBe('editable');
-    const model = buildTaskDetailChecklistModel(detail);
+    const model = buildTaskDetailChecklistModel(detail, 'de');
     expect(model?.canEditItems).toBe(true);
     expect(model?.showAsInteractive).toBe(true);
   });
@@ -208,7 +208,7 @@ describe('taskDetailChecklist.utils', () => {
       summary: { ...normalizedDetail(task).summary, status: 'DONE' },
     });
     expect(resolveChecklistDisplayMode(detail)).toBe('readOnly');
-    expect(buildTaskDetailChecklistModel(detail)?.canEditItems).toBe(false);
+    expect(buildTaskDetailChecklistModel(detail, 'de')?.canEditItems).toBe(false);
   });
 
   it('shows legacy DONE hint when closed task still has open checklist items', () => {
@@ -217,7 +217,7 @@ describe('taskDetailChecklist.utils', () => {
       { summary: { ...normalizedDetail(baseTask({ id: 't4', title: 'Legacy', type: 'CUSTOM', status: 'DONE' })).summary, status: 'DONE' } },
     );
     expect(isLegacyDoneWithOpenChecklist(detail)).toBe(true);
-    const model = buildTaskDetailChecklistModel(detail);
+    const model = buildTaskDetailChecklistModel(detail, 'de');
     expect(model?.mode).toBe('documentationOnly');
     expect(model?.legacyClosedHint).toContain('älterer Logik');
     expect(model?.canEditItems).toBe(false);
@@ -240,7 +240,7 @@ describe('taskDetailChecklist.utils', () => {
       },
     );
     expect(resolveChecklistDisplayMode(autoResolved)).toBe('documentationOnly');
-    expect(buildTaskDetailChecklistModel(autoResolved)?.showAsInteractive).toBe(false);
+    expect(buildTaskDetailChecklistModel(autoResolved, 'de')?.showAsInteractive).toBe(false);
 
     const superseded = normalizedDetail(
       baseTask({ id: 't6', title: 'Superseded', type: 'CUSTOM', status: 'DONE' }),
@@ -261,7 +261,7 @@ describe('taskDetailChecklist.utils', () => {
     const detail = normalizedDetail(
       baseTask({ id: 't7', title: 'Blocked', type: 'CUSTOM', status: 'IN_PROGRESS' }),
     );
-    const model = buildTaskDetailChecklistModel(detail);
+    const model = buildTaskDetailChecklistModel(detail, 'de');
     expect(model?.openRequiredTitles).toEqual(['Pflicht offen']);
     expect(model?.blockerLabel).toBe('Pflichtpunkt offen: Pflicht offen');
   });

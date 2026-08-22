@@ -1,5 +1,10 @@
 import type { ApiTaskStatus, ApiTaskType } from '../../lib/api';
+import type { SupportedLocale } from '../../i18n/locales';
 import { apiTaskStatusLabelDe } from '../../lib/tasks/task-labels';
+import {
+  formatTaskDetailDate,
+  formatTaskDetailDateTime,
+} from '../../lib/tasks/task-detail-presentation-i18n';
 import type { StatusTone } from '../../components/patterns';
 
 /** Mirrors backend `RESOLUTION_REQUIRED_TYPES` in tasks.service.ts */
@@ -37,24 +42,17 @@ export function taskStatusTone(status: ApiTaskStatus, isOverdue?: boolean): Stat
   return 'info';
 }
 
-export function formatTaskDateTime(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/** @deprecated Prefer formatTaskDetailDateTime(locale, iso) for locale-aware presentation. */
+export function formatTaskDateTime(
+  iso?: string | null,
+  locale: SupportedLocale = 'de',
+): string {
+  return formatTaskDetailDateTime(locale, iso);
 }
 
-export function formatTaskDate(iso?: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+/** @deprecated Prefer formatTaskDetailDate(locale, iso) for locale-aware presentation. */
+export function formatTaskDate(iso?: string | null, locale: SupportedLocale = 'de'): string {
+  return formatTaskDetailDate(locale, iso);
 }
 
 export function toDateInputValue(iso?: string | null): string {

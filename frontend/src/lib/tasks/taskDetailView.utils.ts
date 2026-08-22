@@ -2,16 +2,25 @@ import type { SupportedLocale } from '../../i18n/locales';
 import type { TimelineItem } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns/status-utils';
 import {
-  formatTaskDate,
-  formatTaskDateTime,
   isActiveTaskStatus,
   isTerminalTaskStatus,
-  taskStatusLabelDe,
   taskStatusTone,
 } from '../../rental/lib/task-detail.utils';
 import { shortTaskId } from '../../rental/lib/task-list.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../rental/lib/task-display.utils';
-import { formatOperatorTaskDue } from '../../operator/tasks/operatorTask.utils';
+import {
+  formatTaskDetailDate,
+  formatTaskDetailDateTime,
+  formatTaskDetailDueCompact,
+  taskDetailEmDash,
+  taskDetailLinkedObjectTypeLabel,
+  taskDetailStatusLabel,
+  taskDetailTimingActiveFromLabel,
+  taskDetailTimingDueLabel,
+  taskDetailTypeLabel,
+  taskDetailUnassignedLabel,
+  tdp,
+} from './task-detail-presentation-i18n';
 import { buildTaskDetailChecklistModel, type TaskDetailChecklistModel } from './taskDetailChecklist.utils';
 import { buildTaskCommentAuthorLabel, buildTaskTimelineItems } from './taskTimeline.utils';
 import type {
@@ -126,18 +135,6 @@ export interface TaskDetailViewModel {
   };
 }
 
-const LINKED_OBJECT_TYPE_LABELS: Record<TaskLinkedObject['type'], string> = {
-  VEHICLE: 'Fahrzeug',
-  BOOKING: 'Buchung',
-  CUSTOMER: 'Kunde',
-  INVOICE: 'Rechnung',
-  DOCUMENT: 'Dokument',
-  ALERT: 'Hinweis',
-  SERVICE_CASE: 'Servicefall',
-  FINE: 'Bußgeld',
-  VENDOR: 'Partner',
-};
-
 const LINKED_OBJECT_ORDER: TaskLinkedObject['type'][] = [
   'VEHICLE',
   'BOOKING',
@@ -213,10 +210,17 @@ export function inferTaskChecklistProgress(task: ApiTask): TaskChecklistProgress
   };
 }
 
-function resolveTimingLabel(detail: ApiTaskDetail, now: Date): { label: string | null; warn: boolean } {
+function resolveTimingLabel(
+  detail: ApiTaskDetail,
+  locale: SupportedLocale,
+  now: Date,
+): { label: string | null; warn: boolean } {
   if (detail.timing.dueDate) {
     return {
-      label: `Fällig ${formatOperatorTaskDue(detail.timing.dueDate)}`,
+      label: taskDetailTimingDueLabel(
+        locale,
+        formatTaskDetailDueCompact(locale, detail.timing.dueDate),
+      ),
       warn: detail.timing.isOverdue,
     };
   }
@@ -226,7 +230,10 @@ function resolveTimingLabel(detail: ApiTaskDetail, now: Date): { label: string |
     const activeAt = new Date(activatesAt);
     if (!Number.isNaN(activeAt.getTime()) && activeAt.getTime() > now.getTime()) {
       return {
-        label: `Aktiv ab ${formatOperatorTaskDue(activatesAt)}`,
+        label: taskDetailTimingActiveFromLabel(
+          locale,
+          formatTaskDetailDueCompact(locale, activatesAt),
+        ),
         warn: false,
       };
     }
@@ -239,11 +246,11 @@ function shouldShowPriority(detail: ApiTaskDetail): boolean {
   return detail.summary.priority === 'CRITICAL' || detail.summary.priority === 'HIGH' || detail.timing.isOverdue;
 }
 
-function mapLinkedObject(row: TaskLinkedObject): TaskDetailLinkedObjectModel {
+function mapLinkedObject(row: TaskLinkedObject, locale: SupportedLocale): TaskDetailLinkedObjectModel {
   return {
     id: row.id,
     type: row.type,
-    typeLabel: LINKED_OBJECT_TYPE_LABELS[row.type] ?? row.type,
+    typeLabel: taskDetailLinkedObjectTypeLabel(locale, row.type),
     primaryLabel: row.primaryLabel,
     secondaryLabel: row.secondaryLabel ?? null,
     statusLabel: row.statusLabel ?? null,
@@ -273,13 +280,14 @@ function mapNextStep(detail: ApiTaskDetail): TaskDetailNextStepModel | null {
   };
 }
 
-function buildReason(detail: ApiTaskDetail): TaskDetailReasonModel {
+function buildReason(detail: ApiTaskDetail, locale: SupportedLocale): TaskDetailReasonModel {
   const detectedAt = detail.reason.detectedAt;
   return {
     headline: detail.reason.title,
-    description: detail.reason.description?.trim() || 'Keine Beschreibung hinterlegt.',
+    description:
+      detail.reason.description?.trim() || tdp(locale, 'tasks.detail.reason.noDescription'),
     basis: sanitizeReasonBasis(detail.reason.basis),
-    detectedAtLabel: detectedAt ? formatTaskDateTime(detectedAt) : null,
+    detectedAtLabel: detectedAt ? formatTaskDetailDateTime(locale, detectedAt) : null,
     humanReadableSource: detail.summary.humanReadableSource,
   };
 }
@@ -297,59 +305,76 @@ function buildTechnicalRows(
   detail: ApiTaskDetail,
   options: TaskDetailViewModelOptions,
 ): TaskDetailTechnicalModel {
-  const members = options.orgMembers ?? [];
+  const locale = options.locale;
   const rows: TaskDetailTechnicalRow[] = [
-    { label: 'Referenz', value: shortTaskId(detail.summary.id) },
-    { label: 'Typ', value: detail.summary.type.replace(/_/g, ' ') },
-    { label: 'Quelle', value: detail.summary.humanReadableSource },
+    { label: tdp(locale, 'tasks.detail.technical.reference'), value: shortTaskId(detail.summary.id) },
+    {
+      label: tdp(locale, 'tasks.detail.technical.type'),
+      value: taskDetailTypeLabel(locale, {
+        type: detail.summary.type,
+        category: detail.category,
+        metadata: detail.technicalMetadata.metadata ?? null,
+      }),
+    },
+    { label: tdp(locale, 'tasks.detail.technical.source'), value: detail.summary.humanReadableSource },
   ];
 
   if (detail.technicalMetadata.source) {
-    rows.push({ label: 'Rohquelle', value: detail.technicalMetadata.source });
+    rows.push({
+      label: tdp(locale, 'tasks.detail.technical.rawSource'),
+      value: detail.technicalMetadata.source,
+    });
   }
 
   if (detail.technicalMetadata.dedupKey) {
-    rows.push({ label: 'Dedup-Schlüssel', value: detail.technicalMetadata.dedupKey });
+    rows.push({
+      label: tdp(locale, 'tasks.detail.technical.dedupKey'),
+      value: detail.technicalMetadata.dedupKey,
+    });
   }
 
   rows.push({
-    label: 'Zugewiesen an',
-    value: detail.assignment.assignedUser?.displayName ?? 'Nicht zugewiesen',
+    label: tdp(locale, 'tasks.detail.technical.assignedTo'),
+    value:
+      detail.assignment.assignedUser?.displayName ?? taskDetailUnassignedLabel(locale),
   });
 
   rows.push({
-    label: 'Erstellt von',
-    value: detail.assignment.createdBy?.displayName ?? '—',
+    label: tdp(locale, 'tasks.detail.technical.createdBy'),
+    value: detail.assignment.createdBy?.displayName ?? taskDetailEmDash(locale),
   });
 
   if (detail.assignment.responsibleRoleLabel) {
-    rows.push({ label: 'Rolle', value: detail.assignment.responsibleRoleLabel });
+    rows.push({ label: tdp(locale, 'tasks.detail.technical.role'), value: detail.assignment.responsibleRoleLabel });
   }
 
   rows.push({
-    label: 'Erstellt am',
-    value: formatTaskDateTime(detail.timing.createdAt),
+    label: tdp(locale, 'tasks.detail.metaCreated'),
+    value: formatTaskDetailDateTime(locale, detail.timing.createdAt),
   });
 
   rows.push({
-    label: 'Fällig am',
-    value: formatTaskDate(detail.timing.dueDate),
+    label: tdp(locale, 'tasks.detail.metaDue'),
+    value: formatTaskDetailDate(locale, detail.timing.dueDate),
     highlight: detail.timing.isOverdue,
   });
 
   if (options.stationLabel) {
-    rows.push({ label: 'Station', value: options.stationLabel });
+    rows.push({ label: tdp(locale, 'tasks.form.station'), value: options.stationLabel });
   }
 
   if (detail.timing.completedAt) {
     rows.push({
-      label: 'Abgeschlossen',
-      value: formatTaskDateTime(detail.timing.completedAt),
+      label: tdp(locale, 'tasks.detail.metaCompleted'),
+      value: formatTaskDetailDateTime(locale, detail.timing.completedAt),
     });
   }
 
   if (detail.completion.resolutionNote) {
-    rows.push({ label: 'Abschluss-Notiz', value: detail.completion.resolutionNote });
+    rows.push({
+      label: tdp(locale, 'tasks.detail.technical.resolutionNote'),
+      value: detail.completion.resolutionNote,
+    });
   }
 
   return {
@@ -362,13 +387,14 @@ export function buildTaskDetailViewModel(
   detail: ApiTaskDetail,
   options: TaskDetailViewModelOptions,
 ): TaskDetailViewModel {
+  const locale = options.locale;
   const now = options.now ?? new Date();
-  const timing = resolveTimingLabel(detail, now);
+  const timing = resolveTimingLabel(detail, locale, now);
   const priorityLabel =
     options.priorityLabel ??
-    vehicleTaskPriorityLabel(mapApiPriority(detail.summary.priority));
+    vehicleTaskPriorityLabel(mapApiPriority(detail.summary.priority), locale);
 
-  const checklist = buildTaskDetailChecklistModel(detail, now);
+  const checklist = buildTaskDetailChecklistModel(detail, locale, now);
 
   const members = options.orgMembers ?? [];
   const comments = (detail.comments ?? []).map((comment) => ({
@@ -378,10 +404,10 @@ export function buildTaskDetailViewModel(
       comment.userId,
       members,
       null,
-      options.locale,
+      locale,
     ),
     createdAt: comment.createdAt,
-    createdAtLabel: formatTaskDateTime(comment.createdAt),
+    createdAtLabel: formatTaskDetailDateTime(locale, comment.createdAt),
   }));
 
   return {
@@ -391,7 +417,7 @@ export function buildTaskDetailViewModel(
       eyebrow: options.eyebrow ?? null,
       subtitle: options.subtitle ?? shortTaskId(detail.summary.id),
       status: detail.summary.status,
-      statusLabel: taskStatusLabelDe(detail.summary.status),
+      statusLabel: taskDetailStatusLabel(locale, detail.summary.status),
       statusTone: taskStatusTone(detail.summary.status, detail.timing.isOverdue),
       priority: detail.summary.priority,
       priorityLabel,
@@ -400,10 +426,10 @@ export function buildTaskDetailViewModel(
       timingWarn: timing.warn,
       category: options.category ?? detail.category ?? null,
     },
-    reason: buildReason(detail),
+    reason: buildReason(detail, locale),
     nextStep: mapNextStep(detail),
     checklist,
-    linkedObjects: sortLinkedObjects(detail.linkedObjects).map(mapLinkedObject),
+    linkedObjects: sortLinkedObjects(detail.linkedObjects).map((row) => mapLinkedObject(row, locale)),
     comments,
     timeline: buildTimeline(detail, options),
     attachments: detail.attachments ?? [],

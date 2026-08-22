@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { PriorityBadge, SectionHeader, StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TaskDetailLinkedObjectModel, TaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailChecklistSection } from './TaskDetailChecklistSection';
 import { TaskDetailNotesActivitySection, type TaskNotesActivityTab } from './TaskDetailNotesActivitySection';
@@ -148,6 +149,7 @@ export function TaskDetailCompactHeader({
   sticky = false,
   onClose,
 }: TaskDetailCompactHeaderProps) {
+  const { t } = useLanguage();
   const { header, flags } = model;
 
   return (
@@ -178,7 +180,7 @@ export function TaskDetailCompactHeader({
                 type="button"
                 onClick={onClose}
                 className="sq-press flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/50 text-foreground shadow-sm transition-colors hover:bg-muted"
-                aria-label="Schließen"
+                aria-label={t('common.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -188,13 +190,13 @@ export function TaskDetailCompactHeader({
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusChip tone={header.statusTone} dot={mobile}>
               {header.statusLabel}
-              {flags.isOverdue && !flags.isTerminal ? ' · Überfällig' : ''}
+              {flags.isOverdue && !flags.isTerminal ? t('tasks.detail.overdueSuffix') : ''}
             </StatusChip>
             {header.showPriority && (
               <PriorityBadge priority={header.priority} label={header.priorityLabel} />
             )}
             {flags.blocksVehicleAvailability && (
-              <StatusChip tone="critical">Blockiert Verfügbarkeit</StatusChip>
+              <StatusChip tone="critical">{t('tasks.detail.blocksAvailability')}</StatusChip>
             )}
           </div>
 
@@ -225,13 +227,14 @@ function TaskDetailReasonSection({
   model: TaskDetailViewModel;
   mobile: boolean;
 }) {
+  const { t } = useLanguage();
   const { reason } = model;
 
   return (
     <section className="py-4" data-section="reason">
       <SectionHeader
         as="label"
-        title="Warum wurde diese Aufgabe erstellt?"
+        title={t('tasks.detail.section.reason')}
         className="mb-2.5"
       />
       <p className={cn('sq-section-label mb-1.5', mobile ? 'text-xs' : 'text-[11px]')}>
@@ -251,9 +254,13 @@ function TaskDetailReasonSection({
         </p>
       )}
       <div className={cn('mt-2.5 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-        {reason.detectedAtLabel && <span>Erkannt am {reason.detectedAtLabel}</span>}
+        {reason.detectedAtLabel && (
+          <span>{t('tasks.detail.reason.detectedAt', { date: reason.detectedAtLabel })}</span>
+        )}
         {reason.detectedAtLabel && reason.humanReadableSource && <span aria-hidden>·</span>}
-        {reason.humanReadableSource && <span>Auslöser: {reason.humanReadableSource}</span>}
+        {reason.humanReadableSource && (
+          <span>{t('tasks.detail.reason.trigger', { source: reason.humanReadableSource })}</span>
+        )}
       </div>
     </section>
   );
@@ -268,12 +275,13 @@ function TaskDetailNextStepSection({
   mobile: boolean;
   onPrimaryAction?: () => void;
 }) {
+  const { t } = useLanguage();
   const { nextStep } = model;
   if (!nextStep) return null;
 
   return (
     <section className="py-4" data-section="next-step">
-      <SectionHeader as="label" title="Nächster Schritt" className="mb-2.5" />
+      <SectionHeader as="label" title={t('tasks.detail.section.nextStep')} className="mb-2.5" />
       <div
         className={cn(
           'rounded-xl border p-4',
@@ -334,14 +342,15 @@ function TaskDetailLinkedObjectsSection({
   mobile: boolean;
   onObjectClick?: (object: TaskDetailLinkedObjectModel) => void;
 }) {
+  const { t } = useLanguage();
   const { linkedObjects } = model;
 
   return (
     <section className="py-4" data-section="linked-objects">
-      <SectionHeader as="label" title="Verknüpfte Objekte" className="mb-2.5" />
+      <SectionHeader as="label" title={t('tasks.detail.section.linkedObjects')} className="mb-2.5" />
       {linkedObjects.length === 0 ? (
         <p className={cn('text-muted-foreground', mobile ? 'text-sm' : 'text-[12px]')}>
-          Keine verknüpften Objekte.
+          {t('tasks.detail.linked.empty')}
         </p>
       ) : (
         <ul className="space-y-1.5">
@@ -413,6 +422,8 @@ function TaskDetailTechnicalSection({
   mobile: boolean;
   extra?: ReactNode;
 }) {
+  const { t } = useLanguage();
+
   return (
     <section className="py-4" data-section="technical">
       <details className="group rounded-lg border border-border/50 bg-muted/10 px-3 py-2">
@@ -422,7 +433,7 @@ function TaskDetailTechnicalSection({
             mobile ? 'text-xs' : 'text-[10px]',
           )}
         >
-          Technische Details
+          {t('tasks.detail.section.technical')}
         </summary>
         <dl className={cn('mt-3 space-y-2', mobile ? 'text-xs' : 'text-[11px]')}>
           {model.technical.rows.map((row) => (

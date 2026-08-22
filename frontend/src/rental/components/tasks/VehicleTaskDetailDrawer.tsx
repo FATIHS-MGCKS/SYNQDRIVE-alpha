@@ -300,15 +300,15 @@ export function VehicleTaskDetailDrawer({
           ) : (
             <div className="space-y-1.5 text-[11px]">
               <MetaRow label={t('tasks.detail.metaAssignee')} value={assigneeName} />
-              <MetaRow label={t('tasks.detail.metaDue')} value={formatTaskDate(detail.dueDate)} highlight={detail.isOverdue} />
-              <MetaRow label={t('tasks.detail.metaCreated')} value={formatTaskDateTime(detail.createdAt)} />
-              <MetaRow label={t('tasks.detail.metaUpdated')} value={formatTaskDateTime(detail.updatedAt)} />
-              {detail.startedAt && <MetaRow label={t('tasks.detail.metaStarted')} value={formatTaskDateTime(detail.startedAt)} />}
+              <MetaRow label={t('tasks.detail.metaDue')} value={formatTaskDate(detail.dueDate, locale)} highlight={detail.isOverdue} />
+              <MetaRow label={t('tasks.detail.metaCreated')} value={formatTaskDateTime(detail.createdAt, locale)} />
+              <MetaRow label={t('tasks.detail.metaUpdated')} value={formatTaskDateTime(detail.updatedAt, locale)} />
+              {detail.startedAt && <MetaRow label={t('tasks.detail.metaStarted')} value={formatTaskDateTime(detail.startedAt, locale)} />}
               {detail.completedAt && (
-                <MetaRow label={t('tasks.detail.metaCompleted')} value={formatTaskDateTime(detail.completedAt)} />
+                <MetaRow label={t('tasks.detail.metaCompleted')} value={formatTaskDateTime(detail.completedAt, locale)} />
               )}
               {detail.cancelledAt && (
-                <MetaRow label={t('tasks.detail.metaCancelled')} value={formatTaskDateTime(detail.cancelledAt)} />
+                <MetaRow label={t('tasks.detail.metaCancelled')} value={formatTaskDateTime(detail.cancelledAt, locale)} />
               )}
             </div>
           )}

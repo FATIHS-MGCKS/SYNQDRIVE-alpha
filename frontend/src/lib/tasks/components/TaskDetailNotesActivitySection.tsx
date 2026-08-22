@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Paperclip } from 'lucide-react';
 import { SectionHeader, Timeline } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TaskDetailCommentModel, TaskDetailViewModel } from '../taskDetailView.utils';
 
 export type TaskNotesActivityTab = 'notes' | 'activity';
@@ -33,6 +34,7 @@ export function TaskDetailNotesActivitySection({
   activeTab: controlledTab,
   onActiveTabChange,
 }: TaskDetailNotesActivitySectionProps) {
+  const { t } = useLanguage();
   const canComment = showCommentForm ?? model.flags.canAddComment;
   const [activeTab, setActiveTab] = useState<TaskNotesActivityTab>('notes');
   const isControlledTab = controlledTab != null;
@@ -75,11 +77,15 @@ export function TaskDetailNotesActivitySection({
     <section className="py-4" data-section="notes-activity">
       {mobile ? (
         <>
-          <SectionHeader as="label" title="Notizen und Aktivität" className="mb-2.5" />
+          <SectionHeader
+            as="label"
+            title={t('tasks.detail.section.notesActivity')}
+            className="mb-2.5"
+          />
           <div
             className="sq-tab-bar sq-tab-bar--inset mb-3 flex p-1"
             role="tablist"
-            aria-label="Notizen und Aktivität"
+            aria-label={t('tasks.detail.notesActivity.tabAria')}
           >
             <button
               type="button"
@@ -93,7 +99,7 @@ export function TaskDetailNotesActivitySection({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              Notizen
+              {t('tasks.detail.section.notes')}
             </button>
             <button
               type="button"
@@ -107,7 +113,7 @@ export function TaskDetailNotesActivitySection({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              Aktivität
+              {t('tasks.detail.section.activity')}
             </button>
           </div>
           <div role="tabpanel">
@@ -115,23 +121,27 @@ export function TaskDetailNotesActivitySection({
           </div>
           {!hasNotes && !hasActivity && currentTab === 'notes' && (
             <p className={cn('mt-2 text-muted-foreground', mobile ? 'text-xs' : 'text-[12px]')}>
-              Noch keine Einträge in diesem Bereich.
+              {t('tasks.detail.notesActivity.empty')}
             </p>
           )}
         </>
       ) : (
         <>
-          <SectionHeader as="label" title="Notizen und Aktivität" className="mb-2.5" />
+          <SectionHeader
+            as="label"
+            title={t('tasks.detail.section.notesActivity')}
+            className="mb-2.5"
+          />
           <div className="grid gap-5 md:grid-cols-2">
             <div>
               <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Notizen
+                {t('tasks.detail.section.notes')}
               </h3>
               {notesPanel}
             </div>
             <div>
               <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Aktivität
+                {t('tasks.detail.section.activity')}
               </h3>
               {activityPanel}
             </div>
@@ -165,6 +175,7 @@ function TaskDetailNotesPanel({
   commentPending?: boolean;
   compactEmpty?: boolean;
 }) {
+  const { t } = useLanguage();
   const sortedComments = useMemo(
     () =>
       [...comments].sort(
@@ -182,8 +193,8 @@ function TaskDetailNotesPanel({
             onChange={(event) => onCommentDraftChange(event.target.value)}
             disabled={commentPending}
             autoFocus={focusComment}
-            placeholder="Notiz hinzufügen …"
-            aria-label="Neue Notiz"
+            placeholder={t('tasks.detail.notes.placeholder')}
+            aria-label={t('tasks.detail.notes.newAria')}
             className={cn(
               'w-full resize-y rounded-lg border border-border surface-premium px-3 py-2',
               mobile ? 'min-h-[72px] text-sm' : 'min-h-[56px] text-[12px]',
@@ -209,13 +220,13 @@ function TaskDetailNotesPanel({
               mobile ? 'min-h-[44px] w-full px-4 text-sm' : 'px-3 py-2 text-[11px]',
             )}
           >
-            {commentPending ? 'Wird gespeichert …' : 'Notiz speichern'}
+            {commentPending ? t('tasks.detail.notes.saving') : t('tasks.detail.notes.save')}
           </button>
         </div>
       )}
 
       {sortedComments.length > 0 ? (
-        <ul className="space-y-2" aria-label="Notizen">
+        <ul className="space-y-2" aria-label={t('tasks.detail.notes.listAria')}>
           {sortedComments.map((comment) => (
             <li
               key={comment.id}
@@ -226,8 +237,7 @@ function TaskDetailNotesPanel({
                 {comment.body}
               </p>
               <p
-                className={cn('mt-1 text-muted-foreground', mobile ? 'text-[10px]' : 'text-[10px]')}
-              >
+                className={cn('mt-1 text-muted-foreground', mobile ? 'text-[10px]' : 'text-[10px]')}>
                 {comment.authorLabel} · {comment.createdAtLabel}
               </p>
             </li>
@@ -235,7 +245,7 @@ function TaskDetailNotesPanel({
         </ul>
       ) : compactEmpty ? (
         <p className={cn('text-muted-foreground', mobile ? 'text-sm' : 'text-[12px]')}>
-          Noch keine Notizen.
+          {t('tasks.detail.notes.empty')}
         </p>
       ) : null}
     </div>
@@ -253,12 +263,14 @@ function TaskDetailActivityPanel({
   resolutionNote: string | null;
   mobile: boolean;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div data-panel="activity">
       {resolutionNote && (
         <div className="mb-3 rounded-lg border border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.05] px-3 py-2.5">
           <p className={cn('font-medium text-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-            Abschluss-Notiz
+            {t('tasks.detail.activity.resolutionNote')}
           </p>
           <p className={cn('mt-1 text-foreground/90', mobile ? 'text-sm' : 'text-[12px]')}>
             {resolutionNote}
@@ -269,7 +281,7 @@ function TaskDetailActivityPanel({
       {attachments.length > 0 && (
         <div className="mb-3">
           <p className={cn('mb-2 font-medium text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-            Anhänge
+            {t('tasks.detail.activity.attachments')}
           </p>
           <ul className="space-y-1.5">
             {attachments.map((attachment) => (
@@ -302,7 +314,7 @@ function TaskDetailActivityPanel({
         </div>
       ) : (
         <p className={cn('text-muted-foreground', mobile ? 'text-sm' : 'text-[12px]')}>
-          Noch keine Aktivität protokolliert.
+          {t('tasks.detail.activity.empty')}
         </p>
       )}
     </div>

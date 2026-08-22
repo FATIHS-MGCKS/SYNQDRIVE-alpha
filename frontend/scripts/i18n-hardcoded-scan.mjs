@@ -261,6 +261,17 @@ const P216B2_ENFORCE_CLEAN_EXACT = new Set([
   'operator/tasks/OperatorTaskDetail.tsx',
 ]);
 
+const P216C1_ENFORCE_CLEAN_EXACT = new Set([
+  'lib/tasks/taskDetailView.utils.ts',
+  'lib/tasks/taskDetailChecklist.utils.ts',
+  'lib/tasks/components/TaskDetailBody.tsx',
+  'lib/tasks/components/TaskDetailShell.tsx',
+  'lib/tasks/components/TaskDetailNotesActivitySection.tsx',
+  'lib/tasks/components/TaskDetailChecklistSection.tsx',
+  'rental/lib/task-detail.utils.ts',
+  'operator/components/OperatorTaskSheet.tsx',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -536,6 +547,10 @@ function isP216B2EnforceCleanPath(relPath) {
   return P216B2_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP216C1EnforceCleanPath(relPath) {
+  return P216C1_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -573,6 +588,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP216AEnforceCleanPath(relPath)) return true;
   if (isP216B1EnforceCleanPath(relPath)) return true;
   if (isP216B2EnforceCleanPath(relPath)) return true;
+  if (isP216C1EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -591,6 +607,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP216AEnforceCleanPath(relPath)) return 'P2.2.16A';
   if (isP216B1EnforceCleanPath(relPath)) return 'P2.2.16B.1';
   if (isP216B2EnforceCleanPath(relPath)) return 'P2.2.16B.2';
+  if (isP216C1EnforceCleanPath(relPath)) return 'P2.2.16C.1';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

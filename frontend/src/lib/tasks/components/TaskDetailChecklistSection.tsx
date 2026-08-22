@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, ChevronDown, ChevronUp, Circle } from 'lucide-react';
 import { SectionHeader } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TaskDetailChecklistModel } from '../taskDetailChecklist.utils';
 
 export interface TaskDetailChecklistSectionProps {
@@ -19,6 +20,7 @@ export function TaskDetailChecklistSection({
   onToggle,
   onRequestOverride,
 }: TaskDetailChecklistSectionProps) {
+  const { t } = useLanguage();
   const {
     mode,
     items,
@@ -46,14 +48,14 @@ export function TaskDetailChecklistSection({
     <section className="py-4" data-section="checklist" data-checklist-mode={mode}>
       <SectionHeader
         as="label"
-        title="Checkliste"
+        title={t('tasks.detail.section.checklist')}
         description={progressLabel}
         className="mb-2.5"
       />
 
       <div className="mb-3">
         <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Fortschritt</span>
+          <span>{t('tasks.detail.checklist.progress')}</span>
           <span>{progressPercent}%</span>
         </div>
         <div
@@ -62,7 +64,7 @@ export function TaskDetailChecklistSection({
           aria-valuenow={progressPercent}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Checklistenfortschritt: ${progressLabel}`}
+          aria-label={t('tasks.detail.checklist.progressAria', { label: progressLabel })}
         >
           <div
             className="h-full rounded-full bg-[color:var(--status-positive)] transition-all"
@@ -102,7 +104,7 @@ export function TaskDetailChecklistSection({
         </div>
       )}
 
-      <ul className="space-y-1.5" role="list" aria-label="Checklistenpunkte">
+      <ul className="space-y-1.5" role="list" aria-label={t('tasks.detail.checklist.itemsAria')}>
         {items.map((item) => {
           const pending = pendingItemIds?.has(item.id) ?? false;
           const interactive = showAsInteractive && Boolean(onToggle) && canEditItems;
@@ -187,7 +189,7 @@ export function TaskDetailChecklistSection({
                           mobile ? 'text-[10px]' : 'text-[10px]',
                         )}
                       >
-                        Pflicht
+                        {t('tasks.detail.checklist.required')}
                       </span>
                     ) : (
                       <span
@@ -196,7 +198,7 @@ export function TaskDetailChecklistSection({
                           mobile ? 'text-[10px]' : 'text-[10px]',
                         )}
                       >
-                        Optional
+                        {t('tasks.detail.checklist.optional')}
                       </span>
                     )}
 
@@ -214,12 +216,12 @@ export function TaskDetailChecklistSection({
                         >
                           {descriptionExpanded ? (
                             <>
-                              Beschreibung ausblenden
+                              {t('tasks.detail.checklist.hideDescription')}
                               <ChevronUp className="h-3.5 w-3.5" aria-hidden />
                             </>
                           ) : (
                             <>
-                              Beschreibung anzeigen
+                              {t('tasks.detail.checklist.showDescription')}
                               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
                             </>
                           )}
@@ -240,7 +242,7 @@ export function TaskDetailChecklistSection({
 
                     {pending && (
                       <span className="sr-only" role="status">
-                        Wird gespeichert
+                        {t('tasks.detail.checklist.saving')}
                       </span>
                     )}
                   </div>
@@ -261,7 +263,7 @@ export function TaskDetailChecklistSection({
               mobile ? 'min-h-[44px] px-4 text-sm' : 'min-h-[36px] px-3 text-[12px]',
             )}
           >
-            Trotzdem abschließen (Manager)
+            {t('tasks.detail.checklist.overrideManager')}
           </button>
           {overrideCompletion.disabledReason && (
             <p className={cn('mt-1 text-muted-foreground', mobile ? 'text-xs' : 'text-[10px]')}>
