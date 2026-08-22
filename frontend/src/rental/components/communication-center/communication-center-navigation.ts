@@ -2,6 +2,7 @@ import type {
   CommunicationChannel,
   CommunicationMobilePane,
   CommunicationPrimaryTab,
+  CommunicationSettingsSection,
 } from './communication-center.types';
 import {
   readCommunicationInboxFiltersFromUrl,
@@ -22,15 +23,18 @@ export const COMMUNICATION_CENTER_VIEW = 'communication-center';
 
 export const COMMUNICATION_VIEW_PARAM = 'view';
 export const COMMUNICATION_TAB_PARAM = 'communicationTab';
+export const COMMUNICATION_SETTINGS_PARAM = 'communicationSettings';
 export const COMMUNICATION_CHANNEL_PARAM = 'communicationChannel';
 export const COMMUNICATION_CONVERSATION_PARAM = 'conversationId';
 export const COMMUNICATION_MOBILE_PANE_PARAM = 'communicationPane';
 
 const CHANNELS = new Set<string>(['all', 'whatsapp', 'voice', 'sms']);
 const MOBILE_PANES = new Set<string>(['inbox', 'conversation', 'context']);
+const SETTINGS_SECTIONS = new Set<string>(['overview', 'whatsapp', 'voice', 'sms']);
 
 export interface CommunicationCenterUrlState {
   primaryTab: CommunicationPrimaryTab;
+  settingsSection: CommunicationSettingsSection;
   channel: CommunicationChannel;
   selectedConversationId: string | null;
   mobilePane: CommunicationMobilePane;
@@ -39,6 +43,7 @@ export interface CommunicationCenterUrlState {
 
 export const DEFAULT_COMMUNICATION_CENTER_URL_STATE: CommunicationCenterUrlState = {
   primaryTab: 'inbox',
+  settingsSection: 'overview',
   channel: 'all',
   selectedConversationId: null,
   mobilePane: 'inbox',
@@ -57,12 +62,19 @@ export function parseCommunicationCenterViewFromUrl(search = ''): boolean {
   return isCommunicationCenterView(parseSearch(search).get(COMMUNICATION_VIEW_PARAM));
 }
 
-/** Settings tab is reserved for C8.4 — normalize to inbox in production shell. */
 export function normalizeCommunicationPrimaryTab(
   tab: CommunicationPrimaryTab | string | null | undefined,
 ): CommunicationPrimaryTab {
-  if (tab === 'settings') return 'inbox';
-  return tab === 'inbox' ? 'inbox' : 'inbox';
+  return tab === 'settings' ? 'settings' : 'inbox';
+}
+
+export function normalizeCommunicationSettingsSection(
+  section: CommunicationSettingsSection | string | null | undefined,
+): CommunicationSettingsSection {
+  if (section && SETTINGS_SECTIONS.has(section)) {
+    return section as CommunicationSettingsSection;
+  }
+  return 'overview';
 }
 
 export function readCommunicationCenterStateFromUrl(
@@ -74,6 +86,11 @@ export function readCommunicationCenterStateFromUrl(
   const tab = params.get(COMMUNICATION_TAB_PARAM);
   if (tab) {
     next.primaryTab = normalizeCommunicationPrimaryTab(tab);
+  }
+
+  const settingsSection = params.get(COMMUNICATION_SETTINGS_PARAM);
+  if (settingsSection) {
+    next.settingsSection = normalizeCommunicationSettingsSection(settingsSection);
   }
 
   const channel = params.get(COMMUNICATION_CHANNEL_PARAM);
@@ -108,6 +125,7 @@ export function mergeCommunicationCenterState(
   return {
     ...merged,
     primaryTab: normalizeCommunicationPrimaryTab(merged.primaryTab),
+    settingsSection: normalizeCommunicationSettingsSection(merged.settingsSection),
     inboxFilters: mergeCommunicationInboxFilters(merged.inboxFilters),
   };
 }
@@ -125,6 +143,31 @@ export function applyCommunicationChannelChange(
   };
 }
 
+export function applyCommunicationPrimaryTabChange(
+  current: CommunicationCenterUrlState,
+  primaryTab: CommunicationPrimaryTab,
+): CommunicationCenterUrlState {
+  if (current.primaryTab === primaryTab) return current;
+  return {
+    ...current,
+    primaryTab,
+    settingsSection: primaryTab === 'settings' ? current.settingsSection : 'overview',
+  };
+}
+
+export function applyCommunicationSettingsSectionChange(
+  current: CommunicationCenterUrlState,
+  settingsSection: CommunicationSettingsSection,
+): CommunicationCenterUrlState {
+  const normalized = normalizeCommunicationSettingsSection(settingsSection);
+  if (current.settingsSection === normalized && current.primaryTab === 'settings') return current;
+  return {
+    ...current,
+    primaryTab: 'settings',
+    settingsSection: normalized,
+  };
+}
+
 export function syncCommunicationCenterStateToUrl(
   state: CommunicationCenterUrlState,
   options?: { replace?: boolean },
@@ -137,7 +180,11 @@ export function syncCommunicationCenterStateToUrl(
   applyCommunicationInboxFiltersToSearchParams(url.searchParams, normalized.inboxFilters);
 
   const entries: Array<[string, string | null]> = [
-    [COMMUNICATION_TAB_PARAM, null],
+    [COMMUNICATION_TAB_PARAM, normalized.primaryTab === 'settings' ? 'settings' : null],
+    [
+      COMMUNICATION_SETTINGS_PARAM,
+      normalized.primaryTab === 'settings' ? normalized.settingsSection : null,
+    ],
     [COMMUNICATION_CHANNEL_PARAM, normalized.channel !== 'all' ? normalized.channel : null],
     [COMMUNICATION_CONVERSATION_PARAM, normalized.selectedConversationId],
     [
@@ -165,6 +212,7 @@ export function syncCommunicationCenterStateToUrl(
 export function clearCommunicationCenterUrlParams(search = ''): string {
   const params = parseSearch(search);
   params.delete(COMMUNICATION_TAB_PARAM);
+  params.delete(COMMUNICATION_SETTINGS_PARAM);
   params.delete(COMMUNICATION_CHANNEL_PARAM);
   params.delete(COMMUNICATION_CONVERSATION_PARAM);
   params.delete(COMMUNICATION_MOBILE_PANE_PARAM);

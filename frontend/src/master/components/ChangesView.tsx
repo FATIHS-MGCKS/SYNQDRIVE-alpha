@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c8-4-settings-2026-08-22',
+    version: '4.9.930',
+    title: 'Communication Center C8.4 — Settings Integration + Provider Consolidation',
+    summary: [
+      'Exposed Communication Center Settings tab with Overview / WhatsApp / Voice / SMS secondary navigation and URL state.',
+      'Extracted reusable WhatsAppBusinessSettings and VoiceAgentSettings shared by standalone pages and embedded Communication Settings.',
+      'Added read-only GET /organizations/:orgId/sms/config safe DTO and SMS settings shell (Not configured when credentials absent).',
+      'Settings overview with backend-authoritative status; RBAC-gated sections; org-scoped race safety; inbox fetching suspended on Settings tab.',
+      'Legacy WhatsApp/Voice routes and sidebar entries preserved.',
+    ],
+    reason: 'C8.4 consolidates communication channel configuration without rewriting provider runtime or exposing secrets.',
+    previousBehavior: 'C8.1–C8.3 inbox/timeline only; Settings tab hidden; provider config on separate pages only.',
+    details:
+      'CommunicationCenterShell.tsx, CommunicationSettingsPane.tsx, WhatsAppBusinessSettings.tsx, VoiceAgentSettings.tsx, sms-config.service.ts, e2e/communication-center-settings.spec.ts, architecture/COMMUNICATION_CENTER_C8_4_SETTINGS_INTEGRATION_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-08-22T15:10:00.000Z',
+  },
+  {
     id: 'communication-center-c8-3-timeline-2026-08-22',
     version: '4.9.929',
     title: 'Communication Center C8.3 — Canonical Conversation Timeline',

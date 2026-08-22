@@ -3540,5 +3540,48 @@ export const de: Record<TranslationKey, string> = {
   'communication.context.empty.description':
     'Kein zugehöriger Kunde, keine Buchung oder kein Fahrzeug ist mit dieser Konversation verknüpft.',
 
+  'communication.primary.tabsLabel': 'Communication Center Bereiche',
+  'communication.primary.inbox': 'Posteingang',
+  'communication.primary.settings': 'Einstellungen',
+  'communication.settings.navLabel': 'Kommunikationseinstellungen',
+  'communication.settings.loadError': 'Einstellungen konnten nicht geladen werden',
+  'communication.settings.saveError': 'Einstellungen konnten nicht gespeichert werden',
+  'communication.settings.provider': 'Anbieter',
+  'communication.settings.configured': 'Konfiguriert',
+  'communication.settings.notConfigured': 'Nicht konfiguriert',
+  'communication.settings.credentialsConfigured': 'Zugangsdaten konfiguriert',
+  'communication.settings.credentialsMissing': 'Zugangsdaten fehlen',
+  'communication.settings.accessDenied.title': 'Einstellungen nicht verfügbar',
+  'communication.settings.accessDenied.description':
+    'Sie haben keine Berechtigung, Kommunikationskanal-Einstellungen zu verwalten.',
+  'communication.settings.overview.title': 'Übersicht',
+  'communication.settings.overview.nav': 'Übersicht',
+  'communication.settings.overview.description':
+    'Verbindungsstatus für WhatsApp, Voice und SMS prüfen.',
+  'communication.settings.whatsapp.title': 'WhatsApp',
+  'communication.settings.whatsapp.loadError': 'WhatsApp-Konfiguration konnte nicht geladen werden.',
+  'communication.settings.whatsapp.overviewDescription':
+    'WhatsApp Business Nachrichten und KI-gestützte Antworten.',
+  'communication.settings.voice.title': 'Voice',
+  'communication.settings.voice.loadError': 'Voice-Konfiguration konnte nicht geladen werden.',
+  'communication.settings.voice.overviewDescription':
+    'KI-Sprachagent und Telefonie über ElevenLabs / Twilio.',
+  'communication.settings.sms.title': 'SMS',
+  'communication.settings.sms.loadError': 'SMS-Konfiguration konnte nicht geladen werden.',
+  'communication.settings.sms.description': 'SMS-Kommunikation über sent.dm.',
+  'communication.settings.sms.overviewDescription': 'Ein- und ausgehende SMS über sent.dm.',
+  'communication.settings.sms.credentials': 'Zugangsdaten',
+  'communication.settings.sms.webhook': 'Webhook',
+  'communication.settings.sms.sender': 'Absenderprofil',
+  'communication.settings.sms.notConfiguredHelp':
+    'SMS ist für diese Organisation nicht konfiguriert. Bitte wenden Sie sich an Ihren Administrator.',
+  'communication.settings.action.configure': 'Einrichten',
+  'communication.settings.action.manage': 'Verwalten',
+  'communication.settings.status.CONNECTED': 'Verbunden',
+  'communication.settings.status.CONFIGURED': 'Konfiguriert',
+  'communication.settings.status.NOT_CONFIGURED': 'Nicht konfiguriert',
+  'communication.settings.status.DEGRADED': 'Beeinträchtigt',
+  'communication.settings.status.DISABLED': 'Deaktiviert',
+
   ...legalDocumentsDe,
 };

@@ -1149,6 +1149,17 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Backfill', detail: 'CommunicationPermissionBackfillService — idempotent ai-assistant → communication/voice-assistant when keys absent; skips DRIVER' },
     ],
   },
+  {
+    name: 'Communication Center Settings — C8.4 (V4.9.930)',
+    icon: Radio,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Settings shell', detail: 'Communication Center → Settings: Overview / WhatsApp / Voice / SMS' },
+      { label: 'WhatsApp reuse', detail: 'WhatsAppBusinessSettings — standalone + embedded' },
+      { label: 'Voice reuse', detail: 'VoiceAgentSettings — standalone + embedded' },
+      { label: 'SMS config', detail: 'GET /organizations/:orgId/sms/config — safe public DTO' },
+    ],
+  },
 ];
 
 /* ------------------------------------------------------------------ */

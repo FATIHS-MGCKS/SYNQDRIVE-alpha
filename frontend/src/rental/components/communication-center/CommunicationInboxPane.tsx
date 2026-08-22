@@ -15,6 +15,7 @@ import {
 import type { CommunicationChannel } from './communication-center.types';
 
 interface CommunicationInboxPaneProps {
+  enabled?: boolean;
   activeChannel: CommunicationChannel;
   inboxFilters: CommunicationInboxFilters;
   selectedConversationId: string | null;
@@ -25,6 +26,7 @@ interface CommunicationInboxPaneProps {
 }
 
 export function CommunicationInboxPane({
+  enabled = true,
   activeChannel,
   inboxFilters,
   selectedConversationId,
@@ -58,7 +60,7 @@ export function CommunicationInboxPane({
   const inbox = useCommunicationInbox({
     orgId,
     filters: apiQuery,
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId && enabled),
   });
 
   return (
