@@ -18,7 +18,7 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
 import { CommunicationContextApplierService } from './context/communication-context-applier.service';
 import { CommunicationContextBackfillService, CommunicationContextEnrichmentService } from './context/communication-context-enrichment.service';
 import { CommunicationContextResolverService } from './context/communication-context-resolver.service';
-import { CommunicationNativeContextLoader } from './context/communication-native-context.loader';
+import { CommunicationContextDuplicateAuditService } from './context/communication-context-duplicate-audit.service';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1/C2/C3).
@@ -38,6 +38,7 @@ import { CommunicationNativeContextLoader } from './context/communication-native
     CommunicationContextApplierService,
     CommunicationContextEnrichmentService,
     CommunicationContextBackfillService,
+    CommunicationContextDuplicateAuditService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
     TwilioVoiceCommunicationAdapter,
@@ -56,6 +57,7 @@ import { CommunicationNativeContextLoader } from './context/communication-native
     CommunicationContextResolverService,
     CommunicationContextEnrichmentService,
     CommunicationContextBackfillService,
+    CommunicationContextDuplicateAuditService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
     TwilioVoiceCommunicationAdapter,

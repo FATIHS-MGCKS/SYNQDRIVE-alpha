@@ -105,6 +105,20 @@ export class CommunicationContextResolverService {
             code: 'EXISTING_CANONICAL_OVERRIDDEN_BY_NATIVE',
           });
         }
+        const phoneProbe = await this.matchCustomerByPhone(
+          client,
+          input.organizationId,
+          hints.normalizedPhone,
+        );
+        if (
+          phoneProbe.status === 'unique'
+          && phoneProbe.customerId !== native.customerId
+        ) {
+          conflicts.push({
+            field: 'customerId',
+            code: 'NATIVE_PHONE_CONFLICT',
+          });
+        }
         return native.customerId;
       }
       conflicts.push({
@@ -117,16 +131,32 @@ export class CommunicationContextResolverService {
       return resolved.customerId.value;
     }
 
-    const phoneCustomerId = await this.resolveCustomerByPhone(
+    const phoneMatch = await this.matchCustomerByPhone(
       client,
       input.organizationId,
       hints.normalizedPhone,
     );
-    const emailCustomerId = await this.resolveCustomerByEmail(
+    const emailMatch = await this.matchCustomerByEmail(
       client,
       input.organizationId,
       hints.normalizedEmail,
     );
+
+    if (phoneMatch.status === 'ambiguous') {
+      conflicts.push({
+        field: 'customerId',
+        code: CommunicationContextAmbiguityReason.MULTIPLE_CUSTOMERS,
+      });
+    }
+    if (emailMatch.status === 'ambiguous') {
+      conflicts.push({
+        field: 'customerId',
+        code: CommunicationContextAmbiguityReason.MULTIPLE_CUSTOMERS,
+      });
+    }
+
+    const phoneCustomerId = phoneMatch.status === 'unique' ? phoneMatch.customerId : null;
+    const emailCustomerId = emailMatch.status === 'unique' ? emailMatch.customerId : null;
 
     if (phoneCustomerId && emailCustomerId && phoneCustomerId !== emailCustomerId) {
       conflicts.push({
@@ -150,6 +180,19 @@ export class CommunicationContextResolverService {
         source: CommunicationContextResolutionSource.EXACT_EMAIL,
       });
       return emailCustomerId;
+    }
+
+    if (
+      (hints.normalizedPhone || hints.normalizedEmail)
+      && !phoneCustomerId
+      && !emailCustomerId
+      && phoneMatch.status !== 'ambiguous'
+      && emailMatch.status !== 'ambiguous'
+    ) {
+      conflicts.push({
+        field: 'customerId',
+        code: CommunicationContextAmbiguityReason.NO_MATCH,
+      });
     }
 
     return null;
@@ -468,13 +511,13 @@ export class CommunicationContextResolverService {
     }
   }
 
-  private async resolveCustomerByPhone(
+  private async matchCustomerByPhone(
     client: Tx,
     organizationId: string,
     normalizedPhone?: string | null,
-  ): Promise<string | null> {
+  ): Promise<{ status: 'none' | 'unique' | 'ambiguous'; customerId: string | null }> {
     const phone = normalizedPhone?.trim();
-    if (!phone) return null;
+    if (!phone) return { status: 'none', customerId: null };
 
     const matches = await client.customer.findMany({
       where: {
@@ -486,17 +529,22 @@ export class CommunicationContextResolverService {
       take: 2,
     });
 
-    if (matches.length === 1) return matches[0].id;
-    return null;
+    if (matches.length === 1) {
+      return { status: 'unique', customerId: matches[0].id };
+    }
+    if (matches.length > 1) {
+      return { status: 'ambiguous', customerId: null };
+    }
+    return { status: 'none', customerId: null };
   }
 
-  private async resolveCustomerByEmail(
+  private async matchCustomerByEmail(
     client: Tx,
     organizationId: string,
     normalizedEmail?: string | null,
-  ): Promise<string | null> {
+  ): Promise<{ status: 'none' | 'unique' | 'ambiguous'; customerId: string | null }> {
     const email = normalizeEmail(normalizedEmail);
-    if (!email) return null;
+    if (!email) return { status: 'none', customerId: null };
 
     const matches = await client.customer.findMany({
       where: {
@@ -508,8 +556,13 @@ export class CommunicationContextResolverService {
       take: 2,
     });
 
-    if (matches.length === 1) return matches[0].id;
-    return null;
+    if (matches.length === 1) {
+      return { status: 'unique', customerId: matches[0].id };
+    }
+    if (matches.length > 1) {
+      return { status: 'ambiguous', customerId: null };
+    }
+    return { status: 'none', customerId: null };
   }
 
   private async customerBelongsToOrg(

@@ -225,6 +225,7 @@ describePg('Communication context resolution postgres', () => {
     });
 
     expect(result.patch.customerId).toBeUndefined();
+    expect(result.conflicts.some((c) => c.code === 'MULTIPLE_CUSTOMERS')).toBe(true);
   });
 
   it('E: phone in different org does not leak', async () => {
