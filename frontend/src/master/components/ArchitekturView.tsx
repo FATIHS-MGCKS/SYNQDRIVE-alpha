@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Insurances View (P2.2.19 — V4.9.946)', icon: Globe,
+    endpoint: 'InsurancesView.tsx, insurances-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → overview KPIs, filters, sort, table, 8-step inquiry wizard, detail drawer; `insurances-i18n.ts` label maps + `formatInsuranceDate`. **Keys:** +199 EN+DE `insurances.*` (7925→8124). **Machine values:** `INSURANCE_STATUS_VALUES`, `INQUIRY_PURPOSE_VALUES`, `TIME_RANGE_VALUES`, filter `all` + status enums, inquiry API payloads frozen. **Guardrails:** P2.2.19 enforce-clean exact (2 paths) — 0 findings; blind-spot guards on status maps, filter options, KPI labels. **Tests:** `rental-insurances-localization.test.tsx` (10). **Semantics:** presentation-only; provider/policy/VIN/customer dynamic data raw; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-19-rental-insurances-view-implementation-2026-08-22.md; architecture/I18N_RENTAL_INSURANCES_P2_2_19_2026-08-22.md' },
   { name: 'Platform i18n Data Authorization Global Closure (P2.2.18 — V4.9.945)', icon: Globe,
     endpoint: 'DataAuthorizationTab.tsx.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → KPI cards, table headers, filter summary, category chip, empty states; existing filter options via `data-authorization.constants` + `settings-i18n`. **Keys:** +17 EN+DE `settings.dataAuth.{kpi,table,filters,empty}.*` (7908→7925); reuses `tasks.filter.resetFilters`, `common.all`, `common.status`, `settings.dataAuth.create.source`, `dashboard.drilldown.noMatches`. **Guardrails:** P2.2.18 enforce-clean exact (1 path) — 0 findings; global `i18n:check` PASS. **Tests:** `data-authorization-global-closure-localization.test.tsx`. **Semantics:** presentation-only; authorization/consent machine values frozen; Category E=0.',

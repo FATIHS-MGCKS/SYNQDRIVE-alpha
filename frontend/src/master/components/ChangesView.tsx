@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-insurances-view-p2-2-19-2026-08-22',
+    version: '4.9.946',
+    title: 'Platform i18n — P2.2.19 Rental Insurances View localization',
+    summary: [
+      'Localized InsurancesView overview, inquiry wizard (8 steps), detail drawer, KPI cards, filters, sort, empty/error states via `useLanguage().{t,locale}` and `insurances-i18n.ts` presentation adapter.',
+      'P219 enforce-clean exact scope (2 paths) reports 0 findings; +199 EN+DE keys under `insurances.*` (7925→8124); machine status/inquiry/time-range values preserved via label maps.',
+      'Presentation-only — filter/sort machine keys, inquiry submission payloads, permission gates, and API callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.19 post-closure residual discovery (PR #1153) selected Rental Insurances View (~55 scanner findings + blind-spot presentation literals) as the next bounded rental slice after P2.2.18 global enforce-clean closure.',
+    previousBehavior:
+      'InsurancesView mixed hardcoded English/German copy across overview KPIs, table chrome, 8-step inquiry wizard, detail drawer, and fixed `de-DE` formatting.',
+    details:
+      'rental/components/InsurancesView.tsx; rental/lib/insurances-i18n.ts; i18n/translations/insurances.{en,de}.ts; rental-insurances-localization.test.tsx; P219_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_INSURANCES_P2_2_19_2026-08-22.md; docs/audits/i18n-p2-2-19-rental-insurances-view-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T04:20:00.000Z',
+  },
+  {
     id: 'i18n-data-authorization-global-closure-p2-2-18-2026-08-22',
     version: '4.9.945',
     title: 'Platform i18n — P2.2.18 Data Authorization final global closure',
