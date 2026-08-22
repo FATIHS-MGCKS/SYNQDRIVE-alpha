@@ -377,7 +377,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1532,
+      "line": 1536,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -405,7 +405,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23629,
+      "line": 23648,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -657,7 +657,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27514,
+      "line": 27533,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1606,7 +1606,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27459,
+      "line": 27478,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1747,7 +1747,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1003,
+      "line": 1007,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1761,7 +1761,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23933,
+      "line": 23952,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1803,7 +1803,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1622,
+      "line": 1626,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2728,7 +2728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1743,
+      "line": 1747,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2812,7 +2812,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1052,
+      "line": 1056,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3106,7 +3106,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1633,
+      "line": 1637,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3432,7 +3432,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1537,
+      "line": 1541,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3488,7 +3488,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1691,
+      "line": 1695,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3502,7 +3502,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1693,
+      "line": 1697,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4107,7 +4107,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24901,
+      "line": 24920,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4137,7 +4137,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1517,
+      "line": 1521,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4151,7 +4151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1661,
+      "line": 1665,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4642,7 +4642,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27449,
+      "line": 27468,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4838,7 +4838,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1741,
+      "line": 1745,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5147,7 +5147,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 22242,
+      "line": 22261,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5595,7 +5595,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23543,
+      "line": 23562,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6170,7 +6170,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1580,
+      "line": 1584,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6185,7 +6185,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1020,
+      "line": 1024,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7622,7 +7622,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1596,
+      "line": 1600,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7846,7 +7846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1586,
+      "line": 1590,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7888,7 +7888,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27484,
+      "line": 27503,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8183,7 +8183,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23609,
+      "line": 23628,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8421,7 +8421,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1573,
+      "line": 1577,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8941,7 +8941,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27471,
+      "line": 27490,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8955,7 +8955,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27488,
+      "line": 27507,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9376,7 +9376,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27165,
+      "line": 27184,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10012,7 +10012,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1561,
+      "line": 1565,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10530,7 +10530,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1697,
+      "line": 1701,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10544,7 +10544,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1694,
+      "line": 1698,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10558,7 +10558,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1690,
+      "line": 1694,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11455,7 +11455,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1594,
+      "line": 1598,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11665,7 +11665,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1744,
+      "line": 1748,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12295,7 +12295,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1495,
+      "line": 1499,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12857,7 +12857,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27438,
+      "line": 27457,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12871,7 +12871,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1291,
+      "line": 1295,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12969,7 +12969,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1634,
+      "line": 1638,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13490,7 +13490,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1491,
+      "line": 1495,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13588,7 +13588,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1624,
+      "line": 1628,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13674,7 +13674,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1539,
+      "line": 1543,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13856,7 +13856,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24903,
+      "line": 24922,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13898,7 +13898,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23629,
+      "line": 23648,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -13926,7 +13926,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1495,
+      "line": 1499,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13940,7 +13940,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1496,
+      "line": 1500,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13983,7 +13983,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1438,
+      "line": 1442,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13997,7 +13997,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1462,
+      "line": 1466,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14039,7 +14039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1621,
+      "line": 1625,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14377,7 +14377,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23669,
+      "line": 23688,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14545,7 +14545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1744,
+      "line": 1748,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",

@@ -1,7 +1,9 @@
 # P2.2.19 — Rental Insurances View localization — Implementation audit
 
 **Date:** 2026-08-22
+
 **Program baseline SHA:** `d645343f8e449037b5c9507457dc9b6d7926a61f` (post–P2.2.18 / PR #1148)
+
 **Implementation branch:** `cursor/p2219-rental-insurances-view-i18n-3c10`
 **Pre-flight audit:** PR #1153 (audit-only — not modified)
 
@@ -20,7 +22,7 @@ Supporting (outside enforce-clean exact boundary but required):
 
 | Path | Role |
 |------|------|
-| `i18n/translations/insurances.{en,de}.ts` | Canonical dictionary module (+199 net keys) |
+| `i18n/translations/insurances.{en,de}.ts` | Canonical dictionary module (+197 net keys) |
 | `i18n/translations/en.ts`, `de.ts` | Spread `insurancesEn` / `insurancesDe` modules |
 | `scripts/i18n-hardcoded-scan.mjs` | `P219_ENFORCE_CLEAN_EXACT` boundary |
 | `i18n/hardcoded-copy-guard.test.ts` | P219 enforce-clean + blind-spot grep guards |
@@ -44,14 +46,14 @@ Remediated classes:
 
 | Classification | Count | Detail |
 |----------------|-------|--------|
-| New `insurances.*` module keys | **199** | `insurances.{en,de}.ts` (overview, wizard, detail, status, filters, KPI, empty, submit) |
+| New `insurances.*` module keys | **197** | `insurances.{en,de}.ts` (overview, wizard, detail, status, filters, KPI, empty, submit) |
 | Reused non-insurances canonical keys (call sites) | **0** | All scoped copy uses dedicated `insurances.*` namespace |
-| Net canonical delta | **+199** | 7925 → **8124** |
-| EN/DE parity | **100%** | 8124 / 8124 |
+| Net canonical delta | **+197** | 7925 → **8122** |
+| EN/DE parity | **100%** | 8122 / 8122 |
 | Orphans | **0** | All keys referenced in component or i18n adapter |
 | Duplicate candidates | **0** | No parallel insurance taxonomy created |
 
-**Note:** 199 keys exceeds pre-flight estimate (45–60) because the full 8-step inquiry wizard, historical/live data option matrices, and detail drawer were in scope within `InsurancesView.tsx` (single bounded file). No additional production files were required.
+**Note:** 197 keys exceeds pre-flight estimate (45–60) because the full 8-step inquiry wizard, historical/live data option matrices, and detail drawer were in scope within `InsurancesView.tsx` (single bounded file). Two orphan keys removed post re-audit (`missing.noRecord`, `detail.since`).
 
 ## Scanner accounting (recomputed)
 
@@ -67,8 +69,8 @@ Remediated classes:
 | P217 enforce-clean | 0 | 0 | preserved |
 | P216A/B1/B2/C1/C2A/C2B enforce-clean | 0 | 0 | preserved |
 | Global enforce-clean debt | 0 | **0** | preserved |
-| Canonical EN keys | 7925 | **8124** | +199 |
-| Canonical DE keys | 7925 | **8124** | +199 |
+| Canonical EN keys | 7925 | **8122** | +197 |
+| Canonical DE keys | 7925 | **8122** | +197 |
 
 ## Machine-semantic verification (Category E = 0)
 
@@ -110,7 +112,7 @@ Preserved unchanged:
 |-------|--------|
 | `rental-insurances-localization.test.tsx` | 10/10 PASS |
 | `hardcoded-copy-guard.test.ts` (incl. P219 + blind spots) | 68/68 PASS |
-| `npm run i18n:check` | PASS (8124/8124) |
+| `npm run i18n:check` | PASS (8122/8122) |
 | `npm run build` | PASS |
 | `git diff --check` | PASS |
 

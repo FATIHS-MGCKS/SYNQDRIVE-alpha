@@ -41,7 +41,6 @@ export const insurancesEn = {
   'insurances.empty.noInsuranceRecord': 'No insurance record on file.',
 
   'insurances.missing.documentStored': 'No insurance document stored for this vehicle.',
-  'insurances.missing.noRecord': 'No insurance record on file.',
 
   'insurances.status.ACTIVE': 'Active',
   'insurances.status.EXPIRING_SOON': 'Expiring Soon',
@@ -223,7 +222,6 @@ export const insurancesEn = {
   'insurances.detail.validUntil': 'Valid Until',
   'insurances.detail.recentInquiries': 'Recent Inquiries',
   'insurances.detail.activeLiveSharing': 'Active Live Sharing',
-  'insurances.detail.since': 'Since {date}',
   'insurances.detail.sinceFrequency': 'Since {date} · {frequency}',
   'insurances.detail.notAvailable': 'N/A',
 
