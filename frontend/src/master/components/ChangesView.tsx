@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-parts-accessories-view-p2-2-20-2026-08-22',
+    version: '4.9.947',
+    title: 'Platform i18n — P2.2.20 Rental Parts & Accessories View localization',
+    summary: [
+      'Localized PartsAccessoriesView 5-step wizard, search results, product detail drawer via `useLanguage().{t,locale}` and `parts-accessories-i18n.ts` presentation adapter.',
+      'P220 enforce-clean exact scope (2 paths) reports 0 findings; +68 EN+DE keys under `partsAccessories.*` (8122→8190); machine category/sort/availability values preserved via label maps.',
+      'Presentation-only — search/sort machine keys, disclosure payloads, provider/product dynamic data, and API callbacks unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.20 post-P219 pre-flight (PR #1161) selected Rental Parts & Accessories View (~25 scanner findings + blind-spot presentation literals) as the next bounded rental slice after P2.2.19.',
+    previousBehavior:
+      'PartsAccessoriesView mixed hardcoded English copy across wizard steps, category/provider cards, authorization flow, search results, detail drawer, and fixed `de-DE` price formatting.',
+    details:
+      'rental/components/PartsAccessoriesView.tsx; rental/lib/parts-accessories-i18n.ts; i18n/translations/partsAccessories.{en,de}.ts; rental-parts-accessories-localization.test.tsx; P220_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_PARTS_ACCESSORIES_P2_2_20_2026-08-22.md; docs/audits/i18n-p2-2-20-rental-parts-accessories-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T06:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-insurances-view-p2-2-19-2026-08-22',
     version: '4.9.946',
     title: 'Platform i18n — P2.2.19 Rental Insurances View localization',

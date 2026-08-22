@@ -316,6 +316,11 @@ const P219_ENFORCE_CLEAN_EXACT = [
   'rental/lib/insurances-i18n.ts',
 ];
 
+const P220_ENFORCE_CLEAN_EXACT = [
+  'rental/components/PartsAccessoriesView.tsx',
+  'rental/lib/parts-accessories-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -390,6 +395,10 @@ function isP218EnforceCleanPath(relPath: string): boolean {
 
 function isP219EnforceCleanPath(relPath: string): boolean {
   return P219_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP220EnforceCleanPath(relPath: string): boolean {
+  return P220_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -601,6 +610,41 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP219EnforceCleanPath(finding.file),
     );
     expect(p219Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.20 enforce-clean findings to PartsAccessoriesView only', () => {
+    const p220Debt = inventory.findings.filter((finding) =>
+      isP220EnforceCleanPath(finding.file),
+    );
+    expect(p220Debt).toHaveLength(0);
+  });
+
+  it('keeps parts-accessories-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/parts-accessories-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('partsAccessories.category.TIRES.label');
+    expect(source).toContain('labelCategory');
+    expect(source).not.toMatch(/'Tires'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps PartsAccessoriesView.tsx free of hardcoded parts presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/PartsAccessoriesView.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('nav.partsAccessories')");
+    expect(source).toContain("t('partsAccessories.vehicle.title')");
+    expect(source).toContain('labelCategory(locale');
+    expect(source).toContain('formatPartsPrice(locale');
+    expect(source).not.toMatch(/Parts & Accessories/);
+    expect(source).not.toMatch(/Search Results/);
+    expect(source).not.toMatch(/Confirm & Search/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps insurances-i18n.ts on canonical translation keys', () => {

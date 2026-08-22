@@ -6,6 +6,7 @@ import { voiceAssistantEn } from './voice-assistant.en';
 import { supportEn } from './support.en';
 import { finesEn } from './fines.en';
 import { insurancesEn } from './insurances.en';
+import { partsAccessoriesEn } from './partsAccessories.en';
 import { handoverProtocolEn } from './handover.protocol.en';
 import { handoverOperatorEn } from './handover.operator.en';
 import { invoicesListEn } from './invoices.list.en';
@@ -5566,6 +5567,7 @@ export const en = {
   ...supportOpsEn,
   ...finesEn,
   ...insurancesEn,
+  ...partsAccessoriesEn,
   ...handoverProtocolEn,
   ...handoverOperatorEn,
   ...invoicesListEn,
