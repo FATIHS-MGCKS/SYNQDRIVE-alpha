@@ -47,6 +47,7 @@ vi.mock('../../../lib/communication/hooks/useCommunicationConversation', () => (
     detailNotFound: false,
     timelineError: null,
     paginationError: null,
+    conversationSignature: 'mock-signature',
     reloadDetail: vi.fn(),
     reloadTimeline: vi.fn(),
     loadOlder: vi.fn(),

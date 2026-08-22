@@ -3510,6 +3510,7 @@ export const de: Record<TranslationKey, string> = {
   'communication.timeline.callFailed': 'Anruf fehlgeschlagen',
   'communication.timeline.duration': 'Dauer',
   'communication.timeline.loadOlder': 'Ältere Nachrichten laden',
+  'communication.timeline.listLabel': 'Konversationsverlauf',
   'communication.timeline.retry': 'Erneut versuchen',
   'communication.timeline.timelineError': 'Konversationsverlauf konnte nicht geladen werden',
   'communication.timeline.timelineEmpty': 'Noch keine Kommunikationsereignisse',

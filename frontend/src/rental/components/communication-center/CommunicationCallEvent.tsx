@@ -34,7 +34,6 @@ export function CommunicationCallEvent({
     >
       <div
         className="flex max-w-md items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground"
-        role="status"
         aria-label={`${label}, ${timeLabel}`}
       >
         <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -141,6 +141,16 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     patchState({ selectedConversationId: null, mobilePane: 'inbox' });
   }, [patchState]);
 
+  useEffect(() => {
+    const conversation = conversationState.conversation;
+    if (!conversation || !state.selectedConversationId) return;
+    const apiChannel = conversation.channel.toLowerCase();
+    if (apiChannel !== 'whatsapp' && apiChannel !== 'voice' && apiChannel !== 'sms') return;
+    if (state.channel !== 'all' && state.channel !== apiChannel) {
+      patchState({ channel: apiChannel }, { replace: true });
+    }
+  }, [conversationState.conversation, patchState, state.channel, state.selectedConversationId]);
+
   const hasConversation = Boolean(state.selectedConversationId);
   const hasContext = conversationHasContext(conversationState.conversation);
   const showContextSheet = hasConversation && (isMobile || isTablet) && state.mobilePane === 'context';

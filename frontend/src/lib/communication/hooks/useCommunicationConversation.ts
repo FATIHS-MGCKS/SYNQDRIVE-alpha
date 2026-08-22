@@ -31,6 +31,7 @@ export interface UseCommunicationConversationResult {
   detailNotFound: boolean;
   timelineError: CommunicationClientErrorCode | null;
   paginationError: CommunicationClientErrorCode | null;
+  conversationSignature: string;
   reloadDetail: () => Promise<CommunicationConversationDetail | null>;
   reloadTimeline: () => Promise<CommunicationEvent[]>;
   loadOlder: () => Promise<CommunicationEvent[]>;
@@ -61,12 +62,46 @@ type TimelineRequestState = {
   status: RequestStatus;
 };
 
+type SignatureScopedError = {
+  signature: string;
+  code: CommunicationClientErrorCode | null;
+};
+
+type SignatureScopedNotFound = {
+  signature: string;
+  notFound: boolean;
+};
+
+type PaginationRequestState = {
+  signature: string;
+  cursor: string | null;
+  status: 'idle' | 'loading' | 'error';
+  error: CommunicationClientErrorCode | null;
+  requestToken: number;
+};
+
+type LoadOlderAuthority = {
+  requestToken: number;
+  signature: string;
+  cursor: string;
+  timelineDataVersion: number;
+  paginationGeneration: number;
+};
+
 const EMPTY_DETAIL: CommittedDetailState = { signature: '', conversation: null };
 const EMPTY_TIMELINE: CommittedTimelineState = {
   signature: '',
   events: [],
   hasMore: false,
   nextCursor: null,
+};
+
+const EMPTY_PAGINATION: PaginationRequestState = {
+  signature: '',
+  cursor: null,
+  status: 'idle',
+  error: null,
+  requestToken: 0,
 };
 
 function mapClientError(err: unknown): CommunicationClientErrorCode {
@@ -86,15 +121,27 @@ export function useCommunicationConversation({
   const [committedTimeline, setCommittedTimeline] = useState<CommittedTimelineState>(EMPTY_TIMELINE);
   const [detailRequest, setDetailRequest] = useState<DetailRequestState>({ signature: '', status: 'idle' });
   const [timelineRequest, setTimelineRequest] = useState<TimelineRequestState>({ signature: '', status: 'idle' });
-  const [detailError, setDetailError] = useState<CommunicationClientErrorCode | null>(null);
-  const [detailNotFound, setDetailNotFound] = useState(false);
-  const [timelineError, setTimelineError] = useState<CommunicationClientErrorCode | null>(null);
-  const [paginationError, setPaginationError] = useState<CommunicationClientErrorCode | null>(null);
-  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [detailErrorState, setDetailErrorState] = useState<SignatureScopedError>({ signature: '', code: null });
+  const [detailNotFoundState, setDetailNotFoundState] = useState<SignatureScopedNotFound>({
+    signature: '',
+    notFound: false,
+  });
+  const [timelineErrorState, setTimelineErrorState] = useState<SignatureScopedError>({
+    signature: '',
+    code: null,
+  });
+  const [paginationRequest, setPaginationRequest] = useState<PaginationRequestState>(EMPTY_PAGINATION);
 
   const detailGenerationRef = useRef(0);
   const timelineGenerationRef = useRef(0);
-  const loadOlderInFlightCursorRef = useRef<string | null>(null);
+  const timelineDataVersionRef = useRef(0);
+  const paginationGenerationRef = useRef(0);
+  const loadOlderRequestTokenRef = useRef(0);
+  const loadOlderInFlightRef = useRef<{
+    signature: string;
+    cursor: string;
+    requestToken: number;
+  } | null>(null);
 
   const committedTimelineRef = useRef(committedTimeline);
   committedTimelineRef.current = committedTimeline;
@@ -102,7 +149,25 @@ export function useCommunicationConversation({
   const committedDetailRef = useRef(committedDetail);
   committedDetailRef.current = committedDetail;
 
+  const paginationRequestRef = useRef(paginationRequest);
+  paginationRequestRef.current = paginationRequest;
+
   const signature = communicationConversationSignature(orgId, conversationId);
+
+  const invalidatePaginationAuthority = useCallback(() => {
+    paginationGenerationRef.current += 1;
+    timelineDataVersionRef.current += 1;
+  }, []);
+
+  const resetPaginationRequest = useCallback((requestSignature: string) => {
+    setPaginationRequest({
+      signature: requestSignature,
+      cursor: null,
+      status: 'idle',
+      error: null,
+      requestToken: 0,
+    });
+  }, []);
 
   const detailAligned = committedDetail.signature === signature;
   const timelineAligned = committedTimeline.signature === signature;
@@ -113,6 +178,7 @@ export function useCommunicationConversation({
 
   const detailRequestMatches = detailRequest.signature === signature;
   const timelineRequestMatches = timelineRequest.signature === signature;
+  const paginationRequestMatches = paginationRequest.signature === signature;
 
   const detailLoading =
     detailRequestMatches && detailRequest.status === 'loading' && !detailAligned;
@@ -120,15 +186,30 @@ export function useCommunicationConversation({
     timelineRequestMatches && timelineRequest.status === 'loading' && !timelineAligned;
 
   const visibleDetailError =
-    detailRequestMatches && detailRequest.status === 'error' ? detailError : null;
+    detailRequestMatches && detailRequest.status === 'error' && detailErrorState.signature === signature
+      ? detailErrorState.code
+      : null;
   const visibleTimelineError =
-    timelineRequestMatches && timelineRequest.status === 'error' ? timelineError : null;
+    timelineRequestMatches &&
+    timelineRequest.status === 'error' &&
+    timelineErrorState.signature === signature &&
+    !(detailNotFoundState.signature === signature && detailNotFoundState.notFound)
+      ? timelineErrorState.code
+      : null;
+  const visibleDetailNotFound =
+    detailNotFoundState.signature === signature && detailNotFoundState.notFound;
+  const visibleLoadingOlder =
+    paginationRequestMatches && paginationRequest.status === 'loading';
+  const visiblePaginationError =
+    paginationRequestMatches && paginationRequest.status === 'error'
+      ? paginationRequest.error
+      : null;
 
   const reloadDetail = useCallback(async (): Promise<CommunicationConversationDetail | null> => {
     if (!orgId || !conversationId || !enabled) {
       setCommittedDetail({ ...EMPTY_DETAIL, signature });
-      setDetailError(null);
-      setDetailNotFound(false);
+      setDetailErrorState({ signature, code: null });
+      setDetailNotFoundState({ signature, notFound: false });
       setDetailRequest({ signature, status: 'idle' });
       return null;
     }
@@ -136,8 +217,8 @@ export function useCommunicationConversation({
     const requestSignature = communicationConversationSignature(orgId, conversationId);
     const generation = ++detailGenerationRef.current;
     setDetailRequest({ signature: requestSignature, status: 'loading' });
-    setDetailError(null);
-    setDetailNotFound(false);
+    setDetailErrorState({ signature: requestSignature, code: null });
+    setDetailNotFoundState({ signature: requestSignature, notFound: false });
 
     try {
       const detail = await communicationClient.getConversation(orgId, conversationId);
@@ -152,30 +233,38 @@ export function useCommunicationConversation({
     } catch (err) {
       if (generation !== detailGenerationRef.current) return null;
       if (isNotFoundError(err)) {
-        setDetailNotFound(true);
+        timelineGenerationRef.current += 1;
+        invalidatePaginationAuthority();
+        resetPaginationRequest(requestSignature);
+        setDetailNotFoundState({ signature: requestSignature, notFound: true });
         setCommittedDetail({ signature: requestSignature, conversation: null });
+        setTimelineRequest({ signature: requestSignature, status: 'idle' });
+        setTimelineErrorState({ signature: requestSignature, code: null });
+        setCommittedTimeline({ ...EMPTY_TIMELINE, signature: requestSignature });
       } else {
-        setDetailError(mapClientError(err));
+        setDetailErrorState({ signature: requestSignature, code: mapClientError(err) });
       }
       setDetailRequest({ signature: requestSignature, status: 'error' });
       return null;
     }
-  }, [orgId, conversationId, enabled, signature]);
+  }, [orgId, conversationId, enabled, signature, invalidatePaginationAuthority, resetPaginationRequest]);
 
   const reloadTimeline = useCallback(async (): Promise<CommunicationEvent[]> => {
     if (!orgId || !conversationId || !enabled) {
       setCommittedTimeline({ ...EMPTY_TIMELINE, signature });
-      setTimelineError(null);
-      setPaginationError(null);
+      setTimelineErrorState({ signature, code: null });
+      resetPaginationRequest(signature);
       setTimelineRequest({ signature, status: 'idle' });
       return [];
     }
 
     const requestSignature = communicationConversationSignature(orgId, conversationId);
     const generation = ++timelineGenerationRef.current;
+    invalidatePaginationAuthority();
+    resetPaginationRequest(requestSignature);
+
     setTimelineRequest({ signature: requestSignature, status: 'loading' });
-    setTimelineError(null);
-    setPaginationError(null);
+    setTimelineErrorState({ signature: requestSignature, code: null });
 
     try {
       const page = await communicationClient.listConversationEvents(orgId, conversationId, {
@@ -197,16 +286,36 @@ export function useCommunicationConversation({
       });
       setTimelineRequest({ signature: requestSignature, status: 'success' });
       if (pagination.stalled) {
-        setPaginationError('unknown');
+        const stallToken = ++loadOlderRequestTokenRef.current;
+        setPaginationRequest({
+          signature: requestSignature,
+          cursor: null,
+          status: 'error',
+          error: 'unknown',
+          requestToken: stallToken,
+        });
       }
       return items;
     } catch (err) {
       if (generation !== timelineGenerationRef.current) return [];
-      setTimelineError(mapClientError(err));
+      setTimelineErrorState({ signature: requestSignature, code: mapClientError(err) });
       setTimelineRequest({ signature: requestSignature, status: 'error' });
       return [];
     }
-  }, [orgId, conversationId, enabled, signature]);
+  }, [orgId, conversationId, enabled, signature, invalidatePaginationAuthority, resetPaginationRequest]);
+
+  const isLoadOlderAuthoritative = useCallback(
+    (authority: LoadOlderAuthority, requestSignature: string): boolean => {
+      const currentSignature = communicationConversationSignature(orgId, conversationId);
+      return (
+        authority.signature === currentSignature &&
+        authority.signature === requestSignature &&
+        authority.timelineDataVersion === timelineDataVersionRef.current &&
+        authority.paginationGeneration === paginationGenerationRef.current
+      );
+    },
+    [orgId, conversationId],
+  );
 
   const loadOlder = useCallback(async (): Promise<CommunicationEvent[]> => {
     if (!orgId || !conversationId || !enabled) return [];
@@ -218,12 +327,34 @@ export function useCommunicationConversation({
     }
 
     const cursor = current.nextCursor;
-    if (loadOlderInFlightCursorRef.current === cursor) {
+    const inFlight = loadOlderInFlightRef.current;
+    if (
+      inFlight &&
+      inFlight.signature === requestSignature &&
+      inFlight.cursor === cursor
+    ) {
       return current.events;
     }
-    loadOlderInFlightCursorRef.current = cursor;
-    setLoadingOlder(true);
-    setPaginationError(null);
+
+    const requestToken = ++loadOlderRequestTokenRef.current;
+    loadOlderInFlightRef.current = { signature: requestSignature, cursor, requestToken };
+    const authority: LoadOlderAuthority = {
+      requestToken,
+      signature: requestSignature,
+      cursor,
+      timelineDataVersion: timelineDataVersionRef.current,
+      paginationGeneration: paginationGenerationRef.current,
+    };
+
+    setPaginationRequest({
+      signature: requestSignature,
+      cursor,
+      status: 'loading',
+      error: null,
+      requestToken,
+    });
+
+    const mergeBaseEvents = current.events;
 
     try {
       const page = await communicationClient.listConversationEvents(orgId, conversationId, {
@@ -231,58 +362,107 @@ export function useCommunicationConversation({
         limit: COMMUNICATION_TIMELINE_PAGE_SIZE,
       });
 
-      if (committedTimelineRef.current.signature !== requestSignature) {
-        return [];
+      if (!isLoadOlderAuthoritative(authority, requestSignature)) {
+        return committedTimelineRef.current.signature === requestSignature
+          ? committedTimelineRef.current.events
+          : [];
       }
 
       const pagination = resolveCommunicationPagination(cursor, page);
-      const merged = dedupeEventsById([...page.items, ...current.events]);
+      const merged = dedupeEventsById([...page.items, ...mergeBaseEvents]);
       setCommittedTimeline({
         signature: requestSignature,
         events: merged,
         hasMore: pagination.hasMore,
         nextCursor: pagination.nextCursor,
       });
+
       if (pagination.stalled) {
-        setPaginationError('unknown');
+        setPaginationRequest({
+          signature: requestSignature,
+          cursor,
+          status: 'error',
+          error: 'unknown',
+          requestToken,
+        });
+      } else {
+        setPaginationRequest({
+          signature: requestSignature,
+          cursor: null,
+          status: 'idle',
+          error: null,
+          requestToken: 0,
+        });
       }
       return merged;
     } catch {
-      if (committedTimelineRef.current.signature === requestSignature) {
-        setPaginationError('unknown');
+      if (isLoadOlderAuthoritative(authority, requestSignature)) {
+        setPaginationRequest({
+          signature: requestSignature,
+          cursor,
+          status: 'error',
+          error: 'unknown',
+          requestToken,
+        });
       }
       return committedTimelineRef.current.signature === requestSignature
         ? committedTimelineRef.current.events
         : [];
     } finally {
-      if (loadOlderInFlightCursorRef.current === cursor) {
-        loadOlderInFlightCursorRef.current = null;
+      const inFlightOwner = loadOlderInFlightRef.current;
+      if (
+        inFlightOwner &&
+        inFlightOwner.requestToken === requestToken &&
+        inFlightOwner.signature === requestSignature &&
+        inFlightOwner.cursor === cursor
+      ) {
+        loadOlderInFlightRef.current = null;
       }
-      setLoadingOlder(false);
+
+      if (
+        paginationRequestRef.current.requestToken === requestToken &&
+        paginationRequestRef.current.signature === requestSignature &&
+        paginationRequestRef.current.cursor === cursor
+      ) {
+        setPaginationRequest((prev) =>
+          prev.requestToken === requestToken && prev.status === 'loading'
+            ? { ...prev, status: 'idle', cursor: null, requestToken: 0 }
+            : prev,
+        );
+      }
     }
-  }, [orgId, conversationId, enabled]);
+  }, [orgId, conversationId, enabled, isLoadOlderAuthoritative]);
 
   const retryLoadOlder = useCallback(async () => {
-    setPaginationError(null);
+    const requestSignature = communicationConversationSignature(orgId, conversationId);
+    setPaginationRequest((prev) =>
+      prev.signature === requestSignature
+        ? { ...prev, status: 'idle', error: null }
+        : { signature: requestSignature, cursor: null, status: 'idle', error: null, requestToken: 0 },
+    );
     return loadOlder();
-  }, [loadOlder]);
+  }, [orgId, conversationId, loadOlder]);
 
   useEffect(() => {
+    paginationGenerationRef.current += 1;
+    timelineDataVersionRef.current += 1;
+    loadOlderInFlightRef.current = null;
+    resetPaginationRequest(signature);
+
     if (!enabled || !orgId || !conversationId) {
       setCommittedDetail(EMPTY_DETAIL);
       setCommittedTimeline(EMPTY_TIMELINE);
       setDetailRequest({ signature: '', status: 'idle' });
       setTimelineRequest({ signature: '', status: 'idle' });
-      setDetailError(null);
-      setDetailNotFound(false);
-      setTimelineError(null);
-      setPaginationError(null);
+      setDetailErrorState({ signature: '', code: null });
+      setDetailNotFoundState({ signature: '', notFound: false });
+      setTimelineErrorState({ signature: '', code: null });
       return;
     }
 
     void reloadDetail();
     void reloadTimeline();
-  }, [enabled, orgId, conversationId, reloadDetail, reloadTimeline]);
+  }, [enabled, orgId, conversationId, reloadDetail, reloadTimeline, resetPaginationRequest, signature]);
 
   return useMemo(
     () => ({
@@ -290,12 +470,13 @@ export function useCommunicationConversation({
       events,
       detailLoading,
       timelineLoading,
-      loadingOlder,
+      loadingOlder: visibleLoadingOlder,
       hasMore,
       detailError: visibleDetailError,
-      detailNotFound,
+      detailNotFound: visibleDetailNotFound,
       timelineError: visibleTimelineError,
-      paginationError,
+      paginationError: visiblePaginationError,
+      conversationSignature: signature,
       reloadDetail,
       reloadTimeline,
       loadOlder,
@@ -306,12 +487,13 @@ export function useCommunicationConversation({
       events,
       detailLoading,
       timelineLoading,
-      loadingOlder,
+      visibleLoadingOlder,
       hasMore,
       visibleDetailError,
-      detailNotFound,
+      visibleDetailNotFound,
       visibleTimelineError,
-      paginationError,
+      visiblePaginationError,
+      signature,
       reloadDetail,
       reloadTimeline,
       loadOlder,

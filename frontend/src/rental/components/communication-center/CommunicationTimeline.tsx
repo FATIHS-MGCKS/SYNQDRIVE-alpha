@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { CommunicationApiChannel, CommunicationEvent } from '../../../lib/communication/types';
@@ -16,6 +16,7 @@ import { CommunicationTimelineSkeleton } from './skeletons/CommunicationTimeline
 interface CommunicationTimelineProps {
   channel: CommunicationApiChannel;
   events: CommunicationEvent[];
+  conversationSignature: string;
   loading: boolean;
   error: string | null;
   loadingOlder: boolean;
@@ -49,14 +50,15 @@ function renderTimelineItem(
   t: ReturnType<typeof useLanguage>['t'],
 ) {
   if (item.kind === 'date-separator') {
+    const label = formatDateSeparator(item.occurredAt, locale, t);
+    if (!label) return null;
     return (
       <div
-        key={item.id}
         data-testid="communication-timeline-date-separator"
         className="flex justify-center py-2"
       >
         <span className="rounded-full bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {formatDateSeparator(item.occurredAt, locale, t)}
+          {label}
         </span>
       </div>
     );
@@ -64,15 +66,13 @@ function renderTimelineItem(
 
   if (item.kind === 'message') {
     const isText = item.contentType === 'TEXT';
-    const showText = isText ? item.text : item.text;
     const contentLabel = t(contentTypeLabelKey(item.contentType));
     return (
       <CommunicationMessageBubble
-        key={item.id}
         direction={item.direction}
         channel={channel}
         contentLabel={contentLabel}
-        text={isText ? showText : showText}
+        text={isText ? item.text : item.text}
         showMediaLabel={!isText}
         truncated={item.truncated}
         attachmentCount={item.attachmentCount}
@@ -87,7 +87,6 @@ function renderTimelineItem(
   if (item.kind === 'call') {
     return (
       <CommunicationCallEvent
-        key={item.id}
         eventType={item.eventType}
         direction={item.direction}
         durationSeconds={item.durationSeconds}
@@ -100,7 +99,6 @@ function renderTimelineItem(
 
   return (
     <CommunicationLifecycleEvent
-      key={item.id}
       eventType={item.eventType}
       occurredAt={item.occurredAt}
       locale={locale}
@@ -112,6 +110,7 @@ function renderTimelineItem(
 export function CommunicationTimeline({
   channel,
   events,
+  conversationSignature,
   loading,
   error,
   loadingOlder,
@@ -122,11 +121,61 @@ export function CommunicationTimeline({
   onRetryLoadOlder,
 }: CommunicationTimelineProps) {
   const { t, locale } = useLanguage();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const prependBaselineRef = useRef<{
+    scrollHeight: number;
+    scrollTop: number;
+    eventCount: number;
+  } | null>(null);
+  const previousSignatureRef = useRef<string | null>(null);
+  const previousEventCountRef = useRef(0);
 
   const timelineItems = useMemo(
     () => buildTimelineWithDateSeparators(events, channel),
     [events, channel],
   );
+
+  const handleLoadOlder = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) {
+      prependBaselineRef.current = {
+        scrollHeight: el.scrollHeight,
+        scrollTop: el.scrollTop,
+        eventCount: events.length,
+      };
+    }
+    onLoadOlder();
+  }, [onLoadOlder, events.length]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || loading) return;
+
+    if (conversationSignature !== previousSignatureRef.current) {
+      el.scrollTop = el.scrollHeight;
+      previousSignatureRef.current = conversationSignature;
+      previousEventCountRef.current = events.length;
+      prependBaselineRef.current = null;
+      return;
+    }
+
+    const baseline = prependBaselineRef.current;
+    if (baseline && events.length > baseline.eventCount) {
+      const delta = el.scrollHeight - baseline.scrollHeight;
+      if (delta > 0) {
+        el.scrollTop = baseline.scrollTop + delta;
+      }
+      prependBaselineRef.current = null;
+      previousEventCountRef.current = events.length;
+      return;
+    }
+
+    if (events.length > previousEventCountRef.current && previousEventCountRef.current === 0) {
+      el.scrollTop = el.scrollHeight;
+    }
+
+    previousEventCountRef.current = events.length;
+  }, [conversationSignature, events.length, loading]);
 
   if (loading) {
     return <CommunicationTimelineSkeleton />;
@@ -181,7 +230,7 @@ export function CommunicationTimeline({
                 size="sm"
                 data-testid="communication-timeline-load-older"
                 disabled={loadingOlder}
-                onClick={onLoadOlder}
+                onClick={handleLoadOlder}
               >
                 {loadingOlder
                   ? t('communication.inbox.loadingMore')
@@ -192,8 +241,18 @@ export function CommunicationTimeline({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
-        {timelineItems.map((item) => renderTimelineItem(item, channel, locale, t))}
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-3"
+        data-testid="communication-timeline-scroll"
+      >
+        <ol className="space-y-2" aria-label={t('communication.timeline.listLabel')}>
+          {timelineItems.map((item) => (
+            <li key={item.id} className="list-none">
+              {renderTimelineItem(item, channel, locale, t)}
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );

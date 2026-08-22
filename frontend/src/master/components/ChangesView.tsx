@@ -40,11 +40,11 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.929',
     title: 'Communication Center C8.3 — Canonical Conversation Timeline',
     summary: [
-      'Provider-neutral `useCommunicationConversation` hook loads canonical detail + timeline with independent org/conversation race safety and cursor pagination.',
-      'Timeline presentation maps MESSAGE/CALL/lifecycle events; shared `CommunicationMessageBubble` for WhatsApp/SMS; semantic media placeholders (no provider URLs).',
-      'Context panel populated from detail DTO refs (customer, booking, vehicle, station, assignment) with entity navigation links.',
-      'Deep-link `conversationId` loads detail/events without inbox row; 404 safe not-found state.',
-      '84 unit/hook tests + Playwright 390/1024/1440 timeline proofs; C8.1/C8.2 regression preserved.',
+      'Provider-neutral `useCommunicationConversation` hook loads canonical detail + timeline with generation/token race authority, signature-scoped notFound/pagination/loading, and loadOlder cross-conversation isolation.',
+      'Timeline presentation maps MESSAGE/CALL/lifecycle events; shared `CommunicationMessageBubble` for WhatsApp/SMS; allowlisted `durationSeconds` only; semantic media placeholders (no provider URLs).',
+      'Scroll: initial newest positioning + prepend viewport anchor preservation; semantic timeline list without live-region spam.',
+      'Deep-link `conversationId` + channel filter normalization; 404 explicit Back to Inbox; 403 safe permission UX.',
+      '91 unit/hook tests + 15 Playwright timeline proofs (390/1024/1440); C8.1/C8.2 regression preserved.',
     ],
     reason:
       'C8.3 read phase — operational conversation detail from canonical C7/C7.2 APIs only; no provider fallback.',

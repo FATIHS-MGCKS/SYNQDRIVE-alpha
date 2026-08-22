@@ -77,7 +77,9 @@ type CommunicationMockOptions = {
   smsDelayMs?: number;
   listDelayMs?: number;
   failTimelinePage2?: boolean;
+  failTimelineInitial?: boolean;
   detailNotFound?: boolean;
+  detailForbidden?: boolean;
 };
 
 const searchRaceDelays = new Map<string, ReturnType<typeof setTimeout>>();
@@ -117,6 +119,10 @@ export async function installCommunicationMocks(
         return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
       }
 
+      if (options?.failTimelineInitial && !cursor) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      }
+
       if (conversationId === COMMUNICATION_VOICE_DETAIL_FIXTURE.id) {
         return route.fulfill({
           status: 200,
@@ -144,6 +150,9 @@ export async function installCommunicationMocks(
       const conversationId = url.match(/conversations\/([^/?]+)/)?.[1];
       if (options?.detailNotFound) {
         return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+      }
+      if (options?.detailForbidden) {
+        return route.fulfill({ status: 403, contentType: 'application/json', body: '{}' });
       }
       if (conversationId === COMMUNICATION_DETAIL_EMPTY_CONTEXT_FIXTURE.id) {
         return route.fulfill({
@@ -342,7 +351,9 @@ export async function openCommunicationCenter(
     smsDelayMs?: number;
     listDelayMs?: number;
     failTimelinePage2?: boolean;
+    failTimelineInitial?: boolean;
     detailNotFound?: boolean;
+    detailForbidden?: boolean;
   },
 ) {
   const user = options?.user ?? mockUserWithCommunication;
@@ -357,7 +368,9 @@ export async function openCommunicationCenter(
     smsDelayMs: options?.smsDelayMs,
     listDelayMs: options?.listDelayMs,
     failTimelinePage2: options?.failTimelinePage2,
+    failTimelineInitial: options?.failTimelineInitial,
     detailNotFound: options?.detailNotFound,
+    detailForbidden: options?.detailForbidden,
   });
   await page.route('**/auth/me', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();

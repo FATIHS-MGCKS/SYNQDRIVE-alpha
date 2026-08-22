@@ -1,8 +1,9 @@
 # Communication Center C8.3 — Conversation Timeline Implementation
 
-**Date:** 2026-08-22  
-**Phase:** C8.3 (read-only conversation detail + canonical timeline + context panel)  
+**Date:** 2026-08-22
+**Phase:** C8.3 (read-only conversation detail + canonical timeline + context panel)
 **Base:** `main` after merged PR #1165 (C8.2 inbox integration)
+**Hardening:** C8.3 final detail/timeline race & contract hardening (PR #1169)
 
 ## 1. Scope
 
@@ -17,7 +18,7 @@ C8.3 connects a selected canonical `CommunicationConversation` to C7/C7.2 detail
 - Context panel (customer, booking, vehicle, station, assignment)
 - Responsive detail behavior (desktop 3-pane, tablet/mobile sheet)
 - Deep-link via `conversationId` URL param
-- Tenant/conversation race safety
+- Tenant/conversation race safety with generation/token authority
 - i18n + accessibility
 
 **Out of scope:** composer, mark-read, assignment mutation, media download, provider APIs, transcripts.
@@ -42,34 +43,72 @@ C8.3 connects a selected canonical `CommunicationConversation` to C7/C7.2 detail
 - **Timeline authority:** `GET .../events` → `CommunicationEventListResponseDto` with embedded `content` relation (C7.2)
 - **Context authority:** Detail DTO refs (`customer`, `booking`, `vehicle`, `station`, `assignedUser`, `assignedAgent`) — no extra context API
 
-## 4. Detail state architecture
+## 4. Detail request authority
 
 Hook: `frontend/src/lib/communication/hooks/useCommunicationConversation.ts`
 
 - Signature: `communicationConversationSignature(orgId, conversationId)`
-- Independent `detailGenerationRef` + `detailRequest` lifecycle (`idle | loading | success | error`)
-- Committed detail gated by signature alignment
-- 404 → `detailNotFound` (safe not-found UI, no cross-tenant leak)
+- `detailGenerationRef` incremented on each `reloadDetail` / selection change
+- `detailRequest` lifecycle (`idle | loading | success | error`) scoped to signature
+- Committed detail gated by `committedDetail.signature === currentSignature`
+- Response commits only when `generation === detailGenerationRef.current`
+- **ABA protection:** same signature re-selected increments generation; stale gen-1 cannot overwrite gen-3
+- Visible `detailError` only when `detailRequest.signature === currentSignature` and request status is `error`
+- 404 → signature-scoped `detailNotFoundState`; timeline in-flight invalidated; timeline error suppressed under not-found
 
-## 5. Timeline state architecture
+## 5. Timeline request authority
 
-Same hook, independent timeline authority:
+- `timelineGenerationRef` incremented on each `reloadTimeline` / selection change
+- `timelineRequest` lifecycle scoped to signature
+- Committed events gated by `committedTimeline.signature === currentSignature`
+- Response commits only when `generation === timelineGenerationRef.current`
+- **ABA protection:** same as detail — generation token prevents stale same-signature overwrite
+- Visible `timelineError` only when signature matches and `detailNotFound` is false for current signature
 
-- `timelineGenerationRef` + `timelineRequest` lifecycle
-- Committed events gated by signature
-- `loadOlderInFlightCursorRef` single-flight guard
-- `resolveCommunicationPagination` cursor stall guard (reused from C8.2)
-- `dedupeEventsById` on merge
+## 6. Pagination request generation / load-older authority
 
-## 6. Tenant/conversation isolation
+Pagination uses dedicated authority beyond committed-data identity:
+
+```ts
+type LoadOlderAuthority = {
+  requestToken: number;
+  signature: string;
+  cursor: string;
+  timelineDataVersion: number;
+  paginationGeneration: number;
+};
+```
+
+- `timelineDataVersionRef` + `paginationGenerationRef` invalidated on org/conversation change and full timeline reload
+- `loadOlderInFlightRef` provides synchronous single-flight guard (`signature + cursor + requestToken`)
+- `paginationRequest` state: `{ signature, cursor, status, error, requestToken }`
+- Commit merge only when `isLoadOlderAuthoritative()` — all authority fields match current refs
+- `finally` clears loading only for exact owning `requestToken + signature + cursor`
+- **Cross-conversation:** stale A loadOlder cannot mutate B timeline or clear B in-flight state
+- **Reload vs pagination:** full `reloadTimeline` bumps `timelineDataVersion`; stale older-page merge rejected
+- Visible `loadingOlder` / `paginationError` only when `paginationRequest.signature === currentSignature`
+
+## 7. Signature-scoped notFound
+
+```ts
+type SignatureScopedNotFound = { signature: string; notFound: boolean };
+```
+
+Exposed: `detailNotFound = state.signature === currentSignature && state.notFound`
+
+Late 404 from conversation A cannot mark conversation B not-found.
+
+## 8. Tenant/conversation isolation
 
 On org or conversation change:
 
-- Committed detail/timeline cleared immediately when signature mismatches
-- Stale responses discarded via generation counters
+- Pagination generation + timeline data version invalidated
+- `loadOlderInFlightRef` cleared
+- Committed detail/timeline hidden immediately when signature mismatches
+- Stale responses discarded via generation counters and pagination authority
 - No cross-org cache in query signatures
 
-## 7. Message/event presentation model
+## 9. Message/event presentation model
 
 `frontend/src/lib/communication/timeline-presentation.ts`
 
@@ -82,41 +121,63 @@ On org or conversation change:
 
 No client-side delivery collapsing (no deterministic backend correlation exposed).
 
-## 8–10. WhatsApp / SMS / Voice
+## 10. Voice metadata contract
 
-- WhatsApp + SMS share `CommunicationMessageBubble` (channel indicator only)
-- Voice renders call lifecycle cards only; no chat bubbles unless canonical MESSAGE events exist
-- Duration from allowlisted `metadata.durationSeconds` only
+**Decision: KEEP `durationSeconds` as canonical safe field.**
 
-## 11. Content types
+- Backend allowlist: `backend/src/modules/communication/normalization/communication-metadata.ts` → `CANONICAL_COMMUNICATION_METADATA_KEYS`
+- Read projection: `communication-read.mapper.ts` → `projectSafeReadMetadata()`
+- Frontend reads only via `readCanonicalCallDurationSeconds()` — no arbitrary metadata access
+- Transcript, provider URLs, phone numbers, and other metadata keys are never rendered
 
-Rendered per `CommunicationMessageContentType`:
+## 11. Content types (verified)
 
-- `TEXT` → canonical text (`whitespace-pre-wrap`)
-- `IMAGE`/`VIDEO`/`AUDIO`/`DOCUMENT` → semantic label + caption text if present
-- `UNSUPPORTED` → localized neutral label
-- No provider media URLs
+Backend source: `backend/prisma/schema.prisma` → `CommunicationMessageContentType`
 
-## 12. Delivery lifecycle
+`TEXT | IMAGE | VIDEO | AUDIO | DOCUMENT | LOCATION | CONTACT | MIXED | UNSUPPORTED`
 
-`MESSAGE_DELIVERED`, `MESSAGE_READ`, `MESSAGE_FAILED` → compact lifecycle chips with localized labels.
+Frontend `CommunicationApiMessageContentType` in `frontend/src/lib/communication/types.ts` matches exactly.
 
-## 13. Timeline ordering
+## 12. Event types (verified)
 
-Backend: `occurredAt desc, id desc` (newest page first).  
-Frontend: `sortEventsChronologically` → oldest→newest within merged set; date separators inserted per local day.
+Backend source: `backend/prisma/schema.prisma` → `CommunicationEventType`
+
+Includes: `MESSAGE_*`, `CALL_*`, `AI_*`, `HUMAN_*`, `CONVERSATION_*`, `PROVIDER_ERROR`
+
+Frontend `CommunicationApiEventType` matches exactly. Lifecycle mapper uses only present enum values.
+
+## 13. Timeline ordering contract
+
+Backend implementation: `backend/src/modules/communication/read/communication-read.repository.ts`
+
+```ts
+orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }]
+```
+
+Frontend: `compareCommunicationEventsChronologically` → `occurredAt ASC, id ASC` (inverse for display).
+Invalid timestamps: valid events sort before invalid; equal timestamps tie-break by `id` ascending.
+Invalid date separators omitted (no `"invalid"` label shown).
 
 ## 14. Cursor pagination
 
 - Initial page: newest events, `limit=25`
-- Load older: prepend page, dedupe by event ID, preserve visible events on pagination error
+- Load older: prepend page, dedupe by event ID, authority-checked merge
 - Stall guard stops infinite loops when cursor does not advance
+- Pagination stall error signature-scoped
 
-## 15. Context panel
+## 15. Scroll behavior
 
-`CommunicationContextPane` renders available detail refs only; single empty state when none. Links use `useRentalEntityNavigation` (customer, booking, vehicle).
+`CommunicationTimeline.tsx`:
 
-## 16. Responsive behavior
+- **Initial open / conversation change:** scroll to bottom (newest activity)
+- **Load older:** capture `scrollHeight + scrollTop` before prepend; restore `scrollTop + deltaHeight` after render
+- No auto-scroll on arbitrary rerender
+
+## 16. Context panel
+
+`CommunicationContextPane` renders available detail refs only; single empty state when none. Links use `useRentalEntityNavigation` (customer, booking, vehicle). Station has no invented route.
+
+## 17. Responsive behavior
 
 | Breakpoint | Layout |
 |------------|--------|
@@ -124,63 +185,79 @@ Frontend: `sortEventsChronologically` → oldest→newest within merged set; dat
 | 1024–1279 | Inbox + timeline; context via Sheet |
 | ≤1023 mobile | Inbox ↔ conversation panes; context Sheet |
 
-## 17. Deep links
+## 18. Deep links & channel mismatch
 
 `conversationId` URL param loads detail/events independently of inbox pagination.
 
-## 18. Error/not-found
+When deep-linked conversation channel mismatches inbox filter (e.g. URL `channel=sms` + WhatsApp conversation):
 
-- Detail 404 → not-found state + clear selection
-- Timeline error → inline retry; header may remain if detail succeeded
-- Pagination error → inline retry at boundary; existing events retained
+- After detail loads, shell normalizes URL channel to `conversation.channel` (`CommunicationCenterShell.tsx`, `replace: true`)
+- Detail canonical conversation remains authoritative; filter aligns to avoid contradictory UI
 
-## 19. Security/content rendering
+## 19. Error/not-found behavior
+
+| Case | Behavior |
+|------|----------|
+| Detail 404 | Safe not-found UI + explicit **Back to Inbox** button (user action; no automatic URL clearing) |
+| Detail 403 | Safe permission-denied copy; no retry button; no cross-tenant leak wording |
+| Detail 500 | Inline retry (except permission_denied) |
+| Timeline error | Inline retry in timeline area; header/context remain if detail succeeded |
+| Detail 404 + timeline in-flight | Timeline error suppressed; not-found UX wins |
+| Pagination error | Inline retry at boundary; existing events retained; signature-scoped |
+
+## 20. Security/content rendering
 
 - React text escaping only (no `dangerouslySetInnerHTML`)
-- No provider metadata/URLs in DOM
+- No provider metadata/URLs/transcripts/phone in DOM
 - No auto-linkification in V1
+- Metadata boundary tests verify allowlist-only projection
 
-## 20. i18n
+## 21. i18n
 
 Keys under `communication.timeline.*` and `communication.context.*` in `en.ts` / `de.ts`.
 
-## 21. Accessibility
+## 22. Accessibility
 
-- Message bubbles: `aria-label` with direction, channel, time
-- Lifecycle/call: `role="status"`
+- Timeline: semantic `<ol>/<li>` with `aria-label` on list and message bubbles
+- **No `role="status"` on historical timeline entries** (avoids live-region spam)
+- Direction conveyed via accessible labels, not bubble alignment alone
+- Date separators use meaningful localized text; invalid timestamps omit separator
 - Context sheet: Radix Sheet focus trap; Escape closes
 
-## 22. Performance/request count
+## 23. Performance/request count
 
-Per conversation selection:
+Per conversation selection (production):
 
 1. `GET .../conversations/:id` (detail)
 2. `GET .../events` (timeline page 1)
 
 No per-event requests. Context from detail DTO (no extra calls).
+Measured in Playwright network proof test — exactly one detail + one initial events request per selection.
 
-## 23. Tests
+## 24. Tests
 
-| Suite | Count |
-|-------|-------|
-| C8.3 unit/hook (communication lib + components) | 84 |
-| Playwright C8.3 timeline | 9 |
-| Playwright C8.2 inbox (regression) | 13 |
-| Playwright C8.1 shell (regression) | included in shell spec |
+| Suite | Coverage |
+|-------|----------|
+| Hook race hardening | A→B detail/timeline, ABA, loadOlder cross-conv, reload invalidation, signature-scoped notFound/pagination/loading |
+| Timeline presentation | Chronological sort, equal timestamp, invalid timestamp, metadata allowlist |
+| XSS / security | `CommunicationMessageBubble.test.tsx` |
+| Workspace pane | 403 UX, detail success + timeline failure |
+| Playwright C8.3 | Scroll anchor, channel mismatch, 404/403, network proof, voice/media |
+| C8.2 / C8.1 regression | Inbox + shell specs |
 
-## 24. C8.1/C8.2 regression
+## 25. C8.1/C8.2 regression
 
 - Inbox list/search/filter/pagination unchanged
 - Shell RBAC/responsive/layout preserved
 - Mobile inbox test updated: `communication-timeline` replaces `communication-timeline-shell`
 
-## 25. Known limitations
+## 26. Known limitations
 
 - No media download/playback
 - No delivery state attached to outbound bubbles (lifecycle events separate)
 - No mark-read on open
 - LOCATION/CONTACT/MIXED use semantic labels only
 
-## 26. Next phase readiness
+## 27. Next phase readiness
 
-**READY FOR NEXT COMMUNICATION PHASE** (C8.4 settings / C8.5 dashboard / write actions).
+**READY FOR FINAL REVIEW** — C8.3 hardening complete; do not begin next Communication phase until merged.

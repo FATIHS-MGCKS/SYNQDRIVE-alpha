@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildTimelineWithDateSeparators,
   callEventLabelKey,
+  compareCommunicationEventsChronologically,
   contentTypeLabelKey,
   lifecycleEventLabelKey,
   mapEventToPresentation,
@@ -119,5 +120,64 @@ describe('timeline-presentation mapper', () => {
   it('lifecycle labels use i18n keys', () => {
     expect(lifecycleEventLabelKey('MESSAGE_DELIVERED')).toBe('communication.timeline.delivered');
     expect(callEventLabelKey('CALL_ENDED', 'INBOUND')).toBe('communication.timeline.callCompleted');
+  });
+
+  it('orders equal timestamps deterministically by id ascending', () => {
+    const a = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      id: 'evt-b',
+      occurredAt: '2026-08-22T10:00:00.000Z',
+    };
+    const b = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappOutboundText,
+      id: 'evt-a',
+      occurredAt: '2026-08-22T10:00:00.000Z',
+    };
+    expect(compareCommunicationEventsChronologically(a, b)).toBeGreaterThan(0);
+    expect(sortEventsChronologically([a, b]).map((event) => event.id)).toEqual(['evt-a', 'evt-b']);
+  });
+
+  it('handles invalid timestamps without NaN ordering', () => {
+    const invalid = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      id: 'evt-invalid',
+      occurredAt: 'not-a-date',
+    };
+    const valid = COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappOutboundText;
+    const sorted = sortEventsChronologically([invalid, valid]);
+    expect(sorted[0]?.id).toBe(valid.id);
+    expect(sorted[1]?.id).toBe(invalid.id);
+  });
+
+  it('omits date separators for invalid timestamps', () => {
+    const invalid = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      id: 'evt-invalid',
+      occurredAt: 'not-a-date',
+    };
+    const timeline = buildTimelineWithDateSeparators([invalid], CHANNEL);
+    expect(timeline.some((item) => item.kind === 'date-separator')).toBe(false);
+  });
+
+  it('does not expose non-allowlisted metadata in presentation model', () => {
+    const event = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.voiceCallEnded,
+      metadata: {
+        durationSeconds: 120,
+        transcript: 'SECRET TRANSCRIPT',
+        providerUrl: 'https://provider.example/?token=SECRET',
+        phone: '+49123456789',
+        arbitrary: { nested: 'SECRET' },
+      },
+    };
+    const item = mapEventToPresentation(event, 'VOICE');
+    const serialized = JSON.stringify(item);
+    expect(serialized).not.toContain('SECRET TRANSCRIPT');
+    expect(serialized).not.toContain('provider.example');
+    expect(serialized).not.toContain('token=SECRET');
+    expect(serialized).not.toContain('+49123456789');
+    if (item?.kind === 'call') {
+      expect(item.durationSeconds).toBe(120);
+    }
   });
 });

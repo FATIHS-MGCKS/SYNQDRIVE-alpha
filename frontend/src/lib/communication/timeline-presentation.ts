@@ -84,6 +84,29 @@ const LIFECYCLE_EVENT_TYPES = new Set<CommunicationApiEventType>([
   'PROVIDER_ERROR',
 ]);
 
+/** Mirrors backend CANONICAL_COMMUNICATION_METADATA_KEYS allowlist for read DTO projection. */
+export const CANONICAL_COMMUNICATION_METADATA_KEYS = [
+  'durationSeconds',
+  'outcomeCode',
+  'intentCode',
+  'toolName',
+  'actionName',
+  'failureCode',
+  'handoffReasonCode',
+  'templateName',
+  'languageCode',
+  'providerLifecycleState',
+] as const;
+
+/** Read only allowlisted canonical metadata — durationSeconds is C7-projected safe field. */
+export function readCanonicalCallDurationSeconds(
+  metadata: CommunicationEvent['metadata'],
+): number | null {
+  if (!metadata || typeof metadata.durationSeconds !== 'number') return null;
+  if (!Number.isFinite(metadata.durationSeconds)) return null;
+  return metadata.durationSeconds;
+}
+
 function resolveMessageDirection(event: CommunicationEvent): MessageDirection {
   if (event.eventType === 'MESSAGE_RECEIVED') return 'inbound';
   if (event.eventType === 'MESSAGE_SENT') return 'outbound';
@@ -123,9 +146,7 @@ export function mapEventToPresentation(
   }
 
   if (CALL_EVENT_TYPES.has(event.eventType)) {
-    const durationRaw = event.metadata?.durationSeconds;
-    const durationSeconds =
-      typeof durationRaw === 'number' && Number.isFinite(durationRaw) ? durationRaw : null;
+    const durationSeconds = readCanonicalCallDurationSeconds(event.metadata);
     return {
       kind: 'call',
       id: event.id,
@@ -154,17 +175,27 @@ export function mapEventToPresentation(
 }
 
 /** Backend returns newest-first; transform to chronological oldest→newest for display. */
-export function sortEventsChronologically(events: CommunicationEvent[]): CommunicationEvent[] {
-  return [...events].sort((a, b) => {
-    const timeDiff = new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
-    if (timeDiff !== 0) return timeDiff;
-    return a.id.localeCompare(b.id);
-  });
+export function compareCommunicationEventsChronologically(
+  a: CommunicationEvent,
+  b: CommunicationEvent,
+): number {
+  const aTime = Date.parse(a.occurredAt);
+  const bTime = Date.parse(b.occurredAt);
+  const aValid = !Number.isNaN(aTime);
+  const bValid = !Number.isNaN(bTime);
+
+  if (aValid && bValid && aTime !== bTime) return aTime - bTime;
+  if (aValid !== bValid) return aValid ? -1 : 1;
+  return a.id.localeCompare(b.id);
 }
 
-function localDateKey(iso: string): string {
+export function sortEventsChronologically(events: CommunicationEvent[]): CommunicationEvent[] {
+  return [...events].sort(compareCommunicationEventsChronologically);
+}
+
+function localDateKey(iso: string): string | null {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 'invalid';
+  if (Number.isNaN(date.getTime())) return null;
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
@@ -179,7 +210,7 @@ export function buildTimelineWithDateSeparators(
 
   for (const event of chronological) {
     const dateKey = localDateKey(event.occurredAt);
-    if (dateKey !== lastDateKey) {
+    if (dateKey && dateKey !== lastDateKey) {
       result.push({
         kind: 'date-separator',
         id: `sep-${dateKey}-${event.id}`,

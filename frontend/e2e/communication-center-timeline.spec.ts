@@ -151,4 +151,107 @@ test.describe('Communication Center C8.3 conversation timeline', () => {
     expect(communicationUrls.some((url) => url.includes('/events'))).toBe(true);
     expect(communicationUrls.every((url) => !FORBIDDEN_PROVIDER_PATTERNS.some((p) => p.test(url)))).toBe(true);
   });
+
+  test('initial timeline scroll positions near newest activity', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop initial scroll');
+
+    await openCommunicationCenter(page);
+    await page.addStyleTag({
+      content:
+        '[data-testid="communication-timeline-scroll"] { max-height: 220px !important; height: 220px !important; }',
+    });
+    await selectFirstConversation(page);
+    await expect(page.getByTestId('communication-timeline-scroll')).toBeVisible();
+
+    const isNearBottom = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="communication-timeline-scroll"]') as HTMLElement | null;
+      if (!el) return false;
+      return el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    });
+    expect(isNearBottom).toBe(true);
+    await expect(page.getByText('Your pickup is scheduled for 14:00')).toBeVisible();
+  });
+
+  test('load older preserves viewport anchor', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop load older anchor');
+
+    await openCommunicationCenter(page);
+    await selectFirstConversation(page);
+    await page.addStyleTag({
+      content:
+        '[data-testid="communication-timeline-scroll"] { max-height: 220px !important; height: 220px !important; }',
+    });
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="communication-timeline-scroll"]') as HTMLElement | null;
+      if (el) el.scrollTop = 0;
+    });
+
+    const before = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="communication-timeline-scroll"]') as HTMLElement | null;
+      if (!el) return null;
+      return { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight };
+    });
+    expect(before).not.toBeNull();
+
+    await page.getByTestId('communication-timeline-load-older').click();
+    await expect(page.getByText('SMS inbound message')).toBeVisible();
+
+    const after = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="communication-timeline-scroll"]') as HTMLElement | null;
+      if (!el) return null;
+      return { scrollTop: el.scrollTop, scrollHeight: el.scrollHeight };
+    });
+    expect(after).not.toBeNull();
+    expect(after!.scrollHeight).toBeGreaterThan(before!.scrollHeight);
+    expect(after!.scrollTop).toBeGreaterThan(0);
+  });
+
+  test('deep link with channel filter mismatch normalizes channel after detail load', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop channel mismatch');
+
+    await openCommunicationCenter(page, {
+      query: `view=communication-center&communicationChannel=sms&conversationId=${MOCK_CONVERSATION_ID}`,
+    });
+
+    await expect(page.getByTestId('communication-conversation-header-title')).toContainText('Max Mustermann');
+    await expect(page.getByTestId('communication-conversation-header-meta')).toContainText(/WhatsApp/i);
+    await expect(page).toHaveURL(/communicationChannel=whatsapp/);
+  });
+
+  test('detail 404 shows safe not-found with back action', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop detail 404');
+
+    await openCommunicationCenter(page, {
+      query: `view=communication-center&conversationId=${MOCK_CONVERSATION_ID}`,
+      detailNotFound: true,
+    });
+
+    await expect(page.getByTestId('communication-conversation-not-found')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to inbox/i })).toBeVisible();
+    await expect(page.getByTestId('communication-timeline-error')).toHaveCount(0);
+  });
+
+  test('detail 403 shows safe permission UX without retry', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop detail 403');
+
+    await openCommunicationCenter(page, {
+      query: `view=communication-center&conversationId=${MOCK_CONVERSATION_ID}`,
+      detailForbidden: true,
+    });
+
+    await expect(page.getByTestId('communication-detail-error')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Retry/i })).toHaveCount(0);
+    await expect(page.getByText(/another tenant|forbidden resource/i)).toHaveCount(0);
+  });
+
+  test('detail success with timeline failure keeps header and retry surface', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop timeline failure');
+
+    await openCommunicationCenter(page, { failTimelineInitial: true });
+    await selectFirstConversation(page);
+
+    await expect(page.getByTestId('communication-conversation-header-title')).toContainText('Max Mustermann');
+    await expect(page.getByTestId('communication-timeline-error')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
+  });
 });

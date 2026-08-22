@@ -26,7 +26,6 @@ export function CommunicationLifecycleEvent({
     >
       <p
         className="rounded-full border border-border/30 bg-muted/20 px-3 py-1 text-[11px] text-muted-foreground"
-        role="status"
         aria-label={`${label}, ${timeLabel}`}
       >
         {label}

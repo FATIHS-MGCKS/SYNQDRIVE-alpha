@@ -2,6 +2,7 @@ import { ArrowLeft, PanelRightOpen } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
+import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { resolveConversationTitle } from './communication-inbox-display';
 import { CommunicationEmptyState } from './CommunicationEmptyState';
 import { CommunicationTimeline } from './CommunicationTimeline';
@@ -36,6 +37,32 @@ function apiChannelLabelKey(channel: string) {
 
 function statusLabelKey(status: string) {
   return `communication.status.${status}` as 'communication.status.AI_ACTIVE';
+}
+
+function resolveDetailErrorMessage(
+  code: CommunicationClientErrorCode,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  switch (code) {
+    case 'permission_denied':
+      return t('communication.inbox.errorPermissionDenied');
+    case 'network':
+      return t('communication.inbox.errorNetwork');
+    case 'invalid_query':
+      return t('communication.inbox.errorInvalidQuery');
+    default:
+      return t('communication.inbox.errorUnknown');
+  }
+}
+
+function resolveTimelineErrorMessage(
+  code: CommunicationClientErrorCode,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  if (code === 'permission_denied') {
+    return t('communication.inbox.errorPermissionDenied');
+  }
+  return t('communication.timeline.timelineError');
 }
 
 export function CommunicationWorkspacePane({
@@ -158,23 +185,30 @@ export function CommunicationWorkspacePane({
             className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
           >
             <p className="text-[13px] text-muted-foreground">
-              {t('communication.inbox.errorUnknown')}
+              {resolveDetailErrorMessage(detailError, t)}
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void conversationState?.reloadDetail()}
-            >
-              {t('communication.timeline.retry')}
-            </Button>
+            {detailError !== 'permission_denied' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void conversationState?.reloadDetail()}
+              >
+                {t('communication.timeline.retry')}
+              </Button>
+            )}
           </div>
         ) : conversationState && conversation ? (
           <CommunicationTimeline
             channel={conversation.channel}
             events={conversationState.events}
+            conversationSignature={conversationState.conversationSignature}
             loading={conversationState.timelineLoading}
-            error={conversationState.timelineError}
+            error={
+              conversationState.timelineError
+                ? resolveTimelineErrorMessage(conversationState.timelineError, t)
+                : null
+            }
             loadingOlder={conversationState.loadingOlder}
             hasMore={conversationState.hasMore}
             paginationError={conversationState.paginationError}

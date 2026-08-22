@@ -3514,6 +3514,7 @@ export const en = {
   'communication.timeline.callFailed': 'Call failed',
   'communication.timeline.duration': 'Duration',
   'communication.timeline.loadOlder': 'Load older messages',
+  'communication.timeline.listLabel': 'Conversation timeline',
   'communication.timeline.retry': 'Retry',
   'communication.timeline.timelineError': 'Could not load conversation timeline',
   'communication.timeline.timelineEmpty': 'No communication events yet',
