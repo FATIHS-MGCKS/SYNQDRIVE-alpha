@@ -90,7 +90,7 @@ export function VehicleTaskDetailDrawer({
     } finally {
       setLoading(false);
     }
-  }, [open, orgId, taskId]);
+  }, [open, orgId, taskId, t]);
 
   useEffect(() => {
     void loadDetail();
@@ -239,7 +239,7 @@ export function VehicleTaskDetailDrawer({
             className="sq-press mb-4 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--brand)]"
           >
             <Icon name="external-link" className="w-3 h-3" />
-            In Tasks öffnen
+            {t('tasks.detail.openInTasks')}
           </button>
         )}
 

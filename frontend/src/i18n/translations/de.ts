@@ -2951,6 +2951,7 @@ export const de: Record<TranslationKey, string> = {
   'tasks.detail.commentAdded': 'Kommentar hinzugefügt',
   'tasks.detail.loadError': 'Aufgabe konnte nicht geladen werden',
   'tasks.detail.loadErrorRetry': 'Bitte versuchen Sie es erneut.',
+  'tasks.detail.notFound': 'Aufgabe nicht gefunden',
   'tasks.detail.retry': 'Erneut laden',
   'tasks.detail.openInTasks': 'In Aufgaben öffnen',
   'tasks.detail.vehicleSection': 'Fahrzeug',
