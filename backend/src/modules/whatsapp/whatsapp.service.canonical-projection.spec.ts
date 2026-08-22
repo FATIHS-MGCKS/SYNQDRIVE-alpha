@@ -107,10 +107,15 @@ describe('WhatsAppService canonical outbound projection', () => {
       isWhatsAppProjectionEnabled: jest.fn().mockReturnValue(true),
     } as unknown as CommunicationProjectionFeatureService;
 
+    const contentService = {
+      projectWhatsAppMessage: jest.fn().mockResolvedValue({ contentId: 'c-1', created: true, skipped: false }),
+    } as unknown as import('../communication/content/communication-content.service').CommunicationContentService;
+
     integration = new WhatsAppCommunicationProjectionIntegration(
       featureFlags,
       new MetaWhatsAppCommunicationAdapter(),
       projection,
+      contentService,
     );
 
     service = new WhatsAppService(
@@ -200,11 +205,15 @@ describe('WhatsAppCommunicationProjectionIntegration safety', () => {
     const projection = {
       projectNormalizedInput: jest.fn(),
     } as unknown as CommunicationProjectionService;
+    const contentService = {
+      projectWhatsAppMessage: jest.fn(),
+    } as unknown as import('../communication/content/communication-content.service').CommunicationContentService;
 
     const integration = new WhatsAppCommunicationProjectionIntegration(
       featureFlags,
       adapter,
       projection,
+      contentService,
     );
 
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);

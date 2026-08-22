@@ -11,6 +11,10 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from './communication-read.repository';
 import { CommunicationReadService } from './communication-read.service';
+import {
+  collectForbiddenPublicKeys,
+  projectSafeReadMetadata,
+} from './communication-read.mapper';
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
@@ -685,7 +689,10 @@ describePg('Communication read API postgres', () => {
 
     const detail = await service.getConversation(orgA, conv.id);
     const events = await service.listConversationEvents(orgA, conv.id, {});
-    const serialized = JSON.stringify({ detail, events });
-    expect(serialized).not.toMatch(/phone|email|rawPayload|authorization|signature|providerResponse|transcript|\"body\"|\"content\"|token|secret/i);
+    expect(collectForbiddenPublicKeys(detail)).toEqual([]);
+    for (const event of events.items) {
+      expect(collectForbiddenPublicKeys(event.metadata)).toEqual([]);
+      expect(projectSafeReadMetadata(event.metadata)).toEqual(event.metadata ?? undefined);
+    }
   });
 });

@@ -4,6 +4,7 @@ import type {
   CommunicationConversationStatus,
   CommunicationDirection,
   CommunicationEventType,
+  CommunicationMessageContentType,
   CommunicationProviderIdentity,
 } from '@prisma/client';
 import type {
@@ -22,6 +23,7 @@ export class CommunicationConversationListItemDto {
   unreadCount!: number;
   lastActivityAt!: string;
   displayLabel!: string;
+  lastMessagePreview?: string | null;
   customer?: CommunicationCustomerRefDto | null;
   booking?: CommunicationBookingRefDto | null;
   vehicle?: CommunicationVehicleRefDto | null;
@@ -35,6 +37,15 @@ export class CommunicationConversationDetailDto extends CommunicationConversatio
   updatedAt!: string;
 }
 
+export class CommunicationMessageContentDto {
+  id!: string;
+  contentType!: CommunicationMessageContentType;
+  text?: string | null;
+  truncated?: boolean;
+  hasAttachments!: boolean;
+  attachmentCount!: number;
+}
+
 export class CommunicationEventDto {
   id!: string;
   eventType!: CommunicationEventType;
@@ -43,6 +54,7 @@ export class CommunicationEventDto {
   occurredAt!: string;
   providerIdentity?: CommunicationProviderIdentity | null;
   metadata?: Record<string, string | number | boolean | null>;
+  content?: CommunicationMessageContentDto | null;
 }
 
 export class CommunicationConversationSummaryDto {

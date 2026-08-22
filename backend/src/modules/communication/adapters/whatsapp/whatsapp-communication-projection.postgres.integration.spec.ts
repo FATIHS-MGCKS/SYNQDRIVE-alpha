@@ -14,6 +14,8 @@ import { CommunicationEventRepository } from '../../communication-event.reposito
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { CommunicationProjectionService } from '../../communication-projection.service';
 import { CommunicationTenantContextValidation } from '../../communication-tenant-context.validation';
+import { CommunicationContentRepository } from '../../content/communication-content.repository';
+import { CommunicationContentService } from '../../content/communication-content.service';
 import { MetaWhatsAppCommunicationAdapter } from './meta-whatsapp-communication.adapter';
 import { WhatsAppCommunicationProjectionIntegration } from './whatsapp-communication-projection.integration';
 
@@ -40,6 +42,8 @@ describePg('WhatsApp canonical projection postgres integration', () => {
         CommunicationEventRepository,
         CommunicationProjectionService,
         CommunicationProjectionFeatureService,
+        CommunicationContentRepository,
+        CommunicationContentService,
         MetaWhatsAppCommunicationAdapter,
         WhatsAppCommunicationProjectionIntegration,
       ],
@@ -73,6 +77,7 @@ describePg('WhatsApp canonical projection postgres integration', () => {
   });
 
   afterEach(async () => {
+    await prisma.communicationMessageContent.deleteMany({ where: { organizationId: orgId } });
     await prisma.communicationEvent.deleteMany({ where: { organizationId: orgId } });
     await prisma.communicationConversation.deleteMany({ where: { organizationId: orgId } });
     await prisma.whatsAppMessage.deleteMany({ where: { organizationId: orgId } });
