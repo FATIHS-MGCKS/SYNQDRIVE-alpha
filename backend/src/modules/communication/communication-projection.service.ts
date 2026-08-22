@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationConversationRepository } from './communication-conversation.repository';
@@ -23,6 +18,7 @@ import type {
   NormalizedCommunicationInput,
 } from './normalization/communication-normalization.types';
 import { validateNormalizedCommunicationInput } from './normalization/communication-normalization.validation';
+import { CommunicationContextEnrichmentService } from './context/communication-context-enrichment.service';
 
 @Injectable()
 export class CommunicationProjectionService {
@@ -33,6 +29,7 @@ export class CommunicationProjectionService {
     private readonly conversations: CommunicationConversationRepository,
     private readonly events: CommunicationEventRepository,
     private readonly tenantContext: CommunicationTenantContextValidation,
+    @Optional() private readonly contextEnrichment?: CommunicationContextEnrichmentService,
   ) {}
 
   /**
@@ -54,9 +51,39 @@ export class CommunicationProjectionService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => this.projectInTransaction(input, tx));
+      const result = await this.prisma.$transaction(async (tx) => this.projectInTransaction(input, tx));
+      await this.enrichContextSafely(input, result);
+      return result;
     } catch (error) {
       throw this.mapProjectionError(error);
+    }
+  }
+
+  private async enrichContextSafely(
+    input: NormalizedCommunicationInput,
+    result: CommunicationProjectionResult,
+  ): Promise<void> {
+    if (!this.contextEnrichment || !result.conversationId) {
+      return;
+    }
+    try {
+      await this.contextEnrichment.enrichAfterProjection({
+        organizationId: input.envelope.organizationId,
+        channel: input.envelope.channel,
+        nativeConversationId: input.envelope.nativeConversationId,
+        communicationConversationId: result.conversationId,
+        occurredAt: input.event.occurredAt,
+      });
+    } catch (error) {
+      this.logger.warn(
+        JSON.stringify({
+          msg: 'communication_context_enrichment_outer_failure',
+          organizationId: input.envelope.organizationId,
+          channel: input.envelope.channel,
+          conversationId: result.conversationId,
+          errorCode: error instanceof Error ? error.name : 'UNKNOWN',
+        }),
+      );
     }
   }
 

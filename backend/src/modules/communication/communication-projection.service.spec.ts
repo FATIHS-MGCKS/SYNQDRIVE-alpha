@@ -506,4 +506,41 @@ describe('CommunicationProjectionService', () => {
       expect.anything(),
     );
   });
+
+  it('still returns projection result when context enrichment throws', async () => {
+    const enrichment = {
+      enrichAfterProjection: jest.fn().mockRejectedValue(new Error('resolver down')),
+    };
+    const serviceWithEnrichment = new CommunicationProjectionService(
+      prisma,
+      conversations,
+      events,
+      tenantContext,
+      enrichment as any,
+    );
+
+    conversations.ensureConversationEnvelope.mockResolvedValue({
+      conversation: baseConversation(),
+      created: true,
+    });
+    events.appendEventIdempotently.mockResolvedValue({
+      event: { id: 'ev-1' } as any,
+      created: true,
+    });
+    conversations.bumpLastActivityAt.mockResolvedValue(baseConversation());
+    conversations.incrementUnreadCount.mockResolvedValue(baseConversation());
+
+    const result = await serviceWithEnrichment.projectNormalizedInput({
+      envelope: {
+        organizationId: 'org-1',
+        channel: CommunicationChannel.WHATSAPP,
+        nativeConversationId: 'wa-1',
+      },
+      event: whatsappEvent('evt-enrich-fail'),
+      projection: { unreadDelta: 1 },
+    });
+
+    expect(result.conversationId).toBe('cc-1');
+    expect(enrichment.enrichAfterProjection).toHaveBeenCalled();
+  });
 });

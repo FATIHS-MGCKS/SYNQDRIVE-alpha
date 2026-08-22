@@ -15,6 +15,11 @@ import { CommunicationPersistenceService } from './communication-persistence.ser
 import { CommunicationProjectionFeatureService } from './communication-projection-feature.service';
 import { CommunicationProjectionService } from './communication-projection.service';
 import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
+import { CommunicationContextApplierService } from './context/communication-context-applier.service';
+import { CommunicationContextBackfillService, CommunicationContextEnrichmentService } from './context/communication-context-enrichment.service';
+import { CommunicationContextResolverService } from './context/communication-context-resolver.service';
+import { CommunicationContextDuplicateAuditService } from './context/communication-context-duplicate-audit.service';
+import { CommunicationNativeContextLoader } from './context/communication-native-context.loader';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1/C2/C3).
@@ -29,6 +34,12 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
     CommunicationPersistenceService,
     CommunicationProjectionService,
     CommunicationProjectionFeatureService,
+    CommunicationNativeContextLoader,
+    CommunicationContextResolverService,
+    CommunicationContextApplierService,
+    CommunicationContextEnrichmentService,
+    CommunicationContextBackfillService,
+    CommunicationContextDuplicateAuditService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
     TwilioVoiceCommunicationAdapter,
@@ -44,6 +55,10 @@ import { CommunicationTenantContextValidation } from './communication-tenant-con
     CommunicationPersistenceService,
     CommunicationProjectionService,
     CommunicationProjectionFeatureService,
+    CommunicationContextResolverService,
+    CommunicationContextEnrichmentService,
+    CommunicationContextBackfillService,
+    CommunicationContextDuplicateAuditService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
     TwilioVoiceCommunicationAdapter,
