@@ -1,8 +1,8 @@
 # P2.2.17 — Booking Vehicle Picker Localization — Implementation Audit
 
-**Date:** 2026-08-22  
-**Baseline SHA:** `f709520590967c4a128f91a38f07d0672f6d4a55`  
-**Branch:** `cursor/p2217-booking-vehicle-picker-i18n-3c10`  
+**Date:** 2026-08-22
+**Baseline SHA:** `f709520590967c4a128f91a38f07d0672f6d4a55`
+**Branch:** `cursor/p2217-booking-vehicle-picker-i18n-3c10`
 **Pre-flight:** PR #1142 — GO
 
 ## Scope

@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Booking Vehicle Picker (P2.2.17 — V4.9.944)', icon: Globe,
+    endpoint: 'VehiclePickerStep.tsx, booking-vehicle-preflight.ts, booking-vehicle-preflight-presentation-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → VehiclePickerStep chrome; `resolveBookingVehiclePreflight(..., { locale })` → presentation adapter + `formatVehicleOperationalStatusLabel`. **Keys:** +9 EN+DE `bookings.wizard.vehiclePicker.*` (7899→7908); reuses `bookings.planner.allStations`, `tasks.filter.resetFilters`, `fleetCondition.moreFilters`, `vehicle.status.*`, `health.rentalBlocked`. **Guardrails:** P2.2.17 enforce-clean exact (2 paths) — 0 findings. **Tests:** `booking-vehicle-picker-localization.test.tsx`. **Semantics:** presentation-only; machine preflight codes frozen; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-17-booking-vehicle-picker-implementation-2026-08-22.md; architecture/I18N_BOOKING_VEHICLE_PICKER_P2_2_17_2026-08-22.md' },
   { name: 'Platform i18n Task Detail Host Residuals (P2.2.16C.2B — V4.9.943)', icon: Globe,
     endpoint: 'VehicleTaskDetailDrawer.tsx, OperatorTaskDetail.tsx.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → host-specific `tasks.detail.*` labels/errors; `buildTaskDetailViewModel({ locale })` + C.2A workflow host unchanged. **Keys:** +1 EN+DE `tasks.detail.notFound` (7898→7899); reuses `openInTasks`, `loadError`, `commentEmpty`. **Guardrails:** P2.2.16C.2B enforce-clean exact (2 paths) — 0 findings; blind-spot guards on host literals. **Tests:** `task-detail-host-residuals-localization.test.tsx`. **P2.2.16C:** presentation scope complete. **Semantics:** presentation-only; Category E=0.',
