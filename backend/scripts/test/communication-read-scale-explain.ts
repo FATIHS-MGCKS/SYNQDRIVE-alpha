@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.error('DATABASE_URL required');
+  console.error(JSON.stringify({ status: 'failed', error: 'MissingEnvError' }));
   process.exit(1);
 }
 
@@ -27,7 +27,7 @@ async function main() {
     },
   });
 
-  console.log(`Seeding org ${org.id}: ${CONVERSATION_COUNT} conversations, ${EVENT_COUNT} events...`);
+  // Seeding disposable test data (org cleaned up before exit).
   const base = Date.now();
   const conversationIds: string[] = [];
 
@@ -158,12 +158,17 @@ async function main() {
   );
   plans.customerSearch = search.map((r) => r['QUERY PLAN']);
 
-  console.log(JSON.stringify({
-    orgId: org.id,
-    conversations: CONVERSATION_COUNT,
-    events: eventsCreated,
-    plans,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        conversations: CONVERSATION_COUNT,
+        events: eventsCreated,
+        plans,
+      },
+      null,
+      2,
+    ),
+  );
 
   await prisma.communicationEvent.deleteMany({ where: { organizationId: org.id } });
   await prisma.communicationConversation.deleteMany({ where: { organizationId: org.id } });
@@ -171,7 +176,16 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch((error) => {
-  console.error(error);
+main().catch((error: unknown) => {
+  const errorName =
+    error instanceof Error && error.name ? error.name : 'UnknownError';
+
+  console.error(
+    JSON.stringify({
+      status: 'failed',
+      error: errorName,
+    }),
+  );
+
   process.exit(1);
 });

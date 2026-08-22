@@ -3,6 +3,7 @@
 **Phase:** C7 (Canonical inbox read API)  
 **Date:** 2026-08-22  
 **Branch:** `feature/communication-center-c7-read-api`  
+**PR:** #1144
 **Depends on:** C1 persistence, C2 normalization, C0.2 RBAC, C6 context resolution
 
 ---
@@ -14,7 +15,7 @@ Provider-neutral **read** surface for Communication Center:
 - Inbox list (cursor pagination)
 - Conversation detail
 - Event timeline (cursor pagination)
-- Optional summary counts
+- Summary counts (filter-coherent with inbox)
 - Filters + bounded search
 - RBAC (`communication.read`) + org isolation
 
@@ -29,268 +30,242 @@ Provider-neutral **read** surface for Communication Center:
 | `GET organizations/:orgId/whatsapp/conversations` | Native `WhatsAppConversation` | **Not duplicated** — legacy until C8 |
 | `GET organizations/:orgId/voice-assistant/conversations` | Native `VoiceConversation` | **Not duplicated** |
 | SMS native list | None | N/A |
-| `CommunicationModule` HTTP | Missing before C7 | **Added** |
-| RBAC `@RequireCommunicationPermission('read')` | Exists (C0.2) | **Reused** |
-| `OrgScopingGuard` | Exists | **Reused** |
-| Task/cursor utilities | `tasks-list-cursor.util.ts` | **Pattern reused** (base64url JSON cursor) |
-| Invoice list query patterns | Offset pagination | **Not used** for inbox (keyset required) |
-| `sanitizeCanonicalMetadata` / allowlist | C1/C2 | **Reused** for read projection |
+| `CommunicationModule` HTTP | Added in C7 | **Added** |
+| RBAC `@RequireCommunicationPermission('read')` | C0.2 | **Reused** |
+| `OrgScopingGuard` | Platform | **Reused** |
+| Swagger `@ApiTags` | Not used on org controllers | **Not added** (repo convention) |
 
 ---
 
 ## 3. Public DTO contract
 
-### List item (`CommunicationConversationListItemDto`)
+### List item
 
-`id`, `channel`, `status`, `unreadCount`, `lastActivityAt`, `displayLabel`, optional context refs (`customer`, `booking`, `vehicle`, `station`, `assignedUser`, `assignedAgent`).
+`id`, `channel`, `status`, `unreadCount`, `lastActivityAt`, `displayLabel`, context refs.
 
-No `lastMessagePreview` — canonical schema does not store message preview on `CommunicationConversation` (native tables remain authoritative for content).
+No `lastMessagePreview` — not stored on canonical conversation.
 
-### Detail (`CommunicationConversationDetailDto`)
+### Summary
 
-List fields + `createdAt`, `updatedAt`.
+| Field | Semantics |
+|-------|-----------|
+| `totalUnreadMessages` | **Sum** of `unreadCount` across filtered conversations (total unread messages) |
+| `unreadConversations` | **Count** of conversations with `unreadCount > 0` in filtered set |
+| `unassigned` | Filtered conversations with `assignedUserId IS NULL` |
+| `requiresAttention` | Filtered conversations with `status = HUMAN_REQUIRED` |
+| `byChannel` | Filtered conversation counts per channel |
 
-### Event (`CommunicationEventDto`)
+### Event
 
-`id`, `eventType`, `direction`, `actorType`, `occurredAt`, `providerIdentity`, allowlisted `metadata` only. **No body/content/transcript.**
-
-### Summary (`CommunicationConversationSummaryDto`)
-
-`totalUnread`, `unassigned`, `requiresAttention` (`HUMAN_REQUIRED` count), `byChannel`.
-
----
-
-## 4. Inbox list
-
-`GET /api/v1/organizations/:orgId/communication/conversations`
-
-- Single Prisma `findMany` with `select` + relation `select` (no per-row fetches)
-- Sort: `lastActivityAt DESC`, `id DESC`
-- Default limit 25, max 100
+Canonical `eventType` + allowlisted metadata only. **No body/content/transcript.**
 
 ---
 
-## 5. Filters
+## 4. Summary filter contract (hardened)
 
-| Filter | Implementation |
-|--------|----------------|
-| `channel` | multi enum |
-| `status` | multi enum |
-| `unreadOnly` | `unreadCount > 0` |
-| `customerId` / `bookingId` / `vehicleId` / `stationId` | exact FK |
-| `assignedUserId` | exact FK |
-| `unassigned` | `assignedUserId IS NULL` |
-| `providerIdentity` | `events.some` (org-scoped) |
-| `dateFrom` / `dateTo` | `lastActivityAt` bounds (ISO validated) |
+Summary reflects the **currently filtered inbox** except `cursor` and `limit`.
 
-Invalid enums → `400` via global `ValidationPipe`.
+Honors **all** inbox filters:
+
+| Filter | Applied to summary |
+|--------|-------------------|
+| `search` | yes |
+| `unreadOnly` | yes |
+| `channel` | yes |
+| `status` | yes |
+| `customerId` | yes |
+| `bookingId` | yes |
+| `vehicleId` | yes |
+| `stationId` | yes |
+| `assignedUserId` | yes |
+| `unassigned` | yes |
+| `providerIdentity` | yes |
+| `dateFrom` / `dateTo` | yes |
+
+Ignores only: `cursor`, `limit`.
+
+---
+
+## 5. Assigned-user filters and tenant safety (hardened)
+
+### Exact `assignedUserId` filter
+
+Filters canonical conversations by `assignedUserId` FK. Conversations are **organization-scoped** (`organizationId` from route + `OrgScopingGuard`), so this filter does not leak cross-tenant rows by itself.
+
+Assignment integrity on write is guaranteed by **C6** context resolution (only valid org users are assigned).
+
+### Assigned-user **name search** (`search` term)
+
+Name search additionally requires **ACTIVE** `OrganizationMembership` in the requested organization:
+
+```text
+assignedUser.memberships.some {
+  organizationId = route org
+  status = ACTIVE
+}
+```
+
+Matches C0.2 `PermissionsGuard` / `OrgScopingGuard` ACTIVE membership semantics.
+
+Users assigned on a conversation but without ACTIVE org membership are **not** discoverable via assigned-user search in that org. No extra membership join is added to the exact `assignedUserId` filter — only name search needs it.
 
 ---
 
 ## 6. Search
 
-Bounded `search` (max 120 chars), case-insensitive:
+Org-scoped relational `ILIKE contains` on customer, vehicle, station, **membership-scoped** assigned user, and `BK-XXXXXX` booking suffix.
 
-- Customer first/last/company (multi-term AND across fields, org-scoped via relation)
-- Vehicle plate/name/make/model (org-scoped)
-- Station name (org-scoped)
-- Assigned user name fields
-- Booking reference prefix `BK-XXXXXX` → `booking.id` suffix match
-
-**Not searched:** phone, email, message body, transcript, raw metadata.
+**Classification:** `ACCEPTABLE INITIAL BOUNDED SEARCH` at ~5k conversations. Customer name search may seq-scan `customers` without matching rows; large tenant customer tables may need **C7.1 trigram/FTS** later.
 
 ---
 
-## 7. Cursor contract
+## 7. Cursor validation (hardened)
 
-Opaque base64url JSON:
-
-**Inbox:** `{ v: "inbox-v1", lastActivityAt, id }`  
-Predicate: `(lastActivityAt < cursor) OR (lastActivityAt = cursor AND id < cursor.id)`
-
-**Timeline:** `{ v: "timeline-v1", occurredAt, id }` — sort `occurredAt DESC`, `id DESC` (newest-first pagination for chat-style UI).
-
-Malformed cursor → `400` (`COMMUNICATION_INBOX_INVALID_CURSOR` / `COMMUNICATION_TIMELINE_INVALID_CURSOR`).
+- Max cursor length: 1024 chars (pre-parse)
+- Payload version + UUID `id` + strict ISO-8601 ms UTC timestamp (`YYYY-MM-DDTHH:mm:ss.sssZ`)
+- Malformed / oversized → `400`
 
 ---
 
-## 8. Conversation detail
+## 8. Conflicting filters (hardened)
 
-`GET /api/v1/organizations/:orgId/communication/conversations/:id`
+`assignedUserId` + `unassigned=true` → `400` (`COMMUNICATION_READ_CONFLICTING_FILTERS`)
 
-Org-scoped `findFirst`; wrong org → `404` (no cross-tenant leakage).
-
----
-
-## 9. Timeline
-
-`GET /api/v1/organizations/:orgId/communication/conversations/:id/events`
-
-Separate from detail; canonical `CommunicationEvent` rows only.
+`dateFrom > dateTo` → `400` (`COMMUNICATION_READ_INVALID_DATE_RANGE`)
 
 ---
 
-## 10. Summary counts
+## 9. Provider identity filter semantics
 
-`GET /api/v1/organizations/:orgId/communication/conversations/summary`
+`providerIdentity` filter means: conversation **HAS ANY canonical event** with matching `providerIdentity` (org-scoped `events.some`).
 
-Same org + filter semantics as list (except cursor/search pagination). Aggregate queries only.
-
----
-
-## 11. Context projection
-
-Lightweight refs only:
-
-- Customer: `{ id, displayName }` (includes archived customers for historical usability)
-- Booking: `{ id, reference: BK-…, status, startDate, endDate }`
-- Vehicle: `{ id, displayLabel }`
-- Station: `{ id, name }`
-- Assigned user: `{ id, displayName }`
-- Assigned agent: `{ ref, type }` (no provider name resolution)
-
-Display label fallback: customer name → **`Unbekannter Kontakt`** (no raw phone default).
+Operational diagnostic filter — not "current conversation provider". Multi-provider voice threads match if any lifecycle event exists.
 
 ---
 
-## 12. Safe metadata allowlist
+## 10. Booking display reference
 
-Read projection uses `CANONICAL_COMMUNICATION_METADATA_KEYS` from `communication-metadata.ts` (pick-only; forbidden keys stripped, never echoed).
+`Booking` has **no** separate public number column in Prisma.
 
-Conversation-level arbitrary JSON (e.g. `contextResolutionSources`) is **not** exposed in public DTOs.
+Repo-wide convention (bookings service, invoices, vehicle context): `BK-${uuid.slice(-6).toUpperCase()}`.
 
----
+C7 exposes this as `booking.reference` with documented **generated technical reference** — not a separate authoritative booking number field.
 
-## 13. Content policy
-
-| Data | C7 behavior |
-|------|-------------|
-| Message body | **Not available** — no column on `CommunicationEvent`; **not** joined from native tables |
-| Transcript | **Not exposed** |
-| Voice recording | **Not exposed** |
-| Event timeline | Canonical `eventType` + operational metadata only |
-
-**STOP condition not triggered** — C7 exposes operational timeline without inline message text; future rich preview requires canonical content storage (separate phase).
+Search `BK-XXXXXX` matches `booking.id` suffix only.
 
 ---
 
-## 14. RBAC
+## 11. PII minimization (hardened)
 
-All routes: `@RequireCommunicationPermission('read')` + `PermissionsGuard`.
-
-Legacy bridges (ai-assistant / voice operational) follow C0.2 — unchanged.
-
-No new permissions. No field-level content gating in C7.
-
----
-
-## 15. Multi-tenancy
-
-- `organizationId` from route + `OrgScopingGuard`
-- All filters/search joins include org ownership predicates
-- Cross-org IDs → `404` on detail/timeline
+- `assignedUser.email` is **not** selected in Prisma `select` for Communication read mapping
+- `assignedUser` projection: `id`, `name`, `firstName`, `lastName` only
+- `communicationUserDisplayName()` — no email fallback
+- Public DTO recursive denylist test for phone/email/body/transcript/token/secret/etc.
 
 ---
 
-## 16. Query strategy
+## 12. Query strategy / N+1
 
-`CommunicationReadRepository` builds one `where` object; list uses one `findMany` with embedded relation selects.
+List path: one `communicationConversation.findMany` **plus** Prisma batched relation loads. A single `findMany` does **not** imply a single SQL statement — Prisma may emit separate queries per included relation.
 
-Summary uses `aggregate` + `count` + `groupBy` in parallel.
-
----
-
-## 17. N+1 prevention
-
-List path: **1** `communicationConversation.findMany` per page (verified in PostgreSQL test Y).
-
-No per-conversation customer/booking/vehicle queries.
+Measured in PostgreSQL test Y (25-row page): **1** conversation query + batched relation loads, **≤8 SQL statements total** — not 25+ per-row queries.
 
 ---
 
-## 18. Index audit
+## 13. Scale validation (disposable PostgreSQL)
 
-**SUFFICIENT** for C7 keyset inbox/timeline on current schema:
+Script: `backend/scripts/test/communication-read-scale-explain.ts`
 
-- `communication_conversations (organization_id, last_activity_at)`
-- Filter composites: `(organization_id, channel|status|station_id, last_activity_at)`, FK indexes on customer/booking/vehicle
-- `communication_events (organization_id, conversation_id, occurred_at)`
+Dataset: **1 org, 5,000 conversations, 50,000 events** (seeded + cleaned up).
 
-**C7.1 not required** for initial read API. Optional future composite `(organization_id, last_activity_at DESC, id DESC)` may be proposed if EXPLAIN shows regressions at scale.
+### Inbox first page
 
----
+- Index: `communication_conversations_organization_id_last_activity_a_idx`
+- Plan: Index Scan Backward on `(organization_id, last_activity_at)` + Incremental Sort for `id DESC` tiebreaker
+- Execution: **~0.058 ms** (2026-08-22 re-run), 27 rows examined for limit 26
 
-## 19. Query plan / scale validation
+### Inbox cursor page
 
-PostgreSQL integration tests seed realistic volumes per test case (up to 25-row list N+1 proof). Full 5k-row benchmark deferred; indexes match C1 inbox rationale.
+- Same index + filter on keyset predicate
+- Execution: **~0.545 ms** (mid-list cursor; ~2501 rows removed by filter in sample)
 
----
+### Timeline
 
-## 20. PII boundary
+- Index: `communication_events_organization_id_conversation_id_occurr_idx`
+- Plan: Index Scan Backward + small Incremental Sort
+- Execution: **~0.035 ms**
 
-Public DTOs exclude phone, email, raw payloads, transcripts, signatures. Mapper unit + integration tests assert allowlist behavior.
+### Provider identity filter
 
-Safe logging: org id, conversation id, filter names, counts, duration — **no search terms or message content**.
+- Nested Loop Semi Join; event index per candidate conversation
+- Execution: **~0.475 ms** at 5k conversations
 
----
+### Customer search (ILIKE)
 
-## 21. Tests
+- Seq Scan on `customers` when no matching names (empty result in disposable seed)
+- Execution: **~1.9 ms** on empty seed (variable; **not** production-scale indexed search)
 
-| Suite | Coverage |
-|-------|----------|
-| `communication-read.cursor.util.spec.ts` | Cursor encode/decode, limits |
-| `communication-read.mapper.spec.ts` | Labels, metadata, PII |
-| `communication-read.controller.spec.ts` | Delegation |
-| `communication-read.postgres.integration.spec.ts` | Matrix A–Z (org isolation, filters, cursor, timeline, summary, search, N+1, canonical-only) |
+### Index verdict
 
-Regression: C1–C6 communication postgres suites pass alongside C7.
-
----
-
-## 22. Deployment
-
-1. Merge PR  
-2. Deploy backend only  
-3. Smoke: list/detail/timeline on internal org  
-4. Cross-org negative check  
-5. No provider activation required  
+**SUFFICIENT** for inbox/timeline keyset at tested 5k-conversation / 50k-event scale (not unlimited future scale). Index-scan queries measured **~0.035–0.55 ms** in disposable EXPLAIN ANALYZE runs. Optional C7.1 composite `(organization_id, last_activity_at DESC, id DESC)` only if mid-cursor filter cost grows at much larger tenants.
 
 ---
 
-## 23. Rollback
+## 14. Content policy / C8 readiness
 
-Revert read controller/service/repository — read-only, no migrations, no provider impact.
+| Capability | Status |
+|------------|--------|
+| Operational inbox shell (list, filters, badges, context) | **READY FOR C8 SHELL / OPERATIONAL INBOX** |
+| Rich chat-style message thread (readable bodies) | **RICH MESSAGE THREAD BLOCKED ON C7.2 — CANONICAL COMMUNICATION CONTENT CONTRACT** |
 
----
-
-## 24. Known limitations
-
-1. No message preview/text in timeline (canonical content gap by design)  
-2. `providerIdentity` list filter uses event existence subquery (not denormalized on conversation)  
-3. Search is relational prefix/contains — no full-text/trigram index yet  
-4. No mark-read / handoff mutations (deferred)  
-5. Email channel conversations not in V1 inbox scope  
+C7 is an **operational read foundation**. Canonical `CommunicationEvent` stores no message body. **C8 must not join native provider tables** for message content/transcripts. Future rich thread UI requires explicit canonical storage/projection phase (**C7.2**), not C7 hardening.
 
 ---
 
-## 25. C8 readiness
+## 15. RBAC
 
-**READY FOR C8** — Frontend can build Communication Center inbox against:
+`@RequireCommunicationPermission('read')` + real guard pipeline tested in `communication-read.http-security.integration.spec.ts`:
 
-- `GET …/communication/conversations`
-- `GET …/communication/conversations/:id`
-- `GET …/communication/conversations/:id/events`
-- `GET …/communication/conversations/summary`
-
-Provider-neutral DTOs include channel, status, unread, display label, context badges, and operational timeline events.
+- `communication.read` holder → 200
+- Same-org user without permission → 403
+- Cross-org JWT mismatch → 403 (`OrgScopingGuard`)
 
 ---
 
-## Files added/changed
+## 16. Swagger / OpenAPI
+
+Repository org controllers (WhatsApp, tasks, invoices) do **not** use `@ApiTags` / `@ApiOperation`. C7 follows same convention — **no Swagger decorators added**.
+
+---
+
+## 17. Tests (post-hardening)
+
+**Coverage matrix** (postgres integration): labels A–Z plus hardening cases H1–H6 — several letters share one `it(...)` block; matrix labels ≠ Jest case count.
+
+| Suite | Jest tests passed |
+|-------|-------------------|
+| C7 unit (cursor, mapper, query validation, controller) | 17 |
+| C7 postgres integration (`communication-read.postgres.integration.spec.ts`) | 20 |
+| C7 HTTP security integration | 3 |
+| Communication postgres regression (C1–C7) | 65 |
+| Communication unit regression | 144 (1 pre-existing SMS adapter TS compile fail) |
+
+---
+
+## 18. Follow-up
+
+| Phase | When |
+|-------|------|
+| **C7.1** | Optional index/trigram if tenant scale exceeds bounded search or mid-cursor scan cost |
+| **C7.2** | Canonical message preview/body content contract before rich thread UI |
+
+---
+
+## Files
 
 | Path | Role |
 |------|------|
-| `backend/src/modules/communication/read/*` | Read API layer |
-| `backend/src/modules/communication/communication.module.ts` | Wire controller + providers |
+| `backend/src/modules/communication/read/*` | Read API + validation |
+| `backend/scripts/test/communication-read-scale-explain.ts` | Disposable scale EXPLAIN |
 
-**Changes / Architektur (SynqDrive Code):** architecture record updated in-repo (`architecture/COMMUNICATION_CENTER_C7_READ_API_IMPLEMENTATION.md`).
+**Changes / Architektur updated:** this document.
