@@ -44,16 +44,16 @@ export const DASHBOARD_LAYOUT = {
    * Control Center corner radius — `!` overrides `.surface-premium` / `.surface-elevated`
    * which hardcode `border-radius: calc(var(--radius) + 2px)` (~10px).
    */
-  controlCenterRadius: '!rounded-[14px]',
+  controlCenterRadius: '!rounded-[12px]',
   /** Primary finance KPIs embedded under operational twin cards in the control center. */
   controlFinanceKpiGrid: 'grid grid-cols-2 items-stretch gap-3 sm:gap-3.5',
-  controlFinanceKpiCard: 'min-h-[88px] !rounded-[14px] px-3 py-3',
+  controlFinanceKpiCard: 'min-h-[88px] !rounded-[12px] px-3 py-3',
   /** Four finance KPI cards in one row inside the legacy Finanzen panel. */
   financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
   financeKpiCard:
     'min-h-[72px] rounded-xl px-2.5 py-2 sm:min-h-[76px] sm:rounded-2xl sm:px-2.5 sm:py-2.5',
   /** Shared outer surface for Control Center header + embedded KPI strip. */
-  controlCenterCard: 'surface-premium !rounded-[18px] overflow-hidden',
+  controlCenterCard: 'surface-premium !rounded-[16px] overflow-hidden',
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
   controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
 } as const;
