@@ -3544,6 +3544,50 @@ export const en = {
   'communication.context.empty.description':
     'No related customer, booking, or vehicle is linked to this conversation.',
 
+  'communication.primary.tabsLabel': 'Communication Center sections',
+  'communication.primary.inbox': 'Inbox',
+  'communication.primary.settings': 'Settings',
+  'communication.settings.navLabel': 'Communication settings sections',
+  'communication.settings.loadError': 'Could not load settings',
+  'communication.settings.saveError': 'Could not save settings',
+  'communication.settings.provider': 'Provider',
+  'communication.settings.configured': 'Configured',
+  'communication.settings.notConfigured': 'Not configured',
+  'communication.settings.credentialsConfigured': 'Credentials configured',
+  'communication.settings.credentialsMissing': 'Credentials missing',
+  'communication.settings.accessDenied.title': 'Settings unavailable',
+  'communication.settings.accessDenied.description':
+    'You do not have permission to manage communication channel settings.',
+  'communication.settings.overview.title': 'Overview',
+  'communication.settings.overview.nav': 'Overview',
+  'communication.settings.overview.description':
+    'Review connection status for WhatsApp, Voice, and SMS channels.',
+  'communication.settings.whatsapp.title': 'WhatsApp',
+  'communication.settings.whatsapp.loadError': 'Could not load WhatsApp configuration.',
+  'communication.settings.whatsapp.overviewDescription':
+    'WhatsApp Business messaging and AI-assisted replies.',
+  'communication.settings.voice.title': 'Voice',
+  'communication.settings.voice.loadError': 'Could not load Voice configuration.',
+  'communication.settings.voice.overviewDescription':
+    'AI voice agent and telephony powered by ElevenLabs / Twilio.',
+  'communication.settings.sms.title': 'SMS',
+  'communication.settings.sms.loadError': 'Could not load SMS configuration.',
+  'communication.settings.sms.description': 'SMS communication via sent.dm.',
+  'communication.settings.sms.overviewDescription': 'Outbound and inbound SMS via sent.dm.',
+  'communication.settings.sms.credentials': 'Credentials',
+  'communication.settings.sms.webhook': 'Webhook',
+  'communication.settings.sms.webhookSigning': 'Webhook signing secret',
+  'communication.settings.sms.sender': 'Sender profile',
+  'communication.settings.sms.notConfiguredHelp':
+    'SMS is not configured for this organization. Contact your administrator to provision sent.dm credentials.',
+  'communication.settings.action.configure': 'Configure',
+  'communication.settings.action.manage': 'Manage',
+  'communication.settings.status.CONNECTED': 'Connected',
+  'communication.settings.status.CONFIGURED': 'Configured',
+  'communication.settings.status.NOT_CONFIGURED': 'Not configured',
+  'communication.settings.status.DEGRADED': 'Degraded',
+  'communication.settings.status.DISABLED': 'Disabled',
+
   ...legalDocumentsEn,
 } as const;
 

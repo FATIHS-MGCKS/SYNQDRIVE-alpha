@@ -20,7 +20,7 @@ import { WhatsAppSectionNav } from './whatsapp/WhatsAppSectionNav';
 import { WhatsAppOverviewTab } from './whatsapp/WhatsAppOverviewTab';
 import { WhatsAppInboxLayout } from './whatsapp/WhatsAppInboxLayout';
 import { WhatsAppTemplateManager } from './whatsapp/WhatsAppTemplateManager';
-import { WhatsAppSettingsPanel } from './whatsapp/WhatsAppSettingsPanel';
+import { WhatsAppBusinessSettings } from './whatsapp/WhatsAppBusinessSettings';
 import { WhatsAppSetupWizard } from './whatsapp/WhatsAppSetupWizard';
 import {
   countFailedInThread,
@@ -28,7 +28,6 @@ import {
   type InboxFilter,
   type MobilePane,
   type WhatsAppTab,
-  isSandboxEnvironment,
 } from './whatsapp/whatsapp.ops';
 
 interface WhatsAppBusinessViewProps {
@@ -60,10 +59,6 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
   const [mobilePane, setMobilePane] = useState<MobilePane>('inbox');
   const [savingConfig, setSavingConfig] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [simModal, setSimModal] = useState(false);
-  const [simPhone, setSimPhone] = useState('+49 170 1234567');
-  const [simName, setSimName] = useState('');
-  const [simContent, setSimContent] = useState('');
   const [templateModal, setTemplateModal] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateBody, setNewTemplateBody] = useState('');
@@ -216,20 +211,6 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
     }
   };
 
-  const handleConfigSave = async (patch: Partial<WhatsAppConfig>) => {
-    if (!orgId) return;
-    setSavingConfig(true);
-    try {
-      const res = await api.whatsapp.updateConfig(orgId, patch);
-      setConfig(res);
-      toast.success('Settings saved');
-    } catch (err) {
-      toast.error('Save failed', { description: getErrorMessage(err) });
-    } finally {
-      setSavingConfig(false);
-    }
-  };
-
   const handleWizardComplete = async (data: {
     phoneNumber: string;
     businessName?: string;
@@ -262,44 +243,6 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
       toast.error('Setup failed', { description: getErrorMessage(err) });
     } finally {
       setSavingConfig(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!orgId) return;
-    try {
-      const res = await api.whatsapp.disconnect(orgId);
-      setConfig(res);
-      toast.success('Disconnected');
-      await load();
-    } catch (err) {
-      toast.error('Disconnect failed', { description: getErrorMessage(err) });
-    }
-  };
-
-  const handleSimulate = async () => {
-    if (!orgId || !simPhone.trim() || !simContent.trim()) return;
-    try {
-      const res = await api.whatsapp.simulateIncoming(orgId, {
-        contactPhone: simPhone.trim(),
-        contactName: simName.trim() || undefined,
-        content: simContent.trim(),
-      });
-      setSimModal(false);
-      setSimContent('');
-      toast.success(res.sandbox ? 'Sandbox message simulated' : 'Message simulated', {
-        description: res.sandbox ? 'Dev/test only — not a real Meta delivery' : undefined,
-      });
-      await load();
-      if (res.conversationId) {
-        const convo = (await api.whatsapp.getConversations(orgId)).find(c => c.id === res.conversationId);
-        if (convo) {
-          setTab('inbox');
-          await loadMessages(convo);
-        }
-      }
-    } catch (err) {
-      toast.error('Simulation failed', { description: getErrorMessage(err) });
     }
   };
 
@@ -454,16 +397,7 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
         />
       )}
 
-      {tab === 'settings' && (
-        <WhatsAppSettingsPanel
-          config={config}
-          saving={savingConfig}
-          onSave={patch => void handleConfigSave(patch)}
-          onConnect={() => setWizardOpen(true)}
-          onDisconnect={() => void handleDisconnect()}
-          onSimulate={() => setSimModal(true)}
-        />
-      )}
+      {tab === 'settings' && <WhatsAppBusinessSettings enabled={tab === 'settings'} />}
 
       <WhatsAppSetupWizard
         open={wizardOpen}
@@ -471,19 +405,6 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
         onClose={() => setWizardOpen(false)}
         onComplete={data => void handleWizardComplete(data)}
       />
-
-      {simModal && isSandboxEnvironment() && (
-        <SimulateModal
-          simPhone={simPhone}
-          simName={simName}
-          simContent={simContent}
-          onPhoneChange={setSimPhone}
-          onNameChange={setSimName}
-          onContentChange={setSimContent}
-          onClose={() => setSimModal(false)}
-          onSubmit={() => void handleSimulate()}
-        />
-      )}
 
       {templateModal && (
         <TemplateDraftModal
@@ -503,67 +424,6 @@ export function WhatsAppBusinessView({ isDarkMode: _isDarkMode }: WhatsAppBusine
           {failedInThread} failed message(s) in current thread
         </p>
       )}
-    </div>
-  );
-}
-
-function SimulateModal({
-  simPhone,
-  simName,
-  simContent,
-  onPhoneChange,
-  onNameChange,
-  onContentChange,
-  onClose,
-  onSubmit,
-}: {
-  simPhone: string;
-  simName: string;
-  simContent: string;
-  onPhoneChange: (v: string) => void;
-  onNameChange: (v: string) => void;
-  onContentChange: (v: string) => void;
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
-  const inputClass =
-    'w-full rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[11px] outline-none focus:ring-1 focus:ring-[color:var(--brand)]/30';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 overlay-scrim" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-[color:var(--status-watch)]/30 bg-popover p-5 shadow-[var(--shadow-2)]">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="rounded-md bg-[color:var(--status-watch)]/15 px-2 py-0.5 text-[9px] font-bold text-[color:var(--status-watch)]">
-            SANDBOX
-          </span>
-          <h3 className="text-[13px] font-semibold text-foreground">Simulate incoming message</h3>
-        </div>
-        <div className="space-y-2">
-          <input value={simPhone} onChange={e => onPhoneChange(e.target.value)} placeholder="Phone" className={inputClass} />
-          <input value={simName} onChange={e => onNameChange(e.target.value)} placeholder="Contact name" className={inputClass} />
-          <textarea
-            value={simContent}
-            onChange={e => onContentChange(e.target.value)}
-            rows={3}
-            placeholder="Message content"
-            className={`${inputClass} resize-none`}
-          />
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="sq-press rounded-lg px-3 py-2 text-[11px] font-medium text-muted-foreground">
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!simPhone.trim() || !simContent.trim()}
-            className="sq-press rounded-lg bg-[color:var(--brand)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
-          >
-            Simulate
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -8,13 +8,23 @@ import { LanguageProvider } from '../../i18n/LanguageContext';
 import { CommunicationCenterShell } from './CommunicationCenterShell';
 import { COMMUNICATION_CHANNEL_PARAM } from './communication-center-navigation';
 
+const mockUseRentalOrg = vi.fn();
+
 vi.mock('../../RentalContext', () => ({
-  useRentalOrg: () => ({
-    orgId: 'org-communication-test',
-    loading: false,
-    hasPermission: () => true,
-    userRole: 'ADMIN',
-  }),
+  useRentalOrg: () => mockUseRentalOrg(),
+}));
+
+vi.mock('./CommunicationSettingsPane', () => ({
+  CommunicationSettingsPane: () =>
+    createElement('div', { 'data-testid': 'communication-settings-shell' }),
+}));
+
+vi.mock('../../../lib/api', () => ({
+  api: {
+    whatsapp: { getConfig: vi.fn().mockResolvedValue({ isConnected: true, providerConfigured: true }) },
+    voiceAssistant: { get: vi.fn().mockResolvedValue({ status: 'ACTIVE', connectionStatus: 'CONNECTED', telephonyEnabled: true }) },
+    sms: { getConfig: vi.fn().mockResolvedValue({ credentialsConfigured: false, isConnected: false, isActive: false }) },
+  },
 }));
 
 vi.mock('../../../lib/communication/hooks/useCommunicationInbox', () => ({
@@ -83,6 +93,12 @@ describe('CommunicationCenterShell', () => {
     window.history.replaceState({}, '', '/rental?view=communication-center');
     localStorage.setItem('synqdrive.locale', 'en');
     mockMatchMedia(1440);
+    mockUseRentalOrg.mockReturnValue({
+      orgId: 'org-communication-test',
+      loading: false,
+      hasPermission: () => true,
+      userRole: 'ADMIN',
+    });
   });
 
   afterEach(() => {
@@ -96,13 +112,29 @@ describe('CommunicationCenterShell', () => {
     });
   }
 
-  it('renders inbox workspace with search and filter controls', () => {
+  it('renders inbox workspace by default', () => {
     renderShell();
     expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-inbox-search"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-inbox-filters"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
-    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(container.querySelector('[data-testid="communication-primary-tabs"]')).not.toBeNull();
+  });
+
+  it('renders settings shell when settings tab is active', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/rental?view=communication-center&communicationTab=settings',
+    );
+    renderShell();
+    expect(container.querySelector('[data-testid="communication-settings-shell"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-pane"]')).toBeNull();
+  });
+
+  it('uses primary tabs for inbox and settings', () => {
+    renderShell();
+    expect(container.textContent).toContain('Settings');
   });
 
   it('renders German copy', () => {
@@ -121,13 +153,6 @@ describe('CommunicationCenterShell', () => {
     renderShell();
     expect(container.querySelector('[data-testid="communication-context-pane"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-workspace-pane"]')).not.toBeNull();
-  });
-
-  it('normalizes settings tab URL to inbox shell', () => {
-    window.history.replaceState({}, '', '/rental?communicationTab=settings');
-    renderShell();
-    expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
-    expect(container.querySelector('[data-testid="communication-inbox-pane"]')).not.toBeNull();
   });
 
   it('uses aria-pressed channel filter buttons', () => {
@@ -170,5 +195,24 @@ describe('CommunicationCenterShell', () => {
     expect(
       container.querySelector('[data-channel="whatsapp"]')?.getAttribute('aria-pressed'),
     ).toBe('true');
+  });
+
+  it('normalizes read-only settings deep link back to inbox', () => {
+    mockUseRentalOrg.mockReturnValue({
+      orgId: 'org-communication-test',
+      loading: false,
+      hasPermission: (module: string, action: string) =>
+        module === 'communication' && action === 'read',
+      userRole: 'WORKER',
+    });
+    window.history.replaceState(
+      {},
+      '',
+      '/rental?view=communication-center&communicationTab=settings&communicationSettings=sms',
+    );
+    renderShell();
+    expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-search"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-primary-tab-settings"]')).toBeNull();
   });
 });

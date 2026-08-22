@@ -80,6 +80,22 @@ type CommunicationMockOptions = {
   failTimelineInitial?: boolean;
   detailNotFound?: boolean;
   detailForbidden?: boolean;
+  whatsappConfigured?: boolean;
+  voiceConfigured?: boolean;
+  smsConfigured?: boolean;
+};
+
+const defaultSmsConfig = {
+  organizationId: TEST_ORG_ID,
+  hasConfigRow: false,
+  isConnected: false,
+  isActive: false,
+  credentialsConfigured: false,
+  webhookSigningConfigured: false,
+  senderProfileConfigured: false,
+  webhookEndpointConfigured: false,
+  lastWebhookAt: null,
+  updatedAt: null,
 };
 
 const searchRaceDelays = new Map<string, ReturnType<typeof setTimeout>>();
@@ -295,6 +311,98 @@ export async function installCommunicationMocks(
 
     return route.fallback();
   });
+
+  await page.route(`**/organizations/${orgId}/whatsapp/config`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const configured = options?.whatsappConfigured ?? true;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        configured
+          ? {
+              isConnected: true,
+              providerConfigured: true,
+              providerStatus: 'CONNECTED',
+              accessTokenConfigured: true,
+            }
+          : {
+              isConnected: false,
+              providerConfigured: false,
+              providerStatus: 'DISCONNECTED',
+              accessTokenConfigured: false,
+            },
+      ),
+    });
+  });
+
+  await page.route(`**/organizations/${orgId}/voice-assistant`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const url = route.request().url();
+    if (url.includes('/readiness') || url.includes('/voices')) return route.fallback();
+    const configured = options?.voiceConfigured ?? true;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        configured
+          ? {
+              status: 'ACTIVE',
+              connectionStatus: 'CONNECTED',
+              telephonyEnabled: true,
+              name: 'Fleet Assistant',
+            }
+          : {
+              status: 'INACTIVE',
+              connectionStatus: 'DISCONNECTED',
+              telephonyEnabled: false,
+              name: 'Fleet Assistant',
+            },
+      ),
+    });
+  });
+
+  await page.route(`**/organizations/${orgId}/voice-assistant/readiness`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ready: true, checks: [] }),
+    });
+  });
+
+  await page.route(`**/organizations/${orgId}/voice-assistant/voices`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    });
+  });
+
+  await page.route(`**/organizations/${orgId}/sms/config`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const configured = options?.smsConfigured ?? false;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        configured
+          ? {
+              ...defaultSmsConfig,
+              hasConfigRow: true,
+              isConnected: true,
+              isActive: true,
+              credentialsConfigured: true,
+              webhookSigningConfigured: true,
+              senderProfileConfigured: true,
+              webhookEndpointConfigured: true,
+              updatedAt: '2026-08-22T10:00:00.000Z',
+            }
+          : defaultSmsConfig,
+      ),
+    });
+  });
 }
 
 const mockUserWithCommunication = {
@@ -354,6 +462,9 @@ export async function openCommunicationCenter(
     failTimelineInitial?: boolean;
     detailNotFound?: boolean;
     detailForbidden?: boolean;
+    whatsappConfigured?: boolean;
+    voiceConfigured?: boolean;
+    smsConfigured?: boolean;
   },
 ) {
   const user = options?.user ?? mockUserWithCommunication;
@@ -371,6 +482,9 @@ export async function openCommunicationCenter(
     failTimelineInitial: options?.failTimelineInitial,
     detailNotFound: options?.detailNotFound,
     detailForbidden: options?.detailForbidden,
+    whatsappConfigured: options?.whatsappConfigured,
+    voiceConfigured: options?.voiceConfigured,
+    smsConfigured: options?.smsConfigured,
   });
   await page.route('**/auth/me', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();

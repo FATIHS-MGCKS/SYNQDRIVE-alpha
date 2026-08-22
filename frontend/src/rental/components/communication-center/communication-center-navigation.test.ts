@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyCommunicationChannelChange,
+  applyCommunicationPrimaryTabChange,
+  applyCommunicationSettingsSectionChange,
   DEFAULT_COMMUNICATION_CENTER_URL_STATE,
   mergeCommunicationCenterState,
   normalizeCommunicationPrimaryTab,
+  normalizeCommunicationSettingsSection,
   parseCommunicationCenterViewFromUrl,
   readCommunicationCenterStateFromUrl,
 } from './communication-center-navigation';
@@ -16,18 +19,24 @@ describe('communication-center-navigation', () => {
     expect(parseCommunicationCenterViewFromUrl('?view=dashboard')).toBe(false);
   });
 
-  it('normalizes settings tab to inbox before C8.4', () => {
-    expect(normalizeCommunicationPrimaryTab('settings')).toBe('inbox');
+  it('preserves settings tab after C8.4', () => {
+    expect(normalizeCommunicationPrimaryTab('settings')).toBe('settings');
     expect(normalizeCommunicationPrimaryTab('inbox')).toBe('inbox');
   });
 
-  it('parses channel, conversation, and mobile pane params', () => {
+  it('normalizes invalid settings section to overview', () => {
+    expect(normalizeCommunicationSettingsSection('foo')).toBe('overview');
+    expect(normalizeCommunicationSettingsSection('voice')).toBe('voice');
+  });
+
+  it('parses channel, conversation, settings, and mobile pane params', () => {
     expect(
       readCommunicationCenterStateFromUrl(
-        '?communicationTab=settings&communicationChannel=whatsapp&conversationId=conv-1&communicationPane=context',
+        '?communicationTab=settings&communicationSettings=voice&communicationChannel=whatsapp&conversationId=conv-1&communicationPane=context',
       ),
     ).toEqual({
-      primaryTab: 'inbox',
+      primaryTab: 'settings',
+      settingsSection: 'voice',
       channel: 'whatsapp',
       selectedConversationId: 'conv-1',
       mobilePane: 'context',
@@ -59,6 +68,7 @@ describe('communication-center-navigation', () => {
     );
     expect(next).toEqual({
       primaryTab: 'inbox',
+      settingsSection: 'overview',
       channel: 'sms',
       selectedConversationId: null,
       mobilePane: 'inbox',
@@ -73,5 +83,22 @@ describe('communication-center-navigation', () => {
       selectedConversationId: 'conv-1',
     };
     expect(applyCommunicationChannelChange(current, 'voice')).toBe(current);
+  });
+
+  it('switches primary tab to settings', () => {
+    const next = applyCommunicationPrimaryTabChange(DEFAULT_COMMUNICATION_CENTER_URL_STATE, 'settings');
+    expect(next.primaryTab).toBe('settings');
+  });
+
+  it('switches settings section and forces settings tab', () => {
+    const next = applyCommunicationSettingsSectionChange(
+      DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+      'whatsapp',
+    );
+    expect(next).toEqual({
+      ...DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+      primaryTab: 'settings',
+      settingsSection: 'whatsapp',
+    });
   });
 });

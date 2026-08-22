@@ -36,6 +36,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c8-4-settings-2026-08-22',
+    version: '4.9.930',
+    title: 'Communication Center C8.4 — Settings Integration + Provider Consolidation',
+    summary: [
+      'Exposed Communication Center Settings tab with Overview / WhatsApp / Voice / SMS secondary navigation and URL state.',
+      'Extracted reusable WhatsAppBusinessSettings and VoiceAgentSettings shared by standalone pages and embedded Communication Settings.',
+      'Added read-only GET /organizations/:orgId/sms/config safe DTO and SMS settings shell (Not configured when credentials absent).',
+      'Settings overview with backend-authoritative status; RBAC-gated sections; org-scoped race safety; inbox fetching suspended on Settings tab.',
+      'Legacy WhatsApp/Voice routes and sidebar entries preserved.',
+    ],
+    reason: 'C8.4 consolidates communication channel configuration without rewriting provider runtime or exposing secrets.',
+    previousBehavior: 'C8.1–C8.3 inbox/timeline only; Settings tab hidden; provider config on separate pages only.',
+    details:
+      'CommunicationCenterShell.tsx, CommunicationSettingsPane.tsx, WhatsAppBusinessSettings.tsx, VoiceAgentSettings.tsx, sms-config.service.ts, e2e/communication-center-settings.spec.ts, architecture/COMMUNICATION_CENTER_C8_4_SETTINGS_INTEGRATION_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-08-22T15:10:00.000Z',
+  },
+  {
+    id: 'communication-center-c8-4-settings-hardening-2026-08-22',
+    version: '4.9.931',
+    title: 'Communication Center C8.4 — Settings security / read-semantics hardening',
+    summary: [
+      'GET /organizations/:orgId/sms/config is pure read — synthetic NOT_CONFIGURED DTO when no OrgSmsConfig row; no create-on-GET.',
+      'SmsConfigPublicDto adds hasConfigRow and webhookSigningConfigured; updatedAt is null when no row exists.',
+      'Settings primary tab requires provider manage permission; communication.read alone remains Inbox-only.',
+      'SMS status authority uses C5/C5.2 runtime flags; bounded overview fetches; org/save race tests expanded.',
+      'Playwright settings proofs for 390 / 1024 / 1440, read-only deep link, and URL back/forward.',
+    ],
+    reason:
+      'Final C8.4 hardening closes GET side effects, RBAC backdoors, status authority gaps, and documents reusable provider settings architecture.',
+    previousBehavior:
+      'GET sms/config could create OrgSmsConfig; communication.read opened Settings; webhookConfigured naming was ambiguous.',
+    details:
+      'sms-config.public.ts, sms-config.service.ts, sms-config.http-security.integration.spec.ts, communication-settings-permissions.ts, communication-settings-status.ts, communication-settings-sms-mapper.ts, e2e/communication-center-settings.spec.ts, architecture/COMMUNICATION_CENTER_C8_4_SETTINGS_INTEGRATION_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-08-22T16:00:00.000Z',
+  },
+  {
     id: 'communication-center-c8-3-timeline-2026-08-22',
     version: '4.9.929',
     title: 'Communication Center C8.3 — Canonical Conversation Timeline',

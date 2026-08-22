@@ -6,24 +6,29 @@ import { SmsConversationRepository } from './repositories/sms-conversation.repos
 import { SmsMessageRepository } from './repositories/sms-message.repository';
 import { SmsWebhookEventRepository } from './repositories/sms-webhook-event.repository';
 import { SmsWebhookSecurityService } from './services/sms-webhook-security.service';
+import { SmsConfigService } from './sms-config.service';
+import { SmsController } from './sms.controller';
 
 /**
  * C5.1 — SMS native persistence + webhook security foundation.
- * No billable HTTP runtime (send/webhook controllers belong to C5.2).
+ * C8.4 — read-only org SMS config endpoint (no secrets).
  */
 @Module({
   imports: [ConfigModule.forFeature(smsConfig), CommunicationModule],
+  controllers: [SmsController],
   providers: [
     SmsConversationRepository,
     SmsMessageRepository,
     SmsWebhookEventRepository,
     SmsWebhookSecurityService,
+    SmsConfigService,
   ],
   exports: [
     SmsConversationRepository,
     SmsMessageRepository,
     SmsWebhookEventRepository,
     SmsWebhookSecurityService,
+    SmsConfigService,
   ],
 })
 export class SmsPersistenceModule {}

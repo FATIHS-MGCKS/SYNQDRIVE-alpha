@@ -20,8 +20,7 @@ import { VoiceOperationsOverview } from './voice-assistant/VoiceOperationsOvervi
 import { VoiceConversationsPanel } from './voice-assistant/VoiceConversationsPanel';
 import { VoicePermissionGroupsPanel } from './voice-assistant/VoicePermissionGroupsPanel';
 import { VoiceUsageAnalyticsPanel } from './voice-assistant/VoiceUsageAnalyticsPanel';
-import { VoiceAssistantBuilder } from './voice-assistant/VoiceAssistantBuilder';
-import { VoiceTelephonyWizard } from './voice-assistant/VoiceTelephonyWizard';
+import { VoiceAgentSettings } from './voice-assistant/VoiceAgentSettings';
 import type { VoiceToolCapabilityKey, VoicePermissionMode } from './voice-assistant/voice-assistant-permissions.ops';
 import {
   answerRatePercent,
@@ -437,40 +436,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           />
         )}
 
-        {opsTab === 'settings' && (
-          <div className="space-y-4">
-            <VoiceAssistantBuilder
-              orgId={orgId}
-              assistant={assistant}
-              readiness={readiness}
-              voices={voices}
-              voicesLoading={voicesLoading}
-              voicesError={voicesError}
-              onLoadVoices={() => void loadVoices()}
-              textField={textField}
-              setTextField={setTextField}
-              setVoiceSelection={setVoiceSelection}
-              hasDraft={hasDraft}
-              saving={saving}
-              onSave={() => void save()}
-              onNavigateTab={() => undefined}
-            />
-            <VoiceTelephonyWizard
-              orgId={orgId}
-              assistant={assistant}
-              readinessElevenLabsOk={readiness?.checks.find(c => c.key === 'elevenlabs')?.ok}
-              isBusy={isBusy}
-              onAssistantUpdated={setAssistant}
-              onNavigateTest={() => undefined}
-              onError={err => toast.error(t('voice.phone.error'), { description: getErrorMessage(err) })}
-              loadPhoneNumbers={() => api.voiceAssistant.phoneNumbers(orgId)}
-              assignPhoneNumber={phoneNumberId => api.voiceAssistant.assignPhoneNumber(orgId, phoneNumberId)}
-              unassignPhoneNumber={() => api.voiceAssistant.unassignPhoneNumber(orgId)}
-              refreshTelephony={() => api.voiceAssistant.refreshTelephony(orgId)}
-              updateTelephonySettings={payload => api.voiceAssistant.updateTelephonySettings(orgId, payload)}
-            />
-          </div>
-        )}
+        {opsTab === 'settings' && <VoiceAgentSettings enabled={opsTab === 'settings'} />}
       </div>
     </div>
   );
