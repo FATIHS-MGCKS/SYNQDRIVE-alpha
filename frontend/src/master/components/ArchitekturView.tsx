@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center Write Foundation — C11.1 (V4.9.933)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'Mutations', detail: 'POST claim/resolve/reopen/mark-read; PATCH assignment — canonical CommunicationConversation only' },
+      { label: 'State machine', detail: 'assertOperatorStatusTransition — frozen matrix; claim via conditional updateMany' },
+      { label: 'RBAC', detail: 'communication.write operator actions; communication.manage force assign' },
+      { label: 'Scope', detail: 'Org + station (StationAccessService); cross-tenant safe 404' },
+      { label: 'Frontend', detail: 'useCommunicationConversationActions + C8.3 header actions; inbox refresh nonce' },
+    ],
+  },
+  {
     name: 'Communication Center Dashboard Widget — C8.5 (V4.9.932)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',

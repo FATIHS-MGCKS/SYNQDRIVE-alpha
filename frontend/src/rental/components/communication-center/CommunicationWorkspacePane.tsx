@@ -1,7 +1,15 @@
-import { ArrowLeft, PanelRightOpen } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, PanelRightOpen } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../components/ui/dropdown-menu';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
+import type { UseCommunicationConversationActionsResult } from '../../../lib/communication/hooks/useCommunicationConversationActions';
+import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { resolveConversationTitle } from './communication-inbox-display';
 import { CommunicationEmptyState } from './CommunicationEmptyState';
@@ -14,6 +22,8 @@ interface CommunicationWorkspacePaneProps {
   selectedConversationId: string | null;
   activeChannel: CommunicationChannel;
   conversationState: UseCommunicationConversationResult | null;
+  conversationActions?: UseCommunicationConversationActionsResult | null;
+  canWrite?: boolean;
   showBack?: boolean;
   showContextAction?: boolean;
   hasContext?: boolean;
@@ -65,10 +75,22 @@ function resolveTimelineErrorMessage(
   return t('communication.timeline.timelineError');
 }
 
+function resolveActionErrorMessage(
+  code: CommunicationClientErrorCode,
+  t: ReturnType<typeof useLanguage>['t'],
+): string {
+  if (code === 'already_claimed') {
+    return t('communication.actions.errorAlreadyClaimed');
+  }
+  return t('communication.actions.errorUpdateFailed');
+}
+
 export function CommunicationWorkspacePane({
   selectedConversationId,
   activeChannel,
   conversationState,
+  conversationActions,
+  canWrite = false,
   showBack,
   showContextAction,
   hasContext,
@@ -83,6 +105,15 @@ export function CommunicationWorkspacePane({
   const detailNotFound = conversationState?.detailNotFound ?? false;
   const detailError = conversationState?.detailError ?? null;
 
+  const availableActions = resolveCommunicationConversationActions({
+    conversation,
+    canWrite,
+  });
+  const primaryAction = availableActions[0] ?? null;
+  const secondaryActions = availableActions.slice(1);
+  const pendingAction = conversationActions?.pendingAction ?? null;
+  const actionError = conversationActions?.actionError ?? null;
+
   const displayTitle = conversation
     ? resolveConversationTitle(conversation, t)
     : hasSelection
@@ -91,6 +122,41 @@ export function CommunicationWorkspacePane({
 
   const channel = conversation?.channel;
   const status = conversation?.status;
+
+  const runAction = (action: typeof primaryAction) => {
+    if (!action || !conversationActions) return;
+    switch (action) {
+      case 'claim':
+        void conversationActions.claim();
+        break;
+      case 'resolve':
+        void conversationActions.resolve();
+        break;
+      case 'reopen':
+        void conversationActions.reopen();
+        break;
+      case 'markRead':
+        void conversationActions.markRead();
+        break;
+      default:
+        break;
+    }
+  };
+
+  const actionLabel = (action: NonNullable<typeof primaryAction>, loading: boolean) => {
+    switch (action) {
+      case 'claim':
+        return loading ? t('communication.actions.claiming') : t('communication.actions.claim');
+      case 'resolve':
+        return loading ? t('communication.actions.resolving') : t('communication.actions.resolve');
+      case 'reopen':
+        return loading ? t('communication.actions.reopening') : t('communication.actions.reopen');
+      case 'markRead':
+        return loading ? t('communication.actions.markingRead') : t('communication.actions.markRead');
+      default:
+        return '';
+    }
+  };
 
   return (
     <div
@@ -141,6 +207,15 @@ export function CommunicationWorkspacePane({
                   )}
                 </p>
               )}
+              {actionError && (
+                <p
+                  role="alert"
+                  data-testid="communication-action-error"
+                  className="mt-1 text-[11px] text-destructive"
+                >
+                  {resolveActionErrorMessage(actionError, t)}
+                </p>
+              )}
               {hasSelection && !conversation && !detailLoading && activeChannel !== 'all' && (
                 <p className="truncate text-[11px] text-muted-foreground">
                   {t(`communication.channels.${activeChannel}` as 'communication.channels.whatsapp')}
@@ -149,6 +224,47 @@ export function CommunicationWorkspacePane({
             </>
           )}
         </div>
+        {canWrite && primaryAction && conversationActions && (
+          <div className="flex shrink-0 items-center gap-1" data-testid="communication-header-actions">
+            <Button
+              type="button"
+              size="sm"
+              className="h-8"
+              disabled={pendingAction != null}
+              aria-busy={pendingAction === primaryAction}
+              onClick={() => runAction(primaryAction)}
+            >
+              {actionLabel(primaryAction, pendingAction === primaryAction)}
+            </Button>
+            {secondaryActions.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label={t('communication.actions.more')}
+                    disabled={pendingAction != null}
+                  >
+                    <MoreHorizontal className="h-4 w-4" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {secondaryActions.map((action) => (
+                    <DropdownMenuItem
+                      key={action}
+                      onSelect={() => runAction(action)}
+                      disabled={pendingAction != null}
+                    >
+                      {actionLabel(action, pendingAction === action)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
         {showContextAction && hasSelection && hasContext && (
           <Button
             type="button"

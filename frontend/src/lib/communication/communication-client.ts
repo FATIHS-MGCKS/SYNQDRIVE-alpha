@@ -12,6 +12,7 @@ export type CommunicationClientErrorCode =
   | 'network'
   | 'invalid_query'
   | 'permission_denied'
+  | 'already_claimed'
   | 'unknown';
 
 export class CommunicationClientError extends Error {
@@ -36,6 +37,9 @@ function mapRequestError(err: unknown): CommunicationClientError {
   }
   if (status === 400) {
     return new CommunicationClientError('invalid_query', message, status);
+  }
+  if (status === 409 || message.includes('ALREADY_CLAIMED')) {
+    return new CommunicationClientError('already_claimed', message, status);
   }
   if (status != null && status >= 400) {
     return new CommunicationClientError('unknown', message, status);
@@ -76,5 +80,25 @@ export const communicationClient = {
     query?: CommunicationEventListQuery,
   ): Promise<CommunicationEventListResponse> {
     return wrap(() => api.communication.listConversationEvents(orgId, conversationId, query));
+  },
+
+  claimConversation(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.claimConversation(orgId, conversationId));
+  },
+
+  assignConversation(orgId: string, conversationId: string, assignedUserId: string | null) {
+    return wrap(() => api.communication.assignConversation(orgId, conversationId, assignedUserId));
+  },
+
+  resolveConversation(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.resolveConversation(orgId, conversationId));
+  },
+
+  reopenConversation(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.reopenConversation(orgId, conversationId));
+  },
+
+  markConversationRead(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.markConversationRead(orgId, conversationId));
   },
 };

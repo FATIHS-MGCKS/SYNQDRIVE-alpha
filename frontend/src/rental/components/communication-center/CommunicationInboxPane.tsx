@@ -19,6 +19,7 @@ interface CommunicationInboxPaneProps {
   activeChannel: CommunicationChannel;
   inboxFilters: CommunicationInboxFilters;
   selectedConversationId: string | null;
+  refreshNonce?: number;
   onChannelChange: (channel: CommunicationChannel) => void;
   onInboxFiltersChange: (partial: Partial<CommunicationInboxFilters>) => void;
   onSelectConversation: (conversationId: string) => void;
@@ -30,6 +31,7 @@ export function CommunicationInboxPane({
   activeChannel,
   inboxFilters,
   selectedConversationId,
+  refreshNonce = 0,
   onChannelChange,
   onInboxFiltersChange,
   onSelectConversation,
@@ -62,6 +64,13 @@ export function CommunicationInboxPane({
     filters: apiQuery,
     enabled: Boolean(orgId && enabled),
   });
+
+  const { reload } = inbox;
+
+  useEffect(() => {
+    if (!refreshNonce) return;
+    void reload();
+  }, [refreshNonce, reload]);
 
   return (
     <div

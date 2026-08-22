@@ -126,6 +126,10 @@ export interface CommunicationConversationDetail extends CommunicationConversati
   updatedAt: string;
 }
 
+export interface CommunicationMutationResponse {
+  conversation: CommunicationConversationDetail;
+}
+
 export interface CommunicationMessageContent {
   id: string;
   contentType: CommunicationApiMessageContentType;

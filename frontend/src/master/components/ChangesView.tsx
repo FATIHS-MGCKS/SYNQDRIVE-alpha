@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c11-1-write-foundation-2026-08-22',
+    version: '4.9.933',
+    title: 'Communication Center C11.1 — Canonical conversation write foundation',
+    summary: [
+      'Canonical mutation API: claim, assignment, resolve, reopen, mark-read on CommunicationConversation.',
+      'Frozen operator status transition matrix with conditional claim concurrency (PostgreSQL updateMany).',
+      'communication.write / communication.manage enforcement, station scope, audit + timeline events.',
+      'Frontend mutation client, useCommunicationConversationActions, C8.3 header action wiring (no composer).',
+    ],
+    reason:
+      'C11.1 establishes the canonical operational write layer required before C11.2 reply/composer.',
+    previousBehavior:
+      'C7–C8.5 read-only Communication Center; WhatsApp legacy quick-actions mutated native tables only.',
+    details:
+      'backend/src/modules/communication/write/*, architecture/COMMUNICATION_CENTER_C11_1_WRITE_FOUNDATION_IMPLEMENTATION.md, frontend communication mutation client + workspace header actions.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-22T20:00:00.000Z',
+  },
+  {
     id: 'communication-center-c8-5-dashboard-widget-2026-08-22',
     version: '4.9.932',
     title: 'Communication Center C8.5 — Dashboard Communication attention widget',
