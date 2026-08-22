@@ -59,9 +59,9 @@ export function DashboardPanelScrollBlur({
       <div
         aria-hidden
         className={cn(
-          'pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-10',
-          'bg-gradient-to-t from-[color:var(--surface-premium-bg-end)]/95 via-[color:var(--surface-premium-bg-end)]/45 to-transparent',
-          'backdrop-blur-[1.5px] supports-[backdrop-filter]:backdrop-blur-[1.5px]',
+          'pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-14',
+          'bg-gradient-to-t from-[color:var(--surface-premium-bg-end)] via-[color:var(--surface-premium-bg-end)]/70 to-transparent',
+          'backdrop-blur-[4px] supports-[backdrop-filter]:backdrop-blur-[4px]',
           'transition-opacity duration-200 motion-reduce:backdrop-blur-none motion-reduce:transition-none',
           showBottomFade ? 'opacity-100' : 'opacity-0',
         )}
