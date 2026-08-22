@@ -1,8 +1,8 @@
 # P2.2.18 — Data Authorization Final Global i18n Closure — Implementation Audit
 
-**Date:** 2026-08-22  
-**Baseline SHA:** `6e578fd9527a496a3e10a212e3ce5d735444a17a`  
-**Branch:** `cursor/p2218-data-authorization-global-i18n-closure-3c10`  
+**Date:** 2026-08-22
+**Baseline SHA:** `6e578fd9527a496a3e10a212e3ce5d735444a17a`
+**Branch:** `cursor/p2218-data-authorization-global-i18n-closure-clean-3c10`
 **Predecessor:** PR #1143 — P2.2.17 merged
 
 ## Scope

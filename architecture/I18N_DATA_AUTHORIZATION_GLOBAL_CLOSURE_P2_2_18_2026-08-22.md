@@ -1,7 +1,7 @@
 # I18N — Data Authorization Global Closure (P2.2.18)
 
-**Date:** 2026-08-22  
-**Baseline:** `6e578fd9527a496a3e10a212e3ce5d735444a17a` (P2.2.17 merge)  
+**Date:** 2026-08-22
+**Baseline:** `6e578fd9527a496a3e10a212e3ce5d735444a17a` (P2.2.17 merge)
 **Status:** Implementation complete — global enforce-clean closure
 
 ## Objective
