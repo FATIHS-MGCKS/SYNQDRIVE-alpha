@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Invoice Documents Panel (P2.2.23 — V4.9.950)', icon: Globe,
+    endpoint: 'InvoiceDocuments.tsx, invoice-documents-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → invoice detail documents panel (EMPTY/GENERATING/FAILED/ACTIVE/delivery history); `invoice-documents-i18n.ts` locale-aware `formatInvoiceDocumentDateTime`. **Keys:** +29 EN+DE `invoices.documents.*` (8235→8264); reuses `common.download`, `common.retry`, `invoices.list.emptyValue`. **Machine values:** `panelState`, document/delivery status codes, `documentId`, filenames, backend labels frozen. **Guardrails:** P2.2.23 enforce-clean exact (3 paths) — 0 findings. **Tests:** `rental-invoice-documents-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-23-rental-invoice-documents-implementation-2026-08-22.md; architecture/I18N_RENTAL_INVOICE_DOCUMENTS_P2_2_23_2026-08-22.md' },
   { name: 'Platform i18n Rental Send Invoice Dialog (P2.2.22 — V4.9.949)', icon: Globe,
     endpoint: 'SendInvoiceDialog.tsx, send-invoice-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → send-invoice email dialog; `send-invoice-i18n.ts` default body template on open. **Keys:** +5 EN+DE `invoices.send.*` (8230→8235); reuses `email.send.modal.*`, `common.cancel`. **Machine values:** `SendInvoiceEmailPayload` fields, `displayNumber`, host `defaultSubject`/`defaultToEmail` frozen. **Guardrails:** P2.2.22 enforce-clean exact (2 paths) — 0 findings. **Tests:** `rental-send-invoice-dialog-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-invoice-documents-p2-2-23-2026-08-22',
+    version: '4.9.950',
+    title: 'Platform i18n — P2.2.23 Rental Invoice Documents Panel localization',
+    summary: [
+      'Localized InvoiceDocuments panel via `useLanguage().{t,locale}` and `invoice-documents-i18n.ts` presentation adapter.',
+      'P223 enforce-clean exact scope (3 paths) reports 0 findings; +29 EN+DE keys under `invoices.documents.*` (8235→8264); reuses `common.download`, `common.retry`, `invoices.list.emptyValue`.',
+      'Presentation-only — document IDs, filenames, callbacks, backend labels, and API payloads unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.23 post-P222 pre-flight (PR #1182) selected Rental Invoice Documents Panel as the next bounded finance satellite after Send Invoice Dialog.',
+    previousBehavior:
+      'InvoiceDocuments mixed hardcoded German copy across panel states, meta labels, actions, delivery history, and fixed `de-DE` datetime formatting.',
+    details:
+      'rental/components/invoices/InvoiceDocuments.tsx; rental/lib/invoice-documents-i18n.ts; rental/components/invoices/invoiceDocuments.mapper.ts; i18n/translations/invoices.documents.{en,de}.ts; rental-invoice-documents-localization.test.tsx; P223_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_INVOICE_DOCUMENTS_P2_2_23_2026-08-22.md; docs/audits/i18n-p2-2-23-rental-invoice-documents-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-08-22T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-send-invoice-dialog-p2-2-22-2026-08-22',
     version: '4.9.949',
     title: 'Platform i18n — P2.2.22 Rental Send Invoice Dialog localization',
