@@ -85,6 +85,19 @@ On org or filter change:
 
 Load-more retains same-query rows; filter/org change hides all prior rows synchronously via signature gating (not merely stale-response rejection).
 
+### Request lifecycle vs alignment
+
+| State | Alignment (`committed.signature === querySignature`) | Request status | UI |
+|-------|------------------------------------------------------|----------------|-----|
+| New-query loading | false | `loading` | Skeleton |
+| New-query error | false | `error` | Safe ErrorState / permission denied |
+| Same-query refresh loading | true | `loading` | Existing rows remain visible |
+| Same-query refresh error | true | `error` | Existing rows + `isStale` |
+
+`visibleLoading = listRequest.signature === querySignature && listRequest.status === 'loading' && !listAligned`
+
+`!listAligned` alone does **not** imply active loading. New-query failures converge to `status: error` with `loading: false` so ErrorState is reachable.
+
 ---
 
 ## 6. Independent list vs summary race control
@@ -193,6 +206,7 @@ C7 summary honors current filters. Unread badge appears **only on the Unread-onl
 |-------|------|-------|
 | Inbox state + contract | `lib/communication/communication-inbox.test.ts` | URL normalization, signature, DTO fixture |
 | Hook race hardening | `lib/communication/hooks/useCommunicationInbox.race.test.ts` | Org/filter/summary race, load-more single-flight, cursor guard, 403 |
+| Error-state convergence | `lib/communication/hooks/useCommunicationInbox.error-state.test.ts` | Initial 403/500, filter/org failure, same-query stale rows, rendered UI |
 | Pagination guard | `lib/communication/pagination.test.ts` | Non-progress cursor |
 | Timestamp | `lib/communication/format.test.ts` | Injectable now, i18n yesterday |
 | Row display | `lib/communication/communication-inbox-display.test.ts` | Title, preview, unknown contact |

@@ -48,6 +48,13 @@ type CommittedSummaryState = {
   summary: CommunicationConversationSummary | null;
 };
 
+type ListRequestStatus = 'idle' | 'loading' | 'success' | 'error';
+
+type ListRequestState = {
+  signature: string;
+  status: ListRequestStatus;
+};
+
 const EMPTY_LIST: CommittedListState = {
   signature: '',
   conversations: [],
@@ -71,6 +78,7 @@ export function useCommunicationInbox({
 }: UseCommunicationInboxOptions): UseCommunicationInboxResult {
   const [committedList, setCommittedList] = useState<CommittedListState>(EMPTY_LIST);
   const [committedSummary, setCommittedSummary] = useState<CommittedSummaryState>(EMPTY_SUMMARY);
+  const [listRequest, setListRequest] = useState<ListRequestState>({ signature: '', status: 'idle' });
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -96,7 +104,10 @@ export function useCommunicationInbox({
   const hasMore = listAligned ? committedList.hasMore : false;
   const summary = summaryAligned ? committedSummary.summary : null;
 
-  const visibleLoading = loading || !listAligned;
+  const listRequestMatches = listRequest.signature === querySignature;
+  const visibleLoading =
+    listRequestMatches && listRequest.status === 'loading' && !listAligned;
+  const visibleError = listRequestMatches && listRequest.status === 'error' ? error : null;
   const visibleLoadingSummary = loadingSummary || !summaryAligned;
 
   const reload = useCallback(async (): Promise<CommunicationConversationListItem[]> => {
@@ -112,6 +123,7 @@ export function useCommunicationInbox({
 
     const requestSignature = communicationInboxQuerySignature(orgId, filtersRef.current);
     const generation = ++listReloadGenerationRef.current;
+    setListRequest({ signature: requestSignature, status: 'loading' });
     setLoading(true);
     setError(null);
     setPaginationError(null);
@@ -133,6 +145,7 @@ export function useCommunicationInbox({
         hasMore: pagination.hasMore,
         nextCursor: pagination.nextCursor,
       });
+      setListRequest({ signature: requestSignature, status: 'success' });
       if (pagination.stalled) {
         setPaginationError('unknown');
       }
@@ -143,6 +156,7 @@ export function useCommunicationInbox({
           ? committedListRef.current.conversations
           : [];
       }
+      setListRequest({ signature: requestSignature, status: 'error' });
       setError(mapClientError(err));
       return committedListRef.current.signature === requestSignature
         ? committedListRef.current.conversations
@@ -252,13 +266,15 @@ export function useCommunicationInbox({
     summaryGenerationRef.current += 1;
     loadMoreInFlightCursorRef.current = null;
     setPaginationError(null);
+    setError(null);
+    setListRequest({ signature: querySignature, status: 'loading' });
     void reload();
     void loadSummary();
   }, [loadSummary, querySignature, reload]);
 
   const isStale = useMemo(
-    () => Boolean(error && listAligned && conversations.length > 0),
-    [conversations.length, error, listAligned],
+    () => Boolean(visibleError && listAligned && conversations.length > 0),
+    [conversations.length, listAligned, visibleError],
   );
 
   return {
@@ -268,7 +284,7 @@ export function useCommunicationInbox({
     loadingMore,
     loadingSummary: visibleLoadingSummary,
     hasMore,
-    error,
+    error: visibleError,
     paginationError,
     isStale,
     reload,

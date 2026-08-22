@@ -303,6 +303,7 @@ describe('useCommunicationInbox race hardening', () => {
     unmountCurrent = unmount;
 
     await waitForHook(() => result.current.error === 'permission_denied');
+    expect(result.current.loading).toBe(false);
     expect(result.current.conversations).toEqual([]);
   });
 });
