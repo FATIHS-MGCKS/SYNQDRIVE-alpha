@@ -36,6 +36,7 @@ export interface UseCommunicationConversationResult {
   reloadTimeline: () => Promise<CommunicationEvent[]>;
   loadOlder: () => Promise<CommunicationEvent[]>;
   retryLoadOlder: () => Promise<CommunicationEvent[]>;
+  applyConversationUpdate: (conversation: CommunicationConversationDetail) => void;
 }
 
 type CommittedDetailState = {
@@ -464,6 +465,15 @@ export function useCommunicationConversation({
     void reloadTimeline();
   }, [enabled, orgId, conversationId, reloadDetail, reloadTimeline, resetPaginationRequest, signature]);
 
+  const applyConversationUpdate = useCallback(
+    (conversation: CommunicationConversationDetail) => {
+      const requestSignature = communicationConversationSignature(orgId, conversationId);
+      if (!requestSignature || requestSignature !== signature) return;
+      setCommittedDetail({ signature: requestSignature, conversation });
+    },
+    [conversationId, orgId, signature],
+  );
+
   return useMemo(
     () => ({
       conversation,
@@ -481,6 +491,7 @@ export function useCommunicationConversation({
       reloadTimeline,
       loadOlder,
       retryLoadOlder,
+      applyConversationUpdate,
     }),
     [
       conversation,
@@ -498,6 +509,7 @@ export function useCommunicationConversation({
       reloadTimeline,
       loadOlder,
       retryLoadOlder,
+      applyConversationUpdate,
     ],
   );
 }

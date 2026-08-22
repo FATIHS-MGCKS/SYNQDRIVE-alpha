@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
+import { StationsModule } from '@modules/stations/stations.module';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { MetaWhatsAppCommunicationAdapter } from './adapters/whatsapp/meta-whatsapp-communication.adapter';
 import { WhatsAppCommunicationProjectionIntegration } from './adapters/whatsapp/whatsapp-communication-projection.integration';
@@ -23,6 +24,9 @@ import { CommunicationNativeContextLoader } from './context/communication-native
 import { CommunicationReadController } from './read/communication-read.controller';
 import { CommunicationReadRepository } from './read/communication-read.repository';
 import { CommunicationReadService } from './read/communication-read.service';
+import { CommunicationWriteController } from './write/communication-write.controller';
+import { CommunicationWriteScopeService } from './write/communication-write-scope.service';
+import { CommunicationWriteService } from './write/communication-write.service';
 import { CommunicationContentBackfillService } from './content/communication-content-backfill.service';
 import { CommunicationContentRepository } from './content/communication-content.repository';
 import { CommunicationContentService } from './content/communication-content.service';
@@ -31,7 +35,7 @@ import { CommunicationContentService } from './content/communication-content.ser
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
  */
 @Module({
-  imports: [PrismaModule, ConfigModule.forFeature(communicationProjectionConfig)],
+  imports: [PrismaModule, StationsModule, ConfigModule.forFeature(communicationProjectionConfig)],
   providers: [
     CommunicationTenantContextValidation,
     CommunicationConversationRepository,
@@ -57,8 +61,10 @@ import { CommunicationContentService } from './content/communication-content.ser
     SmsCommunicationProjectionIntegration,
     CommunicationReadRepository,
     CommunicationReadService,
+    CommunicationWriteScopeService,
+    CommunicationWriteService,
   ],
-  controllers: [CommunicationReadController],
+  controllers: [CommunicationReadController, CommunicationWriteController],
   exports: [
     CommunicationTenantContextValidation,
     CommunicationConversationRepository,
@@ -82,6 +88,8 @@ import { CommunicationContentService } from './content/communication-content.ser
     SmsCommunicationProjectionIntegration,
     CommunicationReadRepository,
     CommunicationReadService,
+    CommunicationWriteScopeService,
+    CommunicationWriteService,
   ],
 })
 export class CommunicationModule {}

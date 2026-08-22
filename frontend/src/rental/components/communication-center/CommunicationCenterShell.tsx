@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Sheet, SheetContent } from '../../../components/ui/sheet';
 import { cn } from '../../../components/ui/utils';
 import { useCommunicationConversation } from '../../../lib/communication/hooks/useCommunicationConversation';
+import { useCommunicationConversationActions } from '../../../lib/communication/hooks/useCommunicationConversationActions';
 import { useRentalOrg } from '../../RentalContext';
+import { hasCommunicationPermission } from '../../lib/communication-permissions';
 import {
   applyCommunicationChannelChange,
   applyCommunicationPrimaryTabChange,
@@ -43,6 +45,8 @@ interface CommunicationCenterShellProps {
 
 export function CommunicationCenterShell({ initialState }: CommunicationCenterShellProps) {
   const { orgId, hasPermission, userRole } = useRentalOrg();
+  const canWrite = hasCommunicationPermission(hasPermission, 'write', userRole);
+  const [inboxRefreshNonce, setInboxRefreshNonce] = useState(0);
   const [state, setState] = useState<CommunicationCenterUrlState>(() =>
     mergeCommunicationCenterState({
       ...readCommunicationCenterStateFromUrl(
@@ -192,6 +196,15 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     enabled: Boolean(orgId && state.selectedConversationId && inboxActive),
   });
 
+  const conversationActions = useCommunicationConversationActions({
+    orgId,
+    conversationId: state.selectedConversationId,
+    onConversationUpdated: conversationState.applyConversationUpdate,
+    onTimelineRefresh: conversationState.reloadTimeline,
+    onInboxRefresh: () => setInboxRefreshNonce((value) => value + 1),
+    onConflictRefresh: conversationState.reloadDetail,
+  });
+
   const handleClearInvalidSelection = useCallback(() => {
     patchState({ selectedConversationId: null, mobilePane: 'inbox' });
   }, [patchState]);
@@ -275,6 +288,7 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
               activeChannel={state.channel}
               inboxFilters={state.inboxFilters}
               selectedConversationId={state.selectedConversationId}
+              refreshNonce={inboxRefreshNonce}
               onChannelChange={handleChannelChange}
               onInboxFiltersChange={handleInboxFiltersChange}
               onSelectConversation={handleSelectConversation}
@@ -292,6 +306,8 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
               selectedConversationId={state.selectedConversationId}
               activeChannel={state.channel}
               conversationState={conversationState}
+              conversationActions={conversationActions}
+              canWrite={canWrite}
               showBack={isMobile}
               showContextAction={hasConversation && (isMobile || isTablet)}
               hasContext={hasContext}

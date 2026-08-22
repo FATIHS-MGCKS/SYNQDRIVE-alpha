@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
-import { createElement } from 'react';
+import { createElement, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { CommunicationWorkspacePane } from './CommunicationWorkspacePane';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
+import type { UseCommunicationConversationActionsResult } from '../../../lib/communication/hooks/useCommunicationConversationActions';
 
 function baseConversationState(
   overrides: Partial<UseCommunicationConversationResult> = {},
@@ -14,7 +15,7 @@ function baseConversationState(
     conversation: {
       id: 'conv-1',
       channel: 'WHATSAPP',
-      status: 'AI_ACTIVE',
+      status: 'HUMAN_REQUIRED',
       unreadCount: 0,
       lastActivityAt: '2026-08-22T10:00:00.000Z',
       displayLabel: 'Max Mustermann',
@@ -46,7 +47,22 @@ function baseConversationState(
   };
 }
 
-describe('CommunicationWorkspacePane error surfaces', () => {
+function baseActions(
+  overrides: Partial<UseCommunicationConversationActionsResult> = {},
+): UseCommunicationConversationActionsResult {
+  return {
+    pendingAction: null,
+    actionError: null,
+    claim: vi.fn(),
+    resolve: vi.fn(),
+    reopen: vi.fn(),
+    markRead: vi.fn(),
+    clearActionError: vi.fn(),
+    ...overrides,
+  };
+}
+
+describe('CommunicationWorkspacePane actions', () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -62,7 +78,7 @@ describe('CommunicationWorkspacePane error surfaces', () => {
     container.remove();
   });
 
-  function renderPane(conversationState: UseCommunicationConversationResult | null) {
+  function renderPane(props: Partial<ComponentProps<typeof CommunicationWorkspacePane>> = {}) {
     act(() => {
       root.render(
         createElement(
@@ -71,29 +87,46 @@ describe('CommunicationWorkspacePane error surfaces', () => {
           createElement(CommunicationWorkspacePane, {
             selectedConversationId: 'conv-1',
             activeChannel: 'whatsapp',
-            conversationState,
+            conversationState: baseConversationState(),
+            conversationActions: baseActions(),
+            canWrite: true,
+            ...props,
           }),
         ),
       );
     });
   }
 
-  it('renders permission-denied detail UX without retry', () => {
-    renderPane(baseConversationState({ conversation: null, detailError: 'permission_denied' }));
-    expect(container.querySelector('[data-testid="communication-detail-error"]')).not.toBeNull();
-    expect(container.textContent).toContain('permission');
-    expect(container.querySelector('button')).toBeNull();
+  it('hides actions for read-only users', () => {
+    renderPane({ canWrite: false });
+    expect(container.querySelector('[data-testid="communication-header-actions"]')).toBeNull();
   });
 
-  it('keeps header when detail succeeds and timeline fails', () => {
-    renderPane(
-      baseConversationState({
-        timelineError: 'unknown',
+  it('shows claim for HUMAN_REQUIRED unassigned', () => {
+    renderPane();
+    expect(container.querySelector('[data-testid="communication-header-actions"]')?.textContent).toContain(
+      'Claim',
+    );
+  });
+
+  it('shows resolve for HUMAN_ACTIVE', () => {
+    renderPane({
+      conversationState: baseConversationState({
+        conversation: {
+          ...baseConversationState().conversation!,
+          status: 'HUMAN_ACTIVE',
+        },
       }),
+    });
+    expect(container.textContent).toContain('Resolve');
+  });
+
+  it('renders already-claimed error message', () => {
+    renderPane({
+      conversationActions: baseActions({ actionError: 'already_claimed' }),
+    });
+    expect(container.querySelector('[data-testid="communication-action-error"]')?.textContent).toContain(
+      'claimed by another user',
     );
-    expect(container.querySelector('[data-testid="communication-conversation-header-title"]')?.textContent).toContain(
-      'Max Mustermann',
-    );
-    expect(container.querySelector('[data-testid="communication-timeline-error"]')).not.toBeNull();
   });
 });

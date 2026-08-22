@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center Write Foundation — C11.1 (V4.9.933)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'Mutations', detail: 'POST claim/resolve/reopen/mark-read; PATCH assignment — canonical CommunicationConversation only' },
+      { label: 'Transactions', detail: 'All mutation reads via tx; timeline events in same DB tx; audit best-effort post-commit' },
+      { label: 'Concurrency', detail: 'Conditional updateMany (claim, assign, unassign, resolve, reopen, mark-read); updatedAt optimistic guard' },
+      { label: 'RBAC', detail: 'communication.write operator actions; communication.manage force assign; assignee validated in tx' },
+      { label: 'Frontend', detail: 'applyConversationUpdate on mutation success; onConflictRefresh on 409 stale/claimed' },
+    ],
+  },
+  {
     name: 'Communication Center Dashboard Widget — C8.5 (V4.9.932)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',

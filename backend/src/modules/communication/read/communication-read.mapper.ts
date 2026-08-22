@@ -26,6 +26,7 @@ export const CONVERSATION_LIST_SELECT = {
   status: true,
   lastActivityAt: true,
   unreadCount: true,
+  lastContentAt: true,
   lastMessagePreview: true,
   createdAt: true,
   updatedAt: true,

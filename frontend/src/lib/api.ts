@@ -4248,6 +4248,31 @@ export const api = {
         `/organizations/${orgId}/communication/conversations/${conversationId}/events${qs ? `?${qs}` : ''}`,
       );
     },
+    claimConversation: (orgId: string, conversationId: string) =>
+      post<import('./communication/types').CommunicationMutationResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/claim`,
+        {},
+      ),
+    assignConversation: (orgId: string, conversationId: string, assignedUserId: string | null) =>
+      patch<import('./communication/types').CommunicationMutationResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/assignment`,
+        { assignedUserId },
+      ),
+    resolveConversation: (orgId: string, conversationId: string) =>
+      post<import('./communication/types').CommunicationMutationResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/resolve`,
+        {},
+      ),
+    reopenConversation: (orgId: string, conversationId: string) =>
+      post<import('./communication/types').CommunicationMutationResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/reopen`,
+        {},
+      ),
+    markConversationRead: (orgId: string, conversationId: string) =>
+      post<import('./communication/types').CommunicationMutationResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/mark-read`,
+        {},
+      ),
   },
   bookings: {
     list: (
