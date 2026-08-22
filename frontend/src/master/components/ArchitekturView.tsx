@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Create Invoice Dialog (P2.2.21 — V4.9.948)', icon: Globe,
+    endpoint: 'CreateInvoiceDialog.tsx, create-invoice-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → 3-step create wizard (type/details/line items); `create-invoice-i18n.ts` type/template label maps + `formatCreateInvoiceAmount`. **Keys:** +40 EN+DE `invoices.create.*` (8190→8230); reuses `invoices.list.type.*`, `common.back/cancel`, `invoices.createInvoice`. **Machine values:** `OUTGOING_MANUAL`, `INCOMING_VENDOR`, template IDs, `taxRate:19`, `currency:EUR`, API create payload frozen. **Guardrails:** P2.2.21 enforce-clean exact (2 paths) — 0 findings. **Tests:** `rental-create-invoice-dialog-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-21-rental-create-invoice-dialog-implementation-2026-08-22.md; architecture/I18N_RENTAL_CREATE_INVOICE_DIALOG_P2_2_21_2026-08-22.md' },
   { name: 'Platform i18n Rental Parts & Accessories View (P2.2.20 — V4.9.947)', icon: Globe,
     endpoint: 'PartsAccessoriesView.tsx, parts-accessories-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → 5-step wizard, search results, product detail drawer; `parts-accessories-i18n.ts` label maps + `formatPartsPrice`/`formatPartsDate`. **Keys:** +68 EN+DE `partsAccessories.*` (8122→8190). **Machine values:** `PARTS_CATEGORY_VALUES`, `PARTS_SORT_VALUES`, availability/fitment status enums, search/disclosure API payloads frozen. **Guardrails:** P2.2.20 enforce-clean exact (2 paths) — 0 findings; blind-spot guards on category maps, sort options, badge labels. **Tests:** `rental-parts-accessories-localization.test.tsx` (10). **Semantics:** presentation-only; provider/product dynamic data raw; Category E=0.',

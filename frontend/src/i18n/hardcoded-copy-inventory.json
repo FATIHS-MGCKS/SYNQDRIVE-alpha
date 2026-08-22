@@ -111,25 +111,25 @@
     }
   },
   "summary": {
-    "total": 1640,
+    "total": 1616,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 156,
-      "RENTAL": 409,
+      "RENTAL": 385,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 58,
       "TITLE": 246,
-      "TEXT": 1156,
-      "LABEL": 91,
-      "PLACEHOLDER": 81,
+      "TEXT": 1142,
+      "LABEL": 85,
+      "PLACEHOLDER": 77,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 260,
-      "Finance/Billing": 127,
+      "Finance/Billing": 103,
       "Tasks": 13,
       "Documents": 8,
       "App / routing shell": 1
@@ -377,7 +377,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1540,
+      "line": 1544,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -405,7 +405,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23667,
+      "line": 23686,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -657,7 +657,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27552,
+      "line": 27571,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1606,7 +1606,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27497,
+      "line": 27516,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1747,7 +1747,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1011,
+      "line": 1015,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1761,7 +1761,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23971,
+      "line": 23990,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1803,7 +1803,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1630,
+      "line": 1634,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2728,7 +2728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1751,
+      "line": 1755,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2812,7 +2812,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1060,
+      "line": 1064,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3106,7 +3106,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1641,
+      "line": 1645,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3432,7 +3432,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1545,
+      "line": 1549,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3488,7 +3488,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1699,
+      "line": 1703,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3502,7 +3502,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1701,
+      "line": 1705,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4107,7 +4107,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24939,
+      "line": 24958,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4137,7 +4137,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1525,
+      "line": 1529,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4151,7 +4151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1669,
+      "line": 1673,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4642,7 +4642,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27487,
+      "line": 27506,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4838,7 +4838,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1749,
+      "line": 1753,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5147,7 +5147,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 22280,
+      "line": 22299,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5595,7 +5595,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23581,
+      "line": 23600,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6170,7 +6170,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1588,
+      "line": 1592,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6185,7 +6185,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1028,
+      "line": 1032,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7622,7 +7622,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1604,
+      "line": 1608,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7846,7 +7846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1594,
+      "line": 1598,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7888,7 +7888,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27522,
+      "line": 27541,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8183,7 +8183,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23647,
+      "line": 23666,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8421,7 +8421,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1581,
+      "line": 1585,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8941,7 +8941,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27509,
+      "line": 27528,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8955,7 +8955,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27526,
+      "line": 27545,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9376,7 +9376,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27203,
+      "line": 27222,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10012,7 +10012,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1569,
+      "line": 1573,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10530,7 +10530,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1705,
+      "line": 1709,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10544,7 +10544,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1702,
+      "line": 1706,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10558,7 +10558,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1698,
+      "line": 1702,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11455,7 +11455,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1602,
+      "line": 1606,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11665,7 +11665,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1752,
+      "line": 1756,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12295,7 +12295,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1503,
+      "line": 1507,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12857,7 +12857,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27476,
+      "line": 27495,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12871,7 +12871,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1299,
+      "line": 1303,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12969,7 +12969,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1642,
+      "line": 1646,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13490,7 +13490,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1499,
+      "line": 1503,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13588,7 +13588,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1632,
+      "line": 1636,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13674,7 +13674,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1547,
+      "line": 1551,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13856,7 +13856,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24941,
+      "line": 24960,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13898,7 +13898,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23667,
+      "line": 23686,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -13926,7 +13926,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1503,
+      "line": 1507,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13940,7 +13940,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1504,
+      "line": 1508,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13983,7 +13983,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1446,
+      "line": 1450,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13997,7 +13997,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1470,
+      "line": 1474,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14039,7 +14039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1629,
+      "line": 1633,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14377,7 +14377,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23707,
+      "line": 23726,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14545,7 +14545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1752,
+      "line": 1756,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -17185,20 +17185,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 437,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "PLACEHOLDER",
-      "sample": "€/Stk",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillableVehiclesDrawer.tsx",
       "line": 40,
       "surface": "RENTAL",
@@ -17765,20 +17751,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 263,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Auswählen...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/SendInvoiceDialog.tsx",
       "line": 150,
       "surface": "RENTAL",
@@ -17875,62 +17847,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UsersTab.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 353,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Beschreibung / Notizen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 353,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "LABEL",
-      "sample": "Beschreibung / Notizen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 339,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Betrag (EUR) *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 339,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "LABEL",
-      "sample": "Betrag (EUR) *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -18369,20 +18285,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 389,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Datei anhängen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/BusinessInsightsBox.tsx",
       "line": 955,
       "surface": "RENTAL",
@@ -18610,34 +18512,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 363,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Dokument / Bild",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 363,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "LABEL",
-      "sample": "Dokument / Bild",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -19136,34 +19010,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantInvoiceDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 329,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Fälligkeitsdatum",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 329,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "LABEL",
-      "sample": "Fälligkeitsdatum",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -20178,34 +20024,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 273,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Lieferant / Werkstatt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 273,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "LABEL",
-      "sample": "Lieferant / Werkstatt",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/FinancialInsightsView.tsx",
       "line": 609,
       "surface": "RENTAL",
@@ -20301,20 +20119,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 287,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Manuell eingeben…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -20458,20 +20262,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 455,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "MwSt 19%:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/HelpCenterView.tsx",
       "line": 838,
       "surface": "RENTAL",
@@ -20483,20 +20273,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/HelpCenterView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 299,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "PLACEHOLDER",
-      "sample": "Name des Lieferanten",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -20525,20 +20301,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageWorkQueue.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 452,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Netto:",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -21035,20 +20797,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 197,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Oder Vorlage wählen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillingProblemPanel.tsx",
       "line": 58,
       "surface": "RENTAL",
@@ -21158,20 +20906,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 311,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Optional...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -21722,20 +21456,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 155,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Rechnungsart wählen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
       "line": 110,
       "surface": "RENTAL",
@@ -21762,20 +21482,6 @@
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 252,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "PLACEHOLDER",
-      "sample": "Rechnungstitel...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -22308,34 +22014,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 247,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Titel *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 247,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "LABEL",
-      "sample": "Titel *",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
@@ -22881,30 +22559,15 @@
       "sample": "Zurück",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 9,
+      "occurrences": 7,
       "files": [
         "rental/components/billing/BillingInvoiceSection.tsx",
         "rental/components/billing/TenantBillableVehiclesTable.tsx",
         "rental/components/billing/TenantInvoicesSection.tsx",
         "rental/components/billing/TenantVehicleChangesSection.tsx",
         "rental/components/booking-detail/BookingDossier.tsx",
-        "rental/components/invoices/CreateInvoiceDialog.tsx",
         "rental/components/invoices/InvoiceDetail.tsx",
         "rental/components/new-booking/MobileBookingFooter.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/CreateInvoiceDialog.tsx",
-      "line": 359,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "PLACEHOLDER",
-      "sample": "Zusätzliche Informationen...",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/CreateInvoiceDialog.tsx"
       ]
     },
     {
