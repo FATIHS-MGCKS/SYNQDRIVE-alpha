@@ -44,10 +44,17 @@ export class DashboardUtilizationService {
     const combinedEnd =
       monthEnd.getTime() > prevEnd.getTime() ? monthEnd : prevEnd;
 
-    const facts = await this.evaluationsRepo.loadUtilizationFacts(organizationId, {
-      start: combinedStart,
-      endExclusive: combinedEnd,
-    });
+    const facts = await this.evaluationsRepo.loadUtilizationFacts(
+      organizationId,
+      {
+        start: combinedStart,
+        endExclusive: combinedEnd,
+      },
+      {
+        bookingStatuses: [...COUNTABLE_BOOKING_STATUSES],
+        excludeWizardDrafts: true,
+      },
+    );
 
     const vehicleStations = await this.prisma.vehicle.findMany({
       where: { organizationId, id: { in: facts.vehicles.map((v) => v.vehicleId) } },

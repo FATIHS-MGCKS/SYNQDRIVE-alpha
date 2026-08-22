@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isWizardDraftBooking } from '@modules/bookings/booking-wizard-draft.util';
 import {
   isExpenseInvoiceFact,
   resolveExpenseBusinessMs,
@@ -14,6 +15,20 @@ export interface E4SourceWindow {
   readonly start: Date;
   readonly endExclusive: Date;
 }
+
+export type E4UtilizationBookingStatus = 'PENDING' | 'CONFIRMED' | 'ACTIVE' | 'COMPLETED';
+
+export interface E4UtilizationFactsOptions {
+  /** Defaults to ACTIVE + COMPLETED (realized occupancy for canonical E4 analytics). */
+  readonly bookingStatuses?: readonly E4UtilizationBookingStatus[];
+  /** When true, drops wizard-draft PENDING bookings from rented intervals. */
+  readonly excludeWizardDrafts?: boolean;
+}
+
+const DEFAULT_UTILIZATION_BOOKING_STATUSES: readonly E4UtilizationBookingStatus[] = [
+  'ACTIVE',
+  'COMPLETED',
+];
 
 export interface E4UtilizationVehicleFacts {
   readonly vehicleId: string;
@@ -63,23 +78,33 @@ export class EvaluationsInsightsRepository {
   async loadUtilizationFacts(
     organizationId: string,
     window: E4SourceWindow,
+    options?: E4UtilizationFactsOptions,
   ): Promise<E4UtilizationFacts> {
+    const bookingStatuses = options?.bookingStatuses ?? DEFAULT_UTILIZATION_BOOKING_STATUSES;
+    const excludeWizardDrafts = options?.excludeWizardDrafts ?? false;
+
     const vehicles = await this.prisma.vehicle.findMany({
       where: { organizationId, createdAt: { lt: window.endExclusive } },
       select: { id: true, createdAt: true, latestState: { select: { online: true } } },
     });
 
-    const [bookings, serviceCases] = await Promise.all([
+    const [bookingsRaw, serviceCases] = await Promise.all([
       this.prisma.booking.findMany({
         where: {
           organizationId,
-          status: { in: ['ACTIVE', 'COMPLETED'] },
+          status: { in: [...bookingStatuses] },
           startDate: { lt: window.endExclusive },
           endDate: { gt: window.start },
           // Nested tenant proof: only bookings whose vehicle is same-tenant.
           vehicle: { is: { organizationId } },
         },
-        select: { vehicleId: true, startDate: true, endDate: true },
+        select: {
+          vehicleId: true,
+          startDate: true,
+          endDate: true,
+          status: true,
+          notes: true,
+        },
       }),
       this.prisma.serviceCase.findMany({
         where: {
@@ -94,6 +119,10 @@ export class EvaluationsInsightsRepository {
         select: { vehicleId: true, downtimeStart: true, downtimeEnd: true },
       }),
     ]);
+
+    const bookings = excludeWizardDrafts
+      ? bookingsRaw.filter((booking) => !isWizardDraftBooking(booking))
+      : bookingsRaw;
 
     const rentedByVehicle = new Map<string, EvaluationsInterval[]>();
     for (const booking of bookings) {
