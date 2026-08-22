@@ -243,9 +243,9 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
     }> => [
       {
         id: 'active',
-        label: 'Aktive Freigaben',
+        label: t('settings.dataAuth.kpi.active'),
         value: stats?.active ?? 0,
-        hint: 'Gültige, nicht abgelaufene Freigaben',
+        hint: t('settings.dataAuth.kpi.activeHint'),
         icon: ShieldCheck,
         status: 'success',
         onClick: () => setFilters((f) => ({ ...f, status: 'ACTIVE' })),
@@ -253,9 +253,9 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       },
       {
         id: 'pending',
-        label: 'Ausstehende Anfragen',
+        label: t('settings.dataAuth.kpi.pending'),
         value: stats?.pending ?? 0,
-        hint: 'Warten auf Genehmigung',
+        hint: t('settings.dataAuth.kpi.pendingHint'),
         icon: Clock,
         status: 'warning',
         onClick: () => setFilters((f) => ({ ...f, status: 'PENDING' })),
@@ -263,9 +263,9 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       },
       {
         id: 'highRisk',
-        label: 'Hochriskante Freigaben',
+        label: t('settings.dataAuth.kpi.highRisk'),
         value: stats?.highRisk ?? 0,
-        hint: 'Risiko Hoch oder Kritisch',
+        hint: t('settings.dataAuth.kpi.highRiskHint'),
         icon: ShieldAlert,
         status: 'critical',
         onClick: () => setFilters((f) => ({ ...f, risk: 'HIGH' })),
@@ -273,9 +273,9 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       },
       {
         id: 'expiring',
-        label: 'Läuft bald ab',
+        label: t('settings.dataAuth.kpi.expiring'),
         value: stats?.expiringSoon ?? 0,
-        hint: 'Ablauf in den nächsten 30 Tagen',
+        hint: t('settings.dataAuth.kpi.expiringHint'),
         icon: AlertTriangle,
         status: 'watch',
         onClick: () => setFilters((f) => ({ ...f, status: 'ACTIVE' })),
@@ -283,23 +283,26 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       },
       {
         id: 'revokedExpired',
-        label: 'Widerrufen / Abgelaufen',
+        label: t('settings.dataAuth.kpi.revokedExpired'),
         value: (stats?.revoked ?? 0) + (stats?.expired ?? 0),
-        hint: `${stats?.revoked ?? 0} widerrufen · ${stats?.expired ?? 0} abgelaufen`,
+        hint: t('settings.dataAuth.kpi.revokedExpiredHint', {
+          revoked: stats?.revoked ?? 0,
+          expired: stats?.expired ?? 0,
+        }),
         icon: ShieldX,
         status: 'neutral',
         onClick: () => setFilters((f) => ({ ...f, status: 'REVOKED' })),
         active: filters.status === 'REVOKED' || filters.status === 'EXPIRED',
       },
     ],
-    [stats, filters.status, filters.risk],
+    [t, stats, filters.status, filters.risk],
   );
 
   const columns: DataTableColumn<DataAuthorizationDto>[] = useMemo(
     () => [
       {
         key: 'title',
-        header: 'Freigabe',
+        header: t('settings.dataAuth.table.authorization'),
         cell: (auth) => (
           <div className="min-w-0">
             <p className="font-semibold text-foreground truncate">{auth.title}</p>
@@ -311,23 +314,23 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       },
       {
         key: 'source',
-        header: 'Quelle',
+        header: t('settings.dataAuth.create.source'),
         className: 'hidden lg:table-cell',
         cell: (auth) => <AuthSourceChip sourceType={auth.sourceType} />,
       },
       {
         key: 'risk',
-        header: 'Risiko',
+        header: t('settings.dataAuth.table.risk'),
         cell: (auth) => <AuthRiskChip riskKey={auth.riskLevelKey} />,
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('common.status'),
         cell: (auth) => <AuthStatusChip statusKey={auth.statusKey} />,
       },
       {
         key: 'objects',
-        header: 'Betroffen',
+        header: t('settings.dataAuth.table.affected'),
         className: 'hidden md:table-cell',
         cell: (auth) => (
           <span className="text-[12px] text-muted-foreground">{affectedObjectsSummary(auth)}</span>
@@ -340,7 +343,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
         cell: () => <ChevronRight className="w-4 h-4 text-muted-foreground" />,
       },
     ],
-    [],
+    [t, locale],
   );
 
   const selectClass =
@@ -408,7 +411,10 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
           <div>
             <p className="text-[13px] font-semibold text-foreground">{t('settings.dataAuth.filters.title')}</p>
             <p className="text-[11px] text-muted-foreground">
-              {filtered.length} von {authorizations.length} Freigaben
+              {t('settings.dataAuth.filters.summary', {
+                filtered: filtered.length,
+                total: authorizations.length,
+              })}
             </p>
           </div>
           {hasActiveDataAuthFilters(filters) && (
@@ -417,7 +423,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
               onClick={clearFilters}
               className="text-[11px] font-semibold text-[var(--brand)] hover:underline"
             >
-              Filter zurücksetzen
+              {t('tasks.filter.resetFilters')}
             </button>
           )}
         </div>
@@ -481,7 +487,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
               filters.dataCategory === 'all' ? 'border-[var(--brand)] bg-[var(--brand-soft)]' : 'border-border'
             }`}
           >
-            Alle
+            {t('common.all')}
           </button>
           {dataCategoryOptions.slice(0, 8).map((cat) => (
             <button
@@ -507,11 +513,15 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<Shield className="w-8 h-8" />}
-          title={hasActiveDataAuthFilters(filters) ? 'Keine Treffer' : 'Noch keine Datenfreigaben vorhanden'}
+          title={
+            hasActiveDataAuthFilters(filters)
+              ? t('dashboard.drilldown.noMatches')
+              : t('settings.dataAuth.empty.noAuthorizations')
+          }
           description={
             hasActiveDataAuthFilters(filters)
-              ? 'Passen Sie die Filter an oder setzen Sie die Suche zurück.'
-              : 'Sobald DIMO-verbundene Fahrzeuge vorhanden sind, erstellt SynqDrive automatisch eine DIMO Telemetry Authorization.'
+              ? t('settings.dataAuth.empty.adjustFilters')
+              : t('settings.dataAuth.empty.dimoAutoCreate')
           }
           action={
             !hasActiveDataAuthFilters(filters) && canManage ? (

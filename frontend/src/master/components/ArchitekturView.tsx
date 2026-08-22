@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Data Authorization Global Closure (P2.2.18 — V4.9.945)', icon: Globe,
+    endpoint: 'DataAuthorizationTab.tsx.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → KPI cards, table headers, filter summary, category chip, empty states; existing filter options via `data-authorization.constants` + `settings-i18n`. **Keys:** +17 EN+DE `settings.dataAuth.{kpi,table,filters,empty}.*` (7908→7925); reuses `tasks.filter.resetFilters`, `common.all`, `common.status`, `settings.dataAuth.create.source`, `dashboard.drilldown.noMatches`. **Guardrails:** P2.2.18 enforce-clean exact (1 path) — 0 findings; global `i18n:check` PASS. **Tests:** `data-authorization-global-closure-localization.test.tsx`. **Semantics:** presentation-only; authorization/consent machine values frozen; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-18-data-authorization-global-closure-implementation-2026-08-22.md; architecture/I18N_DATA_AUTHORIZATION_GLOBAL_CLOSURE_P2_2_18_2026-08-22.md' },
   { name: 'Platform i18n Booking Vehicle Picker (P2.2.17 — V4.9.944)', icon: Globe,
     endpoint: 'VehiclePickerStep.tsx, booking-vehicle-preflight.ts, booking-vehicle-preflight-presentation-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → VehiclePickerStep chrome; `resolveBookingVehiclePreflight(..., { locale })` → presentation adapter + `formatVehicleOperationalStatusLabel`. **Keys:** +9 EN+DE `bookings.wizard.vehiclePicker.*` (7899→7908); reuses `bookings.planner.allStations`, `tasks.filter.resetFilters`, `fleetCondition.moreFilters`, `vehicle.status.*`, `health.rentalBlocked`. **Guardrails:** P2.2.17 enforce-clean exact (2 paths) — 0 findings. **Tests:** `booking-vehicle-picker-localization.test.tsx`. **Semantics:** presentation-only; machine preflight codes frozen; Category E=0.',

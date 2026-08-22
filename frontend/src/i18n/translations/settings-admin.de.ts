@@ -360,6 +360,27 @@ export const settingsAdminDe = {
   'settings.dataAuth.filters.title': 'Filter & Suche',
   'settings.dataAuth.filters.searchPlaceholder': 'Titel, Verarbeiter, Modul, Beschreibung …',
   'settings.dataAuth.filters.dataCategory': 'Datenkategorie:',
+  'settings.dataAuth.filters.summary': '{filtered} von {total} Freigaben',
+
+  'settings.dataAuth.kpi.active': 'Aktive Freigaben',
+  'settings.dataAuth.kpi.activeHint': 'Gültige, nicht abgelaufene Freigaben',
+  'settings.dataAuth.kpi.pending': 'Ausstehende Anfragen',
+  'settings.dataAuth.kpi.pendingHint': 'Warten auf Genehmigung',
+  'settings.dataAuth.kpi.highRisk': 'Hochriskante Freigaben',
+  'settings.dataAuth.kpi.highRiskHint': 'Risiko Hoch oder Kritisch',
+  'settings.dataAuth.kpi.expiring': 'Läuft bald ab',
+  'settings.dataAuth.kpi.expiringHint': 'Ablauf in den nächsten 30 Tagen',
+  'settings.dataAuth.kpi.revokedExpired': 'Widerrufen / Abgelaufen',
+  'settings.dataAuth.kpi.revokedExpiredHint': '{revoked} widerrufen · {expired} abgelaufen',
+
+  'settings.dataAuth.table.authorization': 'Freigabe',
+  'settings.dataAuth.table.risk': 'Risiko',
+  'settings.dataAuth.table.affected': 'Betroffen',
+
+  'settings.dataAuth.empty.noAuthorizations': 'Noch keine Datenfreigaben vorhanden',
+  'settings.dataAuth.empty.adjustFilters': 'Passen Sie die Filter an oder setzen Sie die Suche zurück.',
+  'settings.dataAuth.empty.dimoAutoCreate':
+    'Sobald DIMO-verbundene Fahrzeuge vorhanden sind, erstellt SynqDrive automatisch eine DIMO Telemetry Authorization.',
 
   'settings.dataAuth.create.title': 'Neue Datenfreigabe',
   'settings.dataAuth.create.subtitle':
