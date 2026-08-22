@@ -9,7 +9,7 @@ import type { TranslationKey } from '../../../i18n/translations/en';
 import { useRentalOrg } from '../../../RentalContext';
 import { ServiceTaskCreateModal } from '../../service-center/ServiceTaskCreateModal';
 import type { HealthTaskPrefill } from '../../../lib/health-task-bridge.utils';
-import { DASHBOARD_LAYOUT } from '../dashboardShell';
+import { DashboardPanelScrollBlur } from '../DashboardPanelScrollBlur';
 import type {
   ActionQueueEntry,
   ActionQueueItem,
@@ -241,14 +241,8 @@ export function AttentionScopedList({
     <>
       {errorBanner ? <NotificationPanelErrorBanner message={errorBanner} /> : null}
 
-      <div
-        className={cn(
-          DASHBOARD_LAYOUT.notificationsPanelScroll,
-          listClassName,
-        )}
-        aria-live="polite"
-        aria-relevant="additions text"
-      >
+      <div aria-live="polite" aria-relevant="additions text">
+        <DashboardPanelScrollBlur className={cn('flex-1', listClassName)}>
         {loading ? (
           <NotificationCardSkeleton rows={3} />
         ) : showEmpty ? (
@@ -317,6 +311,7 @@ export function AttentionScopedList({
             {t('notification.more.expanded', { count: hiddenAtomicCount })}
           </p>
         ) : null}
+        </DashboardPanelScrollBlur>
       </div>
 
       <ServiceTaskCreateModal
