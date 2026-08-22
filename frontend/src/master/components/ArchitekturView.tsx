@@ -1163,6 +1163,17 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center Reply / Composer — C11.2 (V4.9.934)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'Reply', detail: 'POST .../reply — text + client idempotencyKey; CommunicationReplyCommand durable dedupe' },
+      { label: 'Routing', detail: 'WhatsApp → WhatsAppService.sendMessage; SMS not configured; Voice not replyable' },
+      { label: 'Ownership', detail: 'Claim/takeover before provider call; WAITING_CUSTOMER after successful human reply' },
+      { label: 'Frontend', detail: 'CommunicationComposer + useCommunicationReply; no direct provider calls' },
+    ],
+  },
+  {
     name: 'Communication Center Write Foundation — C11.1 (V4.9.933)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',

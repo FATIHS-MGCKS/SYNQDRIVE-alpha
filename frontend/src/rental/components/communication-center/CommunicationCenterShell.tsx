@@ -3,6 +3,7 @@ import { Sheet, SheetContent } from '../../../components/ui/sheet';
 import { cn } from '../../../components/ui/utils';
 import { useCommunicationConversation } from '../../../lib/communication/hooks/useCommunicationConversation';
 import { useCommunicationConversationActions } from '../../../lib/communication/hooks/useCommunicationConversationActions';
+import { useCommunicationReply } from '../../../lib/communication/hooks/useCommunicationReply';
 import { useRentalOrg } from '../../RentalContext';
 import { hasCommunicationPermission } from '../../lib/communication-permissions';
 import {
@@ -205,6 +206,15 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     onConflictRefresh: conversationState.reloadDetail,
   });
 
+  const replyState = useCommunicationReply({
+    orgId,
+    conversationId: state.selectedConversationId,
+    onConversationUpdated: conversationState.applyConversationUpdate,
+    onTimelineRefresh: conversationState.reloadTimeline,
+    onInboxRefresh: () => setInboxRefreshNonce((value) => value + 1),
+    onConflictRefresh: conversationState.reloadDetail,
+  });
+
   const handleClearInvalidSelection = useCallback(() => {
     patchState({ selectedConversationId: null, mobilePane: 'inbox' });
   }, [patchState]);
@@ -307,6 +317,7 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
               activeChannel={state.channel}
               conversationState={conversationState}
               conversationActions={conversationActions}
+              replyState={replyState}
               canWrite={canWrite}
               showBack={isMobile}
               showContextAction={hasConversation && (isMobile || isTablet)}

@@ -9,6 +9,9 @@ import {
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
 import type { UseCommunicationConversationActionsResult } from '../../../lib/communication/hooks/useCommunicationConversationActions';
+import type { UseCommunicationReplyResult } from '../../../lib/communication/hooks/useCommunicationReply';
+import { resolveCommunicationComposerState } from '../../../lib/communication/communication-composer-capability';
+import { CommunicationComposer } from './CommunicationComposer';
 import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { resolveConversationTitle } from './communication-inbox-display';
@@ -23,6 +26,7 @@ interface CommunicationWorkspacePaneProps {
   activeChannel: CommunicationChannel;
   conversationState: UseCommunicationConversationResult | null;
   conversationActions?: UseCommunicationConversationActionsResult | null;
+  replyState?: UseCommunicationReplyResult | null;
   canWrite?: boolean;
   showBack?: boolean;
   showContextAction?: boolean;
@@ -90,6 +94,7 @@ export function CommunicationWorkspacePane({
   activeChannel,
   conversationState,
   conversationActions,
+  replyState,
   canWrite = false,
   showBack,
   showContextAction,
@@ -157,6 +162,11 @@ export function CommunicationWorkspacePane({
         return '';
     }
   };
+
+  const composerState = resolveCommunicationComposerState({
+    canWrite,
+    conversation,
+  });
 
   return (
     <div
@@ -337,13 +347,16 @@ export function CommunicationWorkspacePane({
         ) : null}
       </div>
 
-      {hasSelection && conversation && (
-        <div
-          className="shrink-0 border-t border-border/30 px-3 py-2"
-          aria-hidden
-          data-testid="communication-composer-reserved"
+      {hasSelection && conversation && replyState ? (
+        <CommunicationComposer
+          state={composerState}
+          draft={replyState.draft}
+          sending={replyState.sending}
+          errorMessage={replyState.sendErrorMessage}
+          onDraftChange={replyState.setDraft}
+          onSend={() => void replyState.send()}
         />
-      )}
+      ) : null}
     </div>
   );
 }

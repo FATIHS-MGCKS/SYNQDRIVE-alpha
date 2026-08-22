@@ -29,7 +29,7 @@ import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
 @Module({
   imports: [
     ConfigModule.forFeature(whatsappConfig),
-    CommunicationModule,
+    forwardRef(() => CommunicationModule),
     ActivityLogModule,
     BookingsModule,
     DocumentsModule,
