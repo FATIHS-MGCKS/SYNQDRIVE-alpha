@@ -23,14 +23,14 @@ test.describe('Communication Center C8.1 responsive shell', () => {
   test('default inbox/all at desktop empty selection', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-1440', 'Desktop empty-state contract');
 
-    await openCommunicationCenter(page);
+    await openCommunicationCenter(page, { emptyInbox: true });
     await expect(page.getByTestId('communication-center-view')).toBeVisible();
     await expect(channelFilter(page, 'all')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('communication-inbox-pane')).toBeVisible();
     await expect(page.getByTestId('communication-workspace-pane')).toBeVisible();
     await expect(page.getByText('Select a conversation')).toBeVisible();
     await expect(page.getByTestId('communication-context-pane')).toHaveCount(0);
-    await expect(page.getByText('No conversations yet')).toHaveCount(0);
+    await expect(page.getByText('No conversations yet')).toBeVisible();
     await assertNoHorizontalOverflow(page);
     await page.screenshot({
       path: 'playwright-report/communication-center-desktop-1440-empty.png',
@@ -183,11 +183,11 @@ test.describe('Communication Center C8.1 responsive shell', () => {
     await expect(page).toHaveURL(/communicationChannel=voice/);
   });
 
-  test('does not render fake conversation rows', async ({ page }) => {
+  test('renders API-backed conversation rows only', async ({ page }) => {
     await openCommunicationCenter(page);
     await expect(page.getByTestId('communication-inbox-pane')).toBeVisible();
-    await expect(page.getByTestId('communication-inbox-list-shell')).toBeAttached();
-    await expect(page.getByTestId('communication-conversation-row')).toHaveCount(0);
+    await expect(page.getByTestId('communication-conversation-row')).toHaveCount(1);
+    await expect(page.getByText('Max Mustermann')).toBeVisible();
   });
 
   test('renders English copy', async ({ page }, testInfo) => {

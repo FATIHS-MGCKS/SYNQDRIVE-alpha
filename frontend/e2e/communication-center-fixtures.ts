@@ -1,11 +1,212 @@
 /**
- * Playwright fixtures for Communication Center C8.1 shell E2E.
+ * Playwright fixtures for Communication Center shell + inbox E2E.
  */
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow, installTaskMocks, mockUser, TEST_ORG_ID } from './task-fixtures';
 
 export { assertNoHorizontalOverflow, TEST_ORG_ID };
+
+export const MOCK_CONVERSATION_ID = '00000000-0000-4000-8000-000000000101';
+export const ORG_A_ID = 'org-communication-a-e2e';
+export const ORG_B_ID = 'org-communication-b-e2e';
+
+const mockConversations = [
+  {
+    id: MOCK_CONVERSATION_ID,
+    channel: 'WHATSAPP',
+    status: 'AI_ACTIVE',
+    unreadCount: 2,
+    lastActivityAt: '2026-08-22T10:30:00.000Z',
+    displayLabel: 'Max Mustermann',
+    lastMessagePreview: 'Pickup reminder sent',
+    customer: { id: 'cust-1', displayName: 'Max Mustermann' },
+    booking: { id: 'book-1', reference: 'BK-ABC123' },
+    vehicle: { id: 'veh-1', displayLabel: 'KS-AB 123' },
+    station: null,
+    assignedUser: null,
+    assignedAgent: null,
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000102',
+    channel: 'VOICE',
+    status: 'HUMAN_REQUIRED',
+    unreadCount: 0,
+    lastActivityAt: '2026-08-22T09:15:00.000Z',
+    displayLabel: 'Voice Customer',
+    lastMessagePreview: null,
+    customer: null,
+    booking: null,
+    vehicle: null,
+    station: null,
+    assignedUser: { id: 'user-1', displayName: 'Ops User' },
+    assignedAgent: null,
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000103',
+    channel: 'SMS',
+    status: 'WAITING_CUSTOMER',
+    unreadCount: 1,
+    lastActivityAt: '2026-08-22T08:00:00.000Z',
+    displayLabel: 'SMS Customer',
+    lastMessagePreview: 'Need help',
+    customer: { id: 'cust-2', displayName: 'SMS Customer' },
+    booking: null,
+    vehicle: null,
+    station: null,
+    assignedUser: null,
+    assignedAgent: null,
+  },
+];
+
+type CommunicationMockOptions = {
+  empty?: boolean;
+  orgId?: string;
+  failPage2?: boolean;
+  searchRace?: boolean;
+  smsDelayMs?: number;
+  listDelayMs?: number;
+};
+
+const searchRaceDelays = new Map<string, ReturnType<typeof setTimeout>>();
+
+export async function installCommunicationMocks(
+  page: Page,
+  options?: CommunicationMockOptions,
+) {
+  const orgId = options?.orgId ?? TEST_ORG_ID;
+
+  await page.route(`**/organizations/${orgId}/communication/**`, async (route) => {
+    const url = route.request().url();
+    const method = route.request().method();
+    if (method !== 'GET') return route.fallback();
+
+    if (url.includes('/communication/conversations/summary')) {
+      const unread = orgId === ORG_B_ID ? 1 : options?.empty ? 0 : 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalUnreadMessages: unread,
+          unreadConversations: unread,
+          unassigned: options?.empty ? 0 : 1,
+          requiresAttention: options?.empty ? 0 : 1,
+          byChannel: options?.empty ? {} : { WHATSAPP: 1, VOICE: 1, SMS: 1 },
+        }),
+      });
+    }
+
+    if (url.includes('/communication/conversations')) {
+      if (options?.listDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.listDelayMs));
+      }
+
+      const params = new URL(url).searchParams;
+      const search = params.get('search') ?? '';
+      const channel = params.get('channel');
+      const unreadOnly = params.get('unreadOnly') === 'true';
+      const cursor = params.get('cursor');
+
+      if (options?.searchRace && search) {
+        const delayMs = search === 'A' ? 1500 : 100;
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, delayMs);
+          searchRaceDelays.set(`${search}:${Date.now()}`, timer);
+        });
+
+        const label = search === 'A' ? 'Result A' : search === 'AB' ? 'Result AB' : `Result ${search}`;
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: [
+              {
+                ...mockConversations[0],
+                id: `search-${search}`,
+                displayLabel: label,
+                lastMessagePreview: `Preview ${label}`,
+              },
+            ],
+            nextCursor: null,
+            hasMore: false,
+          }),
+        });
+      }
+
+      let items = options?.empty ? [] : [...mockConversations];
+      if (orgId === ORG_A_ID && !options?.empty) {
+        items = items.map((row) => ({
+          ...row,
+          displayLabel: 'Org A customer',
+          lastMessagePreview: 'Org A preview',
+        }));
+      }
+      if (orgId === ORG_B_ID && !options?.empty) {
+        items = items.map((row) => ({
+          ...row,
+          displayLabel: 'Org B customer',
+          lastMessagePreview: 'Org B preview',
+        }));
+      }
+
+      if (channel) items = items.filter((row) => row.channel === channel);
+      if (channel === 'SMS' && options?.smsDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.smsDelayMs));
+      }
+      if (unreadOnly) items = items.filter((row) => row.unreadCount > 0);
+      if (search) {
+        items = items.filter((row) =>
+          row.displayLabel.toLowerCase().includes(search.toLowerCase()),
+        );
+      }
+
+      if (cursor === 'page-2') {
+        if (options?.failPage2) {
+          return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+        }
+        const first = items[0];
+        const second = items[1] ?? {
+          ...items[0],
+          id: '00000000-0000-4000-8000-000000000104',
+          displayLabel: 'Page Two Customer',
+        };
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: [first, second],
+            nextCursor: null,
+            hasMore: false,
+          }),
+        });
+      }
+
+      if (!options?.empty && !cursor && items.length > 0) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: items.slice(0, 1),
+            nextCursor: items.length > 1 ? 'page-2' : null,
+            hasMore: items.length > 1,
+          }),
+        });
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items,
+          nextCursor: null,
+          hasMore: false,
+        }),
+      });
+    }
+
+    return route.fallback();
+  });
+}
 
 const mockUserWithCommunication = {
   ...mockUser,
@@ -24,14 +225,27 @@ const mockUserWithoutCommunication = {
   },
 };
 
-async function seedSession(page: Page, user: typeof mockUser, locale: 'en' | 'de' = 'en') {
+async function seedSession(
+  page: Page,
+  user: typeof mockUser,
+  locale: 'en' | 'de' = 'en',
+  orgId = TEST_ORG_ID,
+) {
   await page.addInitScript(
-    ({ token, authUser, selectedLocale }) => {
+    ({ token, authUser, selectedLocale, selectedOrgId }) => {
+      if (sessionStorage.getItem('communication-e2e-session-seeded')) return;
+      sessionStorage.setItem('communication-e2e-session-seeded', '1');
       localStorage.setItem('synqdrive_token', token);
       localStorage.setItem('synqdrive_user', JSON.stringify(authUser));
       localStorage.setItem('synqdrive.locale', selectedLocale);
+      localStorage.setItem('synqdrive.selectedOrgId', selectedOrgId);
     },
-    { token: 'communication-e2e-token', authUser: user, selectedLocale: locale },
+    {
+      token: 'communication-e2e-token',
+      authUser: { ...user, organizationId: orgId },
+      selectedLocale: locale,
+      selectedOrgId: orgId,
+    },
   );
 }
 
@@ -41,17 +255,32 @@ export async function openCommunicationCenter(
     user?: typeof mockUser;
     query?: string;
     locale?: 'en' | 'de';
+    emptyInbox?: boolean;
+    orgId?: string;
+    searchRace?: boolean;
+    failPage2?: boolean;
+    smsDelayMs?: number;
+    listDelayMs?: number;
   },
 ) {
   const user = options?.user ?? mockUserWithCommunication;
-  await seedSession(page, user, options?.locale ?? 'en');
+  const orgId = options?.orgId ?? TEST_ORG_ID;
+  await seedSession(page, user, options?.locale ?? 'en', orgId);
   await installTaskMocks(page);
+  await installCommunicationMocks(page, {
+    empty: options?.emptyInbox,
+    orgId,
+    searchRace: options?.searchRace,
+    failPage2: options?.failPage2,
+    smsDelayMs: options?.smsDelayMs,
+    listDelayMs: options?.listDelayMs,
+  });
   await page.route('**/auth/me', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(user),
+      body: JSON.stringify({ ...user, organizationId: orgId }),
     });
   });
 
@@ -88,6 +317,11 @@ export async function expectCommunicationNavVisible(page: Page, visible: boolean
   } else {
     await expect(navItem).toHaveCount(0);
   }
+}
+
+export async function installDualOrgCommunicationMocks(page: Page) {
+  await installCommunicationMocks(page, { orgId: ORG_A_ID });
+  await installCommunicationMocks(page, { orgId: ORG_B_ID });
 }
 
 export { mockUserWithCommunication, mockUserWithoutCommunication };

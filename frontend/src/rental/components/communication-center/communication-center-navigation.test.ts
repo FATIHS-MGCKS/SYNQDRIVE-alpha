@@ -8,6 +8,7 @@ import {
   parseCommunicationCenterViewFromUrl,
   readCommunicationCenterStateFromUrl,
 } from './communication-center-navigation';
+import { mergeCommunicationInboxFilters } from './communication-inbox-state';
 
 describe('communication-center-navigation', () => {
   it('detects communication center view from URL', () => {
@@ -30,6 +31,7 @@ describe('communication-center-navigation', () => {
       channel: 'whatsapp',
       selectedConversationId: 'conv-1',
       mobilePane: 'context',
+      inboxFilters: mergeCommunicationInboxFilters(),
     });
   });
 
@@ -41,6 +43,7 @@ describe('communication-center-navigation', () => {
     expect(readCommunicationCenterStateFromUrl('?conversationId=conv-2')).toEqual({
       selectedConversationId: 'conv-2',
       mobilePane: 'conversation',
+      inboxFilters: mergeCommunicationInboxFilters(),
     });
   });
 
@@ -59,6 +62,7 @@ describe('communication-center-navigation', () => {
       channel: 'sms',
       selectedConversationId: null,
       mobilePane: 'inbox',
+      inboxFilters: mergeCommunicationInboxFilters(),
     });
   });
 

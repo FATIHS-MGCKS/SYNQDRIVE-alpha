@@ -4168,6 +4168,56 @@ export const api = {
     createTemplate: (orgId: string, data: WhatsAppTemplateCreatePayload) =>
       post<WhatsAppTemplate>(`/organizations/${orgId}/whatsapp/templates`, data),
   },
+  communication: {
+    listConversations: (
+      orgId: string,
+      query?: import('./communication/types').CommunicationConversationListQuery,
+    ) => {
+      const q = new URLSearchParams();
+      if (query) {
+        if (query.channel) {
+          const channels = Array.isArray(query.channel) ? query.channel : [query.channel];
+          if (channels.length > 0) q.set('channel', channels.join(','));
+        }
+        if (query.status) {
+          const statuses = Array.isArray(query.status) ? query.status : [query.status];
+          if (statuses.length > 0) q.set('status', statuses.join(','));
+        }
+        if (query.unreadOnly) q.set('unreadOnly', 'true');
+        if (query.unassigned) q.set('unassigned', 'true');
+        if (query.search) q.set('search', query.search);
+        if (query.cursor) q.set('cursor', query.cursor);
+        if (query.limit != null) q.set('limit', String(query.limit));
+      }
+      const qs = q.toString();
+      return get<import('./communication/types').CommunicationConversationListResponse>(
+        `/organizations/${orgId}/communication/conversations${qs ? `?${qs}` : ''}`,
+      );
+    },
+    getConversationSummary: (
+      orgId: string,
+      query?: import('./communication/types').CommunicationConversationListQuery,
+    ) => {
+      const q = new URLSearchParams();
+      if (query) {
+        if (query.channel) {
+          const channels = Array.isArray(query.channel) ? query.channel : [query.channel];
+          if (channels.length > 0) q.set('channel', channels.join(','));
+        }
+        if (query.status) {
+          const statuses = Array.isArray(query.status) ? query.status : [query.status];
+          if (statuses.length > 0) q.set('status', statuses.join(','));
+        }
+        if (query.unreadOnly) q.set('unreadOnly', 'true');
+        if (query.unassigned) q.set('unassigned', 'true');
+        if (query.search) q.set('search', query.search);
+      }
+      const qs = q.toString();
+      return get<import('./communication/types').CommunicationConversationSummary>(
+        `/organizations/${orgId}/communication/conversations/summary${qs ? `?${qs}` : ''}`,
+      );
+    },
+  },
   bookings: {
     list: (
       orgId: string,

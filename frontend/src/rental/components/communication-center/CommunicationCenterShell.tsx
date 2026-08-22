@@ -12,6 +12,11 @@ import { CommunicationCenterHeader } from './CommunicationCenterHeader';
 import { CommunicationInboxPane } from './CommunicationInboxPane';
 import { CommunicationWorkspacePane } from './CommunicationWorkspacePane';
 import { CommunicationContextPane } from './CommunicationContextPane';
+import {
+  DEFAULT_COMMUNICATION_INBOX_FILTERS,
+  mergeCommunicationInboxFilters,
+  type CommunicationInboxFilters,
+} from './communication-inbox-state';
 import type { CommunicationChannel, CommunicationMobilePane } from './communication-center.types';
 
 interface CommunicationCenterShellProps {
@@ -78,8 +83,41 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     [],
   );
 
+  const handleInboxFiltersChange = useCallback((partial: Partial<CommunicationInboxFilters>) => {
+    setState((current) => {
+      const next = mergeCommunicationCenterState({
+        ...current,
+        inboxFilters: mergeCommunicationInboxFilters({ ...current.inboxFilters, ...partial }),
+      });
+      syncCommunicationCenterStateToUrl(next);
+      return next;
+    });
+  }, []);
+
+  const handleClearInboxFilters = useCallback(() => {
+    patchState({
+      channel: 'all',
+      inboxFilters: DEFAULT_COMMUNICATION_INBOX_FILTERS,
+      selectedConversationId: null,
+    });
+  }, [patchState]);
+
+  const handleSelectConversation = useCallback(
+    (conversationId: string) => {
+      patchState({
+        selectedConversationId: conversationId,
+        mobilePane: isMobile ? 'conversation' : state.mobilePane,
+      });
+    },
+    [isMobile, patchState, state.mobilePane],
+  );
+
   const handleMobilePane = useCallback(
     (mobilePane: CommunicationMobilePane) => {
+      if (mobilePane === 'inbox') {
+        patchState({ mobilePane, selectedConversationId: null }, { replace: true });
+        return;
+      }
       patchState({ mobilePane }, { replace: true });
     },
     [patchState],
@@ -126,7 +164,12 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
         >
           <CommunicationInboxPane
             activeChannel={state.channel}
+            inboxFilters={state.inboxFilters}
+            selectedConversationId={state.selectedConversationId}
             onChannelChange={handleChannelChange}
+            onInboxFiltersChange={handleInboxFiltersChange}
+            onSelectConversation={handleSelectConversation}
+            onClearInboxFilters={handleClearInboxFilters}
           />
         </div>
 
