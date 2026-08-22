@@ -13,10 +13,36 @@ import type { StatusTone } from '../../components/patterns';
 import { useState, useEffect, useCallback } from 'react';
 
 import { api } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type {
   InsuranceFleetOverview, InsuranceFleetVehicle, InsurancePartnerSummary,
   InsuranceInquirySubmission, InsuranceInquiryResult, InsuranceDisclosureTemplate,
 } from '../../lib/api';
+import {
+  AGGREGATION_LEVEL_VALUES,
+  HISTORICAL_DATA_GROUPS,
+  INSURANCE_WIZARD_STEP_KEYS,
+  INQUIRY_PURPOSE_VALUES,
+  LIVE_DATA_ITEM_KEYS,
+  REPORTING_FREQUENCY_VALUES,
+  STATUS_ORDER,
+  TIME_RANGE_OPTIONS,
+  descHistoricalItem,
+  descInquiryPurpose,
+  descLiveDataItem,
+  formatInsuranceDate,
+  labelAggregationLevel,
+  labelHistoricalGroup,
+  labelHistoricalItem,
+  labelInquiryPurpose,
+  labelInquiryStatus,
+  labelInsuranceStatus,
+  labelLiveDataItem,
+  labelReportingFrequency,
+  labelSortKey,
+  labelTimeRange,
+  labelWizardStep,
+} from '../lib/insurances-i18n';
 
 // ─── Types & constants ────────────────────────────────────────
 
@@ -35,96 +61,7 @@ type MainView = 'overview' | 'inquiry';
 type StatusFilter = 'all' | 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'MISSING' | 'PENDING_INQUIRY';
 type SortKey = 'expiry' | 'status' | 'vehicle';
 
-const STEP_LABELS = [
-  'Vehicle', 'Insurers', 'Purpose', 'Historical Data',
-  'Time Range', 'Live Data', 'Review', 'Submit',
-] as const;
-
-const INQUIRY_PURPOSE_OPTIONS: { value: string; label: string; desc: string }[] = [
-  { value: 'quote_standard', label: 'Standard Quote', desc: 'Request a standard fleet insurance quote' },
-  { value: 'quote_usage_based', label: 'Usage-Based Quote', desc: 'Quote based on actual vehicle usage data' },
-  { value: 'quote_kilometer_based', label: 'Kilometer-Based Quote', desc: 'Quote calculated from driven kilometers' },
-  { value: 'quote_driving_score', label: 'Driving-Score Quote', desc: 'Quote factoring in driver safety scores' },
-  { value: 'contract_optimization', label: 'Contract Optimization', desc: 'Optimize your existing insurance contract' },
-  { value: 'replacement_insurer', label: 'Replacement Insurer', desc: 'Find a replacement for your current insurer' },
-  { value: 'dynamic_insurance_interest', label: 'Dynamic Insurance', desc: 'Express interest in dynamic/telematics insurance' },
-];
-
-const HISTORICAL_DATA_GROUPS: { label: string; items: { key: string; label: string; desc: string }[] }[] = [
-  {
-    label: 'Mileage & Usage',
-    items: [
-      { key: 'odometer_history', label: 'Odometer History', desc: 'Historical odometer readings over time' },
-      { key: 'mileage_summary', label: 'Mileage Summary', desc: 'Aggregated mileage statistics' },
-      { key: 'average_monthly_mileage', label: 'Avg. Monthly Mileage', desc: 'Average kilometers driven per month' },
-      { key: 'vehicle_utilization', label: 'Vehicle Utilization', desc: 'Percentage of time vehicle is in active use' },
-    ],
-  },
-  {
-    label: 'Trip & Driving',
-    items: [
-      { key: 'trip_history', label: 'Trip History', desc: 'Detailed trip records with routes' },
-      { key: 'trip_distance_aggregates', label: 'Trip Distance Aggregates', desc: 'Aggregated distances per trip category' },
-      { key: 'driving_score_history', label: 'Driving Score History', desc: 'Historical driving safety scores' },
-    ],
-  },
-  {
-    label: 'Safety Events',
-    items: [
-      { key: 'harsh_braking_events', label: 'Harsh Braking Events', desc: 'Recorded harsh braking incidents' },
-      { key: 'harsh_acceleration_events', label: 'Harsh Acceleration Events', desc: 'Recorded harsh acceleration incidents' },
-      { key: 'speeding_events', label: 'Speeding Events', desc: 'Recorded speed limit violations' },
-      { key: 'nighttime_driving_share', label: 'Nighttime Driving Share', desc: 'Percentage of driving occurring at night' },
-    ],
-  },
-  {
-    label: 'Vehicle Health',
-    items: [
-      { key: 'maintenance_summary', label: 'Maintenance Summary', desc: 'Summary of maintenance events' },
-      { key: 'vehicle_health_summary', label: 'Vehicle Health Summary', desc: 'Overall vehicle health indicators' },
-      { key: 'idle_time_summary', label: 'Idle Time Summary', desc: 'Summary of vehicle idle time' },
-    ],
-  },
-];
-
-const LIVE_DATA_OPTIONS: { key: string; label: string; desc: string }[] = [
-  { key: 'odometer_updates', label: 'Odometer Updates', desc: 'Ongoing odometer reading updates' },
-  { key: 'trip_distance', label: 'Trip Distance', desc: 'Real-time trip distance tracking' },
-  { key: 'vehicle_utilization', label: 'Vehicle Utilization', desc: 'Live utilization rate data' },
-  { key: 'driving_score_updates', label: 'Driving Score Updates', desc: 'Continuous driving score recalculations' },
-  { key: 'speeding_summaries', label: 'Speeding Summaries', desc: 'Periodic speeding behavior summaries' },
-  { key: 'harsh_braking_summaries', label: 'Harsh Braking Summaries', desc: 'Periodic harsh braking summaries' },
-  { key: 'harsh_acceleration_summaries', label: 'Harsh Acceleration Summaries', desc: 'Periodic harsh acceleration summaries' },
-  { key: 'time_of_day_patterns', label: 'Time-of-Day Patterns', desc: 'Driving time distribution patterns' },
-  { key: 'trip_frequency', label: 'Trip Frequency', desc: 'Number of trips per period' },
-];
-
-const TIME_RANGE_OPTIONS: { value: string; label: string; days: number }[] = [
-  { value: 'last_30_days', label: 'Last 30 Days', days: 30 },
-  { value: 'last_90_days', label: 'Last 90 Days', days: 90 },
-  { value: 'last_6_months', label: 'Last 6 Months', days: 183 },
-  { value: 'last_12_months', label: 'Last 12 Months', days: 365 },
-  { value: 'custom', label: 'Custom Range', days: 0 },
-];
-
-const STATUS_ORDER: Record<string, number> = {
-  EXPIRED: 0, MISSING: 1, EXPIRING_SOON: 2, PENDING_INQUIRY: 3, ACTIVE: 4,
-};
-
 // ─── Helpers ──────────────────────────────────────────────────
-
-function fmtDate(d: string | null): string {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function statusLabel(s: string): string {
-  const map: Record<string, string> = {
-    ACTIVE: 'Active', EXPIRING_SOON: 'Expiring Soon', EXPIRED: 'Expired',
-    MISSING: 'Missing', PENDING_INQUIRY: 'Pending Inquiry',
-  };
-  return map[s] ?? s;
-}
 
 function insuranceStatusTone(s: string): StatusTone {
   switch (s) {
@@ -136,10 +73,10 @@ function insuranceStatusTone(s: string): StatusTone {
   }
 }
 
-function InsuranceStatusChip({ status }: { status: string }) {
+function InsuranceStatusChip({ status, locale }: { status: string; locale: string }) {
   return (
     <StatusChip tone={insuranceStatusTone(status)} icon={statusIcon(status)}>
-      {statusLabel(status)}
+      {labelInsuranceStatus(locale, status)}
     </StatusChip>
   );
 }
@@ -169,6 +106,7 @@ function daysFromNow(n: number): string {
 // ─── Component ────────────────────────────────────────────────
 
 export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewProps) {
+  const { t, locale } = useLanguage();
   // ── Main navigation ─────────────────────────────────────────
   const [mainView, setMainView] = useState<MainView>('overview');
 
@@ -366,10 +304,10 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
       return (
         <EmptyState
           icon={<Icon name="alert-circle" className="w-5 h-5" />}
-          title="Failed to load fleet insurance data"
+          title={t('insurances.empty.loadFailed')}
           action={
             <button type="button" onClick={loadOverview} className={BTN_SECONDARY}>
-              <Icon name="refresh-cw" className="w-4 h-4" /> Retry
+              <Icon name="refresh-cw" className="w-4 h-4" /> {t('insurances.actions.retry')}
             </button>
           }
         />
@@ -377,12 +315,12 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
     }
     const s = overview.summary;
     const metricCards: Array<{ label: string; value: number; icon: string; tone: StatusTone }> = [
-      { label: 'Total Vehicles', value: s.total, icon: 'shield', tone: 'info' },
-      { label: 'Insured', value: s.insured, icon: 'shield-check', tone: 'success' },
-      { label: 'Expiring Soon', value: s.expiringSoon, icon: 'shield-alert', tone: 'warning' },
-      { label: 'Expired', value: s.expired, icon: 'shield-x', tone: 'critical' },
-      { label: 'Missing', value: s.missing, icon: 'shield-question', tone: 'noData' },
-      { label: 'Pending Inquiries', value: s.pendingInquiry, icon: 'clock', tone: 'info' },
+      { label: t('insurances.kpi.totalVehicles'), value: s.total, icon: 'shield', tone: 'info' },
+      { label: t('insurances.kpi.insured'), value: s.insured, icon: 'shield-check', tone: 'success' },
+      { label: t('insurances.kpi.expiringSoon'), value: s.expiringSoon, icon: 'shield-alert', tone: 'warning' },
+      { label: t('insurances.kpi.expired'), value: s.expired, icon: 'shield-x', tone: 'critical' },
+      { label: t('insurances.kpi.missing'), value: s.missing, icon: 'shield-question', tone: 'noData' },
+      { label: t('insurances.kpi.pendingInquiries'), value: s.pendingInquiry, icon: 'clock', tone: 'info' },
     ];
     return (
       <>
@@ -404,7 +342,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search vehicle, plate, VIN, insurer…"
+              placeholder={t('insurances.search.placeholder')}
               className={`${INPUT_CLASS} pl-10 pr-4 py-2`}
             />
           </div>
@@ -413,7 +351,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           <div className="relative">
             <button onClick={() => { setFilterOpen(!filterOpen); setSortOpen(false); }} className={BTN_SECONDARY}>
               <Icon name="filter" className="w-4 h-4" />
-              {statusFilter === 'all' ? 'All Statuses' : statusLabel(statusFilter)}
+              {statusFilter === 'all' ? t('insurances.filters.allStatuses') : labelInsuranceStatus(locale, statusFilter)}
               <Icon name="chevron-down" className="w-3.5 h-3.5" />
             </button>
             {filterOpen && (
@@ -422,7 +360,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                   <button key={f} onClick={() => { setStatusFilter(f); setFilterOpen(false); }}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-muted/50 ${statusFilter === f ? 'text-[color:var(--brand)]' : 'text-foreground'} flex items-center gap-2`}>
                     {statusFilter === f && <Icon name="check" className="w-3.5 h-3.5" />}
-                    {f === 'all' ? 'All Statuses' : statusLabel(f)}
+                    {f === 'all' ? t('insurances.filters.allStatuses') : labelInsuranceStatus(locale, f)}
                   </button>
                 ))}
               </div>
@@ -433,16 +371,16 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           <div className="relative">
             <button onClick={() => { setSortOpen(!sortOpen); setFilterOpen(false); }} className={BTN_SECONDARY}>
               <Icon name="arrow-up-down" className="w-4 h-4" />
-              Sort
+              {t('insurances.sort.label')}
               <Icon name="chevron-down" className="w-3.5 h-3.5" />
             </button>
             {sortOpen && (
               <div className={`absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-popover border border-border rounded-xl shadow-xl py-1`}>
-                {([['status', 'By Status'], ['expiry', 'By Expiry Date'], ['vehicle', 'By Vehicle']] as [SortKey, string][]).map(([k, l]) => (
+                {([['status', 'status'], ['expiry', 'expiry'], ['vehicle', 'vehicle']] as [SortKey, string][]).map(([k]) => (
                   <button key={k} onClick={() => { setSortKey(k); setSortOpen(false); }}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-muted/50 ${sortKey === k ? 'text-[color:var(--brand)]' : 'text-foreground'} flex items-center gap-2`}>
                     {sortKey === k && <Icon name="check" className="w-3.5 h-3.5" />}
-                    {l}
+                    {labelSortKey(locale, k)}
                   </button>
                 ))}
               </div>
@@ -450,7 +388,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           </div>
 
           <button onClick={() => startInquiry()} className={BTN_PRIMARY}>
-            <Icon name="plus" className="w-4 h-4" /> New Inquiry
+            <Icon name="plus" className="w-4 h-4" /> {t('insurances.actions.newInquiry')}
           </button>
         </DataCard>
 
@@ -459,7 +397,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
             <EmptyState
               compact
               icon={<Icon name="car" className="w-5 h-5" />}
-              title="No vehicles match your filters"
+              title={t('insurances.empty.noVehiclesMatch')}
             />
           ) : (
             <div className="divide-y divide-inherit" >
@@ -486,7 +424,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
                       {/* Center: insurance info */}
                       <div className="flex-1 min-w-[200px]">
-                        <InsuranceStatusChip status={v.status} />
+                        <InsuranceStatusChip locale={locale} status={v.status} />
                         {v.insurance && !isMissing && (
                           <div className={`mt-2 text-xs text-muted-foreground space-y-0.5`}>
                             {v.insurance.insurerName && (
@@ -497,14 +435,14 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                             )}
                             <div className="flex items-center gap-1.5">
                               <Icon name="calendar" className="w-3 h-3" />
-                              {fmtDate(v.insurance.validFrom)} — {fmtDate(v.insurance.validUntil)}
+                              {formatInsuranceDate(locale, v.insurance.validFrom)} — {formatInsuranceDate(locale, v.insurance.validUntil)}
                             </div>
                           </div>
                         )}
                         {isMissing && (
                           <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${'sq-tone-critical border border-border'}`}>
                             <Icon name="alert-circle" className="w-3.5 h-3.5 flex-shrink-0" />
-                            No insurance document stored for this vehicle.
+                            {t('insurances.missing.documentStored')}
                           </div>
                         )}
                       </div>
@@ -514,14 +452,14 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                         {isMissing && onNavigateToVehicleDocuments && (
                           <button onClick={() => onNavigateToVehicleDocuments(v.vehicle.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 ${'sq-tone-watch border border-border hover:opacity-90'}`}>
-                            <Icon name="file-text" className="w-3.5 h-3.5" /> Upload Insurance
+                            <Icon name="file-text" className="w-3.5 h-3.5" /> {t('insurances.actions.uploadInsurance')}
                           </button>
                         )}
                         <button type="button" onClick={() => openDetail(v)} className={`${BTN_SECONDARY} px-3 py-1.5 text-xs`}>
-                          <Icon name="eye" className="w-3.5 h-3.5" /> Detail
+                          <Icon name="eye" className="w-3.5 h-3.5" /> {t('insurances.actions.detail')}
                         </button>
                         <button type="button" onClick={() => startInquiry(v)} className={`${BTN_PRIMARY} px-3 py-1.5 text-xs`}>
-                          <Icon name="send" className="w-3.5 h-3.5" /> Inquiry
+                          <Icon name="send" className="w-3.5 h-3.5" /> {t('insurances.actions.inquiry')}
                         </button>
                       </div>
                     </div>
@@ -542,7 +480,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   const renderStepper = () => (
     <div className={`surface-premium border border-border rounded-xl p-5 mb-6 overflow-x-auto`}>
       <div className="flex items-center justify-between min-w-[640px]">
-        {STEP_LABELS.map((label, i) => {
+        {INSURANCE_WIZARD_STEP_KEYS.map((stepKey, i) => {
+          const label = labelWizardStep(locale, stepKey);
           const done = i < step;
           const active = i === step;
           const circleBase = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all';
@@ -562,7 +501,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                   {label}
                 </span>
               </div>
-              {i < STEP_LABELS.length - 1 && <div className={lineClass} />}
+              {i < INSURANCE_WIZARD_STEP_KEYS.length - 1 && <div className={lineClass} />}
             </div>
           );
         })}
@@ -580,11 +519,11 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
       : vehicles;
     return (
       <div>
-        <h3 className={`text-lg font-semibold text-foreground mb-1`}>Select a Vehicle</h3>
-        <p className={`text-sm text-muted-foreground mb-4`}>Choose the vehicle you want to request insurance for.</p>
+        <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.selectVehicle.title')}</h3>
+        <p className={`text-sm text-muted-foreground mb-4`}>{t('insurances.wizard.selectVehicle.desc')}</p>
         <div className="relative mb-4">
           <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
-          <input value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} placeholder="Search vehicles…"
+          <input value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} placeholder={t('insurances.wizard.selectVehicle.search')}
             className={`w-full pl-10 pr-4 py-2.5 rounded-lg text-sm bg-background border border-border/70 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`}
           />
         </div>
@@ -607,13 +546,13 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                     {v.vehicle.vin && <span className="font-mono truncate max-w-[120px]">{v.vehicle.vin}</span>}
                   </div>
                 </div>
-                <InsuranceStatusChip status={v.status} />
+                <InsuranceStatusChip locale={locale} status={v.status} />
                 {sel && <div className="w-6 h-6 rounded-full bg-brand flex items-center justify-center flex-shrink-0"><Icon name="check" className="w-3.5 h-3.5 text-white" /></div>}
               </button>
             );
           })}
           {filtered.length === 0 && (
-            <div className={`text-center py-10 text-muted-foreground text-sm`}>No vehicles found.</div>
+            <div className={`text-center py-10 text-muted-foreground text-sm`}>{t('insurances.empty.noVehiclesFound')}</div>
           )}
         </div>
       </div>
@@ -633,8 +572,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
     }
     return (
       <div>
-        <h3 className={`text-lg font-semibold text-foreground mb-1`}>Select Insurance Partners</h3>
-        <p className={`text-sm text-muted-foreground mb-4`}>Choose one or more insurers to receive your inquiry.</p>
+        <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.selectInsurers.title')}</h3>
+        <p className={`text-sm text-muted-foreground mb-4`}>{t('insurances.wizard.selectInsurers.desc')}</p>
         <div className="grid gap-3 md:grid-cols-2">
           {partners.map(p => {
             const sel = selectedInsurerIds.has(p.id);
@@ -652,13 +591,13 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                     </div>
                     {p.description && <div className={`text-xs text-muted-foreground mt-1 line-clamp-2`}>{p.description}</div>}
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {p.supportsUsageBased && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-ai'}`}>Usage-Based</span>}
-                      {p.supportsKilometerBased && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-info'}`}>Km-Based</span>}
-                      {p.supportsDrivingScoreBased && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-success'}`}>Score-Based</span>}
-                      {p.supportsDynamicInsurance && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-watch'}`}>Dynamic</span>}
+                      {p.supportsUsageBased && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-ai'}`}>{t('insurances.partner.usageBased')}</span>}
+                      {p.supportsKilometerBased && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-info'}`}>{t('insurances.partner.kmBased')}</span>}
+                      {p.supportsDrivingScoreBased && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-success'}`}>{t('insurances.partner.scoreBased')}</span>}
+                      {p.supportsDynamicInsurance && <span className={`text-[10px] px-1.5 py-0.5 rounded ${'sq-tone-watch'}`}>{t('insurances.partner.dynamic')}</span>}
                     </div>
                     <div className={`text-[10px] text-muted-foreground mt-2`}>
-                      Channel: {p.communicationChannel} · Models: {p.supportedInsuranceModels.join(', ') || '—'}
+                      {t('insurances.partner.channel')}: {p.communicationChannel} · {t('insurances.partner.models')}: {p.supportedInsuranceModels.join(', ') || t('insurances.emptyValue')}
                     </div>
                   </div>
                   <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
@@ -671,7 +610,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           })}
         </div>
         {partners.length === 0 && (
-          <div className={`text-center py-10 text-muted-foreground text-sm`}>No insurance partners available.</div>
+          <div className={`text-center py-10 text-muted-foreground text-sm`}>{t('insurances.empty.noPartners')}</div>
         )}
       </div>
     );
@@ -681,13 +620,13 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
   const renderStepPurpose = () => (
     <div>
-      <h3 className={`text-lg font-semibold text-foreground mb-1`}>Inquiry Purpose</h3>
-      <p className={`text-sm text-muted-foreground mb-4`}>Select the type of insurance inquiry you want to send.</p>
+      <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.purpose.title')}</h3>
+      <p className={`text-sm text-muted-foreground mb-4`}>{t('insurances.wizard.purpose.desc')}</p>
       <div className="grid gap-2">
-        {INQUIRY_PURPOSE_OPTIONS.map(opt => {
-          const sel = inquiryPurpose === opt.value;
+        {INQUIRY_PURPOSE_VALUES.map(value => {
+          const sel = inquiryPurpose === value;
           return (
-            <button key={opt.value} onClick={() => setInquiryPurpose(opt.value)}
+            <button key={value} onClick={() => setInquiryPurpose(value)}
               className={`text-left p-4 rounded-xl border transition-all flex items-center gap-4
                 ${sel
                   ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-2 ring-brand/30`
@@ -697,8 +636,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                 {sel && <div className="w-2 h-2 rounded-full bg-white" />}
               </div>
               <div>
-                <div className={`text-sm font-medium text-foreground`}>{opt.label}</div>
-                <div className={`text-xs text-muted-foreground mt-0.5`}>{opt.desc}</div>
+                <div className={`text-sm font-medium text-foreground`}>{labelInquiryPurpose(locale, value)}</div>
+                <div className={`text-xs text-muted-foreground mt-0.5`}>{descInquiryPurpose(locale, value)}</div>
               </div>
             </button>
           );
@@ -711,18 +650,18 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
   const renderStepHistorical = () => (
     <div>
-      <h3 className={`text-lg font-semibold text-foreground mb-1`}>Historical Data Selection</h3>
-      <p className={`text-sm text-muted-foreground mb-4`}>Select which historical data categories to include with this inquiry.</p>
+      <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.historical.title')}</h3>
+      <p className={`text-sm text-muted-foreground mb-4`}>{t('insurances.wizard.historical.desc')}</p>
       <div className="space-y-5">
         {HISTORICAL_DATA_GROUPS.map(group => (
-          <div key={group.label}>
-            <h4 className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2`}>{group.label}</h4>
+          <div key={group.groupKey}>
+            <h4 className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2`}>{labelHistoricalGroup(locale, group.groupKey)}</h4>
             <div className="grid gap-2 md:grid-cols-2">
-              {group.items.map(item => {
-                const sel = selectedHistorical.has(item.key);
-                const accepted = partners.length > 0 ? partners.some(p => selectedInsurerIds.has(p.id) && p.acceptedHistoricalData.includes(item.key)) : true;
+              {group.items.map(itemKey => {
+                const sel = selectedHistorical.has(itemKey);
+                const accepted = partners.length > 0 ? partners.some(p => selectedInsurerIds.has(p.id) && p.acceptedHistoricalData.includes(itemKey)) : true;
                 return (
-                  <button key={item.key} onClick={() => setSelectedHistorical(prev => toggleSet(prev, item.key))}
+                  <button key={itemKey} onClick={() => setSelectedHistorical(prev => toggleSet(prev, itemKey))}
                     className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3
                       ${sel
                         ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-1 ring-brand/30`
@@ -733,10 +672,10 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`text-sm font-medium text-foreground`}>{item.label}</span>
-                        {accepted && <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${'sq-tone-success'}`}>Available</span>}
+                        <span className={`text-sm font-medium text-foreground`}>{labelHistoricalItem(locale, itemKey)}</span>
+                        {accepted && <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${'sq-tone-success'}`}>{t('insurances.partner.available')}</span>}
                       </div>
-                      <div className={`text-xs text-muted-foreground mt-0.5`}>{item.desc}</div>
+                      <div className={`text-xs text-muted-foreground mt-0.5`}>{descHistoricalItem(locale, itemKey)}</div>
                     </div>
                   </button>
                 );
@@ -752,8 +691,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
   const renderStepTimeRange = () => (
     <div>
-      <h3 className={`text-lg font-semibold text-foreground mb-1`}>Time Range</h3>
-      <p className={`text-sm text-muted-foreground mb-4`}>Select the time period for the historical data to share.</p>
+      <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.timeRange.title')}</h3>
+      <p className={`text-sm text-muted-foreground mb-4`}>{t('insurances.wizard.timeRange.desc')}</p>
       <div className="grid gap-2 max-w-lg">
         {TIME_RANGE_OPTIONS.map(opt => {
           const sel = timeRange === opt.value;
@@ -769,7 +708,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               </div>
               <div className="flex items-center gap-2">
                 <Icon name="calendar" className={`w-4 h-4 ${sel ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
-                <span className={`text-sm font-medium text-foreground`}>{opt.label}</span>
+                <span className={`text-sm font-medium text-foreground`}>{labelTimeRange(locale, opt.value)}</span>
               </div>
             </button>
           );
@@ -778,13 +717,13 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
       {timeRange === 'custom' && (
         <div className="flex items-center gap-3 mt-4 max-w-lg">
           <div className="flex-1">
-            <label className={`text-xs font-medium text-muted-foreground mb-1 block`}>From</label>
+            <label className={`text-xs font-medium text-muted-foreground mb-1 block`}>{t('insurances.wizard.timeRange.from')}</label>
             <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
               className={`w-full px-3 py-2 rounded-lg text-sm bg-background border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`} />
           </div>
           <div className={`mt-5 text-muted-foreground`}>—</div>
           <div className="flex-1">
-            <label className={`text-xs font-medium text-muted-foreground mb-1 block`}>To</label>
+            <label className={`text-xs font-medium text-muted-foreground mb-1 block`}>{t('insurances.wizard.timeRange.to')}</label>
             <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
               className={`w-full px-3 py-2 rounded-lg text-sm bg-background border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`} />
           </div>
@@ -797,17 +736,17 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
   const renderStepLiveData = () => (
     <div>
-      <h3 className={`text-lg font-semibold text-foreground mb-1`}>Live Data Sharing</h3>
-      <p className={`text-sm text-muted-foreground mb-2`}>Select ongoing data categories to share with insurers.</p>
+      <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.liveData.title')}</h3>
+      <p className={`text-sm text-muted-foreground mb-2`}>{t('insurances.wizard.liveData.desc')}</p>
       <div className={`p-3 rounded-lg mb-4 flex items-start gap-2 text-xs ${'sq-tone-watch border border-border'}`}>
         <Icon name="info" className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>You are authorizing ongoing sharing of these data categories with the selected insurance partners. You can revoke sharing permissions at any time from the vehicle detail view.</span>
+        <span>{t('insurances.wizard.liveData.authNotice')}</span>
       </div>
       <div className="grid gap-2 md:grid-cols-2 mb-6">
-        {LIVE_DATA_OPTIONS.map(opt => {
-          const sel = selectedLiveData.has(opt.key);
+        {LIVE_DATA_ITEM_KEYS.map(itemKey => {
+          const sel = selectedLiveData.has(itemKey);
           return (
-            <button key={opt.key} onClick={() => setSelectedLiveData(prev => toggleSet(prev, opt.key))}
+            <button key={itemKey} onClick={() => setSelectedLiveData(prev => toggleSet(prev, itemKey))}
               className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3
                 ${sel
                   ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-1 ring-brand/30`
@@ -817,8 +756,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                 {sel && <Icon name="check" className="w-3 h-3 text-white" />}
               </div>
               <div>
-                <div className={`text-sm font-medium text-foreground`}>{opt.label}</div>
-                <div className={`text-xs text-muted-foreground mt-0.5`}>{opt.desc}</div>
+                <div className={`text-sm font-medium text-foreground`}>{labelLiveDataItem(locale, itemKey)}</div>
+                <div className={`text-xs text-muted-foreground mt-0.5`}>{descLiveDataItem(locale, itemKey)}</div>
               </div>
             </button>
           );
@@ -828,29 +767,29 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
       {/* Frequency & aggregation */}
       <div className="grid gap-4 md:grid-cols-2 max-w-xl">
         <div>
-          <label className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block`}>Reporting Frequency</label>
+          <label className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block`}>{t('insurances.wizard.liveData.frequency')}</label>
           <div className="flex gap-2">
-            {(['daily', 'weekly', 'monthly'] as const).map(f => (
+            {REPORTING_FREQUENCY_VALUES.map(f => (
               <button key={f} onClick={() => setReportingFrequency(f)}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all border
                   ${reportingFrequency === f
                     ? `${BTN_PRIMARY} border-transparent`
                     : `${BTN_SECONDARY}`}`}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {labelReportingFrequency(locale, f)}
               </button>
             ))}
           </div>
         </div>
         <div>
-          <label className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block`}>Aggregation Level</label>
+          <label className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block`}>{t('insurances.wizard.liveData.aggregation')}</label>
           <div className="flex gap-2">
-            {(['aggregated', 'detailed'] as const).map(l => (
+            {AGGREGATION_LEVEL_VALUES.map(l => (
               <button key={l} onClick={() => setAggregationLevel(l)}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all border
                   ${aggregationLevel === l
                     ? `${BTN_PRIMARY} border-transparent`
                     : `${BTN_SECONDARY}`}`}>
-                {l.charAt(0).toUpperCase() + l.slice(1)}
+                {labelAggregationLevel(locale, l)}
               </button>
             ))}
           </div>
@@ -862,15 +801,11 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   // ── Step 6: Review ──────────────────────────────────────────
 
   const renderStepReview = () => {
-    const purposeLabel = INQUIRY_PURPOSE_OPTIONS.find(o => o.value === inquiryPurpose)?.label ?? inquiryPurpose;
-    const rangeLabel = TIME_RANGE_OPTIONS.find(t => t.value === timeRange)?.label ?? timeRange;
+    const purposeLabel = labelInquiryPurpose(locale, inquiryPurpose);
+    const rangeLabel = labelTimeRange(locale, timeRange);
     const selectedPartners = partners.filter(p => selectedInsurerIds.has(p.id));
-    const historicalLabels = Array.from(selectedHistorical).map(k =>
-      HISTORICAL_DATA_GROUPS.flatMap(g => g.items).find(i => i.key === k)?.label ?? k
-    );
-    const liveLabels = Array.from(selectedLiveData).map(k =>
-      LIVE_DATA_OPTIONS.find(i => i.key === k)?.label ?? k
-    );
+    const historicalLabels = Array.from(selectedHistorical).map(k => labelHistoricalItem(locale, k));
+    const liveLabels = Array.from(selectedLiveData).map(k => labelLiveDataItem(locale, k));
 
     const SectionCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
       <div className={`surface-premium border border-border rounded-xl p-4`}>
@@ -881,10 +816,10 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
     return (
       <div>
-        <h3 className={`text-lg font-semibold text-foreground mb-1`}>Review Your Inquiry</h3>
-        <p className={`text-sm text-muted-foreground mb-4`}>Review all selections before submitting to insurers.</p>
+        <h3 className={`text-lg font-semibold text-foreground mb-1`}>{t('insurances.wizard.review.title')}</h3>
+        <p className={`text-sm text-muted-foreground mb-4`}>{t('insurances.wizard.review.desc')}</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <SectionCard title="Vehicle" icon={<Icon name="car" className="w-4 h-4 text-status-info" />}>
+          <SectionCard title={t('insurances.review.vehicle')} icon={<Icon name="car" className="w-4 h-4 text-status-info" />}>
             {selectedVehicle && (
               <div className={`text-sm text-foreground`}>
                 <div className="font-medium">{selectedVehicle.vehicle.make} {selectedVehicle.vehicle.model} ({selectedVehicle.vehicle.year})</div>
@@ -896,7 +831,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
             )}
           </SectionCard>
 
-          <SectionCard title="Insurance Partners" icon={<Icon name="building-2" className="w-4 h-4 text-status-info" />}>
+          <SectionCard title={t('insurances.review.partners')} icon={<Icon name="building-2" className="w-4 h-4 text-status-info" />}>
             <div className="flex flex-wrap gap-1.5">
               {selectedPartners.map(p => (
                 <span key={p.id} className={`text-xs px-2 py-1 rounded-full ${'sq-tone-brand'}`}>
@@ -906,17 +841,17 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
             </div>
           </SectionCard>
 
-          <SectionCard title="Purpose" icon={<Icon name="target" className="w-4 h-4 text-status-info" />}>
+          <SectionCard title={t('insurances.review.purpose')} icon={<Icon name="target" className="w-4 h-4 text-status-info" />}>
             <div className={`text-sm text-foreground`}>{purposeLabel}</div>
           </SectionCard>
 
-          <SectionCard title="Time Range" icon={<Icon name="calendar" className="w-4 h-4 text-status-info" />}>
+          <SectionCard title={t('insurances.review.timeRange')} icon={<Icon name="calendar" className="w-4 h-4 text-status-info" />}>
             <div className={`text-sm text-foreground`}>
-              {timeRange === 'custom' ? `${fmtDate(customFrom)} — ${fmtDate(customTo)}` : rangeLabel}
+              {timeRange === 'custom' ? `${formatInsuranceDate(locale, customFrom)} — ${formatInsuranceDate(locale, customTo)}` : rangeLabel}
             </div>
           </SectionCard>
 
-          <SectionCard title="Historical Data" icon={<Icon name="bar-chart-3" className="w-4 h-4 text-status-info" />}>
+          <SectionCard title={t('insurances.review.historical')} icon={<Icon name="bar-chart-3" className="w-4 h-4 text-status-info" />}>
             <div className="flex flex-wrap gap-1.5">
               {historicalLabels.map(l => (
                 <span key={l} className={`text-xs px-2 py-1 rounded-full ${'sq-tone-neutral'}`}>{l}</span>
@@ -924,27 +859,31 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
             </div>
           </SectionCard>
 
-          <SectionCard title="Live Data Sharing" icon={<Icon name="activity" className="w-4 h-4 text-status-info" />}>
+          <SectionCard title={t('insurances.review.liveData')} icon={<Icon name="activity" className="w-4 h-4 text-status-info" />}>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {liveLabels.map(l => (
                 <span key={l} className={`text-xs px-2 py-1 rounded-full ${'sq-tone-neutral'}`}>{l}</span>
               ))}
             </div>
-            <div className={`text-xs text-muted-foreground`}>Frequency: {reportingFrequency} · Level: {aggregationLevel}</div>
+            <div className={`text-xs text-muted-foreground`}>
+              {t('insurances.review.frequency')}: {labelReportingFrequency(locale, reportingFrequency)} · {t('insurances.review.level')}: {labelAggregationLevel(locale, aggregationLevel)}
+            </div>
           </SectionCard>
         </div>
 
         {/* Disclosure */}
         {loadingDisclosure ? (
-          <div className="flex items-center gap-2 mt-4"><Icon name="loader-2" className={`w-4 h-4 animate-spin text-muted-foreground`} /><span className={`text-sm text-muted-foreground`}>Loading disclosure…</span></div>
+          <div className="flex items-center gap-2 mt-4"><Icon name="loader-2" className={`w-4 h-4 animate-spin text-muted-foreground`} /><span className={`text-sm text-muted-foreground`}>{t('insurances.review.loadingDisclosure')}</span></div>
         ) : disclosure && (
           <div className={`mt-4 p-4 rounded-xl border ${'bg-muted/40 border border-border'}`}>
             <div className={`flex items-center gap-2 text-sm font-semibold text-foreground mb-2`}>
               <Icon name="file-text" className="w-4 h-4 text-status-info" />
-              Data Disclosure Notice
+              {t('insurances.review.disclosure')}
             </div>
             <div className={`text-xs leading-relaxed text-muted-foreground`}>{disclosure.body}</div>
-            <div className={`text-[10px] mt-2 text-muted-foreground`}>Version {disclosure.version} · Effective {fmtDate(disclosure.effectiveFrom)}</div>
+            <div className={`text-[10px] mt-2 text-muted-foreground`}>
+              {t('insurances.review.disclosureVersion', { version: disclosure.version })} · {t('insurances.review.disclosureEffective', { date: formatInsuranceDate(locale, disclosure.effectiveFrom) })}
+            </div>
           </div>
         )}
       </div>
@@ -962,8 +901,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               <Icon name="loader-2" className="w-8 h-8 animate-spin text-status-info" />
             </div>
           </div>
-          <div className={`text-lg font-semibold text-foreground`}>Submitting Inquiry…</div>
-          <p className={`text-sm text-muted-foreground text-center max-w-md`}>Sending your insurance inquiry to the selected partners. This may take a moment.</p>
+          <div className={`text-lg font-semibold text-foreground`}>{t('insurances.submit.submitting')}</div>
+          <p className={`text-sm text-muted-foreground text-center max-w-md`}>{t('insurances.submit.submittingHint')}</p>
         </div>
       );
     }
@@ -973,9 +912,9 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           <div className={`w-16 h-16 rounded-full ${'sq-tone-critical'} flex items-center justify-center`}>
             <Icon name="alert-circle" className="w-8 h-8 text-red-500" />
           </div>
-          <div className={`text-lg font-semibold text-foreground`}>Submission Failed</div>
-          <p className={`text-sm text-muted-foreground`}>Something went wrong. Please try again.</p>
-          <button onClick={() => setStep(6)} className={`${BTN_SECONDARY} px-4 py-2 rounded-lg text-sm`}>Back to Review</button>
+          <div className={`text-lg font-semibold text-foreground`}>{t('insurances.submit.failed')}</div>
+          <p className={`text-sm text-muted-foreground`}>{t('insurances.submit.failedHint')}</p>
+          <button onClick={() => setStep(6)} className={`${BTN_SECONDARY} px-4 py-2 rounded-lg text-sm`}>{t('insurances.submit.backToReview')}</button>
         </div>
       );
     }
@@ -987,13 +926,13 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           <div className={`w-16 h-16 rounded-full flex items-center justify-center ${allOk ? ('sq-tone-success') : ('sq-tone-watch')}`}>
             {allOk ? <Icon name="shield-check" className="w-8 h-8 text-emerald-500" /> : <Icon name="shield-alert" className="w-8 h-8 text-amber-500" />}
           </div>
-          <div className={`text-lg font-semibold text-foreground`}>{allOk ? 'Inquiry Submitted Successfully' : 'Inquiry Partially Submitted'}</div>
+          <div className={`text-lg font-semibold text-foreground`}>{allOk ? t('insurances.submit.success') : t('insurances.submit.partial')}</div>
           <p className={`text-sm text-muted-foreground text-center max-w-md`}>
             {allOk
-              ? 'Your inquiry has been sent to all selected insurance partners.'
-              : 'Some partners could not be reached. See details below.'}
+              ? t('insurances.submit.successHint')
+              : t('insurances.submit.partialHint')}
           </p>
-          <div className={`text-xs font-mono text-muted-foreground`}>ID: {submitResult.inquiryId}</div>
+          <div className={`text-xs font-mono text-muted-foreground`}>{t('insurances.submit.inquiryId', { id: submitResult.inquiryId })}</div>
         </div>
 
         <div className="grid gap-3 max-w-lg mx-auto">
@@ -1009,7 +948,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                 {r.message && <div className={`text-xs text-muted-foreground mt-0.5`}>{r.message}</div>}
               </div>
               <span className={`text-xs font-medium ${r.success ? 'text-emerald-400' : 'text-red-400'}`}>
-                {r.success ? 'Sent' : 'Failed'}
+                {r.success ? t('insurances.submit.sent') : t('insurances.submit.recipientFailed')}
               </span>
             </div>
           ))}
@@ -1017,10 +956,10 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
 
         <div className="flex justify-center gap-3 mt-8">
           <button onClick={() => { setMainView('overview'); loadOverview(); }} className={`${BTN_SECONDARY} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2`}>
-            <Icon name="chevron-left" className="w-4 h-4" /> Back to Overview
+            <Icon name="chevron-left" className="w-4 h-4" /> {t('insurances.actions.backToOverview')}
           </button>
           <button onClick={() => startInquiry()} className={`${BTN_PRIMARY} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2`}>
-            <Icon name="plus" className="w-4 h-4" /> New Inquiry
+            <Icon name="plus" className="w-4 h-4" /> {t('insurances.actions.newInquiry')}
           </button>
         </div>
       </div>
@@ -1059,18 +998,18 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
             onClick={() => { if (step === 0) { setMainView('overview'); } else { setStep(s => s - 1); } }}
             className={`${BTN_SECONDARY} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2`}>
             <Icon name="chevron-left" className="w-4 h-4" />
-            {step === 0 ? 'Cancel' : 'Back'}
+            {step === 0 ? t('insurances.actions.cancel') : t('insurances.actions.back')}
           </button>
           {step === 6 ? (
             <button onClick={handleSubmit} disabled={submitting}
               className={`${BTN_PRIMARY} px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50`}>
               {submitting ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="send" className="w-4 h-4" />}
-              Submit Inquiry
+              {t('insurances.actions.submit')}
             </button>
           ) : (
             <button onClick={handleNext} disabled={!canAdvance()}
               className={`${BTN_PRIMARY} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}>
-              Next <Icon name="chevron-right" className="w-4 h-4" />
+              {t('insurances.actions.next')} <Icon name="chevron-right" className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -1090,49 +1029,49 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
     }
     return (
       <div className="space-y-4">
-        <DataCard title="Vehicle Summary" bodyClassName="p-4">
+        <DataCard title={t('insurances.detail.vehicleSummary')} bodyClassName="p-4">
           <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
-            <div className="text-muted-foreground">Make / Model</div>
+            <div className="text-muted-foreground">{t('insurances.detail.makeModel')}</div>
             <div className="text-foreground">{v.vehicle.make} {v.vehicle.model}</div>
-            <div className="text-muted-foreground">Year</div>
+            <div className="text-muted-foreground">{t('insurances.detail.year')}</div>
             <div className="text-foreground">{v.vehicle.year}</div>
-            <div className="text-muted-foreground">Plate</div>
-            <div className="text-foreground">{v.vehicle.licensePlate ?? '—'}</div>
-            <div className="text-muted-foreground">VIN</div>
-            <div className="font-mono text-xs text-foreground">{v.vehicle.vin ?? '—'}</div>
-            <div className="text-muted-foreground">Fuel</div>
-            <div className="text-foreground">{v.vehicle.fuelType ?? '—'}</div>
+            <div className="text-muted-foreground">{t('insurances.detail.plate')}</div>
+            <div className="text-foreground">{v.vehicle.licensePlate ?? t('insurances.emptyValue')}</div>
+            <div className="text-muted-foreground">{t('insurances.detail.vin')}</div>
+            <div className="font-mono text-xs text-foreground">{v.vehicle.vin ?? t('insurances.emptyValue')}</div>
+            <div className="text-muted-foreground">{t('insurances.detail.fuel')}</div>
+            <div className="text-foreground">{v.vehicle.fuelType ?? t('insurances.emptyValue')}</div>
             {v.vehicle.mileageKm != null && (
               <>
-                <div className="text-muted-foreground">Mileage</div>
-                <div className="text-foreground">{v.vehicle.mileageKm.toLocaleString()} km</div>
+                <div className="text-muted-foreground">{t('insurances.detail.mileage')}</div>
+                <div className="text-foreground">{t('insurances.detail.mileageValue', { value: v.vehicle.mileageKm.toLocaleString() })}</div>
               </>
             )}
           </div>
         </DataCard>
 
-        <DataCard title="Insurance Record" bodyClassName="p-4">
+        <DataCard title={t('insurances.detail.insuranceRecord')} bodyClassName="p-4">
           {v.insurance && !isMissing ? (
             <div className="space-y-2 text-sm">
-              <InsuranceStatusChip status={v.status} />
+              <InsuranceStatusChip locale={locale} status={v.status} />
               <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-2">
-                <div className="text-muted-foreground">Insurer</div>
-                <div className="text-foreground">{v.insurance.insurerName ?? '—'}</div>
-                <div className="text-muted-foreground">Policy #</div>
-                <div className="font-mono text-xs text-foreground">{v.insurance.policyNumber ?? '—'}</div>
-                <div className="text-muted-foreground">Type</div>
-                <div className="text-foreground">{v.insurance.insuranceType ?? '—'}</div>
-                <div className="text-muted-foreground">Valid From</div>
-                <div className="text-foreground">{fmtDate(v.insurance.validFrom)}</div>
-                <div className="text-muted-foreground">Valid Until</div>
-                <div className="text-foreground">{fmtDate(v.insurance.validUntil)}</div>
+                <div className="text-muted-foreground">{t('insurances.detail.insurer')}</div>
+                <div className="text-foreground">{v.insurance.insurerName ?? t('insurances.emptyValue')}</div>
+                <div className="text-muted-foreground">{t('insurances.detail.policyNumber')}</div>
+                <div className="font-mono text-xs text-foreground">{v.insurance.policyNumber ?? t('insurances.emptyValue')}</div>
+                <div className="text-muted-foreground">{t('insurances.detail.type')}</div>
+                <div className="text-foreground">{v.insurance.insuranceType ?? t('insurances.emptyValue')}</div>
+                <div className="text-muted-foreground">{t('insurances.detail.validFrom')}</div>
+                <div className="text-foreground">{formatInsuranceDate(locale, v.insurance.validFrom)}</div>
+                <div className="text-muted-foreground">{t('insurances.detail.validUntil')}</div>
+                <div className="text-foreground">{formatInsuranceDate(locale, v.insurance.validUntil)}</div>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               <div className="sq-tone-critical flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium">
                 <Icon name="alert-circle" className="h-4 w-4 shrink-0" />
-                No insurance record on file.
+                {t('insurances.empty.noInsuranceRecord')}
               </div>
               {onNavigateToVehicleDocuments && (
                 <button
@@ -1140,44 +1079,51 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                   onClick={() => { onNavigateToVehicleDocuments(v.vehicle.id); setDetailVehicle(null); }}
                   className={`${BTN_PRIMARY} w-full`}
                 >
-                  <Icon name="file-text" className="w-4 h-4" /> Upload Insurance Document
+                  <Icon name="file-text" className="w-4 h-4" /> {t('insurances.actions.uploadDocument')}
                 </button>
               )}
             </div>
           )}
         </DataCard>
 
-        <DataCard title="Recent Inquiries" bodyClassName="p-4">
+        <DataCard title={t('insurances.detail.recentInquiries')} bodyClassName="p-4">
           {detailInquiries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No inquiries for this vehicle.</p>
+            <p className="text-sm text-muted-foreground">{t('insurances.empty.noInquiries')}</p>
           ) : (
             <div className="space-y-2">
               {detailInquiries.slice(0, 5).map((inq: { id: string; inquiryType?: string; createdAt?: string; status?: string }) => (
                 <div key={inq.id} className="flex items-center justify-between rounded-lg border border-border surface-premium p-2.5">
                   <div>
-                    <div className="text-sm font-medium text-foreground">{inq.inquiryType?.replace(/_/g, ' ')}</div>
-                    <div className="text-xs text-muted-foreground">{fmtDate(inq.createdAt ?? null)}</div>
+                    <div className="text-sm font-medium text-foreground">{labelInquiryPurpose(locale, inq.inquiryType ?? '')}</div>
+                    <div className="text-xs text-muted-foreground">{formatInsuranceDate(locale, inq.createdAt ?? null)}</div>
                   </div>
-                  <StatusChip tone={inquiryStatusTone(inq.status ?? '')}>{inq.status}</StatusChip>
+                  <StatusChip tone={inquiryStatusTone(inq.status ?? '')}>{labelInquiryStatus(locale, inq.status ?? '')}</StatusChip>
                 </div>
               ))}
             </div>
           )}
         </DataCard>
 
-        <DataCard title="Active Live Sharing" bodyClassName="p-4">
+        <DataCard title={t('insurances.detail.activeLiveSharing')} bodyClassName="p-4">
           {detailLiveSharing.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active live data sharing permissions.</p>
+            <p className="text-sm text-muted-foreground">{t('insurances.empty.noLiveSharing')}</p>
           ) : (
             <div className="space-y-2">
               {detailLiveSharing.map((ls: { id: string; insurer?: { displayName?: string }; status?: string; validFrom?: string; reportingFrequency?: string }) => (
                 <div key={ls.id} className="rounded-lg border border-border surface-premium p-2.5">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-foreground">{ls.insurer?.displayName ?? '—'}</div>
-                    <StatusChip tone={ls.status === 'active' ? 'success' : 'neutral'}>{ls.status}</StatusChip>
+                    <div className="text-sm font-medium text-foreground">{ls.insurer?.displayName ?? t('insurances.emptyValue')}</div>
+                    <StatusChip tone={ls.status === 'active' ? 'success' : 'neutral'}>
+                      {ls.status === 'active' ? t('insurances.liveSharingStatus.active') : (ls.status ?? t('insurances.detail.notAvailable'))}
+                    </StatusChip>
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Since {fmtDate(ls.validFrom ?? null)} · {ls.reportingFrequency ?? 'N/A'}
+                    {t('insurances.detail.sinceFrequency', {
+                      date: formatInsuranceDate(locale, ls.validFrom ?? null),
+                      frequency: ls.reportingFrequency
+                        ? labelReportingFrequency(locale, ls.reportingFrequency)
+                        : t('insurances.detail.notAvailable'),
+                    })}
                   </div>
                 </div>
               ))}
@@ -1195,12 +1141,12 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   return (
     <div className="min-h-full bg-background p-6">
       <PageHeader
-        title="Fleet Insurance"
+        title={t('insurances.title')}
         icon={<Icon name="shield" className="w-4 h-4 text-[color:var(--brand)]" />}
         actions={
           mainView === 'overview' ? (
             <button type="button" onClick={loadOverview} className={BTN_SECONDARY}>
-              <Icon name="refresh-cw" className={`w-4 h-4 ${loadingOverview ? 'animate-spin' : ''}`} /> Refresh
+              <Icon name="refresh-cw" className={`w-4 h-4 ${loadingOverview ? 'animate-spin' : ''}`} /> {t('insurances.refresh')}
             </button>
           ) : undefined
         }
@@ -1214,7 +1160,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               ? `${'surface-premium text-foreground shadow-[var(--shadow-1)]'}`
               : 'text-muted-foreground hover:text-foreground'
           }`}>
-          <span className="flex items-center gap-2"><Icon name="shield" className="w-4 h-4" /> Overview</span>
+          <span className="flex items-center gap-2"><Icon name="shield" className="w-4 h-4" /> {t('insurances.tab.overview')}</span>
         </button>
         <button onClick={() => startInquiry()}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -1222,7 +1168,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               ? `${'surface-premium text-foreground shadow-[var(--shadow-1)]'}`
               : 'text-muted-foreground hover:text-foreground'
           }`}>
-          <span className="flex items-center gap-2"><Icon name="send" className="w-4 h-4" /> New Inquiry</span>
+          <span className="flex items-center gap-2"><Icon name="send" className="w-4 h-4" /> {t('insurances.tab.newInquiry')}</span>
         </button>
       </div>
 
@@ -1233,8 +1179,8 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
         open={!!detailVehicle}
         onOpenChange={(open) => { if (!open) setDetailVehicle(null); }}
         title={detailVehicle ? `${detailVehicle.vehicle.make} ${detailVehicle.vehicle.model}` : ''}
-        description={detailVehicle ? `${detailVehicle.vehicle.year} · ${detailVehicle.vehicle.licensePlate ?? '—'}` : undefined}
-        status={detailVehicle ? <InsuranceStatusChip status={detailVehicle.status} /> : undefined}
+        description={detailVehicle ? `${detailVehicle.vehicle.year} · ${detailVehicle.vehicle.licensePlate ?? t('insurances.emptyValue')}` : undefined}
+        status={detailVehicle ? <InsuranceStatusChip locale={locale} status={detailVehicle.status} /> : undefined}
         footer={
           detailVehicle && !detailLoading ? (
             <button
@@ -1242,7 +1188,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               onClick={() => { const v = detailVehicle; setDetailVehicle(null); startInquiry(v); }}
               className={BTN_PRIMARY}
             >
-              <Icon name="send" className="w-4 h-4" /> Send Insurance Inquiry
+              <Icon name="send" className="w-4 h-4" /> {t('insurances.actions.sendInquiry')}
             </button>
           ) : undefined
         }
