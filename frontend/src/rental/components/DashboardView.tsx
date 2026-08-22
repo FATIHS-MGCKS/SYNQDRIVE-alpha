@@ -149,7 +149,15 @@ export function DashboardView({
           </div>
           <div
             className={DASHBOARD_LAYOUT.utilizationSlot}
-            style={utilizationMaxHeight ? { maxHeight: utilizationMaxHeight } : undefined}
+            style={
+              utilizationMaxHeight
+                ? {
+                    maxHeight: Math.round(
+                      utilizationMaxHeight * DASHBOARD_LAYOUT.utilizationDesktopHeightRatio,
+                    ),
+                  }
+                : undefined
+            }
           >
             <DashboardUtilizationPanel vm={vm} className="h-full" />
           </div>

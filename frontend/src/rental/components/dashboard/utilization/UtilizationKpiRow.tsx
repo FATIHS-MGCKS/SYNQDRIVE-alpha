@@ -33,10 +33,10 @@ export function UtilizationKpiRow({
   const bookingDelta = formatBookingDeltaPercent(bookingDeltaPercent);
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-3 lg:gap-2">
       <div className="min-w-0">
         <p className={DASHBOARD_KPI_TITLE_CLASS}>{utilizationLabel}</p>
-        <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1')}>
+        <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1 lg:mt-0.5 lg:text-[17px]')}>
           {formatUtilizationPercent(utilizationPercent)}
         </p>
         {utilizationDelta ? (
@@ -47,7 +47,7 @@ export function UtilizationKpiRow({
       </div>
       <div className="min-w-0">
         <p className={DASHBOARD_KPI_TITLE_CLASS}>{bookingsLabel}</p>
-        <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1')}>{bookingCount}</p>
+        <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1 lg:mt-0.5 lg:text-[17px]')}>{bookingCount}</p>
         {bookingDelta ? (
           <p className={cn(DASHBOARD_KPI_HINT_CLASS, 'mt-0.5')}>
             {bookingDelta} {vsPreviousMonthLabel}
