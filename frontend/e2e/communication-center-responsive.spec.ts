@@ -69,7 +69,7 @@ test.describe('Communication Center C8.1 responsive shell', () => {
     test.skip(testInfo.project.name !== 'mobile-390', 'Mobile conversation contract');
 
     await openCommunicationCenter(page, { query: SELECTED_CONVERSATION_QUERY });
-    await expect(page.getByTestId('communication-timeline-shell')).toBeVisible();
+    await expect(page.getByTestId('communication-timeline')).toBeVisible();
     await expect(page.getByTestId('communication-inbox-pane')).toBeHidden();
     await page.screenshot({
       path: 'playwright-report/communication-center-mobile-390-selected.png',
@@ -115,7 +115,7 @@ test.describe('Communication Center C8.1 responsive shell', () => {
     await page.getByRole('button', { name: /Open context panel|Kontextpanel öffnen/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await closeContextSheet(page);
-    await expect(page.getByTestId('communication-timeline-shell')).toBeVisible();
+    await expect(page.getByTestId('communication-timeline')).toBeVisible();
     await assertNoHorizontalOverflow(page);
     await page.screenshot({
       path: 'playwright-report/communication-center-tablet-1024-selected.png',
