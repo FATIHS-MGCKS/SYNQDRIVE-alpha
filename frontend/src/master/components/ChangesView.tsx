@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c8-3-timeline-2026-08-22',
+    version: '4.9.929',
+    title: 'Communication Center C8.3 — Canonical Conversation Timeline',
+    summary: [
+      'Provider-neutral `useCommunicationConversation` hook loads canonical detail + timeline with generation/token race authority, signature-scoped notFound/pagination/loading, and loadOlder cross-conversation isolation.',
+      'Timeline presentation maps MESSAGE/CALL/lifecycle events; shared `CommunicationMessageBubble` for WhatsApp/SMS; allowlisted `durationSeconds` only; semantic media placeholders (no provider URLs).',
+      'Scroll: initial newest positioning + prepend viewport anchor preservation; semantic timeline list without live-region spam.',
+      'Deep-link `conversationId` + channel filter normalization; 404 explicit Back to Inbox; 403 safe permission UX.',
+      '91 unit/hook tests + 15 Playwright timeline proofs (390/1024/1440); C8.1/C8.2 regression preserved.',
+    ],
+    reason:
+      'C8.3 read phase — operational conversation detail from canonical C7/C7.2 APIs only; no provider fallback.',
+    previousBehavior:
+      'C8.1/C8.2 shell with timeline/context placeholders; no detail or event API wiring.',
+    details:
+      'frontend/src/lib/communication/hooks/useCommunicationConversation.ts, timeline-presentation.ts, CommunicationTimeline.tsx, CommunicationContextPane.tsx, CommunicationWorkspacePane.tsx, e2e/communication-center-timeline.spec.ts, architecture/COMMUNICATION_CENTER_C8_3_CONVERSATION_TIMELINE_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-08-22T12:00:00.000Z',
+  },
+  {
     id: 'communication-center-c0-2-rbac-2026-08-21',
     version: '4.9.928',
     title: 'Communication Center C0.2 — Canonical RBAC Foundation',

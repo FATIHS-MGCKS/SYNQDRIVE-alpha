@@ -4217,6 +4217,23 @@ export const api = {
         `/organizations/${orgId}/communication/conversations/summary${qs ? `?${qs}` : ''}`,
       );
     },
+    getConversation: (orgId: string, conversationId: string) =>
+      get<import('./communication/types').CommunicationConversationDetail>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}`,
+      ),
+    listConversationEvents: (
+      orgId: string,
+      conversationId: string,
+      query?: import('./communication/types').CommunicationEventListQuery,
+    ) => {
+      const q = new URLSearchParams();
+      if (query?.cursor) q.set('cursor', query.cursor);
+      if (query?.limit != null) q.set('limit', String(query.limit));
+      const qs = q.toString();
+      return get<import('./communication/types').CommunicationEventListResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/events${qs ? `?${qs}` : ''}`,
+      );
+    },
   },
   bookings: {
     list: (

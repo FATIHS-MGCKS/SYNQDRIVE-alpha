@@ -4,8 +4,18 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertNoHorizontalOverflow, installTaskMocks, mockUser, TEST_ORG_ID } from './task-fixtures';
+import {
+  COMMUNICATION_DETAIL_FIXTURE,
+  COMMUNICATION_DETAIL_EMPTY_CONTEXT_FIXTURE,
+  COMMUNICATION_TIMELINE_PAGE_1,
+  COMMUNICATION_TIMELINE_PAGE_2,
+  COMMUNICATION_VOICE_DETAIL_FIXTURE,
+  COMMUNICATION_VOICE_TIMELINE,
+  MOCK_CONVERSATION_DETAIL_ID,
+} from '../src/lib/communication/communication-timeline.fixture';
 
 export { assertNoHorizontalOverflow, TEST_ORG_ID };
+export const DEEP_LINK_CONVERSATION_ID = MOCK_CONVERSATION_DETAIL_ID;
 
 export const MOCK_CONVERSATION_ID = '00000000-0000-4000-8000-000000000101';
 export const ORG_A_ID = 'org-communication-a-e2e';
@@ -66,6 +76,10 @@ type CommunicationMockOptions = {
   searchRace?: boolean;
   smsDelayMs?: number;
   listDelayMs?: number;
+  failTimelinePage2?: boolean;
+  failTimelineInitial?: boolean;
+  detailNotFound?: boolean;
+  detailForbidden?: boolean;
 };
 
 const searchRaceDelays = new Map<string, ReturnType<typeof setTimeout>>();
@@ -93,6 +107,81 @@ export async function installCommunicationMocks(
           requiresAttention: options?.empty ? 0 : 1,
           byChannel: options?.empty ? {} : { WHATSAPP: 1, VOICE: 1, SMS: 1 },
         }),
+      });
+    }
+
+    if (url.includes('/communication/conversations/') && url.includes('/events')) {
+      const conversationId = url.match(/conversations\/([^/]+)\/events/)?.[1];
+      const params = new URL(url).searchParams;
+      const cursor = params.get('cursor');
+
+      if (options?.failTimelinePage2 && cursor === 'cursor-older') {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      }
+
+      if (options?.failTimelineInitial && !cursor) {
+        return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      }
+
+      if (conversationId === COMMUNICATION_VOICE_DETAIL_FIXTURE.id) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(COMMUNICATION_VOICE_TIMELINE),
+        });
+      }
+
+      if (cursor === 'cursor-older') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(COMMUNICATION_TIMELINE_PAGE_2),
+        });
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(COMMUNICATION_TIMELINE_PAGE_1),
+      });
+    }
+
+    if (url.match(/\/communication\/conversations\/[^/]+$/) && !url.includes('/summary')) {
+      const conversationId = url.match(/conversations\/([^/?]+)/)?.[1];
+      if (options?.detailNotFound) {
+        return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+      }
+      if (options?.detailForbidden) {
+        return route.fulfill({ status: 403, contentType: 'application/json', body: '{}' });
+      }
+      if (conversationId === COMMUNICATION_DETAIL_EMPTY_CONTEXT_FIXTURE.id) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(COMMUNICATION_DETAIL_EMPTY_CONTEXT_FIXTURE),
+        });
+      }
+      if (conversationId === COMMUNICATION_VOICE_DETAIL_FIXTURE.id) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(COMMUNICATION_VOICE_DETAIL_FIXTURE),
+        });
+      }
+      if (conversationId === MOCK_CONVERSATION_DETAIL_ID || conversationId?.startsWith('search-')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ...COMMUNICATION_DETAIL_FIXTURE,
+            id: conversationId,
+          }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(COMMUNICATION_DETAIL_FIXTURE),
       });
     }
 
@@ -261,6 +350,10 @@ export async function openCommunicationCenter(
     failPage2?: boolean;
     smsDelayMs?: number;
     listDelayMs?: number;
+    failTimelinePage2?: boolean;
+    failTimelineInitial?: boolean;
+    detailNotFound?: boolean;
+    detailForbidden?: boolean;
   },
 ) {
   const user = options?.user ?? mockUserWithCommunication;
@@ -274,6 +367,10 @@ export async function openCommunicationCenter(
     failPage2: options?.failPage2,
     smsDelayMs: options?.smsDelayMs,
     listDelayMs: options?.listDelayMs,
+    failTimelinePage2: options?.failTimelinePage2,
+    failTimelineInitial: options?.failTimelineInitial,
+    detailNotFound: options?.detailNotFound,
+    detailForbidden: options?.detailForbidden,
   });
   await page.route('**/auth/me', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();

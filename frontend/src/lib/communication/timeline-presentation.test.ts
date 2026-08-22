@@ -1,0 +1,183 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildTimelineWithDateSeparators,
+  callEventLabelKey,
+  compareCommunicationEventsChronologically,
+  contentTypeLabelKey,
+  lifecycleEventLabelKey,
+  mapEventToPresentation,
+  sortEventsChronologically,
+} from './timeline-presentation';
+import {
+  COMMUNICATION_TIMELINE_FIXTURE_EVENTS,
+  COMMUNICATION_TIMELINE_PAGE_1,
+  COMMUNICATION_TIMELINE_PAGE_2,
+} from './communication-timeline.fixture';
+
+const CHANNEL = 'WHATSAPP' as const;
+
+describe('timeline-presentation mapper', () => {
+  it('maps MESSAGE_RECEIVED + TEXT to inbound message', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      CHANNEL,
+    );
+    expect(item?.kind).toBe('message');
+    if (item?.kind === 'message') {
+      expect(item.direction).toBe('inbound');
+      expect(item.contentType).toBe('TEXT');
+      expect(item.text).toBe('Hello, I need help with pickup');
+    }
+  });
+
+  it('maps MESSAGE_SENT + TEXT to outbound message', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappOutboundText,
+      CHANNEL,
+    );
+    expect(item?.kind).toBe('message');
+    if (item?.kind === 'message') {
+      expect(item.direction).toBe('outbound');
+    }
+  });
+
+  it('maps IMAGE to semantic media message', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.imageEvent,
+      CHANNEL,
+    );
+    expect(item?.kind).toBe('message');
+    if (item?.kind === 'message') {
+      expect(item.contentType).toBe('IMAGE');
+      expect(item.hasAttachments).toBe(true);
+    }
+  });
+
+  it('maps MESSAGE event with null content to unavailable', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.missingContentEvent,
+      CHANNEL,
+    );
+    expect(item?.kind).toBe('message');
+    if (item?.kind === 'message') {
+      expect(item.contentType).toBe('UNAVAILABLE');
+    }
+  });
+
+  it('maps delivery event to lifecycle item', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.deliveryEvent,
+      CHANNEL,
+    );
+    expect(item?.kind).toBe('lifecycle');
+  });
+
+  it('maps voice event to call item', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.voiceCallEnded,
+      'VOICE',
+    );
+    expect(item?.kind).toBe('call');
+    if (item?.kind === 'call') {
+      expect(item.durationSeconds).toBe(204);
+    }
+  });
+
+  it('sorts events chronologically oldest to newest', () => {
+    const sorted = sortEventsChronologically(COMMUNICATION_TIMELINE_PAGE_1.items);
+    expect(sorted[0]?.occurredAt <= sorted[sorted.length - 1]?.occurredAt).toBe(true);
+    expect(sorted[0]?.id).toBe('evt-001');
+  });
+
+  it('builds unique message items from unique events', () => {
+    const events = [
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappOutboundText,
+    ];
+    const timeline = buildTimelineWithDateSeparators(events, CHANNEL);
+    const messageIds = timeline
+      .filter((item) => item.kind === 'message')
+      .map((item) => item.id);
+    expect(new Set(messageIds).size).toBe(2);
+  });
+
+  it('does not expose provider fields in presentation model', () => {
+    const item = mapEventToPresentation(
+      COMMUNICATION_TIMELINE_FIXTURE_EVENTS.imageEvent,
+      CHANNEL,
+    );
+    expect(JSON.stringify(item)).not.toContain('provider.example');
+    expect(JSON.stringify(item)).not.toContain('nativeMessage');
+    expect(JSON.stringify(item)).not.toContain('providerUrl');
+  });
+
+  it('content type labels use i18n keys not raw enums', () => {
+    expect(contentTypeLabelKey('IMAGE')).toBe('communication.timeline.image');
+    expect(contentTypeLabelKey('UNSUPPORTED')).toBe('communication.timeline.unsupportedMessage');
+    expect(contentTypeLabelKey('UNAVAILABLE')).toBe('communication.timeline.messageUnavailable');
+  });
+
+  it('lifecycle labels use i18n keys', () => {
+    expect(lifecycleEventLabelKey('MESSAGE_DELIVERED')).toBe('communication.timeline.delivered');
+    expect(callEventLabelKey('CALL_ENDED', 'INBOUND')).toBe('communication.timeline.callCompleted');
+  });
+
+  it('orders equal timestamps deterministically by id ascending', () => {
+    const a = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      id: 'evt-b',
+      occurredAt: '2026-08-22T10:00:00.000Z',
+    };
+    const b = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappOutboundText,
+      id: 'evt-a',
+      occurredAt: '2026-08-22T10:00:00.000Z',
+    };
+    expect(compareCommunicationEventsChronologically(a, b)).toBeGreaterThan(0);
+    expect(sortEventsChronologically([a, b]).map((event) => event.id)).toEqual(['evt-a', 'evt-b']);
+  });
+
+  it('handles invalid timestamps without NaN ordering', () => {
+    const invalid = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      id: 'evt-invalid',
+      occurredAt: 'not-a-date',
+    };
+    const valid = COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappOutboundText;
+    const sorted = sortEventsChronologically([invalid, valid]);
+    expect(sorted[0]?.id).toBe(valid.id);
+    expect(sorted[1]?.id).toBe(invalid.id);
+  });
+
+  it('omits date separators for invalid timestamps', () => {
+    const invalid = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.whatsappInboundText,
+      id: 'evt-invalid',
+      occurredAt: 'not-a-date',
+    };
+    const timeline = buildTimelineWithDateSeparators([invalid], CHANNEL);
+    expect(timeline.some((item) => item.kind === 'date-separator')).toBe(false);
+  });
+
+  it('does not expose non-allowlisted metadata in presentation model', () => {
+    const event = {
+      ...COMMUNICATION_TIMELINE_FIXTURE_EVENTS.voiceCallEnded,
+      metadata: {
+        durationSeconds: 120,
+        transcript: 'SECRET TRANSCRIPT',
+        providerUrl: 'https://provider.example/?token=SECRET',
+        phone: '+49123456789',
+        arbitrary: { nested: 'SECRET' },
+      },
+    };
+    const item = mapEventToPresentation(event, 'VOICE');
+    const serialized = JSON.stringify(item);
+    expect(serialized).not.toContain('SECRET TRANSCRIPT');
+    expect(serialized).not.toContain('provider.example');
+    expect(serialized).not.toContain('token=SECRET');
+    expect(serialized).not.toContain('+49123456789');
+    if (item?.kind === 'call') {
+      expect(item.durationSeconds).toBe(120);
+    }
+  });
+});

@@ -1,8 +1,11 @@
 import { api } from '../api';
 import type {
+  CommunicationConversationDetail,
   CommunicationConversationListQuery,
   CommunicationConversationListResponse,
   CommunicationConversationSummary,
+  CommunicationEventListQuery,
+  CommunicationEventListResponse,
 } from './types';
 
 export type CommunicationClientErrorCode =
@@ -61,5 +64,17 @@ export const communicationClient = {
     query?: CommunicationConversationListQuery,
   ): Promise<CommunicationConversationSummary> {
     return wrap(() => api.communication.getConversationSummary(orgId, query));
+  },
+
+  getConversation(orgId: string, conversationId: string): Promise<CommunicationConversationDetail> {
+    return wrap(() => api.communication.getConversation(orgId, conversationId));
+  },
+
+  listConversationEvents(
+    orgId: string,
+    conversationId: string,
+    query?: CommunicationEventListQuery,
+  ): Promise<CommunicationEventListResponse> {
+    return wrap(() => api.communication.listConversationEvents(orgId, conversationId, query));
   },
 };

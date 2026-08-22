@@ -6,3 +6,5 @@ export * from './dedupe';
 export * from './query-keys';
 export * from './communication-client';
 export * from './hooks/useCommunicationInbox';
+export * from './hooks/useCommunicationConversation';
+export * from './timeline-presentation';

@@ -82,3 +82,72 @@ export interface CommunicationConversationListQuery {
   cursor?: string;
   limit?: number;
 }
+
+export type CommunicationApiDirection = 'INBOUND' | 'OUTBOUND' | 'INTERNAL';
+
+export type CommunicationApiEventType =
+  | 'MESSAGE_RECEIVED'
+  | 'MESSAGE_SENT'
+  | 'MESSAGE_DELIVERED'
+  | 'MESSAGE_READ'
+  | 'MESSAGE_FAILED'
+  | 'CALL_STARTED'
+  | 'CALL_CONNECTED'
+  | 'CALL_ENDED'
+  | 'CALL_FAILED'
+  | 'AI_INTENT_DETECTED'
+  | 'AI_ACTION_STARTED'
+  | 'AI_ACTION_COMPLETED'
+  | 'AI_ACTION_FAILED'
+  | 'HUMAN_REQUIRED'
+  | 'HUMAN_ASSIGNED'
+  | 'HUMAN_TAKEOVER'
+  | 'CONVERSATION_RESOLVED'
+  | 'CONVERSATION_REOPENED'
+  | 'PROVIDER_ERROR';
+
+export type CommunicationApiMessageContentType =
+  | 'TEXT'
+  | 'IMAGE'
+  | 'VIDEO'
+  | 'AUDIO'
+  | 'DOCUMENT'
+  | 'LOCATION'
+  | 'CONTACT'
+  | 'MIXED'
+  | 'UNSUPPORTED';
+
+export interface CommunicationConversationDetail extends CommunicationConversationListItem {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunicationMessageContent {
+  id: string;
+  contentType: CommunicationApiMessageContentType;
+  text?: string | null;
+  truncated?: boolean;
+  hasAttachments: boolean;
+  attachmentCount: number;
+}
+
+export interface CommunicationEvent {
+  id: string;
+  eventType: CommunicationApiEventType;
+  direction?: CommunicationApiDirection | null;
+  actorType?: string | null;
+  occurredAt: string;
+  metadata?: Record<string, string | number | boolean | null>;
+  content?: CommunicationMessageContent | null;
+}
+
+export interface CommunicationEventListResponse {
+  items: CommunicationEvent[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface CommunicationEventListQuery {
+  cursor?: string;
+  limit?: number;
+}

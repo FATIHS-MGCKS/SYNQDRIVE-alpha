@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Sheet, SheetContent } from '../../../components/ui/sheet';
 import { cn } from '../../../components/ui/utils';
+import { useCommunicationConversation } from '../../../lib/communication/hooks/useCommunicationConversation';
+import { useRentalOrg } from '../../RentalContext';
 import {
   applyCommunicationChannelChange,
   mergeCommunicationCenterState,
@@ -12,6 +14,7 @@ import { CommunicationCenterHeader } from './CommunicationCenterHeader';
 import { CommunicationInboxPane } from './CommunicationInboxPane';
 import { CommunicationWorkspacePane } from './CommunicationWorkspacePane';
 import { CommunicationContextPane } from './CommunicationContextPane';
+import { conversationHasContext } from './communication-context-utils';
 import {
   DEFAULT_COMMUNICATION_INBOX_FILTERS,
   mergeCommunicationInboxFilters,
@@ -24,6 +27,7 @@ interface CommunicationCenterShellProps {
 }
 
 export function CommunicationCenterShell({ initialState }: CommunicationCenterShellProps) {
+  const { orgId } = useRentalOrg();
   const [state, setState] = useState<CommunicationCenterUrlState>(() =>
     mergeCommunicationCenterState({
       ...readCommunicationCenterStateFromUrl(
@@ -127,7 +131,28 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     handleMobilePane('context');
   }, [handleMobilePane]);
 
+  const conversationState = useCommunicationConversation({
+    orgId,
+    conversationId: state.selectedConversationId,
+    enabled: Boolean(orgId && state.selectedConversationId),
+  });
+
+  const handleClearInvalidSelection = useCallback(() => {
+    patchState({ selectedConversationId: null, mobilePane: 'inbox' });
+  }, [patchState]);
+
+  useEffect(() => {
+    const conversation = conversationState.conversation;
+    if (!conversation || !state.selectedConversationId) return;
+    const apiChannel = conversation.channel.toLowerCase();
+    if (apiChannel !== 'whatsapp' && apiChannel !== 'voice' && apiChannel !== 'sms') return;
+    if (state.channel !== 'all' && state.channel !== apiChannel) {
+      patchState({ channel: apiChannel }, { replace: true });
+    }
+  }, [conversationState.conversation, patchState, state.channel, state.selectedConversationId]);
+
   const hasConversation = Boolean(state.selectedConversationId);
+  const hasContext = conversationHasContext(conversationState.conversation);
   const showContextSheet = hasConversation && (isMobile || isTablet) && state.mobilePane === 'context';
 
   const inboxVisible = useMemo(() => {
@@ -182,16 +207,23 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
           <CommunicationWorkspacePane
             selectedConversationId={state.selectedConversationId}
             activeChannel={state.channel}
+            conversationState={conversationState}
             showBack={isMobile}
             showContextAction={hasConversation && (isMobile || isTablet)}
+            hasContext={hasContext}
             onBack={() => handleMobilePane('inbox')}
             onOpenContext={handleOpenContext}
+            onClearInvalidSelection={handleClearInvalidSelection}
           />
         </div>
 
         {hasConversation && !isMobile && !isTablet && (
           <div className="hidden min-h-0 min-w-0 xl:flex xl:flex-col">
-            <CommunicationContextPane selectedConversationId={state.selectedConversationId} />
+            <CommunicationContextPane
+              selectedConversationId={state.selectedConversationId}
+              conversation={conversationState.conversation}
+              loading={conversationState.detailLoading}
+            />
           </div>
         )}
       </div>
@@ -200,6 +232,8 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
         <SheetContent side="right" className="w-full max-w-md p-0 sm:max-w-lg">
           <CommunicationContextPane
             selectedConversationId={state.selectedConversationId}
+            conversation={conversationState.conversation}
+            loading={conversationState.detailLoading}
             onClose={() => handleMobilePane('conversation')}
           />
         </SheetContent>
