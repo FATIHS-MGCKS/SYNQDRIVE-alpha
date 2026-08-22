@@ -16,7 +16,9 @@ describe('operator damage capture', () => {
   });
 
   it('requires at least one photo before leaving photos step', () => {
-    expect(validateOperatorDamageStep('photos', DEFAULT_OPERATOR_DAMAGE_FORM, 0)).toContain('Foto');
+    expect(validateOperatorDamageStep('photos', DEFAULT_OPERATOR_DAMAGE_FORM, 0)).toBe(
+      'PHOTOS_REQUIRED',
+    );
     expect(validateOperatorDamageStep('photos', DEFAULT_OPERATOR_DAMAGE_FORM, 1)).toBeNull();
   });
 

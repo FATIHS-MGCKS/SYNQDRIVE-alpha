@@ -15,6 +15,7 @@ import { invoicesListDe } from './invoices.list.de';
 import { invoicesCreateDe } from './invoices.create.de';
 import { invoicesSendDe } from './invoices.send.de';
 import { invoicesDocumentsDe } from './invoices.documents.de';
+import { operatorDamageCaptureDe } from './operator.damageCapture.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
@@ -5583,5 +5584,6 @@ export const de: Record<TranslationKey, string> = {
   ...invoicesCreateDe,
   ...invoicesSendDe,
   ...invoicesDocumentsDe,
+  ...operatorDamageCaptureDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;

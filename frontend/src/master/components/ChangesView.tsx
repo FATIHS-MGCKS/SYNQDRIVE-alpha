@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-damage-capture-p2-2-24-2026-08-22',
+    version: '4.9.951',
+    title: 'Platform i18n — P2.2.24 Operator Damage Capture localization',
+    summary: [
+      'Localized Operator four-step damage capture wizard via `useLanguage().{t,locale}` and `operator-damage-capture-i18n.ts` presentation adapter.',
+      'P224 enforce-clean exact scope (6 paths) reports 0 findings; +71 EN+DE keys under `operator.damageCapture.*` (8264→8335); reuses `common.back`, `common.close`, `invoices.list.emptyValue`.',
+      'Presentation-only — step IDs, damage enums, location chip IDs, photo upload, payload builder, and API contracts unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.24 post-P223 domain-exit pre-flight (PR #1188) selected Operator Damage Capture as the first bounded Operator campaign slice after exiting Rental.',
+    previousBehavior:
+      'Operator damage capture mixed hardcoded German copy across wizard steps, type/severity/location labels, validation messages, photo instructions, and review summary.',
+    details:
+      'operator/damages/OperatorDamageCaptureFlow.tsx; OperatorDamagePhotoStep.tsx; OperatorDamageDetailsStep.tsx; OperatorDamageReviewStep.tsx; operator/damages/operatorDamagePayload.ts; operator/lib/operator-damage-capture-i18n.ts; i18n/translations/operator.damageCapture.{en,de}.ts; operator-damage-capture-localization.test.tsx; P224_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_DAMAGE_CAPTURE_P2_2_24_2026-08-22.md; docs/audits/i18n-p2-2-24-operator-damage-capture-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-08-22T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-invoice-documents-p2-2-23-2026-08-22',
     version: '4.9.950',
     title: 'Platform i18n — P2.2.23 Rental Invoice Documents Panel localization',

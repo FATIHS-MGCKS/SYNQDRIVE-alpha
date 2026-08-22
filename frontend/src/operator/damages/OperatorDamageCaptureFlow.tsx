@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { DamageResponse, DamageSource } from '../../rental/lib/damage.types';
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
+import {
+  operatorDamageCaptureStepLabel,
+  operatorDamageCaptureValidationMessage,
+} from '../lib/operator-damage-capture-i18n';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorDamageDetailsStep } from './OperatorDamageDetailsStep';
@@ -16,14 +21,8 @@ import {
   validateOperatorDamageStep,
   type OperatorDamageCaptureStep,
   type OperatorDamageFormState,
+  type OperatorDamageValidationCode,
 } from './operatorDamagePayload';
-
-const STEP_LABELS: Record<OperatorDamageCaptureStep, string> = {
-  vehicle: 'Fahrzeug',
-  photos: 'Fotos',
-  details: 'Klassifizierung',
-  review: 'Prüfen',
-};
 
 export interface OperatorDamageCaptureContext {
   vehicleId: string;
@@ -52,12 +51,13 @@ function stepIndex(step: OperatorDamageCaptureStep): number {
 }
 
 export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }: Props) {
+  const { t, locale } = useLanguage();
   const isTablet = useOperatorTabletLayout();
   const { openSheet, triggerRefresh } = useOperatorShell();
   const [step, setStep] = useState<OperatorDamageCaptureStep>('vehicle');
   const [form, setForm] = useState<OperatorDamageFormState>(DEFAULT_OPERATOR_DAMAGE_FORM);
   const [photos, setPhotos] = useState<OperatorDamagePhotoItem[]>([]);
-  const [stepError, setStepError] = useState<string | null>(null);
+  const [stepError, setStepError] = useState<OperatorDamageValidationCode | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [savedDamageId, setSavedDamageId] = useState<string | null>(null);
@@ -78,8 +78,13 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
     setStep(context?.skipVehicleConfirm ? 'photos' : 'vehicle');
   }, [isOpen, context?.vehicleId, context?.skipVehicleConfirm]);
 
-  const vehicleLabel = context?.vehicleName ?? 'Fahrzeug';
+  const vehicleLabel = context?.vehicleName ?? t('operator.damageCapture.field.vehicle');
   const plate = context?.plate ?? '';
+  const emptyValue = t('invoices.list.emptyValue');
+
+  const localizedStepError = stepError
+    ? operatorDamageCaptureValidationMessage(locale, stepError)
+    : null;
 
   const advance = useCallback(() => {
     const err = validateOperatorDamageStep(step, form, photos.length);
@@ -108,7 +113,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
     if (!context?.vehicleId || submitting) return;
     const err = validateOperatorDamageStep('details', form, photos.length);
     if (err) {
-      setSubmitError(err);
+      setSubmitError(operatorDamageCaptureValidationMessage(locale, err));
       return;
     }
 
@@ -135,11 +140,13 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
       onSaved?.(created);
       onClose();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Schaden konnte nicht gespeichert werden.');
+      setSubmitError(
+        error instanceof Error ? error.message : t('operator.damageCapture.error.saveFailed'),
+      );
     } finally {
       setSubmitting(false);
     }
-  }, [context, form, photos, source, submitting, triggerRefresh, onSaved, onClose]);
+  }, [context, form, photos, source, submitting, triggerRefresh, onSaved, onClose, locale, t]);
 
   const openAiUpload = useCallback(() => {
     if (!context?.vehicleId) return;
@@ -178,23 +185,23 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
             type="button"
             onClick={back}
             className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Zurück"
+            aria-label={t('common.back')}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1 text-center">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Schaden erfassen
+              {t('operator.damageCapture.title')}
             </p>
             <h2 id="operator-damage-capture-title" className="truncate text-base font-bold">
-              {STEP_LABELS[step]}
+              {operatorDamageCaptureStepLabel(locale, step)}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="sq-press flex h-11 w-11 items-center justify-center rounded-xl border border-border/60"
-            aria-label="Schließen"
+            aria-label={t('common.close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -214,24 +221,26 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
       >
         {step === 'vehicle' && (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Fahrzeug für die Schadenerfassung bestätigen.</p>
+            <p className="text-sm text-muted-foreground">
+              {t('operator.damageCapture.vehicle.confirmHint')}
+            </p>
             <div className="rounded-2xl border border-border surface-premium p-4 space-y-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Fahrzeug
+                  {t('operator.damageCapture.field.vehicle')}
                 </p>
                 <p className="mt-0.5 text-lg font-bold text-foreground">{vehicleLabel}</p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Kennzeichen
+                  {t('operator.damageCapture.field.plate')}
                 </p>
-                <p className="mt-0.5 text-base font-semibold text-foreground">{plate || '—'}</p>
+                <p className="mt-0.5 text-base font-semibold text-foreground">{plate || emptyValue}</p>
               </div>
               {context.bookingLabel && (
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Buchung
+                    {t('operator.damageCapture.field.booking')}
                   </p>
                   <p className="mt-0.5 text-sm text-foreground">{context.bookingLabel}</p>
                 </div>
@@ -239,7 +248,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
               {context.customerName && (
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Kunde
+                    {t('operator.damageCapture.field.customer')}
                   </p>
                   <p className="mt-0.5 text-sm text-foreground">{context.customerName}</p>
                 </div>
@@ -249,7 +258,11 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
         )}
 
         {step === 'photos' && (
-          <OperatorDamagePhotoStep photos={photos} onPhotosChange={setPhotos} error={stepError} />
+          <OperatorDamagePhotoStep
+            photos={photos}
+            onPhotosChange={setPhotos}
+            error={localizedStepError}
+          />
         )}
 
         {step === 'details' && (
@@ -269,8 +282,8 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
           />
         )}
 
-        {step === 'details' && stepError && (
-          <p className="mt-3 text-xs text-[color:var(--status-critical)]">{stepError}</p>
+        {step === 'details' && localizedStepError && (
+          <p className="mt-3 text-xs text-[color:var(--status-critical)]">{localizedStepError}</p>
         )}
         {submitError && (
           <p className="mt-3 text-xs text-[color:var(--status-critical)]">{submitError}</p>
@@ -289,7 +302,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
               {submitting ? (
                 <Loader2 className="mx-auto h-5 w-5 animate-spin" />
               ) : (
-                'Schaden speichern'
+                t('operator.damageCapture.actions.save')
               )}
             </button>
           ) : (
@@ -299,7 +312,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
               className="sq-press min-h-[52px] flex-1 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white"
             >
               <span className="inline-flex items-center justify-center gap-1">
-                Weiter
+                {t('operator.damageCapture.actions.continue')}
                 <ChevronRight className="h-4 w-4" />
               </span>
             </button>
