@@ -42,6 +42,7 @@ export const en = {
   'nav.rentalRules': 'Rental Rules',
   'nav.support': 'Support',
   'nav.helpCenter': 'Help Center',
+  'nav.communicationCenter': 'Communication Center',
   'nav.dataAnalyse': 'Data Analyse',
   'nav.collapseSidebar': 'Collapse',
   'nav.quickActions': 'Quick Actions',
@@ -3408,6 +3409,39 @@ export const en = {
   'evaluations.recommendations.actions.viewQuality': 'View data quality',
   'evaluations.recommendations.actions.viewDetection': 'View detection',
   'evaluations.recommendations.actions.viewDriverInfluence': 'View driver influence',
+
+  // ─── Communication Center (C8.1 shell) ───
+  'communication.center.title': 'Communication Center',
+  'communication.center.subtitle': 'Central management of customer communication across channels.',
+  'communication.tabs.ariaLabel': 'Communication Center sections',
+  'communication.tabs.inbox': 'Inbox',
+  'communication.tabs.settings': 'Settings',
+  'communication.channels.filterGroup': 'Inbox channel filters',
+  'communication.channels.all': 'All',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Voice',
+  'communication.channels.sms': 'SMS',
+  'communication.inbox.title': 'Inbox',
+  'communication.inbox.listShell': 'Conversation list workspace',
+  'communication.inbox.countReserved': 'Conversation count reserved',
+  'communication.empty.selectConversation.title': 'Select a conversation',
+  'communication.empty.selectConversation.description':
+    'Open a conversation from the inbox to view messages and context.',
+  'communication.workspace.backToInbox': 'Back to inbox',
+  'communication.workspace.conversationTitle': 'Conversation',
+  'communication.workspace.noSelectionTitle': 'No conversation selected',
+  'communication.context.title': 'Context',
+  'communication.context.open': 'Open context panel',
+  'communication.context.close': 'Close',
+  'communication.context.shellEmpty.title': 'Context will appear here',
+  'communication.context.shellEmpty.description':
+    'Related customer, booking, and vehicle details will load when a conversation is active.',
+  'communication.settings.placeholder.title': 'Configuration',
+  'communication.settings.placeholder.description':
+    'Channel configuration and automation settings will be available here.',
+  'communication.accessDenied.title': 'No access to Communication Center',
+  'communication.accessDenied.description':
+    'You do not have permission to view customer communication.',
 
   ...legalDocumentsEn,
 } as const;

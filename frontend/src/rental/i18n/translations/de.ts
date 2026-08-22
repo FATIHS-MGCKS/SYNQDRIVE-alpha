@@ -43,6 +43,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.rentalRules': 'Mietregeln',
   'nav.support': 'Support',
   'nav.helpCenter': 'Hilfe-Center',
+  'nav.communicationCenter': 'Communication Center',
   'nav.dataAnalyse': 'Data Analyse',
   'nav.collapseSidebar': 'Einklappen',
   'nav.quickActions': 'Schnellaktionen',
@@ -3405,6 +3406,38 @@ export const de: Record<TranslationKey, string> = {
   'evaluations.recommendations.actions.viewQuality': 'Datenqualität anzeigen',
   'evaluations.recommendations.actions.viewDetection': 'Erkennung anzeigen',
   'evaluations.recommendations.actions.viewDriverInfluence': 'Fahrereinfluss anzeigen',
+
+  'communication.center.title': 'Communication Center',
+  'communication.center.subtitle': 'Kundenkommunikation kanalübergreifend zentral verwalten.',
+  'communication.tabs.ariaLabel': 'Communication-Center-Bereiche',
+  'communication.tabs.inbox': 'Posteingang',
+  'communication.tabs.settings': 'Einstellungen',
+  'communication.channels.filterGroup': 'Kanalfilter Posteingang',
+  'communication.channels.all': 'Alle',
+  'communication.channels.whatsapp': 'WhatsApp',
+  'communication.channels.voice': 'Sprache',
+  'communication.channels.sms': 'SMS',
+  'communication.inbox.title': 'Posteingang',
+  'communication.inbox.listShell': 'Unterhaltungslisten-Arbeitsbereich',
+  'communication.inbox.countReserved': 'Anzahl reserviert',
+  'communication.empty.selectConversation.title': 'Konversation auswählen',
+  'communication.empty.selectConversation.description':
+    'Öffnen Sie eine Unterhaltung aus dem Posteingang, um Nachrichten und Kontext anzuzeigen.',
+  'communication.workspace.backToInbox': 'Zurück zum Posteingang',
+  'communication.workspace.conversationTitle': 'Konversation',
+  'communication.workspace.noSelectionTitle': 'Keine Konversation ausgewählt',
+  'communication.context.title': 'Kontext',
+  'communication.context.open': 'Kontextpanel öffnen',
+  'communication.context.close': 'Schließen',
+  'communication.context.shellEmpty.title': 'Kontext erscheint hier',
+  'communication.context.shellEmpty.description':
+    'Zugehörige Kunden-, Buchungs- und Fahrzeugdetails werden geladen, sobald eine Konversation aktiv ist.',
+  'communication.settings.placeholder.title': 'Konfiguration',
+  'communication.settings.placeholder.description':
+    'Kanal-Konfiguration und Automatisierungseinstellungen werden hier verfügbar sein.',
+  'communication.accessDenied.title': 'Kein Zugriff auf Communication Center',
+  'communication.accessDenied.description':
+    'Sie haben keine Berechtigung, Kundenkommunikation einzusehen.',
 
   ...legalDocumentsDe,
 };

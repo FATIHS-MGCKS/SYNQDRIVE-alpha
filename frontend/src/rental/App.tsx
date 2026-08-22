@@ -81,6 +81,14 @@ import { WhatsAppBusinessView } from './components/WhatsAppBusinessView';
 import { PartsAccessoriesView } from './components/PartsAccessoriesView';
 import { InsurancesView } from './components/InsurancesView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
+import { CommunicationCenterView } from './components/communication-center/CommunicationCenterView';
+import {
+  parseCommunicationCenterViewFromUrl,
+  readCommunicationCenterStateFromUrl,
+  syncCommunicationCenterStateToUrl,
+  mergeCommunicationCenterState,
+  COMMUNICATION_CENTER_VIEW,
+} from './components/communication-center/communication-center-navigation';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
@@ -217,7 +225,10 @@ function RentalAppContent() {
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant' | 'communication-center'>(() => {
+    if (typeof window !== 'undefined' && parseCommunicationCenterViewFromUrl(window.location.search)) {
+      return COMMUNICATION_CENTER_VIEW;
+    }
     const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
     if (financeView) return financeView;
     return readPersistedSettingsView() ? 'settings' : 'dashboard';
@@ -700,6 +711,12 @@ function RentalAppContent() {
     if (view === 'fleet') {
       setFleetTab('status');
     }
+    if (view === COMMUNICATION_CENTER_VIEW) {
+      syncCommunicationCenterStateToUrl(
+        mergeCommunicationCenterState(readCommunicationCenterStateFromUrl(window.location.search)),
+        { replace: true },
+      );
+    }
     setCurrentView(view as typeof currentView);
     try {
       if (view === 'settings') {
@@ -1162,6 +1179,8 @@ function RentalAppContent() {
             highlightedTaskId={highlightedTaskId}
             onHighlightConsumed={() => setHighlightedTaskId(null)}
           />
+        ) : currentView === 'communication-center' ? (
+          <CommunicationCenterView />
         ) : currentView === 'document-upload' ? (
           <DocumentUploadView
             isDarkMode={isDarkMode}

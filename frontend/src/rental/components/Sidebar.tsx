@@ -1,4 +1,4 @@
-import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail, Wallet } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail, Wallet, Inbox } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
@@ -158,6 +158,11 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
         <button onClick={() => handleViewChange('tasks')} className={navBtnClass(currentView === 'tasks')}>
           <ListTodo className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.tasks')}</span>
         </button>
+        {canCommunication && (
+        <button onClick={() => handleViewChange('communication-center')} className={navBtnClass(currentView === 'communication-center')}>
+          <Inbox className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.communicationCenter')}</span>
+        </button>
+        )}
         <button onClick={handleFleetNav} className={navBtnClass(isFleetActive)}>
           <Car className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleet')}</span>
         </button>
@@ -431,6 +436,12 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
                 <ListTodo className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.tasks')} />
               </button>
+              {canCommunication && (
+              <button onClick={() => handleViewChange('communication-center')} className={collapsedBtnClass(currentView === 'communication-center')}>
+                <Inbox className="w-[14px] h-[14px]" />
+                <CollapsedTooltip label={t('nav.communicationCenter')} />
+              </button>
+              )}
               <button onClick={handleFleetNav} className={collapsedBtnClass(isFleetActive)}>
                 <Car className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.fleet')} />
