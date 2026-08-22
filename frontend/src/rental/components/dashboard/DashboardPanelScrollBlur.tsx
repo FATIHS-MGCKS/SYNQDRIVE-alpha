@@ -67,7 +67,7 @@ export function DashboardPanelScrollBlur({
         >
           <div
             className={cn(
-              'absolute inset-0 backdrop-blur-[2px] supports-[backdrop-filter]:backdrop-blur-[2px]',
+              'absolute inset-0 backdrop-blur-[1.5px] supports-[backdrop-filter]:backdrop-blur-[1.5px]',
               'motion-reduce:backdrop-blur-none',
               '[mask-image:linear-gradient(to_top,black_0%,black_18%,rgba(0,0,0,0.72)_42%,rgba(0,0,0,0.28)_68%,transparent_100%)]',
               '[-webkit-mask-image:linear-gradient(to_top,black_0%,black_18%,rgba(0,0,0,0.72)_42%,rgba(0,0,0,0.28)_68%,transparent_100%)]',
