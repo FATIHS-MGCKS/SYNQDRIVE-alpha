@@ -3,7 +3,7 @@ import { cn } from '../../../../components/ui/utils';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../RentalContext';
 import type { DashboardViewModel } from '../dashboardTypes';
-import { DASHBOARD_KPI_TITLE_CLASS } from '../dashboardShell';
+import { DASHBOARD_KPI_TITLE_CLASS, panelShellClass } from '../dashboardShell';
 import { UtilizationHeatmapLegend } from './UtilizationHeatmapLegend';
 import { UtilizationKpiRow } from './UtilizationKpiRow';
 import { UtilizationMonthCalendar } from './UtilizationMonthCalendar';
@@ -64,7 +64,8 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
     <section
       data-testid="dashboard-utilization-panel"
       className={cn(
-        'surface-elevated flex min-h-[172px] min-w-0 flex-col rounded-2xl px-3 py-3.5',
+        panelShellClass('tertiary'),
+        'min-h-[172px] min-w-0 px-3 py-3.5',
         className,
       )}
       aria-label={t('dashboard.utilization.title')}
