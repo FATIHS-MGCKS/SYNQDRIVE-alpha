@@ -40,9 +40,11 @@ export const DASHBOARD_LAYOUT = {
   /** @deprecated Tagesplan panel removed from standard dashboard. */
   dayPlanSlot: 'min-w-0 w-full',
   financeZone: 'border-t border-border/50 pt-7',
+  /** Standalone dashboard panels (Auslastung, Meldungen, Aufgaben) — matches control center shell. */
+  dashboardPanelRadius: '!rounded-[16px]',
   /**
-   * Control Center corner radius — `!` overrides `.surface-premium` / `.surface-elevated`
-   * which hardcode `border-radius: calc(var(--radius) + 2px)` (~10px).
+   * Embedded Control Center KPI modules — `!` overrides `.surface-premium` /
+   * `.surface-elevated` which hardcode `border-radius: calc(var(--radius) + 2px)`.
    */
   controlCenterRadius: '!rounded-[12px]',
   /** Primary finance KPIs embedded under operational twin cards in the control center. */
@@ -62,7 +64,8 @@ export type DashboardPanelTier = 'primary' | 'secondary' | 'tertiary';
 
 export function panelShellClass(tier: DashboardPanelTier, className?: string): string {
   return cn(
-    'flex flex-col overflow-hidden rounded-2xl',
+    'flex flex-col overflow-hidden',
+    DASHBOARD_LAYOUT.dashboardPanelRadius,
     tier === 'primary' && 'surface-premium',
     tier === 'secondary' && 'surface-premium',
     tier === 'tertiary' && 'surface-premium',
