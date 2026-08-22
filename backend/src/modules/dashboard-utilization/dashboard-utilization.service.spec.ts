@@ -56,6 +56,52 @@ describe('DashboardUtilizationService', () => {
     };
   }
 
+  it('loads utilization facts including planned booking statuses', async () => {
+    const { service, evaluationsRepo } = createService();
+    await service.getOverview(organizationId, 2026, 8);
+    expect(evaluationsRepo.loadUtilizationFacts).toHaveBeenCalledWith(
+      organizationId,
+      expect.objectContaining({
+        start: expect.any(Date),
+        endExclusive: expect.any(Date),
+      }),
+      {
+        bookingStatuses: ['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED'],
+        excludeWizardDrafts: true,
+      },
+    );
+  });
+
+  it('reflects confirmed booking intervals in daily utilization', async () => {
+    const { service } = createService({
+      facts: {
+        vehicleCount: 1,
+        telemetryOfflineVehicles: 0,
+        vehicles: [
+          {
+            vehicleId: 'v1',
+            eligibility: {
+              startMs: Date.UTC(2026, 7, 1),
+              endExclusiveMs: Date.UTC(2026, 8, 1),
+            },
+            rented: [
+              {
+                startMs: Date.UTC(2026, 7, 10),
+                endExclusiveMs: Date.UTC(2026, 7, 12),
+              },
+            ],
+            maintenance: [],
+            blocked: [],
+          },
+        ],
+      },
+    });
+
+    const result = await service.getOverview(organizationId, 2026, 8);
+    expect(result.days[9]?.utilizationPercent).toBeGreaterThan(0);
+    expect(result.days[0]?.utilizationPercent).toBe(0);
+  });
+
   it('returns month metrics and daily breakdown', async () => {
     const { service, prisma } = createService({
       bookings: [
