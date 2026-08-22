@@ -383,7 +383,7 @@ export function Sidebar({
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <SynqDriveBrandLogo className="h-3.5 w-auto object-contain" />
+          <SynqDriveBrandLogo className="h-6 w-auto max-w-[200px] object-contain" />
           <div className="w-11" />
         </div>
 
