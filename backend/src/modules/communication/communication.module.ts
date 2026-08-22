@@ -23,9 +23,12 @@ import { CommunicationNativeContextLoader } from './context/communication-native
 import { CommunicationReadController } from './read/communication-read.controller';
 import { CommunicationReadRepository } from './read/communication-read.repository';
 import { CommunicationReadService } from './read/communication-read.service';
+import { CommunicationContentBackfillService } from './content/communication-content-backfill.service';
+import { CommunicationContentRepository } from './content/communication-content.repository';
+import { CommunicationContentService } from './content/communication-content.service';
 
 /**
- * Canonical Communication Center persistence + normalization foundation (C1–C7).
+ * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
  */
 @Module({
   imports: [PrismaModule, ConfigModule.forFeature(communicationProjectionConfig)],
@@ -42,6 +45,9 @@ import { CommunicationReadService } from './read/communication-read.service';
     CommunicationContextEnrichmentService,
     CommunicationContextBackfillService,
     CommunicationContextDuplicateAuditService,
+    CommunicationContentRepository,
+    CommunicationContentService,
+    CommunicationContentBackfillService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
     TwilioVoiceCommunicationAdapter,
@@ -64,6 +70,9 @@ import { CommunicationReadService } from './read/communication-read.service';
     CommunicationContextEnrichmentService,
     CommunicationContextBackfillService,
     CommunicationContextDuplicateAuditService,
+    CommunicationContentRepository,
+    CommunicationContentService,
+    CommunicationContentBackfillService,
     MetaWhatsAppCommunicationAdapter,
     WhatsAppCommunicationProjectionIntegration,
     TwilioVoiceCommunicationAdapter,

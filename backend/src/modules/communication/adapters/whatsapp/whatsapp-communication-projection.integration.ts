@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { WhatsAppMessageDeliveryStatus } from '@prisma/client';
+import { CommunicationEventType, WhatsAppMessageDeliveryStatus } from '@prisma/client';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { CommunicationProjectionService } from '../../communication-projection.service';
+import { CommunicationContentService } from '../../content/communication-content.service';
 import { CommunicationNormalizationError } from '../../normalization/communication-normalization.errors';
 import { MetaWhatsAppCommunicationAdapter, buildWhatsAppTransitionProviderEventId } from './meta-whatsapp-communication.adapter';
 import type {
@@ -19,6 +20,7 @@ export class WhatsAppCommunicationProjectionIntegration {
     private readonly featureFlags: CommunicationProjectionFeatureService,
     private readonly adapter: MetaWhatsAppCommunicationAdapter,
     private readonly projection: CommunicationProjectionService,
+    private readonly contentService: CommunicationContentService,
   ) {}
 
   isEnabled(organizationId: string): boolean {
@@ -31,7 +33,19 @@ export class WhatsAppCommunicationProjectionIntegration {
         if (!this.isEnabled(source.conversation.organizationId)) {
           return;
         }
-        await this.projection.projectNormalizedInput(this.adapter.fromInbound(source));
+        const result = await this.projection.projectNormalizedInput(
+          this.adapter.fromInbound(source),
+        );
+        if (result.eventId && result.conversationId) {
+          await this.contentService.projectWhatsAppMessage({
+            organizationId: source.conversation.organizationId,
+            conversationId: result.conversationId,
+            communicationEventId: result.eventId,
+            eventType: CommunicationEventType.MESSAGE_RECEIVED,
+            message: source.message,
+            occurredAt: source.occurredAt ?? source.message.createdAt,
+          });
+        }
       },
       {
         organizationId: source.conversation.organizationId,
@@ -52,7 +66,19 @@ export class WhatsAppCommunicationProjectionIntegration {
         if (source.message.status !== WhatsAppMessageDeliveryStatus.SENT) {
           return;
         }
-        await this.projection.projectNormalizedInput(this.adapter.fromOutboundAccepted(source));
+        const result = await this.projection.projectNormalizedInput(
+          this.adapter.fromOutboundAccepted(source),
+        );
+        if (result.eventId && result.conversationId) {
+          await this.contentService.projectWhatsAppMessage({
+            organizationId: source.conversation.organizationId,
+            conversationId: result.conversationId,
+            communicationEventId: result.eventId,
+            eventType: CommunicationEventType.MESSAGE_SENT,
+            message: source.message,
+            occurredAt: source.occurredAt ?? source.message.createdAt,
+          });
+        }
       },
       {
         organizationId: source.conversation.organizationId,

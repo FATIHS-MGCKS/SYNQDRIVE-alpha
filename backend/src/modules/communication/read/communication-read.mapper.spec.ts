@@ -13,6 +13,7 @@ describe('communication-read.mapper', () => {
     status: 'AI_ACTIVE' as const,
     lastActivityAt: new Date('2026-08-21T12:00:00.000Z'),
     unreadCount: 2,
+    lastMessagePreview: 'Latest preview',
     createdAt: new Date('2026-08-21T10:00:00.000Z'),
     updatedAt: new Date('2026-08-21T12:00:00.000Z'),
     metadata: { intentCode: 'BOOKING' },
@@ -69,6 +70,7 @@ describe('communication-read.mapper', () => {
         transcript: 'secret',
         rawPayload: { a: 1 },
       },
+      messageContent: null,
     });
     expect(dto.metadata).toEqual({ intentCode: 'SUPPORT' });
     const forbidden = collectForbiddenPublicKeys(dto);

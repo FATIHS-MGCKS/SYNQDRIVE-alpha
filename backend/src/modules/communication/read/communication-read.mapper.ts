@@ -15,6 +15,7 @@ import type {
   CommunicationConversationDetailDto,
   CommunicationConversationListItemDto,
   CommunicationEventDto,
+  CommunicationMessageContentDto,
 } from './dto/communication-read-response.dto';
 
 export const UNKNOWN_CONTACT_DISPLAY_LABEL = 'Unbekannter Kontakt';
@@ -25,6 +26,7 @@ export const CONVERSATION_LIST_SELECT = {
   status: true,
   lastActivityAt: true,
   unreadCount: true,
+  lastMessagePreview: true,
   createdAt: true,
   updatedAt: true,
   metadata: true,
@@ -89,6 +91,16 @@ export const COMMUNICATION_EVENT_SELECT = {
   occurredAt: true,
   providerIdentity: true,
   metadata: true,
+  messageContent: {
+    select: {
+      id: true,
+      contentType: true,
+      text: true,
+      truncated: true,
+      hasAttachments: true,
+      attachmentCount: true,
+    },
+  },
 } satisfies Prisma.CommunicationEventSelect;
 
 export type CommunicationEventRow = Prisma.CommunicationEventGetPayload<{
@@ -215,6 +227,7 @@ export function mapConversationListItem(
     unreadCount,
     lastActivityAt: row.lastActivityAt.toISOString(),
     displayLabel: resolveConversationDisplayLabel(row),
+    lastMessagePreview: row.lastMessagePreview ?? null,
     customer: mapCustomerRef(row.customer),
     booking: mapBookingRef(row.booking),
     vehicle: mapVehicleRef(row.vehicle),
@@ -234,6 +247,20 @@ export function mapConversationDetail(
   };
 }
 
+export function mapMessageContent(
+  row: CommunicationEventRow['messageContent'],
+): CommunicationMessageContentDto | null {
+  if (!row) return null;
+  return {
+    id: row.id,
+    contentType: row.contentType,
+    text: row.text,
+    truncated: row.truncated,
+    hasAttachments: row.hasAttachments,
+    attachmentCount: row.attachmentCount,
+  };
+}
+
 export function mapCommunicationEvent(row: CommunicationEventRow): CommunicationEventDto {
   return {
     id: row.id,
@@ -243,17 +270,18 @@ export function mapCommunicationEvent(row: CommunicationEventRow): Communication
     occurredAt: row.occurredAt.toISOString(),
     providerIdentity: row.providerIdentity,
     metadata: projectSafeReadMetadata(row.metadata),
+    content: mapMessageContent(row.messageContent),
   };
 }
 
-/** Test helper — recursive PII key denylist for public DTO snapshots. */
+/** Test helper — recursive PII key denylist for public DTO snapshots (excludes intentional content DTO). */
 export function collectForbiddenPublicKeys(
   value: unknown,
   path = '',
   hits: string[] = [],
 ): string[] {
   const forbidden =
-    /(?:^|\.)(phone|email|rawPayload|authorization|signature|providerResponse|transcript|body|text|content|token|secret)(?:\.|$)/i;
+    /(?:^|\.)(phone|email|rawPayload|authorization|signature|providerResponse|transcript|body|token|secret|nativeMessageId|providerMessageId)(?:\.|$)/i;
   if (value === null || value === undefined) return hits;
   if (Array.isArray(value)) {
     value.forEach((entry, index) => collectForbiddenPublicKeys(entry, `${path}[${index}]`, hits));
@@ -262,7 +290,11 @@ export function collectForbiddenPublicKeys(
   if (typeof value === 'object') {
     for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
       const nextPath = path ? `${path}.${key}` : key;
-      if (forbidden.test(key) || forbidden.test(nextPath)) {
+      if (
+        (forbidden.test(key) || forbidden.test(nextPath))
+        && !nextPath.startsWith('content.')
+        && nextPath !== 'content'
+      ) {
         hits.push(nextPath);
       }
       collectForbiddenPublicKeys(nested, nextPath, hits);

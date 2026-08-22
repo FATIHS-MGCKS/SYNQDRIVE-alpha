@@ -1744,6 +1744,7 @@ model Organization {
   evaluationsEntityReferences            EvaluationsEntityReference[]
   communicationConversations             CommunicationConversation[]
   communicationEvents                    CommunicationEvent[]
+  communicationMessageContents           CommunicationMessageContent[]
 
   @@index([status])
   @@map("organizations")
@@ -14600,6 +14601,19 @@ enum CommunicationEventType {
   PROVIDER_ERROR
 }
 
+/// Provider-neutral canonical message content type (C7.2).
+enum CommunicationMessageContentType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+  CONTACT
+  MIXED
+  UNSUPPORTED
+}
+
 model CommunicationConversation {
   id                   String                          @id @default(uuid())
   organizationId       String                          @map("organization_id")
@@ -14617,6 +14631,10 @@ model CommunicationConversation {
   assignedAgentType    String?                         @map("assigned_agent_type")
   lastActivityAt       DateTime                        @default(now()) @map("last_activity_at")
   unreadCount          Int                             @default(0) @map("unread_count")
+  /// Bounded plain-text preview of latest canonical message content (C7.2).
+  lastMessagePreview   String?                         @map("last_message_preview")
+  lastContentAt        DateTime?                       @map("last_content_at")
+  lastContentId        String?                         @map("last_content_id")
   metadata             Json?
   createdAt            DateTime                        @default(now()) @map("created_at")
   updatedAt            DateTime                        @updatedAt @map("updated_at")
@@ -14629,6 +14647,7 @@ model CommunicationConversation {
   /// Human handoff assignee — canonical User.id; org membership validated at service boundary.
   assignedUser   User?                 @relation("CommunicationConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
   events         CommunicationEvent[]
+  messageContents CommunicationMessageContent[]
 
   @@unique([organizationId, channel, nativeConversationId], name: "communication_conversations_org_channel_native")
   @@index([organizationId, lastActivityAt])
@@ -14672,6 +14691,7 @@ model CommunicationEvent {
   customer       Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
   booking        Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   vehicle        Vehicle?                  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  messageContent CommunicationMessageContent?
 
   @@unique([organizationId, idempotencyKey], name: "communication_events_org_idempotency_key")
   @@unique([organizationId, channel, providerIdentity, providerEventId], name: "communication_events_org_provider_event")
@@ -14680,4 +14700,36 @@ model CommunicationEvent {
   @@index([organizationId, channel, occurredAt])
   @@index([organizationId, providerMessageId])
   @@map("communication_events")
+}
+
+/// Canonical provider-neutral message body projection (C7.2).
+/// One logical message per MESSAGE_RECEIVED / MESSAGE_SENT canonical event.
+model CommunicationMessageContent {
+  id                   String                          @id @default(uuid())
+  organizationId       String                          @map("organization_id")
+  conversationId       String                          @map("conversation_id")
+  communicationEventId String                          @unique @map("communication_event_id")
+  channel              CommunicationChannel
+  direction            CommunicationDirection
+  providerIdentity     CommunicationProviderIdentity?  @map("provider_identity")
+  providerMessageId    String?                         @map("provider_message_id")
+  /// Native message row id (WhatsAppMessage.id / SmsMessage.id) for backfill matching.
+  nativeMessageId      String                          @map("native_message_id")
+  contentType          CommunicationMessageContentType @map("content_type")
+  text                 String?
+  truncated            Boolean                         @default(false)
+  hasAttachments       Boolean                         @default(false) @map("has_attachments")
+  attachmentCount      Int                             @default(0) @map("attachment_count")
+  occurredAt           DateTime                        @map("occurred_at")
+  idempotencyKey       String                          @map("idempotency_key")
+  createdAt            DateTime                        @default(now()) @map("created_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation CommunicationConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  event        CommunicationEvent        @relation(fields: [communicationEventId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey], name: "communication_message_contents_org_idempotency")
+  @@index([organizationId, conversationId, occurredAt])
+  @@index([organizationId, channel, nativeMessageId])
+  @@map("communication_message_contents")
 }

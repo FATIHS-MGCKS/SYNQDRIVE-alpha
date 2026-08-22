@@ -1,3 +1,4 @@
+import { CommunicationContentService } from '../../content/communication-content.service';
 import { CommunicationProjectionService } from '../../communication-projection.service';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { MetaWhatsAppCommunicationAdapter } from './meta-whatsapp-communication.adapter';
@@ -12,6 +13,10 @@ describe('WhatsAppCommunicationProjectionIntegration', () => {
   const projection = {
     projectNormalizedInput: jest.fn(),
   } as unknown as jest.Mocked<CommunicationProjectionService>;
+
+  const contentService = {
+    projectWhatsAppMessage: jest.fn().mockResolvedValue({ contentId: 'c-1', created: true, skipped: false }),
+  } as unknown as jest.Mocked<CommunicationContentService>;
 
   let integration: WhatsAppCommunicationProjectionIntegration;
 
@@ -44,6 +49,7 @@ describe('WhatsAppCommunicationProjectionIntegration', () => {
       featureFlags,
       adapter,
       projection,
+      contentService,
     );
   });
 
@@ -96,6 +102,7 @@ describe('WhatsAppCommunicationProjectionIntegration', () => {
       featureFlags,
       throwingAdapter,
       projection,
+      contentService,
     );
 
     featureFlags.isWhatsAppProjectionEnabled.mockReturnValue(true);
