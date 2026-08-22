@@ -8,13 +8,10 @@ import { LanguageProvider } from '../../i18n/LanguageContext';
 import { CommunicationCenterShell } from './CommunicationCenterShell';
 import { COMMUNICATION_CHANNEL_PARAM } from './communication-center-navigation';
 
+const mockUseRentalOrg = vi.fn();
+
 vi.mock('../../RentalContext', () => ({
-  useRentalOrg: () => ({
-    orgId: 'org-communication-test',
-    loading: false,
-    hasPermission: () => true,
-    userRole: 'ADMIN',
-  }),
+  useRentalOrg: () => mockUseRentalOrg(),
 }));
 
 vi.mock('./CommunicationSettingsPane', () => ({
@@ -96,6 +93,12 @@ describe('CommunicationCenterShell', () => {
     window.history.replaceState({}, '', '/rental?view=communication-center');
     localStorage.setItem('synqdrive.locale', 'en');
     mockMatchMedia(1440);
+    mockUseRentalOrg.mockReturnValue({
+      orgId: 'org-communication-test',
+      loading: false,
+      hasPermission: () => true,
+      userRole: 'ADMIN',
+    });
   });
 
   afterEach(() => {
@@ -192,5 +195,24 @@ describe('CommunicationCenterShell', () => {
     expect(
       container.querySelector('[data-channel="whatsapp"]')?.getAttribute('aria-pressed'),
     ).toBe('true');
+  });
+
+  it('normalizes read-only settings deep link back to inbox', () => {
+    mockUseRentalOrg.mockReturnValue({
+      orgId: 'org-communication-test',
+      loading: false,
+      hasPermission: (module: string, action: string) =>
+        module === 'communication' && action === 'read',
+      userRole: 'WORKER',
+    });
+    window.history.replaceState(
+      {},
+      '',
+      '/rental?view=communication-center&communicationTab=settings&communicationSettings=sms',
+    );
+    renderShell();
+    expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-search"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-primary-tab-settings"]')).toBeNull();
   });
 });

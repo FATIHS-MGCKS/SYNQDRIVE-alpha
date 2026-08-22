@@ -11651,14 +11651,15 @@ export interface ChatAgentInfo {
 
 export interface SmsConfig {
   organizationId: string;
+  hasConfigRow: boolean;
   isConnected: boolean;
   isActive: boolean;
   credentialsConfigured: boolean;
-  webhookConfigured: boolean;
+  webhookSigningConfigured: boolean;
   senderProfileConfigured: boolean;
   webhookEndpointConfigured: boolean;
   lastWebhookAt: string | null;
-  updatedAt: string;
+  updatedAt: string | null;
 }
 
 export interface WhatsAppConfig {

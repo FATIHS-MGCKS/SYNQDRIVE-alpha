@@ -86,14 +86,16 @@ type CommunicationMockOptions = {
 };
 
 const defaultSmsConfig = {
+  organizationId: TEST_ORG_ID,
+  hasConfigRow: false,
   isConnected: false,
   isActive: false,
   credentialsConfigured: false,
-  webhookConfigured: false,
+  webhookSigningConfigured: false,
   senderProfileConfigured: false,
   webhookEndpointConfigured: false,
   lastWebhookAt: null,
-  updatedAt: '2026-08-22T10:00:00.000Z',
+  updatedAt: null,
 };
 
 const searchRaceDelays = new Map<string, ReturnType<typeof setTimeout>>();
@@ -388,12 +390,14 @@ export async function installCommunicationMocks(
         configured
           ? {
               ...defaultSmsConfig,
+              hasConfigRow: true,
               isConnected: true,
               isActive: true,
               credentialsConfigured: true,
-              webhookConfigured: true,
+              webhookSigningConfigured: true,
               senderProfileConfigured: true,
               webhookEndpointConfigured: true,
+              updatedAt: '2026-08-22T10:00:00.000Z',
             }
           : defaultSmsConfig,
       ),

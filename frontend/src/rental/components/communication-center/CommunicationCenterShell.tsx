@@ -11,6 +11,7 @@ import {
   normalizeCommunicationSettingsSection,
   readCommunicationCenterStateFromUrl,
   syncCommunicationCenterStateToUrl,
+  COMMUNICATION_SETTINGS_PARAM,
   type CommunicationCenterUrlState,
 } from './communication-center-navigation';
 import { CommunicationCenterHeader } from './CommunicationCenterHeader';
@@ -103,6 +104,16 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     },
     [],
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rawSection = params.get(COMMUNICATION_SETTINGS_PARAM);
+    if (!rawSection) return;
+    const normalized = normalizeCommunicationSettingsSection(rawSection);
+    if (rawSection !== normalized) {
+      patchState({ settingsSection: normalized, primaryTab: 'settings' }, { replace: true });
+    }
+  }, [patchState]);
 
   const handlePrimaryTabChange = useCallback(
     (primaryTab: CommunicationPrimaryTab) => {

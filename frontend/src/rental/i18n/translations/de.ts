@@ -3572,6 +3572,7 @@ export const de: Record<TranslationKey, string> = {
   'communication.settings.sms.overviewDescription': 'Ein- und ausgehende SMS über sent.dm.',
   'communication.settings.sms.credentials': 'Zugangsdaten',
   'communication.settings.sms.webhook': 'Webhook',
+  'communication.settings.sms.webhookSigning': 'Webhook-Signaturgeheimnis',
   'communication.settings.sms.sender': 'Absenderprofil',
   'communication.settings.sms.notConfiguredHelp':
     'SMS ist für diese Organisation nicht konfiguriert. Bitte wenden Sie sich an Ihren Administrator.',

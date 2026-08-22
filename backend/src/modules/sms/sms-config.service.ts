@@ -1,43 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildSyntheticSmsConfigPublicDto,
+  mapOrgSmsConfigToPublicDto,
+  type SmsConfigPublicDto,
+} from './sms-config.public';
 
-export type SmsConfigPublicDto = {
-  organizationId: string;
-  isConnected: boolean;
-  isActive: boolean;
-  credentialsConfigured: boolean;
-  webhookConfigured: boolean;
-  senderProfileConfigured: boolean;
-  webhookEndpointConfigured: boolean;
-  lastWebhookAt: string | null;
-  updatedAt: string;
-};
+export type { SmsConfigPublicDto };
 
 @Injectable()
 export class SmsConfigService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Pure read — never creates or mutates OrgSmsConfig.
+   * Missing row returns a synthetic NOT_CONFIGURED public DTO (hasConfigRow=false).
+   */
   async getPublicConfig(orgId: string): Promise<SmsConfigPublicDto> {
-    let config = await this.prisma.orgSmsConfig.findUnique({
+    const config = await this.prisma.orgSmsConfig.findUnique({
       where: { organizationId: orgId },
     });
 
     if (!config) {
-      config = await this.prisma.orgSmsConfig.create({
-        data: { organizationId: orgId },
-      });
+      return buildSyntheticSmsConfigPublicDto(orgId);
     }
 
-    return {
-      organizationId: config.organizationId,
-      isConnected: config.isConnected,
-      isActive: config.isActive,
-      credentialsConfigured: config.apiKeyConfigured,
-      webhookConfigured: config.webhookSigningSecretConfigured,
-      senderProfileConfigured: Boolean(config.senderProfileId),
-      webhookEndpointConfigured: Boolean(config.webhookEndpointId),
-      lastWebhookAt: config.lastWebhookAt?.toISOString() ?? null,
-      updatedAt: config.updatedAt.toISOString(),
-    };
+    return mapOrgSmsConfigToPublicDto(config);
   }
 }

@@ -3576,6 +3576,7 @@ export const en = {
   'communication.settings.sms.overviewDescription': 'Outbound and inbound SMS via sent.dm.',
   'communication.settings.sms.credentials': 'Credentials',
   'communication.settings.sms.webhook': 'Webhook',
+  'communication.settings.sms.webhookSigning': 'Webhook signing secret',
   'communication.settings.sms.sender': 'Sender profile',
   'communication.settings.sms.notConfiguredHelp':
     'SMS is not configured for this organization. Contact your administrator to provision sent.dm credentials.',

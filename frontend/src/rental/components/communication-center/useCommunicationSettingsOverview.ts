@@ -10,7 +10,7 @@ import {
 import {
   canManageVoiceSettings,
   canManageWhatsAppSettings,
-  canViewSmsSettings,
+  canViewSmsSettingsInSettings,
   type HasPermissionFn,
 } from './communication-settings-permissions';
 
@@ -94,7 +94,7 @@ export function useCommunicationSettingsOverview({
       );
     }
 
-    if (canViewSmsSettings(hasPermission, membershipRole)) {
+    if (canViewSmsSettingsInSettings(hasPermission, membershipRole)) {
       tasks.push(
         api.sms
           .getConfig(requestOrgId)
@@ -140,7 +140,7 @@ export function useCommunicationSettingsOverview({
         error: errors.voice,
       });
     }
-    if (canViewSmsSettings(hasPermission, membershipRole)) {
+    if (canViewSmsSettingsInSettings(hasPermission, membershipRole)) {
       items.push({
         key: 'sms',
         status: smsStatus,

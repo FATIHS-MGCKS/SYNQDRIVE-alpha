@@ -66,9 +66,9 @@ export function SmsSettingsPanel({ enabled = true }: SmsSettingsPanelProps) {
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">{t('communication.settings.sms.webhook')}</dt>
+            <dt className="text-muted-foreground">{t('communication.settings.sms.webhookSigning')}</dt>
             <dd className="font-medium text-foreground">
-              {config?.webhookConfigured
+              {config?.webhookSigningConfigured
                 ? t('communication.settings.configured')
                 : t('communication.settings.notConfigured')}
             </dd>

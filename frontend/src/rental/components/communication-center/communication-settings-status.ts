@@ -39,18 +39,46 @@ export function resolveVoiceSettingsStatus(
   return 'NOT_CONFIGURED';
 }
 
+function isSmsRuntimeReady(config: SmsConfig): boolean {
+  return (
+    config.credentialsConfigured &&
+    config.webhookSigningConfigured &&
+    config.webhookEndpointConfigured &&
+    config.senderProfileConfigured
+  );
+}
+
+/**
+ * SMS status authority (C5/C5.2 OrgSmsConfig flags only — no provider calls):
+ * - NO ROW (hasConfigRow=false): NOT_CONFIGURED
+ * - ROW without apiKeyConfigured: NOT_CONFIGURED
+ * - CONNECTED: isConnected && isActive && full runtime readiness
+ * - DEGRADED: connected/active flags inconsistent with required runtime pieces
+ * - CONFIGURED: credential and/or partial runtime setup without full connection
+ */
 export function resolveSmsSettingsStatus(
   config: SmsConfig | null | undefined,
 ): CommunicationSettingsStatusKind {
-  if (!config) return 'NOT_CONFIGURED';
-  if (!config.isActive && config.isConnected) return 'DISABLED';
-  if (config.isConnected && config.credentialsConfigured) return 'CONNECTED';
-  if (
-    config.credentialsConfigured ||
-    config.senderProfileConfigured ||
-    config.webhookConfigured
-  ) {
+  if (!config || !config.hasConfigRow) return 'NOT_CONFIGURED';
+  if (!config.credentialsConfigured) return 'NOT_CONFIGURED';
+
+  const runtimeReady = isSmsRuntimeReady(config);
+
+  if (config.isConnected && config.isActive && runtimeReady) {
+    return 'CONNECTED';
+  }
+
+  if (config.isConnected && (!config.isActive || !runtimeReady)) {
+    return 'DEGRADED';
+  }
+
+  if (!config.isActive && config.isConnected) {
+    return 'DISABLED';
+  }
+
+  if (runtimeReady || config.credentialsConfigured) {
     return 'CONFIGURED';
   }
+
   return 'NOT_CONFIGURED';
 }

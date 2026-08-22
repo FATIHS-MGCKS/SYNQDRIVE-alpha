@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage, type SmsConfig } from '../../../lib/api';
 import { useOrgScopedGenerationRef } from '../../hooks/useOrgScopedGeneration';
+import { mapSmsConfigPublic } from './communication-settings-sms-mapper';
 
 interface UseSmsSettingsOptions {
   orgId: string | null | undefined;
@@ -29,7 +30,7 @@ export function useSmsSettings({ orgId, enabled = true }: UseSmsSettingsOptions)
     try {
       const result = await api.sms.getConfig(requestOrgId);
       if (!isCurrent(requestOrgId, generation)) return;
-      setConfig(result);
+      setConfig(mapSmsConfigPublic(result));
     } catch (err) {
       if (!isCurrent(requestOrgId, generation)) return;
       setError(getErrorMessage(err, 'Could not load SMS configuration.'));

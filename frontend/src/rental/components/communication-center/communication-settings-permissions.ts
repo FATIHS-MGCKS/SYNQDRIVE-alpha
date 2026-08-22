@@ -34,6 +34,10 @@ export function canManageSmsSettings(
   return hasCommunicationPermission(hasPermission, 'manage', membershipRole);
 }
 
+/**
+ * Settings primary tab — provider/configuration administration only.
+ * communication.read alone (inbox operational access) does NOT grant Settings.
+ */
 export function canAccessCommunicationSettings(
   hasPermission: HasPermissionFn,
   membershipRole?: string | null,
@@ -41,6 +45,19 @@ export function canAccessCommunicationSettings(
   return (
     canManageWhatsAppSettings(hasPermission, membershipRole) ||
     canManageVoiceSettings(hasPermission, membershipRole) ||
+    canManageSmsSettings(hasPermission, membershipRole)
+  );
+}
+
+/**
+ * SMS read-only status inside Settings requires both Settings access and communication.read.
+ */
+export function canViewSmsSettingsInSettings(
+  hasPermission: HasPermissionFn,
+  membershipRole?: string | null,
+): boolean {
+  return (
+    canAccessCommunicationSettings(hasPermission, membershipRole) &&
     canViewSmsSettings(hasPermission, membershipRole)
   );
 }
@@ -58,7 +75,7 @@ export function canAccessCommunicationSettingsSection(
     case 'voice':
       return canManageVoiceSettings(hasPermission, membershipRole);
     case 'sms':
-      return canViewSmsSettings(hasPermission, membershipRole);
+      return canViewSmsSettingsInSettings(hasPermission, membershipRole);
     default:
       return false;
   }
