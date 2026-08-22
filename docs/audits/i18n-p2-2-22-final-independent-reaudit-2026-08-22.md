@@ -7,6 +7,7 @@
 **Authoritative baseline:** `59b01928a09598f36045a61fad031f0e44dcc1fc` (PR #1167 / P2.2.21)
 **Implementation HEAD audited:** `b71249d68a6c56dd1fdc8c69531462cfd9aadfd5`
 **Pre-flight:** PR #1171 — GO
+**Re-verification run:** 2026-08-22T16:06Z (independent, read-only)
 
 ---
 
@@ -414,7 +415,247 @@ Guards in `hardcoded-copy-guard.test.ts`:
 
 ---
 
-## 59. Final report summary
+## 30. Blind-spot guard quality
+
+Guards in `hardcoded-copy-guard.test.ts` (P222 block):
+
+| Class | Covered |
+|-------|---------|
+| Dialog title/subtitle | ✅ `invoices.send.title`, anti-literal grep |
+| Recipient/subject/message labels | ✅ `email.send.modal.*` usage grep |
+| Attachment labels | n/a (no attachment UI in dialog) |
+| Action labels | ✅ send/cancel key usage |
+| Success/error | ⚠️ host-only (out of slice) |
+| Validation | ✅ recipient error anti-literal |
+| aria/title/tooltips | n/a in scoped component |
+| Fixed-locale | ✅ `de-DE` / `locale === 'de'` negative grep |
+
+**Grade:** ✅ **ACCEPTABLE** (STRONG for bounded slice; no attachment/sending-label separate key because spinner-only loading state)
+
+---
+
+## 31. Test source audit
+
+| Test | Class |
+|------|-------|
+| enforce-clean inventory zero | source guard |
+| default body adapter | utility |
+| error key canonical | utility |
+| EN/DE render | component render |
+| runtime switch (remount) | runtime locale switching |
+| runtime switch (same mount EN→DE) | runtime locale switching |
+| edited-content preservation | edited-content preservation |
+| dynamic business data | dynamic business data |
+| payload regression | payload regression + recipient + attachment (`documentId`) |
+| source guards | source guard |
+
+**Grade:** ✅ **STRONG** — covers render, same-mount switch, edited-content, payload, and inventory guard
+
+---
+
+## 32. Vitest hoisting safety
+
+```ts
+const { mockSend } = vi.hoisted(() => ({
+  mockSend: vi.fn(async () => true),
+}));
+```
+
+- `vi.mock('@iconify/react')` — no external mock refs ✅
+- `mockSend` via `vi.hoisted()` — P221-correct pattern ✅
+- Payload test uses local `onSend = vi.fn()` — no hoisting defect ✅
+- File loads and collects **11/11** tests ✅
+
+**Hoisting safety:** ✅ PASS
+
+---
+
+## 33–38. Test execution summary (independent re-run)
+
+| Metric | Result |
+|--------|--------|
+| Tests collected | 11 |
+| Tests passed | 11 |
+| Tests failed | 0 |
+| Tests skipped | 0 |
+
+**Send API mock exercised:** YES — `expect(onSend).toHaveBeenCalledWith({...})` with full payload object.
+
+**Payload regression quality:** **STRONG** — asserts all 6 payload fields (`toEmail`, `subject`, `bodyText`, `ccEmails`, `bccEmails`, `documentId`).
+
+**Runtime locale switch:** same-mount EN→DE chrome update — PASS (not remount-only).
+
+**Edited-content switch:** same-mount EN→DE→EN with `setLocale` — subject/body/recipient asserted unchanged — **STRONG evidence**.
+
+**Dynamic business data:** recipient `anna.mueller@example.com`, invoice number `FSM-2026-0042` — PASS under EN.
+
+---
+
+## 39. Business / runtime diff
+
+Adversarial diff of `SendInvoiceDialog.tsx` and `send-invoice-i18n.ts` only:
+
+| Area | Changed |
+|------|---------|
+| Recipient resolution | NO |
+| Subject state | NO |
+| Message state | NO (default presentation only) |
+| Edited-state behavior | NO |
+| Send API | NO |
+| Payload construction | NO |
+| Attachment association | NO |
+| Validation conditions | NO |
+| Callbacks / close | NO |
+| Permissions | NO |
+| Success/error/retry | NO (host) |
+| Invoice reference | NO |
+
+**Category H = 0** ✅
+
+---
+
+## 48. Documentation accuracy
+
+Claims in implementation docs / Changes / Architektur independently verified:
+
+| Claim | Match |
+|-------|-------|
+| +5 keys | ✅ 8230→8235 |
+| 8235/8235 parity | ✅ |
+| P222 = 0 | ✅ |
+| Recipient semantics unchanged | ✅ |
+| defaultSubject host semantics unchanged | ✅ |
+| Edited-content preservation | ✅ (tested) |
+| Payload unchanged | ✅ |
+| CC non-overlap | ✅ |
+| Global i18n PASS | ✅ |
+| Prior freezes intact | ✅ |
+
+---
+
+## 49. Final reconciliation table
+
+| Metric | Baseline | Impl claim | Independent result |
+|--------|----------|------------|-------------------|
+| Provenance | `59b01928` | 2 commits | ✅ PASS |
+| Scope | SendInvoiceDialog | bounded | ✅ KEEP AS ONE SLICE |
+| Recipient resolution | customer email + manual | same | ✅ unchanged |
+| Recipient data | raw email | raw email | ✅ unchanged |
+| Subject semantics | prop + state | same | ✅ unchanged |
+| Message/body semantics | state + open default | locale default on open | ✅ payload unchanged |
+| Pristine locale switch | German hardcoded | chrome localizes | ✅ acceptable |
+| Edited-content preservation | n/a tested | preserved | ✅ YES |
+| Invoice reference | displayNumber | displayNumber | ✅ unchanged |
+| Attachment | documentId prop | same | ✅ unchanged |
+| Send API | sendInvoiceDocumentEmail | same | ✅ unchanged |
+| Payload | 6 fields | 6 fields | ✅ identical |
+| Callbacks | validate→send→close | same | ✅ unchanged |
+| Validation | !toEmail.trim() | same | ✅ unchanged |
+| Permissions | host | host | ✅ unchanged |
+| Success/error/retry | host German | host German | ✅ unchanged (out of slice) |
+| CC overlap | 0 | 0 | ✅ 0 |
+| Adapter | CANONICAL | CANONICAL | ✅ CANONICAL |
+| Visible debt | 5 | 0 | ✅ 0 |
+| Hidden debt | 0 | 0 | ✅ 0 |
+| Fixed-locale debt | 0 | 0 | ✅ 0 |
+| EN keys | 8230 | 8235 | ✅ 8235 |
+| DE keys | 8230 | 8235 | ✅ 8235 |
+| Parity | 100% | 100% | ✅ 100% |
+| New keys | +5 | +5 | ✅ +5 |
+| Reused keys | 7 concepts | 7 | ✅ verified |
+| Duplicates | 0 | 0 | ✅ 0 |
+| Orphans | 0 | 0 | ✅ 0 |
+| P222 | — | 0 | ✅ 0 |
+| Runtime switch | — | PASS | ✅ 11/11 |
+| Test quality | — | STRONG | ✅ STRONG |
+| Mock hoisting | — | safe | ✅ PASS |
+| Send API exercised | — | YES | ✅ YES |
+| Payload test quality | — | STRONG | ✅ STRONG |
+| Category H | 0 | 0 | ✅ 0 |
+| P221–P216 | 0 | 0 | ✅ all 0 |
+| Shim | 29 | 29 | ✅ 29 |
+| Compat consumers | 0 | 0 | ✅ 0 |
+| i18n:check | PASS | PASS | ✅ PASS |
+| Global enforce-clean | 0 | 0 | ✅ 0 |
+| Build | — | PASS | ✅ PASS |
+| git diff --check | — | PASS | ✅ PASS |
+| CI | — | pre-existing fails | ✅ P222-caused = 0 |
+| Global scanner | 1616 | 1611 | ✅ −5 |
+| Rental scanner | 385 | 380 | ✅ −5 |
+
+---
+
+## 51. Final report (65 items)
+
+| # | Item | Value |
+|---|------|-------|
+| 1 | Baseline SHA | `59b01928a09598f36045a61fad031f0e44dcc1fc` |
+| 2 | Implementation PR | #1172 |
+| 3 | Implementation HEAD | `b71249d68a6c56dd1fdc8c69531462cfd9aadfd5` |
+| 4 | Provenance | PASS |
+| 5 | Production files | `SendInvoiceDialog.tsx`, `send-invoice-i18n.ts` |
+| 6 | Scope verdict | KEEP AS ONE SLICE |
+| 7 | Machine/domain values | 12 inventoried — all unchanged |
+| 8 | Recipient semantics changed | NO |
+| 9 | Subject semantics changed | NO |
+| 10 | Body/message semantics changed | NO (payload) |
+| 11 | Pristine locale switch | PASS (chrome); host subject frozen |
+| 12 | Edited subject preserved | YES |
+| 13 | Edited body preserved | YES |
+| 14 | Invoice reference changed | NO |
+| 15 | Attachment semantics changed | NO |
+| 16 | Send API changed | NO |
+| 17 | Payload semantics changed | NO |
+| 18 | Callback semantics changed | NO |
+| 19 | Validation semantics changed | NO |
+| 20 | Permission changes | NO |
+| 21 | Success workflow changed | NO |
+| 22 | Error/retry workflow changed | NO |
+| 23 | Communication Center overlap | 0 |
+| 24 | Adapter classification | CANONICAL |
+| 25 | Scanner-visible before/after | 5 / 0 |
+| 26 | Hidden debt before/after | 0 / 0 |
+| 27 | Fixed-locale debt before/after | 0 / 0 |
+| 28 | Keys reused | 7 (`email.send.modal.*`, `common.cancel`) |
+| 29 | New keys | 5 |
+| 30 | EN count | 8235 |
+| 31 | DE count | 8235 |
+| 32 | Parity | 100% |
+| 33 | Duplicates | 0 |
+| 34 | Orphans | 0 |
+| 35 | P222 | 0 |
+| 36 | Guard quality | ACCEPTABLE |
+| 37 | Tests collected | 11 |
+| 38 | Tests passed | 11 |
+| 39 | Tests failed | 0 |
+| 40 | Tests skipped | 0 |
+| 41 | Mock-hoisting safety | PASS |
+| 42 | Send API mock exercised | YES |
+| 43 | Payload regression quality | STRONG |
+| 44 | Runtime locale switch | PASS (same-mount) |
+| 45 | Edited-content switch | PASS (same-mount) |
+| 46 | Dynamic business data | PASS |
+| 47 | Category H | 0 |
+| 48 | npm run i18n:check | PASS |
+| 49 | Global enforce-clean debt | 0 |
+| 50 | P221 | 0 |
+| 51 | P220 | 0 |
+| 52 | P219 | 0 |
+| 53 | P218 | 0 |
+| 54 | P217 | 0 |
+| 55 | P216A/B1/B2/C1/C2A/C2B | all 0 |
+| 56 | Shim before/after | 29 / 29 |
+| 57 | New compatibility consumers | 0 |
+| 58 | Build | PASS |
+| 59 | git diff --check | PASS |
+| 60 | CI | 4 failed (B pre-existing); Frontend tests + build PASS |
+| 61 | Rental scanner before/after | 385 / 380 |
+| 62 | Global scanner before/after | 1616 / 1611 |
+| 63 | local HEAD == remote HEAD | YES |
+| 64 | Audit artifact | `docs/audits/i18n-p2-2-22-final-independent-reaudit-2026-08-22.md` |
+| 65 | Audit PR | #1177 |
+
+---
 
 | # | Item | Value |
 |---|------|-------|
@@ -451,7 +692,7 @@ Guards in `hardcoded-copy-guard.test.ts`:
 
 ### **B — READY WITH NON-BLOCKING OBSERVATIONS**
 
-PR #1172 may proceed to independent sign-off / mark-ready after acknowledging:
+**PR #1172 may be marked ready and merged** after acknowledging the four non-blocking observations below.
 
 1. **Host `defaultEmailSubject` residual (NON-BLOCKING, OUT OF SLICE)** — `useInvoiceDocuments.defaultEmailSubject` remains hardcoded German; subject field shows German default under EN locale. Dialog labels/chrome localize correctly; payload uses prop value unchanged. Future host slice may localize this default without dialog contract changes.
 
@@ -476,16 +717,16 @@ PR #1172 may proceed to independent sign-off / mark-ready after acknowledging:
 | P222 enforce-clean | ✅ PASS (0) |
 | Global i18n freeze | ✅ PASS |
 | Prior freezes P221–P216 | ✅ PASS |
-| Tests (11/11) | ✅ PASS |
+| Test quality | ✅ STRONG |
+| Vitest hoisting | ✅ PASS |
+| Guard quality | ✅ ACCEPTABLE |
 | Shim accounting | ✅ PASS |
 | Communication Center | ✅ NO COLLISION |
 | Build / i18n:check | ✅ PASS |
 
 ---
 
-## Audit artifact
-
-Persisted: `docs/audits/i18n-p2-2-22-final-independent-reaudit-2026-08-22.md`
+**Audit PR:** [#1177](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1177) on `cursor/p2222-final-independent-reaudit-3c10`
 
 **Changes updated:** no (audit-only branch)
 **Architektur updated:** no (audit-only branch)
