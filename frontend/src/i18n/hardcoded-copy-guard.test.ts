@@ -311,6 +311,11 @@ const P218_ENFORCE_CLEAN_EXACT = [
   'rental/components/settings/data-authorization/DataAuthorizationTab.tsx',
 ];
 
+const P219_ENFORCE_CLEAN_EXACT = [
+  'rental/components/InsurancesView.tsx',
+  'rental/lib/insurances-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -381,6 +386,10 @@ function isP217EnforceCleanPath(relPath: string): boolean {
 
 function isP218EnforceCleanPath(relPath: string): boolean {
   return P218_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP219EnforceCleanPath(relPath: string): boolean {
+  return P219_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -585,6 +594,39 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP218EnforceCleanPath(finding.file),
     );
     expect(p218Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.19 enforce-clean findings to InsurancesView only', () => {
+    const p219Debt = inventory.findings.filter((finding) =>
+      isP219EnforceCleanPath(finding.file),
+    );
+    expect(p219Debt).toHaveLength(0);
+  });
+
+  it('keeps insurances-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/insurances-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('insurances.status.ACTIVE');
+    expect(source).toContain('labelInsuranceStatus');
+    expect(source).not.toMatch(/'Active'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+  });
+
+  it('keeps InsurancesView.tsx free of hardcoded insurance presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/InsurancesView.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('insurances.title')");
+    expect(source).toContain("t('insurances.kpi.totalVehicles')");
+    expect(source).toContain('labelInsuranceStatus(locale');
+    expect(source).not.toMatch(/Fleet Insurance/);
+    expect(source).not.toMatch(/Expiring Soon/);
+    expect(source).not.toMatch(/All Statuses/);
+    expect(source).not.toMatch(/locale === 'de'/);
   });
 
   it('keeps DataAuthorizationTab.tsx free of hardcoded data authorization presentation literals', () => {

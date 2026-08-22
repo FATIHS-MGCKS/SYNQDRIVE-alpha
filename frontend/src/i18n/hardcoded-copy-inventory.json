@@ -111,24 +111,24 @@
     }
   },
   "summary": {
-    "total": 1718,
+    "total": 1665,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 156,
-      "RENTAL": 487,
+      "RENTAL": 434,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 58,
-      "TITLE": 257,
-      "TEXT": 1218,
-      "LABEL": 93,
-      "PLACEHOLDER": 84,
+      "TITLE": 246,
+      "TEXT": 1180,
+      "LABEL": 91,
+      "PLACEHOLDER": 82,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 338,
+      "other Rental areas": 285,
       "Finance/Billing": 127,
       "Tasks": 13,
       "Documents": 8,
@@ -17269,20 +17269,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1168,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Active Live Sharing",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/OrganizationSwitcher.tsx",
       "line": 61,
       "surface": "RENTAL",
@@ -17448,34 +17434,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 845,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Aggregation Level",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 845,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Aggregation Level",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -17821,34 +17779,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1020,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Back to Overview",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 978,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Back to Review",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/invoices/SendInvoiceDialog.tsx",
       "line": 150,
       "surface": "RENTAL",
@@ -18155,34 +18085,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/AddDamagePhotoPanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 637,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Choose one or more insurers to receive your inquiry.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 584,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Choose the vehicle you want to request insurance for.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -18534,20 +18436,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 943,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Data Disclosure Notice",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -19077,17 +18965,16 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 118,
+      "file": "rental/components/price-tariffs/PriceTariffsPage.tsx",
+      "line": 127,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "FORMAT_LOCALE",
       "sample": "en-GB",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 9,
+      "occurrences": 8,
       "files": [
-        "rental/components/InsurancesView.tsx",
         "rental/components/price-tariffs/PriceTariffsPage.tsx",
         "rental/components/price-tariffs/PricingSimulatorTab.tsx",
         "rental/components/price-tariffs/TariffGroupDrawer.tsx",
@@ -19323,20 +19210,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 369,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Failed to load fleet insurance data",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantInvoiceDetailDrawer.tsx",
       "line": 148,
       "surface": "RENTAL",
@@ -19502,20 +19375,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1198,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Fleet Insurance",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -19715,34 +19574,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 919,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Historical Data",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 714,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Historical Data Selection",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DocumentsView.tsx",
       "line": 449,
       "surface": "RENTAL",
@@ -19782,20 +19613,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 684,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Inquiry Purpose",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -19852,34 +19669,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/CreateRepairTaskDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 899,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Insurance Partners",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1114,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Insurance Record",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -20544,48 +20333,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 927,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Live Data Sharing",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 800,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Live Data Sharing",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 939,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Loading disclosure…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/shared/rental-requirements-ui.tsx",
       "line": 471,
       "surface": "RENTAL",
@@ -20667,20 +20414,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DocumentsView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1095,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Make / Model",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -20964,20 +20697,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 453,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "New Inquiry",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 3,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageWorkQueue.tsx",
       "line": 263,
       "surface": "RENTAL",
@@ -21048,20 +20767,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1170,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No active live data sharing permissions.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/ScheduleBox.tsx",
       "line": 400,
       "surface": "RENTAL",
@@ -21116,62 +20821,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/VehicleInsightsCard.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1152,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No inquiries for this vehicle.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 506,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No insurance document stored for this vehicle.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 674,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No insurance partners available.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1134,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No insurance record on file.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -21312,34 +20961,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 616,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "No vehicles found.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 462,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "No vehicles match your filters",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -21989,20 +21610,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1121,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Policy #",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageDetailDrawer.tsx",
       "line": 220,
       "surface": "RENTAL",
@@ -22325,20 +21932,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1150,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Recent Inquiries",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/BillingInvoiceDetailDrawer.tsx",
       "line": 52,
       "surface": "RENTAL",
@@ -22523,48 +22116,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 831,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Reporting Frequency",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 831,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "LABEL",
-      "sample": "Reporting Frequency",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 885,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Review all selections before submitting to insurers.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 546,
       "surface": "RENTAL",
@@ -22576,20 +22127,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/PartsAccessoriesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 884,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Review Your Inquiry",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -22747,34 +22284,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 407,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Search vehicle, plate, VIN, insurer…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 587,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "PLACEHOLDER",
-      "sample": "Search vehicles…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/PartsAccessoriesView.tsx",
       "line": 418,
       "surface": "RENTAL",
@@ -22803,17 +22312,16 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 583,
+      "file": "rental/components/PartsAccessoriesView.tsx",
+      "line": 339,
       "surface": "RENTAL",
       "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Select a Vehicle",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "rental/components/InsurancesView.tsx",
         "rental/components/PartsAccessoriesView.tsx"
       ]
     },
@@ -22829,104 +22337,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DamagesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 636,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select Insurance Partners",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 801,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select ongoing data categories to share with insurers.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 756,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select the time period for the historical data to share.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 685,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select the type of insurance inquiry you want to send.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 715,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Select which historical data categories to include with this inquiry.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1245,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Send Insurance Inquiry",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 966,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Sending your insurance inquiry to the selected partners. This may take a moment.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -22969,20 +22379,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 977,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Something went wrong. Please try again.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -23081,34 +22477,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/TenantPricingBreakdownSection.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 976,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Submission Failed",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 965,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Submitting Inquiry…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -23249,34 +22617,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 913,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Time Range",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 755,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Time Range",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -23477,34 +22817,6 @@
       ]
     },
     {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 517,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Upload Insurance",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1143,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Upload Insurance Document",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
       "file": "rental/components/DataAnalyseView.tsx",
       "line": 1124,
       "surface": "RENTAL",
@@ -23530,34 +22842,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/users-roles/UserDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1125,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Valid From",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1127,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "Valid Until",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -23600,20 +22884,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/DataAnalyseView.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 1093,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TITLE",
-      "sample": "Vehicle Summary",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
@@ -23810,20 +23080,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/MarkRepairedDialog.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/InsurancesView.tsx",
-      "line": 804,
-      "surface": "RENTAL",
-      "module": "other Rental areas",
-      "category": "TEXT",
-      "sample": "You are authorizing ongoing sharing of these data categories with the selected insurance partners. You can revoke sharin",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/InsurancesView.tsx"
       ]
     },
     {
