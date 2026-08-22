@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '../../../components/ui/utils';
-import { DASHBOARD_LAYOUT } from './dashboardShell';
 import { shouldShowBottomScrollFade } from './dashboardPanelScrollBlur';
 
 interface DashboardPanelScrollBlurProps {
@@ -8,6 +7,9 @@ interface DashboardPanelScrollBlurProps {
   className?: string;
   scrollClassName?: string;
 }
+
+const SCROLL_BODY_CLASS =
+  'min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y scrollbar-thin [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]';
 
 /**
  * Scrollable dashboard panel body with a subtle bottom blur when more content
@@ -49,23 +51,26 @@ export function DashboardPanelScrollBlur({
   }, [syncFade, children]);
 
   return (
-    <div className={cn('relative min-h-0', className)}>
+    <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
       <div
         ref={scrollRef}
-        className={cn(DASHBOARD_LAYOUT.notificationsPanelScroll, scrollClassName)}
+        className={cn(SCROLL_BODY_CLASS, scrollClassName)}
+        aria-live="polite"
+        aria-relevant="additions text"
       >
         {children}
       </div>
-      <div
-        aria-hidden
-        className={cn(
-          'pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-14',
-          'bg-gradient-to-t from-[color:var(--surface-premium-bg-end)] via-[color:var(--surface-premium-bg-end)]/70 to-transparent',
-          'backdrop-blur-[4px] supports-[backdrop-filter]:backdrop-blur-[4px]',
-          'transition-opacity duration-200 motion-reduce:backdrop-blur-none motion-reduce:transition-none',
-          showBottomFade ? 'opacity-100' : 'opacity-0',
-        )}
-      />
+      {showBottomFade ? (
+        <div
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-12',
+            'bg-gradient-to-t from-[color:var(--surface-premium-bg-end)]/75 via-[color:var(--surface-premium-bg-end)]/30 to-transparent',
+            'backdrop-blur-[3px] supports-[backdrop-filter]:backdrop-blur-[3px]',
+            'motion-reduce:backdrop-blur-none',
+          )}
+        />
+      ) : null}
     </div>
   );
 }
