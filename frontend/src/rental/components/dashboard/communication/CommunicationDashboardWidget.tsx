@@ -43,6 +43,7 @@ export function CommunicationDashboardWidget({
   const dashboard = useCommunicationDashboard({
     orgId,
     enabled: canReadCommunication,
+    refreshSignal: vm.lastManualSyncAt,
   });
 
   if (!canReadCommunication) {

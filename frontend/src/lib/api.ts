@@ -4197,6 +4197,17 @@ export const api = {
         `/organizations/${orgId}/communication/conversations${qs ? `?${qs}` : ''}`,
       );
     },
+    getAttentionPreview: (
+      orgId: string,
+      query?: { limit?: number },
+    ) => {
+      const q = new URLSearchParams();
+      if (query?.limit != null) q.set('limit', String(query.limit));
+      const qs = q.toString();
+      return get<import('./communication/types').CommunicationAttentionPreviewResponse>(
+        `/organizations/${orgId}/communication/conversations/attention-preview${qs ? `?${qs}` : ''}`,
+      );
+    },
     getConversationSummary: (
       orgId: string,
       query?: import('./communication/types').CommunicationConversationListQuery,

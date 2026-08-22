@@ -11,9 +11,13 @@ import type {
   CommunicationConversationDetailDto,
   CommunicationConversationListResponseDto,
   CommunicationConversationSummaryDto,
+  CommunicationAttentionPreviewResponseDto,
   CommunicationEventListResponseDto,
 } from './dto/communication-read-response.dto';
-import type { CommunicationEventListQueryDto } from './dto/communication-read-shared.dto';
+import type {
+  CommunicationAttentionPreviewQueryDto,
+  CommunicationEventListQueryDto,
+} from './dto/communication-read-shared.dto';
 
 @Injectable()
 export class CommunicationReadService {
@@ -98,6 +102,24 @@ export class CommunicationReadService {
       filters: this.safeFilterNames(query),
     });
     return summary;
+  }
+
+  async listAttentionPreview(
+    organizationId: string,
+    query: CommunicationAttentionPreviewQueryDto,
+  ): Promise<CommunicationAttentionPreviewResponseDto> {
+    const started = Date.now();
+    const rows = await this.repository.listAttentionPreviewConversations(
+      organizationId,
+      query.limit,
+    );
+    this.logRead('list_attention_preview', organizationId, {
+      resultCount: rows.length,
+      durationMs: Date.now() - started,
+    });
+    return {
+      items: rows.map(mapConversationListItem),
+    };
   }
 
   private safeFilterNames(query: CommunicationConversationListQueryDto): string[] {

@@ -2,7 +2,6 @@ import type { CommunicationConversationListItem } from '../../../lib/communicati
 import type { CommunicationConversationSummary } from '../../../lib/communication/types';
 
 export const DASHBOARD_COMMUNICATION_ROW_LIMIT = 5;
-export const DASHBOARD_COMMUNICATION_CANDIDATE_LIMIT = 30;
 
 export type DashboardConversationPriorityTier = 1 | 2 | 3 | 4;
 

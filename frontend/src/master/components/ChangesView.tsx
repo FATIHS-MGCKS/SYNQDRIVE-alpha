@@ -41,10 +41,10 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Communication Center C8.5 — Dashboard Communication attention widget',
     summary: [
       'Added compact Communication dashboard widget below Operations/Notifications with Unread, Needs attention, and Unassigned metrics.',
-      'Prioritized conversation preview rows (max 5) from canonical C7 summary + list APIs; no timeline or provider reads.',
+      'Canonical attention-preview endpoint returns globally correct top-5 attention queue (tiered PostgreSQL queries); rejected arbitrary recent-list window ranking.',
       'Deep links into Communication Center for inbox filters and selected conversation via buildCommunicationCenterUrl.',
-      'RBAC (communication.read), org race safety, partial failure handling, loading/empty/error states, en/de i18n.',
-      'Playwright proofs for 390 / 1024 / 1440, metric links, and canonical-only request budget.',
+      'RBAC (communication.read), org race safety, partial failure handling, dashboard refresh via lastManualSyncAt, en/de i18n.',
+      'Playwright proofs for 390 / 1024 / 1440, exact endpoint request shapes, and canonical-only network budget.',
     ],
     reason:
       'C8.5 surfaces operational conversation attention on the dashboard without duplicating the full Communication Center inbox.',

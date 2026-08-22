@@ -20,6 +20,53 @@ function row(
 }
 
 describe('communication-dashboard-priority', () => {
+  it('fills top five rows across tiers deterministically', () => {
+    const base = Date.parse('2026-08-22T10:00:00.000Z');
+    const items = [
+      row({
+        id: 'human-a',
+        status: 'HUMAN_REQUIRED',
+        lastActivityAt: new Date(base + 4_000).toISOString(),
+      }),
+      row({
+        id: 'human-b',
+        status: 'HUMAN_REQUIRED',
+        lastActivityAt: new Date(base + 3_000).toISOString(),
+      }),
+      row({
+        id: 'uu-a',
+        unreadCount: 2,
+        assignedUser: null,
+        lastActivityAt: new Date(base + 2_000).toISOString(),
+      }),
+      row({
+        id: 'uu-b',
+        unreadCount: 1,
+        assignedUser: null,
+        lastActivityAt: new Date(base + 1_000).toISOString(),
+      }),
+      row({
+        id: 'u-assigned',
+        unreadCount: 3,
+        assignedUser: { id: 'u1', displayName: 'Ops' },
+        lastActivityAt: new Date(base + 5_000).toISOString(),
+      }),
+      row({
+        id: 'unassigned-only',
+        assignedUser: null,
+        lastActivityAt: new Date(base - 1_000).toISOString(),
+      }),
+    ];
+
+    expect(prioritizeDashboardConversations(items, 5).map((item) => item.id)).toEqual([
+      'human-a',
+      'human-b',
+      'uu-a',
+      'uu-b',
+      'u-assigned',
+    ]);
+  });
+
   it('orders conversations by tier then lastActivityAt desc then id', () => {
     const items = [
       row({ id: 'c-unread', unreadCount: 2, lastActivityAt: '2026-08-22T09:00:00.000Z' }),

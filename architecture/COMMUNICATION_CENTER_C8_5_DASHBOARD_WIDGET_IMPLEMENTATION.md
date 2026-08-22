@@ -1,8 +1,9 @@
 # Communication Center C8.5 — Dashboard Communication Widget Implementation
 
-**Date:** 2026-08-22  
-**Phase:** C8.5  
-**Branch:** `feature/communication-center-c8-5-dashboard-widget-40bb`  
+**Date:** 2026-08-22
+**Phase:** C8.5 (incl. attention-queue correctness hardening)
+**Branch:** `cursor/communication-center-c8-5-dashboard-widget-40bb`
+**PR:** #1183
 **Base:** `main` after PR #1174 (C8.4)
 
 ## 1. Scope
@@ -13,12 +14,12 @@ C8.5 adds a compact **Communication** dashboard widget that answers: *Which conv
 
 - Dashboard widget shell in standard (non–operator-focus) layout
 - Summary metrics: Unread, Needs attention, Unassigned
-- Prioritized conversation preview rows (max 5)
+- **Globally correct** prioritized conversation preview rows (max 5)
 - Deep links into Communication Center (inbox filters + selected conversation)
 - Channel/status indicators, attention badges, unread counts
 - Loading / empty / error / partial-failure states
 - RBAC (`communication.read`), org race safety, responsive behavior (390 / 1024 / 1440)
-- Unit + Playwright tests; dashboard non-regression
+- Unit + Playwright + PostgreSQL integration tests; dashboard non-regression
 
 **Out of scope**
 
@@ -49,31 +50,20 @@ Mobile stacking follows `DASHBOARD_LAYOUT.lowerAttentionGrid`: left column (noti
 
 **Decision:** mount `CommunicationDashboardWidget` in `notificationsSlot`, **below** Operations/Notifications, in the same left operational column as Tasks (adjacent on desktop).
 
-**Rationale**
-
-- Groups actionable operational attention with Notifications and Tasks
-- Avoids Fleet Readiness / vehicle-health KPI area
-- Preserves existing grid widths and card hierarchy
-- Matches product intent: “what needs human action now”
-
-Operator focus mode intentionally **excludes** the widget (no layout slot change in focus shell).
+Operator focus mode intentionally **excludes** the widget.
 
 ---
 
-## 4. Canonical data sources
+## 4. Canonical data sources (hardened)
 
 | Request | Endpoint | Purpose |
 |---------|----------|---------|
-| 1 | `GET /organizations/:orgId/communication/conversations/summary` | Exact metric counts |
-| 2 | `GET /organizations/:orgId/communication/conversations?limit=30` | Candidate pool for client-side priority |
+| 1 | `GET /organizations/:orgId/communication/conversations/summary` | Exact metric counts (authoritative) |
+| 2 | `GET /organizations/:orgId/communication/conversations/attention-preview?limit=5` | Globally correct attention queue rows |
 
-No new backend endpoint. C7 summary DTO already exposes:
+**Rejected approach:** `GET /conversations?limit=30` + client-side tier ranking.
 
-- `unreadConversations`
-- `requiresAttention` (human-required conversations)
-- `unassigned`
-
-List DTO: `CommunicationConversationListItem` (C7 read contract).
+**Why rejected:** Recent-list ordering (`lastActivityAt DESC`) does not guarantee that a `HUMAN_REQUIRED` conversation outside the first N rows appears in the widget. A larger arbitrary window (50/100/500) does not solve correctness.
 
 ---
 
@@ -89,21 +79,13 @@ interface CommunicationConversationSummary {
 }
 ```
 
-Widget maps:
-
-| UI label | Summary field |
-|----------|---------------|
-| Unread | `unreadConversations` |
-| Needs attention | `requiresAttention` |
-| Unassigned | `unassigned` |
-
-Counts are backend-authoritative; never inferred from loaded rows.
+Metrics are **never** inferred from attention-preview rows.
 
 ---
 
-## 6. Priority logic
+## 6. Global priority semantics
 
-Deterministic tiers (`communication-dashboard-priority.ts`):
+Canonical tier semantics (shared by backend attention-preview and frontend `communication-dashboard-priority.ts`):
 
 | Tier | Condition |
 |------|-----------|
@@ -112,165 +94,124 @@ Deterministic tiers (`communication-dashboard-priority.ts`):
 | 3 | `unreadCount > 0` |
 | 4 | unassigned AND not terminal status |
 
-**Terminal statuses excluded from unassigned-only tier:** `RESOLVED`, `FAILED` (unless unread).
+**Terminal statuses excluded from tier 4:** `RESOLVED`, `FAILED` (unless unread).
 
-Sort within tier: `lastActivityAt DESC`, then `id` ASC. Dedupe by `conversation.id`. Cap: 5 rows.
-
----
-
-## 7. Request budget
-
-**Target:** 2 requests per dashboard mount  
-**Maximum:** 2 (summary + list)  
-**No** per-row detail, events, context, or provider config requests.
-
-Hook: `useCommunicationDashboard` — parallel `Promise.allSettled`, independent partial failure.
+Within tier: `lastActivityAt DESC`, then `id ASC`. Dedupe by `conversation.id`. Cap: 5 rows.
 
 ---
 
-## 8. Row display model
+## 7. Attention-preview backend (C7 extension)
 
-Component: `CommunicationDashboardRow`
+**Endpoint:** `GET /organizations/:orgId/communication/conversations/attention-preview`
 
-| Layer | Source |
-|-------|--------|
-| Title | `resolveConversationTitle` (C8.2) |
-| Preview | `resolveConversationPreview` (C8.2), one line |
-| Channel | Icon + localized channel label |
-| Time | `formatCommunicationTimestamp` |
-| Context | `buildConversationContextLabel` (optional, one line) |
-| Badge | Human required > Unassigned (single primary badge) |
-| Unread | Small count badge when `unreadCount > 0` (99+ cap) |
+- Provider-neutral canonical read (not a dashboard-specific provider endpoint)
+- RBAC: `communication.read`
+- Org-scoped via `OrgScopingGuard`
+- Response: `{ items: CommunicationConversationListItem[] }` (list DTO only; no pagination)
+- Query: `limit` (default 5, max 10)
 
-List DTO only — no `getConversation`, events, or metadata inspection.
+**Repository strategy:** up to four **bounded** tier queries (`take = remaining limit`), excluding already-selected IDs. No `findMany(all)` + in-memory sort.
 
----
+Uses indexed fields: `organizationId`, `status`, `unreadCount`, `assignedUserId`, `lastActivityAt`.
 
-## 9. Deep links
+Files:
 
-Central helper: `buildCommunicationCenterUrl` / `buildCommunicationCenterState` (`communication-center-url.ts`).
-
-| Action | URL state |
-|--------|-----------|
-| Row click | `view=communication-center`, `conversationId`, `communicationChannel`, `communicationPane=conversation` |
-| Unread metric | `communicationUnread=true` |
-| Needs attention | `communicationStatus=HUMAN_REQUIRED` |
-| Unassigned metric | `communicationAssignment=unassigned` |
-| Header “Open Communication Center” | Inbox, no filters |
-
-`App.tsx` → `onOpenCommunicationCenter` syncs URL + `handleViewChange('communication-center')`.
+- `communication-read.attention-preview.ts` — tier where builders
+- `communication-read.repository.ts` — `listAttentionPreviewConversations`
+- `communication-read.service.ts` / `communication-read.controller.ts`
 
 ---
 
-## 10. RBAC
+## 8. Request budget
 
-- Widget renders only when `hasPermission('communication', 'read')`
-- Hook `enabled: false` without permission → **no API calls**
-- No disabled shell for unauthorized users
+| Scenario | Summary | Attention preview | Total |
+|----------|---------|-------------------|-------|
+| Attention needed | 1 | 1 | **2** |
+| No attention (all metrics zero) | 1 | 0 (short-circuit) | **1** |
 
----
+Hook fetches summary first; skips attention-preview when `requiresAttention`, `unreadConversations`, and `unassigned` are all zero.
 
-## 11. Tenant / race safety
-
-`useOrgScopedGenerationRef` in `useCommunicationDashboard`:
-
-- Late responses from prior org ignored
-- State cleared on org change / disabled
+No detail / events / context / provider config / native provider calls.
 
 ---
 
-## 12. Loading / empty / error
+## 9. Row display model
 
-| State | Behavior |
-|-------|----------|
-| Loading | Compact skeleton (`NotificationCardSkeleton`, 3 rows) |
-| Empty attention | “No conversations need attention” (positive neutral copy) |
-| Both failed | Compact `ErrorState` + retry |
-| Summary failed, list OK | Metrics `—`; rows render |
-| List failed, summary OK | Metrics visible; rows error line |
+Unchanged from initial C8.5 — `CommunicationDashboardRow` uses C8.2 display helpers on list DTO fields only.
 
 ---
 
-## 13. Partial failure
+## 10. Deep links
 
-Independent summary/list promises; valid data retained when sibling request fails. Retry reloads both.
-
----
-
-## 14. Responsive behavior
-
-- **1440:** aligns with adjacent operational cards; `max-lg:max-h-[min(320px,42vh)]` on widget
-- **1024:** grid unchanged; metric chips in 3-column row
-- **390:** metrics wrap; rows full-width tappable; scroll blur for overflow
+Unchanged — `buildCommunicationCenterUrl` / `buildCommunicationCenterState`.
 
 ---
 
-## 15. Accessibility
+## 11. RBAC
 
-- Widget: `section` + `aria-label`
-- Metrics: `button` with visible focus ring
-- Rows: `button` with `aria-label` including channel + title
-- Unread count: `aria-label` via `communication.inbox.unreadCount`
+`communication.read` required; widget absent and zero Communication requests without permission.
 
 ---
 
-## 16. i18n
+## 12. Tenant / race safety
 
-Keys under `communication.dashboard.*` (en + de): title, subtitle, metrics, badges, empty, error, retry.
-
-Reuses C8.2 keys for channels, previews, timestamps where applicable.
+`useOrgScopedGenerationRef` guards summary and attention-preview responses on org switch.
 
 ---
 
-## 17. Security
+## 13. Loading / empty / error
 
-- Preview rendered as plain React text (no HTML / linkification)
-- No preview in logs, analytics, or data attributes
-- List DTO allowlist only — no metadata URL inspection
-- Voice rows use semantic call fallback, no transcript
+Sequential load: summary → (optional) attention-preview. Skeleton during either phase.
 
----
-
-## 18. Performance / request count
-
-- Widget skeleton does not block whole dashboard render
-- No independent polling; loads on mount (aligns with dashboard one-shot fetch model)
-- 2 canonical GETs; client-side priority on ≤30 items
+Empty when summary reports zero attention signals.
 
 ---
 
-## 19. Dashboard non-regression
+## 14. Partial failure
 
-- No changes to Fleet Readiness, Notifications, Tasks, Business Pulse grid slots
-- Widget added as sibling below notifications in existing left column
-- Existing dashboard E2E + unit suites remain green
+| Failure | Behavior |
+|---------|----------|
+| Summary fails, preview OK | Rows render; metrics `—` |
+| Summary OK, preview fails | Metrics visible; row-area error |
+| Both fail | Compact widget error + retry |
 
 ---
 
-## 20. Tests
+## 15. Dashboard refresh integration
+
+Widget reloads when `vm.lastManualSyncAt` changes (set by `refreshAll()` in operator focus mode and available on standard dashboard VM). No independent polling.
+
+---
+
+## 16. Responsive / accessibility / i18n / security
+
+Unchanged from initial C8.5 implementation.
+
+---
+
+## 17. Tests
 
 | Area | File |
 |------|------|
-| Priority tiers / dedupe / terminal exclusion | `communication-dashboard-priority.test.ts` |
-| Deep-link URL builder | `communication-center-url.test.ts` |
-| Hook org race + partial failure | `useCommunicationDashboard.test.ts` |
-| Widget RBAC, row/metric clicks, secret boundary | `communicationDashboardWidget.test.tsx` |
-| E2E 390 / 1024 / 1440, metric links, network proof | `e2e/communication-dashboard-widget.spec.ts` |
+| Tier semantics (unit) | `communication-dashboard-priority.test.ts` |
+| >30 window regression (proves old approach fails) | `communication-dashboard-priority.global.test.ts` |
+| Attention-preview tier builders | `communication-read.attention-preview.spec.ts` |
+| Global correctness (35+ conv, tier fill, terminal) | `communication-read.postgres.integration.spec.ts` (AP1–AP3) |
+| Hook short-circuit / race / refresh | `useCommunicationDashboard.test.ts` |
+| E2E endpoint shape proof | `e2e/communication-dashboard-widget.spec.ts` |
 
 ---
 
-## 21. Known limitations
+## 18. Known limitations
 
 1. Operator focus mode dashboard does not show Communication widget.
-2. Priority uses client-side ranking on first 30 list items — exact row order may omit lower-tier items outside the candidate window (metrics remain exact via summary).
-3. Dashboard does not auto-refresh Communication data on `vm.refreshAll()` yet (mount-only; same as initial C8.5 scope).
-4. Human-required metric deep link depends on C8.2 URL filter support (`communicationStatus=HUMAN_REQUIRED`) — implemented and tested.
+2. Standard dashboard `refreshAll()` is only wired via `lastManualSyncAt` — no periodic background refresh.
 
 ---
 
-## 22. Next phase readiness
+## 19. Next phase readiness
 
-**READY FOR COMMUNICATION WRITE PHASE** — read path, deep links, and attention surfacing are complete. Write operations (reply, assign, resolve) remain in Communication Center proper.
+**READY FOR COMMUNICATION WRITE PHASE** — read path, globally correct attention queue, deep links complete.
 
 ---
 
@@ -278,11 +219,9 @@ Reuses C8.2 keys for channels, previews, timestamps where applicable.
 
 | File | Role |
 |------|------|
-| `frontend/src/rental/components/dashboard/communication/CommunicationDashboardWidget.tsx` | Widget shell |
-| `frontend/src/rental/components/dashboard/communication/CommunicationDashboardSummary.tsx` | Metric chips |
-| `frontend/src/rental/components/dashboard/communication/CommunicationDashboardRow.tsx` | Compact row |
-| `frontend/src/rental/components/dashboard/useCommunicationDashboard.ts` | Data hook |
-| `frontend/src/rental/components/communication-center/communication-dashboard-priority.ts` | Priority + dedupe |
-| `frontend/src/rental/components/communication-center/communication-center-url.ts` | Deep-link helpers |
-| `frontend/src/rental/components/DashboardView.tsx` | Placement |
-| `frontend/src/rental/App.tsx` | Navigation wiring |
+| `backend/.../communication-read.attention-preview.ts` | Tier where builders |
+| `backend/.../communication-read.repository.ts` | Bounded tier queries |
+| `backend/.../communication-read.controller.ts` | `attention-preview` route |
+| `frontend/.../useCommunicationDashboard.ts` | Summary + preview hook |
+| `frontend/.../communication-dashboard-priority.ts` | Shared tier semantics (tests + helpers) |
+| `frontend/.../CommunicationDashboardWidget.tsx` | Widget shell |

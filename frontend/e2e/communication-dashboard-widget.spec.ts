@@ -57,8 +57,8 @@ test.describe('Dashboard Communication widget E2E (mocked API)', () => {
       }
       if (
         url.includes('/api/') &&
-        (/whatsapp|sent\.dm|twilio|elevenlabs/i.test(url) ||
-          (url.includes('/sms/') && !url.includes('/communication/')))
+        !url.includes('/communication/') &&
+        (/whatsapp|sent\.dm|twilio|elevenlabs/i.test(url) || url.includes('/sms/'))
       ) {
         providerRequests.push(url);
       }
@@ -69,8 +69,16 @@ test.describe('Dashboard Communication widget E2E (mocked API)', () => {
     const dashboardLoadRequests = communicationRequests.filter((url) =>
       url.includes(`/organizations/${TEST_ORG_ID}/communication/`),
     );
-    expect(dashboardLoadRequests.length).toBeGreaterThanOrEqual(2);
-    expect(dashboardLoadRequests.length).toBeLessThanOrEqual(3);
+    const summaryRequests = dashboardLoadRequests.filter((url) => url.includes('/conversations/summary'));
+    const previewRequests = dashboardLoadRequests.filter((url) =>
+      url.includes('/conversations/attention-preview'),
+    );
+    const listRequests = dashboardLoadRequests.filter(
+      (url) => url.includes('/conversations') && !url.includes('/summary') && !url.includes('attention-preview'),
+    );
+    expect(summaryRequests).toHaveLength(1);
+    expect(previewRequests).toHaveLength(1);
+    expect(listRequests).toHaveLength(0);
 
     const widget = page.getByTestId('dashboard-communication-widget');
     await expect(widget.getByTestId('dashboard-communication-summary')).toBeVisible();

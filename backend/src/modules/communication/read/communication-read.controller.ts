@@ -6,6 +6,7 @@ import { RequireCommunicationPermission } from '@shared/decorators/require-commu
 import { CommunicationReadService } from './communication-read.service';
 import {
   CommunicationConversationListQueryDto,
+  CommunicationAttentionPreviewQueryDto,
   CommunicationEventListQueryDto,
 } from './dto/communication-read-shared.dto';
 
@@ -21,6 +22,15 @@ export class CommunicationReadController {
     @Query() query: CommunicationConversationListQueryDto,
   ) {
     return this.readService.summarizeConversations(orgId, query);
+  }
+
+  @Get('conversations/attention-preview')
+  @RequireCommunicationPermission('read')
+  listAttentionPreview(
+    @Param('orgId') orgId: string,
+    @Query() query: CommunicationAttentionPreviewQueryDto,
+  ) {
+    return this.readService.listAttentionPreview(orgId, query);
   }
 
   @Get('conversations')

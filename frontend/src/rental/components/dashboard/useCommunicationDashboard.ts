@@ -6,20 +6,20 @@ import type {
 } from '../../../lib/communication/types';
 import { useOrgScopedGenerationRef } from '../../hooks/useOrgScopedGeneration';
 import {
-  DASHBOARD_COMMUNICATION_CANDIDATE_LIMIT,
   DASHBOARD_COMMUNICATION_ROW_LIMIT,
   dashboardCommunicationNeedsAttention,
-  prioritizeDashboardConversations,
 } from '../communication-center/communication-dashboard-priority';
 
 interface UseCommunicationDashboardOptions {
   orgId: string | null | undefined;
   enabled?: boolean;
+  refreshSignal?: string | null;
 }
 
 export function useCommunicationDashboard({
   orgId,
   enabled = true,
+  refreshSignal = null,
 }: UseCommunicationDashboardOptions) {
   const { isCurrent, nextGeneration } = useOrgScopedGenerationRef(orgId);
   const [summary, setSummary] = useState<CommunicationConversationSummary | null>(null);
@@ -46,52 +46,52 @@ export function useCommunicationDashboard({
     setListLoading(true);
     setSummaryError(null);
     setListError(null);
+    setRows([]);
 
-    const summaryPromise = api.communication
-      .getConversationSummary(requestOrgId)
-      .then((result) => {
-        if (!isCurrent(requestOrgId, generation)) return;
-        setSummary(result);
-      })
-      .catch((err) => {
-        if (!isCurrent(requestOrgId, generation)) return;
-        setSummaryError(getErrorMessage(err, 'Could not load communication summary.'));
-        setSummary(null);
-      })
-      .finally(() => {
-        if (isCurrent(requestOrgId, generation)) {
-          setSummaryLoading(false);
-        }
+    let summaryResult: CommunicationConversationSummary | null = null;
+
+    try {
+      summaryResult = await api.communication.getConversationSummary(requestOrgId);
+      if (!isCurrent(requestOrgId, generation)) return;
+      setSummary(summaryResult);
+    } catch (err) {
+      if (!isCurrent(requestOrgId, generation)) return;
+      setSummaryError(getErrorMessage(err, 'Could not load communication summary.'));
+      setSummary(null);
+    } finally {
+      if (isCurrent(requestOrgId, generation)) {
+        setSummaryLoading(false);
+      }
+    }
+
+    if (!isCurrent(requestOrgId, generation)) return;
+
+    if (!dashboardCommunicationNeedsAttention(summaryResult)) {
+      setRows([]);
+      setListLoading(false);
+      return;
+    }
+
+    try {
+      const preview = await api.communication.getAttentionPreview(requestOrgId, {
+        limit: DASHBOARD_COMMUNICATION_ROW_LIMIT,
       });
-
-    const listPromise = api.communication
-      .listConversations(requestOrgId, { limit: DASHBOARD_COMMUNICATION_CANDIDATE_LIMIT })
-      .then((result) => {
-        if (!isCurrent(requestOrgId, generation)) return;
-        setRows(
-          prioritizeDashboardConversations(
-            result.items,
-            DASHBOARD_COMMUNICATION_ROW_LIMIT,
-          ),
-        );
-      })
-      .catch((err) => {
-        if (!isCurrent(requestOrgId, generation)) return;
-        setListError(getErrorMessage(err, 'Could not load communication conversations.'));
-        setRows([]);
-      })
-      .finally(() => {
-        if (isCurrent(requestOrgId, generation)) {
-          setListLoading(false);
-        }
-      });
-
-    await Promise.allSettled([summaryPromise, listPromise]);
+      if (!isCurrent(requestOrgId, generation)) return;
+      setRows(preview.items);
+    } catch (err) {
+      if (!isCurrent(requestOrgId, generation)) return;
+      setListError(getErrorMessage(err, 'Could not load communication conversations.'));
+      setRows([]);
+    } finally {
+      if (isCurrent(requestOrgId, generation)) {
+        setListLoading(false);
+      }
+    }
   }, [enabled, isCurrent, nextGeneration, orgId]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshSignal]);
 
   const loading = summaryLoading || listLoading;
   const needsAttention = useMemo(() => dashboardCommunicationNeedsAttention(summary), [summary]);

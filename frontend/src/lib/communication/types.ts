@@ -65,6 +65,10 @@ export interface CommunicationConversationListResponse {
   hasMore: boolean;
 }
 
+export interface CommunicationAttentionPreviewResponse {
+  items: CommunicationConversationListItem[];
+}
+
 export interface CommunicationConversationSummary {
   totalUnreadMessages: number;
   unreadConversations: number;

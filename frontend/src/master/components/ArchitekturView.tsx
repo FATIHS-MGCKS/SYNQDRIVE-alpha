@@ -1168,7 +1168,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     color: 'text-[color:var(--status-info)]',
     apis: [
       { label: 'Placement', detail: 'Standard dashboard lower-left column below Operations/Notifications; excluded from operator focus mode' },
-      { label: 'Data', detail: 'GET conversations/summary + GET conversations?limit=30 — client priority tiers; max 5 rows; no detail/events' },
+      { label: 'Data', detail: 'GET conversations/summary + GET conversations/attention-preview — globally correct tiered queue; no arbitrary recent-window ranking' },
       { label: 'Metrics', detail: 'unreadConversations, requiresAttention, unassigned from canonical summary DTO' },
       { label: 'Deep links', detail: 'buildCommunicationCenterUrl — unread/status/assignment filters + conversationId + channel + pane' },
       { label: 'RBAC', detail: 'communication.read required; widget absent and no API calls when missing' },

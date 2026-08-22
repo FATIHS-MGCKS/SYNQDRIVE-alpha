@@ -1405,6 +1405,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     setTimeframe,
     isRefreshing,
     refreshAll,
+    lastManualSyncAt,
     stations: stationsApi,
     selectedStationId,
     selectedStationName,

@@ -742,6 +742,7 @@ export interface DashboardViewModel {
   setTimeframe: (value: DashboardTimeframe) => void;
   isRefreshing: boolean;
   refreshAll: () => Promise<void>;
+  lastManualSyncAt: string | null;
 
   stations: Station[];
   selectedStationId: string | null;

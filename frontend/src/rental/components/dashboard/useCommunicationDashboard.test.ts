@@ -8,7 +8,7 @@ vi.mock('../../../lib/api', () => ({
   api: {
     communication: {
       getConversationSummary: vi.fn(),
-      listConversations: vi.fn(),
+      getAttentionPreview: vi.fn(),
     },
   },
   getErrorMessage: (err: unknown) => (err instanceof Error ? err.message : 'error'),
@@ -26,7 +26,7 @@ describe('useCommunicationDashboard', () => {
       requiresAttention: 1,
       byChannel: {},
     });
-    vi.mocked(api.communication.listConversations).mockResolvedValue({
+    vi.mocked(api.communication.getAttentionPreview).mockResolvedValue({
       items: [
         {
           id: 'conv-a',
@@ -37,8 +37,6 @@ describe('useCommunicationDashboard', () => {
           displayLabel: 'A',
         },
       ],
-      nextCursor: null,
-      hasMore: false,
     });
   });
 
@@ -63,9 +61,9 @@ describe('useCommunicationDashboard', () => {
       });
     });
 
-    vi.mocked(api.communication.listConversations).mockImplementation((orgId: string) => {
+    vi.mocked(api.communication.getAttentionPreview).mockImplementation((orgId: string) => {
       if (orgId === 'org-a') return orgAPromise as never;
-      return Promise.resolve({ items: [], nextCursor: null, hasMore: false });
+      return Promise.resolve({ items: [] });
     });
 
     const { result, rerender, unmount } = renderHook(
@@ -92,8 +90,8 @@ describe('useCommunicationDashboard', () => {
     unmount();
   });
 
-  it('retains summary when list request fails', async () => {
-    vi.mocked(api.communication.listConversations).mockRejectedValue(new Error('list failed'));
+  it('retains summary when attention preview request fails', async () => {
+    vi.mocked(api.communication.getAttentionPreview).mockRejectedValue(new Error('preview failed'));
 
     const { result, unmount } = renderHook(() =>
       useCommunicationDashboard({ orgId: 'org-1', enabled: true }),
@@ -103,6 +101,40 @@ describe('useCommunicationDashboard', () => {
     expect(result.current.summary?.unreadConversations).toBe(1);
     expect(result.current.listError).toBeTruthy();
     expect(result.current.rows).toEqual([]);
+
+    unmount();
+  });
+
+  it('skips attention preview when summary reports no attention', async () => {
+    vi.mocked(api.communication.getConversationSummary).mockResolvedValue({
+      totalUnreadMessages: 0,
+      unreadConversations: 0,
+      unassigned: 0,
+      requiresAttention: 0,
+      byChannel: {},
+    });
+
+    const { result, unmount } = renderHook(() =>
+      useCommunicationDashboard({ orgId: 'org-1', enabled: true }),
+    );
+
+    await waitForHook(() => result.current.loading === false);
+    expect(api.communication.getAttentionPreview).not.toHaveBeenCalled();
+    expect(result.current.rows).toEqual([]);
+
+    unmount();
+  });
+
+  it('reloads when refreshSignal changes', async () => {
+    const { rerender, unmount } = renderHook(
+      ({ refreshSignal }) =>
+        useCommunicationDashboard({ orgId: 'org-1', enabled: true, refreshSignal }),
+      { initialProps: { refreshSignal: null as string | null } },
+    );
+
+    await waitForHook(() => vi.mocked(api.communication.getConversationSummary).mock.calls.length === 1);
+    rerender({ refreshSignal: '2026-08-22T12:00:00.000Z' });
+    await waitForHook(() => vi.mocked(api.communication.getConversationSummary).mock.calls.length === 2);
 
     unmount();
   });

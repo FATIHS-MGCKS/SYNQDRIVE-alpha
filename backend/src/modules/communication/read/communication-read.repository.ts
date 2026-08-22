@@ -26,6 +26,11 @@ import {
   type CommunicationConversationListRow,
   type CommunicationEventRow,
 } from './communication-read.mapper';
+import {
+  COMMUNICATION_ATTENTION_PREVIEW_TIERS,
+  buildCommunicationAttentionPreviewTierWhere,
+  resolveCommunicationAttentionPreviewLimit,
+} from './communication-read.attention-preview';
 import type { CommunicationConversationListQueryDto } from './dto/communication-read-shared.dto';
 
 export interface CommunicationConversationSummaryCounts {
@@ -71,6 +76,39 @@ export class CommunicationReadRepository {
       items: page,
       meta: { limit, nextCursor, hasMore },
     };
+  }
+
+  async listAttentionPreviewConversations(
+    organizationId: string,
+    limit?: number,
+  ): Promise<CommunicationConversationListRow[]> {
+    const resolvedLimit = resolveCommunicationAttentionPreviewLimit(limit);
+    const result: CommunicationConversationListRow[] = [];
+    const excludeIds: string[] = [];
+
+    for (const tier of COMMUNICATION_ATTENTION_PREVIEW_TIERS) {
+      if (result.length >= resolvedLimit) break;
+
+      const rows = await this.prisma.communicationConversation.findMany({
+        where: {
+          AND: [
+            { organizationId },
+            buildCommunicationAttentionPreviewTierWhere(tier),
+            ...(excludeIds.length > 0 ? [{ id: { notIn: excludeIds } }] : []),
+          ],
+        },
+        select: CONVERSATION_LIST_SELECT,
+        orderBy: [{ lastActivityAt: 'desc' }, { id: 'asc' }],
+        take: resolvedLimit - result.length,
+      });
+
+      for (const row of rows) {
+        result.push(row);
+        excludeIds.push(row.id);
+      }
+    }
+
+    return result;
   }
 
   async findConversationById(
