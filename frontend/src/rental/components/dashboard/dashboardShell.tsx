@@ -11,18 +11,18 @@ export const DASHBOARD_LAYOUT = {
   focusStack: 'space-y-4',
   opsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:items-stretch',
   /**
-   * Desktop: left stack (KPIs + Finanzen) | Meldungen (height-matched, scroll).
-   * Mobile: KPIs → Meldungen → Finanzen (`display:contents` + order on children).
+   * Desktop: header card with 3 operational modules + finance.
+   * Mobile: stacked ops modules, then finance, then lower attention grid.
    */
-  controlFinanceGrid:
+  controlHeaderSlot: 'order-1 min-w-0 w-full',
+  controlOpsGrid:
+    'grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:items-stretch lg:gap-3.5',
+  lowerAttentionGrid:
     'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
-  /** Wraps KPI + finance on desktop; `contents` keeps mobile grid order on children. */
-  controlLeftColumn:
-    'contents lg:col-start-1 lg:flex lg:min-h-0 lg:flex-col lg:gap-4',
-  controlKpiSlot: 'order-1 min-w-0 w-full',
-  financeSlot: 'order-3 min-w-0 w-full lg:order-none',
   notificationsSlot:
-    'order-2 flex min-h-0 w-full min-w-0 flex-col overflow-hidden lg:col-start-2 lg:row-start-1',
+    'order-1 flex min-h-0 w-full min-w-0 flex-col overflow-hidden lg:col-start-1 lg:row-start-1',
+  tasksSlot:
+    'order-2 flex min-h-0 w-full min-w-0 flex-col lg:col-start-2 lg:row-start-1',
   /** Scrollable notification list body (sidebar layout, right column). */
   notificationsPanelScroll:
     'min-h-0 flex-1 overflow-y-auto overscroll-y-contain scrollbar-thin [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]',

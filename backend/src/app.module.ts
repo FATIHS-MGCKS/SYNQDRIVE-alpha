@@ -65,6 +65,7 @@ import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/vo
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { SmsPersistenceModule } from '@modules/sms/sms-persistence.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
+import { DashboardUtilizationModule } from '@modules/dashboard-utilization/dashboard-utilization.module';
 import { EvaluationsMetricsModule } from '@modules/evaluations-metrics/evaluations-metric.module';
 import { EvaluationsAnalyticsModule } from '@modules/evaluations-analytics/evaluations-analytics.module';
 import { EvaluationsFinanceModule } from '@modules/evaluations-finance/evaluations-finance.module';
@@ -262,6 +263,7 @@ export class AppModule {
         WhatsAppModule,
         SmsPersistenceModule,
         BusinessInsightsModule,
+        DashboardUtilizationModule,
         EvaluationsMetricsModule,
         EvaluationsAnalyticsModule,
         EvaluationsFinanceModule,

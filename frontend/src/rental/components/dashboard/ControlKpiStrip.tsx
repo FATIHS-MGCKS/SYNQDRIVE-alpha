@@ -27,6 +27,9 @@ interface ControlKpiStripProps {
   embedded?: boolean;
   locale?: string;
   dataFreshness?: DataFreshnessSummary;
+  /** Defaults to twin ready + operations cards. */
+  sliceIds?: DashboardSliceId[];
+  className?: string;
 }
 
 /**
@@ -44,8 +47,9 @@ function kpiStripGapClass(embedded: boolean): string {
   return embedded ? 'gap-3 sm:gap-3.5' : 'gap-1.5';
 }
 
-function kpiGridClass(embedded: boolean): string {
-  return cn('grid grid-cols-2 items-stretch', kpiStripGapClass(embedded));
+function kpiGridClass(embedded: boolean, columnCount: number): string {
+  const cols = columnCount === 1 ? 'grid-cols-1' : 'grid-cols-2';
+  return cn('grid items-stretch', cols, kpiStripGapClass(embedded));
 }
 
 function kpiCardClass(
@@ -382,25 +386,31 @@ export function ControlKpiStrip({
   embedded = false,
   locale,
   dataFreshness,
+  sliceIds = VISIBLE_KPI_ORDER,
+  className,
 }: ControlKpiStripProps) {
   const loading = dataFreshness
     ? !dataFreshness.todayBookingsLoaded || dataFreshness.fleetLoading
     : false;
 
   if (loading) {
-    const gridClass = kpiGridClass(embedded);
+    const gridClass = kpiGridClass(embedded, sliceIds.length);
     const skeletonCardClass = embedded
       ? `${TWIN_KPI_MIN_HEIGHT_EMBEDDED} rounded-2xl p-3.5`
       : undefined;
 
     return (
-      <SkeletonMetricGrid count={2} className={cn(gridClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />
+      <SkeletonMetricGrid
+        count={sliceIds.length}
+        className={cn(gridClass, sliceIds.length === 1 && '!grid-cols-1')}
+        cardClassName={skeletonCardClass}
+      />
     );
   }
 
   return (
-    <div className={kpiGridClass(embedded)}>
-      {VISIBLE_KPI_ORDER.map((id) => (
+    <div className={cn(kpiGridClass(embedded, sliceIds.length), className)}>
+      {sliceIds.map((id) => (
         <KpiStripButton
           key={id}
           id={id}

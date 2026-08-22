@@ -274,8 +274,9 @@ describe('DashboardView integration contract', () => {
   const testDir = dirname(fileURLToPath(import.meta.url));
   const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
 
-  it('renders tasks overview below controlFinanceGrid in standard layout only', () => {
-    expect(dashboardViewSrc).toMatch(/controlFinanceGrid[\s\S]*DashboardTasksOverviewPanel/);
+  it('renders tasks overview beside notifications in lowerAttentionGrid', () => {
+    expect(dashboardViewSrc).toMatch(/lowerAttentionGrid[\s\S]*DashboardTasksOverviewPanel/);
+    expect(dashboardViewSrc).toMatch(/tasksSlot[\s\S]*DashboardTasksOverviewPanel/);
     const focusBranch = dashboardViewSrc.match(
       /if \(vm\.operatorFocusMode\) \{[\s\S]*?\n {2}\}\n\n {2}return/,
     )?.[0];
@@ -283,11 +284,10 @@ describe('DashboardView integration contract', () => {
     expect(focusBranch).not.toContain('DashboardTasksOverviewPanel');
   });
 
-  it('does not alter existing mobile order slots', () => {
+  it('uses stacked mobile order for notifications then tasks', () => {
     const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
-    expect(shellSrc).toMatch(/controlKpiSlot:[\s\S]*order-1/);
-    expect(shellSrc).toMatch(/notificationsSlot:[\s\S]*order-2/);
-    expect(shellSrc).toMatch(/financeSlot:[\s\S]*order-3/);
+    expect(shellSrc).toMatch(/notificationsSlot:[\s\S]*order-1/);
+    expect(shellSrc).toMatch(/tasksSlot:[\s\S]*order-2/);
   });
 });
 

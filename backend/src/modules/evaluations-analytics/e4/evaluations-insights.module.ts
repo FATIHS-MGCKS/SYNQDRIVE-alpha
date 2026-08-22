@@ -25,6 +25,6 @@ import { EvaluationsInsightsService } from './evaluations-insights.service';
   ],
   controllers: [EvaluationsInsightsController],
   providers: [EvaluationsInsightsService, EvaluationsInsightsRepository],
-  exports: [EvaluationsInsightsService],
+  exports: [EvaluationsInsightsService, EvaluationsInsightsRepository],
 })
 export class EvaluationsInsightsModule {}

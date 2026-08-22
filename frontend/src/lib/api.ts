@@ -4761,6 +4761,40 @@ export const api = {
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
   },
+  dashboardUtilization: {
+    getOverview: (
+      orgId: string,
+      params?: { year?: number; month?: number; stationId?: string | null },
+    ) => {
+      const search = new URLSearchParams();
+      if (params?.year != null) search.set('year', String(params.year));
+      if (params?.month != null) search.set('month', String(params.month));
+      if (params?.stationId) search.set('stationId', params.stationId);
+      const suffix = search.toString() ? `?${search.toString()}` : '';
+      return get<{
+        status: 'AVAILABLE' | 'PARTIAL' | 'UNAVAILABLE' | 'ERROR';
+        reason: string | null;
+        year: number;
+        month: number;
+        isPartialMonth: boolean;
+        stationScoped: boolean;
+        generatedAt: string;
+        monthMetrics: {
+          utilizationPercent: number | null;
+          bookingCount: number;
+          utilizationDeltaPp: number | null;
+          bookingDeltaPercent: number | null;
+        };
+        previousMonthMetrics: {
+          utilizationPercent: number | null;
+          bookingCount: number;
+          utilizationDeltaPp: number | null;
+          bookingDeltaPercent: number | null;
+        };
+        days: Array<{ date: string; utilizationPercent: number | null }>;
+      }>(`/organizations/${orgId}/dashboard/utilization${suffix}`);
+    },
+  },
   notifications: {
     list: (
       orgId: string,
