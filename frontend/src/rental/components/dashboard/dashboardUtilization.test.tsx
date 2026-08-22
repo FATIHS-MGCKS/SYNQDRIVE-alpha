@@ -195,9 +195,11 @@ describe('dashboard utilization layout contract', () => {
   const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
   const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
 
-  it('places utilization panel in 3-column ops grid', () => {
-    expect(shellSrc).toMatch(/controlOpsGrid:[\s\S]*lg:grid-cols-3/);
-    expect(dashboardViewSrc).toMatch(/controlOpsGrid[\s\S]*DashboardUtilizationPanel/);
+  it('places utilization panel beside ops and finance on desktop', () => {
+    expect(shellSrc).toMatch(/controlFinanceGrid:[\s\S]*lg:grid-cols-2/);
+    expect(shellSrc).toMatch(/utilizationSlot:[\s\S]*lg:col-start-2/);
+    expect(dashboardViewSrc).toMatch(/controlFinanceGrid[\s\S]*DashboardUtilizationPanel/);
+    expect(dashboardViewSrc).toMatch(/controlLeftColumn[\s\S]*ControlKpiStrip[\s\S]*FinanceKpiStrip/);
   });
 
   it('places notifications left and tasks right on desktop', () => {

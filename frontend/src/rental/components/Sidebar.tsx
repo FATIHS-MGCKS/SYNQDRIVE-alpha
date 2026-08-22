@@ -357,8 +357,8 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          {/* Centered Logo */}
-          <SynqLogo className="h-4 w-auto object-contain" />
+          {/* Centered Logo — larger on mobile for readability (~6.9:1 wordmark). */}
+          <SynqLogo className="h-6 w-auto max-w-[200px] object-contain" />
 
           {/* Spacer for symmetry */}
           <div className="w-10" />
