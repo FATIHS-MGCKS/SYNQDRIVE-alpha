@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-data-authorization-global-closure-p2-2-18-2026-08-22',
+    version: '4.9.945',
+    title: 'Platform i18n — P2.2.18 Data Authorization final global closure',
+    summary: [
+      'Localized remaining DataAuthorizationTab KPI cards, table headers, filter summary, category chip, empty states, and reset-filters control via `useLanguage().t()`.',
+      'P218 enforce-clean exact scope (1 path) reports 0 findings; +17 EN+DE keys under `settings.dataAuth.{kpi,table,filters,empty}.*` (7908→7925); reuses `tasks.filter.resetFilters`, `common.all`, `common.status`, `settings.dataAuth.create.source`, `dashboard.drilldown.noMatches`.',
+      'Presentation-only — filter machine values, grant/revoke/sync callbacks, permission gates, and API payloads unchanged. Global enforce-clean closure achieved. Category E=0.',
+    ],
+    reason:
+      'P2.2.18 closes the final active global enforce-clean debt: DataAuthorizationTab held 1 scanner finding plus scanner-blind German KPI/table/empty copy on the P2.2.17 baseline.',
+    previousBehavior:
+      'DataAuthorizationTab mixed localized filter options with hardcoded German KPI labels, table headers, filter summary, empty states, and reset-filters text.',
+    details:
+      'rental/components/settings/data-authorization/DataAuthorizationTab.tsx; data-authorization-global-closure-localization.test.tsx; P218_ENFORCE_CLEAN_EXACT; architecture/I18N_DATA_AUTHORIZATION_GLOBAL_CLOSURE_P2_2_18_2026-08-22.md; docs/audits/i18n-p2-2-18-data-authorization-global-closure-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T03:00:00.000Z',
+  },
+  {
     id: 'i18n-booking-vehicle-picker-p2-2-17-2026-08-22',
     version: '4.9.944',
     title: 'Platform i18n — P2.2.17 Booking Vehicle Picker localization',

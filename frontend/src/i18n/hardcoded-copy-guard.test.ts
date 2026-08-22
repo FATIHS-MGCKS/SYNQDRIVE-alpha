@@ -307,6 +307,10 @@ const P217_ENFORCE_CLEAN_EXACT = [
   'rental/lib/booking-vehicle-preflight.ts',
 ];
 
+const P218_ENFORCE_CLEAN_EXACT = [
+  'rental/components/settings/data-authorization/DataAuthorizationTab.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -373,6 +377,10 @@ function isP216C2BEnforceCleanPath(relPath: string): boolean {
 
 function isP217EnforceCleanPath(relPath: string): boolean {
   return P217_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP218EnforceCleanPath(relPath: string): boolean {
+  return P218_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -572,6 +580,26 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p217Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.18 enforce-clean findings to DataAuthorizationTab only', () => {
+    const p218Debt = inventory.findings.filter((finding) =>
+      isP218EnforceCleanPath(finding.file),
+    );
+    expect(p218Debt).toHaveLength(0);
+  });
+
+  it('keeps DataAuthorizationTab.tsx free of hardcoded data authorization presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/settings/data-authorization/DataAuthorizationTab.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('settings.dataAuth.kpi.active')");
+    expect(source).toContain("t('tasks.filter.resetFilters')");
+    expect(source).toContain("t('common.all')");
+    expect(source).not.toMatch(/Filter zurücksetzen/);
+    expect(source).not.toMatch(/Aktive Freigaben/);
+    expect(source).not.toMatch(/Keine Treffer/);
+  });
+
   it('keeps booking-vehicle-preflight-presentation-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../rental/lib/booking-vehicle-preflight-presentation-i18n.ts'),
@@ -632,7 +660,9 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       join(__dirname, '../lib/tasks/taskDetailCompletion.utils.ts'),
       'utf8',
     );
-    expect(source).toContain('buildChecklistBlockerLabel(locale');
+    expect(source).toContain(
+      'buildChecklistBlockerLabel(resolveTaskDetailPresentationLocale(locale)',
+    );
     expect(source).not.toMatch(/buildChecklistBlockerLabel\(openRequiredTitles\)/);
   });
 
