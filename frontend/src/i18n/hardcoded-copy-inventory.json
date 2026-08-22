@@ -111,25 +111,25 @@
     }
   },
   "summary": {
-    "total": 1611,
+    "total": 1603,
     "bySurface": {
       "MASTER": 1049,
       "OPERATOR": 156,
-      "RENTAL": 380,
+      "RENTAL": 372,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
       "ARIA": 58,
       "TITLE": 245,
-      "TEXT": 1139,
+      "TEXT": 1131,
       "LABEL": 85,
       "PLACEHOLDER": 76,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
       "other Rental areas": 260,
-      "Finance/Billing": 98,
+      "Finance/Billing": 90,
       "Tasks": 13,
       "Documents": 8,
       "App / routing shell": 1
@@ -17451,20 +17451,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 120,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Aktive Version",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
-      ]
-    },
-    {
       "file": "rental/components/users-roles/UserDetailDrawer.tsx",
       "line": 387,
       "surface": "RENTAL",
@@ -17864,20 +17850,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 336,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Bitte warten — eine erneute Generierung ist derzeit nicht möglich.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/DamageWorkQueue.tsx",
       "line": 257,
       "surface": "RENTAL",
@@ -18265,7 +18237,7 @@
       "sample": "de-DE",
       "severity": "debt",
       "migrationPhase": "P2.2",
-      "occurrences": 73,
+      "occurrences": 72,
       "files": [
         "rental/components/BusinessInsightsBox.tsx",
         "rental/components/DocumentsView.tsx",
@@ -18284,7 +18256,6 @@
         "rental/components/customer-detail/customerDetailUtils.ts",
         "rental/components/handover/handover-i18n.ts",
         "rental/components/insights/InsightsCockpit.tsx",
-        "rental/components/invoices/invoiceDocuments.mapper.ts",
         "rental/components/invoices/invoiceTimeline.mapper.ts",
         "rental/components/invoices/invoiceUtils.ts",
         "rental/components/new-booking/CheckoutStep.tsx",
@@ -18501,21 +18472,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 322,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Dokumente werden geladen…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 2,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx",
-        "rental/components/settings/company/CompanySections.tsx"
-      ]
-    },
-    {
       "file": "rental/components/damages/CreateRepairTaskDialog.tsx",
       "line": 156,
       "surface": "RENTAL",
@@ -18583,20 +18539,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/documents/DocumentUploadDuplicatePanel.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 405,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Eingangsbeleg als Anhang vorhanden (kein generiertes PDF).",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
       ]
     },
     {
@@ -19080,20 +19022,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/billing/BillingInvoiceDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 367,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Für diese Rechnung wurde noch kein PDF erzeugt.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
       ]
     },
     {
@@ -20629,20 +20557,6 @@
       ]
     },
     {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 249,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "Noch keine Versände für diese Rechnung.",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
-      ]
-    },
-    {
       "file": "rental/components/billing/TenantBillingAddOnsTab.tsx",
       "line": 37,
       "surface": "RENTAL",
@@ -20962,34 +20876,6 @@
       "occurrences": 1,
       "files": [
         "rental/components/damages/DamageRentalSections.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 335,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "PDF wird erzeugt…",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/invoices/InvoiceDocuments.tsx",
-      "line": 345,
-      "surface": "RENTAL",
-      "module": "Finance/Billing",
-      "category": "TEXT",
-      "sample": "PDF-Erzeugung fehlgeschlagen",
-      "severity": "debt",
-      "migrationPhase": "P2.2",
-      "occurrences": 1,
-      "files": [
-        "rental/components/invoices/InvoiceDocuments.tsx"
       ]
     },
     {

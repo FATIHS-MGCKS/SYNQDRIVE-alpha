@@ -331,6 +331,12 @@ const P222_ENFORCE_CLEAN_EXACT = [
   'rental/lib/send-invoice-i18n.ts',
 ];
 
+const P223_ENFORCE_CLEAN_EXACT = [
+  'rental/components/invoices/InvoiceDocuments.tsx',
+  'rental/lib/invoice-documents-i18n.ts',
+  'rental/components/invoices/invoiceDocuments.mapper.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -417,6 +423,10 @@ function isP221EnforceCleanPath(relPath: string): boolean {
 
 function isP222EnforceCleanPath(relPath: string): boolean {
   return P222_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP223EnforceCleanPath(relPath: string): boolean {
+  return P223_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -649,6 +659,47 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP222EnforceCleanPath(finding.file),
     );
     expect(p222Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.23 enforce-clean findings to InvoiceDocuments panel only', () => {
+    const p223Debt = inventory.findings.filter((finding) =>
+      isP223EnforceCleanPath(finding.file),
+    );
+    expect(p223Debt).toHaveLength(0);
+  });
+
+  it('keeps invoice-documents-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/invoice-documents-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('formatInvoiceDocumentDateTime');
+    expect(source).not.toMatch(/'Dokumente'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps InvoiceDocuments.tsx free of hardcoded documents panel presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/invoices/InvoiceDocuments.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('invoices.documents.title')");
+    expect(source).toContain("t('invoices.documents.action.preview')");
+    expect(source).toContain('formatDateTime(doc.createdAt, locale)');
+    expect(source).not.toMatch(/Dokumente werden geladen/);
+    expect(source).not.toMatch(/PDF wird erzeugt/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps invoiceDocuments.mapper.ts free of hardcoded de-DE formatting', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/invoices/invoiceDocuments.mapper.ts'),
+      'utf8',
+    );
+    expect(source).toContain('formatInvoiceDocumentDateTime');
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps send-invoice-i18n.ts on canonical translation keys', () => {

@@ -528,7 +528,7 @@ export function CompanyDocumentsSection({
       description="Verwaltbare Rechtstexte, Systemvorlagen und geplante Anbindungen im Überblick."
     >
       {loading ? (
-        <p className="py-4 text-center text-xs text-muted-foreground">Dokumente werden geladen…</p>
+        <p className="py-4 text-center text-xs text-muted-foreground">{t('invoices.documents.loading')}</p>
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (

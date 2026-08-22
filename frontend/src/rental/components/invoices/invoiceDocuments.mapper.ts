@@ -1,3 +1,4 @@
+import { formatInvoiceDocumentDateTime } from '../../lib/invoice-documents-i18n';
 import type { InvoiceActionGate } from './invoiceDetailTypes';
 import type {
   InvoiceDocumentCapability,
@@ -24,15 +25,8 @@ export function documentGatesFromPanel(panel: InvoiceDocumentsPanel | null | und
   };
 }
 
-export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+export function formatDateTime(iso: string | null | undefined, locale: string): string {
+  return formatInvoiceDocumentDateTime(locale, iso);
 }
 
 export function olderVersions(panel: InvoiceDocumentsPanel): InvoiceDocumentsPanel['versions'] {
