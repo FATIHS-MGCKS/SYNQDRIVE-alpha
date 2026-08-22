@@ -3,9 +3,20 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { api } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  CREATE_INVOICE_TEMPLATE_IDS,
+  CREATE_INVOICE_TYPE_VALUES,
+  CREATE_INVOICE_VAT_RATE,
+  formatCreateInvoiceAmount,
+  CREATE_INVOICE_ERROR_KEY,
+  descCreateInvoiceType,
+  labelCreateInvoiceTemplateName,
+  labelCreateInvoiceTemplateDescription,
+  labelCreateInvoiceType,
+} from '../../lib/create-invoice-i18n';
 import { Icon } from '../ui/Icon';
-import { INVOICE_TEMPLATES } from './invoice-detail.constants';
-import { formatAmount, isOutgoing } from './invoiceFormatters';
+import { isOutgoing } from './invoiceFormatters';
 import type { InvoiceLookupData, InvoiceLookupVehicle } from './hooks/useInvoices';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
@@ -26,6 +37,16 @@ interface DraftLineItem {
   totalCents: number;
 }
 
+const CREATE_TYPE_ICONS = {
+  OUTGOING_MANUAL: ArrowUpRight,
+  INCOMING_VENDOR: ArrowDownLeft,
+} as const;
+
+const CREATE_TYPE_COLORS = {
+  OUTGOING_MANUAL: 'blue',
+  INCOMING_VENDOR: 'amber',
+} as const;
+
 export function CreateInvoiceDialog({
   isDarkMode,
   orgId,
@@ -37,6 +58,7 @@ export function CreateInvoiceDialog({
   ts,
   inputCls,
 }: CreateInvoiceDialogProps) {
+  const { t, locale } = useLanguage();
   const { customers, vehicles, vendors } = lookup;
   const [step, setStep] = useState<CreateStep>('type');
   const [form, setForm] = useState({
@@ -94,7 +116,7 @@ export function CreateInvoiceDialog({
 
   const calcTotals = () => {
     const sub = lineItems.reduce((s, li) => s + li.totalCents, 0);
-    const tax = Math.round(sub * 0.19);
+    const tax = Math.round(sub * (CREATE_INVOICE_VAT_RATE / 100));
     return { subtotalCents: sub, taxCents: tax, totalCents: sub + tax };
   };
 
@@ -112,7 +134,7 @@ export function CreateInvoiceDialog({
             description: li.description,
             quantity: li.quantity,
             unitPriceNetCents: li.unitPriceCents,
-            taxRate: 19,
+            taxRate: CREATE_INVOICE_VAT_RATE,
           }))
         : undefined;
 
@@ -135,7 +157,7 @@ export function CreateInvoiceDialog({
       });
       onCreated(inv);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Rechnung konnte nicht erstellt werden');
+      toast.error(e instanceof Error ? e.message : t(CREATE_INVOICE_ERROR_KEY));
     } finally {
       setSaving(false);
     }
@@ -149,65 +171,58 @@ export function CreateInvoiceDialog({
     return (
       <div className="max-w-2xl mx-auto space-y-5">
         <button onClick={onClose} className={`flex items-center gap-1 text-xs font-medium ${ts}`}>
-          <Icon name="chevron-left" className="w-4 h-4" /> Zurück
+          <Icon name="chevron-left" className="w-4 h-4" /> {t('common.back')}
         </button>
         <div className={`${card} p-6`}>
-          <h2 className={`text-base font-bold ${tp} mb-5`}>Rechnungsart wählen</h2>
+          <h2 className={`text-base font-bold ${tp} mb-5`}>{t('invoices.create.typeStep.title')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              {
-                type: 'OUTGOING_MANUAL',
-                label: 'Ausgangsrechnung',
-                desc: 'Rechnung an Kunden',
-                icon: ArrowUpRight,
-                color: 'blue',
-              },
-              {
-                type: 'INCOMING_VENDOR',
-                label: 'Eingangsrechnung',
-                desc: 'Rechnung von Lieferant/Werkstatt',
-                icon: ArrowDownLeft,
-                color: 'amber',
-              },
-            ].map((opt) => (
-              <button
-                key={opt.type}
-                onClick={() => {
-                  set('type', opt.type);
-                  setStep('details');
-                }}
-                className={`text-left p-4 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? `bg-${opt.color}-500/15` : `bg-${opt.color}-100/60`}`}
-                  >
-                    <opt.icon className={`w-4 h-4 text-${opt.color}-500`} />
+            {CREATE_INVOICE_TYPE_VALUES.map((type) => {
+              const IconComponent = CREATE_TYPE_ICONS[type];
+              const color = CREATE_TYPE_COLORS[type];
+              return (
+                <button
+                  key={type}
+                  onClick={() => {
+                    set('type', type);
+                    setStep('details');
+                  }}
+                  className={`text-left p-4 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? `bg-${color}-500/15` : `bg-${color}-100/60`}`}
+                    >
+                      <IconComponent className={`w-4 h-4 text-${color}-500`} />
+                    </div>
+                    <div>
+                      <p className={`text-xs font-bold ${tp}`}>{labelCreateInvoiceType(locale, type)}</p>
+                      <p className={`text-[10px] ${ts}`}>{descCreateInvoiceType(locale, type)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className={`text-xs font-bold ${tp}`}>{opt.label}</p>
-                    <p className={`text-[10px] ${ts}`}>{opt.desc}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-5 pt-4 border-t" style={borderStyle}>
-            <h3 className={`text-xs font-bold ${tp} mb-3`}>Oder Vorlage wählen</h3>
+            <h3 className={`text-xs font-bold ${tp} mb-3`}>{t('invoices.create.templates.section')}</h3>
             <div className="grid grid-cols-2 gap-2">
-              {INVOICE_TEMPLATES.map((t) => (
+              {CREATE_INVOICE_TEMPLATE_IDS.map((templateId) => (
                 <button
-                  key={t.id}
+                  key={templateId}
                   onClick={() => {
                     set('type', 'OUTGOING_MANUAL');
-                    set('templateId', t.id);
+                    set('templateId', templateId);
                     setStep('details');
                   }}
                   className={`text-left p-3 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                 >
-                  <p className={`text-xs font-semibold ${tp}`}>{t.name}</p>
-                  <p className={`text-[10px] ${ts}`}>{t.description}</p>
+                  <p className={`text-xs font-semibold ${tp}`}>
+                    {labelCreateInvoiceTemplateName(locale, templateId)}
+                  </p>
+                  <p className={`text-[10px] ${ts}`}>
+                    {labelCreateInvoiceTemplateDescription(locale, templateId)}
+                  </p>
                 </button>
               ))}
             </div>
@@ -223,20 +238,20 @@ export function CreateInvoiceDialog({
         onClick={() => (step === 'items' ? setStep('details') : setStep('type'))}
         className={`flex items-center gap-1 text-xs font-medium ${ts}`}
       >
-        <Icon name="chevron-left" className="w-4 h-4" /> Zurück
+        <Icon name="chevron-left" className="w-4 h-4" /> {t('common.back')}
       </button>
 
       <div className={`${card} p-6`}>
         <div className="flex items-center gap-2 mb-5">
           <Icon name="receipt" className="w-5 h-5 text-brand" />
           <h2 className={`text-base font-bold ${tp}`}>
-            {isOut ? 'Ausgangsrechnung' : 'Eingangsrechnung'} erstellen
+            {isOut ? t('invoices.create.title.outgoing') : t('invoices.create.title.incoming')}
           </h2>
           {form.templateId && (
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'} font-semibold`}
             >
-              {INVOICE_TEMPLATES.find((t) => t.id === form.templateId)?.name}
+              {labelCreateInvoiceTemplateName(locale, form.templateId)}
             </span>
           )}
         </div>
@@ -244,23 +259,23 @@ export function CreateInvoiceDialog({
         {step === 'details' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className={labelCls}>Titel *</label>
+              <label className={labelCls}>{t('invoices.create.field.title')}</label>
               <input
                 value={form.title}
                 onChange={(e) => set('title', e.target.value)}
                 className={inputCls}
-                placeholder="Rechnungstitel..."
+                placeholder={t('invoices.create.placeholder.title')}
               />
             </div>
             {isOut ? (
               <div>
-                <label className={labelCls}>Kunde</label>
+                <label className={labelCls}>{t('invoices.create.field.customer')}</label>
                 <select
                   value={form.customerId}
                   onChange={(e) => set('customerId', e.target.value)}
                   className={inputCls}
                 >
-                  <option value="">Auswählen...</option>
+                  <option value="">{t('invoices.create.select.choose')}</option>
                   {customers.map((c) => (
                     <option key={String(c.id)} value={String(c.id)}>
                       {String(c.firstName || c.name || '')} {String(c.lastName || '')}
@@ -270,7 +285,7 @@ export function CreateInvoiceDialog({
               </div>
             ) : (
               <div>
-                <label className={labelCls}>Lieferant / Werkstatt</label>
+                <label className={labelCls}>{t('invoices.create.field.vendor')}</label>
                 <select
                   value={form.vendorId}
                   onChange={(e) => {
@@ -284,7 +299,7 @@ export function CreateInvoiceDialog({
                   }}
                   className={inputCls}
                 >
-                  <option value="">Manuell eingeben…</option>
+                  <option value="">{t('invoices.create.select.manualVendor')}</option>
                   {vendors.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.name}
@@ -296,19 +311,19 @@ export function CreateInvoiceDialog({
                     value={form.vendorName}
                     onChange={(e) => set('vendorName', e.target.value)}
                     className={`${inputCls} mt-2`}
-                    placeholder="Name des Lieferanten"
+                    placeholder={t('invoices.create.placeholder.vendorName')}
                   />
                 )}
               </div>
             )}
             <div>
-              <label className={labelCls}>Fahrzeug</label>
+              <label className={labelCls}>{t('invoices.create.field.vehicle')}</label>
               <select
                 value={form.vehicleId}
                 onChange={(e) => set('vehicleId', e.target.value)}
                 className={inputCls}
               >
-                <option value="">Optional...</option>
+                <option value="">{t('invoices.create.select.optional')}</option>
                 {vehicles.map((v: InvoiceLookupVehicle) => (
                   <option key={v.id} value={v.id}>
                     {v.make} {v.model} – {v.licensePlate || v.vin?.slice(-6)}
@@ -317,7 +332,7 @@ export function CreateInvoiceDialog({
               </select>
             </div>
             <div>
-              <label className={labelCls}>Rechnungsdatum</label>
+              <label className={labelCls}>{t('invoices.create.field.invoiceDate')}</label>
               <input
                 type="date"
                 value={form.invoiceDate}
@@ -326,7 +341,7 @@ export function CreateInvoiceDialog({
               />
             </div>
             <div>
-              <label className={labelCls}>Fälligkeitsdatum</label>
+              <label className={labelCls}>{t('invoices.create.field.dueDate')}</label>
               <input
                 type="date"
                 value={form.dueDate}
@@ -336,7 +351,7 @@ export function CreateInvoiceDialog({
             </div>
             {!isOut && (
               <div>
-                <label className={labelCls}>Betrag (EUR) *</label>
+                <label className={labelCls}>{t('invoices.create.field.amountEur')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -345,22 +360,22 @@ export function CreateInvoiceDialog({
                     set('totalCents', Math.round(parseFloat(e.target.value || '0') * 100))
                   }
                   className={inputCls}
-                  placeholder="0.00"
+                  placeholder={t('invoices.create.placeholder.amount')}
                 />
               </div>
             )}
             <div className="sm:col-span-2">
-              <label className={labelCls}>Beschreibung / Notizen</label>
+              <label className={labelCls}>{t('invoices.create.field.descriptionNotes')}</label>
               <textarea
                 value={form.description}
                 onChange={(e) => set('description', e.target.value)}
                 rows={2}
                 className={`${inputCls} resize-none`}
-                placeholder="Zusätzliche Informationen..."
+                placeholder={t('invoices.create.placeholder.description')}
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Dokument / Bild</label>
+              <label className={labelCls}>{t('invoices.create.field.document')}</label>
               <input
                 ref={fileRef}
                 type="file"
@@ -370,7 +385,11 @@ export function CreateInvoiceDialog({
               />
               {imagePreview ? (
                 <div className="relative inline-block">
-                  <img src={imagePreview} alt="Preview" className="h-20 rounded-xl object-cover" />
+                  <img
+                    src={imagePreview}
+                    alt={t('invoices.create.image.previewAlt')}
+                    className="h-20 rounded-xl object-cover"
+                  />
                   <button
                     onClick={() => {
                       setImageFile(null);
@@ -386,7 +405,7 @@ export function CreateInvoiceDialog({
                   onClick={() => fileRef.current?.click()}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-gray-500'}`}
                 >
-                  <Icon name="image" className="w-4 h-4" /> Datei anhängen
+                  <Icon name="image" className="w-4 h-4" /> {t('invoices.create.action.attachFile')}
                 </button>
               )}
             </div>
@@ -396,10 +415,10 @@ export function CreateInvoiceDialog({
         {step === 'details' && isOut && (
           <div className="mt-5 pt-4 border-t" style={borderStyle}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-xs font-bold ${tp}`}>Positionen</h3>
+              <h3 className={`text-xs font-bold ${tp}`}>{t('invoices.create.lineItems.title')}</h3>
               <button onClick={addLineItem} className="text-[11px] font-medium text-brand">
                 <Icon name="plus" className="w-3 h-3 inline mr-1" />
-                Position
+                {t('invoices.create.lineItems.add')}
               </button>
             </div>
             <div className="space-y-2">
@@ -412,7 +431,7 @@ export function CreateInvoiceDialog({
                     value={li.description}
                     onChange={(e) => updateLineItem(idx, 'description', e.target.value)}
                     className={`${inputCls} flex-1 !py-2`}
-                    placeholder="Beschreibung"
+                    placeholder={t('invoices.create.lineItems.descriptionPlaceholder')}
                   />
                   <input
                     type="number"
@@ -434,10 +453,10 @@ export function CreateInvoiceDialog({
                       )
                     }
                     className={`${inputCls} !w-24 !py-2`}
-                    placeholder="€/Stk"
+                    placeholder={t('invoices.create.lineItems.unitPricePlaceholder')}
                   />
                   <span className={`text-xs font-bold ${tp} w-20 text-right`}>
-                    {formatAmount(li.totalCents)}
+                    {formatCreateInvoiceAmount(locale, li.totalCents, form.currency)}
                   </span>
                   {lineItems.length > 1 && (
                     <button onClick={() => removeLineItem(idx)} className="text-red-500">
@@ -450,12 +469,21 @@ export function CreateInvoiceDialog({
             <div className="mt-3 pt-3 border-t flex justify-end" style={borderStyle}>
               <div className="text-right space-y-1">
                 <p className={`text-xs ${ts}`}>
-                  Netto: <span className={`font-bold ${tp}`}>{formatAmount(calcTotals().subtotalCents)}</span>
+                  {t('invoices.create.totals.net')}{' '}
+                  <span className={`font-bold ${tp}`}>
+                    {formatCreateInvoiceAmount(locale, calcTotals().subtotalCents, form.currency)}
+                  </span>
                 </p>
                 <p className={`text-xs ${ts}`}>
-                  MwSt 19%: <span className={`font-bold ${tp}`}>{formatAmount(calcTotals().taxCents)}</span>
+                  {t('invoices.create.totals.vat', { rate: CREATE_INVOICE_VAT_RATE })}{' '}
+                  <span className={`font-bold ${tp}`}>
+                    {formatCreateInvoiceAmount(locale, calcTotals().taxCents, form.currency)}
+                  </span>
                 </p>
-                <p className={`text-sm font-bold ${tp}`}>Gesamt: {formatAmount(calcTotals().totalCents)}</p>
+                <p className={`text-sm font-bold ${tp}`}>
+                  {t('invoices.create.totals.gross')}{' '}
+                  {formatCreateInvoiceAmount(locale, calcTotals().totalCents, form.currency)}
+                </p>
               </div>
             </div>
           </div>
@@ -463,7 +491,7 @@ export function CreateInvoiceDialog({
 
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={borderStyle}>
           <button onClick={onClose} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2.5 text-xs font-semibold">
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSubmit}
@@ -475,7 +503,7 @@ export function CreateInvoiceDialog({
             ) : (
               <Icon name="receipt" className="w-3.5 h-3.5" />
             )}{' '}
-            Rechnung erstellen
+            {t('invoices.createInvoice')}
           </button>
         </div>
       </div>

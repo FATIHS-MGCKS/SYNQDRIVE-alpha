@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-create-invoice-dialog-p2-2-21-2026-08-22',
+    version: '4.9.948',
+    title: 'Platform i18n — P2.2.21 Rental Create Invoice Dialog localization',
+    summary: [
+      'Localized CreateInvoiceDialog 3-step create flow (type → details → line items) via `useLanguage().{t,locale}` and `create-invoice-i18n.ts` presentation adapter.',
+      'P221 enforce-clean exact scope (2 paths) reports 0 findings; +40 EN+DE keys under `invoices.create.*` (8190→8230); machine invoice types, template IDs, VAT rate, and API payloads frozen.',
+      'Presentation-only — customer/vendor/vehicle dynamic data, line-item math, taxRate:19, and `api.invoices.create` payload semantics unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.21 post-P220 pre-flight (PR #1166 audit) selected Rental Create Invoice Dialog (~24 scanner findings + blind-spot template labels) as the next bounded finance slice after P2.2.14 invoice list.',
+    previousBehavior:
+      'CreateInvoiceDialog mixed hardcoded German copy across type picker, template cards, form labels, line items, totals, and fixed `de-DE` amount formatting via `formatAmount`.',
+    details:
+      'rental/components/invoices/CreateInvoiceDialog.tsx; rental/lib/create-invoice-i18n.ts; i18n/translations/invoices.create.{en,de}.ts; rental-create-invoice-dialog-localization.test.tsx; P221_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_CREATE_INVOICE_DIALOG_P2_2_21_2026-08-22.md; docs/audits/i18n-p2-2-21-rental-create-invoice-dialog-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T12:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-parts-accessories-view-p2-2-20-2026-08-22',
     version: '4.9.947',
     title: 'Platform i18n — P2.2.20 Rental Parts & Accessories View localization',

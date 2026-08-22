@@ -321,6 +321,11 @@ const P220_ENFORCE_CLEAN_EXACT = [
   'rental/lib/parts-accessories-i18n.ts',
 ];
 
+const P221_ENFORCE_CLEAN_EXACT = [
+  'rental/components/invoices/CreateInvoiceDialog.tsx',
+  'rental/lib/create-invoice-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -399,6 +404,10 @@ function isP219EnforceCleanPath(relPath: string): boolean {
 
 function isP220EnforceCleanPath(relPath: string): boolean {
   return P220_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP221EnforceCleanPath(relPath: string): boolean {
+  return P221_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -617,6 +626,39 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP220EnforceCleanPath(finding.file),
     );
     expect(p220Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.21 enforce-clean findings to CreateInvoiceDialog only', () => {
+    const p221Debt = inventory.findings.filter((finding) =>
+      isP221EnforceCleanPath(finding.file),
+    );
+    expect(p221Debt).toHaveLength(0);
+  });
+
+  it('keeps create-invoice-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/create-invoice-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('invoices.create.template.standard.name');
+    expect(source).toContain('labelCreateInvoiceType');
+    expect(source).not.toMatch(/'Ausgangsrechnung'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps CreateInvoiceDialog.tsx free of hardcoded create-invoice presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/invoices/CreateInvoiceDialog.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('invoices.create.typeStep.title')");
+    expect(source).toContain('labelCreateInvoiceType(locale');
+    expect(source).toContain('formatCreateInvoiceAmount(locale');
+    expect(source).not.toMatch(/Rechnungsart wählen/);
+    expect(source).not.toMatch(/Rechnung erstellen/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps parts-accessories-i18n.ts on canonical translation keys', () => {

@@ -12,6 +12,7 @@ import { partsAccessoriesDe } from './partsAccessories.de';
 import { handoverProtocolDe } from './handover.protocol.de';
 import { handoverOperatorDe } from './handover.operator.de';
 import { invoicesListDe } from './invoices.list.de';
+import { invoicesCreateDe } from './invoices.create.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
@@ -5577,5 +5578,6 @@ export const de: Record<TranslationKey, string> = {
   ...handoverProtocolDe,
   ...handoverOperatorDe,
   ...invoicesListDe,
+  ...invoicesCreateDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;
