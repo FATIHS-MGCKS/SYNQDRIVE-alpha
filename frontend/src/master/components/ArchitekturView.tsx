@@ -1168,10 +1168,10 @@ const INTEGRATIONS: IntegrationEntry[] = [
     color: 'text-[color:var(--status-info)]',
     apis: [
       { label: 'Mutations', detail: 'POST claim/resolve/reopen/mark-read; PATCH assignment — canonical CommunicationConversation only' },
-      { label: 'State machine', detail: 'assertOperatorStatusTransition — frozen matrix; claim via conditional updateMany' },
-      { label: 'RBAC', detail: 'communication.write operator actions; communication.manage force assign' },
-      { label: 'Scope', detail: 'Org + station (StationAccessService); cross-tenant safe 404' },
-      { label: 'Frontend', detail: 'useCommunicationConversationActions + C8.3 header actions; inbox refresh nonce' },
+      { label: 'Transactions', detail: 'All mutation reads via tx; timeline events in same DB tx; audit best-effort post-commit' },
+      { label: 'Concurrency', detail: 'Conditional updateMany (claim, assign, unassign, resolve, reopen, mark-read); updatedAt optimistic guard' },
+      { label: 'RBAC', detail: 'communication.write operator actions; communication.manage force assign; assignee validated in tx' },
+      { label: 'Frontend', detail: 'applyConversationUpdate on mutation success; onConflictRefresh on 409 stale/claimed' },
     ],
   },
   {

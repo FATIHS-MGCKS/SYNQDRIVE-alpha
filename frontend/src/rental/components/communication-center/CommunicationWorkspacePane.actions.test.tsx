@@ -42,6 +42,7 @@ function baseConversationState(
     reloadTimeline: vi.fn(),
     loadOlder: vi.fn(),
     retryLoadOlder: vi.fn(),
+    applyConversationUpdate: vi.fn(),
     ...overrides,
   };
 }

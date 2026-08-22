@@ -140,7 +140,7 @@ describePg('Communication write API postgres', () => {
     });
   }
 
-  it('claims HUMAN_REQUIRED conversation for operator', async () => {
+  it('claims HUMAN_REQUIRED conversation for operator with response convergence', async () => {
     const convo = await seedConversation({ orgId: orgA, suffix: 'claim-1' });
     const result = await service.claimConversation(orgA, convo.id, { userId: operatorA });
 
@@ -167,7 +167,10 @@ describePg('Communication write API postgres', () => {
       assignedUserId: operatorA,
     });
 
-    await service.claimConversation(orgA, convo.id, { userId: operatorA });
+    const result = await service.claimConversation(orgA, convo.id, { userId: operatorA });
+    expect(result.conversation.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    expect(result.conversation.assignedUser?.id).toBe(operatorA);
+
     const events = await prisma.communicationEvent.count({
       where: { organizationId: orgA, conversationId: convo.id },
     });
@@ -206,7 +209,7 @@ describePg('Communication write API postgres', () => {
     expect([operatorA, operatorB]).toContain(final?.assignedUserId);
   });
 
-  it('manager can force assign to another operator', async () => {
+  it('manager can force assign to another operator with response convergence', async () => {
     const convo = await seedConversation({
       orgId: orgA,
       suffix: 'force-assign',
@@ -218,6 +221,7 @@ describePg('Communication write API postgres', () => {
       userId: manager,
     });
     expect(result.conversation.assignedUser?.id).toBe(operatorB);
+    expect(result.conversation.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
   });
 
   it('write-only operator cannot assign to another user', async () => {
@@ -227,6 +231,31 @@ describePg('Communication write API postgres', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('rejects assignment on RESOLVED without reopen', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'assign-resolved',
+      status: CommunicationConversationStatus.RESOLVED,
+      assignedUserId: operatorA,
+    });
+
+    await expect(
+      service.assignConversation(orgA, convo.id, operatorB, { userId: manager }),
+    ).rejects.toMatchObject({ response: { code: 'INVALID_TRANSITION' } });
+  });
+
+  it('rejects assignment on FAILED without reopen', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'assign-failed',
+      status: CommunicationConversationStatus.FAILED,
+    });
+
+    await expect(
+      service.assignConversation(orgA, convo.id, operatorA, { userId: manager }),
+    ).rejects.toMatchObject({ response: { code: 'INVALID_TRANSITION' } });
+  });
+
   it('rejects cross-org assignee without membership leak', async () => {
     const convo = await seedConversation({ orgId: orgA, suffix: 'cross-org-assign' });
     await expect(
@@ -234,7 +263,7 @@ describePg('Communication write API postgres', () => {
     ).rejects.toMatchObject({ response: { code: 'ASSIGNEE_INVALID' } });
   });
 
-  it('unassign moves HUMAN_ACTIVE to HUMAN_REQUIRED', async () => {
+  it('unassign moves HUMAN_ACTIVE to HUMAN_REQUIRED in response', async () => {
     const convo = await seedConversation({
       orgId: orgA,
       suffix: 'unassign',
@@ -249,32 +278,94 @@ describePg('Communication write API postgres', () => {
     expect(result.conversation.status).toBe(CommunicationConversationStatus.HUMAN_REQUIRED);
   });
 
-  it('resolve and reopen are idempotent / deterministic', async () => {
+  it('concurrent manager reassign beats stale self-unassign', async () => {
     const convo = await seedConversation({
       orgId: orgA,
-      suffix: 'resolve',
+      suffix: 'unassign-race',
       status: CommunicationConversationStatus.HUMAN_ACTIVE,
       assignedUserId: operatorA,
     });
 
-    const resolved = await service.resolveConversation(orgA, convo.id, { userId: operatorA });
-    expect(resolved.conversation.status).toBe(CommunicationConversationStatus.RESOLVED);
+    await Promise.allSettled([
+      service.assignConversation(orgA, convo.id, null, { userId: operatorA }),
+      service.assignConversation(orgA, convo.id, operatorB, { userId: manager }),
+    ]);
 
-    await service.resolveConversation(orgA, convo.id, { userId: operatorA });
-    const resolveEvents = await prisma.communicationEvent.count({
+    const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
+    expect(final?.assignedUserId).toBe(operatorB);
+    expect(final?.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+  });
+
+  it('operator cannot unassign after manager reassigned ownership', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'unassign-forbidden',
+      status: CommunicationConversationStatus.HUMAN_ACTIVE,
+      assignedUserId: operatorA,
+    });
+
+    await service.assignConversation(orgA, convo.id, operatorB, { userId: manager });
+
+    await expect(
+      service.assignConversation(orgA, convo.id, null, { userId: operatorA }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
+    expect(final?.assignedUserId).toBe(operatorB);
+  });
+
+  it('resolve and reopen cycle emits distinct lifecycle events', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'resolve-cycle',
+      status: CommunicationConversationStatus.HUMAN_ACTIVE,
+      assignedUserId: operatorA,
+    });
+
+    const firstResolve = await service.resolveConversation(orgA, convo.id, { userId: operatorA });
+    expect(firstResolve.conversation.status).toBe(CommunicationConversationStatus.RESOLVED);
+
+    const reopened = await service.reopenConversation(orgA, convo.id, { userId: operatorA });
+    expect(reopened.conversation.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+
+    const secondResolve = await service.resolveConversation(orgA, convo.id, { userId: operatorA });
+    expect(secondResolve.conversation.status).toBe(CommunicationConversationStatus.RESOLVED);
+
+    const resolveEvents = await prisma.communicationEvent.findMany({
       where: {
         organizationId: orgA,
         conversationId: convo.id,
         eventType: CommunicationEventType.CONVERSATION_RESOLVED,
       },
     });
-    expect(resolveEvents).toBe(1);
+    const reopenEvents = await prisma.communicationEvent.findMany({
+      where: {
+        organizationId: orgA,
+        conversationId: convo.id,
+        eventType: CommunicationEventType.CONVERSATION_REOPENED,
+      },
+    });
 
-    const reopened = await service.reopenConversation(orgA, convo.id, { userId: operatorA });
-    expect(reopened.conversation.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    expect(resolveEvents).toHaveLength(2);
+    expect(reopenEvents).toHaveLength(1);
+    expect(new Set(resolveEvents.map((event) => event.idempotencyKey)).size).toBe(2);
   });
 
-  it('mark read zeros unread count idempotently', async () => {
+  it('resolve retries against concurrent claim and still resolves', async () => {
+    const convo = await seedConversation({ orgId: orgA, suffix: 'resolve-claim-race' });
+
+    const [claimResult, resolveResult] = await Promise.allSettled([
+      service.claimConversation(orgA, convo.id, { userId: operatorA }),
+      service.resolveConversation(orgA, convo.id, { userId: operatorA }),
+    ]);
+
+    expect(claimResult.status === 'fulfilled' || resolveResult.status === 'fulfilled').toBe(true);
+
+    const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
+    expect(final?.status).toBe(CommunicationConversationStatus.RESOLVED);
+  });
+
+  it('mark read zeros unread count idempotently in response', async () => {
     const convo = await seedConversation({
       orgId: orgA,
       suffix: 'read',
@@ -285,14 +376,16 @@ describePg('Communication write API postgres', () => {
     const first = await service.markConversationRead(orgA, convo.id, { userId: operatorA });
     expect(first.conversation.unreadCount).toBe(0);
 
-    await service.markConversationRead(orgA, convo.id, { userId: operatorA });
+    const second = await service.markConversationRead(orgA, convo.id, { userId: operatorA });
+    expect(second.conversation.unreadCount).toBe(0);
+
     const timelineEvents = await prisma.communicationEvent.count({
       where: { organizationId: orgA, conversationId: convo.id },
     });
     expect(timelineEvents).toBe(0);
   });
 
-  it('mark read uses lastContentAt guard against stale zeroing', async () => {
+  it('markConversationRead preserves inbound unread when lastContentAt advances during service call', async () => {
     const contentAt = new Date('2026-08-22T10:00:00.000Z');
     const convo = await seedConversation({
       orgId: orgA,
@@ -301,6 +394,7 @@ describePg('Communication write API postgres', () => {
       lastContentAt: contentAt,
     });
 
+    const markPromise = service.markConversationRead(orgA, convo.id, { userId: operatorA });
     await prisma.communicationConversation.update({
       where: { id: convo.id },
       data: {
@@ -308,23 +402,12 @@ describePg('Communication write API postgres', () => {
         lastContentAt: new Date('2026-08-22T10:00:01.000Z'),
       },
     });
+    const result = await markPromise;
 
-    const staleUpdate = await prisma.communicationConversation.updateMany({
-      where: {
-        id: convo.id,
-        organizationId: orgA,
-        unreadCount: { gt: 0 },
-        lastContentAt: contentAt,
-      },
-      data: { unreadCount: 0 },
-    });
-    expect(staleUpdate.count).toBe(0);
+    expect(result.conversation.unreadCount).toBe(3);
 
     const row = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
     expect(row?.unreadCount).toBe(3);
-
-    const result = await service.markConversationRead(orgA, convo.id, { userId: operatorA });
-    expect(result.conversation.unreadCount).toBe(0);
   });
 
   it('cross-tenant mutation returns safe not found', async () => {

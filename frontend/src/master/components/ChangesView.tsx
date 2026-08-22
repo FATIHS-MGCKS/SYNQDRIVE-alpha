@@ -41,9 +41,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Communication Center C11.1 — Canonical conversation write foundation',
     summary: [
       'Canonical mutation API: claim, assignment, resolve, reopen, mark-read on CommunicationConversation.',
-      'Frozen operator status transition matrix with conditional claim concurrency (PostgreSQL updateMany).',
-      'communication.write / communication.manage enforcement, station scope, audit + timeline events.',
-      'Frontend mutation client, useCommunicationConversationActions, C8.3 header action wiring (no composer).',
+      'Transaction-authoritative reads (tx-aware findConversationById), optimistic concurrency on assign/unassign/resolve/reopen.',
+      'No implicit reopen via assign on RESOLVED/FAILED; lifecycle event idempotency keyed by pre-mutation updatedAt.',
+      'Response convergence + conflict refresh in frontend; PostgreSQL race tests for claim/unassign/resolve/reopen/mark-read.',
     ],
     reason:
       'C11.1 establishes the canonical operational write layer required before C11.2 reply/composer.',

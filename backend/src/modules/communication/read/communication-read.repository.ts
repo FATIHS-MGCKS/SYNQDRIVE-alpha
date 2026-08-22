@@ -114,8 +114,10 @@ export class CommunicationReadRepository {
   async findConversationById(
     organizationId: string,
     conversationId: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<CommunicationConversationListRow | null> {
-    return this.prisma.communicationConversation.findFirst({
+    const client = tx ?? this.prisma;
+    return client.communicationConversation.findFirst({
       where: { id: conversationId, organizationId },
       select: CONVERSATION_LIST_SELECT,
     });

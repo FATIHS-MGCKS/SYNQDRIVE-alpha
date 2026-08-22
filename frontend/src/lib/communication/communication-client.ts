@@ -13,6 +13,7 @@ export type CommunicationClientErrorCode =
   | 'invalid_query'
   | 'permission_denied'
   | 'already_claimed'
+  | 'stale_state'
   | 'unknown';
 
 export class CommunicationClientError extends Error {
@@ -37,6 +38,9 @@ function mapRequestError(err: unknown): CommunicationClientError {
   }
   if (status === 400) {
     return new CommunicationClientError('invalid_query', message, status);
+  }
+  if (status === 409 && message.includes('STALE_STATE')) {
+    return new CommunicationClientError('stale_state', message, status);
   }
   if (status === 409 || message.includes('ALREADY_CLAIMED')) {
     return new CommunicationClientError('already_claimed', message, status);

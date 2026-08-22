@@ -16,9 +16,10 @@ export type CommunicationConversationMutation =
 export interface UseCommunicationConversationActionsOptions {
   orgId: string | null | undefined;
   conversationId: string | null | undefined;
-  onRefreshDetail?: () => Promise<unknown>;
+  onConversationUpdated?: (conversation: CommunicationConversationDetail) => void;
   onTimelineRefresh?: () => void | Promise<unknown>;
   onInboxRefresh?: () => void | Promise<unknown>;
+  onConflictRefresh?: () => void | Promise<unknown>;
 }
 
 export interface UseCommunicationConversationActionsResult {
@@ -31,18 +32,23 @@ export interface UseCommunicationConversationActionsResult {
   clearActionError: () => void;
 }
 
-function isAlreadyClaimed(err: unknown): boolean {
+function isConflictError(err: unknown): boolean {
   if (!(err instanceof CommunicationClientError)) return false;
   if (err.status === 409) return true;
-  return err.message.includes('ALREADY_CLAIMED');
+  return (
+    err.message.includes('ALREADY_CLAIMED')
+    || err.message.includes('STALE_STATE')
+    || err.message.includes('CONFLICT')
+  );
 }
 
 export function useCommunicationConversationActions({
   orgId,
   conversationId,
-  onRefreshDetail,
+  onConversationUpdated,
   onTimelineRefresh,
   onInboxRefresh,
+  onConflictRefresh,
 }: UseCommunicationConversationActionsOptions): UseCommunicationConversationActionsResult {
   const [pendingAction, setPendingAction] = useState<CommunicationConversationMutation | null>(null);
   const [actionError, setActionError] = useState<CommunicationClientErrorCode | null>(null);
@@ -66,7 +72,7 @@ export function useCommunicationConversationActions({
         if (communicationConversationSignature(orgId, conversationId) !== requestSignature) {
           return null;
         }
-        await onRefreshDetail?.();
+        onConversationUpdated?.(response.conversation);
         if (action === 'claim' || action === 'resolve' || action === 'reopen') {
           await onTimelineRefresh?.();
         }
@@ -76,9 +82,15 @@ export function useCommunicationConversationActions({
         if (communicationConversationSignature(orgId, conversationId) !== requestSignature) {
           return null;
         }
-        if (isAlreadyClaimed(err)) {
-          setActionError('already_claimed');
-          await onRefreshDetail?.();
+        if (isConflictError(err)) {
+          setActionError(
+            err instanceof CommunicationClientError
+              ? err.code === 'stale_state'
+                ? 'stale_state'
+                : 'already_claimed'
+              : 'unknown',
+          );
+          await onConflictRefresh?.();
         } else {
           setActionError(err instanceof CommunicationClientError ? err.code : 'unknown');
         }
@@ -90,7 +102,14 @@ export function useCommunicationConversationActions({
         }
       }
     },
-    [conversationId, onInboxRefresh, onRefreshDetail, onTimelineRefresh, orgId],
+    [
+      conversationId,
+      onConflictRefresh,
+      onConversationUpdated,
+      onInboxRefresh,
+      onTimelineRefresh,
+      orgId,
+    ],
   );
 
   const claim = useCallback(

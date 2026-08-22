@@ -13,11 +13,11 @@ import { computeEffectiveAccess } from '@modules/users/policies/effective-access
 import { isCommunicationPermissionGranted } from '@shared/auth/communication-permission.compat';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationEventRepository } from '../communication-event.repository';
-import { mapConversationDetail } from '../read/communication-read.mapper';
+import {
+  mapConversationDetail,
+  type CommunicationConversationListRow,
+} from '../read/communication-read.mapper';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
-import type {
-  CommunicationConversationDetailDto,
-} from '../read/dto/communication-read-response.dto';
 import type { CommunicationMutationResponseDto } from './dto/communication-write-response.dto';
 import {
   assertOperatorStatusTransition,
@@ -34,13 +34,18 @@ export interface CommunicationWriteActor {
 }
 
 interface MutationResult {
-  conversation: CommunicationConversationDetailDto;
+  conversation: CommunicationMutationResponseDto['conversation'];
   changed: boolean;
   auditAction?: string;
   previousStatus?: CommunicationConversationStatus;
   newStatus?: CommunicationConversationStatus;
   assigneeUserId?: string | null;
 }
+
+const TERMINAL_ASSIGNMENT_STATUSES: CommunicationConversationStatus[] = [
+  CommunicationConversationStatus.RESOLVED,
+  CommunicationConversationStatus.FAILED,
+];
 
 @Injectable()
 export class CommunicationWriteService {
@@ -57,16 +62,12 @@ export class CommunicationWriteService {
     conversationId: string,
     actor: CommunicationWriteActor,
   ): Promise<CommunicationMutationResponseDto> {
+    const canManage = await this.actorCanManage(organizationId, actor.userId);
     const result = await this.prisma.$transaction(async (tx) => {
-      const row = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!row) throw CommunicationWriteError.notFound();
+      const row = await this.requireConversationRow(tx, organizationId, conversationId);
       await this.scope.assertConversationMutable(actor.userId, organizationId, row);
 
-      if (
-        row.assignedUserId
-        && row.assignedUserId !== actor.userId
-        && !(await this.actorCanManage(organizationId, actor.userId))
-      ) {
+      if (row.assignedUserId && row.assignedUserId !== actor.userId && !canManage) {
         throw CommunicationWriteError.alreadyClaimed();
       }
 
@@ -84,6 +85,7 @@ export class CommunicationWriteService {
         );
       }
 
+      const previousStatus = row.status;
       const claimResult = await tx.communicationConversation.updateMany({
         where: {
           id: conversationId,
@@ -98,8 +100,7 @@ export class CommunicationWriteService {
       });
 
       if (claimResult.count === 0) {
-        const current = await this.readRepository.findConversationById(organizationId, conversationId);
-        if (!current) throw CommunicationWriteError.notFound();
+        const current = await this.requireConversationRow(tx, organizationId, conversationId);
         if (
           current.assignedUserId === actor.userId
           && current.status === CommunicationConversationStatus.HUMAN_ACTIVE
@@ -110,7 +111,7 @@ export class CommunicationWriteService {
       }
 
       assertOperatorStatusTransition(
-        row.status,
+        previousStatus,
         CommunicationConversationStatus.HUMAN_ACTIVE,
       );
 
@@ -120,21 +121,19 @@ export class CommunicationWriteService {
         channel: row.channel,
         eventType: CommunicationEventType.HUMAN_ASSIGNED,
         actorUserId: actor.userId,
-        idempotencyKey: `comm:claim:${conversationId}:${actor.userId}:${row.status}`,
+        idempotencyKey: this.lifecycleEventKey('claim', conversationId, row.updatedAt),
         metadata: {
-          previousStatus: row.status,
+          previousStatus,
           newStatus: CommunicationConversationStatus.HUMAN_ACTIVE,
         },
       });
 
-      const updated = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!updated) throw CommunicationWriteError.notFound();
-
+      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
       return {
         conversation: mapConversationDetail(updated),
         changed: true,
         auditAction: 'communication.claim',
-        previousStatus: row.status,
+        previousStatus,
         newStatus: CommunicationConversationStatus.HUMAN_ACTIVE,
         assigneeUserId: actor.userId,
       } satisfies MutationResult;
@@ -154,51 +153,69 @@ export class CommunicationWriteService {
       return this.unassignConversation(organizationId, conversationId, actor);
     }
 
-    if (assignedUserId !== actor.userId && !(await this.actorCanManage(organizationId, actor.userId))) {
+    const canManage = await this.actorCanManage(organizationId, actor.userId);
+    if (assignedUserId !== actor.userId && !canManage) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
         message: 'Assigning to another user requires communication.manage',
       });
     }
 
-    await this.assertActiveOrgMember(organizationId, assignedUserId);
-
     const result = await this.prisma.$transaction(async (tx) => {
-      const row = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!row) throw CommunicationWriteError.notFound();
+      await this.assertActiveOrgMember(tx, organizationId, assignedUserId);
+      const row = await this.requireConversationRow(tx, organizationId, conversationId);
       await this.scope.assertConversationMutable(actor.userId, organizationId, row);
 
-      if (
-        row.assignedUserId
-        && row.assignedUserId !== assignedUserId
-        && row.assignedUserId !== actor.userId
-        && !(await this.actorCanManage(organizationId, actor.userId))
-      ) {
-        throw CommunicationWriteError.alreadyClaimed();
-      }
+      this.assertAssignmentAllowedOnStatus(row.status);
 
       if (row.assignedUserId === assignedUserId) {
         return this.noOpResult(row);
       }
 
+      if (
+        row.assignedUserId
+        && row.assignedUserId !== assignedUserId
+        && row.assignedUserId !== actor.userId
+        && !canManage
+      ) {
+        throw CommunicationWriteError.alreadyClaimed();
+      }
+
+      const previousStatus = row.status;
       const targetStatus =
         row.status === CommunicationConversationStatus.HUMAN_REQUIRED
-        || row.status === CommunicationConversationStatus.RESOLVED
-        || row.status === CommunicationConversationStatus.FAILED
           ? CommunicationConversationStatus.HUMAN_ACTIVE
           : row.status;
 
-      if (targetStatus !== row.status) {
-        assertOperatorStatusTransition(row.status, targetStatus);
+      if (targetStatus !== previousStatus) {
+        assertOperatorStatusTransition(previousStatus, targetStatus);
       }
 
-      await tx.communicationConversation.update({
-        where: { id: row.id },
+      const where: Prisma.CommunicationConversationWhereInput = {
+        id: conversationId,
+        organizationId,
+        updatedAt: row.updatedAt,
+      };
+
+      if (!canManage) {
+        where.OR = [{ assignedUserId: null }, { assignedUserId: actor.userId }];
+      }
+
+      const updatedCount = await tx.communicationConversation.updateMany({
+        where,
         data: {
           assignedUserId,
           status: targetStatus,
         },
       });
+
+      if (updatedCount.count === 0) {
+        const current = await this.requireConversationRow(tx, organizationId, conversationId);
+        if (current.assignedUserId === assignedUserId) {
+          return this.noOpResult(current);
+        }
+        throw CommunicationWriteError.staleState();
+      }
 
       await this.appendOperatorEvent(tx, {
         organizationId,
@@ -206,22 +223,20 @@ export class CommunicationWriteService {
         channel: row.channel,
         eventType: CommunicationEventType.HUMAN_ASSIGNED,
         actorUserId: actor.userId,
-        idempotencyKey: `comm:assign:${conversationId}:${row.assignedUserId ?? 'none'}:${assignedUserId}`,
+        idempotencyKey: this.lifecycleEventKey('assign', conversationId, row.updatedAt),
         metadata: {
-          previousStatus: row.status,
+          previousStatus,
           newStatus: targetStatus,
           assigneeUserId: assignedUserId,
         },
       });
 
-      const updated = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!updated) throw CommunicationWriteError.notFound();
-
+      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
       return {
         conversation: mapConversationDetail(updated),
         changed: true,
         auditAction: 'communication.assign',
-        previousStatus: row.status,
+        previousStatus,
         newStatus: targetStatus,
         assigneeUserId: assignedUserId,
       } satisfies MutationResult;
@@ -236,31 +251,52 @@ export class CommunicationWriteService {
     conversationId: string,
     actor: CommunicationWriteActor,
   ): Promise<CommunicationMutationResponseDto> {
+    const canManage = await this.actorCanManage(organizationId, actor.userId);
     const result = await this.prisma.$transaction(async (tx) => {
-      const row = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!row) throw CommunicationWriteError.notFound();
+      const row = await this.requireConversationRow(tx, organizationId, conversationId);
       await this.scope.assertConversationMutable(actor.userId, organizationId, row);
 
       if (!row.assignedUserId) {
         return this.noOpResult(row);
       }
 
-      if (row.assignedUserId !== actor.userId && !(await this.actorCanManage(organizationId, actor.userId))) {
+      if (row.assignedUserId !== actor.userId && !canManage) {
         throw CommunicationWriteError.forbidden();
       }
 
+      const previousStatus = row.status;
       const targetStatus = resolveUnassignTargetStatus();
-      if (row.status !== targetStatus) {
-        assertOperatorStatusTransition(row.status, targetStatus);
+      if (previousStatus !== targetStatus) {
+        assertOperatorStatusTransition(previousStatus, targetStatus);
       }
 
-      await tx.communicationConversation.update({
-        where: { id: row.id },
+      const where: Prisma.CommunicationConversationWhereInput = {
+        id: conversationId,
+        organizationId,
+        updatedAt: row.updatedAt,
+      };
+
+      if (canManage) {
+        where.assignedUserId = { not: null };
+      } else {
+        where.assignedUserId = actor.userId;
+      }
+
+      const updatedCount = await tx.communicationConversation.updateMany({
+        where,
         data: {
           assignedUserId: null,
           status: targetStatus,
         },
       });
+
+      if (updatedCount.count === 0) {
+        const current = await this.requireConversationRow(tx, organizationId, conversationId);
+        if (!current.assignedUserId) {
+          return this.noOpResult(current);
+        }
+        throw CommunicationWriteError.staleState();
+      }
 
       await this.appendOperatorEvent(tx, {
         organizationId,
@@ -268,21 +304,19 @@ export class CommunicationWriteService {
         channel: row.channel,
         eventType: CommunicationEventType.HUMAN_REQUIRED,
         actorUserId: actor.userId,
-        idempotencyKey: `comm:unassign:${conversationId}:${row.assignedUserId}`,
+        idempotencyKey: this.lifecycleEventKey('unassign', conversationId, row.updatedAt),
         metadata: {
-          previousStatus: row.status,
+          previousStatus,
           newStatus: targetStatus,
         },
       });
 
-      const updated = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!updated) throw CommunicationWriteError.notFound();
-
+      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
       return {
         conversation: mapConversationDetail(updated),
         changed: true,
         auditAction: 'communication.unassign',
-        previousStatus: row.status,
+        previousStatus,
         newStatus: targetStatus,
         assigneeUserId: null,
       } satisfies MutationResult;
@@ -298,52 +332,21 @@ export class CommunicationWriteService {
     actor: CommunicationWriteActor,
   ): Promise<CommunicationMutationResponseDto> {
     const result = await this.prisma.$transaction(async (tx) => {
-      const row = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!row) throw CommunicationWriteError.notFound();
+      const row = await this.requireConversationRow(tx, organizationId, conversationId);
       await this.scope.assertConversationMutable(actor.userId, organizationId, row);
 
       if (row.status === CommunicationConversationStatus.RESOLVED) {
         return this.noOpResult(row);
       }
 
-      if (!isResolveEligibleStatus(row.status)) {
-        throw CommunicationWriteError.invalidTransition(
-          row.status,
-          CommunicationConversationStatus.RESOLVED,
-        );
-      }
-
-      assertOperatorStatusTransition(row.status, CommunicationConversationStatus.RESOLVED);
-
-      await tx.communicationConversation.update({
-        where: { id: row.id },
-        data: { status: CommunicationConversationStatus.RESOLVED },
-      });
-
-      await this.appendOperatorEvent(tx, {
+      const resolved = await this.resolveWithOptimisticConcurrency(
+        tx,
         organizationId,
         conversationId,
-        channel: row.channel,
-        eventType: CommunicationEventType.CONVERSATION_RESOLVED,
-        actorUserId: actor.userId,
-        idempotencyKey: `comm:resolve:${conversationId}:${row.status}`,
-        metadata: {
-          previousStatus: row.status,
-          newStatus: CommunicationConversationStatus.RESOLVED,
-        },
-      });
-
-      const updated = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!updated) throw CommunicationWriteError.notFound();
-
-      return {
-        conversation: mapConversationDetail(updated),
-        changed: true,
-        auditAction: 'communication.resolve',
-        previousStatus: row.status,
-        newStatus: CommunicationConversationStatus.RESOLVED,
-        assigneeUserId: row.assignedUserId,
-      } satisfies MutationResult;
+        row,
+        actor.userId,
+      );
+      return resolved;
     });
 
     this.recordAudit(organizationId, conversationId, actor.userId, result);
@@ -356,33 +359,44 @@ export class CommunicationWriteService {
     actor: CommunicationWriteActor,
   ): Promise<CommunicationMutationResponseDto> {
     const result = await this.prisma.$transaction(async (tx) => {
-      const row = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!row) throw CommunicationWriteError.notFound();
+      const row = await this.requireConversationRow(tx, organizationId, conversationId);
       await this.scope.assertConversationMutable(actor.userId, organizationId, row);
-
-      const targetStatus = resolveReopenTargetStatus(row.assignedUserId, row.status);
 
       if (
         row.status !== CommunicationConversationStatus.RESOLVED
         && row.status !== CommunicationConversationStatus.FAILED
       ) {
-        throw CommunicationWriteError.invalidTransition(row.status, targetStatus);
+        throw CommunicationWriteError.invalidTransition(
+          row.status,
+          resolveReopenTargetStatus(row.assignedUserId, row.status),
+        );
       }
 
-      if (
-        row.status === targetStatus
-        && row.status !== CommunicationConversationStatus.RESOLVED
-        && row.status !== CommunicationConversationStatus.FAILED
-      ) {
-        return this.noOpResult(row);
-      }
+      const previousStatus = row.status;
+      const targetStatus = resolveReopenTargetStatus(row.assignedUserId, previousStatus);
+      assertOperatorStatusTransition(previousStatus, targetStatus);
 
-      assertOperatorStatusTransition(row.status, targetStatus);
-
-      await tx.communicationConversation.update({
-        where: { id: row.id },
+      const updatedCount = await tx.communicationConversation.updateMany({
+        where: {
+          id: conversationId,
+          organizationId,
+          status: previousStatus,
+          updatedAt: row.updatedAt,
+        },
         data: { status: targetStatus },
       });
+
+      if (updatedCount.count === 0) {
+        const current = await this.requireConversationRow(tx, organizationId, conversationId);
+        if (
+          current.status === targetStatus
+          && (previousStatus === CommunicationConversationStatus.RESOLVED
+            || previousStatus === CommunicationConversationStatus.FAILED)
+        ) {
+          return this.noOpResult(current);
+        }
+        throw CommunicationWriteError.staleState();
+      }
 
       await this.appendOperatorEvent(tx, {
         organizationId,
@@ -390,23 +404,21 @@ export class CommunicationWriteService {
         channel: row.channel,
         eventType: CommunicationEventType.CONVERSATION_REOPENED,
         actorUserId: actor.userId,
-        idempotencyKey: `comm:reopen:${conversationId}:${row.status}`,
+        idempotencyKey: this.lifecycleEventKey('reopen', conversationId, row.updatedAt),
         metadata: {
-          previousStatus: row.status,
+          previousStatus,
           newStatus: targetStatus,
         },
       });
 
-      const updated = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!updated) throw CommunicationWriteError.notFound();
-
+      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
       return {
         conversation: mapConversationDetail(updated),
         changed: true,
         auditAction: 'communication.reopen',
-        previousStatus: row.status,
+        previousStatus,
         newStatus: targetStatus,
-        assigneeUserId: row.assignedUserId,
+        assigneeUserId: updated.assignedUserId,
       } satisfies MutationResult;
     });
 
@@ -420,17 +432,11 @@ export class CommunicationWriteService {
     actor: CommunicationWriteActor,
   ): Promise<CommunicationMutationResponseDto> {
     const result = await this.prisma.$transaction(async (tx) => {
-      const row = await tx.communicationConversation.findFirst({
-        where: { id: conversationId, organizationId },
-      });
-      if (!row) throw CommunicationWriteError.notFound();
-
-      const listRow = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!listRow) throw CommunicationWriteError.notFound();
-      await this.scope.assertConversationMutable(actor.userId, organizationId, listRow);
+      const row = await this.requireConversationRow(tx, organizationId, conversationId);
+      await this.scope.assertConversationMutable(actor.userId, organizationId, row);
 
       if (row.unreadCount <= 0) {
-        return this.noOpResult(listRow);
+        return this.noOpResult(row);
       }
 
       const snapshotContentAt = row.lastContentAt;
@@ -445,17 +451,14 @@ export class CommunicationWriteService {
       });
 
       if (updateResult.count === 0) {
-        const current = await this.readRepository.findConversationById(organizationId, conversationId);
-        if (!current) throw CommunicationWriteError.notFound();
+        const current = await this.requireConversationRow(tx, organizationId, conversationId);
         return {
           conversation: mapConversationDetail(current),
           changed: false,
         } satisfies MutationResult;
       }
 
-      const updated = await this.readRepository.findConversationById(organizationId, conversationId);
-      if (!updated) throw CommunicationWriteError.notFound();
-
+      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
       return {
         conversation: mapConversationDetail(updated),
         changed: true,
@@ -465,6 +468,110 @@ export class CommunicationWriteService {
 
     this.recordAudit(organizationId, conversationId, actor.userId, result);
     return { conversation: result.conversation };
+  }
+
+  private async resolveWithOptimisticConcurrency(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    conversationId: string,
+    row: CommunicationConversationListRow,
+    actorUserId: string,
+  ): Promise<MutationResult> {
+    if (!isResolveEligibleStatus(row.status)) {
+      throw CommunicationWriteError.invalidTransition(
+        row.status,
+        CommunicationConversationStatus.RESOLVED,
+      );
+    }
+
+    const previousStatus = row.status;
+    assertOperatorStatusTransition(previousStatus, CommunicationConversationStatus.RESOLVED);
+
+    const updatedCount = await tx.communicationConversation.updateMany({
+      where: {
+        id: conversationId,
+        organizationId,
+        status: previousStatus,
+        updatedAt: row.updatedAt,
+      },
+      data: { status: CommunicationConversationStatus.RESOLVED },
+    });
+
+    if (updatedCount.count > 0) {
+      await this.appendOperatorEvent(tx, {
+        organizationId,
+        conversationId,
+        channel: row.channel,
+        eventType: CommunicationEventType.CONVERSATION_RESOLVED,
+        actorUserId,
+        idempotencyKey: this.lifecycleEventKey('resolve', conversationId, row.updatedAt),
+        metadata: {
+          previousStatus,
+          newStatus: CommunicationConversationStatus.RESOLVED,
+        },
+      });
+
+      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
+      return {
+        conversation: mapConversationDetail(updated),
+        changed: true,
+        auditAction: 'communication.resolve',
+        previousStatus,
+        newStatus: CommunicationConversationStatus.RESOLVED,
+        assigneeUserId: updated.assignedUserId,
+      };
+    }
+
+    const current = await this.requireConversationRow(tx, organizationId, conversationId);
+    if (current.status === CommunicationConversationStatus.RESOLVED) {
+      return this.noOpResult(current);
+    }
+
+    if (isResolveEligibleStatus(current.status)) {
+      return this.resolveWithOptimisticConcurrency(
+        tx,
+        organizationId,
+        conversationId,
+        current,
+        actorUserId,
+      );
+    }
+
+    throw CommunicationWriteError.invalidTransition(
+      current.status,
+      CommunicationConversationStatus.RESOLVED,
+    );
+  }
+
+  private assertAssignmentAllowedOnStatus(status: CommunicationConversationStatus): void {
+    if (TERMINAL_ASSIGNMENT_STATUSES.includes(status)) {
+      throw CommunicationWriteError.invalidTransition(
+        status,
+        CommunicationConversationStatus.HUMAN_ACTIVE,
+      );
+    }
+  }
+
+  private lifecycleEventKey(
+    action: string,
+    conversationId: string,
+    updatedAt: Date,
+  ): string {
+    return `comm:${action}:${conversationId}:${updatedAt.toISOString()}`;
+  }
+
+  private async requireConversationRow(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    conversationId: string,
+  ): Promise<CommunicationConversationListRow> {
+    const row = await this.readRepository.findConversationById(
+      organizationId,
+      conversationId,
+      tx,
+    );
+    if (!row) throw CommunicationWriteError.notFound();
+    return row;
   }
 
   private async actorCanManage(organizationId: string, userId: string): Promise<boolean> {
@@ -491,15 +598,19 @@ export class CommunicationWriteService {
     return isCommunicationPermissionGranted(access, 'manage');
   }
 
-  private noOpResult(row: NonNullable<Awaited<ReturnType<CommunicationReadRepository['findConversationById']>>>): MutationResult {
+  private noOpResult(row: CommunicationConversationListRow): MutationResult {
     return {
       conversation: mapConversationDetail(row),
       changed: false,
     };
   }
 
-  private async assertActiveOrgMember(organizationId: string, userId: string): Promise<void> {
-    const member = await this.prisma.organizationMembership.findFirst({
+  private async assertActiveOrgMember(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    userId: string,
+  ): Promise<void> {
+    const member = await tx.organizationMembership.findFirst({
       where: { organizationId, userId, status: 'ACTIVE' },
       select: { id: true },
     });
@@ -507,7 +618,7 @@ export class CommunicationWriteService {
       throw CommunicationWriteError.assigneeInvalid();
     }
 
-    const user = await this.prisma.user.findFirst({
+    const user = await tx.user.findFirst({
       where: { id: userId, status: 'ACTIVE' },
       select: { id: true },
     });
@@ -521,7 +632,7 @@ export class CommunicationWriteService {
     input: {
       organizationId: string;
       conversationId: string;
-      channel: Prisma.CommunicationConversationGetPayload<{ select: { channel: true } }>['channel'];
+      channel: CommunicationConversationListRow['channel'];
       eventType: CommunicationEventType;
       actorUserId: string;
       idempotencyKey: string;
@@ -545,6 +656,7 @@ export class CommunicationWriteService {
     );
   }
 
+  /** Best-effort administrative trace — not atomic with the DB transaction (AuditService contract). */
   private recordAudit(
     organizationId: string,
     conversationId: string,

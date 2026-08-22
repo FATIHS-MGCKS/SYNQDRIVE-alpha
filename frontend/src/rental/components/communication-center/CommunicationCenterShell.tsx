@@ -199,9 +199,10 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
   const conversationActions = useCommunicationConversationActions({
     orgId,
     conversationId: state.selectedConversationId,
-    onRefreshDetail: conversationState.reloadDetail,
+    onConversationUpdated: conversationState.applyConversationUpdate,
     onTimelineRefresh: conversationState.reloadTimeline,
     onInboxRefresh: () => setInboxRefreshNonce((value) => value + 1),
+    onConflictRefresh: conversationState.reloadDetail,
   });
 
   const handleClearInvalidSelection = useCallback(() => {
