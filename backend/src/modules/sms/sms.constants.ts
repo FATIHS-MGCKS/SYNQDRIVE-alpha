@@ -1,6 +1,18 @@
 /** Stale DISPATCHING lease before safe idempotent provider retry (C5.1). */
 export const SMS_DISPATCH_STALE_MS = 120_000;
 
+/** Webhook row lease marker while a worker owns native processing. */
+export const SMS_WEBHOOK_PROCESSING_LEASE = 'in_progress';
+
+/**
+ * Bounded local processing-ownership window for sms_webhook_events.
+ * Must exceed normal native + canonical webhook processing; not unbounded.
+ */
+export const SMS_WEBHOOK_PROCESSING_LEASE_MS = 120_000;
+
+/** Durable marker when delivery webhook cannot correlate providerMessageId (retryable). */
+export const SMS_WEBHOOK_UNKNOWN_PROVIDER_MESSAGE = 'unknown_provider_message';
+
 /** sent.dm Idempotency-Key cache window — retries must reuse same businessOperationId within this window. */
 export const SENT_DM_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
