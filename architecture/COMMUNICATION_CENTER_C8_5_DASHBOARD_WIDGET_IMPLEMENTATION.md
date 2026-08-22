@@ -129,7 +129,7 @@ Files:
 | Attention needed | 1 | 1 | **2** |
 | No attention (all metrics zero) | 1 | 0 (short-circuit) | **1** |
 
-Hook fetches summary first; skips attention-preview when `requiresAttention`, `unreadConversations`, and `unassigned` are all zero.
+Hook fetches summary first. Short-circuits attention-preview **only** when summary succeeded and all attention metrics are exactly zero. Summary failure still calls attention-preview.
 
 No detail / events / context / provider config / native provider calls.
 
@@ -171,9 +171,12 @@ Empty when summary reports zero attention signals.
 
 | Failure | Behavior |
 |---------|----------|
-| Summary fails, preview OK | Rows render; metrics `—` |
+| Summary fails, preview OK (rows) | Metrics unavailable (`—`); attention rows render |
 | Summary OK, preview fails | Metrics visible; row-area error |
-| Both fail | Compact widget error + retry |
+| Both fail | Compact full widget error + retry |
+| Summary OK, all metrics zero | Preview **skipped** (short-circuit only after successful zero-attention summary) |
+
+`null` summary means **unavailable**, not zero attention. Summary failure always falls through to attention-preview unless org/generation is stale.
 
 ---
 

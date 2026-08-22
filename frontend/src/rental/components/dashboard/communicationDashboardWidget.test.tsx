@@ -152,6 +152,36 @@ describe('CommunicationDashboardWidget', () => {
     );
   });
 
+  it('renders rows with unavailable metrics when summary fails but preview succeeds', () => {
+    mockUseCommunicationDashboard.mockReturnValue({
+      summary: null,
+      rows: [
+        {
+          id: 'conv-human',
+          channel: 'WHATSAPP',
+          status: 'HUMAN_REQUIRED',
+          unreadCount: 1,
+          lastActivityAt: '2026-08-22T10:00:00.000Z',
+          displayLabel: 'Human Required',
+        },
+      ],
+      loading: false,
+      summaryLoading: false,
+      listLoading: false,
+      summaryError: 'summary failed',
+      listError: null,
+      needsAttention: false,
+      reload: vi.fn(),
+    });
+
+    renderWidget();
+    expect(container.querySelector('[data-testid="dashboard-communication-row"]')).not.toBeNull();
+    expect(container.textContent).toContain('Human Required');
+    expect(container.textContent).not.toContain('communication.dashboard.emptyTitle');
+    expect(container.textContent).not.toContain('communication.dashboard.error');
+    expect(container.querySelector('[data-testid="dashboard-communication-summary"]')?.textContent).toContain('—');
+  });
+
   it('opens unread filter from metric click', () => {
     const onOpen = renderWidget();
     const buttons = container.querySelectorAll('button');

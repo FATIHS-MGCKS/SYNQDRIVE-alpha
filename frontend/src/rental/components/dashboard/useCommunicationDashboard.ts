@@ -49,10 +49,12 @@ export function useCommunicationDashboard({
     setRows([]);
 
     let summaryResult: CommunicationConversationSummary | null = null;
+    let summarySucceeded = false;
 
     try {
       summaryResult = await api.communication.getConversationSummary(requestOrgId);
       if (!isCurrent(requestOrgId, generation)) return;
+      summarySucceeded = true;
       setSummary(summaryResult);
     } catch (err) {
       if (!isCurrent(requestOrgId, generation)) return;
@@ -66,7 +68,10 @@ export function useCommunicationDashboard({
 
     if (!isCurrent(requestOrgId, generation)) return;
 
-    if (!dashboardCommunicationNeedsAttention(summaryResult)) {
+    const shouldShortCircuitPreview =
+      summarySucceeded && !dashboardCommunicationNeedsAttention(summaryResult);
+
+    if (shouldShortCircuitPreview) {
       setRows([]);
       setListLoading(false);
       return;

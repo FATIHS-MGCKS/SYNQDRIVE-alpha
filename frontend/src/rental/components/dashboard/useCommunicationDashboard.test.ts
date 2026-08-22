@@ -90,6 +90,58 @@ describe('useCommunicationDashboard', () => {
     unmount();
   });
 
+  it('loads attention preview when summary fails but preview succeeds', async () => {
+    const humanRequired = {
+      id: 'conv-human',
+      channel: 'WHATSAPP' as const,
+      status: 'HUMAN_REQUIRED' as const,
+      unreadCount: 1,
+      lastActivityAt: '2026-08-22T10:00:00.000Z',
+      displayLabel: 'Human Required',
+    };
+
+    vi.mocked(api.communication.getConversationSummary).mockRejectedValue(
+      new Error('summary failed'),
+    );
+    vi.mocked(api.communication.getAttentionPreview).mockResolvedValue({
+      items: [humanRequired],
+    });
+
+    const { result, unmount } = renderHook(() =>
+      useCommunicationDashboard({ orgId: 'org-1', enabled: true }),
+    );
+
+    await waitForHook(() => result.current.loading === false);
+    expect(api.communication.getAttentionPreview).toHaveBeenCalledTimes(1);
+    expect(result.current.summary).toBeNull();
+    expect(result.current.summaryError).toBe('summary failed');
+    expect(result.current.listError).toBeNull();
+    expect(result.current.rows).toEqual([humanRequired]);
+
+    unmount();
+  });
+
+  it('renders compact full error when summary and preview both fail', async () => {
+    vi.mocked(api.communication.getConversationSummary).mockRejectedValue(
+      new Error('summary failed'),
+    );
+    vi.mocked(api.communication.getAttentionPreview).mockRejectedValue(
+      new Error('preview failed'),
+    );
+
+    const { result, unmount } = renderHook(() =>
+      useCommunicationDashboard({ orgId: 'org-1', enabled: true }),
+    );
+
+    await waitForHook(() => result.current.loading === false);
+    expect(api.communication.getAttentionPreview).toHaveBeenCalledTimes(1);
+    expect(result.current.summaryError).toBe('summary failed');
+    expect(result.current.listError).toBe('preview failed');
+    expect(result.current.rows).toEqual([]);
+
+    unmount();
+  });
+
   it('retains summary when attention preview request fails', async () => {
     vi.mocked(api.communication.getAttentionPreview).mockRejectedValue(new Error('preview failed'));
 
