@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-task-detail-host-residuals-p2-2-16c2b-2026-08-22',
+    version: '4.9.943',
+    title: 'Platform i18n — P2.2.16C.2B Task Detail host residual localization',
+    summary: [
+      'Localized remaining host-specific presentation in VehicleTaskDetailDrawer (`tasks.detail.openInTasks`) and OperatorTaskDetail (load error, comment empty, not-found fallbacks) without touching shared workflow core.',
+      'P216C2B enforce-clean exact scope (2 paths) reports 0 findings; +1 EN+DE key (`tasks.detail.notFound`, 7898→7899); reuses existing `tasks.detail.openInTasks`, `loadError`, `commentEmpty`.',
+      'Presentation-only — routes, callbacks, mutation payloads, and workflow semantics unchanged. GlobalTaskDetailPanel unchanged (already clean). P2.2.16C presentation scope complete. Category E=0.',
+    ],
+    reason:
+      'P2.2.16C.2 pre-flight GO-BUT-SPLIT deferred host residuals to C.2B after C.2A merged shared workflow core. C.2B closes Task Detail presentation localization.',
+    previousBehavior:
+      'VehicleTaskDetailDrawer had hardcoded German "In Tasks öffnen". OperatorTaskDetail had hardcoded German load/comment/not-found strings despite locale threading for view-model.',
+    details:
+      'rental/components/tasks/VehicleTaskDetailDrawer.tsx; operator/tasks/OperatorTaskDetail.tsx; task-detail-host-residuals-localization.test.tsx; P216C2B_ENFORCE_CLEAN_EXACT; architecture/I18N_TASK_DETAIL_HOST_RESIDUALS_P2_2_16C2B_2026-08-22.md; docs/audits/i18n-p2-2-16c2b-task-detail-host-residuals-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T01:00:00.000Z',
+  },
+  {
     id: 'i18n-task-workflow-core-p2-2-16c2a-2026-08-22',
     version: '4.9.942',
     title: 'Platform i18n — P2.2.16C.2A Shared Task workflow core localization',

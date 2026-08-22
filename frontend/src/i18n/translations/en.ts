@@ -2852,6 +2852,7 @@ export const en = {
   'tasks.detail.commentAdded': 'Comment added',
   'tasks.detail.loadError': 'Task could not be loaded',
   'tasks.detail.loadErrorRetry': 'Please try again.',
+  'tasks.detail.notFound': 'Task not found',
   'tasks.detail.retry': 'Retry',
   'tasks.detail.openInTasks': 'Open in tasks',
   'tasks.detail.vehicleSection': 'Vehicle',

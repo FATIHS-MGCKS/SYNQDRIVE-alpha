@@ -37,7 +37,7 @@ export function OperatorTaskDetail({
   layout = 'tab',
   onOpenSuccessorTask,
 }: Props) {
-  const { locale } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [task, setTask] = useState<ApiTask | null>(initialTask ?? null);
   const [loading, setLoading] = useState(!initialTask);
@@ -78,12 +78,12 @@ export function OperatorTaskDetail({
       const full = await api.tasks.get(orgId, taskId);
       setTask(full);
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Laden fehlgeschlagen');
+      setLoadError(e instanceof Error ? e.message : t('tasks.detail.loadError'));
       setTask(null);
     } finally {
       setLoading(false);
     }
-  }, [orgId, taskId]);
+  }, [orgId, taskId, t]);
 
   useEffect(() => {
     void load();
@@ -123,7 +123,7 @@ export function OperatorTaskDetail({
     if (!task) return;
     const body = commentDraft.trim();
     if (!body) {
-      setCommentError('Kommentar eingeben.');
+      setCommentError(t('tasks.detail.commentEmpty'));
       return;
     }
     setCommentError(null);
@@ -147,7 +147,7 @@ export function OperatorTaskDetail({
   if (loadError || !task) {
     return (
       <div className="rounded-2xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] px-4 py-3 text-sm">
-        {loadError ?? 'Aufgabe nicht gefunden'}
+        {loadError ?? t('tasks.detail.notFound')}
       </div>
     );
   }
