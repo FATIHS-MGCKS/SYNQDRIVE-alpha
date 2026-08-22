@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Task Detail Host Residuals (P2.2.16C.2B — V4.9.943)', icon: Globe,
+    endpoint: 'VehicleTaskDetailDrawer.tsx, OperatorTaskDetail.tsx.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → host-specific `tasks.detail.*` labels/errors; `buildTaskDetailViewModel({ locale })` + C.2A workflow host unchanged. **Keys:** +1 EN+DE `tasks.detail.notFound` (7898→7899); reuses `openInTasks`, `loadError`, `commentEmpty`. **Guardrails:** P2.2.16C.2B enforce-clean exact (2 paths) — 0 findings; blind-spot guards on host literals. **Tests:** `task-detail-host-residuals-localization.test.tsx`. **P2.2.16C:** presentation scope complete. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-16c2-task-detail-actions-dialogs-preflight-2026-08-22.md; architecture/I18N_TASK_DETAIL_HOST_RESIDUALS_P2_2_16C2B_2026-08-22.md' },
   { name: 'Platform i18n Task Workflow Core (P2.2.16C.2A — V4.9.942)', icon: Globe,
     endpoint: 'task-detail-actions-presentation-i18n.ts, taskDetailActions.utils.ts, taskDetailCompletion.utils.ts, taskCompleteForm.utils.ts, taskResolution.utils.ts, useTaskDetailActions.ts, TaskDetailActionBar/ActionsHost/CompleteDialog/CompletionSummary.',
     service: '**Locale flow:** `useLanguage().locale` → `buildTaskDetailActionPlan(detail, locale)` → `task-detail-actions-presentation-i18n` + `buildChecklistBlockerLabel(resolveTaskDetailPresentationLocale(locale), titles)`. **Keys:** +60 EN+DE `tasks.detail.actions.*`, `tasks.detail.completion.*`, `tasks.resolution.code.*` (7834→7894). **Guardrails:** P2.2.16C.2A enforce-clean exact (9 paths) — 0 findings; anti-`RESOLUTION_CODE_LABELS`/German-fallback guards. **Tests:** `task-detail-actions-localization.test.tsx` (15). **C.2B deferred:** host residuals. **Semantics:** presentation-only; Category E=0.',
