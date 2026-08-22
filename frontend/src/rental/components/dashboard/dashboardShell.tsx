@@ -11,12 +11,17 @@ export const DASHBOARD_LAYOUT = {
   focusStack: 'space-y-4',
   opsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:items-stretch',
   /**
-   * Desktop: header card with 3 operational modules + finance.
-   * Mobile: stacked ops modules, then finance, then lower attention grid.
+   * Desktop: left stack (ops twin KPIs + finance) | Auslastung (height-matched).
+   * Mobile: ops + finance, then Auslastung, then lower attention grid.
    */
-  controlHeaderSlot: 'order-1 min-w-0 w-full',
-  controlOpsGrid:
-    'grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:items-stretch lg:gap-3.5',
+  controlFinanceGrid:
+    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
+  /** Wraps KPI + finance on desktop; `contents` keeps mobile grid order on children. */
+  controlLeftColumn:
+    'contents lg:col-start-1 lg:flex lg:min-h-0 lg:flex-col lg:gap-4',
+  controlKpiSlot: 'order-1 min-w-0 w-full',
+  utilizationSlot:
+    'order-2 flex min-h-0 w-full min-w-0 flex-col overflow-hidden lg:col-start-2 lg:row-start-1',
   lowerAttentionGrid:
     'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
   notificationsSlot:

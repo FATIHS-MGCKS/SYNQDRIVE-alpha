@@ -166,7 +166,8 @@ describe('dashboard runtime-only UI contracts', () => {
     const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
     const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
 
-    expect(shellSrc).toMatch(/controlOpsGrid:[\s\S]*lg:grid-cols-3/);
+    expect(shellSrc).toMatch(/controlFinanceGrid:[\s\S]*lg:grid-cols-2/);
+    expect(shellSrc).toMatch(/utilizationSlot:[\s\S]*lg:col-start-2/);
     expect(shellSrc).toMatch(/lowerAttentionGrid:[\s\S]*lg:grid-cols-2/);
     expect(shellSrc).toMatch(/notificationsSlot:[\s\S]*lg:col-start-1/);
     expect(shellSrc).toMatch(/tasksSlot:[\s\S]*lg:col-start-2/);
@@ -176,15 +177,15 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*grid-cols-2/);
     expect(shellSrc).toMatch(/lg:items-start/);
     expect(dashboardViewSrc).toMatch(/useDashboardLeftColumnHeight/);
-    expect(dashboardViewSrc).toMatch(/notificationsColumnRef/);
-    expect(dashboardViewSrc).toMatch(/tasksMaxHeight/);
+    expect(dashboardViewSrc).toMatch(/leftColumnRef/);
+    expect(dashboardViewSrc).toMatch(/utilizationMaxHeight/);
     expect(dashboardViewSrc).toMatch(/lowerAttentionGrid/);
     expect(dashboardViewSrc).not.toMatch(/<BusinessPulse/);
     expect(dashboardViewSrc).toMatch(/notificationsSlot/);
     expect(dashboardViewSrc).toMatch(/tasksSlot/);
     expect(dashboardViewSrc).toMatch(/layout="sidebar"/);
     expect(dashboardViewSrc).toMatch(/<DashboardControlHeader vm=\{vm\}>[\s\S]*<ControlKpiStrip/);
-    expect(dashboardViewSrc).toMatch(/<DashboardUtilizationPanel/);
+    expect(dashboardViewSrc).toMatch(/controlFinanceGrid[\s\S]*<DashboardUtilizationPanel/);
     expect(dashboardViewSrc).toMatch(/<FinanceKpiStrip/);
     expect(dashboardViewSrc).not.toMatch(/controlKpiShell/);
     expect(dashboardViewSrc).not.toMatch(/notificationsRow/);
