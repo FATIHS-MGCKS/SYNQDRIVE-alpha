@@ -239,11 +239,28 @@ Implementation: `detectSmsIdempotencyPayloadMismatch` in `sms-idempotency.ts`, e
 `applyDeliveryStatusUpdate` uses conditional `updateMany` with `eligibleCurrentStatusesForDeliveryTransition`.
 Concurrent/out-of-order SENT + DELIVERED webhooks cannot downgrade DELIVERED → SENT. FAILED/BLOCKED terminal semantics preserved.
 
-### Webhook processing ownership
+### Webhook processing ownership (bounded lease)
 
-`SmsWebhookEventRepository.tryClaimProcessing` sets `processingError = in_progress` lease atomically.
-P2002 losers must acquire the lease; only one worker processes each `externalEventId`.
-Crash recovery: `processing_failed` and `unknown_provider_message` states are reclaimable.
+`SmsWebhookEvent.processingClaimedAt` records **local** processing-ownership time (C5.2 migration
+`20260822040000_communication_center_c5_2_sms_webhook_processing_lease`). `processingError = in_progress`
+alone is **not** a lease — it requires `processingClaimedAt` + `SMS_WEBHOOK_PROCESSING_LEASE_MS` (120s).
+
+| State | Meaning |
+|-------|---------|
+| `processedAt != null` | Terminally processed |
+| `in_progress` + recent `processingClaimedAt` | Active owner — peers get `held_by_peer` |
+| `in_progress` + stale `processingClaimedAt` | Dead owner — atomically reclaimable |
+| `processing_failed` / `unknown_provider_message` | Immediately reclaimable (no active lease) |
+
+`tryClaimProcessing` uses conditional `updateMany` (no read→decide→unconditional-write race). Concurrent
+stale reclaim: exactly one `claimed`, others `held_by_peer`.
+
+`markProcessed` / `markProcessingError` / `markUnknownProviderMessage` clear `processingClaimedAt` and only
+mutate rows where `processedAt IS NULL` — a late stale owner cannot corrupt a completed event.
+
+**Partial-processing crash recovery:** retry re-attempts canonical projection (idempotent) when native state
+already exists — e.g. DELIVERED without `processedAt`, inbound row without projection, canonical already
+written before `markProcessed`. Converges to exactly one native/canonical side effect.
 
 ### Unknown `providerMessageId` policy (outbound delivery webhooks)
 
@@ -274,7 +291,7 @@ When absent, falls back to local provider-response receipt time (`local_receipt_
 
 - C5.1 dispatch + security postgres suites (preserved)
 - C5.2 unit: adapter, idempotency key, status monotonicity
-- C5.2 postgres: `sms-runtime.postgres.integration.spec.ts` (idempotency conflicts, concurrency, monotonic activity, webhook ownership, unknown providerMessageId)
+- C5.2 postgres: `sms-runtime.postgres.integration.spec.ts` + `sms-webhook-lease.postgres.integration.spec.ts`
 
 ---
 
@@ -309,5 +326,5 @@ Runtime + canonical projection hooks exist. C6 context resolver / read APIs not 
 
 ## Changes / Architektur
 
-- **Changes:** C5.2 pre-live hardening documented in this file (idempotency payload consistency, monotonic activity, DB delivery CAS, webhook lease, unknown providerMessageId policy, acceptedAt authority, smoke vs E2E validation scripts)
+- **Changes:** C5.2 pre-live hardening + bounded webhook processing lease (`processingClaimedAt`)
 - **Architektur:** SMS runtime hardening on C5.1 foundation; canonical projection contract unchanged

@@ -143,6 +143,21 @@ export class SmsWebhookProcessorService {
 
     const existing = await this.messages.findByProviderMessageId(providerMessageId, verified.organizationId);
     if (existing) {
+      try {
+        await this.projection.projectInbound({
+          conversation: existing.conversation,
+          message: existing,
+          webhookExternalEventId: externalEventId,
+          occurredAt: verified.occurredAt,
+        });
+      } catch {
+        this.logger.error({
+          msg: 'SMS inbound canonical projection failed on replay',
+          organizationId: verified.organizationId,
+          providerMessageId,
+          eventType: verified.parsed.event,
+        });
+      }
       return;
     }
 
@@ -206,7 +221,7 @@ export class SmsWebhookProcessorService {
 
     const transitioned = updated.status !== before.status;
 
-    if (updated.status === SmsMessageDeliveryStatus.DELIVERED && transitioned) {
+    if (updated.status === SmsMessageDeliveryStatus.DELIVERED) {
       try {
         await this.projection.projectStatusUpdate({
           conversation: updated.conversation,
@@ -223,10 +238,10 @@ export class SmsWebhookProcessorService {
           eventType: verified.parsed.event,
         });
       }
-      return { kind: 'updated', transitioned: true };
+      return { kind: 'updated', transitioned };
     }
 
-    if (updated.status === SmsMessageDeliveryStatus.FAILED && transitioned) {
+    if (updated.status === SmsMessageDeliveryStatus.FAILED) {
       try {
         await this.projection.projectStatusUpdate({
           conversation: updated.conversation,
@@ -244,7 +259,7 @@ export class SmsWebhookProcessorService {
           eventType: verified.parsed.event,
         });
       }
-      return { kind: 'updated', transitioned: true };
+      return { kind: 'updated', transitioned };
     }
 
     return { kind: 'updated', transitioned };
