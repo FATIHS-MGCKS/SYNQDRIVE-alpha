@@ -63,13 +63,23 @@ export function DashboardPanelScrollBlur({
       {showBottomFade ? (
         <div
           aria-hidden
-          className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-11',
-            'bg-gradient-to-t from-[color:var(--surface-premium-bg-end)]/32 via-[color:var(--surface-premium-bg-end)]/10 to-transparent',
-            'backdrop-blur-[2px] supports-[backdrop-filter]:backdrop-blur-[2px]',
-            'motion-reduce:backdrop-blur-none',
-          )}
-        />
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-16"
+        >
+          <div
+            className={cn(
+              'absolute inset-0 backdrop-blur-[2px] supports-[backdrop-filter]:backdrop-blur-[2px]',
+              'motion-reduce:backdrop-blur-none',
+              '[mask-image:linear-gradient(to_top,black_0%,black_18%,rgba(0,0,0,0.72)_42%,rgba(0,0,0,0.28)_68%,transparent_100%)]',
+              '[-webkit-mask-image:linear-gradient(to_top,black_0%,black_18%,rgba(0,0,0,0.72)_42%,rgba(0,0,0,0.28)_68%,transparent_100%)]',
+            )}
+          />
+          <div
+            className={cn(
+              'absolute inset-0',
+              'bg-[linear-gradient(to_top,color-mix(in_srgb,var(--surface-premium-bg-end)_24%,transparent)_0%,color-mix(in_srgb,var(--surface-premium-bg-end)_12%,transparent)_32%,color-mix(in_srgb,var(--surface-premium-bg-end)_4%,transparent)_62%,transparent_100%)]',
+            )}
+          />
+        </div>
       ) : null}
     </div>
   );
