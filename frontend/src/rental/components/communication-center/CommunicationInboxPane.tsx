@@ -18,27 +18,26 @@ export function CommunicationInboxPane({
       data-testid="communication-inbox-pane"
       className="flex h-full min-h-0 flex-col border-border/40 bg-background"
     >
-      <header className="shrink-0 space-y-2.5 border-b border-border/40 px-3 py-3">
+      <header className="shrink-0 space-y-2 border-b border-border/40 p-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[13px] font-semibold text-foreground">{t('communication.inbox.title')}</h2>
           <span
-            className="text-[10px] text-muted-foreground"
-            aria-hidden
+            className="sr-only"
             data-testid="communication-inbox-count-placeholder"
-          />
+          >
+            {t('communication.inbox.countReserved')}
+          </span>
         </div>
         <CommunicationChannelFilters
           activeChannel={activeChannel}
           onChannelChange={onChannelChange}
         />
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex h-full min-h-[12rem] items-center justify-center px-4 py-6">
-          <p className="text-center text-[12px] text-muted-foreground">
-            {t('communication.inbox.emptyList')}
-          </p>
-        </div>
-      </div>
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
+        data-testid="communication-inbox-list-shell"
+        aria-label={t('communication.inbox.listShell')}
+      />
     </div>
   );
 }

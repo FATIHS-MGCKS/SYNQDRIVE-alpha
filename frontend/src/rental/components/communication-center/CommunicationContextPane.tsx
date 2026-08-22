@@ -1,3 +1,5 @@
+import { Layers } from 'lucide-react';
+import { EmptyState } from '../../../components/patterns';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 interface CommunicationContextPaneProps {
@@ -24,25 +26,20 @@ export function CommunicationContextPane({
           <button
             type="button"
             onClick={onClose}
-            className="text-[11px] font-medium text-muted-foreground hover:text-foreground xl:hidden"
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40 xl:hidden"
           >
             {t('communication.context.close')}
           </button>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-4">
-          {(['customer', 'booking', 'vehicle', 'station', 'assignment'] as const).map((section) => (
-            <section key={section} className="border-b border-border/30 pb-3 last:border-b-0">
-              <h3 className="mb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                {t(`communication.context.sections.${section}`)}
-              </h3>
-              <p className="text-[12px] text-muted-foreground">
-                {t('communication.context.emptySection')}
-              </p>
-            </section>
-          ))}
-        </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <EmptyState
+          compact
+          icon={<Layers className="h-5 w-5" aria-hidden />}
+          title={t('communication.context.shellEmpty.title')}
+          description={t('communication.context.shellEmpty.description')}
+          className="h-full"
+        />
       </div>
     </aside>
   );

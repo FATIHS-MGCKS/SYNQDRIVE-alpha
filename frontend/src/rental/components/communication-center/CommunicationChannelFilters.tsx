@@ -37,8 +37,8 @@ export function CommunicationChannelFilters({
 
   return (
     <div
-      role="tablist"
-      aria-label={t('communication.channels.ariaLabel')}
+      role="group"
+      aria-label={t('communication.channels.filterGroup')}
       className={cn(
         'flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
@@ -51,15 +51,14 @@ export function CommunicationChannelFilters({
           <button
             key={channel}
             type="button"
-            role="tab"
-            aria-selected={isActive}
+            aria-pressed={isActive}
             data-channel={channel}
             onClick={() => onChannelChange(channel)}
             className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+              'sq-press inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40',
               isActive
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                ? 'bg-[color:var(--brand)]/12 text-[color:var(--brand)] ring-1 ring-[color:var(--brand)]/25'
+                : 'bg-muted/40 text-muted-foreground hover:text-foreground',
             )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -35,13 +35,27 @@ describe('CommunicationCenterView RBAC', () => {
     });
   }
 
+  it('renders nothing while org context is loading', () => {
+    mockUseRentalOrg.mockReturnValue({
+      orgId: 'org-1',
+      hasPermission: () => true,
+      userRole: 'ORG_ADMIN',
+      loading: true,
+    });
+    renderView();
+    expect(container.innerHTML).toBe('');
+  });
+
   it('denies access without communication.read permission', () => {
     mockUseRentalOrg.mockReturnValue({
       orgId: 'org-1',
       hasPermission: () => false,
       userRole: 'DRIVER',
+      loading: false,
     });
+
     renderView();
+
     expect(container.querySelector('[data-testid="communication-center-access-denied"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-center-view"]')).toBeNull();
   });
@@ -52,8 +66,11 @@ describe('CommunicationCenterView RBAC', () => {
       hasPermission: (module: string, level: string) =>
         module === 'communication' && level === 'read',
       userRole: 'ORG_ADMIN',
+      loading: false,
     });
+
     renderView();
+
     expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
   });
 });

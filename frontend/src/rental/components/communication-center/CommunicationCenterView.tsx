@@ -7,8 +7,12 @@ import { CommunicationCenterShell } from './CommunicationCenterShell';
 
 export function CommunicationCenterView() {
   const { t } = useLanguage();
-  const { hasPermission, userRole } = useRentalOrg();
+  const { hasPermission, userRole, loading } = useRentalOrg();
   const canRead = hasCommunicationPermission(hasPermission, 'read', userRole);
+
+  if (loading) {
+    return null;
+  }
 
   if (!canRead) {
     return (

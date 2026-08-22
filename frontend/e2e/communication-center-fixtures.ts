@@ -63,8 +63,10 @@ export async function openCommunicationCenter(
     .waitFor({ state: 'visible', timeout: 45000 });
 }
 
-export async function openDashboardWithCommunicationNav(page: Page) {
-  const user = mockUserWithCommunication;
+export async function openDashboardWithCommunicationNav(
+  page: Page,
+  user: typeof mockUserWithCommunication = mockUserWithCommunication,
+) {
   await seedSession(page, user, 'en');
   await installTaskMocks(page);
   await page.route('**/auth/me', async (route) => {
@@ -76,7 +78,7 @@ export async function openDashboardWithCommunicationNav(page: Page) {
     });
   });
   await page.goto('/rental', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Communication Center/i }).waitFor({ state: 'visible', timeout: 45000 });
+  await page.getByTestId('dashboard-tasks-overview-panel').waitFor({ state: 'visible', timeout: 45000 });
 }
 
 export async function expectCommunicationNavVisible(page: Page, visible: boolean) {

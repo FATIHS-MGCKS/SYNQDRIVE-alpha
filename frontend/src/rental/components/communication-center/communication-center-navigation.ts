@@ -12,7 +12,6 @@ export const COMMUNICATION_CHANNEL_PARAM = 'communicationChannel';
 export const COMMUNICATION_CONVERSATION_PARAM = 'conversationId';
 export const COMMUNICATION_MOBILE_PANE_PARAM = 'communicationPane';
 
-const PRIMARY_TABS = new Set<string>(['inbox', 'settings']);
 const CHANNELS = new Set<string>(['all', 'whatsapp', 'voice', 'sms']);
 const MOBILE_PANES = new Set<string>(['inbox', 'conversation', 'context']);
 
@@ -42,6 +41,14 @@ export function parseCommunicationCenterViewFromUrl(search = ''): boolean {
   return isCommunicationCenterView(parseSearch(search).get(COMMUNICATION_VIEW_PARAM));
 }
 
+/** Settings tab is reserved for C8.4 — normalize to inbox in production shell. */
+export function normalizeCommunicationPrimaryTab(
+  tab: CommunicationPrimaryTab | string | null | undefined,
+): CommunicationPrimaryTab {
+  if (tab === 'settings') return 'inbox';
+  return tab === 'inbox' ? 'inbox' : 'inbox';
+}
+
 export function readCommunicationCenterStateFromUrl(
   search = '',
 ): Partial<CommunicationCenterUrlState> {
@@ -49,8 +56,8 @@ export function readCommunicationCenterStateFromUrl(
   const next: Partial<CommunicationCenterUrlState> = {};
 
   const tab = params.get(COMMUNICATION_TAB_PARAM);
-  if (tab && PRIMARY_TABS.has(tab)) {
-    next.primaryTab = tab as CommunicationPrimaryTab;
+  if (tab) {
+    next.primaryTab = normalizeCommunicationPrimaryTab(tab);
   }
 
   const channel = params.get(COMMUNICATION_CHANNEL_PARAM);
@@ -76,9 +83,26 @@ export function readCommunicationCenterStateFromUrl(
 export function mergeCommunicationCenterState(
   partial: Partial<CommunicationCenterUrlState> | undefined,
 ): CommunicationCenterUrlState {
-  return {
+  const merged = {
     ...DEFAULT_COMMUNICATION_CENTER_URL_STATE,
     ...partial,
+  };
+  return {
+    ...merged,
+    primaryTab: normalizeCommunicationPrimaryTab(merged.primaryTab),
+  };
+}
+
+export function applyCommunicationChannelChange(
+  current: CommunicationCenterUrlState,
+  channel: CommunicationChannel,
+): CommunicationCenterUrlState {
+  if (current.channel === channel) return current;
+  return {
+    ...current,
+    channel,
+    selectedConversationId: null,
+    mobilePane: 'inbox',
   };
 }
 
@@ -88,16 +112,17 @@ export function syncCommunicationCenterStateToUrl(
 ): void {
   if (typeof window === 'undefined') return;
 
+  const normalized = mergeCommunicationCenterState(state);
   const url = new URL(window.location.href);
   url.searchParams.set(COMMUNICATION_VIEW_PARAM, COMMUNICATION_CENTER_VIEW);
 
   const entries: Array<[string, string | null]> = [
-    [COMMUNICATION_TAB_PARAM, state.primaryTab !== 'inbox' ? state.primaryTab : null],
-    [COMMUNICATION_CHANNEL_PARAM, state.channel !== 'all' ? state.channel : null],
-    [COMMUNICATION_CONVERSATION_PARAM, state.selectedConversationId],
+    [COMMUNICATION_TAB_PARAM, null],
+    [COMMUNICATION_CHANNEL_PARAM, normalized.channel !== 'all' ? normalized.channel : null],
+    [COMMUNICATION_CONVERSATION_PARAM, normalized.selectedConversationId],
     [
       COMMUNICATION_MOBILE_PANE_PARAM,
-      state.mobilePane !== 'inbox' ? state.mobilePane : null,
+      normalized.mobilePane !== 'inbox' ? normalized.mobilePane : null,
     ],
   ];
 

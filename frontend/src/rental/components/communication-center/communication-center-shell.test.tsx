@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LanguageProvider } from '../../i18n/LanguageContext';
 import { CommunicationCenterShell } from './CommunicationCenterShell';
+import { COMMUNICATION_CHANNEL_PARAM } from './communication-center-navigation';
 
 function mockMatchMedia(width: number) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -32,7 +33,7 @@ describe('CommunicationCenterShell', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
-    window.history.replaceState({}, '', '/rental');
+    window.history.replaceState({}, '', '/rental?view=communication-center');
     localStorage.setItem('synqdrive.locale', 'en');
     mockMatchMedia(1440);
   });
@@ -48,35 +49,79 @@ describe('CommunicationCenterShell', () => {
     });
   }
 
-  it('renders inbox tab by default with structural panes', () => {
+  it('renders inbox workspace with structural list shell only', () => {
     renderShell();
-    const html = container.innerHTML;
     expect(container.querySelector('[data-testid="communication-center-view"]')).not.toBeNull();
-    expect(html).toContain('Select a conversation');
-    expect(container.querySelector('[data-testid="communication-inbox-pane"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="communication-workspace-pane"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="communication-context-pane"]')).toBeNull();
-    expect(container.querySelector('[data-testid="communication-inbox-skeleton"]')).toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-list-shell"]')).not.toBeNull();
+    expect(container.textContent).not.toContain('No conversations yet');
+    expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
   });
 
-  it('renders German copy when locale is de', () => {
+  it('renders German copy', () => {
     localStorage.setItem('synqdrive.locale', 'de');
     renderShell();
     expect(container.textContent).toContain('Konversation auswählen');
     expect(container.textContent).toContain('Posteingang');
   });
 
-  it('shows context pane when conversation id is provided on desktop', () => {
-    window.history.replaceState({}, '', '/rental?conversationId=conv-shell-test');
+  it('shows three-region desktop layout when conversation id is provided', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/rental?view=communication-center&conversationId=conv-shell-test',
+    );
     renderShell();
     expect(container.querySelector('[data-testid="communication-context-pane"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="communication-timeline-shell"]')).not.toBeNull();
   });
 
-  it('shows settings placeholder when settings tab is selected via URL', () => {
+  it('normalizes settings tab URL to inbox shell', () => {
     window.history.replaceState({}, '', '/rental?communicationTab=settings');
     renderShell();
-    expect(container.querySelector('[data-testid="communication-settings-shell"]')).not.toBeNull();
-    expect(container.textContent).toContain('Configuration');
+    expect(container.querySelector('[data-testid="communication-settings-shell"]')).toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-pane"]')).not.toBeNull();
+  });
+
+  it('uses aria-pressed channel filter buttons', () => {
+    renderShell();
+    const allFilter = container.querySelector('[data-channel="all"]');
+    expect(allFilter?.getAttribute('aria-pressed')).toBe('true');
+    expect(allFilter?.getAttribute('role')).toBeNull();
+  });
+
+  it('clears conversation when channel filter changes', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/rental?view=communication-center&conversationId=conv-1&communicationChannel=whatsapp',
+    );
+    renderShell();
+    const smsFilter = container.querySelector('[data-channel="sms"]') as HTMLButtonElement;
+    act(() => {
+      smsFilter.click();
+    });
+    expect(window.location.search).not.toContain('conversationId');
+    expect(window.location.search).toContain(`${COMMUNICATION_CHANNEL_PARAM}=sms`);
+    expect(container.querySelector('[data-testid="communication-context-pane"]')).toBeNull();
+  });
+
+  it('restores channel on browser back', () => {
+    renderShell();
+    const whatsapp = container.querySelector('[data-channel="whatsapp"]') as HTMLButtonElement;
+    const voice = container.querySelector('[data-channel="voice"]') as HTMLButtonElement;
+    act(() => {
+      whatsapp.click();
+    });
+    act(() => {
+      voice.click();
+    });
+    act(() => {
+      window.history.back();
+    });
+    expect(window.location.search).toContain(`${COMMUNICATION_CHANNEL_PARAM}=whatsapp`);
+    expect(
+      container.querySelector('[data-channel="whatsapp"]')?.getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 });

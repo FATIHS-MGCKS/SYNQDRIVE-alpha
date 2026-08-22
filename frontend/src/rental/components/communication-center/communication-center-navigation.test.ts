@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyCommunicationChannelChange,
   DEFAULT_COMMUNICATION_CENTER_URL_STATE,
   mergeCommunicationCenterState,
+  normalizeCommunicationPrimaryTab,
   parseCommunicationCenterViewFromUrl,
   readCommunicationCenterStateFromUrl,
 } from './communication-center-navigation';
@@ -13,13 +15,18 @@ describe('communication-center-navigation', () => {
     expect(parseCommunicationCenterViewFromUrl('?view=dashboard')).toBe(false);
   });
 
-  it('parses tab, channel, conversation, and mobile pane params', () => {
+  it('normalizes settings tab to inbox before C8.4', () => {
+    expect(normalizeCommunicationPrimaryTab('settings')).toBe('inbox');
+    expect(normalizeCommunicationPrimaryTab('inbox')).toBe('inbox');
+  });
+
+  it('parses channel, conversation, and mobile pane params', () => {
     expect(
       readCommunicationCenterStateFromUrl(
         '?communicationTab=settings&communicationChannel=whatsapp&conversationId=conv-1&communicationPane=context',
       ),
     ).toEqual({
-      primaryTab: 'settings',
+      primaryTab: 'inbox',
       channel: 'whatsapp',
       selectedConversationId: 'conv-1',
       mobilePane: 'context',
@@ -35,5 +42,32 @@ describe('communication-center-navigation', () => {
       selectedConversationId: 'conv-2',
       mobilePane: 'conversation',
     });
+  });
+
+  it('clears selection and mobile pane when channel changes', () => {
+    const next = applyCommunicationChannelChange(
+      {
+        ...DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+        channel: 'whatsapp',
+        selectedConversationId: 'conv-1',
+        mobilePane: 'conversation',
+      },
+      'sms',
+    );
+    expect(next).toEqual({
+      primaryTab: 'inbox',
+      channel: 'sms',
+      selectedConversationId: null,
+      mobilePane: 'inbox',
+    });
+  });
+
+  it('does not mutate state when channel is unchanged', () => {
+    const current = {
+      ...DEFAULT_COMMUNICATION_CENTER_URL_STATE,
+      channel: 'voice' as const,
+      selectedConversationId: 'conv-1',
+    };
+    expect(applyCommunicationChannelChange(current, 'voice')).toBe(current);
   });
 });
