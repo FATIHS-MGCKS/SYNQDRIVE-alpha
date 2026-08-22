@@ -100,7 +100,7 @@ System/projector transitions remain in `CommunicationProjectionService` (ingest 
 - Idempotent when already `RESOLVED`
 - Event: `CONVERSATION_RESOLVED`
 - Assignment retained for audit/history
-- **Concurrency:** optimistic `updateMany` on `status + updatedAt`; on conflict re-reads authoritative row and retries or returns `INVALID_TRANSITION` / `STALE_STATE` based on actual current state; audit `previousStatus` reflects the row that was actually resolved
+- **Concurrency:** optimistic `updateMany` on `status + updatedAt`; on conflict re-reads authoritative row and retries up to `MAX_OPTIMISTIC_MUTATION_RETRIES` (2 re-evaluations, 3 total attempts) then `STALE_STATE`; concurrent `RESOLVED` → idempotent no-op; non-eligible state → `INVALID_TRANSITION`; audit `previousStatus` reflects the winning snapshot only
 
 ## 10. Reopen
 
@@ -154,6 +154,8 @@ Each mutation runs in `prisma.$transaction`:
 
 - Claim: PostgreSQL conditional `updateMany` (`assignedUserId IS NULL`, `HUMAN_REQUIRED`)
 - Assign / unassign / resolve / reopen: optimistic concurrency via `updatedAt` snapshot in `updateMany` where clause
+- Resolve: bounded iterative retry (`MAX_OPTIMISTIC_MUTATION_RETRIES = 2` → 3 total attempts); exhaustion → `STALE_STATE` (no recursive/unbounded retry)
+- Assign / unassign / reopen / mark-read: single conditional write + one conflict re-read (no retry loop)
 - Repeating claim/resolve/mark-read no-op: no duplicate events/audit when no state change
 - **Lifecycle event idempotency keys:** `comm:{action}:{conversationId}:{preMutationUpdatedAt}` — distinguishes separate legitimate resolve/reopen cycles while deduping HTTP retries of the same mutation attempt
 - **Response convergence:** mutation HTTP response returns `mapConversationDetail` from post-write transactional read, not pre-mutation snapshot

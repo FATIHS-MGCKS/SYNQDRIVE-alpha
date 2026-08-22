@@ -14,7 +14,10 @@ import { StationAccessService } from '@shared/stations/station-access.service';
 import { CommunicationEventRepository } from '../communication-event.repository';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationWriteScopeService } from './communication-write-scope.service';
-import { CommunicationWriteService } from './communication-write.service';
+import {
+  CommunicationWriteService,
+  MAX_OPTIMISTIC_MUTATION_RETRIES,
+} from './communication-write.service';
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
@@ -22,6 +25,7 @@ const describePg = databaseUrl ? describe : describe.skip;
 describePg('Communication write API postgres', () => {
   let prisma: PrismaClient;
   let service: CommunicationWriteService;
+  let readRepository: CommunicationReadRepository;
   let auditRecord: jest.Mock;
 
   let orgA: string;
@@ -53,6 +57,7 @@ describePg('Communication write API postgres', () => {
       .compile();
 
     service = moduleRef.get(CommunicationWriteService);
+    readRepository = moduleRef.get(CommunicationReadRepository);
   });
 
   beforeEach(async () => {
@@ -363,6 +368,82 @@ describePg('Communication write API postgres', () => {
 
     const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
     expect(final?.status).toBe(CommunicationConversationStatus.RESOLVED);
+  });
+
+  it('resolve throws STALE_STATE when optimistic retry budget is exhausted', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'resolve-retry-exhaust',
+      status: CommunicationConversationStatus.HUMAN_ACTIVE,
+      assignedUserId: operatorA,
+    });
+
+    const originalTransaction = prisma.$transaction.bind(prisma);
+    const originalFindConversation = readRepository.findConversationById.bind(readRepository);
+    let resolveConditionalAttempts = 0;
+
+    const findSpy = jest
+      .spyOn(readRepository, 'findConversationById')
+      .mockImplementation(async (organizationId, conversationId, tx) => {
+        const row = await originalFindConversation(organizationId, conversationId, tx);
+        if (!row || conversationId !== convo.id || organizationId !== orgA) return row;
+        if (resolveConditionalAttempts === 0) return row;
+
+        return {
+          ...row,
+          status: CommunicationConversationStatus.HUMAN_REQUIRED,
+          updatedAt: new Date(row.updatedAt.getTime() + resolveConditionalAttempts * 1000),
+        };
+      });
+
+    const transactionSpy = jest.spyOn(prisma, '$transaction').mockImplementation(async (fn, options) => {
+      return originalTransaction(async (tx) => {
+        const originalUpdateMany = tx.communicationConversation.updateMany.bind(
+          tx.communicationConversation,
+        );
+
+        jest.spyOn(tx.communicationConversation, 'updateMany').mockImplementation((args) => {
+          const where = args.where as Prisma.CommunicationConversationWhereInput | undefined;
+          const isResolveConditional =
+            where?.id === convo.id
+            && where?.organizationId === orgA
+            && args.data?.status === CommunicationConversationStatus.RESOLVED
+            && where.updatedAt !== undefined;
+
+          if (isResolveConditional) {
+            resolveConditionalAttempts++;
+            return Promise.resolve({ count: 0 }) as ReturnType<typeof originalUpdateMany>;
+          }
+
+          return originalUpdateMany(args);
+        });
+
+        return fn(tx);
+      }, options);
+    });
+
+    await expect(
+      service.resolveConversation(orgA, convo.id, { userId: operatorA }),
+    ).rejects.toMatchObject({ response: { code: 'STALE_STATE' } });
+
+    expect(resolveConditionalAttempts).toBe(MAX_OPTIMISTIC_MUTATION_RETRIES + 1);
+
+    const resolveEvents = await prisma.communicationEvent.count({
+      where: {
+        organizationId: orgA,
+        conversationId: convo.id,
+        eventType: CommunicationEventType.CONVERSATION_RESOLVED,
+      },
+    });
+    expect(resolveEvents).toBe(0);
+    expect(auditRecord).not.toHaveBeenCalled();
+
+    const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
+    expect(final?.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    expect(final?.assignedUserId).toBe(operatorA);
+
+    transactionSpy.mockRestore();
+    findSpy.mockRestore();
   });
 
   it('reopen versus concurrent assign preserves status and assignee invariants', async () => {

@@ -47,6 +47,9 @@ const TERMINAL_ASSIGNMENT_STATUSES: CommunicationConversationStatus[] = [
   CommunicationConversationStatus.FAILED,
 ];
 
+/** Inclusive optimistic re-evaluation budget after the initial conditional write (total attempts = value + 1). */
+export const MAX_OPTIMISTIC_MUTATION_RETRIES = 2;
+
 @Injectable()
 export class CommunicationWriteService {
   constructor(
@@ -477,70 +480,69 @@ export class CommunicationWriteService {
     row: CommunicationConversationListRow,
     actorUserId: string,
   ): Promise<MutationResult> {
-    if (!isResolveEligibleStatus(row.status)) {
+    let current = row;
+
+    for (let attempt = 0; attempt <= MAX_OPTIMISTIC_MUTATION_RETRIES; attempt++) {
+      if (!isResolveEligibleStatus(current.status)) {
+        throw CommunicationWriteError.invalidTransition(
+          current.status,
+          CommunicationConversationStatus.RESOLVED,
+        );
+      }
+
+      const previousStatus = current.status;
+      assertOperatorStatusTransition(previousStatus, CommunicationConversationStatus.RESOLVED);
+
+      const updatedCount = await tx.communicationConversation.updateMany({
+        where: {
+          id: conversationId,
+          organizationId,
+          status: previousStatus,
+          updatedAt: current.updatedAt,
+        },
+        data: { status: CommunicationConversationStatus.RESOLVED },
+      });
+
+      if (updatedCount.count > 0) {
+        await this.appendOperatorEvent(tx, {
+          organizationId,
+          conversationId,
+          channel: current.channel,
+          eventType: CommunicationEventType.CONVERSATION_RESOLVED,
+          actorUserId,
+          idempotencyKey: this.lifecycleEventKey('resolve', conversationId, current.updatedAt),
+          metadata: {
+            previousStatus,
+            newStatus: CommunicationConversationStatus.RESOLVED,
+          },
+        });
+
+        const updated = await this.requireConversationRow(tx, organizationId, conversationId);
+        return {
+          conversation: mapConversationDetail(updated),
+          changed: true,
+          auditAction: 'communication.resolve',
+          previousStatus,
+          newStatus: CommunicationConversationStatus.RESOLVED,
+          assigneeUserId: updated.assignedUserId,
+        };
+      }
+
+      current = await this.requireConversationRow(tx, organizationId, conversationId);
+
+      if (current.status === CommunicationConversationStatus.RESOLVED) {
+        return this.noOpResult(current);
+      }
+    }
+
+    if (!isResolveEligibleStatus(current.status)) {
       throw CommunicationWriteError.invalidTransition(
-        row.status,
+        current.status,
         CommunicationConversationStatus.RESOLVED,
       );
     }
 
-    const previousStatus = row.status;
-    assertOperatorStatusTransition(previousStatus, CommunicationConversationStatus.RESOLVED);
-
-    const updatedCount = await tx.communicationConversation.updateMany({
-      where: {
-        id: conversationId,
-        organizationId,
-        status: previousStatus,
-        updatedAt: row.updatedAt,
-      },
-      data: { status: CommunicationConversationStatus.RESOLVED },
-    });
-
-    if (updatedCount.count > 0) {
-      await this.appendOperatorEvent(tx, {
-        organizationId,
-        conversationId,
-        channel: row.channel,
-        eventType: CommunicationEventType.CONVERSATION_RESOLVED,
-        actorUserId,
-        idempotencyKey: this.lifecycleEventKey('resolve', conversationId, row.updatedAt),
-        metadata: {
-          previousStatus,
-          newStatus: CommunicationConversationStatus.RESOLVED,
-        },
-      });
-
-      const updated = await this.requireConversationRow(tx, organizationId, conversationId);
-      return {
-        conversation: mapConversationDetail(updated),
-        changed: true,
-        auditAction: 'communication.resolve',
-        previousStatus,
-        newStatus: CommunicationConversationStatus.RESOLVED,
-        assigneeUserId: updated.assignedUserId,
-      };
-    }
-
-    const current = await this.requireConversationRow(tx, organizationId, conversationId);
-    if (current.status === CommunicationConversationStatus.RESOLVED) {
-      return this.noOpResult(current);
-    }
-
-    if (isResolveEligibleStatus(current.status)) {
-      return this.resolveWithOptimisticConcurrency(
-        tx,
-        organizationId,
-        conversationId,
-        current,
-        actorUserId,
-      );
-    }
-
-    throw CommunicationWriteError.invalidTransition(
-      current.status,
-      CommunicationConversationStatus.RESOLVED,
-    );
+    throw CommunicationWriteError.staleState();
   }
 
   private assertAssignmentAllowedOnStatus(status: CommunicationConversationStatus): void {
