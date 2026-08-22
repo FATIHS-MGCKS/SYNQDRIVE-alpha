@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-booking-vehicle-picker-p2-2-17-2026-08-22',
+    version: '4.9.944',
+    title: 'Platform i18n — P2.2.17 Booking Vehicle Picker localization',
+    summary: [
+      'Localized VehiclePickerStep filter chrome, status tabs, and preflight presentation via `booking-vehicle-preflight-presentation-i18n.ts` with locale-threaded `resolveBookingVehiclePreflight`.',
+      'P217 enforce-clean exact scope (2 paths) reports 0 findings; +9 EN+DE keys under `bookings.wizard.vehiclePicker.*`; reuses `bookings.planner.allStations`, `tasks.filter.resetFilters`, `fleetCondition.moreFilters`, `vehicle.status.*`, `health.rentalBlocked`.',
+      'Presentation-only — vehicle eligibility, filter semantics, selection callbacks, and preflight machine codes unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.17 pre-flight GO selected the booking vehicle picker as the next bounded slice. VehiclePickerStep held the last global enforce-clean debt from P2.2.3 bookings scope.',
+    previousBehavior:
+      'VehiclePickerStep had hardcoded German filter/status copy and `booking-vehicle-preflight.ts` returned German blocking/caution strings regardless of locale.',
+    details:
+      'rental/components/new-booking/VehiclePickerStep.tsx; rental/lib/booking-vehicle-preflight.ts; rental/lib/booking-vehicle-preflight-presentation-i18n.ts; booking-vehicle-picker-localization.test.tsx; P217_ENFORCE_CLEAN_EXACT; architecture/I18N_BOOKING_VEHICLE_PICKER_P2_2_17_2026-08-22.md; docs/audits/i18n-p2-2-17-booking-vehicle-picker-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Platform i18n',
+    createdAt: '2026-08-22T02:00:00.000Z',
+  },
+  {
     id: 'i18n-task-detail-host-residuals-p2-2-16c2b-2026-08-22',
     version: '4.9.943',
     title: 'Platform i18n — P2.2.16C.2B Task Detail host residual localization',

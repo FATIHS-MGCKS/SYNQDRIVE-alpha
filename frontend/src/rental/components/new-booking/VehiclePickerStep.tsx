@@ -5,7 +5,6 @@ import { SectionHeader } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VehicleData } from '../../data/vehicles';
 import {
-  fleetStatusLabelDe,
   resolveBookingVehiclePreflight,
   vehicleStationDisplay,
 } from '../../lib/booking-vehicle-preflight';
@@ -14,7 +13,11 @@ import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
-import { VEHICLE_OPERATIONAL_STATUS, selectOperationalStatus } from '../../lib/vehicle-operational-state';
+import {
+  VEHICLE_OPERATIONAL_STATUS,
+  formatVehicleOperationalStatusLabel,
+  selectOperationalStatus,
+} from '../../lib/vehicle-operational-state';
 
 export interface VehiclePickerStationOption {
   id: string;
@@ -45,14 +48,6 @@ export interface VehiclePickerStepProps {
   getDailyRateLabel: (vehicleId: string) => string | null;
   isDarkMode: boolean;
 }
-
-const STATUS_TABS = [
-  { label: 'Alle', value: 'all' },
-  { label: 'Verfügbar', value: VEHICLE_OPERATIONAL_STATUS.AVAILABLE },
-  { label: 'Reserviert', value: VEHICLE_OPERATIONAL_STATUS.RESERVED },
-  { label: 'Vermietet', value: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED },
-  { label: 'Wartung', value: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE },
-] as const;
 
 function fuelChipClass(fuelType: string): string {
   if (fuelType === 'Electric') return 'sq-chip-success';
@@ -108,6 +103,7 @@ function VehiclePickerCard({
   catalogLoading,
   vehicleHasTariff,
   isDarkMode,
+  locale,
   onSelect,
 }: {
   vehicle: VehicleData;
@@ -117,6 +113,7 @@ function VehiclePickerCard({
   catalogLoading: boolean;
   vehicleHasTariff: (vehicleId: string) => boolean;
   isDarkMode: boolean;
+  locale: string;
   onSelect: () => void;
 }) {
   const { t } = useLanguage();
@@ -125,13 +122,17 @@ function VehiclePickerCard({
     health,
     vehicleHasTariff(vehicle.id),
     catalogLoading,
+    { locale },
   );
   const operationalStatus = selectOperationalStatus(vehicle);
   const brandKey = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const mmy = buildMMY(vehicle);
-  const priceLabel = dailyLabel ?? 'Kein Tarif';
+  const priceLabel = dailyLabel ?? t('bookings.wizard.noTariff');
   const stationLabel = vehicleStationDisplay(vehicle);
-  const fleetLabel = fleetStatusLabelDe(preflight.fleetStatus);
+  const fleetLabel = formatVehicleOperationalStatusLabel(
+    preflight.fleetStatus,
+    locale === 'de' ? 'de' : 'en',
+  );
 
   return (
     <button
@@ -296,22 +297,33 @@ export function VehiclePickerStep({
   getDailyRateLabel,
   isDarkMode,
 }: VehiclePickerStepProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+
+  const statusTabs = useMemo(
+    () => [
+      { label: t('fleet.shell.tab.all'), value: 'all' as const },
+      { label: t('vehicle.status.available'), value: VEHICLE_OPERATIONAL_STATUS.AVAILABLE },
+      { label: t('vehicle.status.reserved'), value: VEHICLE_OPERATIONAL_STATUS.RESERVED },
+      { label: t('vehicle.status.activeRented'), value: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED },
+      { label: t('vehicle.status.maintenance'), value: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE },
+    ],
+    [t, locale],
+  );
 
   const hasActiveFilters =
     brandFilter !== 'all' || stationFilter !== 'all' || fuelFilter !== 'all';
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: vehicles.length };
-    for (const tab of STATUS_TABS) {
+    for (const tab of statusTabs) {
       if (tab.value === 'all') continue;
       counts[tab.value] = vehicles.filter(
         (v) => selectOperationalStatus(v) === tab.value,
       ).length;
     }
     return counts;
-  }, [vehicles]);
+  }, [vehicles, statusTabs]);
 
   const visibleVehicles = useMemo(
     () =>
@@ -345,7 +357,7 @@ export function VehiclePickerStep({
             ))}
           </select>
           <select value={stationFilter} onChange={(e) => onStationFilterChange(e.target.value)} className={selectClass}>
-            <option value="all">Alle Stationen</option>
+            <option value="all">{t('bookings.planner.allStations')}</option>
             {stationOptions.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}
@@ -358,9 +370,11 @@ export function VehiclePickerStep({
           className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
         >
           <span>
-            Weitere Filter
+            {t('fleetCondition.moreFilters')}
             {hasActiveFilters ? (
-              <span className="ml-1.5 rounded-full sq-tone-brand px-1.5 py-0.5 text-[10px]">aktiv</span>
+              <span className="ml-1.5 rounded-full sq-tone-brand px-1.5 py-0.5 text-[10px]">
+                {t('bookings.wizard.vehiclePicker.filtersActive')}
+              </span>
             ) : null}
           </span>
           <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', moreFiltersOpen && 'rotate-180')} />
@@ -381,7 +395,7 @@ export function VehiclePickerStep({
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
               >
                 <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
-                Filter zurücksetzen
+                {t('tasks.filter.resetFilters')}
               </button>
             ) : null}
           </div>
@@ -397,7 +411,7 @@ export function VehiclePickerStep({
             ))}
           </select>
           <select value={stationFilter} onChange={(e) => onStationFilterChange(e.target.value)} className={selectClass}>
-            <option value="all">Alle Stationen</option>
+            <option value="all">{t('bookings.planner.allStations')}</option>
             {stationOptions.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}
@@ -416,13 +430,13 @@ export function VehiclePickerStep({
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
           >
             <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
-            Filter zurücksetzen
+            {t('tasks.filter.resetFilters')}
           </button>
         ) : null}
       </div>
 
       <div className="-mx-0.5 mb-3 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin [scrollbar-width:thin]">
-        {STATUS_TABS.map((tab) => (
+        {statusTabs.map((tab) => (
           <button
             key={tab.value}
             type="button"
@@ -458,6 +472,7 @@ export function VehiclePickerStep({
             catalogLoading={catalogLoading}
             vehicleHasTariff={vehicleHasTariff}
             isDarkMode={isDarkMode}
+            locale={locale}
             onSelect={() => onSelectVehicle(vehicle)}
           />
         ))}

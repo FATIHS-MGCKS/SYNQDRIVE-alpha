@@ -83,7 +83,7 @@ describe('booking-vehicle-preflight', () => {
     const result = resolveBookingVehiclePreflight(v, h, true, false);
     expect(result.isSelectable).toBe(false);
     expect(result.hardBlockReason).toBe('rental_blocked');
-    expect(result.blockingReason).toContain('nicht verifiziert');
+    expect(result.blockingReason).toBeTruthy();
   });
 
   it('allows warning health without rental_blocked', () => {
@@ -100,7 +100,7 @@ describe('booking-vehicle-preflight', () => {
     const result = resolveBookingVehiclePreflight(v, null, false, false);
     expect(result.isSelectable).toBe(false);
     expect(result.hardBlockReason).toBe('no_tariff');
-    expect(result.blockingReason).toContain('Tarif');
+    expect(result.blockingReason).toBeTruthy();
     expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
   });
 
@@ -113,5 +113,59 @@ describe('booking-vehicle-preflight', () => {
 
   it('resolves station id from homeStationId', () => {
     expect(vehicleStationId(baseVehicle({ homeStationId: 'st-9', stationId: 'st-1' }))).toBe('st-9');
+  });
+
+  describe('machine invariants are locale-independent', () => {
+    it('keeps identical eligibility for EN and DE', () => {
+      const v = baseVehicle({ onlineStatus: 'OFFLINE', lastSignal: '2020-01-01T00:00:00.000Z' });
+      const en = resolveBookingVehiclePreflight(v, null, true, false, { locale: 'en' });
+      const de = resolveBookingVehiclePreflight(v, null, true, false, { locale: 'de' });
+      expect(en.isSelectable).toBe(de.isSelectable);
+      expect(en.hardBlockReason).toBe(de.hardBlockReason);
+      expect(en.fleetStatus).toBe(de.fleetStatus);
+    });
+
+    it('preserves raw provider blocking reasons across locales', () => {
+      const v = baseVehicle();
+      const h = health({ rental_blocked: true, blocking_reasons: ['TÜV überfällig'] });
+      const en = resolveBookingVehiclePreflight(v, h, true, false, { locale: 'en' });
+      const de = resolveBookingVehiclePreflight(v, h, true, false, { locale: 'de' });
+      expect(en.blockingReason).toBe('TÜV überfällig');
+      expect(de.blockingReason).toBe('TÜV überfällig');
+      expect(en.hardBlockReason).toBe('rental_blocked');
+    });
+  });
+
+  describe('presentation localization', () => {
+    it('localizes canonical offline blocking copy EN/DE', () => {
+      const v = baseVehicle({ onlineStatus: 'OFFLINE', lastSignal: '2020-01-01T00:00:00.000Z' });
+      const en = resolveBookingVehiclePreflight(v, null, true, false, { locale: 'en' });
+      const de = resolveBookingVehiclePreflight(v, null, true, false, { locale: 'de' });
+      expect(en.blockingReason).toContain('offline');
+      expect(de.blockingReason).toContain('offline');
+      expect(en.blockingReason).not.toBe(de.blockingReason);
+    });
+
+    it('localizes rental unverified blocking copy EN/DE', () => {
+      const v = baseVehicle();
+      const h = health({
+        availability: 'partial',
+        rental_blocked: null,
+        overall_state: 'good',
+      });
+      const en = resolveBookingVehiclePreflight(v, h, true, false, { locale: 'en' });
+      const de = resolveBookingVehiclePreflight(v, h, true, false, { locale: 'de' });
+      expect(en.blockingReason?.toLowerCase()).toContain('verif');
+      expect(de.blockingReason).toContain('verifiziert');
+      expect(en.blockingReason).not.toBe(de.blockingReason);
+    });
+
+    it('localizes no-tariff blocking copy EN/DE', () => {
+      const v = baseVehicle();
+      const en = resolveBookingVehiclePreflight(v, null, false, false, { locale: 'en' });
+      const de = resolveBookingVehiclePreflight(v, null, false, false, { locale: 'de' });
+      expect(en.blockingReason?.toLowerCase()).toContain('tariff');
+      expect(de.blockingReason).toContain('Tarif');
+    });
   });
 });

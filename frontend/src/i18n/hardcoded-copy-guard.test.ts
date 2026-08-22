@@ -302,6 +302,11 @@ const P216C2B_ENFORCE_CLEAN_EXACT = [
   'operator/tasks/OperatorTaskDetail.tsx',
 ];
 
+const P217_ENFORCE_CLEAN_EXACT = [
+  'rental/components/new-booking/VehiclePickerStep.tsx',
+  'rental/lib/booking-vehicle-preflight.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -364,6 +369,10 @@ function isP216C2AEnforceCleanPath(relPath: string): boolean {
 
 function isP216C2BEnforceCleanPath(relPath: string): boolean {
   return P216C2B_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP217EnforceCleanPath(relPath: string): boolean {
+  return P217_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -554,6 +563,46 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP216C2BEnforceCleanPath(finding.file),
     );
     expect(p216c2bDebt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.17 enforce-clean findings to booking vehicle picker only', () => {
+    const p217Debt = inventory.findings.filter((finding) =>
+      isP217EnforceCleanPath(finding.file),
+    );
+    expect(p217Debt).toHaveLength(0);
+  });
+
+  it('keeps booking-vehicle-preflight-presentation-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/booking-vehicle-preflight-presentation-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('bookings.wizard.vehiclePicker.preflight.vehicleOffline');
+    expect(source).toContain('health.rentalBlocked');
+    expect(source).not.toMatch(/Nicht vermietbar/);
+  });
+
+  it('keeps VehiclePickerStep.tsx free of hardcoded picker presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/new-booking/VehiclePickerStep.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('bookings.planner.allStations')");
+    expect(source).toContain("t('tasks.filter.resetFilters')");
+    expect(source).not.toMatch(/Alle Stationen/);
+    expect(source).not.toMatch(/Filter zurücksetzen/);
+  });
+
+  it('keeps booking-vehicle-preflight.ts presentation separated from machine semantics', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/booking-vehicle-preflight.ts'),
+      'utf8',
+    );
+    expect(source).toContain('booking-vehicle-preflight-presentation-i18n');
+    expect(source).toContain('hardBlockReason');
+    expect(source).not.toMatch(/Mietfreigabe nicht verifiziert/);
+    expect(source).not.toMatch(/VEHICLE_OFFLINE_LABEL/);
   });
 
   it('keeps task-detail-actions-presentation-i18n.ts on canonical translation keys', () => {

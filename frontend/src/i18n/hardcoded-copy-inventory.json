@@ -128,14 +128,14 @@
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
-      "other Rental areas": 337,
+      "other Rental areas": 338,
       "Finance/Billing": 127,
       "Tasks": 13,
-      "Bookings": 2,
       "Documents": 8,
+      "Settings": 1,
       "App / routing shell": 1
     },
-    "enforceCleanRemaining": 2
+    "enforceCleanRemaining": 1
   },
   "findings": [
     {
@@ -17607,17 +17607,16 @@
       ]
     },
     {
-      "file": "rental/components/new-booking/VehiclePickerStep.tsx",
-      "line": 348,
+      "file": "rental/components/users-roles/CreateUserWizard.tsx",
+      "line": 257,
       "surface": "RENTAL",
-      "module": "Bookings",
+      "module": "other Rental areas",
       "category": "TEXT",
       "sample": "Alle Stationen",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 5,
+      "severity": "debt",
+      "migrationPhase": "P2.2",
+      "occurrences": 3,
       "files": [
-        "rental/components/new-booking/VehiclePickerStep.tsx",
         "rental/components/users-roles/CreateUserWizard.tsx",
         "rental/components/users-roles/RolesTab.tsx",
         "rental/components/users-roles/UserDetailDrawer.tsx"
@@ -19451,17 +19450,16 @@
       ]
     },
     {
-      "file": "rental/components/new-booking/VehiclePickerStep.tsx",
-      "line": 383,
+      "file": "rental/components/settings/data-authorization/DataAuthorizationTab.tsx",
+      "line": 419,
       "surface": "RENTAL",
-      "module": "Bookings",
+      "module": "Settings",
       "category": "TEXT",
       "sample": "Filter zurücksetzen",
       "severity": "enforce-clean",
-      "migrationPhase": "P2.2.3",
-      "occurrences": 3,
+      "migrationPhase": "P2.2.4",
+      "occurrences": 1,
       "files": [
-        "rental/components/new-booking/VehiclePickerStep.tsx",
         "rental/components/settings/data-authorization/DataAuthorizationTab.tsx"
       ]
     },
