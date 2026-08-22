@@ -46,7 +46,7 @@ export function FinanceKpiStrip({
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-border/35 bg-muted/10 px-3 py-3">
+      <div className={cn(DASHBOARD_LAYOUT.controlCenterRadius, 'border border-border/35 bg-muted/10 px-3 py-3')}>
         <p className="text-[12px] font-medium text-foreground">
           {t('dashboard.financialDataUnavailable')}
         </p>

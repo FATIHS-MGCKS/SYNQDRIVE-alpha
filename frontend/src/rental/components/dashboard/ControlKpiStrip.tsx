@@ -5,6 +5,7 @@ import {
   DASHBOARD_KPI_HINT_CLASS,
   DASHBOARD_KPI_NUMBER_CLASS,
   DASHBOARD_KPI_TITLE_CLASS,
+  DASHBOARD_LAYOUT,
 } from './dashboardShell';
 import { de } from '../../i18n/translations/de';
 import { en } from '../../i18n/translations/en';
@@ -72,13 +73,14 @@ function kpiCardClass(
           ? 'min-h-[112px]'
           : 'min-h-[96px]';
 
+  const embeddedRadius = DASHBOARD_LAYOUT.controlCenterRadius;
   const paddingClass =
     size === 'twin'
       ? embedded
-        ? 'rounded-2xl px-3 py-3.5'
+        ? cn(embeddedRadius, 'px-3 py-3.5')
         : 'rounded-lg px-2.5 py-2.5'
       : embedded
-        ? 'rounded-2xl px-3 py-3'
+        ? cn(embeddedRadius, 'px-3 py-3')
         : 'rounded-lg px-2.5 py-2';
 
   return cn(
@@ -396,7 +398,7 @@ export function ControlKpiStrip({
   if (loading) {
     const gridClass = kpiGridClass(embedded, sliceIds.length);
     const skeletonCardClass = embedded
-      ? `${TWIN_KPI_MIN_HEIGHT_EMBEDDED} rounded-2xl p-3.5`
+      ? cn(TWIN_KPI_MIN_HEIGHT_EMBEDDED, DASHBOARD_LAYOUT.controlCenterRadius, 'p-3.5')
       : undefined;
 
     return (
