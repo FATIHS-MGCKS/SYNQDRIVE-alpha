@@ -10,6 +10,7 @@ import { useRentalOrg } from '../../RentalContext';
 import { NotificationCardSkeleton } from './notifications/NotificationCardSkeleton';
 import { NOTIFICATION_PANEL_TYPO } from './notifications/notificationPanelTypography';
 import { panelShellClass } from './dashboardShell';
+import { DashboardPanelScrollBlur } from './DashboardPanelScrollBlur';
 import { TaskPreviewCard } from './tasks/TaskPreviewCard';
 import { TasksOverviewHeader } from './tasks/TasksOverviewHeader';
 
@@ -54,7 +55,11 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
 
   return (
     <section
-      className={cn(panelShellClass('tertiary'), 'min-w-0 animate-fade-up')}
+      className={cn(
+        panelShellClass('tertiary'),
+        'flex min-w-0 flex-col overflow-hidden animate-fade-up',
+        'max-lg:max-h-[min(320px,42vh)]',
+      )}
       aria-label={t('dashboardTasksOverview.title')}
       data-testid="dashboard-tasks-overview-panel"
     >
@@ -70,7 +75,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
         onFilterSelect={onOpenTasks ? (filter) => onOpenTasks({ filter }) : undefined}
       />
 
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {overview.error ? (
           <div className="px-3.5 py-4">
             <ErrorState
@@ -81,7 +86,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
             />
           </div>
         ) : overview.previewLoading ? (
-          <div data-testid="dashboard-tasks-overview-preview-loading">
+          <div data-testid="dashboard-tasks-overview-preview-loading" className="px-2 py-2">
             <NotificationCardSkeleton rows={3} />
           </div>
         ) : overview.previewReady && overview.counts && overview.counts.open === 0 ? (
@@ -98,23 +103,25 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
             </div>
           </div>
         ) : overview.previewReady ? (
-          <ul
-            className="flex flex-col gap-2 px-2 py-2 sm:px-2.5"
-            role="list"
-            data-testid="dashboard-tasks-overview-preview"
-          >
-            {overview.previewTasks.map((task) => (
-              <li key={task.id} className="list-none">
-                <TaskPreviewCard
-                  task={task}
-                  vehicleById={vehicleById}
-                  t={t}
-                  locale={intlLocale}
-                  onOpenTask={handleOpenTask}
-                />
-              </li>
-            ))}
-          </ul>
+          <DashboardPanelScrollBlur className="flex-1">
+            <ul
+              className="flex flex-col gap-2 px-2 py-2 sm:px-2.5"
+              role="list"
+              data-testid="dashboard-tasks-overview-preview"
+            >
+              {overview.previewTasks.map((task) => (
+                <li key={task.id} className="list-none">
+                  <TaskPreviewCard
+                    task={task}
+                    vehicleById={vehicleById}
+                    t={t}
+                    locale={intlLocale}
+                    onOpenTask={handleOpenTask}
+                  />
+                </li>
+              ))}
+            </ul>
+          </DashboardPanelScrollBlur>
         ) : null}
       </div>
     </section>
