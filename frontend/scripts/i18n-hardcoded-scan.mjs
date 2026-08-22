@@ -294,6 +294,10 @@ const P217_ENFORCE_CLEAN_EXACT = new Set([
   'rental/lib/booking-vehicle-preflight.ts',
 ]);
 
+const P218_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/settings/data-authorization/DataAuthorizationTab.tsx',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -585,6 +589,10 @@ function isP217EnforceCleanPath(relPath) {
   return P217_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP218EnforceCleanPath(relPath) {
+  return P218_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -626,6 +634,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP216C2AEnforceCleanPath(relPath)) return true;
   if (isP216C2BEnforceCleanPath(relPath)) return true;
   if (isP217EnforceCleanPath(relPath)) return true;
+  if (isP218EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -648,6 +657,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP216C2AEnforceCleanPath(relPath)) return 'P2.2.16C.2A';
   if (isP216C2BEnforceCleanPath(relPath)) return 'P2.2.16C.2B';
   if (isP217EnforceCleanPath(relPath)) return 'P2.2.17';
+  if (isP218EnforceCleanPath(relPath)) return 'P2.2.18';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

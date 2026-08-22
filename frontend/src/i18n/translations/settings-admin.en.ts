@@ -360,6 +360,27 @@ export const settingsAdminEn = {
   'settings.dataAuth.filters.title': 'Filter & search',
   'settings.dataAuth.filters.searchPlaceholder': 'Title, processor, module, description…',
   'settings.dataAuth.filters.dataCategory': 'Data category:',
+  'settings.dataAuth.filters.summary': '{filtered} of {total} authorizations',
+
+  'settings.dataAuth.kpi.active': 'Active authorizations',
+  'settings.dataAuth.kpi.activeHint': 'Valid, non-expired authorizations',
+  'settings.dataAuth.kpi.pending': 'Pending requests',
+  'settings.dataAuth.kpi.pendingHint': 'Awaiting approval',
+  'settings.dataAuth.kpi.highRisk': 'High-risk authorizations',
+  'settings.dataAuth.kpi.highRiskHint': 'High or critical risk',
+  'settings.dataAuth.kpi.expiring': 'Expiring soon',
+  'settings.dataAuth.kpi.expiringHint': 'Expires within the next 30 days',
+  'settings.dataAuth.kpi.revokedExpired': 'Revoked / expired',
+  'settings.dataAuth.kpi.revokedExpiredHint': '{revoked} revoked · {expired} expired',
+
+  'settings.dataAuth.table.authorization': 'Authorization',
+  'settings.dataAuth.table.risk': 'Risk',
+  'settings.dataAuth.table.affected': 'Affected',
+
+  'settings.dataAuth.empty.noAuthorizations': 'No data authorizations yet',
+  'settings.dataAuth.empty.adjustFilters': 'Adjust your filters or reset the search.',
+  'settings.dataAuth.empty.dimoAutoCreate':
+    'Once DIMO-connected vehicles are available, SynqDrive automatically creates a DIMO Telemetry Authorization.',
 
   'settings.dataAuth.create.title': 'New data authorization',
   'settings.dataAuth.create.subtitle':
