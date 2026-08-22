@@ -284,6 +284,11 @@ const P216C2A_ENFORCE_CLEAN_EXACT = new Set([
   'lib/tasks/components/TaskDetailCompletionSummary.tsx',
 ]);
 
+const P216C2B_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/tasks/VehicleTaskDetailDrawer.tsx',
+  'operator/tasks/OperatorTaskDetail.tsx',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -567,6 +572,10 @@ function isP216C2AEnforceCleanPath(relPath) {
   return P216C2A_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP216C2BEnforceCleanPath(relPath) {
+  return P216C2B_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -606,6 +615,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP216B2EnforceCleanPath(relPath)) return true;
   if (isP216C1EnforceCleanPath(relPath)) return true;
   if (isP216C2AEnforceCleanPath(relPath)) return true;
+  if (isP216C2BEnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -626,6 +636,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP216B2EnforceCleanPath(relPath)) return 'P2.2.16B.2';
   if (isP216C1EnforceCleanPath(relPath)) return 'P2.2.16C.1';
   if (isP216C2AEnforceCleanPath(relPath)) return 'P2.2.16C.2A';
+  if (isP216C2BEnforceCleanPath(relPath)) return 'P2.2.16C.2B';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';
