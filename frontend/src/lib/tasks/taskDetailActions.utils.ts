@@ -1,11 +1,16 @@
+import { isTerminalTaskStatus } from '../../rental/lib/task-detail.utils';
 import {
-  formatTaskDateTime,
-  isTerminalTaskStatus,
-  taskStatusLabelDe,
-} from '../../rental/lib/task-detail.utils';
+  taskDetailCompletionAutoResolvedFallback,
+  taskDetailCompletionSupersededFallback,
+  taskDetailActionLabel,
+  taskDetailResolutionCodeLabel,
+} from './task-detail-actions-presentation-i18n';
+import {
+  formatTaskDetailDateTime,
+  taskDetailStatusLabel,
+} from './task-detail-presentation-i18n';
 import { buildTaskCompletionControlModel } from './taskDetailCompletion.utils';
 import type { ApiTaskDetail, TaskActionAvailability, TaskCompletionMode } from './types';
-import { formatResolutionCodeLabel } from './taskResolution.utils';
 import { humanizeResolutionReason } from './taskTimeline.utils';
 
 export type TaskDetailActionKind =
@@ -49,23 +54,26 @@ export interface TaskDetailCompletionSummaryModel {
 }
 
 function actionItem(
+  locale: string,
   kind: TaskDetailActionKind,
-  label: string,
   availability: TaskActionAvailability,
   emphasis: TaskDetailActionItem['emphasis'],
 ): TaskDetailActionItem {
   return {
     kind,
-    label,
+    label: taskDetailActionLabel(locale, kind),
     enabled: availability.enabled,
     disabledReason: availability.disabledReason ?? null,
     emphasis,
   };
 }
 
-export function buildTaskDetailActionPlan(detail: ApiTaskDetail): TaskDetailActionPlan {
+export function buildTaskDetailActionPlan(
+  detail: ApiTaskDetail,
+  locale: string,
+): TaskDetailActionPlan {
   const actions = detail.availableActions;
-  const completionControl = buildTaskCompletionControlModel(detail);
+  const completionControl = buildTaskCompletionControlModel(detail, locale);
   const isTerminal = isTerminalTaskStatus(detail.summary.status);
 
   if (isTerminal) {
@@ -73,16 +81,16 @@ export function buildTaskDetailActionPlan(detail: ApiTaskDetail): TaskDetailActi
       primary: null,
       secondaries: [],
       overflow: actions.comment.enabled
-        ? [actionItem('comment', 'Kommentar', actions.comment, 'secondary')]
+        ? [actionItem(locale, 'comment', actions.comment, 'secondary')]
         : [],
       isTerminal: true,
       completionControl,
     };
   }
 
-  const start = actionItem('start', 'Starten', actions.start, 'primary');
-  const resume = actionItem('resume', 'Fortsetzen', actions.resume, 'primary');
-  const waiting = actionItem('moveToWaiting', 'Warten', actions.moveToWaiting, 'secondary');
+  const start = actionItem(locale, 'start', actions.start, 'primary');
+  const resume = actionItem(locale, 'resume', actions.resume, 'primary');
+  const waiting = actionItem(locale, 'moveToWaiting', actions.moveToWaiting, 'secondary');
   const completeAvailability =
     actions.complete.enabled || actions.overrideCompletion.enabled
       ? {
@@ -90,9 +98,9 @@ export function buildTaskDetailActionPlan(detail: ApiTaskDetail): TaskDetailActi
           enabled: actions.complete.enabled || actions.overrideCompletion.enabled,
         }
       : actions.complete;
-  const complete = actionItem('complete', 'Erledigen', completeAvailability, 'primary');
-  const comment = actionItem('comment', 'Kommentar', actions.comment, 'secondary');
-  const cancel = actionItem('cancel', 'Abbrechen', actions.cancel, 'overflow');
+  const complete = actionItem(locale, 'complete', completeAvailability, 'primary');
+  const comment = actionItem(locale, 'comment', actions.comment, 'secondary');
+  const cancel = actionItem(locale, 'cancel', actions.cancel, 'overflow');
 
   let primary: TaskDetailActionItem | null = null;
   const secondaries: TaskDetailActionItem[] = [];
@@ -136,34 +144,38 @@ export function buildTaskDetailActionPlan(detail: ApiTaskDetail): TaskDetailActi
 
 export function buildTaskDetailCompletionSummary(
   detail: ApiTaskDetail,
+  locale: string,
   options?: {
     formatDateTime?: (iso: string | null | undefined) => string;
     statusLabel?: string;
   },
 ): TaskDetailCompletionSummaryModel {
-  const formatDateTime = options?.formatDateTime ?? (() => null);
+  const formatDateTime =
+    options?.formatDateTime ?? ((iso) => formatTaskDetailDateTime(locale, iso));
   const completionMode =
     detail.summary.completionMode ?? detail.completion.completionMode ?? null;
-  const resolutionCodeLabel = formatResolutionCodeLabel(detail.completion.resolutionCode);
+  const resolutionCodeLabel = detail.completion.resolutionCode
+    ? taskDetailResolutionCodeLabel(locale, detail.completion.resolutionCode)
+    : null;
   const resolutionNote = detail.completion.resolutionNote ?? detail.resolutionNote ?? null;
 
   const autoResolvedReason =
     completionMode === 'AUTO_RESOLVED'
       ? resolutionCodeLabel ??
         (resolutionNote ? humanizeResolutionReason(resolutionNote) : null) ??
-        'Automatisch aufgelöst'
+        taskDetailCompletionAutoResolvedFallback(locale)
       : null;
 
   const supersededReason =
     completionMode === 'SUPERSEDED'
       ? resolutionCodeLabel ??
         (resolutionNote ? humanizeResolutionReason(resolutionNote) : null) ??
-        'Durch Nachfolge-Aufgabe ersetzt'
+        taskDetailCompletionSupersededFallback(locale)
       : null;
 
   return {
     status: detail.summary.status,
-    statusLabel: options?.statusLabel ?? taskStatusLabelDe(detail.summary.status),
+    statusLabel: options?.statusLabel ?? taskDetailStatusLabel(locale, detail.summary.status),
     completionMode,
     completedAtLabel: formatDateTime(detail.timing.completedAt ?? detail.completedAt),
     completedByLabel: detail.completion.completedBy?.displayName ?? null,

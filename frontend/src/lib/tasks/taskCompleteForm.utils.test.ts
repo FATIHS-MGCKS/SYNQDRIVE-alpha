@@ -125,7 +125,7 @@ describe('taskCompleteForm.utils', () => {
     const detail = normalizedDetail(
       baseTask({ id: 't1', title: 'Check', type: 'TIRE_CHECK', status: 'IN_PROGRESS' }),
     );
-    const model = buildTaskCompleteFormModel(detail);
+    const model = buildTaskCompleteFormModel(detail, 'de');
     expect(model.openRequiredTitles).toEqual(['Pflicht offen']);
     expect(model.requiresResolutionCode).toBe(true);
     expect(model.showsCostFields).toBe(true);
@@ -146,7 +146,7 @@ describe('taskCompleteForm.utils', () => {
         },
       },
     );
-    const model = buildTaskCompleteFormModel(detail);
+    const model = buildTaskCompleteFormModel(detail, 'de');
     expect(model.requiresResolutionNote).toBe(true);
 
     const errors = validateTaskCompleteForm(detail, {
@@ -155,7 +155,7 @@ describe('taskCompleteForm.utils', () => {
       actualCostEuros: '',
       overrideReason: '',
       useOverride: false,
-    });
+    }, 'de');
     expect(errors.resolutionNote).toContain('Abschluss-Notiz');
   });
 
@@ -169,7 +169,7 @@ describe('taskCompleteForm.utils', () => {
       actualCostEuros: '',
       overrideReason: '',
       useOverride: true,
-    });
+    }, 'de');
     expect(errors.overrideReason).toContain('Begründung');
   });
 

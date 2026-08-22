@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Task Workflow Core (P2.2.16C.2A — V4.9.942)', icon: Globe,
+    endpoint: 'task-detail-actions-presentation-i18n.ts, taskDetailActions.utils.ts, taskDetailCompletion.utils.ts, taskCompleteForm.utils.ts, taskResolution.utils.ts, useTaskDetailActions.ts, TaskDetailActionBar/ActionsHost/CompleteDialog/CompletionSummary.',
+    service: '**Locale flow:** `useLanguage().locale` → `buildTaskDetailActionPlan(detail, locale)` → `task-detail-actions-presentation-i18n` + `buildChecklistBlockerLabel(resolveTaskDetailPresentationLocale(locale), titles)`. **Keys:** +60 EN+DE `tasks.detail.actions.*`, `tasks.detail.completion.*`, `tasks.resolution.code.*` (7834→7894). **Guardrails:** P2.2.16C.2A enforce-clean exact (9 paths) — 0 findings; anti-`RESOLUTION_CODE_LABELS`/German-fallback guards. **Tests:** `task-detail-actions-localization.test.tsx` (15). **C.2B deferred:** host residuals. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-16c2-task-detail-actions-dialogs-preflight-2026-08-22.md; architecture/I18N_TASK_WORKFLOW_CORE_P2_2_16C2A_2026-08-22.md' },
   { name: 'Platform i18n Task Detail Chrome (P2.2.16C.1 — V4.9.941)', icon: Globe,
     endpoint: 'task-detail-presentation-i18n.ts, taskDetailView.utils.ts, TaskDetailBody/Shell/NotesActivity/ChecklistSection, GlobalTaskDetailPanel, VehicleTaskDetailDrawer, OperatorTaskDetail.',
     service: '**Locale flow:** `useLanguage().locale` → `buildTaskDetailViewModel({ locale })` → `task-detail-presentation-i18n` + `useLanguage().t` in chrome components. **Keys:** +62 EN+DE `tasks.detail.*` (7773→7835); reuses `tasks.filter.*`, `tasks.type.*`, `service-task-presentation-i18n`. **Guardrails:** P2.2.16C.1 enforce-clean exact (8 paths) — 0 findings; blind-spot guards on adapter/utils. **Tests:** `task-detail-chrome-localization.test.tsx` (11). **C.2 deferred:** workflow actions/dialogs. **Semantics:** presentation-only; Category E=0.',

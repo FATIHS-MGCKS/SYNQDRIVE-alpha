@@ -1,6 +1,13 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { ConfirmDialog } from '../../../components/patterns';
-import { formatTaskDateTime, taskStatusLabelDe } from '../../../rental/lib/task-detail.utils';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import {
+  taskDetailCompletionSubmitFailed,
+} from '../task-detail-actions-presentation-i18n';
+import {
+  formatTaskDetailDateTime,
+  taskDetailStatusLabel,
+} from '../task-detail-presentation-i18n';
 import {
   buildTaskDetailActionPlan,
   buildTaskDetailCompletionSummary,
@@ -11,6 +18,7 @@ import type { ApiTaskDetail } from '../types';
 import { TaskDetailActionBar, type TaskDetailActionBarVariant } from './TaskDetailActionBar';
 import { TaskDetailCompleteDialog } from './TaskDetailCompleteDialog';
 import { TaskDetailCompletionSummary } from './TaskDetailCompletionSummary';
+import { taskDetailActionsMoreAriaLabel } from '../task-detail-actions-presentation-i18n';
 
 export interface TaskDetailActionsHostProps {
   detail: ApiTaskDetail | null;
@@ -42,6 +50,7 @@ export function useTaskDetailActionsHost({
   onOpenSuccessorTask,
   onCancelSuccess,
 }: TaskDetailActionsHostProps): TaskDetailActionsHostResult {
+  const { locale, t } = useLanguage();
   const [completeOpen, setCompleteOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -55,19 +64,19 @@ export function useTaskDetailActionsHost({
   });
 
   const plan = useMemo(
-    () => (detail ? buildTaskDetailActionPlan(detail) : null),
-    [detail],
+    () => (detail ? buildTaskDetailActionPlan(detail, locale) : null),
+    [detail, locale],
   );
 
   const completionSummary = useMemo(
     () =>
       detail && plan?.isTerminal
-        ? buildTaskDetailCompletionSummary(detail, {
-            statusLabel: taskStatusLabelDe(detail.summary.status),
-            formatDateTime: (iso) => (iso ? formatTaskDateTime(iso) : '—'),
+        ? buildTaskDetailCompletionSummary(detail, locale, {
+            statusLabel: taskDetailStatusLabel(locale, detail.summary.status),
+            formatDateTime: (iso) => formatTaskDetailDateTime(locale, iso),
           })
         : null,
-    [detail, plan?.isTerminal],
+    [detail, locale, plan?.isTerminal],
   );
 
   const handleAction = async (kind: TaskDetailActionKind) => {
@@ -109,7 +118,9 @@ export function useTaskDetailActionsHost({
       const updated = await actions.complete(payload);
       if (updated) setCompleteOpen(false);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Abschluss fehlgeschlagen');
+      setSubmitError(
+        error instanceof Error ? error.message : taskDetailCompletionSubmitFailed(locale),
+      );
       throw error;
     }
   };
@@ -162,6 +173,7 @@ export function useTaskDetailActionsHost({
         pendingAction={actions.pendingAction}
         blockerSummary={blockerSummary}
         mobileBottomOffset={mobileBottomOffset}
+        moreActionsAriaLabel={taskDetailActionsMoreAriaLabel(locale)}
         onAction={(kind) => void handleAction(kind)}
       />
     ) : null;
@@ -199,10 +211,10 @@ export function useTaskDetailActionsHost({
       <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
-        title="Aufgabe abbrechen?"
-        description="Die Aufgabe wird storniert und kann nicht mehr bearbeitet werden."
-        confirmLabel="Abbrechen"
-        cancelLabel="Zurück"
+        title={t('tasks.detail.cancel.title')}
+        description={t('tasks.detail.cancel.description')}
+        confirmLabel={t('tasks.detail.cancel.confirm')}
+        cancelLabel={t('tasks.detail.cancel.back')}
         tone="critical"
         loading={actions.pendingAction === 'cancel'}
         onConfirm={() => void handleCancelConfirm()}

@@ -19,6 +19,7 @@ export interface TaskDetailActionBarProps {
   pendingAction?: TaskDetailActionKind | 'complete' | 'cancel' | null;
   blockerSummary?: string | null;
   mobileBottomOffset?: 'tab' | 'sheet';
+  moreActionsAriaLabel: string;
   onAction: (kind: TaskDetailActionKind) => void;
 }
 
@@ -30,6 +31,7 @@ export function TaskDetailActionBar({
   pendingAction,
   blockerSummary,
   mobileBottomOffset = 'tab',
+  moreActionsAriaLabel,
   onAction,
 }: TaskDetailActionBarProps) {
   const mobile = variant === 'mobile-sticky';
@@ -78,7 +80,7 @@ export function TaskDetailActionBar({
                 'sq-press inline-flex items-center justify-center rounded-xl border border-border bg-muted/20 text-foreground disabled:opacity-50',
                 mobile ? 'min-h-[52px] min-w-[52px]' : 'h-9 w-9',
               )}
-              aria-label="Weitere Aktionen"
+              aria-label={moreActionsAriaLabel}
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>

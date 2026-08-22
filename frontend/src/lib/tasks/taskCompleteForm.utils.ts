@@ -1,7 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { ApiTaskDetail } from './types';
 import type { CompleteTaskPayload } from './types';
+import {
+  taskDetailValidationBlockedByChecklist,
+  taskDetailValidationInvalidCost,
+  taskDetailValidationOverrideReasonRequired,
+  taskDetailValidationResolutionCodeRequired,
+  taskDetailValidationResolutionNoteRequired,
+} from './task-detail-actions-presentation-i18n';
 import { buildTaskCompletionControlModel } from './taskDetailCompletion.utils';
 import {
   getTaskResolutionCodeOptions,
@@ -35,13 +43,16 @@ export interface TaskCompleteFormModel {
   canSubmitNormally: boolean;
 }
 
-export function buildTaskCompleteFormModel(detail: ApiTaskDetail): TaskCompleteFormModel {
-  const completionControl = buildTaskCompletionControlModel(detail);
+export function buildTaskCompleteFormModel(
+  detail: ApiTaskDetail,
+  locale: string,
+): TaskCompleteFormModel {
+  const completionControl = buildTaskCompletionControlModel(detail, locale);
   return {
     requiresResolutionCode: taskRequiresResolutionCode(detail.summary.type),
     requiresResolutionNote: taskRequiresResolutionNote(detail.summary.type),
     showsCostFields: taskShowsCostFields(detail.summary.type),
-    resolutionCodeOptions: getTaskResolutionCodeOptions(detail.summary.type),
+    resolutionCodeOptions: getTaskResolutionCodeOptions(detail.summary.type, locale),
     openRequiredTitles: completionControl.openRequiredTitles,
     canOverride: completionControl.canOverride,
     canSubmitNormally: completionControl.enabled,
@@ -62,32 +73,33 @@ export function createTaskCompleteFormState(detail: ApiTaskDetail): TaskComplete
 export function validateTaskCompleteForm(
   detail: ApiTaskDetail,
   form: TaskCompleteFormState,
+  locale: string,
 ): TaskCompleteFormErrors {
-  const model = buildTaskCompleteFormModel(detail);
+  const model = buildTaskCompleteFormModel(detail, locale);
   const errors: TaskCompleteFormErrors = {};
 
   const submittingWithOverride = form.useOverride && model.canOverride;
   if (!model.canSubmitNormally && !submittingWithOverride) {
-    errors.submit = 'Offene Pflichtpunkte blockieren den Abschluss.';
+    errors.submit = taskDetailValidationBlockedByChecklist(locale);
   }
 
   if (model.requiresResolutionCode && !form.resolutionCode.trim()) {
-    errors.resolutionCode = 'Bitte wählen Sie einen Abschluss-Code.';
+    errors.resolutionCode = taskDetailValidationResolutionCodeRequired(locale);
   }
 
   if (model.requiresResolutionNote && !form.resolutionNote.trim()) {
-    errors.resolutionNote = 'Abschluss-Notiz ist für diesen Aufgabentyp erforderlich.';
+    errors.resolutionNote = taskDetailValidationResolutionNoteRequired(locale);
   }
 
   if (model.showsCostFields && form.actualCostEuros.trim()) {
     const parsed = Number(form.actualCostEuros.replace(',', '.'));
     if (!Number.isFinite(parsed) || parsed < 0) {
-      errors.actualCostEuros = 'Bitte geben Sie einen gültigen Betrag ein.';
+      errors.actualCostEuros = taskDetailValidationInvalidCost(locale);
     }
   }
 
   if (submittingWithOverride && !form.overrideReason.trim()) {
-    errors.overrideReason = 'Bitte geben Sie eine Begründung für den Override an.';
+    errors.overrideReason = taskDetailValidationOverrideReasonRequired(locale);
   }
 
   return errors;
@@ -98,19 +110,20 @@ export function buildCompleteTaskPayload(
   form: TaskCompleteFormState,
 ): CompleteTaskPayload {
   const payload: CompleteTaskPayload = {};
-  const model = buildTaskCompleteFormModel(detail);
+  const showsCostFields = taskShowsCostFields(detail.summary.type);
+  const canOverride = detail.availableActions.overrideCompletion.enabled;
 
   if (form.resolutionCode.trim()) payload.resolutionCode = form.resolutionCode.trim();
   if (form.resolutionNote.trim()) payload.resolutionNote = form.resolutionNote.trim();
 
-  if (model.showsCostFields && form.actualCostEuros.trim()) {
+  if (showsCostFields && form.actualCostEuros.trim()) {
     const euros = Number(form.actualCostEuros.replace(',', '.'));
     if (Number.isFinite(euros) && euros >= 0) {
       payload.actualCostCents = Math.round(euros * 100);
     }
   }
 
-  if (form.useOverride && model.canOverride) {
+  if (form.useOverride && canOverride) {
     payload.overrideIncompleteChecklist = true;
     payload.overrideReason = form.overrideReason.trim();
   }
@@ -119,6 +132,7 @@ export function buildCompleteTaskPayload(
 }
 
 export function useTaskCompleteForm(detail: ApiTaskDetail | null) {
+  const { locale } = useLanguage();
   const [form, setForm] = useState<TaskCompleteFormState>(() =>
     detail ? createTaskCompleteFormState(detail) : {
       resolutionCode: '',
@@ -131,8 +145,8 @@ export function useTaskCompleteForm(detail: ApiTaskDetail | null) {
   const [errors, setErrors] = useState<TaskCompleteFormErrors>({});
 
   const model = useMemo(
-    () => (detail ? buildTaskCompleteFormModel(detail) : null),
-    [detail],
+    () => (detail ? buildTaskCompleteFormModel(detail, locale) : null),
+    [detail, locale],
   );
 
   const reset = useCallback((nextDetail: ApiTaskDetail | null) => {
@@ -157,7 +171,7 @@ export function useTaskCompleteForm(detail: ApiTaskDetail | null) {
 
   const validate = () => {
     if (!detail) return false;
-    const nextErrors = validateTaskCompleteForm(detail, form);
+    const nextErrors = validateTaskCompleteForm(detail, form, locale);
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };

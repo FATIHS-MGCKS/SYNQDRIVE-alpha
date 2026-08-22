@@ -1,4 +1,5 @@
 import type { ApiTaskDetail } from './types';
+import { resolveTaskDetailPresentationLocale } from './task-detail-presentation-i18n';
 import { buildChecklistBlockerLabel, getOpenRequiredItemTitles } from './taskDetailChecklist.utils';
 
 export interface TaskCompletionControlModel {
@@ -10,7 +11,10 @@ export interface TaskCompletionControlModel {
   overrideDisabledReason: string | null;
 }
 
-export function buildTaskCompletionControlModel(detail: ApiTaskDetail): TaskCompletionControlModel {
+export function buildTaskCompletionControlModel(
+  detail: ApiTaskDetail,
+  locale: string,
+): TaskCompletionControlModel {
   const complete = detail.availableActions.complete;
   const override = detail.availableActions.overrideCompletion;
   const openRequiredTitles = getOpenRequiredItemTitles(detail);
@@ -20,7 +24,9 @@ export function buildTaskCompletionControlModel(detail: ApiTaskDetail): TaskComp
     disabledReason: complete.disabledReason ?? null,
     openRequiredTitles,
     blockerSummary:
-      openRequiredTitles.length > 0 ? buildChecklistBlockerLabel(openRequiredTitles) : null,
+      openRequiredTitles.length > 0
+        ? buildChecklistBlockerLabel(resolveTaskDetailPresentationLocale(locale), openRequiredTitles)
+        : null,
     canOverride: override.enabled,
     overrideDisabledReason: override.disabledReason ?? null,
   };

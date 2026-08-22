@@ -1,11 +1,20 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { api } from '../../api';
 import { invalidateTaskQueries } from '../invalidate';
 import type { CompleteTaskPayload } from '../types';
 import type { ApiTaskDetail } from '../types';
 import type { TaskBucket } from '../types';
 import type { TaskDetailActionKind } from '../taskDetailActions.utils';
+import {
+  taskDetailToastActionFailed,
+  taskDetailToastCancelled,
+  taskDetailToastCompleted,
+  taskDetailToastResumed,
+  taskDetailToastStarted,
+  taskDetailToastWaiting,
+} from '../task-detail-actions-presentation-i18n';
 
 export interface UseTaskDetailActionsOptions {
   orgId: string | null | undefined;
@@ -36,6 +45,7 @@ export function useTaskDetailActions({
   buckets,
   showSuccessToast = true,
 }: UseTaskDetailActionsOptions): UseTaskDetailActionsResult {
+  const { locale } = useLanguage();
   const [pendingAction, setPendingAction] = useState<UseTaskDetailActionsResult['pendingAction']>(null);
   const [lastError, setLastError] = useState<string | null>(null);
 
@@ -65,7 +75,8 @@ export function useTaskDetailActions({
         if (showSuccessToast) toast.success(successMessage);
         return updated;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Aktion fehlgeschlagen';
+        const message =
+          error instanceof Error ? error.message : taskDetailToastActionFailed(locale);
         setLastError(message);
         toast.error(message);
         throw error;
@@ -73,33 +84,34 @@ export function useTaskDetailActions({
         setPendingAction(null);
       }
     },
-    [buckets, onAfterMutation, onTaskUpdated, orgId, pendingAction, showSuccessToast, task],
+    [buckets, locale, onAfterMutation, onTaskUpdated, orgId, pendingAction, showSuccessToast, task],
   );
 
   const start = useCallback(
-    () => run('start', () => api.tasks.start(orgId!, task!.id), 'Aufgabe gestartet'),
-    [orgId, run, task],
+    () => run('start', () => api.tasks.start(orgId!, task!.id), taskDetailToastStarted(locale)),
+    [locale, orgId, run, task],
   );
 
   const resume = useCallback(
-    () => run('resume', () => api.tasks.start(orgId!, task!.id), 'Aufgabe fortgesetzt'),
-    [orgId, run, task],
+    () => run('resume', () => api.tasks.start(orgId!, task!.id), taskDetailToastResumed(locale)),
+    [locale, orgId, run, task],
   );
 
   const moveToWaiting = useCallback(
-    () => run('moveToWaiting', () => api.tasks.waiting(orgId!, task!.id), 'Auf Wartend gesetzt'),
-    [orgId, run, task],
+    () =>
+      run('moveToWaiting', () => api.tasks.waiting(orgId!, task!.id), taskDetailToastWaiting(locale)),
+    [locale, orgId, run, task],
   );
 
   const complete = useCallback(
     (payload?: CompleteTaskPayload) =>
-      run('complete', () => api.tasks.complete(orgId!, task!.id, payload), 'Aufgabe erledigt'),
-    [orgId, run, task],
+      run('complete', () => api.tasks.complete(orgId!, task!.id, payload), taskDetailToastCompleted(locale)),
+    [locale, orgId, run, task],
   );
 
   const cancel = useCallback(
-    () => run('cancel', () => api.tasks.cancel(orgId!, task!.id), 'Aufgabe storniert'),
-    [orgId, run, task],
+    () => run('cancel', () => api.tasks.cancel(orgId!, task!.id), taskDetailToastCancelled(locale)),
+    [locale, orgId, run, task],
   );
 
   return {

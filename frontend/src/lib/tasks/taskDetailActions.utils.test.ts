@@ -126,7 +126,7 @@ describe('buildTaskDetailActionPlan', () => {
         },
       },
     );
-    const plan = buildTaskDetailActionPlan(detail);
+    const plan = buildTaskDetailActionPlan(detail, 'de');
     expect(plan.primary?.kind).toBe('start');
     expect(plan.primary?.label).toBe('Starten');
     expect(plan.secondaries.map((item) => item.kind)).toContain('comment');
@@ -148,7 +148,7 @@ describe('buildTaskDetailActionPlan', () => {
         },
       },
     );
-    const plan = buildTaskDetailActionPlan(detail);
+    const plan = buildTaskDetailActionPlan(detail, 'de');
     expect(plan.primary?.kind).toBe('resume');
     expect(plan.primary?.label).toBe('Fortsetzen');
   });
@@ -168,7 +168,7 @@ describe('buildTaskDetailActionPlan', () => {
         },
       },
     );
-    const plan = buildTaskDetailActionPlan(detail);
+    const plan = buildTaskDetailActionPlan(detail, 'de');
     expect(plan.primary?.kind).toBe('complete');
     expect(plan.secondaries.map((item) => item.kind)).toContain('moveToWaiting');
     expect(plan.overflow.map((item) => item.kind)).toContain('cancel');
@@ -189,7 +189,7 @@ describe('buildTaskDetailActionPlan', () => {
         },
       },
     );
-    const plan = buildTaskDetailActionPlan(detail);
+    const plan = buildTaskDetailActionPlan(detail, 'de');
     expect(plan.primary?.kind).toBe('complete');
     expect(plan.primary?.enabled).toBe(true);
   });
@@ -219,7 +219,7 @@ describe('buildTaskDetailActionPlan', () => {
         },
       },
     );
-    const plan = buildTaskDetailActionPlan(detail);
+    const plan = buildTaskDetailActionPlan(detail, 'de');
     expect(plan.isTerminal).toBe(true);
     expect(plan.primary).toBeNull();
   });
@@ -249,7 +249,7 @@ describe('buildTaskDetailCompletionSummary', () => {
         },
       },
     );
-    const summary = buildTaskDetailCompletionSummary(detail);
+    const summary = buildTaskDetailCompletionSummary(detail, 'de');
     expect(summary.isAutoResolved).toBe(true);
     expect(summary.autoResolvedReason).toContain('Buchung');
   });
@@ -267,7 +267,7 @@ describe('buildTaskDetailCompletionSummary', () => {
         },
       },
     );
-    const summary = buildTaskDetailCompletionSummary(detail);
+    const summary = buildTaskDetailCompletionSummary(detail, 'de');
     expect(summary.isSuperseded).toBe(true);
     expect(summary.supersededByTaskId).toBe('successor-1');
     expect(summary.supersededReason).toBeTruthy();
