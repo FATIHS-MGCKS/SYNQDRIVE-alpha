@@ -238,11 +238,10 @@ export function AttentionScopedList({
   const hiddenAtomicCount = 0;
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {errorBanner ? <NotificationPanelErrorBanner message={errorBanner} /> : null}
 
-      <div aria-live="polite" aria-relevant="additions text">
-        <DashboardPanelScrollBlur className={cn('flex-1', listClassName)}>
+      <DashboardPanelScrollBlur className={listClassName}>
         {loading ? (
           <NotificationCardSkeleton rows={3} />
         ) : showEmpty ? (
@@ -311,8 +310,7 @@ export function AttentionScopedList({
             {t('notification.more.expanded', { count: hiddenAtomicCount })}
           </p>
         ) : null}
-        </DashboardPanelScrollBlur>
-      </div>
+      </DashboardPanelScrollBlur>
 
       <ServiceTaskCreateModal
         open={taskModalOpen}
@@ -326,6 +324,6 @@ export function AttentionScopedList({
           setTaskPrefill(null);
         }}
       />
-    </>
+    </div>
   );
 }

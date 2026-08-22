@@ -103,7 +103,7 @@ export function DashboardTasksOverviewPanel({ vm, onOpenTasks }: DashboardTasksO
             </div>
           </div>
         ) : overview.previewReady ? (
-          <DashboardPanelScrollBlur className="flex-1">
+          <DashboardPanelScrollBlur className="min-h-0 flex-1">
             <ul
               className="flex flex-col gap-2 px-2 py-2 sm:px-2.5"
               role="list"
