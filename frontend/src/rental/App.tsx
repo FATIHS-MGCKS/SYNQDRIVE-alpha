@@ -89,6 +89,7 @@ import {
   mergeCommunicationCenterState,
   COMMUNICATION_CENTER_VIEW,
 } from './components/communication-center/communication-center-navigation';
+import { buildCommunicationCenterState } from './components/communication-center/communication-center-url';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
@@ -965,6 +966,16 @@ function RentalAppContent() {
                 }
               }
               handleViewChange('tasks');
+            }}
+            onOpenCommunicationCenter={(options) => {
+              const state = buildCommunicationCenterState({
+                conversationId: options?.conversationId,
+                channel: options?.channel,
+                mobilePane: options?.mobilePane,
+                inboxFilters: options?.inboxFilters,
+              });
+              syncCommunicationCenterStateToUrl(state);
+              handleViewChange('communication-center');
             }}
           />
         ) : currentView === 'bookings' ? (

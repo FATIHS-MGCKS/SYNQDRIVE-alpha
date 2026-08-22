@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c8-5-dashboard-widget-2026-08-22',
+    version: '4.9.932',
+    title: 'Communication Center C8.5 — Dashboard Communication attention widget',
+    summary: [
+      'Added compact Communication dashboard widget below Operations/Notifications with Unread, Needs attention, and Unassigned metrics.',
+      'Prioritized conversation preview rows (max 5) from canonical C7 summary + list APIs; no timeline or provider reads.',
+      'Deep links into Communication Center for inbox filters and selected conversation via buildCommunicationCenterUrl.',
+      'RBAC (communication.read), org race safety, partial failure handling, loading/empty/error states, en/de i18n.',
+      'Playwright proofs for 390 / 1024 / 1440, metric links, and canonical-only request budget.',
+    ],
+    reason:
+      'C8.5 surfaces operational conversation attention on the dashboard without duplicating the full Communication Center inbox.',
+    previousBehavior: 'Dashboard had no communication attention surfacing; users opened Communication Center manually.',
+    details:
+      'CommunicationDashboardWidget.tsx, useCommunicationDashboard.ts, communication-dashboard-priority.ts, communication-center-url.ts, DashboardView.tsx, e2e/communication-dashboard-widget.spec.ts, architecture/COMMUNICATION_CENTER_C8_5_DASHBOARD_WIDGET_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-08-22T17:20:00.000Z',
+  },
+  {
     id: 'communication-center-c8-4-settings-2026-08-22',
     version: '4.9.930',
     title: 'Communication Center C8.4 — Settings Integration + Provider Consolidation',

@@ -101,6 +101,7 @@ export interface DashboardViewProps {
   onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenPriceTariffs?: () => void;
   onOpenTasks?: (options?: DashboardOpenTasksOptions) => void;
+  onOpenCommunicationCenter?: (options?: DashboardOpenCommunicationCenterOptions) => void;
 }
 
 export type DashboardTasksOverviewFilter =
@@ -110,6 +111,15 @@ export type DashboardTasksOverviewFilter =
 export interface DashboardOpenTasksOptions {
   taskId?: string;
   filter?: DashboardTasksOverviewFilter;
+}
+
+export interface DashboardOpenCommunicationCenterOptions {
+  conversationId?: string;
+  channel?: import('../communication-center/communication-center.types').CommunicationChannel;
+  mobilePane?: import('../communication-center/communication-center.types').CommunicationMobilePane;
+  inboxFilters?: Partial<
+    import('../communication-center/communication-inbox-state').CommunicationInboxFilters
+  >;
 }
 
 export interface DashboardInvoice {

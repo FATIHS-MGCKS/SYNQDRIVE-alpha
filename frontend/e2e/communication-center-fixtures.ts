@@ -211,6 +211,8 @@ export async function installCommunicationMocks(
       const channel = params.get('channel');
       const unreadOnly = params.get('unreadOnly') === 'true';
       const cursor = params.get('cursor');
+      const limit = Number(params.get('limit') ?? '0');
+      const returnFullList = limit >= 30;
 
       if (options?.searchRace && search) {
         const delayMs = search === 'A' ? 1500 : 100;
@@ -286,7 +288,7 @@ export async function installCommunicationMocks(
         });
       }
 
-      if (!options?.empty && !cursor && items.length > 0) {
+      if (!options?.empty && !cursor && items.length > 0 && !returnFullList) {
         return route.fulfill({
           status: 200,
           contentType: 'application/json',

@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import {
   ActionQueue,
+  CommunicationDashboardWidget,
   ControlKpiStrip,
   DashboardAttentionStack,
   DashboardControlHeader,
@@ -32,6 +33,7 @@ export function DashboardView({
   onOpenInvoiceById,
   onOpenPriceTariffs,
   onOpenTasks,
+  onOpenCommunicationCenter,
 }: DashboardViewProps) {
   const vm = useDashboardViewModel({
     onVehicleSelect,
@@ -165,11 +167,17 @@ export function DashboardView({
 
         <div className={DASHBOARD_LAYOUT.lowerAttentionGrid}>
           <div className={DASHBOARD_LAYOUT.notificationsSlot}>
-            {vm.dashboardAttention?.splitActive ? (
-              <DashboardAttentionStack vm={vm} handlers={handlers} t={vm.t} locale={vm.locale} layout="sidebar" />
-            ) : (
-              <ActionQueue vm={vm} {...handlers} layout="sidebar" />
-            )}
+            <div className="flex w-full min-w-0 flex-col gap-3">
+              {vm.dashboardAttention?.splitActive ? (
+                <DashboardAttentionStack vm={vm} handlers={handlers} t={vm.t} locale={vm.locale} layout="sidebar" />
+              ) : (
+                <ActionQueue vm={vm} {...handlers} layout="sidebar" />
+              )}
+              <CommunicationDashboardWidget
+                vm={vm}
+                onOpenCommunicationCenter={onOpenCommunicationCenter}
+              />
+            </div>
           </div>
           <div className={DASHBOARD_LAYOUT.tasksSlot}>
             <DashboardTasksOverviewPanel vm={vm} onOpenTasks={onOpenTasks} />

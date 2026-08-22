@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   ListTodo,
   Mail,
+  MessagesSquare,
   Receipt,
   Tag,
   Wifi,
@@ -1159,6 +1160,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Voice reuse', detail: 'VoiceAgentSettings + useVoiceAgentSettings — standalone + embedded' },
       { label: 'SMS config', detail: 'GET /organizations/:orgId/sms/config — pure read, synthetic NOT_CONFIGURED when no row; webhookSigningConfigured; hasConfigRow' },
       { label: 'RBAC', detail: 'communication.read = Inbox; Settings = manage; SMS section = manage + read' },
+    ],
+  },
+  {
+    name: 'Communication Center Dashboard Widget — C8.5 (V4.9.932)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'Placement', detail: 'Standard dashboard lower-left column below Operations/Notifications; excluded from operator focus mode' },
+      { label: 'Data', detail: 'GET conversations/summary + GET conversations?limit=30 — client priority tiers; max 5 rows; no detail/events' },
+      { label: 'Metrics', detail: 'unreadConversations, requiresAttention, unassigned from canonical summary DTO' },
+      { label: 'Deep links', detail: 'buildCommunicationCenterUrl — unread/status/assignment filters + conversationId + channel + pane' },
+      { label: 'RBAC', detail: 'communication.read required; widget absent and no API calls when missing' },
     ],
   },
 ];
