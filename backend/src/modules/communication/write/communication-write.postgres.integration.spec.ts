@@ -365,6 +365,38 @@ describePg('Communication write API postgres', () => {
     expect(final?.status).toBe(CommunicationConversationStatus.RESOLVED);
   });
 
+  it('reopen versus concurrent assign preserves status and assignee invariants', async () => {
+    const convo = await seedConversation({
+      orgId: orgA,
+      suffix: 'reopen-assign-race',
+      status: CommunicationConversationStatus.RESOLVED,
+      assignedUserId: operatorA,
+    });
+
+    const [reopenResult, assignResult] = await Promise.allSettled([
+      service.reopenConversation(orgA, convo.id, { userId: operatorA }),
+      service.assignConversation(orgA, convo.id, operatorB, { userId: manager }),
+    ]);
+
+    expect(reopenResult.status).toBe('fulfilled');
+
+    const final = await prisma.communicationConversation.findUnique({ where: { id: convo.id } });
+    expect(final).toBeTruthy();
+    expect(final!.status).not.toBe(CommunicationConversationStatus.RESOLVED);
+
+    if (final!.status === CommunicationConversationStatus.HUMAN_ACTIVE) {
+      expect(final!.assignedUserId).toBeTruthy();
+    }
+    if (final!.status === CommunicationConversationStatus.HUMAN_REQUIRED) {
+      expect(final!.assignedUserId).toBeNull();
+    }
+
+    if (assignResult.status === 'fulfilled') {
+      expect(final!.assignedUserId).toBe(operatorB);
+      expect(final!.status).toBe(CommunicationConversationStatus.HUMAN_ACTIVE);
+    }
+  });
+
   it('mark read zeros unread count idempotently in response', async () => {
     const convo = await seedConversation({
       orgId: orgA,
