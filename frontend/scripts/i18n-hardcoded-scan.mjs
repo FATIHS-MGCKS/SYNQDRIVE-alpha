@@ -313,6 +313,11 @@ const P221_ENFORCE_CLEAN_EXACT = new Set([
   'rental/lib/create-invoice-i18n.ts',
 ]);
 
+const P222_ENFORCE_CLEAN_EXACT = new Set([
+  'rental/components/invoices/SendInvoiceDialog.tsx',
+  'rental/lib/send-invoice-i18n.ts',
+]);
+
 const P22_ENFORCE_CLEAN_PREFIXES = [
   'rental/components/fleet/',
   'rental/components/fleet-operator/',
@@ -620,6 +625,10 @@ function isP221EnforceCleanPath(relPath) {
   return P221_ENFORCE_CLEAN_EXACT.has(relPath);
 }
 
+function isP222EnforceCleanPath(relPath) {
+  return P222_ENFORCE_CLEAN_EXACT.has(relPath);
+}
+
 function isP22EnforceCleanPath(relPath) {
   if (P22_ENFORCE_CLEAN_EXACT.has(relPath)) return true;
   return P22_ENFORCE_CLEAN_PREFIXES.some((prefix) => relPath.startsWith(prefix));
@@ -665,6 +674,7 @@ function isEnforcedCleanSurface(surface, relPath) {
   if (isP219EnforceCleanPath(relPath)) return true;
   if (isP220EnforceCleanPath(relPath)) return true;
   if (isP221EnforceCleanPath(relPath)) return true;
+  if (isP222EnforceCleanPath(relPath)) return true;
   return false;
 }
 
@@ -691,6 +701,7 @@ function migrationPhaseFor(relPath, surface) {
   if (isP219EnforceCleanPath(relPath)) return 'P2.2.19';
   if (isP220EnforceCleanPath(relPath)) return 'P2.2.20';
   if (isP221EnforceCleanPath(relPath)) return 'P2.2.21';
+  if (isP222EnforceCleanPath(relPath)) return 'P2.2.22';
   if (isP210EnforceCleanPath(relPath)) return 'P2.2.10';
   if (isP29EnforceCleanPath(relPath)) return 'P2.2.9';
   if (isP27AEnforceCleanPath(relPath)) return 'P2.2.7A';

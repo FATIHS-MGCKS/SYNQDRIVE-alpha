@@ -326,6 +326,11 @@ const P221_ENFORCE_CLEAN_EXACT = [
   'rental/lib/create-invoice-i18n.ts',
 ];
 
+const P222_ENFORCE_CLEAN_EXACT = [
+  'rental/components/invoices/SendInvoiceDialog.tsx',
+  'rental/lib/send-invoice-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -408,6 +413,10 @@ function isP220EnforceCleanPath(relPath: string): boolean {
 
 function isP221EnforceCleanPath(relPath: string): boolean {
   return P221_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP222EnforceCleanPath(relPath: string): boolean {
+  return P222_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -633,6 +642,39 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP221EnforceCleanPath(finding.file),
     );
     expect(p221Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.22 enforce-clean findings to SendInvoiceDialog only', () => {
+    const p222Debt = inventory.findings.filter((finding) =>
+      isP222EnforceCleanPath(finding.file),
+    );
+    expect(p222Debt).toHaveLength(0);
+  });
+
+  it('keeps send-invoice-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/lib/send-invoice-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('invoices.send.defaultBody');
+    expect(source).toContain('buildSendInvoiceDefaultBody');
+    expect(source).not.toMatch(/'Rechnung per E-Mail senden'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps SendInvoiceDialog.tsx free of hardcoded send-invoice presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/invoices/SendInvoiceDialog.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("t('invoices.send.title')");
+    expect(source).toContain('buildSendInvoiceDefaultBody(locale');
+    expect(source).toContain("t('email.send.modal.recipient')");
+    expect(source).not.toMatch(/Rechnung per E-Mail senden/);
+    expect(source).not.toMatch(/Bitte Empfänger-E-Mail angeben/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps create-invoice-i18n.ts on canonical translation keys', () => {

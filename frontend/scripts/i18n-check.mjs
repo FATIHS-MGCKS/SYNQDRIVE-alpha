@@ -47,6 +47,8 @@ const testFiles = [
   'src/rental/components/rental-tasks-settings-localization.test.tsx',
   'src/rental/components/rental-insurances-localization.test.tsx',
   'src/rental/components/rental-parts-accessories-localization.test.tsx',
+  'src/rental/components/rental-create-invoice-dialog-localization.test.tsx',
+  'src/rental/components/rental-send-invoice-dialog-localization.test.tsx',
 ];
 
 const result = spawnSync('npx', ['vitest', 'run', ...testFiles], {
