@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-rental-send-invoice-dialog-p2-2-22-2026-08-22',
+    version: '4.9.949',
+    title: 'Platform i18n — P2.2.22 Rental Send Invoice Dialog localization',
+    summary: [
+      'Localized SendInvoiceDialog email composer via `useLanguage().{t,locale}` and `send-invoice-i18n.ts` presentation adapter.',
+      'P222 enforce-clean exact scope (2 paths) reports 0 findings; +5 EN+DE keys under `invoices.send.*` (8230→8235); reuses `email.send.modal.*` and `common.cancel`.',
+      'Presentation-only — `SendInvoiceEmailPayload`, invoice numbers, recipient email, and host `defaultSubject` semantics unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.22 post-P221 pre-flight (PR #1171 audit) selected Rental Send Invoice Dialog as the next bounded finance slice after Create Invoice Dialog.',
+    previousBehavior:
+      'SendInvoiceDialog mixed hardcoded German copy across title, description, default body, field labels, validation toast, and CC placeholder.',
+    details:
+      'rental/components/invoices/SendInvoiceDialog.tsx; rental/lib/send-invoice-i18n.ts; i18n/translations/invoices.send.{en,de}.ts; rental-send-invoice-dialog-localization.test.tsx; P222_ENFORCE_CLEAN_EXACT; architecture/I18N_RENTAL_SEND_INVOICE_DIALOG_P2_2_22_2026-08-22.md; docs/audits/i18n-p2-2-22-rental-send-invoice-dialog-implementation-2026-08-22.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-08-22T00:00:00.000Z',
+  },
+  {
     id: 'i18n-rental-create-invoice-dialog-p2-2-21-2026-08-22',
     version: '4.9.948',
     title: 'Platform i18n — P2.2.21 Rental Create Invoice Dialog localization',

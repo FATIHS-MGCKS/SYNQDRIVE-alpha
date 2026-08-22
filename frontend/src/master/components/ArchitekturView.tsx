@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Rental Send Invoice Dialog (P2.2.22 — V4.9.949)', icon: Globe,
+    endpoint: 'SendInvoiceDialog.tsx, send-invoice-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → send-invoice email dialog; `send-invoice-i18n.ts` default body template on open. **Keys:** +5 EN+DE `invoices.send.*` (8230→8235); reuses `email.send.modal.*`, `common.cancel`. **Machine values:** `SendInvoiceEmailPayload` fields, `displayNumber`, host `defaultSubject`/`defaultToEmail` frozen. **Guardrails:** P2.2.22 enforce-clean exact (2 paths) — 0 findings. **Tests:** `rental-send-invoice-dialog-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-22-rental-send-invoice-dialog-implementation-2026-08-22.md; architecture/I18N_RENTAL_SEND_INVOICE_DIALOG_P2_2_22_2026-08-22.md' },
   { name: 'Platform i18n Rental Create Invoice Dialog (P2.2.21 — V4.9.948)', icon: Globe,
     endpoint: 'CreateInvoiceDialog.tsx, create-invoice-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → 3-step create wizard (type/details/line items); `create-invoice-i18n.ts` type/template label maps + `formatCreateInvoiceAmount`. **Keys:** +40 EN+DE `invoices.create.*` (8190→8230); reuses `invoices.list.type.*`, `common.back/cancel`, `invoices.createInvoice`. **Machine values:** `OUTGOING_MANUAL`, `INCOMING_VENDOR`, template IDs, `taxRate:19`, `currency:EUR`, API create payload frozen. **Guardrails:** P2.2.21 enforce-clean exact (2 paths) — 0 findings. **Tests:** `rental-create-invoice-dialog-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

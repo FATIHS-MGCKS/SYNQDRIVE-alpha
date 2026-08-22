@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { FormDialog } from '../../../components/patterns';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { SendInvoiceEmailPayload } from './invoiceDocumentTypes';
 import { displayNumber } from './invoiceFormatters';
 import type { Invoice } from './invoiceTypes';
 import { INVOICE_ACTION_BTN, INVOICE_DISABLED_BTN } from './invoiceTheme';
+import {
+  buildSendInvoiceDefaultBody,
+  SEND_INVOICE_ERROR_RECIPIENT_KEY,
+} from '../../lib/send-invoice-i18n';
 
 interface SendInvoiceDialogProps {
   invoice: Invoice;
@@ -29,6 +34,7 @@ export function SendInvoiceDialog({
   sending,
   onSend,
 }: SendInvoiceDialogProps) {
+  const { t, locale } = useLanguage();
   const [toEmail, setToEmail] = useState(defaultToEmail ?? '');
   const [subject, setSubject] = useState(defaultSubject);
   const [bodyText, setBodyText] = useState('');
@@ -40,9 +46,7 @@ export function SendInvoiceDialog({
     setToEmail(defaultToEmail ?? '');
     setSubject(defaultSubject);
     const number = displayNumber(invoice);
-    setBodyText(
-      `Guten Tag,\n\nanbei erhalten Sie Ihre Rechnung ${number}.\n\nMit freundlichen Grüßen`,
-    );
+    setBodyText(buildSendInvoiceDefaultBody(locale, number));
     setCcEmails('');
     setBccEmails('');
   }, [open, defaultToEmail, defaultSubject, invoice]);
@@ -55,7 +59,7 @@ export function SendInvoiceDialog({
 
   const handleSubmit = async () => {
     if (!toEmail.trim()) {
-      toast.error('Bitte Empfänger-E-Mail angeben');
+      toast.error(t(SEND_INVOICE_ERROR_RECIPIENT_KEY));
       return;
     }
     const payload: SendInvoiceEmailPayload = {
@@ -72,17 +76,18 @@ export function SendInvoiceDialog({
 
   const inputCls =
     'w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground outline-none';
+  const invoiceNumber = displayNumber(invoice);
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Rechnung per E-Mail senden"
-      description={`Rechnung ${displayNumber(invoice)} als PDF-Anhang versenden.`}
+      title={t('invoices.send.title')}
+      description={t('invoices.send.description', { number: invoiceNumber })}
       footer={
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className={INVOICE_DISABLED_BTN} onClick={() => onOpenChange(false)}>
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -95,7 +100,7 @@ export function SendInvoiceDialog({
             ) : (
               <Icon name="mail" className="h-3 w-3" />
             )}
-            Senden
+            {t('email.send.modal.send')}
           </button>
         </div>
       }
@@ -103,7 +108,7 @@ export function SendInvoiceDialog({
       <div className="space-y-3">
         <label className="block space-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Empfänger
+            {t('email.send.modal.recipient')}
           </span>
           <input
             type="email"
@@ -115,7 +120,7 @@ export function SendInvoiceDialog({
         </label>
         <label className="block space-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Betreff
+            {t('email.send.modal.subject')}
           </span>
           <input
             type="text"
@@ -126,7 +131,7 @@ export function SendInvoiceDialog({
         </label>
         <label className="block space-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Nachricht
+            {t('email.send.modal.body')}
           </span>
           <textarea
             className={`${inputCls} min-h-[100px] resize-y`}
@@ -136,19 +141,19 @@ export function SendInvoiceDialog({
         </label>
         <label className="block space-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            CC (optional)
+            {t('email.send.modal.cc')}
           </span>
           <input
             type="text"
             className={inputCls}
             value={ccEmails}
             onChange={(e) => setCcEmails(e.target.value)}
-            placeholder="email1@example.com, email2@example.com"
+            placeholder={t('invoices.send.ccPlaceholder')}
           />
         </label>
         <label className="block space-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            BCC (optional)
+            {t('email.send.modal.bcc')}
           </span>
           <input
             type="text"
