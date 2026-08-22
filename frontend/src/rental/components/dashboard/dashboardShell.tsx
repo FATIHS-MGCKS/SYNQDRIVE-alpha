@@ -21,7 +21,9 @@ export const DASHBOARD_LAYOUT = {
     'contents lg:col-start-1 lg:flex lg:min-h-0 lg:flex-col lg:gap-4',
   controlKpiSlot: 'order-1 min-w-0 w-full',
   utilizationSlot:
-    'order-2 flex min-h-0 w-full min-w-0 flex-col overflow-hidden lg:col-start-2 lg:row-start-1',
+    'order-2 flex min-h-0 w-full min-w-0 flex-col overflow-hidden lg:col-start-2 lg:row-start-1 lg:self-start',
+  /** Desktop: max height of Auslastung panel relative to left ops column (0.5 = half). */
+  utilizationDesktopHeightRatio: 0.5,
   lowerAttentionGrid:
     'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
   notificationsSlot:

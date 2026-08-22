@@ -3,7 +3,8 @@ import { cn } from '../../../../components/ui/utils';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../RentalContext';
 import type { DashboardViewModel } from '../dashboardTypes';
-import { DASHBOARD_KPI_TITLE_CLASS, panelShellClass } from '../dashboardShell';
+import { panelShellClass } from '../dashboardShell';
+import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
 import { UtilizationHeatmapLegend } from './UtilizationHeatmapLegend';
 import { UtilizationKpiRow } from './UtilizationKpiRow';
 import { UtilizationMonthCalendar } from './UtilizationMonthCalendar';
@@ -65,13 +66,13 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
       data-testid="dashboard-utilization-panel"
       className={cn(
         panelShellClass('tertiary'),
-        'min-h-[172px] min-w-0 px-3 py-3.5',
+        'flex min-h-[172px] min-w-0 flex-col overflow-hidden px-3 py-3.5 lg:px-3 lg:py-2.5',
         className,
       )}
       aria-label={t('dashboard.utilization.title')}
     >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <h2 className={DASHBOARD_KPI_TITLE_CLASS}>
+      <div className="mb-3 flex shrink-0 items-start justify-between gap-2 lg:mb-1.5">
+        <h2 className={NOTIFICATION_PANEL_TYPO.boxTitle}>
           {t('dashboard.utilization.title')}
         </h2>
         <UtilizationMonthNav
@@ -80,6 +81,7 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
           onNext={goToNextMonth}
           previousLabel={t('dashboard.utilization.prevMonth')}
           nextLabel={t('dashboard.utilization.nextMonth')}
+          className="lg:scale-[0.92] lg:origin-right"
         />
       </div>
 
@@ -93,7 +95,7 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
           <Skeleton className="h-28 rounded-xl" />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:gap-1.5">
           {hasError ? (
             <p className="text-[10px] text-muted-foreground">{t('dashboard.utilization.loadingError')}</p>
           ) : null}

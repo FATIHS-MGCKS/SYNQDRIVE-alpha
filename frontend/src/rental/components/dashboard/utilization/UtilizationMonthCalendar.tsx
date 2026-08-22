@@ -41,17 +41,17 @@ export function UtilizationMonthCalendar({
 
   return (
     <div className={cn('min-w-0', className)}>
-      <div className="mb-1 grid grid-cols-7 gap-0.5">
+      <div className="mb-1 grid grid-cols-7 gap-0.5 lg:mb-0.5 lg:gap-px">
         {weekdayLabels.map((label) => (
           <div
             key={label}
-            className="py-0.5 text-center text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
+            className="py-0.5 text-center text-[9px] font-semibold uppercase tracking-wide text-muted-foreground lg:py-0 lg:text-[8px]"
           >
             {label}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-0.5" role="grid" aria-readonly="true">
+      <div className="grid grid-cols-7 gap-0.5 lg:gap-px" role="grid" aria-readonly="true">
         {cells.map((cell, index) => {
           if (!cell) {
             return <div key={`empty-${index}`} role="gridcell" aria-hidden />;
@@ -73,7 +73,8 @@ export function UtilizationMonthCalendar({
               tabIndex={0}
               aria-label={dayAriaLabel(dateLabel, percent)}
               className={cn(
-                'flex aspect-square min-w-0 items-center justify-center rounded-md text-[10px] font-semibold tabular-nums transition-colors motion-reduce:transition-none',
+                'flex aspect-square min-h-[1.75rem] min-w-0 items-center justify-center rounded-md text-[10px] font-semibold tabular-nums transition-colors motion-reduce:transition-none',
+                'lg:aspect-auto lg:h-[1.125rem] lg:max-h-[1.125rem] lg:min-h-[1.125rem] lg:rounded-sm lg:text-[8px]',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
                 utilizationHeatmapCellClass(tone),
               )}
