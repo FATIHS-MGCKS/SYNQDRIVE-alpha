@@ -297,6 +297,11 @@ const P216C2A_ENFORCE_CLEAN_EXACT = [
   'lib/tasks/components/TaskDetailCompletionSummary.tsx',
 ];
 
+const P216C2B_ENFORCE_CLEAN_EXACT = [
+  'rental/components/tasks/VehicleTaskDetailDrawer.tsx',
+  'operator/tasks/OperatorTaskDetail.tsx',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -355,6 +360,10 @@ function isP216C1EnforceCleanPath(relPath: string): boolean {
 
 function isP216C2AEnforceCleanPath(relPath: string): boolean {
   return P216C2A_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP216C2BEnforceCleanPath(relPath: string): boolean {
+  return P216C2B_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -540,6 +549,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p216c2aDebt).toHaveLength(0);
   });
 
+  it('scopes P2.2.16C.2B enforce-clean findings to task detail host residuals only', () => {
+    const p216c2bDebt = inventory.findings.filter((finding) =>
+      isP216C2BEnforceCleanPath(finding.file),
+    );
+    expect(p216c2bDebt).toHaveLength(0);
+  });
+
   it('keeps task-detail-actions-presentation-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../lib/tasks/task-detail-actions-presentation-i18n.ts'),
@@ -600,6 +616,33 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).toContain('tasks.detail.completion.title');
     expect(source).not.toMatch(/Aufgabe abschließen/);
     expect(source).not.toMatch(/Abschluss-Code/);
+  });
+
+  it('keeps VehicleTaskDetailDrawer.tsx free of host residual hardcoded copy', () => {
+    const source = readFileSync(
+      join(__dirname, '../rental/components/tasks/VehicleTaskDetailDrawer.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('useLanguage');
+    expect(source).toContain("t('tasks.detail.openInTasks')");
+    expect(source).not.toMatch(/In Tasks öffnen/);
+    expect(source).not.toMatch(/de-DE/);
+  });
+
+  it('keeps OperatorTaskDetail.tsx free of host residual hardcoded copy', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/tasks/OperatorTaskDetail.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('useLanguage');
+    expect(source).toContain("t('tasks.detail.loadError')");
+    expect(source).toContain("t('tasks.detail.commentEmpty')");
+    expect(source).toContain("t('tasks.detail.notFound')");
+    expect(source).toContain('buildTaskDetailViewModel(task, { locale })');
+    expect(source).not.toMatch(/Laden fehlgeschlagen/);
+    expect(source).not.toMatch(/Kommentar eingeben/);
+    expect(source).not.toMatch(/Aufgabe nicht gefunden/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps taskTimeline.utils.ts machine/descriptor-only without German prose maps', () => {
