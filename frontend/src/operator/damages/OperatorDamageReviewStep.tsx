@@ -1,22 +1,18 @@
 import { Sparkles } from 'lucide-react';
+import type { DamageSource } from '../../rental/lib/damage.types';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
-  formatDamageSource,
-  formatDamageType,
-  formatSeverity,
-  type DamageSource,
-} from '../../rental/lib/damage.types';
+  operatorDamageCaptureDamageTypeLabel,
+  operatorDamageCaptureLocationChipLabel,
+  operatorDamageCaptureRentalImpactLabel,
+  operatorDamageCaptureSeverityLabel,
+  operatorDamageCaptureSourceLabel,
+} from '../lib/operator-damage-capture-i18n';
 import {
   OPERATOR_DAMAGE_LOCATION_CHIPS,
   type OperatorDamageFormState,
 } from './operatorDamagePayload';
 import type { OperatorDamagePhotoItem } from './OperatorDamagePhotoStep';
-
-const RENTAL_IMPACT_LABELS: Record<string, string> = {
-  NONE: 'Kein Einfluss',
-  WATCH: 'Beobachten',
-  BLOCK_RENTAL: 'Vermietung blockiert',
-  SAFETY_CRITICAL: 'Sicherheitskritisch',
-};
 
 interface Props {
   vehicleLabel: string;
@@ -48,27 +44,53 @@ export function OperatorDamageReviewStep({
   photos,
   onOpenAiUpload,
 }: Props) {
+  const { t, locale } = useLanguage();
+  const emptyValue = t('invoices.list.emptyValue');
+
   const location =
     form.locationLabel.trim() ||
-    OPERATOR_DAMAGE_LOCATION_CHIPS.find((c) => c.id === form.locationChipId)?.label ||
-    '—';
+    (form.locationChipId
+      ? operatorDamageCaptureLocationChipLabel(locale, form.locationChipId)
+      : emptyValue);
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-border surface-premium p-4">
-        <ReviewRow label="Fahrzeug" value={vehicleLabel} />
-        <ReviewRow label="Kennzeichen" value={plate || '—'} />
-        {bookingLabel && <ReviewRow label="Buchung" value={bookingLabel} />}
-        {customerName && <ReviewRow label="Kunde" value={customerName} />}
-        <ReviewRow label="Quelle" value={formatDamageSource(source)} />
-        <ReviewRow label="Typ" value={formatDamageType(form.damageType)} />
-        <ReviewRow label="Schweregrad" value={formatSeverity(form.severity)} />
-        <ReviewRow label="Position" value={location} />
-        <ReviewRow label="Vermietung" value={RENTAL_IMPACT_LABELS[form.rentalImpact] ?? form.rentalImpact} />
-        {form.description.trim() && (
-          <ReviewRow label="Beschreibung" value={form.description.trim()} />
+        <ReviewRow label={t('operator.damageCapture.field.vehicle')} value={vehicleLabel} />
+        <ReviewRow label={t('operator.damageCapture.field.plate')} value={plate || emptyValue} />
+        {bookingLabel && (
+          <ReviewRow label={t('operator.damageCapture.field.booking')} value={bookingLabel} />
         )}
-        <ReviewRow label="Fotos" value={`${photos.length}`} />
+        {customerName && (
+          <ReviewRow label={t('operator.damageCapture.field.customer')} value={customerName} />
+        )}
+        <ReviewRow
+          label={t('operator.damageCapture.field.source')}
+          value={operatorDamageCaptureSourceLabel(locale, source)}
+        />
+        <ReviewRow
+          label={t('operator.damageCapture.field.type')}
+          value={operatorDamageCaptureDamageTypeLabel(locale, form.damageType)}
+        />
+        <ReviewRow
+          label={t('operator.damageCapture.field.severity')}
+          value={operatorDamageCaptureSeverityLabel(locale, form.severity)}
+        />
+        <ReviewRow label={t('operator.damageCapture.field.location')} value={location} />
+        <ReviewRow
+          label={t('operator.damageCapture.field.rentalImpact')}
+          value={operatorDamageCaptureRentalImpactLabel(locale, form.rentalImpact)}
+        />
+        {form.description.trim() && (
+          <ReviewRow
+            label={t('operator.damageCapture.field.description')}
+            value={form.description.trim()}
+          />
+        )}
+        <ReviewRow
+          label={t('operator.damageCapture.field.photos')}
+          value={`${photos.length}`}
+        />
       </div>
 
       {photos.length > 0 && (
@@ -77,7 +99,7 @@ export function OperatorDamageReviewStep({
             <img
               key={p.id}
               src={p.previewUrl}
-              alt="Vorschau"
+              alt={t('operator.damageCapture.review.previewAlt')}
               className="aspect-square rounded-xl border border-border object-cover"
             />
           ))}
@@ -95,10 +117,10 @@ export function OperatorDamageReviewStep({
           </span>
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              Schadensbeleg per AI Upload
+              {t('operator.damageCapture.aiUpload.title')}
             </span>
             <span className="text-[11px] text-muted-foreground">
-              Optional — Schadensbericht per AI extrahieren (nach Speichern mit damageId verknüpfbar)
+              {t('operator.damageCapture.aiUpload.hint')}
             </span>
           </span>
         </button>

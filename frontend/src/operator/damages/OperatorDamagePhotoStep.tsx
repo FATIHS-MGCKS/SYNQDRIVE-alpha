@@ -1,5 +1,6 @@
 import { Camera, ImagePlus, Loader2, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { prepareDamageImageDataUrl } from './operatorDamageImage.utils';
 
 export interface OperatorDamagePhotoItem {
@@ -18,6 +19,7 @@ interface Props {
 const MAX_PHOTOS = 6;
 
 export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props) {
+  const { t } = useLanguage();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -40,7 +42,9 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
       }
       onPhotosChange(next);
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Foto konnte nicht verarbeitet werden.');
+      setLocalError(
+        err instanceof Error ? err.message : t('operator.damageCapture.photos.errorProcess'),
+      );
     } finally {
       setBusy(false);
     }
@@ -54,9 +58,7 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Schadenfotos aufnehmen oder aus der Galerie wählen. Mehrere Bilder sind möglich.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('operator.damageCapture.photos.hint')}</p>
 
       <div className="grid grid-cols-2 gap-2">
         <button
@@ -70,7 +72,9 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
           ) : (
             <Camera className="h-8 w-8 text-[color:var(--brand)]" />
           )}
-          <span className="text-sm font-semibold text-foreground">Kamera</span>
+          <span className="text-sm font-semibold text-foreground">
+            {t('operator.damageCapture.photos.camera')}
+          </span>
         </button>
         <button
           type="button"
@@ -79,7 +83,9 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
           className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 surface-premium disabled:opacity-50"
         >
           <ImagePlus className="h-8 w-8 text-muted-foreground" />
-          <span className="text-sm font-semibold text-foreground">Galerie</span>
+          <span className="text-sm font-semibold text-foreground">
+            {t('operator.damageCapture.photos.gallery')}
+          </span>
         </button>
       </div>
 
@@ -112,14 +118,14 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
             <div key={photo.id} className="relative overflow-hidden rounded-xl border border-border bg-muted/30">
               <img
                 src={photo.previewUrl}
-                alt="Schadenfoto"
+                alt={t('operator.damageCapture.photos.alt')}
                 className="aspect-[4/3] w-full object-cover"
               />
               <button
                 type="button"
                 onClick={() => removePhoto(photo.id)}
                 className="sq-press absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-lg bg-background/90 text-[color:var(--status-critical)] shadow-sm"
-                aria-label="Foto entfernen"
+                aria-label={t('operator.damageCapture.photos.removeAria')}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -129,7 +135,7 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
       )}
 
       <p className="text-[11px] text-muted-foreground">
-        {photos.length}/{MAX_PHOTOS} Fotos · Große Bilder werden vor dem Upload komprimiert.
+        {t('operator.damageCapture.photos.count', { count: photos.length, max: MAX_PHOTOS })}
       </p>
 
       {displayError && (

@@ -337,6 +337,15 @@ const P223_ENFORCE_CLEAN_EXACT = [
   'rental/components/invoices/invoiceDocuments.mapper.ts',
 ];
 
+const P224_ENFORCE_CLEAN_EXACT = [
+  'operator/damages/OperatorDamageCaptureFlow.tsx',
+  'operator/damages/OperatorDamagePhotoStep.tsx',
+  'operator/damages/OperatorDamageDetailsStep.tsx',
+  'operator/damages/OperatorDamageReviewStep.tsx',
+  'operator/damages/operatorDamagePayload.ts',
+  'operator/lib/operator-damage-capture-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -427,6 +436,10 @@ function isP222EnforceCleanPath(relPath: string): boolean {
 
 function isP223EnforceCleanPath(relPath: string): boolean {
   return P223_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP224EnforceCleanPath(relPath: string): boolean {
+  return P224_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -666,6 +679,25 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
       isP223EnforceCleanPath(finding.file),
     );
     expect(p223Debt).toHaveLength(0);
+  });
+
+  it('scopes P2.2.24 enforce-clean findings to Operator Damage Capture only', () => {
+    const p224Debt = inventory.findings.filter((finding) =>
+      isP224EnforceCleanPath(finding.file),
+    );
+    expect(p224Debt).toHaveLength(0);
+  });
+
+  it('keeps operator-damage-capture-i18n.ts on canonical translation keys', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/lib/operator-damage-capture-i18n.ts'),
+      'utf8',
+    );
+    expect(source).toContain('TranslationKey');
+    expect(source).toContain('operatorDamageCaptureValidationMessage');
+    expect(source).not.toMatch(/'Schaden erfassen'/);
+    expect(source).not.toMatch(/locale === 'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps invoice-documents-i18n.ts on canonical translation keys', () => {

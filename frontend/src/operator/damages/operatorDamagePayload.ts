@@ -19,33 +19,36 @@ export const OPERATOR_DAMAGE_CAPTURE_STEPS: OperatorDamageCaptureStep[] = [
 
 export interface OperatorDamageLocationChip {
   id: string;
-  label: string;
   locationView: DamageLocationView;
   defaultLocationLabel?: string;
   suggestDamageType?: string;
 }
 
 export const OPERATOR_DAMAGE_LOCATION_CHIPS: OperatorDamageLocationChip[] = [
-  { id: 'front', label: 'Front', locationView: 'FRONT' },
-  { id: 'rear', label: 'Heck', locationView: 'REAR' },
-  { id: 'left', label: 'Links', locationView: 'LEFT' },
-  { id: 'right', label: 'Rechts', locationView: 'RIGHT' },
-  { id: 'roof', label: 'Dach', locationView: 'ROOF' },
+  { id: 'front', locationView: 'FRONT' },
+  { id: 'rear', locationView: 'REAR' },
+  { id: 'left', locationView: 'LEFT' },
+  { id: 'right', locationView: 'RIGHT' },
+  { id: 'roof', locationView: 'ROOF' },
   {
     id: 'interior',
-    label: 'Innenraum',
     locationView: 'UNKNOWN',
     defaultLocationLabel: 'Innenraum',
     suggestDamageType: 'INTERIOR_DAMAGE',
   },
   {
     id: 'tire',
-    label: 'Reifen/Felge',
     locationView: 'UNKNOWN',
     defaultLocationLabel: 'Reifen/Felge',
     suggestDamageType: 'TIRE_DAMAGE',
   },
 ];
+
+export type OperatorDamageValidationCode =
+  | 'PHOTOS_REQUIRED'
+  | 'DAMAGE_TYPE_REQUIRED'
+  | 'SEVERITY_REQUIRED'
+  | 'DESCRIPTION_TOO_LONG';
 
 export interface OperatorDamageFormState {
   damageType: string;
@@ -97,15 +100,15 @@ export function validateOperatorDamageStep(
   step: OperatorDamageCaptureStep,
   form: OperatorDamageFormState,
   photoCount: number,
-): string | null {
+): OperatorDamageValidationCode | null {
   if (step === 'photos' && photoCount === 0) {
-    return 'Mindestens ein Foto aufnehmen oder hochladen.';
+    return 'PHOTOS_REQUIRED';
   }
   if (step === 'details') {
-    if (!form.damageType) return 'Schadenstyp wählen.';
-    if (!form.severity) return 'Schweregrad wählen.';
+    if (!form.damageType) return 'DAMAGE_TYPE_REQUIRED';
+    if (!form.severity) return 'SEVERITY_REQUIRED';
     if (form.description.length > DESCRIPTION_MAX_LENGTH) {
-      return `Beschreibung max. ${DESCRIPTION_MAX_LENGTH} Zeichen.`;
+      return 'DESCRIPTION_TOO_LONG';
     }
   }
   return null;

@@ -1,12 +1,17 @@
 import {
   DAMAGE_RENTAL_IMPACT_OPTIONS,
   DAMAGE_TYPE_OPTIONS,
-  formatDamageType,
-  formatSeverity,
   type DamageRentalImpact,
   type DamageSeverity,
 } from '../../rental/lib/damage.types';
 import { DESCRIPTION_MAX_LENGTH } from '../../rental/lib/damage.types';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  operatorDamageCaptureDamageTypeLabel,
+  operatorDamageCaptureLocationChipLabel,
+  operatorDamageCaptureRentalImpactLabel,
+  operatorDamageCaptureSeverityLabel,
+} from '../lib/operator-damage-capture-i18n';
 import {
   applyLocationChip,
   OPERATOR_DAMAGE_LOCATION_CHIPS,
@@ -16,19 +21,14 @@ import { operatorFieldClass } from '../handover/operatorHandoverUi';
 
 const SEVERITY_OPTIONS: DamageSeverity[] = ['MINOR', 'MODERATE', 'MAJOR', 'CRITICAL'];
 
-const RENTAL_IMPACT_LABELS: Record<DamageRentalImpact, string> = {
-  NONE: 'Kein Einfluss',
-  WATCH: 'Beobachten',
-  BLOCK_RENTAL: 'Vermietung blockiert',
-  SAFETY_CRITICAL: 'Sicherheitskritisch',
-};
-
 interface Props {
   form: OperatorDamageFormState;
   onChange: (form: OperatorDamageFormState) => void;
 }
 
 export function OperatorDamageDetailsStep({ form, onChange }: Props) {
+  const { t, locale } = useLanguage();
+
   const set = <K extends keyof OperatorDamageFormState>(key: K, value: OperatorDamageFormState[K]) => {
     onChange({ ...form, [key]: value });
   };
@@ -37,7 +37,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
     <div className="space-y-5">
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Schadenstyp
+          {t('operator.damageCapture.details.damageType')}
         </p>
         <div className="flex flex-wrap gap-2">
           {DAMAGE_TYPE_OPTIONS.map((type) => {
@@ -53,7 +53,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                     : 'border-border surface-premium text-foreground'
                 }`}
               >
-                {formatDamageType(type)}
+                {operatorDamageCaptureDamageTypeLabel(locale, type)}
               </button>
             );
           })}
@@ -62,7 +62,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Schweregrad
+          {t('operator.damageCapture.details.severity')}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {SEVERITY_OPTIONS.map((severity) => {
@@ -78,7 +78,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                     : 'border-border surface-premium text-foreground'
                 }`}
               >
-                {formatSeverity(severity)}
+                {operatorDamageCaptureSeverityLabel(locale, severity)}
               </button>
             );
           })}
@@ -87,7 +87,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Position
+          {t('operator.damageCapture.details.location')}
         </p>
         <div className="flex flex-wrap gap-2">
           {OPERATOR_DAMAGE_LOCATION_CHIPS.map((chip) => {
@@ -103,14 +103,14 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                     : 'border-border surface-premium text-foreground'
                 }`}
               >
-                {chip.label}
+                {operatorDamageCaptureLocationChipLabel(locale, chip.id)}
               </button>
             );
           })}
         </div>
         <input
           type="text"
-          placeholder="Position genauer beschreiben (optional)"
+          placeholder={t('operator.damageCapture.details.locationPlaceholder')}
           value={form.locationLabel}
           onChange={(e) => set('locationLabel', e.target.value)}
           className={`${operatorFieldClass} mt-2`}
@@ -119,14 +119,14 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
 
       <div>
         <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Beschreibung
+          {t('operator.damageCapture.details.description')}
         </label>
         <textarea
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
           rows={3}
           maxLength={DESCRIPTION_MAX_LENGTH}
-          placeholder="Was ist passiert? Sichtbare Details…"
+          placeholder={t('operator.damageCapture.details.descriptionPlaceholder')}
           className={`${operatorFieldClass} min-h-[88px] resize-y`}
         />
         <p className="mt-1 text-[10px] text-muted-foreground">
@@ -136,7 +136,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Vermietungsauswirkung
+          {t('operator.damageCapture.details.rentalImpact')}
         </p>
         <div className="flex flex-wrap gap-2">
           {DAMAGE_RENTAL_IMPACT_OPTIONS.map((impact) => {
@@ -152,7 +152,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                     : 'border-border surface-premium text-foreground'
                 }`}
               >
-                {RENTAL_IMPACT_LABELS[impact]}
+                {operatorDamageCaptureRentalImpactLabel(locale, impact)}
               </button>
             );
           })}

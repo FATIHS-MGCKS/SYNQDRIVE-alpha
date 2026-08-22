@@ -1,0 +1,87 @@
+export const operatorDamageCaptureEn = {
+  'operator.damageCapture.title': 'Record damage',
+  'operator.damageCapture.steps.vehicle': 'Vehicle',
+  'operator.damageCapture.steps.photos': 'Photos',
+  'operator.damageCapture.steps.details': 'Classification',
+  'operator.damageCapture.steps.review': 'Review',
+
+  'operator.damageCapture.vehicle.confirmHint': 'Confirm the vehicle for damage capture.',
+  'operator.damageCapture.field.vehicle': 'Vehicle',
+  'operator.damageCapture.field.plate': 'License plate',
+  'operator.damageCapture.field.booking': 'Booking',
+  'operator.damageCapture.field.customer': 'Customer',
+  'operator.damageCapture.field.source': 'Source',
+  'operator.damageCapture.field.type': 'Type',
+  'operator.damageCapture.field.severity': 'Severity',
+  'operator.damageCapture.field.location': 'Location',
+  'operator.damageCapture.field.rentalImpact': 'Rental impact',
+  'operator.damageCapture.field.description': 'Description',
+  'operator.damageCapture.field.photos': 'Photos',
+
+  'operator.damageCapture.actions.continue': 'Continue',
+  'operator.damageCapture.actions.save': 'Save damage',
+
+  'operator.damageCapture.photos.hint':
+    'Take damage photos or choose from the gallery. Multiple images are allowed.',
+  'operator.damageCapture.photos.camera': 'Camera',
+  'operator.damageCapture.photos.gallery': 'Gallery',
+  'operator.damageCapture.photos.alt': 'Damage photo',
+  'operator.damageCapture.photos.removeAria': 'Remove photo',
+  'operator.damageCapture.photos.count': '{count}/{max} photos · Large images are compressed before upload.',
+  'operator.damageCapture.photos.errorProcess': 'Photo could not be processed.',
+
+  'operator.damageCapture.details.damageType': 'Damage type',
+  'operator.damageCapture.details.severity': 'Severity',
+  'operator.damageCapture.details.location': 'Location',
+  'operator.damageCapture.details.locationPlaceholder': 'Describe location in more detail (optional)',
+  'operator.damageCapture.details.description': 'Description',
+  'operator.damageCapture.details.descriptionPlaceholder': 'What happened? Visible details…',
+  'operator.damageCapture.details.rentalImpact': 'Rental impact',
+
+  'operator.damageCapture.review.previewAlt': 'Preview',
+  'operator.damageCapture.aiUpload.title': 'Damage document via AI Upload',
+  'operator.damageCapture.aiUpload.hint':
+    'Optional — extract a damage report with AI (can be linked after save via damage ID)',
+
+  'operator.damageCapture.validation.photosRequired': 'Capture or upload at least one photo.',
+  'operator.damageCapture.validation.damageTypeRequired': 'Select a damage type.',
+  'operator.damageCapture.validation.severityRequired': 'Select a severity level.',
+  'operator.damageCapture.validation.descriptionMax': 'Description max. {max} characters.',
+
+  'operator.damageCapture.error.saveFailed': 'Damage could not be saved.',
+
+  'operator.damageCapture.damageType.SCRATCH': 'Scratch',
+  'operator.damageCapture.damageType.DENT': 'Dent',
+  'operator.damageCapture.damageType.CRACK': 'Crack',
+  'operator.damageCapture.damageType.BROKEN_PART': 'Broken part',
+  'operator.damageCapture.damageType.PAINT_DAMAGE': 'Paint damage',
+  'operator.damageCapture.damageType.GLASS_DAMAGE': 'Glass damage',
+  'operator.damageCapture.damageType.TIRE_DAMAGE': 'Tire damage',
+  'operator.damageCapture.damageType.INTERIOR_DAMAGE': 'Interior damage',
+  'operator.damageCapture.damageType.OTHER': 'Other',
+
+  'operator.damageCapture.severity.MINOR': 'Minor',
+  'operator.damageCapture.severity.MODERATE': 'Moderate',
+  'operator.damageCapture.severity.MAJOR': 'Major',
+  'operator.damageCapture.severity.CRITICAL': 'Critical',
+
+  'operator.damageCapture.rentalImpact.NONE': 'No impact',
+  'operator.damageCapture.rentalImpact.WATCH': 'Watch',
+  'operator.damageCapture.rentalImpact.BLOCK_RENTAL': 'Rental blocked',
+  'operator.damageCapture.rentalImpact.SAFETY_CRITICAL': 'Safety critical',
+
+  'operator.damageCapture.location.front': 'Front',
+  'operator.damageCapture.location.rear': 'Rear',
+  'operator.damageCapture.location.left': 'Left',
+  'operator.damageCapture.location.right': 'Right',
+  'operator.damageCapture.location.roof': 'Roof',
+  'operator.damageCapture.location.interior': 'Interior',
+  'operator.damageCapture.location.tire': 'Tire/wheel',
+
+  'operator.damageCapture.source.PICKUP_HANDOVER': 'Pickup handover',
+  'operator.damageCapture.source.RETURN_HANDOVER': 'Return handover',
+  'operator.damageCapture.source.AI_UPLOAD': 'AI upload',
+  'operator.damageCapture.source.MANUAL': 'Manual',
+  'operator.damageCapture.source.WORKSHOP': 'Workshop',
+  'operator.damageCapture.source.INSPECTION': 'Inspection',
+} as const;

@@ -13,6 +13,7 @@ import { invoicesListEn } from './invoices.list.en';
 import { invoicesCreateEn } from './invoices.create.en';
 import { invoicesSendEn } from './invoices.send.en';
 import { invoicesDocumentsEn } from './invoices.documents.en';
+import { operatorDamageCaptureEn } from './operator.damageCapture.en';
 import { vendorsDirectoryEn } from './vendors.directory.en';
 import { supportOpsEn } from './support.ops.en';
 import { whatsappEn } from './whatsapp.en';
@@ -5577,6 +5578,7 @@ export const en = {
   ...invoicesCreateEn,
   ...invoicesSendEn,
   ...invoicesDocumentsEn,
+  ...operatorDamageCaptureEn,
   ...vendorsDirectoryEn,
 } as const;
 

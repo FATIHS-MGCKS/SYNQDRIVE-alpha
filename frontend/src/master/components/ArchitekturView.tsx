@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Damage Capture (P2.2.24 — V4.9.951)', icon: Globe,
+    endpoint: 'OperatorDamageCaptureFlow.tsx, operator-damage-capture-i18n.ts.',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → four-step damage capture wizard (photo/details/review/submit); `operator-damage-capture-i18n.ts` step + enum label maps + validation messages. **Keys:** +71 EN+DE `operator.damageCapture.*` (8264→8335); reuses `common.back`, `common.close`, `invoices.list.emptyValue`. **Machine values:** step IDs, damage type/severity/rental-impact enums, location chip IDs, photo upload refs, `buildOperatorDamagePayload` output frozen. **Guardrails:** P2.2.24 enforce-clean exact (6 paths) — 0 findings. **Tests:** `operator-damage-capture-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-24-operator-damage-capture-implementation-2026-08-22.md; architecture/I18N_OPERATOR_DAMAGE_CAPTURE_P2_2_24_2026-08-22.md' },
   { name: 'Platform i18n Rental Invoice Documents Panel (P2.2.23 — V4.9.950)', icon: Globe,
     endpoint: 'InvoiceDocuments.tsx, invoice-documents-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → invoice detail documents panel (EMPTY/GENERATING/FAILED/ACTIVE/delivery history); `invoice-documents-i18n.ts` locale-aware `formatInvoiceDocumentDateTime`. **Keys:** +29 EN+DE `invoices.documents.*` (8235→8264); reuses `common.download`, `common.retry`, `invoices.list.emptyValue`. **Machine values:** `panelState`, document/delivery status codes, `documentId`, filenames, backend labels frozen. **Guardrails:** P2.2.23 enforce-clean exact (3 paths) — 0 findings. **Tests:** `rental-invoice-documents-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

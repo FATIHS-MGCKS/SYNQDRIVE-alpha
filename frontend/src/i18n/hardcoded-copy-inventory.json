@@ -111,20 +111,20 @@
     }
   },
   "summary": {
-    "total": 1603,
+    "total": 1594,
     "bySurface": {
       "MASTER": 1049,
-      "OPERATOR": 156,
+      "OPERATOR": 147,
       "RENTAL": 372,
       "SHARED": 1,
       "SHELL": 25
     },
     "byCategory": {
-      "ARIA": 58,
+      "ARIA": 56,
       "TITLE": 245,
-      "TEXT": 1131,
+      "TEXT": 1126,
       "LABEL": 85,
-      "PLACEHOLDER": 76,
+      "PLACEHOLDER": 74,
       "FORMAT_LOCALE": 8
     },
     "byRentalModule": {
@@ -377,7 +377,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1548,
+      "line": 1556,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -405,7 +405,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23705,
+      "line": 23743,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -657,7 +657,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27590,
+      "line": 27628,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1606,7 +1606,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27535,
+      "line": 27573,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1747,7 +1747,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1019,
+      "line": 1027,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1761,7 +1761,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24009,
+      "line": 24047,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1803,7 +1803,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1638,
+      "line": 1646,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2728,7 +2728,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1759,
+      "line": 1767,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2812,7 +2812,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1068,
+      "line": 1076,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3106,7 +3106,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1649,
+      "line": 1657,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3432,7 +3432,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1553,
+      "line": 1561,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3488,7 +3488,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1707,
+      "line": 1715,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3502,7 +3502,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1709,
+      "line": 1717,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4107,7 +4107,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24977,
+      "line": 25015,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -4137,7 +4137,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1533,
+      "line": 1541,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4151,7 +4151,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1677,
+      "line": 1685,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -4642,7 +4642,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27525,
+      "line": 27563,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -4838,7 +4838,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1757,
+      "line": 1765,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5147,7 +5147,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 22318,
+      "line": 22356,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -5595,7 +5595,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23619,
+      "line": 23657,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6170,7 +6170,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1596,
+      "line": 1604,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -6185,7 +6185,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1036,
+      "line": 1044,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7622,7 +7622,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1612,
+      "line": 1620,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7846,7 +7846,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1602,
+      "line": 1610,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -7888,7 +7888,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27560,
+      "line": 27598,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8183,7 +8183,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23685,
+      "line": 23723,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8421,7 +8421,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1589,
+      "line": 1597,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8941,7 +8941,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27547,
+      "line": 27585,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8955,7 +8955,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27564,
+      "line": 27602,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -9376,7 +9376,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27241,
+      "line": 27279,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10012,7 +10012,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1577,
+      "line": 1585,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10530,7 +10530,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1713,
+      "line": 1721,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10544,7 +10544,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1710,
+      "line": 1718,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -10558,7 +10558,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1706,
+      "line": 1714,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11455,7 +11455,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1610,
+      "line": 1618,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -11665,7 +11665,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1760,
+      "line": 1768,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12295,7 +12295,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1511,
+      "line": 1519,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12857,7 +12857,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27514,
+      "line": 27552,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12871,7 +12871,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1307,
+      "line": 1315,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -12969,7 +12969,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1650,
+      "line": 1658,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13490,7 +13490,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1507,
+      "line": 1515,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13588,7 +13588,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1640,
+      "line": 1648,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13674,7 +13674,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1555,
+      "line": 1563,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13856,7 +13856,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 24979,
+      "line": 25017,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13898,7 +13898,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23705,
+      "line": 23743,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -13926,7 +13926,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1511,
+      "line": 1519,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13940,7 +13940,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1512,
+      "line": 1520,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13983,7 +13983,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1454,
+      "line": 1462,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -13997,7 +13997,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1478,
+      "line": 1486,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14039,7 +14039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1637,
+      "line": 1645,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14377,7 +14377,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 23745,
+      "line": 23783,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14545,7 +14545,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1760,
+      "line": 1768,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15546,20 +15546,6 @@
       ]
     },
     {
-      "file": "operator/damages/OperatorDamageCaptureFlow.tsx",
-      "line": 217,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Fahrzeug für die Schadenerfassung bestätigen.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageCaptureFlow.tsx"
-      ]
-    },
-    {
       "file": "operator/views/OperatorVehiclesView.tsx",
       "line": 94,
       "surface": "OPERATOR",
@@ -15670,20 +15656,6 @@
       "occurrences": 1,
       "files": [
         "operator/views/OperatorVehiclesView.tsx"
-      ]
-    },
-    {
-      "file": "operator/damages/OperatorDamagePhotoStep.tsx",
-      "line": 122,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Foto entfernen",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamagePhotoStep.tsx"
       ]
     },
     {
@@ -16360,20 +16332,6 @@
       ]
     },
     {
-      "file": "operator/damages/OperatorDamageReviewStep.tsx",
-      "line": 100,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Optional — Schadensbericht per AI extrahieren (nach Speichern mit damageId verknüpfbar)",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageReviewStep.tsx"
-      ]
-    },
-    {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
       "line": 240,
       "surface": "OPERATOR",
@@ -16442,20 +16400,6 @@
       "files": [
         "operator/components/OperatorBookingDetailSheet.tsx",
         "operator/components/OperatorVehicleQuickView.tsx"
-      ]
-    },
-    {
-      "file": "operator/damages/OperatorDamageDetailsStep.tsx",
-      "line": 113,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Position genauer beschreiben (optional)",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageDetailsStep.tsx"
       ]
     },
     {
@@ -16727,48 +16671,6 @@
       ]
     },
     {
-      "file": "operator/damages/OperatorDamageCaptureFlow.tsx",
-      "line": 186,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Schaden erfassen",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageCaptureFlow.tsx"
-      ]
-    },
-    {
-      "file": "operator/damages/OperatorDamagePhotoStep.tsx",
-      "line": 57,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Schadenfotos aufnehmen oder aus der Galerie wählen. Mehrere Bilder sind möglich.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamagePhotoStep.tsx"
-      ]
-    },
-    {
-      "file": "operator/damages/OperatorDamageReviewStep.tsx",
-      "line": 97,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Schadensbeleg per AI Upload",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageReviewStep.tsx"
-      ]
-    },
-    {
       "file": "operator/ai-upload/OperatorAiUploadFlow.tsx",
       "line": 205,
       "surface": "OPERATOR",
@@ -16777,13 +16679,12 @@
       "sample": "Schließen",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 7,
+      "occurrences": 6,
       "files": [
         "operator/ai-upload/OperatorAiUploadFlow.tsx",
         "operator/bookings/operatorBookingSheetShell.tsx",
         "operator/components/OperatorBookingDetailSheet.tsx",
         "operator/components/OperatorVehicleQuickView.tsx",
-        "operator/damages/OperatorDamageCaptureFlow.tsx",
         "operator/tire-measure/OperatorTireMeasureFlow.tsx",
         "operator/verification/OperatorPickupCheckSheet.tsx"
       ]
@@ -16945,20 +16846,6 @@
       ]
     },
     {
-      "file": "operator/damages/OperatorDamageDetailsStep.tsx",
-      "line": 129,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "PLACEHOLDER",
-      "sample": "Was ist passiert? Sichtbare Details…",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageDetailsStep.tsx"
-      ]
-    },
-    {
       "file": "operator/tire-measure/OperatorTireMeasureFlow.tsx",
       "line": 307,
       "surface": "OPERATOR",
@@ -17068,20 +16955,6 @@
       "occurrences": 1,
       "files": [
         "operator/ai-upload/OperatorAiUploadFlow.tsx"
-      ]
-    },
-    {
-      "file": "operator/damages/OperatorDamageCaptureFlow.tsx",
-      "line": 181,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "ARIA",
-      "sample": "Zurück",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/damages/OperatorDamageCaptureFlow.tsx"
       ]
     },
     {
