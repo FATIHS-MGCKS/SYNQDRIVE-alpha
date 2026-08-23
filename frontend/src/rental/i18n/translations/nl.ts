@@ -83,6 +83,7 @@ export const nl: Record<TranslationKey, string> = {
   'dashboardAttention.fleetSummary.unevaluable': '{count} niet beoordeelbaar',
   'dashboardAttention.fleetSummary.unknown': '{count} onbekend',
   'dashboardAttention.loadMore': 'Meer laden ({count} getoond)',
+  'notification.tab.operations': 'Operaties',
   'dashboardTasksOverview.title': 'Taken',
   'dashboardTasksOverview.subtitle': '{openCount} open · {todayCount} vandaag vervalt',
   'dashboardTasksOverview.subtitleLoading': 'Taken laden…',

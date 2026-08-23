@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { cn } from '../../../../components/ui/utils';
-import { SkeletonRows } from '../../../../components/patterns';
 import { panelShellClass } from '../dashboardShell';
 import type { DashboardViewModel } from '../dashboardTypes';
 import type { TranslationKey } from '../../../i18n/translations/en';
 import type { Locale } from '../../../i18n/LanguageContext';
 import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
 import { AttentionScopedList, type AttentionScopedListHandlers } from './AttentionScopedList';
-import type { DashboardAttentionLayout } from './OperationsAttentionPanel';
+import { FleetSummaryHeader } from './FleetSummaryHeader';
+import type { DashboardAttentionLayout } from './DashboardAttentionStack';
 
 interface FleetReadinessAttentionPanelProps {
   vm: DashboardViewModel;
@@ -16,67 +16,6 @@ interface FleetReadinessAttentionPanelProps {
   locale: Locale;
   layout?: DashboardAttentionLayout;
   referenceNowMs: number;
-}
-
-function FleetSummaryHeader({
-  vm,
-  t,
-}: {
-  vm: DashboardViewModel;
-  t: FleetReadinessAttentionPanelProps['t'];
-}) {
-  const fleetSummary = vm.dashboardAttention?.fleetSummary;
-  const summary = fleetSummary?.summary;
-
-  if (fleetSummary?.loading) {
-    return (
-      <div className="mt-2 px-0.5" aria-busy>
-        <SkeletonRows rows={1} />
-      </div>
-    );
-  }
-
-  if (fleetSummary?.error || !summary) {
-    return (
-      <p className="mt-2 text-[12px] text-muted-foreground">
-        {t('dashboardAttention.fleetSummary.unavailable')}
-      </p>
-    );
-  }
-
-  const readyPercentLabel =
-    summary.readyPercent != null
-      ? t('dashboardAttention.fleetSummary.readyPercent', { percent: summary.readyPercent })
-      : null;
-
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-      <span className="tabular-nums">
-        {t('dashboardAttention.fleetSummary.ready', {
-          ready: summary.ready,
-          total: summary.total,
-        })}
-      </span>
-      {readyPercentLabel ? (
-        <span className="tabular-nums font-medium text-foreground">{readyPercentLabel}</span>
-      ) : null}
-      {summary.notReady > 0 ? (
-        <span className="tabular-nums">
-          {t('dashboardAttention.fleetSummary.notReady', { count: summary.notReady })}
-        </span>
-      ) : null}
-      {summary.unevaluable > 0 ? (
-        <span className="tabular-nums">
-          {t('dashboardAttention.fleetSummary.unevaluable', { count: summary.unevaluable })}
-        </span>
-      ) : null}
-      {summary.unknown > 0 ? (
-        <span className="tabular-nums">
-          {t('dashboardAttention.fleetSummary.unknown', { count: summary.unknown })}
-        </span>
-      ) : null}
-    </div>
-  );
 }
 
 export function FleetReadinessAttentionPanel({
