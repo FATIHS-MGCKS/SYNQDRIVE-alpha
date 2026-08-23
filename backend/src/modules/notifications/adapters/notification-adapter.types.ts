@@ -143,3 +143,12 @@ export interface VehicleDamageNotificationAdapterSource {
   severity: 'warning' | 'critical';
   cleared?: boolean;
 }
+
+export interface CommunicationHandoffAdapterSource {
+  conversationId: string;
+  communicationEventId: string;
+  channel: import('@prisma/client').CommunicationChannel;
+  stationId?: string | null;
+  contactDisplay: string;
+  handoffReasonCode?: string | null;
+}

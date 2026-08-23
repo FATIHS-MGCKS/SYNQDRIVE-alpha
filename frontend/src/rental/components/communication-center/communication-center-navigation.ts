@@ -65,7 +65,9 @@ export function parseCommunicationCenterViewFromUrl(search = ''): boolean {
 export function normalizeCommunicationPrimaryTab(
   tab: CommunicationPrimaryTab | string | null | undefined,
 ): CommunicationPrimaryTab {
-  return tab === 'settings' ? 'settings' : 'inbox';
+  if (tab === 'settings') return 'settings';
+  if (tab === 'ai-activity') return 'ai-activity';
+  return 'inbox';
 }
 
 export function normalizeCommunicationSettingsSection(
@@ -180,7 +182,7 @@ export function syncCommunicationCenterStateToUrl(
   applyCommunicationInboxFiltersToSearchParams(url.searchParams, normalized.inboxFilters);
 
   const entries: Array<[string, string | null]> = [
-    [COMMUNICATION_TAB_PARAM, normalized.primaryTab === 'settings' ? 'settings' : null],
+    [COMMUNICATION_TAB_PARAM, normalized.primaryTab === 'inbox' ? null : normalized.primaryTab],
     [
       COMMUNICATION_SETTINGS_PARAM,
       normalized.primaryTab === 'settings' ? normalized.settingsSection : null,

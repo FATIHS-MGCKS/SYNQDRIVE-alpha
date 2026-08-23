@@ -37,3 +37,11 @@ export interface MetaWhatsAppHumanRequiredProjectionSource {
   webhookExternalEventId?: string | null;
   handoffReasonCode?: string | null;
 }
+
+export interface MetaWhatsAppAiIntentProjectionSource {
+  conversation: WhatsAppConversation;
+  occurredAt: Date;
+  suggestionId: string;
+  intentCode: string;
+  confidence?: number | null;
+}

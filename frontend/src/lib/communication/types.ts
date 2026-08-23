@@ -188,3 +188,61 @@ export interface CommunicationEventListQuery {
   cursor?: string;
   limit?: number;
 }
+
+export type CommunicationAiActivityType =
+  | 'AI_INTENT'
+  | 'AI_TOOL'
+  | 'AI_FAILURE'
+  | 'HANDOFF_REQUESTED'
+  | 'HANDOFF_ACCEPTED'
+  | 'AI_COMPLETED';
+
+export interface CommunicationAiActivityHandoff {
+  requested: boolean;
+  reason?: string | null;
+  resolved: boolean;
+  acceptedBy?: string | null;
+}
+
+export interface CommunicationAiActivityTool {
+  name: string;
+  outcome: 'SUCCESS' | 'FAILED' | 'CANCELLED' | 'UNKNOWN';
+}
+
+export interface CommunicationAiActivityItem {
+  id: string;
+  conversationId: string;
+  channel: CommunicationApiChannel;
+  activityType: CommunicationAiActivityType;
+  eventType: string;
+  occurredAt: string;
+  summary: string;
+  outcome?: string | null;
+  contactDisplay: string;
+  stationId?: string | null;
+  conversationStatus: string;
+  agent: {
+    id?: string | null;
+    displayName?: string | null;
+    kind: 'AI' | 'HUMAN' | 'SYSTEM';
+  };
+  tool?: CommunicationAiActivityTool;
+  handoff?: CommunicationAiActivityHandoff;
+}
+
+export interface CommunicationAiActivityListResponse {
+  items: CommunicationAiActivityItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface CommunicationAiActivityListQuery {
+  channel?: CommunicationApiChannel;
+  category?: 'all' | 'handoffs' | 'tools' | 'errors';
+  conversationId?: string;
+  stationId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  cursor?: string;
+  limit?: number;
+}

@@ -66,6 +66,7 @@ export enum NotificationActionType {
   OPEN_STATION = 'OPEN_STATION',
   OPEN_BILLING = 'OPEN_BILLING',
   OPEN_RENTAL = 'OPEN_RENTAL',
+  OPEN_COMMUNICATION = 'OPEN_COMMUNICATION',
 }
 
 /** Producer system that emitted the candidate — not the UI surface. */

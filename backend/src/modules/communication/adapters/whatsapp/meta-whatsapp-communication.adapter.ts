@@ -15,6 +15,7 @@ import { CommunicationNormalizationError, CommunicationNormalizationErrorCode } 
 import type { NormalizedCommunicationInput } from '../../normalization/communication-normalization.types';
 import type { MessagingProviderNormalizationPort } from '../../ports/messaging-normalization.port';
 import type {
+  MetaWhatsAppAiIntentProjectionSource,
   MetaWhatsAppHumanRequiredProjectionSource,
   MetaWhatsAppInboundProjectionSource,
   MetaWhatsAppLifecycleStatus,
@@ -251,6 +252,34 @@ export class MetaWhatsAppCommunicationAdapter implements MessagingProviderNormal
       },
       projection: {
         status: CommunicationConversationStatus.RESOLVED,
+      },
+    };
+  }
+
+  fromAiIntentDetected(source: MetaWhatsAppAiIntentProjectionSource): NormalizedCommunicationInput {
+    const { conversation } = source;
+    const occurredAt = source.occurredAt ?? conversation.updatedAt;
+    const providerEventId = `wa-ai-intent:${source.suggestionId}`;
+
+    return {
+      envelope: this.buildEnvelope(conversation, { includeInitialStatus: false }),
+      event: {
+        eventType: CommunicationEventType.AI_INTENT_DETECTED,
+        occurredAt,
+        direction: CommunicationDirection.INTERNAL,
+        providerIdentity: CommunicationProviderIdentity.META_WHATSAPP,
+        providerEventId,
+        idempotencyKey: this.buildIdempotencyKey({
+          organizationId: conversation.organizationId,
+          nativeConversationId: conversation.id,
+          eventType: CommunicationEventType.AI_INTENT_DETECTED,
+          providerEventId,
+        }),
+        actorType: CommunicationActorType.AI_AGENT,
+        metadata: {
+          intentCode: source.intentCode,
+          ...(source.confidence != null ? { confidence: source.confidence } : {}),
+        },
       },
     };
   }

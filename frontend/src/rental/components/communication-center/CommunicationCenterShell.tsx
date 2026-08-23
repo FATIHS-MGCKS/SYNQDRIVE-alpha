@@ -26,6 +26,7 @@ import { CommunicationWorkspacePane } from './CommunicationWorkspacePane';
 import { CommunicationContextPane } from './CommunicationContextPane';
 import { CommunicationPrimaryTabs } from './CommunicationPrimaryTabs';
 import { CommunicationSettingsPane } from './CommunicationSettingsPane';
+import { CommunicationAiActivityPane } from './CommunicationAiActivityPane';
 import { conversationHasContext } from './communication-context-utils';
 import {
   canAccessCommunicationSettings,
@@ -69,6 +70,7 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
 
   const showSettingsTab = canAccessCommunicationSettings(hasPermission, userRole);
   const inboxActive = state.primaryTab === 'inbox';
+  const aiActivityActive = state.primaryTab === 'ai-activity';
   const settingsActive = state.primaryTab === 'settings' && showSettingsTab;
 
   useEffect(() => {
@@ -262,6 +264,17 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     state.selectedConversationId,
   ]);
 
+  const handleOpenConversationFromAiActivity = useCallback(
+    (conversationId: string) => {
+      patchState({
+        primaryTab: 'inbox',
+        selectedConversationId: conversationId,
+        mobilePane: isMobile ? 'conversation' : state.mobilePane,
+      });
+    },
+    [isMobile, patchState, state.mobilePane],
+  );
+
   const settingsSection = useMemo(() => {
     const normalized = normalizeCommunicationSettingsSection(state.settingsSection);
     if (!canAccessCommunicationSettingsSection(normalized, hasPermission, userRole)) {
@@ -300,6 +313,14 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
             activeSection={settingsSection}
             enabled={settingsActive}
             onSectionChange={handleSettingsSectionChange}
+          />
+        </div>
+      ) : aiActivityActive ? (
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)] lg:min-h-[480px]">
+          <CommunicationAiActivityPane
+            orgId={orgId}
+            enabled={aiActivityActive}
+            onOpenConversation={handleOpenConversationFromAiActivity}
           />
         </div>
       ) : (

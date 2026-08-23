@@ -29,6 +29,8 @@ export interface NotificationActionTargetContext {
   observationId?: string;
   taskId?: string;
   module?: string;
+  conversationId?: string;
+  channel?: string;
 }
 
 export type NotificationActionTargetBuilder = (

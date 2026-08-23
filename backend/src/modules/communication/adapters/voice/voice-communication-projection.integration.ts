@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  CommunicationChannel,
   CommunicationProviderIdentity,
   VoiceControlPlaneProvider,
   VoiceConversation,
@@ -11,6 +12,7 @@ import { isLegacyTwimlConversation } from '@modules/voice-assistant/voice-conver
 import { VOICE_WEBHOOK_EVENT_TYPES } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.constants';
 import { CommunicationProjectionFeatureService } from '../../communication-projection-feature.service';
 import { CommunicationProjectionService } from '../../communication-projection.service';
+import { CommunicationHandoffNotificationService } from '../../handoff/communication-handoff-notification.service';
 import { CommunicationNormalizationError } from '../../normalization/communication-normalization.errors';
 import { ElevenLabsVoiceCommunicationAdapter } from './elevenlabs-voice-communication.adapter';
 import { TwilioVoiceCommunicationAdapter } from './twilio-voice-communication.adapter';
@@ -35,6 +37,7 @@ export class VoiceCommunicationProjectionIntegration {
     private readonly twilioAdapter: TwilioVoiceCommunicationAdapter,
     private readonly elevenLabsAdapter: ElevenLabsVoiceCommunicationAdapter,
     private readonly projection: CommunicationProjectionService,
+    private readonly handoffNotifications: CommunicationHandoffNotificationService,
   ) {}
 
   isEnabled(organizationId: string): boolean {
@@ -162,9 +165,19 @@ export class VoiceCommunicationProjectionIntegration {
     await this.projectSafely(
       async () => {
         if (!this.isEnabled(source.conversation.organizationId)) return;
-        await this.projection.projectNormalizedInput(
+        const result = await this.projection.projectNormalizedInput(
           this.elevenLabsAdapter.fromHumanRequired({ ...source, providerEventId }),
         );
+        if (result.eventCreated && result.eventId) {
+          void this.handoffNotifications.notifyHandoffRequired({
+            organizationId: source.conversation.organizationId,
+            conversationId: result.conversationId,
+            communicationEventId: result.eventId,
+            channel: CommunicationChannel.VOICE,
+            occurredAt: source.occurredAt ?? source.conversation.updatedAt,
+            handoffReasonCode: source.handoffReasonCode,
+          });
+        }
       },
       this.contextFromConversation(
         source.conversation,
