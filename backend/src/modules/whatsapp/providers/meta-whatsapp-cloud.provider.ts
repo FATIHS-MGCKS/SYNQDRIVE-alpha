@@ -65,10 +65,12 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
 
       const json = (await res.json()) as { messages?: { id: string }[]; error?: { message: string } };
       if (!res.ok) {
+        const failureReason = json.error?.message ?? `HTTP ${res.status}`;
+        const outcome = this.classifyHttpFailure(res.status, failureReason);
         return {
           providerMessageId: '',
-          status: 'FAILED',
-          failureReason: json.error?.message ?? `HTTP ${res.status}`,
+          status: outcome === 'UNKNOWN' ? 'UNKNOWN' : 'FAILED',
+          failureReason,
         };
       }
 
@@ -77,8 +79,24 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown provider error';
       this.logger.error(`Meta sendTextMessage failed: ${message}`);
-      return { providerMessageId: '', status: 'FAILED', failureReason: message };
+      return {
+        providerMessageId: '',
+        status: this.isTransportUncertainty(message) ? 'UNKNOWN' : 'FAILED',
+        failureReason: message,
+      };
     }
+  }
+
+  private isTransportUncertainty(message: string): boolean {
+    return /timeout|timed out|econnreset|econnrefused|socket hang up|network|aborted|fetch failed|gateway timeout/i.test(
+      message,
+    );
+  }
+
+  private classifyHttpFailure(httpStatus: number, failureReason: string): 'FAILED' | 'UNKNOWN' {
+    if (this.isTransportUncertainty(failureReason)) return 'UNKNOWN';
+    if (httpStatus >= 500 || httpStatus === 408 || httpStatus === 429) return 'UNKNOWN';
+    return 'FAILED';
   }
 
   async sendTemplateMessage(

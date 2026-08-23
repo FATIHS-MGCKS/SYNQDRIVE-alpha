@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c11-2-reply-composer-2026-08-22',
+    version: '4.9.934',
+    title: 'Communication Center C11.2 — Canonical reply composer',
+    summary: [
+      'POST .../reply canonical outbound endpoint with durable CommunicationReplyCommand idempotency.',
+      'WhatsApp adapter reuses WhatsAppService.sendMessage + existing MESSAGE_SENT projection.',
+      'SMS CHANNEL_NOT_CONFIGURED; Voice CHANNEL_NOT_REPLYABLE; claim-before-send ownership.',
+      'CommunicationComposer UI with IME-safe Enter/Shift+Enter, draft isolation, timeline/inbox convergence.',
+      'C11.2 hardening: definitive vs UNKNOWN outcome classification, native WhatsApp idempotency correlation, processing lease recovery, channel preflight before ownership, PostgreSQL integration proof.',
+      'C11.2 dispatch hardening: durable providerDispatchStartedAt marker, atomic dispatch claim before Meta HTTP, no automatic resend after ambiguous dispatch, Meta remote idempotency NOT SUPPORTED.',
+    ],
+    reason:
+      'C11.2 enables operator text replies from Communication Center without direct provider calls from the UI.',
+    previousBehavior:
+      'C11.1 mutations only; composer placeholder; WhatsApp send via legacy WhatsApp Business native route.',
+    details:
+      'backend/src/modules/communication/reply/*, architecture/COMMUNICATION_CENTER_C11_2_REPLY_COMPOSER_IMPLEMENTATION.md, CommunicationComposer + useCommunicationReply.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-22T23:00:00.000Z',
+  },
+  {
     id: 'communication-center-c11-1-write-foundation-2026-08-22',
     version: '4.9.933',
     title: 'Communication Center C11.1 — Canonical conversation write foundation',

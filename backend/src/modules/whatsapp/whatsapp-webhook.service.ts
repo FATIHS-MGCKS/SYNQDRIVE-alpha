@@ -288,6 +288,18 @@ export class WhatsAppWebhookService {
       },
     });
 
+    if (
+      msg.direction === 'outgoing'
+      && update.status === 'SENT'
+      && msg.status !== WhatsAppMessageDeliveryStatus.SENT
+    ) {
+      void this.communicationProjection.projectOutboundAccepted({
+        conversation: msg.conversation,
+        message: updatedMessage,
+      });
+      return;
+    }
+
     if (update.status === 'SENT') {
       return;
     }

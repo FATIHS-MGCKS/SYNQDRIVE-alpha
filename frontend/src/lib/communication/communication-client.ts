@@ -105,4 +105,12 @@ export const communicationClient = {
   markConversationRead(orgId: string, conversationId: string) {
     return wrap(() => api.communication.markConversationRead(orgId, conversationId));
   },
+
+  replyConversation(
+    orgId: string,
+    conversationId: string,
+    body: { text: string; idempotencyKey: string },
+  ) {
+    return wrap(() => api.communication.replyConversation(orgId, conversationId, body));
+  },
 };

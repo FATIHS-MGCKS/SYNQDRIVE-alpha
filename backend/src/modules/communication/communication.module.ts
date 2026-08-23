@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
 import { StationsModule } from '@modules/stations/stations.module';
+import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { MetaWhatsAppCommunicationAdapter } from './adapters/whatsapp/meta-whatsapp-communication.adapter';
 import { WhatsAppCommunicationProjectionIntegration } from './adapters/whatsapp/whatsapp-communication-projection.integration';
@@ -27,6 +28,11 @@ import { CommunicationReadService } from './read/communication-read.service';
 import { CommunicationWriteController } from './write/communication-write.controller';
 import { CommunicationWriteScopeService } from './write/communication-write-scope.service';
 import { CommunicationWriteService } from './write/communication-write.service';
+import { CommunicationReplyController } from './reply/communication-reply.controller';
+import { CommunicationReplyService } from './reply/communication-reply.service';
+import { CommunicationReplyChannelCapabilityService } from './reply/communication-reply-channel-capability.service';
+import { WhatsAppCommunicationOutboundAdapter } from './reply/adapters/whatsapp-communication-outbound.adapter';
+import { SmsCommunicationOutboundAdapter } from './reply/adapters/sms-communication-outbound.adapter';
 import { CommunicationContentBackfillService } from './content/communication-content-backfill.service';
 import { CommunicationContentRepository } from './content/communication-content.repository';
 import { CommunicationContentService } from './content/communication-content.service';
@@ -35,7 +41,12 @@ import { CommunicationContentService } from './content/communication-content.ser
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
  */
 @Module({
-  imports: [PrismaModule, StationsModule, ConfigModule.forFeature(communicationProjectionConfig)],
+  imports: [
+    PrismaModule,
+    StationsModule,
+    forwardRef(() => WhatsAppModule),
+    ConfigModule.forFeature(communicationProjectionConfig),
+  ],
   providers: [
     CommunicationTenantContextValidation,
     CommunicationConversationRepository,
@@ -63,8 +74,12 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationReadService,
     CommunicationWriteScopeService,
     CommunicationWriteService,
+    CommunicationReplyService,
+    CommunicationReplyChannelCapabilityService,
+    WhatsAppCommunicationOutboundAdapter,
+    SmsCommunicationOutboundAdapter,
   ],
-  controllers: [CommunicationReadController, CommunicationWriteController],
+  controllers: [CommunicationReadController, CommunicationWriteController, CommunicationReplyController],
   exports: [
     CommunicationTenantContextValidation,
     CommunicationConversationRepository,
@@ -90,6 +105,7 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationReadService,
     CommunicationWriteScopeService,
     CommunicationWriteService,
+    CommunicationReplyService,
   ],
 })
 export class CommunicationModule {}

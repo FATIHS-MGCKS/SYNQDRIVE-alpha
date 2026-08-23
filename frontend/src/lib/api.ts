@@ -4273,6 +4273,15 @@ export const api = {
         `/organizations/${orgId}/communication/conversations/${conversationId}/mark-read`,
         {},
       ),
+    replyConversation: (
+      orgId: string,
+      conversationId: string,
+      body: { text: string; idempotencyKey: string },
+    ) =>
+      post<import('./communication/types').CommunicationReplyResponse>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/reply`,
+        body,
+      ),
   },
   bookings: {
     list: (

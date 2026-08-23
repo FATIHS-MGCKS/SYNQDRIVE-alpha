@@ -130,6 +130,15 @@ export interface CommunicationMutationResponse {
   conversation: CommunicationConversationDetail;
 }
 
+export type CommunicationReplySendState = 'ACCEPTED' | 'PENDING' | 'FAILED' | 'UNKNOWN';
+
+export interface CommunicationReplyResponse {
+  conversation: CommunicationConversationDetail;
+  sendState: CommunicationReplySendState;
+  event?: CommunicationEvent | null;
+  commandId: string;
+}
+
 export interface CommunicationMessageContent {
   id: string;
   contentType: CommunicationApiMessageContentType;

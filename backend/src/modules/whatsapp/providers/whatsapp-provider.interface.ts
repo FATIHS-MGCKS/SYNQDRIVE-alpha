@@ -18,7 +18,7 @@ export interface WhatsAppSendMetadata {
 
 export interface WhatsAppProviderSendResult {
   providerMessageId: string;
-  status: 'QUEUED' | 'SENT' | 'FAILED';
+  status: 'QUEUED' | 'SENT' | 'FAILED' | 'UNKNOWN';
   failureReason?: string;
 }
 

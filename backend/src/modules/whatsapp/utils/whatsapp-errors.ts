@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 
 export const WHATSAPP_ERROR_CODES = {
   PROVIDER_NOT_CONFIGURED: 'WHATSAPP_PROVIDER_NOT_CONFIGURED',
@@ -44,5 +44,11 @@ export class WhatsAppSimulationDisabledException extends ForbiddenException {
       code: WHATSAPP_ERROR_CODES.SIMULATION_DISABLED,
       message: 'WhatsApp simulation is only available in development/test environments',
     });
+  }
+}
+
+export class WhatsAppSendAmbiguousException extends ConflictException {
+  constructor(message = 'WhatsApp delivery status is being confirmed') {
+    super({ code: 'WHATSAPP_SEND_AMBIGUOUS', message });
   }
 }

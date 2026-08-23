@@ -1745,6 +1745,7 @@ model Organization {
   communicationConversations             CommunicationConversation[]
   communicationEvents                    CommunicationEvent[]
   communicationMessageContents           CommunicationMessageContent[]
+  communicationReplyCommands             CommunicationReplyCommand[]
 
   @@index([status])
   @@map("organizations")
@@ -11467,6 +11468,7 @@ model WhatsAppMessage {
   aiSuggested       Boolean                       @default(false) @map("ai_suggested")
   status            WhatsAppMessageDeliveryStatus @default(QUEUED)
   failureReason     String?                       @map("failure_reason")
+  providerDispatchStartedAt DateTime?             @map("provider_dispatch_started_at")
   createdAt         DateTime                      @default(now()) @map("created_at")
   updatedAt         DateTime                      @updatedAt @map("updated_at")
 
@@ -14648,6 +14650,7 @@ model CommunicationConversation {
   assignedUser   User?                 @relation("CommunicationConversationAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
   events         CommunicationEvent[]
   messageContents CommunicationMessageContent[]
+  replyCommands  CommunicationReplyCommand[]
 
   @@unique([organizationId, channel, nativeConversationId], name: "communication_conversations_org_channel_native")
   @@index([organizationId, lastActivityAt])
@@ -14732,4 +14735,36 @@ model CommunicationMessageContent {
   @@index([organizationId, conversationId, occurredAt])
   @@index([organizationId, channel, nativeMessageId])
   @@map("communication_message_contents")
+}
+
+enum CommunicationReplySendState {
+  PENDING
+  ACCEPTED
+  FAILED
+  UNKNOWN
+}
+
+/// Durable canonical outbound reply idempotency (C11.2).
+model CommunicationReplyCommand {
+  id                   String                      @id @default(uuid())
+  organizationId       String                      @map("organization_id")
+  conversationId       String                      @map("conversation_id")
+  clientIdempotencyKey String                      @map("client_idempotency_key")
+  text                 String
+  channel              CommunicationChannel
+  sendState            CommunicationReplySendState @default(PENDING) @map("send_state")
+  nativeMessageId      String?                     @map("native_message_id")
+  canonicalEventId     String?                     @map("canonical_event_id")
+  failureCode          String?                     @map("failure_code")
+  actorUserId          String                      @map("actor_user_id")
+  processingLeaseExpiresAt DateTime?             @map("processing_lease_expires_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation CommunicationConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, conversationId, clientIdempotencyKey], name: "communication_reply_commands_org_conversation_key")
+  @@index([organizationId, conversationId, createdAt])
+  @@map("communication_reply_commands")
 }
