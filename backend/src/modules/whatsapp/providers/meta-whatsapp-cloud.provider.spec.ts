@@ -63,4 +63,47 @@ describe('MetaWhatsAppCloudProvider webhook parsing', () => {
     expect(first.entries[0].externalEventId).toBe('msg:wamid.inbound.1');
     expect(replay.entries[0].externalEventId).toBe('msg:wamid.inbound.1');
   });
+
+  it('parses inbound image and document messages', () => {
+    const payload = {
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: 'pn-1' },
+                messages: [
+                  {
+                    id: 'wamid.image.1',
+                    from: '491701234567',
+                    timestamp: '1724256002',
+                    type: 'image',
+                    image: { id: 'media-img', mime_type: 'image/jpeg', caption: 'Look' },
+                  },
+                  {
+                    id: 'wamid.doc.1',
+                    from: '491701234567',
+                    timestamp: '1724256003',
+                    type: 'document',
+                    document: {
+                      id: 'media-doc',
+                      mime_type: 'application/pdf',
+                      filename: 'invoice.pdf',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const parsed = provider.parseWebhook(payload as any, {});
+    expect(parsed.entries).toHaveLength(2);
+    expect(parsed.entries[0].inboundMessage?.messageType).toBe('image');
+    expect(parsed.entries[0].inboundMessage?.media?.providerMediaId).toBe('media-img');
+    expect(parsed.entries[1].inboundMessage?.messageType).toBe('document');
+    expect(parsed.entries[1].inboundMessage?.media?.fileName).toBe('invoice.pdf');
+  });
 });

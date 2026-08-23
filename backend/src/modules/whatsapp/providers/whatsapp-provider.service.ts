@@ -88,6 +88,37 @@ export class WhatsAppProviderService {
     );
   }
 
+  uploadMedia(
+    orgConfig: OrgWhatsAppConfig,
+    input: { buffer: Buffer; mimeType: string; fileName: string },
+  ) {
+    return this.provider.uploadMedia(this.resolveRuntimeConfig(orgConfig), input);
+  }
+
+  downloadMedia(orgConfig: OrgWhatsAppConfig, providerMediaId: string) {
+    return this.provider.downloadMedia(this.resolveRuntimeConfig(orgConfig), providerMediaId);
+  }
+
+  sendMediaMessage(
+    orgConfig: OrgWhatsAppConfig,
+    toPhoneNumber: string,
+    media: {
+      mediaId: string;
+      mimeType: string;
+      fileName: string;
+      caption?: string;
+      mediaKind: 'image' | 'document';
+    },
+    metadata: WhatsAppSendMetadata,
+  ) {
+    return this.provider.sendMediaMessage(
+      this.resolveRuntimeConfig(orgConfig),
+      toPhoneNumber,
+      media,
+      metadata,
+    );
+  }
+
   verifyWebhook(
     orgConfig: OrgWhatsAppConfig,
     mode: string | undefined,

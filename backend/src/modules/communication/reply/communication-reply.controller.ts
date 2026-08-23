@@ -30,6 +30,8 @@ export class CommunicationReplyController {
   ): Promise<CommunicationReplyResponseDto> {
     return this.replyService.replyConversation(orgId, conversationId, this.actor(user), {
       text: body.text,
+      attachmentId: body.attachmentId,
+      contentType: body.contentType,
       idempotencyKey: body.idempotencyKey,
     });
   }

@@ -30,6 +30,7 @@ export interface TimelineMessageItem {
   truncated: boolean;
   hasAttachments: boolean;
   attachmentCount: number;
+  attachments: CommunicationMessageContent['attachments'];
   occurredAt: string;
   deliveryFailed: boolean;
 }
@@ -140,6 +141,7 @@ export function mapEventToPresentation(
       truncated: content?.truncated ?? false,
       hasAttachments: content?.hasAttachments ?? false,
       attachmentCount: content?.attachmentCount ?? 0,
+      attachments: content?.attachments,
       occurredAt: event.occurredAt,
       deliveryFailed: false,
     };

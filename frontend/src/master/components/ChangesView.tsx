@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c11-4-media-attachments-2026-08-23',
+    version: '4.9.936',
+    title: 'Communication Center C11.4 — Secure media attachments',
+    summary: [
+      'Conversation-bound CommunicationAttachment model on DocumentStoragePort (IMAGE + PDF V1).',
+      'POST .../conversations/:id/attachments upload + GET .../attachments/:id/content authenticated proxy.',
+      'Extended reply DTO (attachmentId, contentType, caption) with payloadHash idempotency beyond text-only.',
+      'WhatsApp outbound: Meta media upload + sendMediaMessage with C11.2 providerDispatchStartedAt safety.',
+      'WhatsApp inbound image/document webhook parse, Meta download, secure storage, canonical projection.',
+      'Composer paperclip + attachment draft hook; timeline CommunicationMediaContent rendering.',
+    ],
+    reason:
+      'Operators need to send and view customer media safely through canonical Communication APIs without exposing provider credentials or public storage URLs.',
+    previousBehavior:
+      'C11.2 supported text-only replies; inbound non-text WhatsApp messages were ignored; timeline showed semantic labels without retrieval.',
+    details:
+      'CommunicationAttachment, communication-attachment.*, extended CommunicationReplyService/Command, WhatsApp media provider methods, CommunicationMediaContent, useCommunicationAttachmentDraft, architecture/COMMUNICATION_CENTER_C11_4_MEDIA_ATTACHMENTS_IMPLEMENTATION.md.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-23T11:00:00.000Z',
+  },
+  {
     id: 'communication-center-c11-3-human-operations-2026-08-23',
     version: '4.9.935',
     title: 'Communication Center C11.3 — Human operations UX',

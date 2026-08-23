@@ -13,6 +13,8 @@ import { CommunicationReadRepository } from '../read/communication-read.reposito
 import { CommunicationEventRepository } from '../communication-event.repository';
 import { CommunicationHumanTakeoverService } from '../write/communication-human-takeover.service';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
+import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
 import { CommunicationReplyChannelCapabilityService } from './communication-reply-channel-capability.service';
 import { CommunicationReplyService } from './communication-reply.service';
 import { SmsCommunicationOutboundAdapter } from './adapters/sms-communication-outbound.adapter';
@@ -50,12 +52,15 @@ describePg('Communication reply postgres', () => {
         },
         CommunicationReplyChannelCapabilityService,
         CommunicationReplyService,
+        CommunicationAttachmentService,
+        { provide: DOCUMENTS_STORAGE, useValue: { putObject: jest.fn(), getObject: jest.fn(), getObjectStream: jest.fn() } },
         SmsCommunicationOutboundAdapter,
         {
           provide: WhatsAppCommunicationOutboundAdapter,
           useValue: {
             channel: CommunicationChannel.WHATSAPP,
             sendTextReply: (...args: unknown[]) => whatsappSend(...args),
+            sendMediaReply: jest.fn(),
           },
         },
         { provide: AuditService, useValue: { record: jest.fn() } },

@@ -18,6 +18,10 @@ export class SmsCommunicationOutboundAdapter implements CommunicationOutboundCha
 
   constructor(private readonly prisma: PrismaService) {}
 
+  async sendMediaReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult> {
+    throw CommunicationReplyError.mediaNotSupported();
+  }
+
   async sendTextReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult> {
     const configRow = await this.prisma.orgSmsConfig.findUnique({
       where: { organizationId: input.organizationId },

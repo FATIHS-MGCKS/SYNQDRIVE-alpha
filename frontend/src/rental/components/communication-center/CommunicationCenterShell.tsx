@@ -6,6 +6,7 @@ import { useCommunicationConversation } from '../../../lib/communication/hooks/u
 import { useCommunicationConversationActions } from '../../../lib/communication/hooks/useCommunicationConversationActions';
 import { useCommunicationOrgMembers } from '../../../lib/communication/hooks/useCommunicationOrgMembers';
 import { useCommunicationReply } from '../../../lib/communication/hooks/useCommunicationReply';
+import { useCommunicationAttachmentDraft } from '../../../lib/communication/hooks/useCommunicationAttachmentDraft';
 import { useRentalOrg } from '../../RentalContext';
 import { hasCommunicationPermission } from '../../lib/communication-permissions';
 import {
@@ -213,6 +214,16 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     onConflictRefresh: conversationState.reloadDetail,
   });
 
+  const mediaReplyEnabled =
+    canWrite
+    && conversationState.conversation?.channel === 'WHATSAPP';
+
+  const attachmentDraftState = useCommunicationAttachmentDraft({
+    orgId,
+    conversationId: state.selectedConversationId,
+    enabled: mediaReplyEnabled,
+  });
+
   const replyState = useCommunicationReply({
     orgId,
     conversationId: state.selectedConversationId,
@@ -220,6 +231,14 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     onTimelineRefresh: conversationState.reloadTimeline,
     onInboxRefresh: () => setInboxRefreshNonce((value) => value + 1),
     onConflictRefresh: conversationState.reloadDetail,
+    getAttachment: () =>
+      attachmentDraftState.draft.status === 'ready'
+        ? {
+            id: attachmentDraftState.draft.attachment.id,
+            mediaType: attachmentDraftState.draft.attachment.mediaType,
+          }
+        : null,
+    onAttachmentCleared: attachmentDraftState.removeAttachment,
   });
 
   const handleClearInvalidSelection = useCallback(() => {
@@ -321,11 +340,14 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
             )}
           >
             <CommunicationWorkspacePane
+              orgId={orgId}
               selectedConversationId={state.selectedConversationId}
               activeChannel={state.channel}
               conversationState={conversationState}
               conversationActions={conversationActions}
               replyState={replyState}
+              attachmentDraftState={attachmentDraftState}
+              mediaReplyEnabled={mediaReplyEnabled}
               orgMembers={orgMembers}
               canWrite={canWrite}
               canManage={canManage}

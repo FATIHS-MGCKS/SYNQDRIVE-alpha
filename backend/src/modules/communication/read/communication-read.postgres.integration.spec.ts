@@ -11,6 +11,9 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from './communication-read.repository';
 import { CommunicationReadService } from './communication-read.service';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
+import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
 import {
   collectForbiddenPublicKeys,
   projectSafeReadMetadata,
@@ -32,7 +35,17 @@ describePg('Communication read API postgres', () => {
     await prisma.$connect();
 
     const moduleRef = await Test.createTestingModule({
-      providers: [PrismaService, CommunicationReadRepository, CommunicationReadService],
+      providers: [
+        PrismaService,
+        CommunicationReadRepository,
+        CommunicationAttachmentService,
+        {
+          provide: CommunicationWriteScopeService,
+          useValue: { assertConversationReadable: jest.fn() },
+        },
+        { provide: DOCUMENTS_STORAGE, useValue: { putObject: jest.fn(), getObject: jest.fn(), getObjectStream: jest.fn() } },
+        CommunicationReadService,
+      ],
     })
       .overrideProvider(PrismaService)
       .useValue(prisma)
@@ -505,7 +518,13 @@ describePg('Communication read API postgres', () => {
     await loggingPrisma.$connect();
 
     const loggingRepo = new CommunicationReadRepository(loggingPrisma as unknown as PrismaService);
-    const loggingService = new CommunicationReadService(loggingRepo);
+    const loggingAttachments = new CommunicationAttachmentService(
+      loggingPrisma as unknown as PrismaService,
+      loggingRepo,
+      { assertConversationReadable: jest.fn() } as unknown as CommunicationWriteScopeService,
+      { putObject: jest.fn(), getObject: jest.fn(), getObjectStream: jest.fn() },
+    );
+    const loggingService = new CommunicationReadService(loggingRepo, loggingAttachments);
     await loggingService.listConversations(orgA, { limit: 25 });
 
     const conversationQueries = queryLog.filter((q) => q.includes('communication_conversations'));

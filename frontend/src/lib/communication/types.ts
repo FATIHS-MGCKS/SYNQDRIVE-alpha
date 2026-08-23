@@ -139,6 +139,25 @@ export interface CommunicationReplyResponse {
   commandId: string;
 }
 
+export type CommunicationReplyContentType = 'TEXT' | 'IMAGE' | 'DOCUMENT';
+
+export interface CommunicationAttachmentDto {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  mediaType: 'IMAGE' | 'DOCUMENT';
+  state: 'UPLOADING' | 'READY' | 'FAILED';
+}
+
+export interface CommunicationAttachmentSummary {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  mediaType: 'IMAGE' | 'DOCUMENT';
+}
+
 export interface CommunicationMessageContent {
   id: string;
   contentType: CommunicationApiMessageContentType;
@@ -146,6 +165,7 @@ export interface CommunicationMessageContent {
   truncated?: boolean;
   hasAttachments: boolean;
   attachmentCount: number;
+  attachments?: CommunicationAttachmentSummary[];
 }
 
 export interface CommunicationEvent {

@@ -1,8 +1,10 @@
 import { forwardRef, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CommunicationChannel, Prisma } from '@prisma/client';
 import { ActivityAction, ActivityEntity, WhatsAppMessageDeliveryStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
+import { CommunicationConversationRepository } from '@modules/communication/communication-conversation.repository';
+import { CommunicationAttachmentService } from '@modules/communication/media/communication-attachment.service';
 import { WhatsAppProviderService } from './providers/whatsapp-provider.service';
 import { WhatsAppConversationMatcherService } from './whatsapp-conversation-matcher.service';
 import { WhatsAppConsentService } from './whatsapp-consent.service';
@@ -23,6 +25,8 @@ export class WhatsAppWebhookService {
     @Inject(forwardRef(() => WhatsAppService))
     private readonly whatsAppService: WhatsAppService,
     private readonly communicationProjection: WhatsAppCommunicationProjectionIntegration,
+    private readonly communicationConversations: CommunicationConversationRepository,
+    private readonly communicationAttachments: CommunicationAttachmentService,
   ) {}
 
   async verifySubscription(
@@ -82,6 +86,13 @@ export class WhatsAppWebhookService {
         fromName?: string;
         body: string;
         timestamp: Date;
+        messageType: 'text' | 'image' | 'document';
+        media?: {
+          providerMediaId: string;
+          mimeType: string;
+          fileName: string;
+          mediaKind: 'image' | 'document';
+        };
       };
       statusUpdate?: {
         providerMessageId: string;
@@ -157,6 +168,13 @@ export class WhatsAppWebhookService {
       fromName?: string;
       body: string;
       timestamp: Date;
+      messageType: 'text' | 'image' | 'document';
+      media?: {
+        providerMediaId: string;
+        mimeType: string;
+        fileName: string;
+        mediaKind: 'image' | 'document';
+      };
     },
     webhookExternalEventId: string,
   ) {
@@ -179,6 +197,14 @@ export class WhatsAppWebhookService {
       },
     });
 
+    const previewText = inbound.body.trim()
+      ? inbound.body.slice(0, 120)
+      : inbound.messageType === 'image'
+        ? 'Image'
+        : inbound.messageType === 'document'
+          ? 'Document'
+          : '';
+
     if (!convo) {
       convo = await this.prisma.whatsAppConversation.create({
         data: {
@@ -193,7 +219,7 @@ export class WhatsAppWebhookService {
           status: match.status,
           lastMessageAt: inbound.timestamp,
           lastCustomerMessageAt: inbound.timestamp,
-          lastMessagePreview: inbound.body.slice(0, 120),
+          lastMessagePreview: previewText,
           unreadCount: 1,
         },
       });
@@ -208,13 +234,13 @@ export class WhatsAppWebhookService {
           status: match.customerId ? 'OPEN' : convo.status,
           lastMessageAt: inbound.timestamp,
           lastCustomerMessageAt: inbound.timestamp,
-          lastMessagePreview: inbound.body.slice(0, 120),
+          lastMessagePreview: previewText,
           unreadCount: { increment: 1 },
         },
       });
     }
 
-    const createdMessage = await this.prisma.whatsAppMessage.create({
+    let createdMessage = await this.prisma.whatsAppMessage.create({
       data: {
         organizationId: orgId,
         conversationId: convo.id,
@@ -222,11 +248,49 @@ export class WhatsAppWebhookService {
         senderType: 'customer',
         senderName: inbound.fromName ?? match.contactName,
         content: inbound.body,
-        messageType: 'text',
+        messageType: inbound.messageType,
         providerMessageId: inbound.providerMessageId,
+        providerMediaId: inbound.media?.providerMediaId ?? null,
         status: WhatsAppMessageDeliveryStatus.DELIVERED,
       },
     });
+
+    if (inbound.media) {
+      const config = await this.resolveConfigByPhoneNumberId(phoneNumberId);
+      if (config) {
+        try {
+          const canonical = await this.communicationConversations.ensureConversationEnvelope({
+            organizationId: orgId,
+            channel: CommunicationChannel.WHATSAPP,
+            nativeConversationId: convo.id,
+            customerId: convo.customerId,
+            bookingId: convo.bookingId,
+            vehicleId: convo.vehicleId,
+            lastActivityAt: inbound.timestamp,
+            unreadCount: convo.unreadCount,
+          });
+
+          const downloaded = await this.provider.downloadMedia(config, inbound.media.providerMediaId);
+          const attachment = await this.communicationAttachments.ingestInboundProviderMedia({
+            organizationId: orgId,
+            conversationId: canonical.conversation.id,
+            nativeMessageId: createdMessage.id,
+            buffer: downloaded.buffer,
+            mimeType: downloaded.mimeType || inbound.media.mimeType,
+            originalName: inbound.media.fileName || downloaded.fileName,
+            mediaKind: inbound.media.mediaKind === 'image' ? 'IMAGE' : 'DOCUMENT',
+          });
+
+          createdMessage = await this.prisma.whatsAppMessage.update({
+            where: { id: createdMessage.id },
+            data: { mediaAttachmentId: attachment.id },
+          });
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Inbound media ingest failed';
+          this.logger.warn(`[WhatsApp] Inbound media storage failed: ${message}`);
+        }
+      }
+    }
 
     void this.communicationProjection.projectInbound({
       conversation: convo,
@@ -235,12 +299,14 @@ export class WhatsAppWebhookService {
       occurredAt: inbound.timestamp,
     });
 
-    await this.consent.processInboundConsentKeywords(
-      orgId,
-      inbound.fromPhone,
-      inbound.body,
-      match.customerId,
-    );
+    if (inbound.messageType === 'text' || inbound.body.trim()) {
+      await this.consent.processInboundConsentKeywords(
+        orgId,
+        inbound.fromPhone,
+        inbound.body,
+        match.customerId,
+      );
+    }
 
     void this.audit.record({
       actorOrganizationId: orgId,

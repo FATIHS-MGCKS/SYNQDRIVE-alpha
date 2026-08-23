@@ -10,6 +10,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
 import type { UseCommunicationConversationActionsResult } from '../../../lib/communication/hooks/useCommunicationConversationActions';
 import type { UseCommunicationReplyResult } from '../../../lib/communication/hooks/useCommunicationReply';
+import type { UseCommunicationAttachmentDraftResult } from '../../../lib/communication/hooks/useCommunicationAttachmentDraft';
 import type { UseCommunicationOrgMembersResult } from '../../../lib/communication/hooks/useCommunicationOrgMembers';
 import { resolveCommunicationComposerState } from '../../../lib/communication/communication-composer-capability';
 import { resolveCommunicationHumanActions } from '../../../lib/communication/communication-human-actions';
@@ -25,11 +26,14 @@ import { CommunicationTimelineSkeleton } from './skeletons/CommunicationTimeline
 import type { CommunicationChannel } from './communication-center.types';
 
 interface CommunicationWorkspacePaneProps {
+  orgId: string | null;
   selectedConversationId: string | null;
   activeChannel: CommunicationChannel;
   conversationState: UseCommunicationConversationResult | null;
   conversationActions?: UseCommunicationConversationActionsResult | null;
   replyState?: UseCommunicationReplyResult | null;
+  attachmentDraftState?: UseCommunicationAttachmentDraftResult | null;
+  mediaReplyEnabled?: boolean;
   orgMembers?: UseCommunicationOrgMembersResult | null;
   canWrite?: boolean;
   canManage?: boolean;
@@ -105,11 +109,14 @@ function resolveActionErrorMessage(
 }
 
 export function CommunicationWorkspacePane({
+  orgId,
   selectedConversationId,
   activeChannel,
   conversationState,
   conversationActions,
   replyState,
+  attachmentDraftState,
+  mediaReplyEnabled = false,
   orgMembers,
   canWrite = false,
   canManage = false,
@@ -370,6 +377,7 @@ export function CommunicationWorkspacePane({
           </div>
         ) : conversationState && conversation ? (
           <CommunicationTimeline
+            orgId={orgId ?? ''}
             channel={conversation.channel}
             events={conversationState.events}
             conversationSignature={conversationState.conversationSignature}
@@ -397,8 +405,12 @@ export function CommunicationWorkspacePane({
           draft={replyState.draft}
           sending={replyState.sending}
           errorMessage={replyState.sendErrorMessage}
+          mediaEnabled={mediaReplyEnabled}
+          attachmentDraft={attachmentDraftState?.draft}
           onDraftChange={replyState.setDraft}
           onSend={() => void replyState.send()}
+          onSelectFile={attachmentDraftState?.selectFile}
+          onRemoveAttachment={attachmentDraftState?.removeAttachment}
         />
       ) : null}
     </div>

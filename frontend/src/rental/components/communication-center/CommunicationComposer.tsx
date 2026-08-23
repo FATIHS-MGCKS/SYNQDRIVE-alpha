@@ -1,18 +1,24 @@
 import { useCallback, useRef } from 'react';
+import { Paperclip, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import {
   COMMUNICATION_REPLY_TEXT_MAX_LENGTH,
   type CommunicationComposerState,
 } from '../../../lib/communication/communication-composer-capability';
+import type { CommunicationAttachmentDraftState } from '../../../lib/communication/hooks/useCommunicationAttachmentDraft';
 
 interface CommunicationComposerProps {
   state: CommunicationComposerState;
   draft: string;
   sending: boolean;
   errorMessage?: string | null;
+  mediaEnabled?: boolean;
+  attachmentDraft?: CommunicationAttachmentDraftState;
   onDraftChange: (value: string) => void;
   onSend: () => void;
+  onSelectFile?: (file: File) => void;
+  onRemoveAttachment?: () => void;
 }
 
 export function CommunicationComposer({
@@ -20,17 +26,27 @@ export function CommunicationComposer({
   draft,
   sending,
   errorMessage,
+  mediaEnabled = false,
+  attachmentDraft = { status: 'idle' },
   onDraftChange,
   onSend,
+  onSelectFile,
+  onRemoveAttachment,
 }: CommunicationComposerProps) {
   const { t } = useLanguage();
   const composingRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const attachmentUploading = attachmentDraft.status === 'uploading';
+  const attachmentReady = attachmentDraft.status === 'ready';
+  const hasAttachment = attachmentDraft.status === 'ready' || attachmentDraft.status === 'uploading';
 
   const disabled =
     state.mode !== 'enabled'
     || sending
-    || !draft.trim()
-    || draft.length > COMMUNICATION_REPLY_TEXT_MAX_LENGTH;
+    || attachmentUploading
+    || ((!draft.trim() && !attachmentReady)
+      || draft.length > COMMUNICATION_REPLY_TEXT_MAX_LENGTH);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -46,6 +62,14 @@ export function CommunicationComposer({
     },
     [disabled, onSend],
   );
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && onSelectFile) {
+      onSelectFile(file);
+    }
+    event.target.value = '';
+  };
 
   if (state.mode === 'hidden') {
     return null;
@@ -74,10 +98,90 @@ export function CommunicationComposer({
       className="shrink-0 border-t border-border/30 bg-background/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       data-testid="communication-composer"
     >
+      {hasAttachment ? (
+        <div
+          className="mb-2 flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-2 py-1.5"
+          data-testid="communication-composer-attachment"
+        >
+          {attachmentDraft.status === 'ready' && attachmentDraft.previewUrl ? (
+            <img
+              src={attachmentDraft.previewUrl}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded object-cover"
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12px] font-medium">
+              {attachmentDraft.status === 'uploading'
+                ? attachmentDraft.fileName
+                : attachmentDraft.status === 'ready'
+                  ? attachmentDraft.attachment.fileName
+                  : ''}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {attachmentUploading
+                ? t('communication.attachments.uploading')
+                : attachmentDraft.status === 'ready'
+                  ? t('communication.attachments.ready')
+                  : null}
+            </p>
+          </div>
+          {onRemoveAttachment ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              aria-label={t('communication.attachments.remove')}
+              disabled={sending || attachmentUploading}
+              onClick={onRemoveAttachment}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {attachmentDraft.status === 'error' ? (
+        <p className="mb-2 text-[12px] text-destructive" role="alert">
+          {attachmentDraft.code === 'unsupported'
+            ? t('communication.attachments.unsupportedType')
+            : attachmentDraft.code === 'too_large'
+              ? t('communication.attachments.fileTooLarge')
+              : attachmentDraft.code === 'permission_denied'
+                ? t('communication.attachments.permissionDenied')
+                : t('communication.attachments.uploadFailed')}
+        </p>
+      ) : null}
+
       <label className="sr-only" htmlFor="communication-composer-input">
         {t('communication.composer.label')}
       </label>
       <div className="flex items-end gap-2">
+        {mediaEnabled ? (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="sr-only"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              aria-label={t('communication.attachments.attachFile')}
+              onChange={handleFileChange}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              aria-label={t('communication.attachments.attachFile')}
+              disabled={sending || attachmentUploading || hasAttachment}
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="communication-composer-attach"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          </>
+        ) : null}
         <textarea
           id="communication-composer-input"
           data-testid="communication-composer-input"
@@ -86,7 +190,7 @@ export function CommunicationComposer({
           value={draft}
           rows={1}
           maxLength={COMMUNICATION_REPLY_TEXT_MAX_LENGTH}
-          disabled={sending}
+          disabled={sending || attachmentUploading}
           aria-invalid={Boolean(errorMessage)}
           aria-describedby={errorMessage ? 'communication-composer-error' : undefined}
           onCompositionStart={() => {

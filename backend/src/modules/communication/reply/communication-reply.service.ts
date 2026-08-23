@@ -4,6 +4,7 @@ import {
   ActivityEntity,
   CommunicationChannel,
   CommunicationConversationStatus,
+  CommunicationReplyContentType,
   CommunicationReplySendState,
   Prisma,
 } from '@prisma/client';
@@ -40,6 +41,8 @@ import {
   throwReplyErrorForFailureCode,
   CommunicationReplyOutcomeClass,
 } from './communication-reply-outcome';
+import { buildReplyPayloadHash } from './communication-reply-payload';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
 
 export interface CommunicationReplyActor {
   userId: string;
@@ -52,6 +55,9 @@ interface PreparedReply {
   commandId: string;
   row: CommunicationConversationListRow;
   text: string;
+  contentType: CommunicationReplyContentType;
+  attachmentId: string | null;
+  payloadHash: string;
   action: PrepareAction;
 }
 
@@ -67,6 +73,7 @@ export class CommunicationReplyService {
     private readonly audit: AuditService,
     private readonly channelCapability: CommunicationReplyChannelCapabilityService,
     private readonly humanTakeover: CommunicationHumanTakeoverService,
+    private readonly attachments: CommunicationAttachmentService,
     whatsappAdapter: WhatsAppCommunicationOutboundAdapter,
     smsAdapter: SmsCommunicationOutboundAdapter,
   ) {
@@ -80,16 +87,20 @@ export class CommunicationReplyService {
     organizationId: string,
     conversationId: string,
     actor: CommunicationReplyActor,
-    input: { text: string; idempotencyKey: string },
+    input: {
+      text?: string;
+      attachmentId?: string;
+      contentType?: CommunicationReplyContentType;
+      idempotencyKey: string;
+    },
   ): Promise<CommunicationReplyResponseDto> {
-    const text = this.normalizeText(input.text);
-    this.assertTextLength(text);
+    const payload = this.resolveReplyPayload(input);
 
     const prepared = await this.prepareReplyCommand(
       organizationId,
       conversationId,
       actor,
-      text,
+      payload,
       input.idempotencyKey,
     );
 
@@ -117,18 +128,25 @@ export class CommunicationReplyService {
     );
 
     const adapter = this.resolveAdapter(prepared.row.channel);
+    const sendInput = {
+      organizationId,
+      conversation: prepared.row,
+      nativeConversationId,
+      actorUserId: actor.userId,
+      actorDisplayName: actor.displayName,
+      text: prepared.text,
+      contentType: prepared.contentType,
+      attachmentId: prepared.attachmentId,
+      clientIdempotencyKey: input.idempotencyKey,
+      commandId: prepared.commandId,
+    };
+
     let sendResult;
     try {
-      sendResult = await adapter.sendTextReply({
-        organizationId,
-        conversation: prepared.row,
-        nativeConversationId,
-        actorUserId: actor.userId,
-        actorDisplayName: actor.displayName,
-        text,
-        clientIdempotencyKey: input.idempotencyKey,
-        commandId: prepared.commandId,
-      });
+      sendResult =
+        prepared.contentType === CommunicationReplyContentType.TEXT
+          ? await adapter.sendTextReply(sendInput)
+          : await adapter.sendMediaReply(sendInput);
     } catch (error) {
       await this.applyCommandOutcome(prepared.commandId, error);
       throw error;
@@ -143,6 +161,46 @@ export class CommunicationReplyService {
 
     this.recordAudit(organizationId, conversationId, actor.userId, prepared.row.channel, sendResult.sendState);
     return response;
+  }
+
+  private resolveReplyPayload(input: {
+    text?: string;
+    attachmentId?: string;
+    contentType?: CommunicationReplyContentType;
+  }) {
+    const contentType = input.contentType ?? CommunicationReplyContentType.TEXT;
+    const text = (input.text ?? '').trim();
+
+    if (contentType === CommunicationReplyContentType.TEXT) {
+      if (!text) {
+        throw CommunicationReplyError.messageEmpty();
+      }
+      this.assertTextLength(text);
+      return {
+        contentType,
+        text,
+        attachmentId: null,
+        payloadHash: buildReplyPayloadHash({ contentType, text, attachmentId: null }),
+      };
+    }
+
+    if (!input.attachmentId) {
+      throw CommunicationReplyError.mediaNotSupported();
+    }
+    if (text) {
+      this.assertTextLength(text);
+    }
+
+    return {
+      contentType,
+      text,
+      attachmentId: input.attachmentId,
+      payloadHash: buildReplyPayloadHash({
+        contentType,
+        text,
+        attachmentId: input.attachmentId,
+      }),
+    };
   }
 
   private normalizeText(text: string): string {
@@ -171,9 +229,28 @@ export class CommunicationReplyService {
     organizationId: string,
     conversationId: string,
     actor: CommunicationReplyActor,
-    text: string,
+    payload: {
+      text: string;
+      contentType: CommunicationReplyContentType;
+      attachmentId: string | null;
+      payloadHash: string;
+    },
     clientIdempotencyKey: string,
   ): Promise<PreparedReply> {
+    const buildPrepared = (
+      commandId: string,
+      row: CommunicationConversationListRow,
+      action: PrepareAction,
+    ): PreparedReply => ({
+      commandId,
+      row,
+      text: payload.text,
+      contentType: payload.contentType,
+      attachmentId: payload.attachmentId,
+      payloadHash: payload.payloadHash,
+      action,
+    });
+
     try {
       return await this.prisma.$transaction(async (tx) => {
         const existing = await tx.communicationReplyCommand.findUnique({
@@ -187,7 +264,7 @@ export class CommunicationReplyService {
         });
 
         if (existing) {
-          if (existing.text !== text) {
+          if (existing.payloadHash !== payload.payloadHash) {
             throw CommunicationReplyError.idempotencyConflict();
           }
           const row = await this.requireConversationRow(tx, organizationId, conversationId);
@@ -195,9 +272,9 @@ export class CommunicationReplyService {
             if (this.isLeaseActive(existing.processingLeaseExpiresAt)) {
               throw CommunicationReplyError.sendUnknown();
             }
-            return { commandId: existing.id, row, text, action: 'resume' };
+            return buildPrepared(existing.id, row, 'resume');
           }
-          return { commandId: existing.id, row, text, action: 'replay' };
+          return buildPrepared(existing.id, row, 'replay');
         }
 
         const row = await this.requireConversationRow(tx, organizationId, conversationId);
@@ -206,6 +283,15 @@ export class CommunicationReplyService {
         await this.channelCapability.assertChannelCanReply(organizationId, row.channel);
         await this.prepareOwnership(tx, organizationId, conversationId, row, actor.userId);
 
+        if (payload.attachmentId) {
+          await this.attachments.requireReadyAttachmentForReply(
+            tx,
+            organizationId,
+            conversationId,
+            payload.attachmentId,
+          );
+        }
+
         const refreshed = await this.requireConversationRow(tx, organizationId, conversationId);
 
         const command = await tx.communicationReplyCommand.create({
@@ -213,19 +299,17 @@ export class CommunicationReplyService {
             organizationId,
             conversationId,
             clientIdempotencyKey,
-            text,
+            text: payload.text,
+            contentType: payload.contentType,
+            attachmentId: payload.attachmentId,
+            payloadHash: payload.payloadHash,
             channel: refreshed.channel,
             actorUserId: actor.userId,
             sendState: CommunicationReplySendState.PENDING,
           },
         });
 
-        return {
-          commandId: command.id,
-          row: refreshed,
-          text,
-          action: 'execute',
-        };
+        return buildPrepared(command.id, refreshed, 'execute');
       });
     } catch (error) {
       if (
@@ -242,7 +326,7 @@ export class CommunicationReplyService {
           },
         });
         if (!existing) throw error;
-        if (existing.text !== text) {
+        if (existing.payloadHash !== payload.payloadHash) {
           throw CommunicationReplyError.idempotencyConflict();
         }
         const row = await this.requireConversationRow(
@@ -254,9 +338,9 @@ export class CommunicationReplyService {
           if (this.isLeaseActive(existing.processingLeaseExpiresAt)) {
             throw CommunicationReplyError.sendUnknown();
           }
-          return { commandId: existing.id, row, text, action: 'resume' };
+          return buildPrepared(existing.id, row, 'resume');
         }
-        return { commandId: existing.id, row, text, action: 'replay' };
+        return buildPrepared(existing.id, row, 'replay');
       }
       throw error;
     }
@@ -623,6 +707,7 @@ export class CommunicationReplyService {
               truncated: true,
               hasAttachments: true,
               attachmentCount: true,
+              nativeMessageId: true,
             },
           },
         },

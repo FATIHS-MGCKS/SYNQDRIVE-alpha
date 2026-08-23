@@ -258,6 +258,222 @@ export class WhatsAppService {
     return this.dispatchOutboundMessage(orgId, conversationId, convo, config, msg, content, options);
   }
 
+  async sendMediaMessage(
+    orgId: string,
+    conversationId: string,
+    input: {
+      mediaKind: 'image' | 'document';
+      caption?: string;
+      fileName: string;
+      mimeType: string;
+      buffer: Buffer;
+      attachmentId: string;
+    },
+    senderName?: string,
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    const config = await this.requireConfig(orgId);
+    const convo = await this.requireConversation(orgId, conversationId);
+
+    const freeText = this.policy.canSendFreeText(orgId, config, convo);
+    if (!freeText.allowed) {
+      const { WhatsAppFreeTextBlockedException } = await import('./utils/whatsapp-errors');
+      throw new WhatsAppFreeTextBlockedException(freeText.reason!);
+    }
+
+    await this.consent.assertCanSend(orgId, convo.contactPhone, 'support');
+
+    const scopedIdempotencyKey = options?.idempotencyKey?.trim() || null;
+    if (scopedIdempotencyKey) {
+      const existing = await this.prisma.whatsAppMessage.findFirst({
+        where: {
+          organizationId: orgId,
+          conversationId,
+          idempotencyKey: scopedIdempotencyKey,
+          direction: 'outgoing',
+        },
+      });
+      if (existing) {
+        return this.resumeOrReturnExistingMessage(orgId, conversationId, convo, existing, options);
+      }
+    }
+
+    const msg = await this.prisma.whatsAppMessage.create({
+      data: {
+        organizationId: orgId,
+        conversationId,
+        direction: 'outgoing',
+        senderType: 'human',
+        senderName: senderName || null,
+        content: input.caption ?? '',
+        messageType: input.mediaKind,
+        status: WhatsAppMessageDeliveryStatus.QUEUED,
+        idempotencyKey: scopedIdempotencyKey,
+        mediaAttachmentId: input.attachmentId,
+      },
+    });
+
+    let providerMediaId: string | null = null;
+    try {
+      const upload = await this.provider.uploadMedia(config, {
+        buffer: input.buffer,
+        mimeType: input.mimeType,
+        fileName: input.fileName,
+      });
+      providerMediaId = upload.mediaId;
+      await this.prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { providerMediaId },
+      });
+    } catch (err: unknown) {
+      const failureReason = err instanceof Error ? err.message : 'MEDIA_UPLOAD_FAILED';
+      const failed = await this.prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: {
+          status: WhatsAppMessageDeliveryStatus.FAILED,
+          failureReason,
+        },
+      });
+      if (!options?.skipCanonicalProjection) {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: failed,
+        });
+      }
+      throw err;
+    }
+
+    return this.dispatchOutboundMediaMessage(
+      orgId,
+      conversationId,
+      convo,
+      config,
+      { ...msg, providerMediaId },
+      {
+        mediaKind: input.mediaKind,
+        caption: input.caption,
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        mediaId: providerMediaId!,
+      },
+      options,
+    );
+  }
+
+  private async dispatchOutboundMediaMessage(
+    orgId: string,
+    conversationId: string,
+    convo: Awaited<ReturnType<typeof this.requireConversation>>,
+    config: Awaited<ReturnType<typeof this.requireConfig>>,
+    msg: { id: string; content: string; providerMediaId?: string | null },
+    media: {
+      mediaKind: 'image' | 'document';
+      caption?: string;
+      fileName: string;
+      mimeType: string;
+      mediaId: string;
+    },
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    let finalStatus: WhatsAppMessageDeliveryStatus = WhatsAppMessageDeliveryStatus.FAILED;
+    let providerMessageId: string | null = null;
+    let failureReason: string | null = null;
+
+    if (!this.provider.isConfigured(config)) {
+      failureReason = 'WHATSAPP_PROVIDER_NOT_CONFIGURED';
+      const failed = await this.prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { status: WhatsAppMessageDeliveryStatus.FAILED, failureReason },
+      });
+      if (!options?.skipCanonicalProjection) {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: failed,
+        });
+      }
+      throw new WhatsAppProviderNotConfiguredException();
+    }
+
+    const claimed = await this.claimProviderDispatch(msg.id);
+    if (!claimed) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    let result;
+    try {
+      result = await this.provider.sendMediaMessage(config, convo.contactPhone, media, {
+        organizationId: orgId,
+        conversationId,
+        messageId: msg.id,
+        idempotencyKey: options?.idempotencyKey,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown provider error';
+      if (/timeout|timed out|econnreset|econnrefused|socket hang up|network|aborted|fetch failed|gateway timeout/i.test(message)) {
+        await this.prisma.whatsAppMessage.update({
+          where: { id: msg.id },
+          data: { failureReason: 'DISPATCH_UNCERTAIN' },
+        }).catch(() => undefined);
+        throw new WhatsAppSendAmbiguousException();
+      }
+      throw err;
+    }
+
+    if (result.status === 'UNKNOWN') {
+      await this.prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { failureReason: 'DISPATCH_UNCERTAIN' },
+      }).catch(() => undefined);
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    finalStatus =
+      result.status === 'FAILED'
+        ? WhatsAppMessageDeliveryStatus.FAILED
+        : WhatsAppMessageDeliveryStatus.SENT;
+    providerMessageId = result.providerMessageId || null;
+    failureReason = result.failureReason ?? null;
+
+    const updated = await this.prisma.whatsAppMessage.update({
+      where: { id: msg.id },
+      data: {
+        status: finalStatus,
+        providerMessageId,
+        failureReason,
+      },
+    });
+
+    const preview = media.mediaKind === 'image' ? '[Image]' : `[Document] ${media.fileName}`;
+    await this.prisma.whatsAppConversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date(), lastMessagePreview: preview.slice(0, 120) },
+    });
+
+    if (!options?.skipCanonicalProjection) {
+      if (finalStatus === WhatsAppMessageDeliveryStatus.SENT) {
+        void this.communicationProjection.projectOutboundAccepted({
+          conversation: convo,
+          message: updated,
+        });
+      } else {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: updated,
+        });
+      }
+    }
+
+    void this.audit.record({
+      actorOrganizationId: orgId,
+      action: ActivityAction.CREATE,
+      entity: ActivityEntity.INTEGRATION,
+      entityId: msg.id,
+      description: 'Outbound WhatsApp media message sent by human operator',
+    });
+
+    return this.mapMessage(updated);
+  }
+
   private async resumeOrReturnExistingMessage(
     orgId: string,
     conversationId: string,

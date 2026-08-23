@@ -14,6 +14,8 @@ export interface UseCommunicationReplyOptions {
   onTimelineRefresh?: () => void | Promise<unknown>;
   onInboxRefresh?: () => void | Promise<unknown>;
   onConflictRefresh?: () => void | Promise<unknown>;
+  getAttachment?: () => { id: string; mediaType: 'IMAGE' | 'DOCUMENT' } | null;
+  onAttachmentCleared?: () => void;
 }
 
 export interface UseCommunicationReplyResult {
@@ -112,6 +114,8 @@ export function useCommunicationReply({
   onTimelineRefresh,
   onInboxRefresh,
   onConflictRefresh,
+  getAttachment,
+  onAttachmentCleared,
 }: UseCommunicationReplyOptions): UseCommunicationReplyResult {
   const [draft, setDraftState] = useState('');
   const [sending, setSending] = useState(false);
@@ -164,7 +168,9 @@ export function useCommunicationReply({
   const send = useCallback(async (): Promise<CommunicationConversationDetail | null> => {
     if (!orgId || !conversationId || inflightRef.current) return null;
     const trimmed = draft.trim();
-    if (!trimmed) return null;
+    const attachment = getAttachment?.() ?? null;
+    if (!attachment && !trimmed) return null;
+    if (attachment && getAttachment && !getAttachment()) return null;
 
     const requestSignature = communicationConversationSignature(orgId, conversationId);
     if (!idempotencyKeyRef.current) {
@@ -178,7 +184,9 @@ export function useCommunicationReply({
 
     try {
       const response = await communicationClient.replyConversation(orgId, conversationId, {
-        text: trimmed,
+        text: trimmed || undefined,
+        attachmentId: attachment?.id,
+        contentType: attachment ? attachment.mediaType : 'TEXT',
         idempotencyKey: idempotencyKeyRef.current,
       });
 
@@ -203,6 +211,7 @@ export function useCommunicationReply({
         draftByConversationRef.current.delete(conversationKey);
       }
       idempotencyKeyRef.current = null;
+      onAttachmentCleared?.();
 
       onConversationUpdated?.(response.conversation);
       await onTimelineRefresh?.();
@@ -230,6 +239,8 @@ export function useCommunicationReply({
     conversationId,
     conversationKey,
     draft,
+    getAttachment,
+    onAttachmentCleared,
     onConflictRefresh,
     onConversationUpdated,
     onInboxRefresh,

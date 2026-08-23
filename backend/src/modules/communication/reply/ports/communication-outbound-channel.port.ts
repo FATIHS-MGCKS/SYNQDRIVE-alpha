@@ -8,6 +8,8 @@ export interface CommunicationOutboundSendInput {
   actorUserId: string;
   actorDisplayName?: string | null;
   text: string;
+  contentType: import('@prisma/client').CommunicationReplyContentType;
+  attachmentId?: string | null;
   clientIdempotencyKey: string;
   commandId: string;
 }
@@ -22,4 +24,5 @@ export interface CommunicationOutboundSendResult {
 export interface CommunicationOutboundChannelPort {
   readonly channel: CommunicationChannel;
   sendTextReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult>;
+  sendMediaReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult>;
 }

@@ -9,9 +9,11 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationHumanTakeoverService } from '../write/communication-human-takeover.service';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
 import { CommunicationReplyChannelCapabilityService } from './communication-reply-channel-capability.service';
 import { SmsCommunicationOutboundAdapter } from './adapters/sms-communication-outbound.adapter';
 import { WhatsAppCommunicationOutboundAdapter } from './adapters/whatsapp-communication-outbound.adapter';
+import { buildReplyPayloadHash } from './communication-reply-payload';
 import { CommunicationReplyService } from './communication-reply.service';
 
 describe('CommunicationReplyService', () => {
@@ -35,7 +37,7 @@ describe('CommunicationReplyService', () => {
   let readRepository: { findConversationById: jest.Mock };
   let scope: { assertConversationMutable: jest.Mock };
   let channelCapability: { assertChannelCanReply: jest.Mock };
-  let whatsappAdapter: { sendTextReply: jest.Mock };
+  let whatsappAdapter: { sendTextReply: jest.Mock; sendMediaReply: jest.Mock };
 
   const row = {
     id: 'conv-1',
@@ -118,6 +120,7 @@ describe('CommunicationReplyService', () => {
         nativeMessageId: 'wa-msg-1',
         canonicalEventId: null,
       }),
+      sendMediaReply: jest.fn(),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -131,9 +134,13 @@ describe('CommunicationReplyService', () => {
           provide: CommunicationHumanTakeoverService,
           useValue: { performHumanTakeover: jest.fn().mockResolvedValue({ changed: true }) },
         },
+        {
+          provide: CommunicationAttachmentService,
+          useValue: { requireReadyAttachmentForReply: jest.fn() },
+        },
         { provide: AuditService, useValue: { record: jest.fn() } },
         { provide: WhatsAppCommunicationOutboundAdapter, useValue: whatsappAdapter },
-        { provide: SmsCommunicationOutboundAdapter, useValue: { sendTextReply: jest.fn() } },
+        { provide: SmsCommunicationOutboundAdapter, useValue: { sendTextReply: jest.fn(), sendMediaReply: jest.fn() } },
       ],
     }).compile();
 
@@ -144,6 +151,7 @@ describe('CommunicationReplyService', () => {
     prisma.communicationReplyCommand.findUnique.mockResolvedValue({
       id: 'cmd-existing',
       text: 'Hello',
+      payloadHash: buildReplyPayloadHash({ contentType: 'TEXT', text: 'Hello', attachmentId: null }),
       sendState: CommunicationReplySendState.ACCEPTED,
       processingLeaseExpiresAt: null,
     });
@@ -160,6 +168,7 @@ describe('CommunicationReplyService', () => {
     prisma.communicationReplyCommand.findUnique.mockResolvedValue({
       id: 'cmd-existing',
       text: 'Original',
+      payloadHash: buildReplyPayloadHash({ contentType: 'TEXT', text: 'Original', attachmentId: null }),
       sendState: CommunicationReplySendState.ACCEPTED,
     });
 
@@ -189,9 +198,15 @@ describe('CommunicationReplyService', () => {
   });
 
   it('FAILED replay throws SEND_FAILED', async () => {
+    const payloadHash = buildReplyPayloadHash({
+      contentType: 'TEXT',
+      text: 'Hello',
+      attachmentId: null,
+    });
     prisma.communicationReplyCommand.findUnique.mockResolvedValue({
       id: 'cmd-failed',
       text: 'Hello',
+      payloadHash,
       sendState: CommunicationReplySendState.FAILED,
       failureCode: 'SEND_FAILED',
       processingLeaseExpiresAt: null,
@@ -199,6 +214,7 @@ describe('CommunicationReplyService', () => {
     prisma.communicationReplyCommand.findFirst.mockResolvedValue({
       id: 'cmd-failed',
       text: 'Hello',
+      payloadHash,
       sendState: CommunicationReplySendState.FAILED,
       failureCode: 'SEND_FAILED',
       processingLeaseExpiresAt: null,

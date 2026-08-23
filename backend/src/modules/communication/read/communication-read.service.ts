@@ -6,8 +6,10 @@ import {
 } from './communication-read.mapper';
 import { validateCommunicationConversationListQuery } from './communication-read-query.validation';
 import { CommunicationReadRepository } from './communication-read.repository';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
 import type { CommunicationConversationListQueryDto } from './dto/communication-read-shared.dto';
 import type {
+  CommunicationAttachmentSummaryDto,
   CommunicationConversationDetailDto,
   CommunicationConversationListResponseDto,
   CommunicationConversationSummaryDto,
@@ -23,7 +25,10 @@ import type {
 export class CommunicationReadService {
   private readonly logger = new Logger(CommunicationReadService.name);
 
-  constructor(private readonly repository: CommunicationReadRepository) {}
+  constructor(
+    private readonly repository: CommunicationReadRepository,
+    private readonly attachments: CommunicationAttachmentService,
+  ) {}
 
   async listConversations(
     organizationId: string,
@@ -77,6 +82,30 @@ export class CommunicationReadService {
       conversationId,
       query,
     );
+
+    const nativeMessageIds = page.items
+      .map((row) => row.messageContent?.nativeMessageId)
+      .filter((id): id is string => Boolean(id));
+
+    const attachmentRows = await this.attachments.listAttachmentsByNativeMessageIds(
+      organizationId,
+      nativeMessageIds,
+    );
+    const attachmentsByNativeMessageId = new Map<string, CommunicationAttachmentSummaryDto[]>();
+    for (const attachment of attachmentRows) {
+      if (!attachment.nativeMessageId) continue;
+      const summary: CommunicationAttachmentSummaryDto = {
+        id: attachment.id,
+        fileName: attachment.fileName,
+        mimeType: attachment.mimeType,
+        sizeBytes: attachment.sizeBytes,
+        mediaType: attachment.mediaType,
+      };
+      const existing = attachmentsByNativeMessageId.get(attachment.nativeMessageId) ?? [];
+      existing.push(summary);
+      attachmentsByNativeMessageId.set(attachment.nativeMessageId, existing);
+    }
+
     this.logRead('list_conversation_events', organizationId, {
       conversationId,
       resultCount: page.items.length,
@@ -84,7 +113,14 @@ export class CommunicationReadService {
       durationMs: Date.now() - started,
     });
     return {
-      items: page.items.map(mapCommunicationEvent),
+      items: page.items.map((row) =>
+        mapCommunicationEvent(
+          row,
+          row.messageContent?.nativeMessageId
+            ? attachmentsByNativeMessageId.get(row.messageContent.nativeMessageId)
+            : undefined,
+        ),
+      ),
       nextCursor: page.meta.nextCursor,
       hasMore: page.meta.hasMore,
     };
