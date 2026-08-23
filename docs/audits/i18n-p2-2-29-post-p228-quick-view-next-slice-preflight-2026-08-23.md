@@ -706,7 +706,21 @@ This document: `docs/audits/i18n-p2-2-29-post-p228-quick-view-next-slice-preflig
 
 ## 60. Audit PR topology
 
-(To be filled after push — see final report §70)
+| Field | Value |
+|-------|-------|
+| PR number | **#1215** |
+| Base branch | `p228-authoritative-baseline-3c10` |
+| Base SHA | `59e3395eafff6de2e9d4301f1e806a24a35c9a31` |
+| Head branch | `cursor/p2229-post-p228-quick-view-next-slice-preflight-3c10` |
+| Head SHA | `5390e577` (audit commit) |
+| Commit count | **1** |
+| Changed files | **1** (`docs/audits/…preflight-2026-08-23.md`) |
+| Draft | **YES** |
+| Mergeable | **YES** |
+| Production modified | **NO** |
+| Dictionaries modified | **NO** |
+| Tests modified | **NO** |
+| Scanner modified | **NO** |
 
 ---
 
