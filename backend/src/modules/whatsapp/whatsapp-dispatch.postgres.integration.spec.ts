@@ -85,6 +85,7 @@ describePg('WhatsApp outbound dispatch postgres', () => {
         projectOutboundAccepted: jest.fn(),
         projectOutboundFailed: jest.fn(),
       } as unknown as WhatsAppCommunicationProjectionIntegration,
+      { sendTemplateMessage: jest.fn() } as any,
     );
   });
 

@@ -28,6 +28,12 @@ export class WhatsAppFreeTextBlockedException extends BadRequestException {
   }
 }
 
+export class WhatsAppTemplateNotApprovedException extends BadRequestException {
+  constructor(reason: string) {
+    super({ code: WHATSAPP_ERROR_CODES.TEMPLATE_NOT_APPROVED, message: reason });
+  }
+}
+
 export class WhatsAppPolicyBlockedException extends ForbiddenException {
   constructor(reason: string, flags?: string[]) {
     super({

@@ -14753,6 +14753,7 @@ enum CommunicationReplyContentType {
   TEXT
   IMAGE
   DOCUMENT
+  TEMPLATE
 }
 
 enum CommunicationAttachmentState {
@@ -14775,6 +14776,8 @@ model CommunicationReplyCommand {
   text                 String                      @default("")
   contentType          CommunicationReplyContentType @default(TEXT) @map("content_type")
   attachmentId         String?                     @map("attachment_id")
+  templateId           String?                     @map("template_id")
+  templateVariables    Json?                       @map("template_variables")
   payloadHash          String?                     @map("payload_hash")
   channel              CommunicationChannel
   sendState            CommunicationReplySendState @default(PENDING) @map("send_state")

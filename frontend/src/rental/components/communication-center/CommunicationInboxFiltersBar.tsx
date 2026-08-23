@@ -8,6 +8,7 @@ import {
   COMMUNICATION_SEARCH_MAX_LENGTH,
   type CommunicationAssignmentFilter,
   type CommunicationInboxFilters,
+  type CommunicationIntentFilter,
   type CommunicationStatusFilter,
 } from './communication-inbox-state';
 
@@ -137,6 +138,27 @@ export function CommunicationInboxFiltersBar({
         >
           <option value="all">{t('communication.filters.assignmentAll')}</option>
           <option value="unassigned">{t('communication.filters.assignmentUnassigned')}</option>
+        </select>
+
+        <label className="sr-only" htmlFor="communication-intent-filter">
+          {t('communication.filters.intentLabel')}
+        </label>
+        <select
+          id="communication-intent-filter"
+          value={filters.intent}
+          onChange={(event) =>
+            onFiltersChange({ intent: event.target.value as CommunicationIntentFilter })
+          }
+          data-testid="communication-filter-intent"
+          className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+        >
+          <option value="all">{t('communication.filters.intentAll')}</option>
+          <option value="ai_suggested">{t('communication.filters.intentAiSuggested')}</option>
+          <option value="unknown_customer">{t('communication.filters.intentUnknownCustomer')}</option>
+          <option value="booking">{t('communication.filters.intentBooking')}</option>
+          <option value="documents">{t('communication.filters.intentDocuments')}</option>
+          <option value="payment">{t('communication.filters.intentPayment')}</option>
+          <option value="damage">{t('communication.filters.intentDamage')}</option>
         </select>
       </div>
     </div>

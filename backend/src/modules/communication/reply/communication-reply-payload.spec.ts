@@ -50,6 +50,8 @@ describe('matchesReplyCommandPayload', () => {
       contentType: 'TEXT' as const,
       text: specialText,
       attachmentId: null,
+      templateId: null,
+      templateVariables: {},
       payloadHash: buildReplyPayloadHash({
         contentType: 'TEXT',
         text: specialText,
@@ -75,6 +77,8 @@ describe('matchesReplyCommandPayload', () => {
       contentType: 'TEXT' as const,
       text: 'Different',
       attachmentId: null,
+      templateId: null,
+      templateVariables: {},
       payloadHash: buildReplyPayloadHash({
         contentType: 'TEXT',
         text: 'Different',
@@ -100,6 +104,8 @@ describe('matchesReplyCommandPayload', () => {
       contentType: 'IMAGE' as const,
       text: '',
       attachmentId: 'att-1',
+      templateId: null,
+      templateVariables: {},
       payloadHash: buildReplyPayloadHash({
         contentType: 'IMAGE',
         text: '',
@@ -139,6 +145,8 @@ describe('matchesReplyCommandPayload', () => {
           contentType: 'IMAGE',
           text: 'cap',
           attachmentId: 'att-1',
+          templateId: null,
+          templateVariables: {},
           payloadHash: hash,
         },
       ),

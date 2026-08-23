@@ -32,6 +32,8 @@ export class CommunicationReplyController {
       text: body.text,
       attachmentId: body.attachmentId,
       contentType: body.contentType,
+      templateId: body.templateId,
+      templateVariables: body.templateVariables,
       idempotencyKey: body.idempotencyKey,
     });
   }

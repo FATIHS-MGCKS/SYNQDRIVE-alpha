@@ -23,18 +23,10 @@ export class SmsCommunicationOutboundAdapter implements CommunicationOutboundCha
   }
 
   async sendTextReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult> {
-    const configRow = await this.prisma.orgSmsConfig.findUnique({
-      where: { organizationId: input.organizationId },
-    });
-    const config = configRow
-      ? mapOrgSmsConfigToPublicDto(configRow)
-      : buildSyntheticSmsConfigPublicDto(input.organizationId);
-
-    if (!config.isConnected || !config.isActive || !config.credentialsConfigured) {
-      throw CommunicationReplyError.channelNotConfigured();
-    }
-
-    // C5.2 outbound runtime is not wired — explicit unavailable (no invented sent.dm API).
     throw CommunicationReplyError.channelNotConfigured();
+  }
+
+  async sendTemplateReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult> {
+    throw CommunicationReplyError.templateNotSupported();
   }
 }

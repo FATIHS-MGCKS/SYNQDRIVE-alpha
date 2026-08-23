@@ -140,6 +140,12 @@ export class CommunicationConversationListQueryDto {
   @IsOptional()
   @Transform(trimEmptyToUndefined)
   @IsString()
+  @MaxLength(64)
+  intent?: string;
+
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
   cursor?: string;
 
   @IsOptional()

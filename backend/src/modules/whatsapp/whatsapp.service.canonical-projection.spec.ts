@@ -132,6 +132,7 @@ describe('WhatsAppService canonical outbound projection', () => {
       {} as any,
       audit,
       integration,
+      { sendTemplateMessage: jest.fn() } as any,
     );
   });
 

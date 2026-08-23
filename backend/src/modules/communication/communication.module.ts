@@ -4,6 +4,8 @@ import communicationProjectionConfig from '@config/communication-projection.conf
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { StationsModule } from '@modules/stations/stations.module';
+import { BookingsModule } from '@modules/bookings/bookings.module';
+import { TasksModule } from '@modules/tasks/tasks.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { MetaWhatsAppCommunicationAdapter } from './adapters/whatsapp/meta-whatsapp-communication.adapter';
@@ -45,6 +47,10 @@ import { CommunicationAiActivityRepository } from './ai-activity/communication-a
 import { CommunicationAiActivityService } from './ai-activity/communication-ai-activity.service';
 import { CommunicationAiActivityController } from './ai-activity/communication-ai-activity.controller';
 import { CommunicationHandoffNotificationService } from './handoff/communication-handoff-notification.service';
+import { CommunicationWhatsAppOpsService } from './ops/communication-whatsapp-ops.service';
+import { CommunicationWhatsAppOpsController } from './ops/communication-whatsapp-ops.controller';
+import { CommunicationQuickActionExecutorService } from './ops/communication-quick-action.executor';
+import { CommunicationQuickActionResolverService } from './ops/communication-quick-action.resolver';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
@@ -55,6 +61,8 @@ import { CommunicationHandoffNotificationService } from './handoff/communication
     StationsModule,
     DocumentsModule,
     NotificationsModule,
+    BookingsModule,
+    TasksModule,
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
   ],
@@ -94,6 +102,9 @@ import { CommunicationHandoffNotificationService } from './handoff/communication
     CommunicationAiActivityRepository,
     CommunicationAiActivityService,
     CommunicationHandoffNotificationService,
+    CommunicationWhatsAppOpsService,
+    CommunicationQuickActionExecutorService,
+    CommunicationQuickActionResolverService,
   ],
   controllers: [
     CommunicationReadController,
@@ -101,6 +112,7 @@ import { CommunicationHandoffNotificationService } from './handoff/communication
     CommunicationReplyController,
     CommunicationAttachmentController,
     CommunicationAiActivityController,
+    CommunicationWhatsAppOpsController,
   ],
   exports: [
     CommunicationTenantContextValidation,

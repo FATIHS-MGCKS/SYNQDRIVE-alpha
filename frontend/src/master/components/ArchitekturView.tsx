@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C9.1 — WhatsApp Operations Parity (V4.9.940)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'AI suggestion', detail: 'POST .../communication/conversations/:id/ai-suggestion — draft only, C11.3 scope' },
+      { label: 'Quick actions', detail: 'GET/POST .../quick-actions — reuses WhatsAppQuickActionsService via native ID' },
+      { label: 'Intent filter', detail: 'GET conversations?intent= — server-side lastDetectedIntent join' },
+      { label: 'Template reply', detail: 'contentType TEMPLATE on C11.2 reply + sendOperatorTemplateMessage' },
+      { label: 'Composer capability', detail: 'GET .../composer-capability — FREEFORM_TEXT_ALLOWED | TEMPLATE_REQUIRED' },
+      { label: 'Deferred QA', detail: 'link_booking, link_customer, assign_user stubs unchanged' },
+    ],
+  },
+  {
     name: 'Communication Center C10 — Channels & Automations (V4.9.939)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

@@ -5,11 +5,21 @@ export type CommunicationAssignmentFilter = 'all' | 'unassigned';
 
 export type CommunicationStatusFilter = 'all' | CommunicationApiStatus;
 
+export type CommunicationIntentFilter =
+  | 'all'
+  | 'ai_suggested'
+  | 'unknown_customer'
+  | 'booking'
+  | 'documents'
+  | 'payment'
+  | 'damage';
+
 export interface CommunicationInboxFilters {
   search: string;
   unreadOnly: boolean;
   status: CommunicationStatusFilter;
   assignment: CommunicationAssignmentFilter;
+  intent: CommunicationIntentFilter;
 }
 
 export const COMMUNICATION_SEARCH_MAX_LENGTH = 120;
@@ -19,6 +29,7 @@ export const DEFAULT_COMMUNICATION_INBOX_FILTERS: CommunicationInboxFilters = {
   unreadOnly: false,
   status: 'all',
   assignment: 'all',
+  intent: 'all',
 };
 
 export function clampCommunicationSearchDraft(value: string): string {
@@ -40,10 +51,21 @@ const STATUS_VALUES = new Set<string>([
 
 const ASSIGNMENT_VALUES = new Set<string>(['all', 'unassigned']);
 
+const INTENT_VALUES = new Set<string>([
+  'all',
+  'ai_suggested',
+  'unknown_customer',
+  'booking',
+  'documents',
+  'payment',
+  'damage',
+]);
+
 export const COMMUNICATION_SEARCH_PARAM = 'communicationSearch';
 export const COMMUNICATION_UNREAD_PARAM = 'communicationUnread';
 export const COMMUNICATION_STATUS_PARAM = 'communicationStatus';
 export const COMMUNICATION_ASSIGNMENT_PARAM = 'communicationAssignment';
+export const COMMUNICATION_INTENT_PARAM = 'communicationIntent';
 
 export function readCommunicationInboxFiltersFromUrl(
   search = '',
@@ -67,6 +89,11 @@ export function readCommunicationInboxFiltersFromUrl(
     next.assignment = assignment as CommunicationAssignmentFilter;
   }
 
+  const intent = params.get(COMMUNICATION_INTENT_PARAM);
+  if (intent && INTENT_VALUES.has(intent)) {
+    next.intent = intent as CommunicationIntentFilter;
+  }
+
   return next;
 }
 
@@ -85,7 +112,8 @@ export function hasActiveCommunicationInboxFilters(
     Boolean(filters.search.trim()) ||
     filters.unreadOnly ||
     filters.status !== 'all' ||
-    filters.assignment !== 'all'
+    filters.assignment !== 'all' ||
+    filters.intent !== 'all'
   );
 }
 
@@ -117,6 +145,7 @@ export function buildCommunicationInboxApiQuery(
   if (filters.unreadOnly) query.unreadOnly = true;
   if (filters.status !== 'all') query.status = filters.status;
   if (filters.assignment === 'unassigned') query.unassigned = true;
+  if (filters.intent !== 'all') query.intent = filters.intent;
 
   return query;
 }
@@ -130,6 +159,7 @@ export function applyCommunicationInboxFiltersToSearchParams(
     [COMMUNICATION_UNREAD_PARAM, filters.unreadOnly ? 'true' : null],
     [COMMUNICATION_STATUS_PARAM, filters.status !== 'all' ? filters.status : null],
     [COMMUNICATION_ASSIGNMENT_PARAM, filters.assignment !== 'all' ? filters.assignment : null],
+    [COMMUNICATION_INTENT_PARAM, filters.intent !== 'all' ? filters.intent : null],
   ];
 
   for (const [key, value] of entries) {

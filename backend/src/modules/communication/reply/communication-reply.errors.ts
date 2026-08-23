@@ -20,6 +20,11 @@ export type CommunicationReplyErrorCode =
   | 'SEND_FAILED'
   | 'SEND_UNKNOWN'
   | 'TEMPLATE_REQUIRED'
+  | 'TEMPLATE_NOT_FOUND'
+  | 'TEMPLATE_NOT_APPROVED'
+  | 'TEMPLATE_VARIABLES_INVALID'
+  | 'TEMPLATE_NOT_SUPPORTED'
+  | 'AI_SUGGESTION_FAILED'
   | 'RATE_LIMITED'
   | 'MEDIA_NOT_SUPPORTED'
   | 'UNKNOWN';
@@ -114,6 +119,42 @@ export class CommunicationReplyError {
     return new BadRequestException({
       code: 'TEMPLATE_REQUIRED' satisfies CommunicationReplyErrorCode,
       message: 'A template is required to message this contact',
+    });
+  }
+
+  static templateNotFound(): BadRequestException {
+    return new BadRequestException({
+      code: 'TEMPLATE_NOT_FOUND' satisfies CommunicationReplyErrorCode,
+      message: 'Template not found',
+    });
+  }
+
+  static templateNotApproved(): BadRequestException {
+    return new BadRequestException({
+      code: 'TEMPLATE_NOT_APPROVED' satisfies CommunicationReplyErrorCode,
+      message: 'Template is not approved for sending',
+    });
+  }
+
+  static templateVariablesInvalid(missing?: string[]): BadRequestException {
+    return new BadRequestException({
+      code: 'TEMPLATE_VARIABLES_INVALID' satisfies CommunicationReplyErrorCode,
+      message: 'Template variables are invalid or incomplete',
+      missing,
+    });
+  }
+
+  static templateNotSupported(): BadRequestException {
+    return new BadRequestException({
+      code: 'TEMPLATE_NOT_SUPPORTED' satisfies CommunicationReplyErrorCode,
+      message: 'Template replies are not supported for this channel',
+    });
+  }
+
+  static aiSuggestionFailed(): BadRequestException {
+    return new BadRequestException({
+      code: 'AI_SUGGESTION_FAILED' satisfies CommunicationReplyErrorCode,
+      message: 'AI suggestion could not be generated',
     });
   }
 

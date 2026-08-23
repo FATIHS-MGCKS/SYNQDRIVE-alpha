@@ -1,4 +1,5 @@
 import { ArrowLeft, MoreHorizontal, PanelRightOpen } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +16,12 @@ import type { UseCommunicationOrgMembersResult } from '../../../lib/communicatio
 import { resolveCommunicationComposerState } from '../../../lib/communication/communication-composer-capability';
 import { resolveCommunicationHumanActions } from '../../../lib/communication/communication-human-actions';
 import { CommunicationComposer } from './CommunicationComposer';
+import { CommunicationAiSuggestionButton, CommunicationQuickActions } from './CommunicationComposerActions';
+import { CommunicationTemplatePicker } from './CommunicationTemplatePicker';
+import { useCommunicationComposerCapability } from '../../../lib/communication/hooks/useCommunicationComposerCapability';
+import { useCommunicationAiSuggestion } from '../../../lib/communication/hooks/useCommunicationAiSuggestion';
+import { useCommunicationQuickActions } from '../../../lib/communication/hooks/useCommunicationQuickActions';
+import { useCommunicationSendableTemplates } from '../../../lib/communication/hooks/useCommunicationSendableTemplates';
 import { CommunicationAssigneeControl } from './CommunicationAssigneeControl';
 import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
@@ -197,6 +204,61 @@ export function CommunicationWorkspacePane({
     conversation,
     currentUserId,
   });
+
+  const composerCapability = useCommunicationComposerCapability({
+    orgId,
+    conversationId: selectedConversationId,
+    channel: conversation?.channel,
+    enabled: composerState.mode === 'enabled',
+  });
+
+  const aiSuggestion = useCommunicationAiSuggestion({
+    orgId,
+    conversationId: selectedConversationId,
+    enabled:
+      composerState.mode === 'enabled'
+      && composerCapability.replyMode === 'FREEFORM_TEXT_ALLOWED',
+    hasExistingDraft: Boolean(replyState?.draft.trim()),
+    onApplySuggestion: replyState?.setDraft,
+  });
+
+  const [templatePrefill, setTemplatePrefill] = useState<{
+    templateId: string;
+    language: string;
+    variables: Record<string, string>;
+  } | null>(null);
+
+  const quickActions = useCommunicationQuickActions({
+    orgId,
+    conversationId: selectedConversationId,
+    channel: conversation?.channel,
+    enabled: canWrite,
+    hasExistingDraft: Boolean(replyState?.draft.trim()),
+    onComposerPrefill: replyState?.setDraft,
+    onTemplatePrefill: (input) => {
+      setTemplatePrefill(input);
+    },
+    onConversationUpdated: (result) => {
+      if (result.conversation) {
+        conversationState?.applyConversationUpdate(result.conversation);
+      }
+    },
+    onRefresh: () => conversationState?.reloadDetail(),
+  });
+
+  const templatePickerOpen =
+    composerCapability.replyMode === 'TEMPLATE_REQUIRED' || Boolean(templatePrefill);
+  const sendableTemplates = useCommunicationSendableTemplates({
+    orgId,
+    conversationId: selectedConversationId,
+    channel: conversation?.channel,
+    open: templatePickerOpen,
+  });
+
+  const showAiSuggestion =
+    composerState.mode === 'enabled'
+    && composerCapability.replyMode === 'FREEFORM_TEXT_ALLOWED'
+    && conversation?.channel === 'WHATSAPP';
 
   return (
     <div
@@ -404,9 +466,53 @@ export function CommunicationWorkspacePane({
           state={composerState}
           draft={replyState.draft}
           sending={replyState.sending}
-          errorMessage={replyState.sendErrorMessage}
-          mediaEnabled={mediaReplyEnabled}
+          errorMessage={
+            aiSuggestion.error
+              ? t('communication.aiSuggestion.error')
+              : replyState.sendErrorMessage
+          }
+          mediaEnabled={mediaReplyEnabled && composerCapability.replyMode === 'FREEFORM_TEXT_ALLOWED'}
           attachmentDraft={attachmentDraftState?.draft}
+          replyMode={
+            composerCapability.replyMode === 'CHANNEL_NOT_REPLYABLE'
+              ? 'FREEFORM_TEXT_ALLOWED'
+              : composerCapability.replyMode
+          }
+          composerActions={
+            <>
+              {showAiSuggestion ? (
+                <CommunicationAiSuggestionButton
+                  loading={aiSuggestion.loading}
+                  disabled={aiSuggestion.loading}
+                  onClick={() => void aiSuggestion.generate()}
+                />
+              ) : null}
+              <CommunicationQuickActions
+                actions={quickActions.actions}
+                loading={quickActions.loading}
+                runningActionId={quickActions.runningActionId}
+                pendingConfirm={quickActions.pendingConfirm}
+                onExecute={quickActions.execute}
+                onConfirmPending={quickActions.confirmPending}
+                onCancelPending={quickActions.cancelPending}
+              />
+            </>
+          }
+          templateSection={
+            templatePickerOpen ? (
+              <CommunicationTemplatePicker
+                templates={sendableTemplates.items}
+                loading={sendableTemplates.loading}
+                sending={replyState.sending}
+                initialTemplateId={templatePrefill?.templateId}
+                initialVariables={templatePrefill?.variables}
+                onSend={(input) => {
+                  setTemplatePrefill(null);
+                  void replyState.sendTemplate(input);
+                }}
+              />
+            ) : null
+          }
           onDraftChange={replyState.setDraft}
           onSend={() => void replyState.send()}
           onSelectFile={attachmentDraftState?.selectFile}

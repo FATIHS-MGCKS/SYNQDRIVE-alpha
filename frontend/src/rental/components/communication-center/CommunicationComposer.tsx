@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
 import { Paperclip, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -15,6 +15,9 @@ interface CommunicationComposerProps {
   errorMessage?: string | null;
   mediaEnabled?: boolean;
   attachmentDraft?: CommunicationAttachmentDraftState;
+  replyMode?: 'FREEFORM_TEXT_ALLOWED' | 'TEMPLATE_REQUIRED';
+  composerActions?: ReactNode;
+  templateSection?: ReactNode;
   onDraftChange: (value: string) => void;
   onSend: () => void;
   onSelectFile?: (file: File) => void;
@@ -28,6 +31,9 @@ export function CommunicationComposer({
   errorMessage,
   mediaEnabled = false,
   attachmentDraft = { status: 'idle' },
+  replyMode = 'FREEFORM_TEXT_ALLOWED',
+  composerActions,
+  templateSection,
   onDraftChange,
   onSend,
   onSelectFile,
@@ -41,10 +47,12 @@ export function CommunicationComposer({
   const attachmentReady = attachmentDraft.status === 'ready';
   const hasAttachment = attachmentDraft.status === 'ready' || attachmentDraft.status === 'uploading';
 
+  const templateRequired = replyMode === 'TEMPLATE_REQUIRED';
   const disabled =
     state.mode !== 'enabled'
     || sending
     || attachmentUploading
+    || templateRequired
     || ((!draft.trim() && !attachmentReady)
       || draft.length > COMMUNICATION_REPLY_TEXT_MAX_LENGTH);
 
@@ -154,6 +162,18 @@ export function CommunicationComposer({
         </p>
       ) : null}
 
+      {templateRequired ? (
+        <div
+          className="mb-2 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/8 px-2.5 py-2 text-[12px] text-foreground"
+          role="status"
+          data-testid="communication-composer-template-required"
+        >
+          {t('communication.template.required')}
+        </div>
+      ) : null}
+
+      {templateSection}
+
       <label className="sr-only" htmlFor="communication-composer-input">
         {t('communication.composer.label')}
       </label>
@@ -190,7 +210,7 @@ export function CommunicationComposer({
           value={draft}
           rows={1}
           maxLength={COMMUNICATION_REPLY_TEXT_MAX_LENGTH}
-          disabled={sending || attachmentUploading}
+          disabled={sending || attachmentUploading || templateRequired}
           aria-invalid={Boolean(errorMessage)}
           aria-describedby={errorMessage ? 'communication-composer-error' : undefined}
           onCompositionStart={() => {
@@ -202,6 +222,7 @@ export function CommunicationComposer({
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={handleKeyDown}
         />
+        {composerActions}
         <Button
           type="button"
           size="sm"

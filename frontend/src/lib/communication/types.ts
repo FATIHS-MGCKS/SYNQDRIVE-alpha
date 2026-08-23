@@ -83,6 +83,7 @@ export interface CommunicationConversationListQuery {
   unreadOnly?: boolean;
   unassigned?: boolean;
   search?: string;
+  intent?: string;
   cursor?: string;
   limit?: number;
 }
@@ -139,7 +140,7 @@ export interface CommunicationReplyResponse {
   commandId: string;
 }
 
-export type CommunicationReplyContentType = 'TEXT' | 'IMAGE' | 'DOCUMENT';
+export type CommunicationReplyContentType = 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'TEMPLATE';
 
 export interface CommunicationAttachmentDto {
   id: string;
@@ -234,6 +235,43 @@ export interface CommunicationAiActivityListResponse {
   items: CommunicationAiActivityItem[];
   nextCursor: string | null;
   hasMore: boolean;
+}
+
+export type CommunicationQuickActionResultType =
+  | 'COMPOSER_PREFILL'
+  | 'TEMPLATE_PREFILL'
+  | 'BUSINESS_MUTATION'
+  | 'CONVERSATION_MUTATION'
+  | 'HANDOFF';
+
+export interface CommunicationQuickActionAvailability {
+  id: import('../api').WhatsAppQuickActionId;
+  labelKey: string;
+  confirmKey?: string;
+  enabled: boolean;
+  disabledReasonKey?: string;
+  requiresConfirmation?: boolean;
+  resultMode: CommunicationQuickActionResultType;
+}
+
+export interface CommunicationQuickActionListResponse {
+  actions: CommunicationQuickActionAvailability[];
+}
+
+export interface CommunicationQuickActionResult {
+  actionType: CommunicationQuickActionResultType;
+  actionId: import('../api').WhatsAppQuickActionId;
+  text?: string;
+  template?: {
+    templateId: string;
+    language: string;
+    templateVariables: Record<string, string>;
+    previewText?: string;
+  };
+  conversation?: CommunicationConversationDetail;
+  taskId?: string;
+  vehicleId?: string;
+  changed?: boolean;
 }
 
 export interface CommunicationAiActivityListQuery {
