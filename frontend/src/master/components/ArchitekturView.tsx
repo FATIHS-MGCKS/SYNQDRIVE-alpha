@@ -1163,6 +1163,19 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C9–C12 Parity Sign-Off (V4.9.938)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-watch)]',
+    apis: [
+      { label: 'C13 gate', detail: 'MULTIPLE PARITY GAPS — C9 WhatsApp/Voice ops + C10 Channels/Email/Automations not complete' },
+      { label: 'C11/C12', detail: 'PASS — C11.1–C11.5 merged; C12 satisfied by C8.5 CommunicationDashboardWidget' },
+      { label: 'C9 gaps', detail: 'Legacy WA inbox: AI composer, templates, quick actions, intent filters; Legacy Voice: transcript, summary, sync, task-from-call' },
+      { label: 'C10 gaps', detail: 'No CC Channels IA; Email + Automations lack deep-links; WA templates + Voice analytics/onboarding legacy-only' },
+      { label: 'SMS', detail: 'Structural PASS — read-only config, outbound blocked until sent.dm credentials' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C9_C12_PARITY_SIGNOFF_2026_08.md' },
+    ],
+  },
+  {
     name: 'Communication Center AI Activity — C11.5 (V4.9.937)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',
