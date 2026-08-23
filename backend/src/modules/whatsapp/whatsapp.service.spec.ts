@@ -36,6 +36,7 @@ describe('WhatsAppService simulation', () => {
       matcher as any,
       audit as any,
       communicationProjection as any,
+      { sendTemplateMessage: jest.fn() } as any,
     );
   });
 
@@ -96,6 +97,7 @@ describe('WhatsAppService sendMessage provider guard', () => {
         projectOutboundAccepted: jest.fn(),
         projectOutboundFailed: jest.fn(),
       } as any,
+      { sendTemplateMessage: jest.fn() } as any,
     );
 
     await expect(service.sendMessage('org-1', 'convo-1', 'Hello')).rejects.toBeInstanceOf(

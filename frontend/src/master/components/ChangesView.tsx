@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c9-1-whatsapp-ops-2026-08-23',
+    version: '4.9.940',
+    title: 'Communication Center C9.1 — WhatsApp operations parity',
+    summary: [
+      'Canonical composer: human AI suggestion draft (no auto-send), quick actions menu, template picker outside 24h window.',
+      'Server-side intent inbox filter via WhatsApp lastDetectedIntent join.',
+      'Canonical TEMPLATE reply command (C11.2 idempotency) delegating to WhatsAppTemplateService.',
+    ],
+    reason: 'Close C9 WhatsApp operational gaps identified in parity audit while preserving C10 Channels boundaries.',
+    previousBehavior:
+      'AI suggestion, quick actions, intent filters, and in-thread template send existed only in legacy WhatsApp Business inbox.',
+    details: 'architecture/COMMUNICATION_CENTER_C9_1_WHATSAPP_OPERATIONS_PARITY_IMPLEMENTATION.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-23T18:00:00.000Z',
+  },
+  {
     id: 'communication-center-c10-completion-2026-08-23',
     version: '4.9.939',
     title: 'Communication Center C10 — Channels & Automations navigation',
