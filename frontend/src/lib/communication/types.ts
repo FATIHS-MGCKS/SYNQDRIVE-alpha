@@ -83,6 +83,7 @@ export interface CommunicationConversationListQuery {
   unreadOnly?: boolean;
   unassigned?: boolean;
   search?: string;
+  intent?: string;
   cursor?: string;
   limit?: number;
 }
@@ -139,7 +140,7 @@ export interface CommunicationReplyResponse {
   commandId: string;
 }
 
-export type CommunicationReplyContentType = 'TEXT' | 'IMAGE' | 'DOCUMENT';
+export type CommunicationReplyContentType = 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'TEMPLATE';
 
 export interface CommunicationAttachmentDto {
   id: string;

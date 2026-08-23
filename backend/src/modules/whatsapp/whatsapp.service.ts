@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   WhatsAppAiMode,
@@ -20,8 +20,17 @@ import {
   WhatsAppProviderNotConfiguredException,
   WhatsAppSendAmbiguousException,
   WhatsAppSimulationDisabledException,
+  WhatsAppTemplateNotApprovedException,
 } from './utils/whatsapp-errors';
 import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
+import { WhatsAppTemplateService } from './whatsapp-template.service';
+import {
+  listRequiredTemplateVariableKeys,
+  normalizeTemplateVariables,
+  orderTemplateVariables,
+  renderTemplateBodyPreview,
+  validateTemplateVariables,
+} from '@modules/communication/reply/communication-template-variables.util';
 
 @Injectable()
 export class WhatsAppService {
@@ -37,6 +46,7 @@ export class WhatsAppService {
     private readonly matcher: WhatsAppConversationMatcherService,
     private readonly audit: AuditService,
     private readonly communicationProjection: WhatsAppCommunicationProjectionIntegration,
+    private readonly templates: WhatsAppTemplateService,
   ) {}
 
   async getConfig(orgId: string) {
@@ -256,6 +266,96 @@ export class WhatsAppService {
     });
 
     return this.dispatchOutboundMessage(orgId, conversationId, convo, config, msg, content, options);
+  }
+
+  async sendOperatorTemplateMessage(
+    orgId: string,
+    conversationId: string,
+    templateId: string,
+    variables: Record<string, string>,
+    senderName?: string,
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    const config = await this.requireConfig(orgId);
+    const convo = await this.requireConversation(orgId, conversationId);
+
+    await this.consent.assertCanSend(orgId, convo.contactPhone, 'transactional');
+
+    const template = await this.prisma.whatsAppTemplate.findFirst({
+      where: { id: templateId, organizationId: orgId },
+    });
+    if (!template) {
+      throw new NotFoundException('Template not found');
+    }
+
+    const policy = this.policy.canSendTemplate(orgId, template);
+    if (!policy.allowed) {
+      throw new WhatsAppTemplateNotApprovedException(policy.reason ?? 'Template cannot be sent');
+    }
+
+    const normalizedVariables = normalizeTemplateVariables(variables);
+    const validation = validateTemplateVariables(
+      template.variableSchema as Record<string, unknown> | null,
+      normalizedVariables,
+    );
+    if (!validation.valid) {
+      throw new BadRequestException({
+        code: 'TEMPLATE_VARIABLES_INVALID',
+        missing: validation.missing,
+      });
+    }
+
+    const previewContent = renderTemplateBodyPreview(template.bodyTemplate, normalizedVariables);
+
+    const scopedIdempotencyKey = options?.idempotencyKey?.trim() || null;
+    if (scopedIdempotencyKey) {
+      const existing = await this.prisma.whatsAppMessage.findFirst({
+        where: {
+          organizationId: orgId,
+          conversationId,
+          idempotencyKey: scopedIdempotencyKey,
+          direction: 'outgoing',
+        },
+      });
+      if (existing) {
+        return this.resumeOrReturnExistingTemplateMessage(
+          orgId,
+          conversationId,
+          convo,
+          config,
+          existing,
+          template,
+          normalizedVariables,
+          options,
+        );
+      }
+    }
+
+    const msg = await this.prisma.whatsAppMessage.create({
+      data: {
+        organizationId: orgId,
+        conversationId,
+        direction: 'outgoing',
+        senderType: 'human',
+        senderName: senderName || null,
+        content: previewContent,
+        messageType: 'template',
+        templateName: template.name,
+        status: WhatsAppMessageDeliveryStatus.QUEUED,
+        idempotencyKey: scopedIdempotencyKey,
+      },
+    });
+
+    return this.dispatchOutboundTemplateMessage(
+      orgId,
+      conversationId,
+      convo,
+      config,
+      msg,
+      template,
+      normalizedVariables,
+      options,
+    );
   }
 
   async sendMediaMessage(
@@ -769,6 +869,141 @@ export class WhatsAppService {
       entity: ActivityEntity.INTEGRATION,
       entityId: msg.id,
       description: 'Outbound WhatsApp message sent by human operator',
+    });
+
+    return this.mapMessage(updated);
+  }
+
+  private async resumeOrReturnExistingTemplateMessage(
+    orgId: string,
+    conversationId: string,
+    convo: Awaited<ReturnType<typeof this.requireConversation>>,
+    config: Awaited<ReturnType<typeof this.requireConfig>>,
+    existing: {
+      id: string;
+      status: WhatsAppMessageDeliveryStatus;
+      providerMessageId: string | null;
+      failureReason: string | null;
+      providerDispatchStartedAt: Date | null;
+    },
+    template: { id: string; name: string; language: string; bodyTemplate: string; variableSchema: unknown },
+    variables: Record<string, string>,
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    if (existing.status === WhatsAppMessageDeliveryStatus.SENT) {
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.mapMessage(full);
+    }
+
+    if (existing.status === WhatsAppMessageDeliveryStatus.FAILED) {
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.mapMessage(full);
+    }
+
+    if (existing.providerMessageId || existing.providerDispatchStartedAt) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+    return this.dispatchOutboundTemplateMessage(
+      orgId,
+      conversationId,
+      convo,
+      config,
+      full,
+      template,
+      variables,
+      options,
+    );
+  }
+
+  private async dispatchOutboundTemplateMessage(
+    orgId: string,
+    conversationId: string,
+    convo: Awaited<ReturnType<typeof this.requireConversation>>,
+    config: Awaited<ReturnType<typeof this.requireConfig>>,
+    msg: { id: string; content: string },
+    template: { id: string; name: string; language: string },
+    variables: Record<string, string>,
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    let finalStatus: WhatsAppMessageDeliveryStatus = WhatsAppMessageDeliveryStatus.FAILED;
+    let providerMessageId: string | null = null;
+    let failureReason: string | null = null;
+
+    if (!this.provider.isConfigured(config)) {
+      failureReason = 'WHATSAPP_PROVIDER_NOT_CONFIGURED';
+      const failed = await this.prisma.whatsAppMessage.update({
+        where: { id: msg.id },
+        data: { status: WhatsAppMessageDeliveryStatus.FAILED, failureReason },
+      });
+      if (!options?.skipCanonicalProjection) {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: failed,
+        });
+      }
+      throw new WhatsAppProviderNotConfiguredException();
+    }
+
+    const claimed = await this.claimProviderDispatch(msg.id);
+    if (!claimed) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    try {
+      await this.templates.sendTemplateMessage(config, convo.contactPhone, template.id, variables, {
+        conversationId,
+        messageId: msg.id,
+      });
+      finalStatus = WhatsAppMessageDeliveryStatus.SENT;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown provider error';
+      if (/timeout|timed out|econnreset|econnrefused|socket hang up|network|aborted|fetch failed|gateway timeout/i.test(message)) {
+        await this.prisma.whatsAppMessage.update({
+          where: { id: msg.id },
+          data: { failureReason: 'DISPATCH_UNCERTAIN' },
+        }).catch(() => undefined);
+        throw new WhatsAppSendAmbiguousException();
+      }
+      failureReason = message;
+      finalStatus = WhatsAppMessageDeliveryStatus.FAILED;
+    }
+
+    const updated = await this.prisma.whatsAppMessage.update({
+      where: { id: msg.id },
+      data: {
+        status: finalStatus,
+        providerMessageId,
+        failureReason,
+      },
+    });
+
+    await this.prisma.whatsAppConversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date(), lastMessagePreview: msg.content.slice(0, 120) },
+    });
+
+    if (!options?.skipCanonicalProjection) {
+      if (finalStatus === WhatsAppMessageDeliveryStatus.SENT) {
+        void this.communicationProjection.projectOutboundAccepted({
+          conversation: convo,
+          message: updated,
+        });
+      } else {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: updated,
+        });
+      }
+    }
+
+    void this.audit.record({
+      actorOrganizationId: orgId,
+      action: ActivityAction.CREATE,
+      entity: ActivityEntity.INTEGRATION,
+      entityId: msg.id,
+      description: 'Outbound WhatsApp template sent by human operator',
     });
 
     return this.mapMessage(updated);

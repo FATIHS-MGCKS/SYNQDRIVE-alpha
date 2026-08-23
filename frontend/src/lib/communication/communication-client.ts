@@ -120,10 +120,37 @@ export const communicationClient = {
       text?: string;
       attachmentId?: string;
       contentType?: import('./types').CommunicationReplyContentType;
+      templateId?: string;
+      templateVariables?: Record<string, string>;
       idempotencyKey: string;
     },
   ) {
     return wrap(() => api.communication.replyConversation(orgId, conversationId, body));
+  },
+
+  getComposerCapability(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.getComposerCapability(orgId, conversationId));
+  },
+
+  getAiSuggestion(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.getAiSuggestion(orgId, conversationId));
+  },
+
+  getQuickActions(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.getQuickActions(orgId, conversationId));
+  },
+
+  executeQuickAction(
+    orgId: string,
+    conversationId: string,
+    actionId: import('../api').WhatsAppQuickActionId,
+    body?: Record<string, unknown>,
+  ) {
+    return wrap(() => api.communication.executeQuickAction(orgId, conversationId, actionId, body));
+  },
+
+  listSendableTemplates(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.listSendableTemplates(orgId, conversationId));
   },
 
   uploadAttachment(orgId: string, conversationId: string, file: File) {

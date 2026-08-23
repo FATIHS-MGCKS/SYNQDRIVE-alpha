@@ -25,6 +25,10 @@ export interface UseCommunicationReplyResult {
   sendError: CommunicationClientErrorCode | null;
   sendErrorMessage: string | null;
   send: () => Promise<CommunicationConversationDetail | null>;
+  sendTemplate: (input: {
+    templateId: string;
+    variables: Record<string, string>;
+  }) => Promise<CommunicationConversationDetail | null>;
   clearSendError: () => void;
 }
 
@@ -51,6 +55,14 @@ function mapReplyError(err: unknown): {
     };
   }
 
+  if (message.includes('TEMPLATE_REQUIRED')) {
+    return {
+      code: 'invalid_query',
+      message: 'Template required',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
+  }
   if (!(err instanceof CommunicationClientError)) {
     return {
       code: 'unknown',
@@ -249,6 +261,62 @@ export function useCommunicationReply({
     setDraft,
   ]);
 
+  const sendTemplate = useCallback(
+    async (input: {
+      templateId: string;
+      variables: Record<string, string>;
+    }): Promise<CommunicationConversationDetail | null> => {
+      if (!orgId || !conversationId || inflightRef.current) return null;
+
+      const requestSignature = communicationConversationSignature(orgId, conversationId);
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = createIdempotencyKey();
+      }
+
+      inflightRef.current = true;
+      setSending(true);
+      setSendError(null);
+      setSendErrorMessage(null);
+
+      try {
+        const response = await communicationClient.replyConversation(orgId, conversationId, {
+          contentType: 'TEMPLATE',
+          templateId: input.templateId,
+          templateVariables: input.variables,
+          idempotencyKey: idempotencyKeyRef.current,
+        });
+
+        if (activeSignatureRef.current !== requestSignature) return null;
+
+        if (response.sendState !== 'ACCEPTED') {
+          setSendError('unknown');
+          setSendErrorMessage('Could not send template');
+          idempotencyKeyRef.current = null;
+          return null;
+        }
+
+        idempotencyKeyRef.current = null;
+        onConversationUpdated?.(response.conversation);
+        await onTimelineRefresh?.();
+        await onInboxRefresh?.();
+        return response.conversation;
+      } catch (err) {
+        if (activeSignatureRef.current !== requestSignature) return null;
+        const mapped = mapReplyError(err);
+        setSendError(mapped.code);
+        setSendErrorMessage(mapped.message);
+        if (!mapped.preserveIdempotencyKey && mapped.resetIdempotencyKey) {
+          idempotencyKeyRef.current = null;
+        }
+        return null;
+      } finally {
+        inflightRef.current = false;
+        setSending(false);
+      }
+    },
+    [conversationId, onConversationUpdated, onInboxRefresh, onTimelineRefresh, orgId],
+  );
+
   return {
     draft,
     setDraft,
@@ -256,6 +324,7 @@ export function useCommunicationReply({
     sendError,
     sendErrorMessage,
     send,
+    sendTemplate,
     clearSendError: () => {
       setSendError(null);
       setSendErrorMessage(null);

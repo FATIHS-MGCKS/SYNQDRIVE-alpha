@@ -1,5 +1,6 @@
 import {
   IsEnum,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -30,6 +31,15 @@ export class CommunicationReplyRequestDto {
   })
   @IsUUID()
   attachmentId?: string;
+
+  @ValidateIf((dto: CommunicationReplyRequestDto) => dto.contentType === CommunicationReplyContentType.TEMPLATE)
+  @IsUUID()
+  templateId?: string;
+
+  @ValidateIf((dto: CommunicationReplyRequestDto) => dto.contentType === CommunicationReplyContentType.TEMPLATE)
+  @IsOptional()
+  @IsObject()
+  templateVariables?: Record<string, string>;
 
   @IsString()
   @MinLength(8)

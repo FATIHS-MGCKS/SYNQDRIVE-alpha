@@ -46,6 +46,11 @@ import {
   matchesReplyCommandPayload,
   shouldBackfillLegacyPayloadHash,
 } from './communication-reply-payload';
+import {
+  normalizeTemplateVariables,
+  renderTemplateBodyPreview,
+  validateTemplateVariables,
+} from './communication-template-variables.util';
 import { CommunicationAttachmentService } from '../media/communication-attachment.service';
 
 export interface CommunicationReplyActor {
@@ -61,6 +66,8 @@ interface PreparedReply {
   text: string;
   contentType: CommunicationReplyContentType;
   attachmentId: string | null;
+  templateId: string | null;
+  templateVariables: Record<string, string>;
   payloadHash: string;
   action: PrepareAction;
 }
@@ -95,10 +102,12 @@ export class CommunicationReplyService {
       text?: string;
       attachmentId?: string;
       contentType?: CommunicationReplyContentType;
+      templateId?: string;
+      templateVariables?: Record<string, string>;
       idempotencyKey: string;
     },
   ): Promise<CommunicationReplyResponseDto> {
-    const payload = this.resolveReplyPayload(input);
+    const payload = await this.resolveReplyPayload(organizationId, input);
 
     const prepared = await this.prepareReplyCommand(
       organizationId,
@@ -141,16 +150,21 @@ export class CommunicationReplyService {
       text: prepared.text,
       contentType: prepared.contentType,
       attachmentId: prepared.attachmentId,
+      templateId: prepared.templateId,
+      templateVariables: prepared.templateVariables,
       clientIdempotencyKey: input.idempotencyKey,
       commandId: prepared.commandId,
     };
 
     let sendResult;
     try {
-      sendResult =
-        prepared.contentType === CommunicationReplyContentType.TEXT
-          ? await adapter.sendTextReply(sendInput)
-          : await adapter.sendMediaReply(sendInput);
+      if (prepared.contentType === CommunicationReplyContentType.TEXT) {
+        sendResult = await adapter.sendTextReply(sendInput);
+      } else if (prepared.contentType === CommunicationReplyContentType.TEMPLATE) {
+        sendResult = await adapter.sendTemplateReply(sendInput);
+      } else {
+        sendResult = await adapter.sendMediaReply(sendInput);
+      }
     } catch (error) {
       await this.applyCommandOutcome(prepared.commandId, error);
       throw error;
@@ -167,11 +181,16 @@ export class CommunicationReplyService {
     return response;
   }
 
-  private resolveReplyPayload(input: {
-    text?: string;
-    attachmentId?: string;
-    contentType?: CommunicationReplyContentType;
-  }) {
+  private async resolveReplyPayload(
+    organizationId: string,
+    input: {
+      text?: string;
+      attachmentId?: string;
+      contentType?: CommunicationReplyContentType;
+      templateId?: string;
+      templateVariables?: Record<string, string>;
+    },
+  ) {
     const contentType = input.contentType ?? CommunicationReplyContentType.TEXT;
     const text = (input.text ?? '').trim();
 
@@ -184,7 +203,49 @@ export class CommunicationReplyService {
         contentType,
         text,
         attachmentId: null,
+        templateId: null,
+        templateVariables: {},
         payloadHash: buildReplyPayloadHash({ contentType, text, attachmentId: null }),
+      };
+    }
+
+    if (contentType === CommunicationReplyContentType.TEMPLATE) {
+      if (!input.templateId) {
+        throw CommunicationReplyError.templateNotFound();
+      }
+      const template = await this.prisma.whatsAppTemplate.findFirst({
+        where: { id: input.templateId, organizationId },
+      });
+      if (!template) {
+        throw CommunicationReplyError.templateNotFound();
+      }
+      const policyAllowed =
+        template.providerStatus === 'APPROVED'
+        || (template.providerStatus === 'DRAFT' && process.env.NODE_ENV !== 'production');
+      if (!policyAllowed) {
+        throw CommunicationReplyError.templateNotApproved();
+      }
+      const templateVariables = normalizeTemplateVariables(input.templateVariables);
+      const validation = validateTemplateVariables(
+        template.variableSchema as Record<string, unknown> | null,
+        templateVariables,
+      );
+      if (!validation.valid) {
+        throw CommunicationReplyError.templateVariablesInvalid(validation.missing);
+      }
+      const preview = renderTemplateBodyPreview(template.bodyTemplate, templateVariables);
+      return {
+        contentType,
+        text: preview,
+        attachmentId: null,
+        templateId: template.id,
+        templateVariables,
+        payloadHash: buildReplyPayloadHash({
+          contentType,
+          text: preview,
+          templateId: template.id,
+          templateVariables,
+        }),
       };
     }
 
@@ -199,6 +260,8 @@ export class CommunicationReplyService {
       contentType,
       text,
       attachmentId: input.attachmentId,
+      templateId: null,
+      templateVariables: {},
       payloadHash: buildReplyPayloadHash({
         contentType,
         text,
@@ -237,6 +300,8 @@ export class CommunicationReplyService {
       text: string;
       contentType: CommunicationReplyContentType;
       attachmentId: string | null;
+      templateId: string | null;
+      templateVariables: Record<string, string>;
       payloadHash: string;
     },
     clientIdempotencyKey: string,
@@ -251,6 +316,8 @@ export class CommunicationReplyService {
       text: payload.text,
       contentType: payload.contentType,
       attachmentId: payload.attachmentId,
+      templateId: payload.templateId,
+      templateVariables: payload.templateVariables,
       payloadHash: payload.payloadHash,
       action,
     });
@@ -312,6 +379,8 @@ export class CommunicationReplyService {
             text: payload.text,
             contentType: payload.contentType,
             attachmentId: payload.attachmentId,
+            templateId: payload.templateId,
+            templateVariables: payload.templateVariables,
             payloadHash: payload.payloadHash,
             channel: refreshed.channel,
             actorUserId: actor.userId,

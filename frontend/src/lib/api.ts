@@ -4189,6 +4189,7 @@ export const api = {
         if (query.unreadOnly) q.set('unreadOnly', 'true');
         if (query.unassigned) q.set('unassigned', 'true');
         if (query.search) q.set('search', query.search);
+        if (query.intent) q.set('intent', query.intent);
         if (query.cursor) q.set('cursor', query.cursor);
         if (query.limit != null) q.set('limit', String(query.limit));
       }
@@ -4225,6 +4226,7 @@ export const api = {
         if (query.unreadOnly) q.set('unreadOnly', 'true');
         if (query.unassigned) q.set('unassigned', 'true');
         if (query.search) q.set('search', query.search);
+        if (query.intent) q.set('intent', query.intent);
       }
       const qs = q.toString();
       return get<import('./communication/types').CommunicationConversationSummary>(
@@ -4298,6 +4300,8 @@ export const api = {
         text?: string;
         attachmentId?: string;
         contentType?: import('./communication/types').CommunicationReplyContentType;
+        templateId?: string;
+        templateVariables?: Record<string, string>;
         idempotencyKey: string;
       },
     ) =>
@@ -4305,6 +4309,44 @@ export const api = {
         `/organizations/${orgId}/communication/conversations/${conversationId}/reply`,
         body,
       ),
+    getComposerCapability: (orgId: string, conversationId: string) =>
+      get<{ replyMode: 'FREEFORM_TEXT_ALLOWED' | 'TEMPLATE_REQUIRED' | 'CHANNEL_NOT_REPLYABLE' }>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/composer-capability`,
+      ),
+    getAiSuggestion: (orgId: string, conversationId: string) =>
+      post<{
+        suggestedReply: string | null;
+        intent: string;
+        confidence: number;
+        suggestionId: string | null;
+        canSendAutomatically: boolean;
+      }>(`/organizations/${orgId}/communication/conversations/${conversationId}/ai-suggestion`, {}),
+    getQuickActions: (orgId: string, conversationId: string) =>
+      get<WhatsAppConversationContext>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/quick-actions`,
+      ),
+    executeQuickAction: (
+      orgId: string,
+      conversationId: string,
+      actionId: WhatsAppQuickActionId,
+      body: Record<string, unknown> = {},
+    ) =>
+      post<unknown>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/quick-actions/${actionId}`,
+        body,
+      ),
+    listSendableTemplates: (orgId: string, conversationId: string) =>
+      get<{
+        items: Array<{
+          id: string;
+          name: string;
+          language: string;
+          category: string;
+          bodyTemplate: string;
+          variableSchema?: Record<string, unknown> | null;
+          providerStatus: string;
+        }>;
+      }>(`/organizations/${orgId}/communication/conversations/${conversationId}/sendable-templates`),
     uploadAttachment: async (orgId: string, conversationId: string, file: File) => {
       const form = new FormData();
       form.append('file', file);

@@ -125,6 +125,74 @@ export class WhatsAppCommunicationOutboundAdapter implements CommunicationOutbou
     }
   }
 
+  async sendTemplateReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult> {
+    if (!input.templateId) {
+      throw CommunicationReplyError.templateNotFound();
+    }
+
+    const nativeConversation = await this.prisma.whatsAppConversation.findFirst({
+      where: {
+        id: input.nativeConversationId,
+        organizationId: input.organizationId,
+      },
+      select: { id: true, organizationId: true },
+    });
+
+    if (!nativeConversation) {
+      throw CommunicationReplyError.notFound();
+    }
+
+    const scopedIdempotencyKey = buildNativeWhatsAppIdempotencyKey(
+      input.organizationId,
+      input.conversation.id,
+      input.clientIdempotencyKey,
+    );
+
+    try {
+      const message = await this.whatsapp.sendOperatorTemplateMessage(
+        input.organizationId,
+        nativeConversation.id,
+        input.templateId,
+        input.templateVariables ?? {},
+        input.actorDisplayName ?? undefined,
+        { idempotencyKey: scopedIdempotencyKey },
+      );
+
+      await this.prisma.communicationReplyCommand.update({
+        where: { id: input.commandId },
+        data: { nativeMessageId: message.id },
+      });
+
+      if (message.status === WhatsAppMessageDeliveryStatus.SENT) {
+        const canonicalEvent = await this.waitForCanonicalEvent(
+          input.organizationId,
+          message.id,
+        );
+        return {
+          sendState: CommunicationReplySendState.ACCEPTED,
+          nativeMessageId: message.id,
+          canonicalEventId: canonicalEvent?.id ?? null,
+        };
+      }
+
+      const outcome = classifyNativeWhatsAppFailureReason(message.failureReason);
+      if (outcome === CommunicationReplyOutcomeClass.UNKNOWN) {
+        return {
+          sendState: CommunicationReplySendState.UNKNOWN,
+          nativeMessageId: message.id,
+        };
+      }
+
+      return {
+        sendState: CommunicationReplySendState.FAILED,
+        nativeMessageId: message.id,
+        failureCode: message.failureReason ?? 'SEND_FAILED',
+      };
+    } catch (error) {
+      throw this.mapProviderError(error);
+    }
+  }
+
   private async loadAttachmentBuffer(objectKey: string): Promise<Buffer> {
     return this.storage.getObject(objectKey);
   }
@@ -229,6 +297,8 @@ export class WhatsAppCommunicationOutboundAdapter implements CommunicationOutbou
         return CommunicationReplyError.channelNotConfigured();
       case WHATSAPP_ERROR_CODES.FREE_TEXT_BLOCKED:
         return CommunicationReplyError.templateRequired();
+      case WHATSAPP_ERROR_CODES.TEMPLATE_NOT_APPROVED:
+        return CommunicationReplyError.templateNotApproved();
       case WHATSAPP_ERROR_CODES.CONSENT_OPTED_OUT:
       case WHATSAPP_ERROR_CODES.POLICY_BLOCKED:
         return CommunicationReplyError.sendFailed('Message blocked by policy');

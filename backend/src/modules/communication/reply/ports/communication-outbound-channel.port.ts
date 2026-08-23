@@ -10,6 +10,8 @@ export interface CommunicationOutboundSendInput {
   text: string;
   contentType: import('@prisma/client').CommunicationReplyContentType;
   attachmentId?: string | null;
+  templateId?: string | null;
+  templateVariables?: Record<string, string>;
   clientIdempotencyKey: string;
   commandId: string;
 }
@@ -25,4 +27,5 @@ export interface CommunicationOutboundChannelPort {
   readonly channel: CommunicationChannel;
   sendTextReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult>;
   sendMediaReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult>;
+  sendTemplateReply(input: CommunicationOutboundSendInput): Promise<CommunicationOutboundSendResult>;
 }

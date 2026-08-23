@@ -45,6 +45,8 @@ import { CommunicationAiActivityRepository } from './ai-activity/communication-a
 import { CommunicationAiActivityService } from './ai-activity/communication-ai-activity.service';
 import { CommunicationAiActivityController } from './ai-activity/communication-ai-activity.controller';
 import { CommunicationHandoffNotificationService } from './handoff/communication-handoff-notification.service';
+import { CommunicationWhatsAppOpsService } from './ops/communication-whatsapp-ops.service';
+import { CommunicationWhatsAppOpsController } from './ops/communication-whatsapp-ops.controller';
 
 /**
  * Canonical Communication Center persistence + normalization foundation (C1–C7.2).
@@ -94,6 +96,7 @@ import { CommunicationHandoffNotificationService } from './handoff/communication
     CommunicationAiActivityRepository,
     CommunicationAiActivityService,
     CommunicationHandoffNotificationService,
+    CommunicationWhatsAppOpsService,
   ],
   controllers: [
     CommunicationReadController,
@@ -101,6 +104,7 @@ import { CommunicationHandoffNotificationService } from './handoff/communication
     CommunicationReplyController,
     CommunicationAttachmentController,
     CommunicationAiActivityController,
+    CommunicationWhatsAppOpsController,
   ],
   exports: [
     CommunicationTenantContextValidation,

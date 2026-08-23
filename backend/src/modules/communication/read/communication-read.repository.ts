@@ -57,7 +57,16 @@ export class CommunicationReadRepository {
       ? buildCommunicationInboxCursorWhere(decodeCommunicationInboxCursor(query.cursor))
       : undefined;
 
-    const where = this.buildConversationListWhere(organizationId, query, cursorWhere);
+    const intentNativeIds = query.intent
+      ? await this.resolveIntentFilterNativeIds(organizationId, query.intent)
+      : undefined;
+
+    const where = this.buildConversationListWhere(
+      organizationId,
+      query,
+      cursorWhere,
+      intentNativeIds,
+    );
 
     const rows = await this.prisma.communicationConversation.findMany({
       where,
@@ -165,11 +174,14 @@ export class CommunicationReadRepository {
     organizationId: string,
     query: CommunicationConversationListQueryDto,
   ): Promise<CommunicationConversationSummaryCounts> {
+    const intentNativeIds = query.intent
+      ? await this.resolveIntentFilterNativeIds(organizationId, query.intent)
+      : undefined;
     const where = this.buildConversationListWhere(organizationId, {
       ...query,
       cursor: undefined,
       limit: undefined,
-    });
+    }, undefined, intentNativeIds);
 
     const [unreadAgg, unreadConversations, unassigned, requiresAttention, channelGroups] =
       await Promise.all([
@@ -211,6 +223,7 @@ export class CommunicationReadRepository {
     organizationId: string,
     query: CommunicationConversationListQueryDto,
     cursorWhere?: Prisma.CommunicationConversationWhereInput,
+    intentNativeIds?: string[] | null,
   ): Prisma.CommunicationConversationWhereInput {
     const and: Prisma.CommunicationConversationWhereInput[] = [{ organizationId }];
 
@@ -262,11 +275,86 @@ export class CommunicationReadRepository {
     if (searchWhere) {
       and.push(searchWhere);
     }
+    if (query.intent) {
+      const intentFilter = this.buildCanonicalIntentFilter(query.intent, intentNativeIds);
+      if (intentFilter) {
+        and.push(intentFilter);
+      }
+    }
     if (cursorWhere) {
       and.push(cursorWhere);
     }
 
     return { AND: and };
+  }
+
+  private buildCanonicalIntentFilter(
+    intent: string,
+    nativeIds: string[] | null | undefined,
+  ): Prisma.CommunicationConversationWhereInput | undefined {
+    const key = intent.trim().toLowerCase();
+    switch (key) {
+      case 'unknown_customer':
+        return { customerId: null };
+      case 'booking':
+      case 'has_booking':
+        return { bookingId: { not: null } };
+      case 'ai_suggested':
+        return {
+          unreadCount: { gt: 0 },
+          channel: CommunicationChannel.WHATSAPP,
+          ...(nativeIds
+            ? { nativeConversationId: { in: nativeIds.length > 0 ? nativeIds : ['__none__'] } }
+            : {}),
+        };
+      default:
+        if (nativeIds) {
+          return {
+            channel: CommunicationChannel.WHATSAPP,
+            nativeConversationId: { in: nativeIds.length > 0 ? nativeIds : ['__none__'] },
+          };
+        }
+        return undefined;
+    }
+  }
+
+  private async resolveIntentFilterNativeIds(
+    organizationId: string,
+    intent: string,
+  ): Promise<string[] | null> {
+    const key = intent.trim().toLowerCase();
+    if (key === 'unknown_customer' || key === 'booking' || key === 'has_booking') {
+      return null;
+    }
+
+    let intentWhere: Prisma.WhatsAppConversationWhereInput = { organizationId };
+
+    switch (key) {
+      case 'payment':
+        intentWhere.lastDetectedIntent = { in: ['PAYMENT', 'DEPOSIT'] };
+        break;
+      case 'damage':
+        intentWhere.lastDetectedIntent = { in: ['DAMAGE', 'ACCIDENT'] };
+        break;
+      case 'documents':
+        intentWhere.lastDetectedIntent = 'DOCUMENTS';
+        break;
+      case 'ai_suggested':
+        intentWhere.AND = [
+          { lastDetectedIntent: { not: null } },
+          { lastDetectedIntent: { notIn: ['UNKNOWN', 'OPT_OUT'] } },
+        ];
+        break;
+      default:
+        intentWhere.lastDetectedIntent = intent.trim().toUpperCase();
+        break;
+    }
+
+    const rows = await this.prisma.whatsAppConversation.findMany({
+      where: intentWhere,
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
   }
 
   private buildSearchWhere(
