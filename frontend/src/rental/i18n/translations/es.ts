@@ -82,6 +82,7 @@ export const es: Record<TranslationKey, string> = {
   'dashboardAttention.fleetSummary.unevaluable': '{count} no evaluables',
   'dashboardAttention.fleetSummary.unknown': '{count} desconocidos',
   'dashboardAttention.loadMore': 'Cargar más ({count} mostrados)',
+  'notification.tab.operations': 'Operaciones',
   'dashboardTasksOverview.title': 'Tareas',
   'dashboardTasksOverview.subtitle': '{openCount} abiertas · {todayCount} vencen hoy',
   'dashboardTasksOverview.subtitleLoading': 'Cargando tareas…',

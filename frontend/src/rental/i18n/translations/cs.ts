@@ -82,6 +82,7 @@ export const cs: Record<TranslationKey, string> = {
   'dashboardAttention.fleetSummary.unevaluable': '{count} nevyhodnotitelnych',
   'dashboardAttention.fleetSummary.unknown': '{count} neznamych',
   'dashboardAttention.loadMore': 'Nacist vice ({count} zobrazeno)',
+  'notification.tab.operations': 'Provoz',
   'communication.channels.filterGroup': 'Filtry kanalu dorucene',
   'communication.channels.all': 'Vse',
   'communication.channels.whatsapp': 'WhatsApp',

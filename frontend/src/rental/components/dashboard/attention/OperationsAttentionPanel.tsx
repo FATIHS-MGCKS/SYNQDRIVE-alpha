@@ -6,8 +6,7 @@ import type { TranslationKey } from '../../../i18n/translations/en';
 import type { Locale } from '../../../i18n/LanguageContext';
 import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
 import { AttentionScopedList, type AttentionScopedListHandlers } from './AttentionScopedList';
-
-export type DashboardAttentionLayout = 'default' | 'sidebar';
+import type { DashboardAttentionLayout } from './DashboardAttentionStack';
 
 interface OperationsAttentionPanelProps {
   vm: DashboardViewModel;

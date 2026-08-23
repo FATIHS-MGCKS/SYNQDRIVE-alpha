@@ -834,6 +834,7 @@ export const fr: Record<TranslationKey, string> = {
   'dashboardAttention.fleetSummary.unevaluable': '{count} non evaluables',
   'dashboardAttention.fleetSummary.unknown': '{count} inconnus',
   'dashboardAttention.loadMore': 'Charger plus ({count} affiches)',
+  'notification.tab.operations': 'Operations',
   'dashboardTasksOverview.title': 'Taches',
   'dashboardTasksOverview.subtitle': '{openCount} ouvertes · {todayCount} dues aujourd\'hui',
   'dashboardTasksOverview.subtitleLoading': 'Chargement des taches…',
