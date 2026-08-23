@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Quick Actions (P2.2.29 — V4.9.956)', icon: Globe,
+    endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewQuickActions` (pickup, return, booking-create CTAs).',
+    service: '**Locale flow:** `useLanguage().locale` → extracted Quick Actions sub-surface; `operator-vehicle-quick-view-i18n.ts` pickup/return/create-booking labels (reuses `vehicle.bookings.startPickup` / `startReturn`). **Keys:** +1 EN+DE `operator.vehicleQuickView.quickActions.createBooking.title` (8445→8446). **Machine values:** handover kinds, booking-create sheet type, gate predicates, callbacks frozen. **Guardrails:** P2.2.29 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-quick-actions-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-29-operator-vehicle-quick-view-quick-actions-implementation-2026-08-23.md; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_QUICK_ACTIONS_P2_2_29_2026-08-23.md' },
   { name: 'Platform i18n Operator Vehicle Quick View Header & Primary Status (P2.2.28 — V4.9.955)', icon: Globe,
     endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewHeader` (hero, primary status, release block).',
     service: '**Locale flow:** `useLanguage().locale` → extracted header sub-surface; `operator-vehicle-quick-view-i18n.ts` primary status/release/health maps (reuses `dashboard.label.*`, `health.state.*`). **Keys:** +11 EN+DE `operator.vehicleQuickView.header.*` (8434→8445); reuses `common.close`, `dashboard.fleet.cleaningPending`. **Machine values:** primaryStatus, releaseDecision, overall_state, cleaningStatus predicate, badge tones, close/reload callbacks frozen. **Guardrails:** P2.2.28 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-header-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

@@ -1,7 +1,4 @@
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CalendarPlus,
   Disc3,
   ListTodo,
   ShieldAlert,
@@ -9,8 +6,6 @@ import {
 } from 'lucide-react';
 import { SkeletonRows, StatusChip } from '../../components/patterns';
 import { formatDamageType } from '../../rental/lib/damage.types';
-import { useLanguage } from '../../i18n/LanguageContext';
-import { resolveHandoverGateReason } from '../../rental/components/handover/handover-i18n';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
@@ -29,6 +24,7 @@ import {
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
 import { OperatorVehicleQuickViewHeader } from './OperatorVehicleQuickViewHeader';
+import { OperatorVehicleQuickViewQuickActions } from './OperatorVehicleQuickViewQuickActions';
 import { OperatorVehicleQuickViewTasks } from './OperatorVehicleQuickViewTasks';
 import { useOperatorShell } from '../context/OperatorShellContext';
 
@@ -58,7 +54,6 @@ function SectionCard({
 }
 
 export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicleQuickViewProps) {
-  const { locale } = useLanguage();
   const { openSheet } = useOperatorShell();
   const { openHandover } = useOperatorHandover();
   const { openDamageCapture } = useOperatorDamageCapture();
@@ -103,69 +98,25 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
         onReloadDetails={() => void data.reloadDetails()}
       />
 
-      {/* Quick actions */}
-      <div className="grid gap-2">
-        {pickupItem && (
-          <button
-            type="button"
-            disabled={!data.pickupAction?.gate.allowed}
-            onClick={openPickup}
-            className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-[color:var(--brand)]/30 bg-[color:var(--brand-soft)] px-4 text-left disabled:opacity-50"
-          >
-            <ArrowUpRight className="h-5 w-5 shrink-0 text-[color:var(--brand-ink)]" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Pickup starten</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
-                {pickupItem.customerName}
-                {!data.pickupAction?.gate.allowed && data.pickupAction?.gate
-                  ? (() => {
-                      const reason = resolveHandoverGateReason(locale, data.pickupAction!.gate);
-                      return reason ? ` · ${reason}` : '';
-                    })()
-                  : ''}
-              </span>
-            </span>
-          </button>
-        )}
-        {returnItem && (
-          <button
-            type="button"
-            disabled={!data.returnAction?.gate.allowed}
-            onClick={openReturn}
-            className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left disabled:opacity-50"
-          >
-            <ArrowDownLeft className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Return starten</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
-                {returnItem.customerName}
-                {!data.returnAction?.gate.allowed && data.returnAction?.gate
-                  ? (() => {
-                      const reason = resolveHandoverGateReason(locale, data.returnAction!.gate);
-                      return reason ? ` · ${reason}` : '';
-                    })()
-                  : ''}
-              </span>
-            </span>
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() =>
-            openSheet({
-              type: 'booking-create',
-              prefillVehicleId: vehicle.id,
-            })
-          }
-          className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left"
-        >
-          <CalendarPlus className="h-5 w-5 shrink-0 text-[color:var(--brand-ink)]" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">Buchung für dieses Fahrzeug</span>
-            <span className="block truncate text-[11px] text-muted-foreground">{label}</span>
-          </span>
-        </button>
-      </div>
+      <OperatorVehicleQuickViewQuickActions
+        pickupVisible={Boolean(pickupItem)}
+        pickupDisabled={!data.pickupAction?.gate.allowed}
+        pickupCustomerName={pickupItem?.customerName ?? ''}
+        pickupGate={data.pickupAction?.gate ?? null}
+        returnVisible={Boolean(returnItem)}
+        returnDisabled={!data.returnAction?.gate.allowed}
+        returnCustomerName={returnItem?.customerName ?? ''}
+        returnGate={data.returnAction?.gate ?? null}
+        vehicleLabel={label}
+        onPickup={openPickup}
+        onReturn={openReturn}
+        onCreateBooking={() =>
+          openSheet({
+            type: 'booking-create',
+            prefillVehicleId: vehicle.id,
+          })
+        }
+      />
 
       {/* Booking */}
       {data.bookingContext && (

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-quick-actions-p2-2-29-2026-08-23',
+    version: '4.9.956',
+    title: 'Platform i18n — P2.2.29 Operator Vehicle Quick View Quick Actions localization',
+    summary: [
+      'Localized Operator Vehicle Quick View handover/booking CTAs via extracted `OperatorVehicleQuickViewQuickActions.tsx` and extended `operator-vehicle-quick-view-i18n.ts`.',
+      'P229 enforce-clean exact scope (2 paths) reports 0 findings; +1 EN+DE key under `operator.vehicleQuickView.quickActions.*` (8445→8446); reuses `vehicle.bookings.startPickup` and `vehicle.bookings.startReturn`.',
+      'Presentation-only — handover kinds, sheet type, gate predicates, callbacks, customer names, and vehicle label subtitles unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.29 post-P228 pre-flight (PR #1215) selected Quick Actions as the next bounded Vehicle Quick View slice.',
+    previousBehavior:
+      'Quick Actions grid used fixed German CTA labels inline in `OperatorVehicleQuickView.tsx`.',
+    details:
+      'operator/components/OperatorVehicleQuickViewQuickActions.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.quickActions.{en,de}.ts; operator-vehicle-quick-view-quick-actions-localization.test.tsx; P229_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_QUICK_ACTIONS_P2_2_29_2026-08-23.md; docs/audits/i18n-p2-2-29-operator-vehicle-quick-view-quick-actions-implementation-2026-08-23.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-23T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-vehicle-quick-view-header-primary-status-p2-2-28-2026-08-23',
     version: '4.9.955',
     title: 'Platform i18n — P2.2.28 Operator Vehicle Quick View Header & Primary Status localization',
