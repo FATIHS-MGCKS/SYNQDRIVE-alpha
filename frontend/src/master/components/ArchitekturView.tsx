@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Tire Measure (P2.2.26 — V4.9.953)', icon: Globe,
+    endpoint: 'Operator action `tire-measure` → `OperatorTireMeasureFlow` (vehicle → set → tread → context → review).',
+    service: '**Locale flow:** `useLanguage().{t,locale}` → tire measure wizard (`tire-measure` action); `operator-tire-measure-i18n.ts` step/position/source/validation/plausibility maps. **Keys:** +77 EN+DE `operator.tireMeasure.*` (8353→8430); reuses `common.close`. **Machine values:** step IDs, tire position IDs (`fl`/`fr`/`rl`/`rr`), tread parsing, thresholds, API payload fields frozen. **Guardrails:** P2.2.26 enforce-clean exact (6 paths) — 0 findings. **Tests:** `operator-tire-measure-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-26-operator-tire-measure-implementation-2026-08-23.md; architecture/I18N_OPERATOR_TIRE_MEASURE_P2_2_26_2026-08-23.md' },
   { name: 'Platform i18n Operator Pickup Verification (P2.2.25 — V4.9.952)', icon: Globe,
     endpoint: 'OperatorPickupCheckSheet.tsx, operator-pickup-check-i18n.ts.',
     service: '**Locale flow:** `useLanguage().{t,locale}` → pickup manual verification sheet (`pickup-verification` action); `operator-pickup-check-i18n.ts` checklist field label map. **Keys:** +18 EN+DE `operator.pickupCheck.*` (8335→8353); reuses `common.cancel`, `common.close`, `common.saving`. **Machine values:** `ManualPickupCheckDto` boolean field keys, defaults, notes, customer/booking IDs frozen. **Guardrails:** P2.2.25 enforce-clean exact (3 paths) — 0 findings. **Tests:** `operator-pickup-check-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

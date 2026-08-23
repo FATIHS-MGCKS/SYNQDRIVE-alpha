@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-tire-measure-p2-2-26-2026-08-23',
+    version: '4.9.953',
+    title: 'Platform i18n — P2.2.26 Operator Tire Measure Flow localization',
+    summary: [
+      'Localized Operator 5-step tire measure wizard via `useLanguage().{t,locale}` and `operator-tire-measure-i18n.ts` presentation adapter.',
+      'P226 enforce-clean exact scope (6 paths) reports 0 findings; +77 EN+DE keys under `operator.tireMeasure.*` (8353→8430); reuses `common.close`.',
+      'Presentation-only — step IDs, tire position IDs (`fl`/`fr`/`rl`/`rr`), tread parsing, thresholds, payload builder, and `tire-measure` action unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.26 post-P225 pre-flight (PR #1195) selected Operator Tire Measure Flow as the next bounded Operator campaign slice.',
+    previousBehavior:
+      'OperatorTireMeasureFlow, TreadGrid, utils validation messages, and setup labels were hardcoded German/English presentation strings.',
+    details:
+      'operator/tire-measure/OperatorTireMeasureFlow.tsx; OperatorTireMeasureTreadGrid.tsx; operatorTireMeasure.utils.ts; operatorTireMeasurePayload.ts; useOperatorTireMeasureData.ts; operator/lib/operator-tire-measure-i18n.ts; i18n/translations/operator.tireMeasure.{en,de}.ts; operator-tire-measure-localization.test.tsx; P226_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_TIRE_MEASURE_P2_2_26_2026-08-23.md; docs/audits/i18n-p2-2-26-operator-tire-measure-implementation-2026-08-23.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-23T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-pickup-verification-p2-2-25-2026-08-23',
     version: '4.9.952',
     title: 'Platform i18n — P2.2.25 Operator Pickup Verification Sheet localization',

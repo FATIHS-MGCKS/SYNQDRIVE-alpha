@@ -1,10 +1,15 @@
 import { api } from '../../lib/api';
+import {
+  operatorTireMeasureSeasonLabel,
+  operatorTireMeasureSetupSuffix,
+  otm,
+} from '../lib/operator-tire-measure-i18n';
 import type {
   OperatorTireContextForm,
   OperatorTireSetupOption,
   OperatorTireTreadForm,
 } from './operatorTireMeasure.types';
-import { parseTreadMm, SEASON_LABELS } from './operatorTireMeasure.utils';
+import { parseTreadMm } from './operatorTireMeasure.utils';
 
 export function resolveActiveTireSetup(setupsRaw: unknown): Record<string, unknown> | null {
   const setups = Array.isArray(setupsRaw) ? setupsRaw : [];
@@ -17,7 +22,7 @@ export function resolveActiveTireSetup(setupsRaw: unknown): Record<string, unkno
   );
 }
 
-export function buildTireSetupOptions(setupsRaw: unknown): OperatorTireSetupOption[] {
+export function buildTireSetupOptions(setupsRaw: unknown, locale: string): OperatorTireSetupOption[] {
   const setups = Array.isArray(setupsRaw) ? setupsRaw : [];
   const active = resolveActiveTireSetup(setupsRaw);
   const activeId = active?.id ? String(active.id) : null;
@@ -27,21 +32,26 @@ export function buildTireSetupOptions(setupsRaw: unknown): OperatorTireSetupOpti
     .map((s) => {
       const row = s as Record<string, unknown>;
       const season = row.tireSeason ? String(row.tireSeason) : null;
-      const seasonLabel = season ? (SEASON_LABELS[season] ?? season) : 'Unbekannt';
+      const seasonLabel = operatorTireMeasureSeasonLabel(locale, season);
       const brand = [row.brandModelFront, row.brandModelRear].filter(Boolean).join(' / ');
       const name = row.name ? String(row.name) : brand || seasonLabel;
       const status = row.status ? String(row.status) : '';
       const isActive = activeId != null && String(row.id) === activeId;
       return {
         id: String(row.id),
-        label: `${name}${status === 'STORED' ? ' (gelagert)' : isActive ? ' (montiert)' : ''}`,
+        label: `${name}${status === 'STORED' ? operatorTireMeasureSetupSuffix(locale, 'stored') : isActive ? operatorTireMeasureSetupSuffix(locale, 'mounted') : ''}`,
         season,
         isActive,
       };
     });
 
   if (options.length === 0) {
-    options.push({ id: '__unknown__', label: 'Unbekannt — kein Reifenset hinterlegt', season: null, isActive: false });
+    options.push({
+      id: '__unknown__',
+      label: otm(locale, 'operator.tireMeasure.setup.unknownNoSetup'),
+      season: null,
+      isActive: false,
+    });
   }
 
   return options;

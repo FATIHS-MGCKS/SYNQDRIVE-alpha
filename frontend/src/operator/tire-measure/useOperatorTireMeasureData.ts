@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type TireHealthSummaryResponse } from '../../lib/api';
 import { useFleetVehicles } from '../../rental/FleetContext';
+import type { OperatorTireMeasureLoadErrorCode } from './operatorTireMeasure.types';
 import {
   buildTireSetupOptions,
   resolveActiveTireSetup,
 } from './operatorTireMeasurePayload';
 import type { OperatorTireSetupOption } from './operatorTireMeasure.types';
 
-export function useOperatorTireMeasureData(vehicleId: string) {
+export function useOperatorTireMeasureData(vehicleId: string, locale: string) {
   const { fleetVehicles } = useFleetVehicles();
   const vehicle = useMemo(
     () => fleetVehicles.find((v) => v.id === vehicleId) ?? null,
@@ -17,7 +18,7 @@ export function useOperatorTireMeasureData(vehicleId: string) {
   const [tiresRaw, setTiresRaw] = useState<unknown>(null);
   const [tireSummary, setTireSummary] = useState<TireHealthSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<OperatorTireMeasureLoadErrorCode | string | null>(null);
 
   const reload = useCallback(async () => {
     if (!vehicleId) return;
@@ -31,7 +32,7 @@ export function useOperatorTireMeasureData(vehicleId: string) {
       setTiresRaw(tires);
       setTireSummary(summary);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Laden fehlgeschlagen');
+      setError(e instanceof Error ? e.message : 'LOAD_FAILED');
     } finally {
       setLoading(false);
     }
@@ -42,8 +43,8 @@ export function useOperatorTireMeasureData(vehicleId: string) {
   }, [reload]);
 
   const setupOptions: OperatorTireSetupOption[] = useMemo(
-    () => buildTireSetupOptions(tiresRaw),
-    [tiresRaw],
+    () => buildTireSetupOptions(tiresRaw, locale),
+    [tiresRaw, locale],
   );
 
   const activeSetup = useMemo(() => resolveActiveTireSetup(tiresRaw), [tiresRaw]);

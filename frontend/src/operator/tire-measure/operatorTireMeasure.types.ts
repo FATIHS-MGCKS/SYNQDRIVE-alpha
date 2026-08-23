@@ -32,7 +32,23 @@ export interface OperatorTireSetupOption {
   isActive: boolean;
 }
 
+export type OperatorTireMeasureValidationCode =
+  | 'TREAD_REQUIRED'
+  | 'MEASURED_AT_INVALID'
+  | 'ODOMETER_INVALID';
+
+export type OperatorTirePlausibilityCode =
+  | 'RANGE'
+  | 'LEGAL_MIN'
+  | 'LOW'
+  | 'HIGH'
+  | 'FRONT_AXLE_DIFF'
+  | 'REAR_AXLE_DIFF';
+
+export type OperatorTireMeasureLoadErrorCode = 'LOAD_FAILED';
+
 export interface OperatorTirePlausibilityWarning {
   id: string;
-  message: string;
+  code: OperatorTirePlausibilityCode;
+  params: Record<string, string | number>;
 }
