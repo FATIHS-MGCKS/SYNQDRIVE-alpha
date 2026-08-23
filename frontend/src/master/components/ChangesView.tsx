@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c9-c12-parity-signoff-2026-08-23',
+    version: '4.9.938',
+    title: 'Communication Center C9–C12 parity sign-off audit',
+    summary: [
+      'Formal C9–C12 parity audit against canonical contract — C13 entry gate.',
+      'C11 PASS (C11.1–C11.5 on main); C12 PASS completed early by C8.5 dashboard widget.',
+      'C9 GAP: legacy WhatsApp inbox still required for AI composer, templates, quick actions, intent filters.',
+      'C9 GAP: legacy Voice inbox still required for transcript, summary, ElevenLabs sync, task-from-call.',
+      'C10 GAP: no CC Channels/Automations IA; Email and Workflow Automation lack CC deep-links.',
+      'C10 partial: WhatsApp/Voice settings embedded in CC Settings; SMS structural PASS.',
+      'Decision: MULTIPLE PARITY GAPS — do not remove legacy nav or start C13 cleanup yet.',
+    ],
+    reason:
+      'Canonical contract requires C9–C12 parity sign-off before C13 retention/observability/legacy cleanup.',
+    previousBehavior:
+      'No formal parity matrix; legacy WhatsApp/Voice inboxes coexisted with CC without sign-off verdict.',
+    details:
+      'architecture/COMMUNICATION_CENTER_C9_C12_PARITY_SIGNOFF_2026_08.md — capability matrices, legacy inventories, retention/observability gaps.',
+    affectsArchitecture: true,
+    module: 'Communication Center',
+    createdAt: '2026-08-23T14:30:00.000Z',
+  },
+  {
     id: 'communication-center-c11-5-ai-activity-handoff-alerts-2026-08-23',
     version: '4.9.937',
     title: 'Communication Center C11.5 — AI Activity + handoff alerts',
