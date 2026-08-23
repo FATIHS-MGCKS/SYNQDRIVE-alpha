@@ -1163,6 +1163,18 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C9.2 — Voice Operations Parity (V4.9.941)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Voice call detail', detail: 'GET .../communication/conversations/:id/voice-call — metadata + summary, scoped via native VoiceConversation' },
+      { label: 'Transcript', detail: 'GET .../voice-call/transcript — normalized segments CUSTOMER|AI_AGENT|HUMAN_OPERATOR; TRANSCRIPT_UNAVAILABLE when purged' },
+      { label: 'Task from call', detail: 'POST .../voice-call/create-task — TasksService.createManualTask + tasks.create + idempotencyKey dedupe' },
+      { label: 'Voice filters', detail: 'GET conversations?callDirection&callOutcome&callHasTranscript&callEscalatedOnly — VoiceConversation join' },
+      { label: 'Sync policy', detail: 'No manual sync in CC; legacy sync remains Channels/Voice troubleshooting only' },
+    ],
+  },
+  {
     name: 'Communication Center C9.1 — WhatsApp Operations Parity (V4.9.940)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

@@ -479,6 +479,7 @@ export function CommunicationCenterShell({
               hasContext={hasContext}
               onBack={() => handleMobilePane('inbox')}
               onOpenContext={handleOpenContext}
+              onOpenAiActivity={() => handlePrimaryTabChange('ai-activity')}
               onClearInvalidSelection={handleClearInvalidSelection}
             />
           </div>

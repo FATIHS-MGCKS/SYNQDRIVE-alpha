@@ -49,6 +49,8 @@ import { CommunicationAiActivityController } from './ai-activity/communication-a
 import { CommunicationHandoffNotificationService } from './handoff/communication-handoff-notification.service';
 import { CommunicationWhatsAppOpsService } from './ops/communication-whatsapp-ops.service';
 import { CommunicationWhatsAppOpsController } from './ops/communication-whatsapp-ops.controller';
+import { CommunicationVoiceOpsService } from './ops/communication-voice-ops.service';
+import { CommunicationVoiceOpsController } from './ops/communication-voice-ops.controller';
 import { CommunicationQuickActionExecutorService } from './ops/communication-quick-action.executor';
 import { CommunicationQuickActionResolverService } from './ops/communication-quick-action.resolver';
 
@@ -103,6 +105,7 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
     CommunicationAiActivityService,
     CommunicationHandoffNotificationService,
     CommunicationWhatsAppOpsService,
+    CommunicationVoiceOpsService,
     CommunicationQuickActionExecutorService,
     CommunicationQuickActionResolverService,
   ],
@@ -113,6 +116,7 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
     CommunicationAttachmentController,
     CommunicationAiActivityController,
     CommunicationWhatsAppOpsController,
+    CommunicationVoiceOpsController,
   ],
   exports: [
     CommunicationTenantContextValidation,

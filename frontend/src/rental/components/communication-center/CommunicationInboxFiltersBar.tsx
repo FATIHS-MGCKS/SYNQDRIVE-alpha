@@ -10,6 +10,9 @@ import {
   type CommunicationInboxFilters,
   type CommunicationIntentFilter,
   type CommunicationStatusFilter,
+  type CommunicationVoiceCallFilter,
+  type CommunicationVoiceDirectionFilter,
+  type CommunicationVoiceOutcomeFilter,
 } from './communication-inbox-state';
 
 const STATUS_OPTIONS: CommunicationApiStatus[] = [
@@ -143,23 +146,92 @@ export function CommunicationInboxFiltersBar({
         <label className="sr-only" htmlFor="communication-intent-filter">
           {t('communication.filters.intentLabel')}
         </label>
-        <select
-          id="communication-intent-filter"
-          value={filters.intent}
-          onChange={(event) =>
-            onFiltersChange({ intent: event.target.value as CommunicationIntentFilter })
-          }
-          data-testid="communication-filter-intent"
-          className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
-        >
-          <option value="all">{t('communication.filters.intentAll')}</option>
-          <option value="ai_suggested">{t('communication.filters.intentAiSuggested')}</option>
-          <option value="unknown_customer">{t('communication.filters.intentUnknownCustomer')}</option>
-          <option value="booking">{t('communication.filters.intentBooking')}</option>
-          <option value="documents">{t('communication.filters.intentDocuments')}</option>
-          <option value="payment">{t('communication.filters.intentPayment')}</option>
-          <option value="damage">{t('communication.filters.intentDamage')}</option>
-        </select>
+        {activeChannel !== 'voice' ? (
+          <select
+            id="communication-intent-filter"
+            value={filters.intent}
+            onChange={(event) =>
+              onFiltersChange({ intent: event.target.value as CommunicationIntentFilter })
+            }
+            data-testid="communication-filter-intent"
+            className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+          >
+            <option value="all">{t('communication.filters.intentAll')}</option>
+            <option value="ai_suggested">{t('communication.filters.intentAiSuggested')}</option>
+            <option value="unknown_customer">{t('communication.filters.intentUnknownCustomer')}</option>
+            <option value="booking">{t('communication.filters.intentBooking')}</option>
+            <option value="documents">{t('communication.filters.intentDocuments')}</option>
+            <option value="payment">{t('communication.filters.intentPayment')}</option>
+            <option value="damage">{t('communication.filters.intentDamage')}</option>
+          </select>
+        ) : (
+          <>
+            <select
+              aria-label={t('communication.voice.filters.direction')}
+              value={filters.voiceDirection}
+              onChange={(event) =>
+                onFiltersChange({
+                  voiceDirection: event.target.value as CommunicationVoiceDirectionFilter,
+                })
+              }
+              data-testid="communication-filter-voice-direction"
+              className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+            >
+              <option value="all">{t('communication.voice.filters.directionAll')}</option>
+              <option value="INBOUND">{t('communication.voice.direction.inbound')}</option>
+              <option value="OUTBOUND">{t('communication.voice.direction.outbound')}</option>
+            </select>
+            <select
+              aria-label={t('communication.voice.filters.outcome')}
+              value={filters.voiceOutcome}
+              onChange={(event) =>
+                onFiltersChange({
+                  voiceOutcome: event.target.value as CommunicationVoiceOutcomeFilter,
+                })
+              }
+              data-testid="communication-filter-voice-outcome"
+              className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+            >
+              <option value="all">{t('communication.voice.filters.outcomeAll')}</option>
+              <option value="PENDING">{t('communication.voice.outcome.PENDING')}</option>
+              <option value="RESOLVED">{t('communication.voice.outcome.RESOLVED')}</option>
+              <option value="ESCALATED">{t('communication.voice.outcome.ESCALATED')}</option>
+              <option value="FAILED">{t('communication.voice.outcome.FAILED')}</option>
+              <option value="ABANDONED">{t('communication.voice.outcome.ABANDONED')}</option>
+            </select>
+            <select
+              aria-label={t('communication.voice.filters.callFilter')}
+              value={filters.voiceCallFilter}
+              onChange={(event) =>
+                onFiltersChange({
+                  voiceCallFilter: event.target.value as CommunicationVoiceCallFilter,
+                })
+              }
+              data-testid="communication-filter-voice-call"
+              className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+            >
+              <option value="all">{t('communication.voice.filters.callAll')}</option>
+              <option value="escalated">{t('communication.voice.filters.escalatedOnly')}</option>
+              <option value="hasTranscript">{t('communication.voice.filters.hasTranscript')}</option>
+            </select>
+            <input
+              type="date"
+              aria-label={t('communication.voice.filters.dateFrom')}
+              value={filters.voiceDateFrom}
+              onChange={(event) => onFiltersChange({ voiceDateFrom: event.target.value })}
+              data-testid="communication-filter-voice-date-from"
+              className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+            />
+            <input
+              type="date"
+              aria-label={t('communication.voice.filters.dateTo')}
+              value={filters.voiceDateTo}
+              onChange={(event) => onFiltersChange({ voiceDateTo: event.target.value })}
+              data-testid="communication-filter-voice-date-to"
+              className="sq-press rounded-md border border-border/50 bg-muted/30 px-2 py-1 text-[10px] font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]/40"
+            />
+          </>
+        )}
       </div>
     </div>
   );

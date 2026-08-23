@@ -22,12 +22,14 @@ import { useCommunicationComposerCapability } from '../../../lib/communication/h
 import { useCommunicationAiSuggestion } from '../../../lib/communication/hooks/useCommunicationAiSuggestion';
 import { useCommunicationQuickActions } from '../../../lib/communication/hooks/useCommunicationQuickActions';
 import { useCommunicationSendableTemplates } from '../../../lib/communication/hooks/useCommunicationSendableTemplates';
+import { useCommunicationVoiceCall } from '../../../lib/communication/hooks/useCommunicationVoiceCall';
 import { CommunicationAssigneeControl } from './CommunicationAssigneeControl';
 import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { resolveConversationTitle } from './communication-inbox-display';
 import { CommunicationEmptyState } from './CommunicationEmptyState';
 import { CommunicationTimeline } from './CommunicationTimeline';
+import { CommunicationVoiceCallCard } from './CommunicationVoiceCallCard';
 import { CommunicationDetailSkeleton } from './skeletons/CommunicationDetailSkeleton';
 import { CommunicationTimelineSkeleton } from './skeletons/CommunicationTimelineSkeleton';
 import type { CommunicationChannel } from './communication-center.types';
@@ -51,6 +53,7 @@ interface CommunicationWorkspacePaneProps {
   hasContext?: boolean;
   onBack?: () => void;
   onOpenContext?: () => void;
+  onOpenAiActivity?: () => void;
   onClearInvalidSelection?: () => void;
 }
 
@@ -134,6 +137,7 @@ export function CommunicationWorkspacePane({
   hasContext,
   onBack,
   onOpenContext,
+  onOpenAiActivity,
   onClearInvalidSelection,
 }: CommunicationWorkspacePaneProps) {
   const { t } = useLanguage();
@@ -259,6 +263,12 @@ export function CommunicationWorkspacePane({
     composerState.mode === 'enabled'
     && composerCapability.replyMode === 'FREEFORM_TEXT_ALLOWED'
     && conversation?.channel === 'WHATSAPP';
+
+  const voiceCall = useCommunicationVoiceCall({
+    orgId,
+    conversationId: selectedConversationId,
+    enabled: conversation?.channel === 'VOICE',
+  });
 
   return (
     <div
@@ -438,24 +448,35 @@ export function CommunicationWorkspacePane({
             )}
           </div>
         ) : conversationState && conversation ? (
-          <CommunicationTimeline
-            orgId={orgId ?? ''}
-            channel={conversation.channel}
-            events={conversationState.events}
-            conversationSignature={conversationState.conversationSignature}
-            loading={conversationState.timelineLoading}
-            error={
-              conversationState.timelineError
-                ? resolveTimelineErrorMessage(conversationState.timelineError, t)
-                : null
-            }
-            loadingOlder={conversationState.loadingOlder}
-            hasMore={conversationState.hasMore}
-            paginationError={conversationState.paginationError}
-            onRetry={() => void conversationState.reloadTimeline()}
-            onLoadOlder={() => void conversationState.loadOlder()}
-            onRetryLoadOlder={() => void conversationState.retryLoadOlder()}
-          />
+          <div className="flex h-full min-h-0 flex-col">
+            {conversation.channel === 'VOICE' ? (
+              <CommunicationVoiceCallCard
+                voiceCall={voiceCall}
+                conversationId={conversation.id}
+                onOpenAiActivity={onOpenAiActivity}
+              />
+            ) : null}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <CommunicationTimeline
+                orgId={orgId ?? ''}
+                channel={conversation.channel}
+                events={conversationState.events}
+                conversationSignature={conversationState.conversationSignature}
+                loading={conversationState.timelineLoading}
+                error={
+                  conversationState.timelineError
+                    ? resolveTimelineErrorMessage(conversationState.timelineError, t)
+                    : null
+                }
+                loadingOlder={conversationState.loadingOlder}
+                hasMore={conversationState.hasMore}
+                paginationError={conversationState.paginationError}
+                onRetry={() => void conversationState.reloadTimeline()}
+                onLoadOlder={() => void conversationState.loadOlder()}
+                onRetryLoadOlder={() => void conversationState.retryLoadOlder()}
+              />
+            </div>
+          </div>
         ) : detailLoading ? (
           <CommunicationTimelineSkeleton />
         ) : null}

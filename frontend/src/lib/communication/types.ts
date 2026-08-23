@@ -84,6 +84,12 @@ export interface CommunicationConversationListQuery {
   unassigned?: boolean;
   search?: string;
   intent?: string;
+  callDirection?: 'INBOUND' | 'OUTBOUND';
+  callOutcome?: 'PENDING' | 'RESOLVED' | 'ESCALATED' | 'FAILED' | 'ABANDONED';
+  callHasTranscript?: boolean;
+  callEscalatedOnly?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
   cursor?: string;
   limit?: number;
 }
@@ -283,4 +289,48 @@ export interface CommunicationAiActivityListQuery {
   dateTo?: string;
   cursor?: string;
   limit?: number;
+}
+
+export type CommunicationVoiceTranscriptSpeaker =
+  | 'CUSTOMER'
+  | 'AI_AGENT'
+  | 'HUMAN_OPERATOR'
+  | 'UNKNOWN';
+
+export interface CommunicationVoiceTranscriptSegment {
+  id: string;
+  speaker: CommunicationVoiceTranscriptSpeaker;
+  text: string;
+  occurredAt?: string;
+}
+
+export interface CommunicationVoiceCallDetail {
+  callId: string;
+  conversationId: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  status: 'ACTIVE' | 'COMPLETED' | 'FAILED';
+  outcome: 'PENDING' | 'RESOLVED' | 'ESCALATED' | 'FAILED' | 'ABANDONED';
+  startedAt: string;
+  endedAt?: string | null;
+  durationSeconds?: number | null;
+  summary?: string | null;
+  summaryAvailable: boolean;
+  escalationReason?: string | null;
+  escalated: boolean;
+  hasTranscript: boolean;
+  transcriptAvailability: 'AVAILABLE' | 'TRANSCRIPT_UNAVAILABLE';
+  errorMessage?: string | null;
+  maskedCallerNumber?: string | null;
+  linkedTaskId?: string | null;
+}
+
+export interface CommunicationVoiceCallTranscript {
+  callId: string;
+  availability: 'AVAILABLE' | 'TRANSCRIPT_UNAVAILABLE';
+  segments: CommunicationVoiceTranscriptSegment[];
+}
+
+export interface CommunicationVoiceCreateTaskResult {
+  taskId: string;
+  deduped: boolean;
 }
