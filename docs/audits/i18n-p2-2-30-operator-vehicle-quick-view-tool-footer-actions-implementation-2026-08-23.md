@@ -1,10 +1,10 @@
 # P2.2.30 — Operator Vehicle Quick View Tool & Footer Actions Implementation
 
-**Date:** 2026-08-23  
-**Mode:** STRICT BOUNDED IMPLEMENTATION  
-**Repository:** FATIHS-MGCKS/SYNQDRIVE-alpha  
-**Authoritative baseline:** `8498f0442712c326ceffba9b8d46cc0932bd364d` (PR #1216 / P2.2.29)  
-**Pre-flight:** PR #1221 (verdict A)  
+**Date:** 2026-08-23
+**Mode:** STRICT BOUNDED IMPLEMENTATION
+**Repository:** FATIHS-MGCKS/SYNQDRIVE-alpha
+**Authoritative baseline:** `8498f0442712c326ceffba9b8d46cc0932bd364d` (PR #1216 / P2.2.29)
+**Pre-flight:** PR #1221 (verdict A)
 **Implementation branch:** `cursor/p2230-qv-tool-footer-actions-i18n-3c10`
 
 ---
@@ -30,7 +30,7 @@
 
 ## 2. Tool/Footer boundary
 
-**Before:** `OperatorVehicleQuickView.tsx` L317–375 inline `ActionButton` grid + helper (L389–427).  
+**Before:** `OperatorVehicleQuickView.tsx` L317–375 inline `ActionButton` grid + helper (L389–427).
 **After:** `OperatorVehicleQuickViewToolActions.tsx` with parent-owned callbacks.
 
 ## 3. Action inventory
