@@ -195,6 +195,9 @@ describe('dashboard utilization layout contract', () => {
     expect(panelSrc).toMatch(/lg:grid-cols-\[minmax\(0,2fr\)_minmax\(0,3fr\)\]/);
     expect(panelSrc).not.toMatch(/UtilizationMonthNav/);
     expect(panelSrc).not.toMatch(/UtilizationProgressBar/);
+    expect(readFileSync(resolve(testDir, './utilization/UtilizationKpiRow.tsx'), 'utf8')).toMatch(
+      /grid-cols-2[\s\S]*lg:flex lg:flex-col/,
+    );
   });
 
   it('places utilization panel beside ops and finance on desktop', () => {

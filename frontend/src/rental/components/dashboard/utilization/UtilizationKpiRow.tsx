@@ -64,7 +64,12 @@ export function UtilizationKpiRow({
 
   if (layout === 'stack') {
     return (
-      <div className={cn('flex min-w-0 flex-col gap-4 lg:gap-3', className)}>
+      <div
+        className={cn(
+          'grid min-w-0 grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-3',
+          className,
+        )}
+      >
         {utilizationKpi}
         {bookingsKpi}
       </div>

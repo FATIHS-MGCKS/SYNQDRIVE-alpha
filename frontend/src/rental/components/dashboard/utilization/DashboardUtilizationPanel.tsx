@@ -67,8 +67,10 @@ export function DashboardUtilizationPanel({ vm, className }: DashboardUtilizatio
         >
           <div className="flex flex-col gap-3">
             <Skeleton className="h-5 w-24 rounded-md" />
-            <Skeleton className="h-12 rounded-lg" />
-            <Skeleton className="h-12 rounded-lg" />
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-12 rounded-lg" />
+              <Skeleton className="h-12 rounded-lg" />
+            </div>
           </div>
           <Skeleton className="min-h-[140px] rounded-xl lg:min-h-0 lg:h-full" />
         </div>
