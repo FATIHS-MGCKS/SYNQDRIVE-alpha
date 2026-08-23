@@ -30,6 +30,7 @@ import { CommunicationWriteScopeService } from './write/communication-write-scop
 import { CommunicationWriteService } from './write/communication-write.service';
 import { CommunicationReplyController } from './reply/communication-reply.controller';
 import { CommunicationReplyService } from './reply/communication-reply.service';
+import { CommunicationReplyChannelCapabilityService } from './reply/communication-reply-channel-capability.service';
 import { WhatsAppCommunicationOutboundAdapter } from './reply/adapters/whatsapp-communication-outbound.adapter';
 import { SmsCommunicationOutboundAdapter } from './reply/adapters/sms-communication-outbound.adapter';
 import { CommunicationContentBackfillService } from './content/communication-content-backfill.service';
@@ -74,6 +75,7 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationWriteScopeService,
     CommunicationWriteService,
     CommunicationReplyService,
+    CommunicationReplyChannelCapabilityService,
     WhatsAppCommunicationOutboundAdapter,
     SmsCommunicationOutboundAdapter,
   ],

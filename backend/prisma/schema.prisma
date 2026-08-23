@@ -14756,6 +14756,7 @@ model CommunicationReplyCommand {
   canonicalEventId     String?                     @map("canonical_event_id")
   failureCode          String?                     @map("failure_code")
   actorUserId          String                      @map("actor_user_id")
+  processingLeaseExpiresAt DateTime?             @map("processing_lease_expires_at")
   createdAt            DateTime                    @default(now()) @map("created_at")
   updatedAt            DateTime                    @updatedAt @map("updated_at")
 

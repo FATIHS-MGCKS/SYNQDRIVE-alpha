@@ -9,6 +9,7 @@ export interface CommunicationOutboundSendInput {
   actorDisplayName?: string | null;
   text: string;
   clientIdempotencyKey: string;
+  commandId: string;
 }
 
 export interface CommunicationOutboundSendResult {

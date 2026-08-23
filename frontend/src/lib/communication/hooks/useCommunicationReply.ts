@@ -33,30 +33,76 @@ function createIdempotencyKey(): string {
   return `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function mapReplyError(err: unknown): { code: CommunicationClientErrorCode; message: string } {
-  if (!(err instanceof CommunicationClientError)) {
-    return { code: 'unknown', message: 'Could not send message' };
+function mapReplyError(err: unknown): {
+  code: CommunicationClientErrorCode;
+  message: string;
+  preserveIdempotencyKey: boolean;
+  resetIdempotencyKey: boolean;
+} {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes('SEND_UNKNOWN') || message.includes('Delivery status is being confirmed')) {
+    return {
+      code: 'unknown',
+      message: 'Delivery status is being confirmed',
+      preserveIdempotencyKey: true,
+      resetIdempotencyKey: false,
+    };
   }
-  const message = err.message;
+
+  if (!(err instanceof CommunicationClientError)) {
+    return {
+      code: 'unknown',
+      message: 'Could not send message',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
+  }
   if (message.includes('CHANNEL_NOT_CONFIGURED')) {
-    return { code: 'unknown', message: 'SMS sending is not configured' };
+    return {
+      code: 'unknown',
+      message: 'SMS sending is not configured',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
   }
   if (message.includes('CHANNEL_NOT_REPLYABLE')) {
-    return { code: 'unknown', message: 'This channel does not support text replies' };
+    return {
+      code: 'unknown',
+      message: 'This channel does not support text replies',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
   }
   if (message.includes('ALREADY_CLAIMED')) {
-    return { code: 'already_claimed', message: 'Conversation was claimed by another user' };
-  }
-  if (message.includes('SEND_UNKNOWN') || message.includes('Delivery status is being confirmed')) {
-    return { code: 'unknown', message: 'Delivery status is being confirmed' };
+    return {
+      code: 'already_claimed',
+      message: 'Conversation was claimed by another user',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
   }
   if (message.includes('MESSAGE_TOO_LONG')) {
-    return { code: 'invalid_query', message: 'Message is too long' };
+    return {
+      code: 'invalid_query',
+      message: 'Message is too long',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
   }
   if (message.includes('SEND_FAILED') || message.includes('Could not send')) {
-    return { code: 'unknown', message: 'Could not send message' };
+    return {
+      code: 'unknown',
+      message: 'Could not send message',
+      preserveIdempotencyKey: false,
+      resetIdempotencyKey: true,
+    };
   }
-  return { code: err.code, message: 'Could not send message' };
+  return {
+    code: err.code,
+    message: 'Could not send message',
+    preserveIdempotencyKey: false,
+    resetIdempotencyKey: true,
+  };
 }
 
 export function useCommunicationReply({
@@ -140,13 +186,23 @@ export function useCommunicationReply({
         return null;
       }
 
-      if (response.sendState === 'ACCEPTED') {
-        setDraft('');
-        if (conversationKey) {
-          draftByConversationRef.current.delete(conversationKey);
+      if (response.sendState !== 'ACCEPTED') {
+        if (response.sendState === 'UNKNOWN' || response.sendState === 'PENDING') {
+          setSendError('unknown');
+          setSendErrorMessage('Delivery status is being confirmed');
+        } else {
+          setSendError('unknown');
+          setSendErrorMessage('Could not send message');
+          idempotencyKeyRef.current = null;
         }
-        idempotencyKeyRef.current = null;
+        return null;
       }
+
+      setDraft('');
+      if (conversationKey) {
+        draftByConversationRef.current.delete(conversationKey);
+      }
+      idempotencyKeyRef.current = null;
 
       onConversationUpdated?.(response.conversation);
       await onTimelineRefresh?.();
@@ -159,6 +215,9 @@ export function useCommunicationReply({
       const mapped = mapReplyError(err);
       setSendError(mapped.code);
       setSendErrorMessage(mapped.message);
+      if (!mapped.preserveIdempotencyKey && mapped.resetIdempotencyKey) {
+        idempotencyKeyRef.current = null;
+      }
       if (mapped.code === 'already_claimed') {
         await onConflictRefresh?.();
       }

@@ -79,15 +79,52 @@ After successful accepted send:
 
 **Table:** `communication_reply_commands`
 **Unique:** `(organizationId, conversationId, clientIdempotencyKey)`
+**Lease:** `processingLeaseExpiresAt` — 30s processing lease for crash/orphan recovery
 
 | Case | Behavior |
 |------|----------|
-| Same key + same text + prior result | Return original response, no provider call |
+| Same key + same text + `ACCEPTED` | Return success response, no provider call |
+| Same key + same text + `FAILED` | Throw same canonical failure class (not HTTP 200) |
+| Same key + same text + `UNKNOWN` | Throw `SEND_UNKNOWN` |
 | Same key + different text | `409 IDEMPOTENCY_CONFLICT` |
-| In-flight `PENDING` duplicate | `SEND_UNKNOWN` |
-| Parallel create race | Unique constraint → replay existing |
+| In-flight `PENDING` + active lease | `SEND_UNKNOWN` (no second provider call) |
+| In-flight `PENDING` + expired lease | Resume processing (recover orphan) |
+| Parallel create race | Unique constraint → replay/resume existing |
+
+**Native correlation:** `WhatsAppMessage.idempotencyKey = comm-reply:{orgId}:{conversationId}:{clientKey}`
 
 Provider call occurs **outside** interactive transaction after `PENDING` command reserved.
+
+## 9a. Definitive vs unknown send outcome
+
+| Class | Command state | Examples |
+|-------|---------------|----------|
+| `DEFINITIVE_REJECTED` | `FAILED` | Policy/consent rejection, explicit provider HTTP 4xx |
+| `UNKNOWN` | `UNKNOWN` | Socket timeout, ECONNRESET, gateway 5xx, ambiguous transport |
+| `NOT_CONFIGURED` | `FAILED` | Provider/credentials missing |
+| `TEMPLATE_REQUIRED` | `FAILED` | Free-text blocked outside service window |
+| `RATE_LIMITED` | `FAILED` | Provider rate limit |
+
+Ambiguous outcomes **never** persist as `FAILED`.
+
+## 9b. Crash recovery windows
+
+| Window | Recovery |
+|--------|----------|
+| A: Command `PENDING`, no native message | Expired lease → resume send |
+| B: Native `QUEUED`, no `providerMessageId` | Reuse native message, retry provider on same row |
+| C: Native `SENT`, command still `PENDING` | Reconcile command → `ACCEPTED`, no provider call |
+| D: Native `QUEUED` + `providerMessageId` | `UNKNOWN` until webhook/reconciliation |
+
+## 9c. Channel preflight (before ownership mutation)
+
+| Channel | Preflight |
+|---------|-----------|
+| `VOICE` | `CHANNEL_NOT_REPLYABLE` — no claim, no command |
+| `SMS` | `CHANNEL_NOT_CONFIGURED` — no claim, no command |
+| `WHATSAPP` | Static org config check (`isConfigured`) — no HTTP call |
+
+WhatsApp template/policy failures may occur after human takeover (`HUMAN_ACTIVE` retained).
 
 ## 10. Transaction / external call boundary
 
@@ -100,9 +137,9 @@ Provider call occurs **outside** interactive transaction after `PENDING` command
 `WhatsAppCommunicationOutboundAdapter`:
 
 - Validates native `WhatsAppConversation` scoped to `organizationId`
-- Calls `WhatsAppService.sendMessage` (projection remains native responsibility — **no double MESSAGE_SENT**)
-- Maps provider errors → canonical reply error classes
-- Polls briefly for canonical `MESSAGE_SENT` event id for response DTO
+- Calls `WhatsAppService.sendMessage` with scoped `idempotencyKey` (native correlation)
+- Maps provider errors → canonical reply error classes (`UNKNOWN` vs `FAILED`)
+- Polls briefly for canonical `MESSAGE_SENT` event id; late reconciliation on replay
 
 ## 12. Canonical MESSAGE_SENT
 
@@ -117,7 +154,7 @@ No provider secrets or raw Graph API bodies in responses.
 ## 14. Frontend composer
 
 - `CommunicationComposer` — auto-growing textarea, Enter send / Shift+Enter newline, IME-safe
-- `useCommunicationReply` — draft per conversation key, client idempotency key reuse on retry, org-switch draft clear
+- `useCommunicationReply` — draft per conversation key; idempotency key preserved on `UNKNOWN`, reset on definitive failure for new logical send; non-`ACCEPTED` responses treated as failure
 - `resolveCommunicationComposerState` — visibility/capability resolver
 - Pessimistic timeline refresh (no fake optimistic bubbles in v1)
 
@@ -125,13 +162,25 @@ No provider secrets or raw Graph API bodies in responses.
 
 `WhatsAppBusinessView` native send unchanged. Communication Center uses canonical reply route only.
 
-## 16. Known limitations
+## 18. PostgreSQL proof (C11.2 hardening)
+
+Integration tests (`communication-reply.postgres.integration.spec.ts`) verify:
+
+- Parallel same-key deduplication (1 provider call)
+- Idempotency conflict (different text)
+- SMS/Voice preflight without ownership mutation
+- FAILED replay throws (not HTTP 200)
+- UNKNOWN persists as UNKNOWN not FAILED
+- Crash-after-acceptance reconciliation
+- Claim+send concurrency race
+
+## 19. Known limitations
 
 - SMS reply blocked until C5.2 runtime
 - No attachment/media/template composer
 - No per-conversation SMS capability without org-level config read on send attempt
 - WhatsApp `MESSAGE_SENT` event id may be null in response if projection is still async (timeline refresh authoritative)
 
-## 17. Next phase readiness
+## 20. Next phase readiness
 
 **READY FOR NEXT COMMUNICATION WRITE PHASE** — C11.2 reply path complete for WhatsApp; SMS awaits C5.2 outbound runtime; attachments/templates/AI reply remain future phases.

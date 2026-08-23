@@ -11,9 +11,10 @@ vi.mock('../communication-client', () => ({
   },
   CommunicationClientError: class CommunicationClientError extends Error {
     code = 'unknown' as const;
-    constructor(message: string) {
+    constructor(message: string, code: 'unknown' | 'already_claimed' | 'invalid_query' = 'unknown') {
       super(message);
       this.name = 'CommunicationClientError';
+      this.code = code;
     }
   },
 }));
@@ -73,9 +74,13 @@ describe('useCommunicationReply', () => {
     unmount();
   });
 
-  it('reuses idempotency key for retry after failure', async () => {
+  it('reuses idempotency key for retry after ambiguous failure', async () => {
     vi.mocked(communicationClient.replyConversation)
-      .mockRejectedValueOnce(new Error('SEND_FAILED'))
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Delivery status is being confirmed'), {
+          name: 'CommunicationClientError',
+        }),
+      )
       .mockResolvedValueOnce({
         sendState: 'ACCEPTED',
         conversation: {
@@ -123,6 +128,112 @@ describe('useCommunicationReply', () => {
       ?.idempotencyKey;
     expect(firstKey).toBeTruthy();
     expect(secondKey).toBe(firstKey);
+    unmount();
+  });
+
+  it('resets idempotency key after definitive failure for new send attempt', async () => {
+    vi.mocked(communicationClient.replyConversation)
+      .mockRejectedValueOnce(new Error('SEND_FAILED'))
+      .mockResolvedValueOnce({
+        sendState: 'ACCEPTED',
+        conversation: {
+          id: 'conv-1',
+          channel: 'WHATSAPP',
+          status: 'WAITING_CUSTOMER',
+          unreadCount: 0,
+          lastActivityAt: '2026-08-22T12:00:00.000Z',
+          displayLabel: 'Test',
+          customer: null,
+          booking: null,
+          vehicle: null,
+          station: null,
+          assignedUser: null,
+          assignedAgent: null,
+          createdAt: '2026-08-20T08:00:00.000Z',
+          updatedAt: '2026-08-22T12:00:00.000Z',
+        },
+        event: null,
+        commandId: 'cmd-2',
+      });
+
+    const { result, unmount } = renderHook(() =>
+      useCommunicationReply({
+        orgId: 'org-1',
+        conversationId: 'conv-1',
+      }),
+    );
+
+    act(() => {
+      result.current.setDraft('Retry me');
+    });
+
+    await act(async () => {
+      await result.current.send();
+    });
+    await act(async () => {
+      await result.current.send();
+    });
+
+    const firstKey = vi.mocked(communicationClient.replyConversation).mock.calls[0]?.[2]
+      ?.idempotencyKey;
+    const secondKey = vi.mocked(communicationClient.replyConversation).mock.calls[1]?.[2]
+      ?.idempotencyKey;
+    expect(firstKey).toBeTruthy();
+    expect(secondKey).toBeTruthy();
+    expect(secondKey).not.toBe(firstKey);
+    unmount();
+  });
+
+  it('treats non-ACCEPTED response as failure without convergence refresh', async () => {
+    const onConversationUpdated = vi.fn();
+    const onTimelineRefresh = vi.fn();
+    const onInboxRefresh = vi.fn();
+
+    vi.mocked(communicationClient.replyConversation).mockResolvedValueOnce({
+      sendState: 'FAILED',
+      conversation: {
+        id: 'conv-1',
+        channel: 'WHATSAPP',
+        status: 'HUMAN_ACTIVE',
+        unreadCount: 0,
+        lastActivityAt: '2026-08-22T12:00:00.000Z',
+        displayLabel: 'Test',
+        customer: null,
+        booking: null,
+        vehicle: null,
+        station: null,
+        assignedUser: null,
+        assignedAgent: null,
+        createdAt: '2026-08-20T08:00:00.000Z',
+        updatedAt: '2026-08-22T12:00:00.000Z',
+      },
+      event: null,
+      commandId: 'cmd-failed',
+    });
+
+    const { result, unmount } = renderHook(() =>
+      useCommunicationReply({
+        orgId: 'org-1',
+        conversationId: 'conv-1',
+        onConversationUpdated,
+        onTimelineRefresh,
+        onInboxRefresh,
+      }),
+    );
+
+    act(() => {
+      result.current.setDraft('Hello');
+    });
+
+    await act(async () => {
+      await result.current.send();
+    });
+
+    expect(onConversationUpdated).not.toHaveBeenCalled();
+    expect(onTimelineRefresh).not.toHaveBeenCalled();
+    expect(onInboxRefresh).not.toHaveBeenCalled();
+    expect(result.current.sendErrorMessage).toBe('Could not send message');
+    expect(result.current.draft).toBe('Hello');
     unmount();
   });
 

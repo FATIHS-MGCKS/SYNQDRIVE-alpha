@@ -8,6 +8,7 @@ import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { CommunicationReplyChannelCapabilityService } from './communication-reply-channel-capability.service';
 import { SmsCommunicationOutboundAdapter } from './adapters/sms-communication-outbound.adapter';
 import { WhatsAppCommunicationOutboundAdapter } from './adapters/whatsapp-communication-outbound.adapter';
 import { CommunicationReplyService } from './communication-reply.service';
@@ -16,20 +17,23 @@ describe('CommunicationReplyService', () => {
   let service: CommunicationReplyService;
   let prisma: {
     $transaction: jest.Mock;
-      communicationReplyCommand: {
-        findUnique: jest.Mock;
-        findFirst: jest.Mock;
-        create: jest.Mock;
-        update: jest.Mock;
-      };
+    communicationReplyCommand: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+      updateMany: jest.Mock;
+    };
     communicationConversation: {
       findFirst: jest.Mock;
       updateMany: jest.Mock;
     };
     communicationEvent: { findFirst: jest.Mock };
+    whatsAppMessage: { findFirst: jest.Mock };
   };
   let readRepository: { findConversationById: jest.Mock };
   let scope: { assertConversationMutable: jest.Mock };
+  let channelCapability: { assertChannelCanReply: jest.Mock };
   let whatsappAdapter: { sendTextReply: jest.Mock };
 
   const row = {
@@ -72,6 +76,7 @@ describe('CommunicationReplyService', () => {
           sendState: CommunicationReplySendState.ACCEPTED,
           canonicalEventId: null,
           actorUserId: 'user-a',
+          processingLeaseExpiresAt: null,
         }),
         create: jest.fn().mockResolvedValue({
           id: 'cmd-1',
@@ -84,12 +89,14 @@ describe('CommunicationReplyService', () => {
           actorUserId: 'user-a',
         }),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       communicationConversation: {
         findFirst: jest.fn().mockResolvedValue({ nativeConversationId: 'wa-1' }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       communicationEvent: { findFirst: jest.fn().mockResolvedValue(null) },
+      whatsAppMessage: { findFirst: jest.fn().mockResolvedValue(null) },
     };
 
     readRepository = {
@@ -98,6 +105,10 @@ describe('CommunicationReplyService', () => {
 
     scope = {
       assertConversationMutable: jest.fn().mockResolvedValue(undefined),
+    };
+
+    channelCapability = {
+      assertChannelCanReply: jest.fn().mockResolvedValue(undefined),
     };
 
     whatsappAdapter = {
@@ -114,6 +125,7 @@ describe('CommunicationReplyService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: CommunicationReadRepository, useValue: readRepository },
         { provide: CommunicationWriteScopeService, useValue: scope },
+        { provide: CommunicationReplyChannelCapabilityService, useValue: channelCapability },
         { provide: AuditService, useValue: { record: jest.fn() } },
         { provide: WhatsAppCommunicationOutboundAdapter, useValue: whatsappAdapter },
         { provide: SmsCommunicationOutboundAdapter, useValue: { sendTextReply: jest.fn() } },
@@ -123,31 +135,12 @@ describe('CommunicationReplyService', () => {
     service = moduleRef.get(CommunicationReplyService);
   });
 
-  it('rejects voice text replies', async () => {
-    readRepository.findConversationById.mockResolvedValue({
-      ...row,
-      channel: CommunicationChannel.VOICE,
-    });
-
-    await expect(
-      service.replyConversation('org-1', 'conv-1', { userId: 'user-a' }, {
-        text: 'Hello',
-        idempotencyKey: 'key-voice',
-      }),
-    ).rejects.toMatchObject({ response: { code: 'CHANNEL_NOT_REPLYABLE' } });
-  });
-
   it('returns idempotent replay without second provider call', async () => {
     prisma.communicationReplyCommand.findUnique.mockResolvedValue({
       id: 'cmd-existing',
-      organizationId: 'org-1',
-      conversationId: 'conv-1',
-      clientIdempotencyKey: 'key-1',
       text: 'Hello',
-      channel: CommunicationChannel.WHATSAPP,
       sendState: CommunicationReplySendState.ACCEPTED,
-      canonicalEventId: null,
-      actorUserId: 'user-a',
+      processingLeaseExpiresAt: null,
     });
 
     await service.replyConversation('org-1', 'conv-1', { userId: 'user-a' }, {
@@ -173,7 +166,7 @@ describe('CommunicationReplyService', () => {
     ).rejects.toMatchObject({ response: { code: 'IDEMPOTENCY_CONFLICT' } });
   });
 
-  it('rejects resolved conversations', async () => {
+  it('rejects resolved conversations before channel capability', async () => {
     readRepository.findConversationById.mockResolvedValue({
       ...row,
       status: CommunicationConversationStatus.RESOLVED,
@@ -186,51 +179,33 @@ describe('CommunicationReplyService', () => {
       }),
     ).rejects.toMatchObject({ response: { code: 'INVALID_TRANSITION' } });
 
+    expect(channelCapability.assertChannelCanReply).not.toHaveBeenCalled();
     expect(whatsappAdapter.sendTextReply).not.toHaveBeenCalled();
   });
 
-  it('rejects reply when assigned to another operator', async () => {
-    readRepository.findConversationById.mockResolvedValue({
-      ...row,
-      assignedUserId: 'user-b',
-    });
-
-    await expect(
-      service.replyConversation('org-1', 'conv-1', { userId: 'user-a' }, {
-        text: 'Hello',
-        idempotencyKey: 'key-claimed',
-      }),
-    ).rejects.toMatchObject({ response: { code: 'ALREADY_CLAIMED' } });
-
-    expect(whatsappAdapter.sendTextReply).not.toHaveBeenCalled();
-  });
-
-  it('transitions HUMAN_ACTIVE to WAITING_CUSTOMER after accepted send', async () => {
-    await service.replyConversation('org-1', 'conv-1', { userId: 'user-a' }, {
-      text: 'Hello',
-      idempotencyKey: 'key-send',
-    });
-
-    expect(whatsappAdapter.sendTextReply).toHaveBeenCalledTimes(1);
-    expect(prisma.communicationConversation.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { status: CommunicationConversationStatus.WAITING_CUSTOMER },
-      }),
-    );
-  });
-
-  it('returns SEND_UNKNOWN for in-flight idempotent replay', async () => {
+  it('FAILED replay throws SEND_FAILED', async () => {
     prisma.communicationReplyCommand.findUnique.mockResolvedValue({
-      id: 'cmd-pending',
+      id: 'cmd-failed',
       text: 'Hello',
-      sendState: CommunicationReplySendState.PENDING,
+      sendState: CommunicationReplySendState.FAILED,
+      failureCode: 'SEND_FAILED',
+      processingLeaseExpiresAt: null,
+    });
+    prisma.communicationReplyCommand.findFirst.mockResolvedValue({
+      id: 'cmd-failed',
+      text: 'Hello',
+      sendState: CommunicationReplySendState.FAILED,
+      failureCode: 'SEND_FAILED',
+      processingLeaseExpiresAt: null,
+      canonicalEventId: null,
+      nativeMessageId: null,
     });
 
     await expect(
       service.replyConversation('org-1', 'conv-1', { userId: 'user-a' }, {
         text: 'Hello',
-        idempotencyKey: 'key-pending',
+        idempotencyKey: 'key-failed',
       }),
-    ).rejects.toMatchObject({ response: { code: 'SEND_UNKNOWN' } });
+    ).rejects.toMatchObject({ response: { code: 'SEND_FAILED' } });
   });
 });

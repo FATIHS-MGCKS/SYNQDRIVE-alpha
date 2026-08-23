@@ -2,13 +2,17 @@ import { Injectable } from '@nestjs/common';
 import {
   CommunicationChannel,
   CommunicationReplySendState,
-  Prisma,
   WhatsAppMessageDeliveryStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { WhatsAppService } from '@modules/whatsapp/whatsapp.service';
 import { WHATSAPP_ERROR_CODES } from '@modules/whatsapp/utils/whatsapp-errors';
 import { CommunicationReplyError } from '../communication-reply.errors';
+import { buildNativeWhatsAppIdempotencyKey } from '../communication-reply-idempotency';
+import {
+  classifyNativeWhatsAppFailureReason,
+  CommunicationReplyOutcomeClass,
+} from '../communication-reply-outcome';
 import type {
   CommunicationOutboundChannelPort,
   CommunicationOutboundSendInput,
@@ -37,13 +41,25 @@ export class WhatsAppCommunicationOutboundAdapter implements CommunicationOutbou
       throw CommunicationReplyError.notFound();
     }
 
+    const scopedIdempotencyKey = buildNativeWhatsAppIdempotencyKey(
+      input.organizationId,
+      input.conversation.id,
+      input.clientIdempotencyKey,
+    );
+
     try {
       const message = await this.whatsapp.sendMessage(
         input.organizationId,
         nativeConversation.id,
         input.text,
         input.actorDisplayName ?? undefined,
+        { idempotencyKey: scopedIdempotencyKey },
       );
+
+      await this.prisma.communicationReplyCommand.update({
+        where: { id: input.commandId },
+        data: { nativeMessageId: message.id },
+      });
 
       if (message.status === WhatsAppMessageDeliveryStatus.SENT) {
         const canonicalEvent = await this.waitForCanonicalEvent(
@@ -54,6 +70,14 @@ export class WhatsAppCommunicationOutboundAdapter implements CommunicationOutbou
           sendState: CommunicationReplySendState.ACCEPTED,
           nativeMessageId: message.id,
           canonicalEventId: canonicalEvent?.id ?? null,
+        };
+      }
+
+      const outcome = classifyNativeWhatsAppFailureReason(message.failureReason);
+      if (outcome === CommunicationReplyOutcomeClass.UNKNOWN) {
+        return {
+          sendState: CommunicationReplySendState.UNKNOWN,
+          nativeMessageId: message.id,
         };
       }
 
@@ -107,9 +131,18 @@ export class WhatsAppCommunicationOutboundAdapter implements CommunicationOutbou
       case WHATSAPP_ERROR_CODES.CONSENT_OPTED_OUT:
       case WHATSAPP_ERROR_CODES.POLICY_BLOCKED:
         return CommunicationReplyError.sendFailed('Message blocked by policy');
+      case 'WHATSAPP_SEND_AMBIGUOUS':
+        return CommunicationReplyError.sendUnknown();
       default:
         if (code === 'RATE_LIMITED' || String(response?.message).toLowerCase().includes('rate')) {
           return CommunicationReplyError.rateLimited();
+        }
+        if (
+          /timeout|timed out|econnreset|econnrefused|socket hang up|network|aborted|fetch failed|gateway timeout/i.test(
+            String(response?.message ?? (error instanceof Error ? error.message : '')),
+          )
+        ) {
+          return CommunicationReplyError.sendUnknown();
         }
         return CommunicationReplyError.sendFailed();
     }

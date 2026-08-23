@@ -18,6 +18,7 @@ import { WhatsAppConversationMatcherService } from './whatsapp-conversation-matc
 import { normalizePhoneNumber } from './utils/whatsapp-phone.util';
 import {
   WhatsAppProviderNotConfiguredException,
+  WhatsAppSendAmbiguousException,
   WhatsAppSimulationDisabledException,
 } from './utils/whatsapp-errors';
 import { WhatsAppCommunicationProjectionIntegration } from '@modules/communication/adapters/whatsapp/whatsapp-communication-projection.integration';
@@ -212,7 +213,7 @@ export class WhatsAppService {
     conversationId: string,
     content: string,
     senderName?: string,
-    options?: { skipCanonicalProjection?: boolean },
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
   ) {
     const config = await this.requireConfig(orgId);
     const convo = await this.requireConversation(orgId, conversationId);
@@ -225,6 +226,21 @@ export class WhatsAppService {
 
     await this.consent.assertCanSend(orgId, convo.contactPhone, 'support');
 
+    const scopedIdempotencyKey = options?.idempotencyKey?.trim() || null;
+    if (scopedIdempotencyKey) {
+      const existing = await this.prisma.whatsAppMessage.findFirst({
+        where: {
+          organizationId: orgId,
+          conversationId,
+          idempotencyKey: scopedIdempotencyKey,
+          direction: 'outgoing',
+        },
+      });
+      if (existing) {
+        return this.resumeOrReturnExistingMessage(orgId, conversationId, convo, existing, options);
+      }
+    }
+
     const msg = await this.prisma.whatsAppMessage.create({
       data: {
         organizationId: orgId,
@@ -235,9 +251,53 @@ export class WhatsAppService {
         content,
         messageType: 'text',
         status: WhatsAppMessageDeliveryStatus.QUEUED,
+        idempotencyKey: scopedIdempotencyKey,
       },
     });
 
+    return this.dispatchOutboundMessage(orgId, conversationId, convo, config, msg, content, options);
+  }
+
+  private async resumeOrReturnExistingMessage(
+    orgId: string,
+    conversationId: string,
+    convo: Awaited<ReturnType<typeof this.requireConversation>>,
+    existing: {
+      id: string;
+      status: WhatsAppMessageDeliveryStatus;
+      providerMessageId: string | null;
+      failureReason: string | null;
+    },
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
+    if (existing.status === WhatsAppMessageDeliveryStatus.SENT) {
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.mapMessage(full);
+    }
+
+    if (existing.status === WhatsAppMessageDeliveryStatus.FAILED) {
+      const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+      return this.mapMessage(full);
+    }
+
+    if (existing.providerMessageId) {
+      throw new WhatsAppSendAmbiguousException();
+    }
+
+    const config = await this.requireConfig(orgId);
+    const full = await this.prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: existing.id } });
+    return this.dispatchOutboundMessage(orgId, conversationId, convo, config, full, full.content, options);
+  }
+
+  private async dispatchOutboundMessage(
+    orgId: string,
+    conversationId: string,
+    convo: Awaited<ReturnType<typeof this.requireConversation>>,
+    config: Awaited<ReturnType<typeof this.requireConfig>>,
+    msg: { id: string; content: string },
+    content: string,
+    options?: { skipCanonicalProjection?: boolean; idempotencyKey?: string },
+  ) {
     let finalStatus: WhatsAppMessageDeliveryStatus = WhatsAppMessageDeliveryStatus.FAILED;
     let providerMessageId: string | null = null;
     let failureReason: string | null = null;
@@ -248,18 +308,34 @@ export class WhatsAppService {
         where: { id: msg.id },
         data: { status: WhatsAppMessageDeliveryStatus.FAILED, failureReason },
       });
-      void this.communicationProjection.projectOutboundFailed({
-        conversation: convo,
-        message: failed,
-      });
+      if (!options?.skipCanonicalProjection) {
+        void this.communicationProjection.projectOutboundFailed({
+          conversation: convo,
+          message: failed,
+        });
+      }
       throw new WhatsAppProviderNotConfiguredException();
     }
 
-    const result = await this.provider.sendTextMessage(config, convo.contactPhone, content, {
-      organizationId: orgId,
-      conversationId,
-      messageId: msg.id,
-    });
+    let result;
+    try {
+      result = await this.provider.sendTextMessage(config, convo.contactPhone, content, {
+        organizationId: orgId,
+        conversationId,
+        messageId: msg.id,
+        idempotencyKey: options?.idempotencyKey,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown provider error';
+      if (/timeout|timed out|econnreset|econnrefused|socket hang up|network|aborted|fetch failed|gateway timeout/i.test(message)) {
+        throw new WhatsAppSendAmbiguousException();
+      }
+      throw err;
+    }
+
+    if (result.status === 'UNKNOWN') {
+      throw new WhatsAppSendAmbiguousException();
+    }
 
     finalStatus =
       result.status === 'FAILED'
