@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c13-0-link-vehicle-authority-2026-08-23',
+    version: '4.9.943',
+    title: 'Communication Center C13.0 — link_vehicle canonical authority hotfix',
+    summary: [
+      'link_vehicle Quick Action now converges CommunicationConversation.vehicleId + native WhatsAppConversation.vehicleId atomically.',
+      'New CommunicationContextLinkService — booking-authoritative vehicle, tenant validation, conflict on different canonical vehicle.',
+      'Resolves UNSAFE_DUPLICATE_AUTHORITY blocker from final C9–C12 re-signoff (PR #1223).',
+      'PostgreSQL integration tests: convergence, tenant, replay, conflict, read-after-write.',
+    ],
+    reason: 'Pre-C13 gate hotfix: canonical/native vehicle context drift from native-only write.',
+    previousBehavior:
+      'link_vehicle updated WhatsAppConversation.vehicleId only; canonical CommunicationConversation.vehicleId remained stale.',
+    details: 'architecture/COMMUNICATION_CENTER_C13_0_LINK_VEHICLE_AUTHORITY_HOTFIX.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-23T22:15:00.000Z',
+  },
+  {
     id: 'communication-center-c9-2-voice-ops-2026-08-23',
     version: '4.9.941',
     title: 'Communication Center C9.2 — Voice operations parity (final hardening)',

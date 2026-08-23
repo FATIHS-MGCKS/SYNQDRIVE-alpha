@@ -1163,6 +1163,17 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center C13.0 — link_vehicle authority (V4.9.943)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-positive)]',
+    apis: [
+      { label: 'Hotfix', detail: 'link_vehicle → CommunicationContextLinkService — canonical CommunicationConversation.vehicleId + native WhatsApp convergence in one transaction' },
+      { label: 'Authority', detail: 'Booking-derived vehicleId; tenant validation; conflict if canonical already linked to different vehicle; idempotent replay' },
+      { label: 'Gate', detail: 'Resolves C9–C12 re-signoff blocker (PR #1223); pending tiny gate re-check after merge' },
+      { label: 'Doc', detail: 'architecture/COMMUNICATION_CENTER_C13_0_LINK_VEHICLE_AUTHORITY_HOTFIX.md' },
+    ],
+  },
+  {
     name: 'Communication Center C9.2 — Voice Operations Parity (V4.9.941)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-positive)]',

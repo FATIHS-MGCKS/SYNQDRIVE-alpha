@@ -71,7 +71,9 @@ export function useCommunicationQuickActions(options: UseCommunicationQuickActio
           variables: result.template.templateVariables,
         });
       } else if (
-        (result.actionType === 'CONVERSATION_MUTATION' || result.actionType === 'HANDOFF')
+        (result.actionType === 'CONVERSATION_MUTATION'
+          || result.actionType === 'HANDOFF'
+          || (result.actionType === 'BUSINESS_MUTATION' && result.conversation))
         && result.conversation
       ) {
         options.onConversationUpdated?.(result);

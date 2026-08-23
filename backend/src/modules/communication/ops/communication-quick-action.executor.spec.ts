@@ -5,6 +5,7 @@ import {
   WhatsAppTemplateCategory,
   WhatsAppTemplateProviderStatus,
 } from '@prisma/client';
+import { CommunicationContextLinkService } from '../context/communication-context-link.service';
 import { CommunicationQuickActionExecutorService } from './communication-quick-action.executor';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationWriteService } from '../write/communication-write.service';
@@ -50,6 +51,7 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
   const documentBundle = { getBundleView: jest.fn() };
   const tasks = { createManualTask: jest.fn() };
   const taskPermissions = { assert: jest.fn() };
+  const contextLink = { linkVehicleFromBooking: jest.fn() };
 
   let service: CommunicationQuickActionExecutorService;
 
@@ -85,6 +87,7 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
         { provide: BookingDocumentBundleService, useValue: documentBundle },
         { provide: TasksService, useValue: tasks },
         { provide: TaskPermissionService, useValue: taskPermissions },
+        { provide: CommunicationContextLinkService, useValue: contextLink },
       ],
     }).compile();
 
@@ -234,5 +237,30 @@ describe('CommunicationQuickActionExecutorService (C9.1 canonical)', () => {
     await expect(
       service.execute(orgId, canonicalId, nativeId, 'assign_user', actor),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('link_vehicle uses canonical context link authority', async () => {
+    contextLink.linkVehicleFromBooking.mockResolvedValue({
+      vehicleId: 'vehicle-1',
+      changed: true,
+      conversation: { id: canonicalId, vehicleId: 'vehicle-1' },
+    });
+
+    const result = await service.execute(orgId, canonicalId, nativeId, 'link_vehicle', actor);
+
+    expect(contextLink.linkVehicleFromBooking).toHaveBeenCalledWith({
+      organizationId: orgId,
+      canonicalConversationId: canonicalId,
+      nativeConversationId: nativeId,
+      actorUserId: actor.userId,
+    });
+    expect(result).toMatchObject({
+      actionType: 'BUSINESS_MUTATION',
+      actionId: 'link_vehicle',
+      vehicleId: 'vehicle-1',
+      changed: true,
+      conversation: { id: canonicalId, vehicleId: 'vehicle-1' },
+    });
+    expect(prisma.whatsAppConversation.update).not.toHaveBeenCalled();
   });
 });

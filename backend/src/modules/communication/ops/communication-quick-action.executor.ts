@@ -27,6 +27,7 @@ import { mapConversationDetail } from '../read/communication-read.mapper';
 import { CommunicationReplyError } from '../reply/communication-reply.errors';
 import { renderTemplateBodyPreview } from '../reply/communication-template-variables.util';
 import type { CommunicationReplyActor } from '../reply/communication-reply.service';
+import { CommunicationContextLinkService } from '../context/communication-context-link.service';
 import { COMMUNICATION_QUICK_ACTION_CATALOG } from './communication-quick-action.catalog';
 import type {
   CommunicationQuickActionResult,
@@ -47,6 +48,7 @@ export class CommunicationQuickActionExecutorService {
     private readonly documentBundle: BookingDocumentBundleService,
     private readonly tasks: TasksService,
     private readonly taskPermissions: TaskPermissionService,
+    private readonly contextLink: CommunicationContextLinkService,
   ) {}
 
   async execute(
@@ -152,7 +154,13 @@ export class CommunicationQuickActionExecutorService {
       case 'reopen_conversation':
         return this.executeReopen(organizationId, canonicalConversationId, actor, actionId);
       case 'link_vehicle':
-        return this.executeLinkVehicle(organizationId, nativeConversationId, actionId);
+        return this.executeLinkVehicle(
+          organizationId,
+          canonicalConversationId,
+          nativeConversationId,
+          actor,
+          actionId,
+        );
       case 'create_task':
         return this.executeCreateTask(
           organizationId,
@@ -358,28 +366,24 @@ export class CommunicationQuickActionExecutorService {
 
   private async executeLinkVehicle(
     organizationId: string,
+    canonicalConversationId: string,
     nativeConversationId: string,
+    actor: CommunicationReplyActor,
     actionId: WhatsAppQuickActionId,
   ): Promise<CommunicationQuickActionResult> {
-    const convo = await this.requireNativeConversation(organizationId, nativeConversationId);
-    if (!convo.bookingId) throw new BadRequestException('No booking linked');
-
-    const booking = await this.prisma.booking.findFirst({
-      where: { id: convo.bookingId, organizationId },
-      select: { vehicleId: true },
-    });
-    if (!booking?.vehicleId) throw new BadRequestException('Booking has no vehicle');
-
-    await this.prisma.whatsAppConversation.update({
-      where: { id: convo.id },
-      data: { vehicleId: booking.vehicleId },
+    const result = await this.contextLink.linkVehicleFromBooking({
+      organizationId,
+      canonicalConversationId,
+      nativeConversationId,
+      actorUserId: actor.userId,
     });
 
     return {
       actionType: 'BUSINESS_MUTATION',
       actionId,
-      vehicleId: booking.vehicleId,
-      changed: true,
+      vehicleId: result.vehicleId,
+      conversation: result.conversation,
+      changed: result.changed,
     };
   }
 
