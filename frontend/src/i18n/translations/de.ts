@@ -993,7 +993,7 @@ export const de: Record<TranslationKey, string> = {
   'status.pending': 'Ausstehend',
   'status.completed': 'Abgeschlossen',
   'status.inProgress': 'In Bearbeitung',
-  'status.overdue': 'Ueberfaellig',
+  'status.overdue': 'Überfällig',
   'status.cancelled': 'Storniert',
   'status.available': 'Verfuegbar',
   'status.rented': 'Aktiv vermietet',

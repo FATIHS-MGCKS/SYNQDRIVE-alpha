@@ -1,7 +1,7 @@
 # P2.2.27 — Operator Vehicle Quick View Open Tasks Implementation Audit
 
-**Date:** 2026-08-23  
-**Baseline:** `9f87c3d793fa1f8c784df1d03e230c803ae5c740`  
+**Date:** 2026-08-23
+**Baseline:** `9f87c3d793fa1f8c784df1d03e230c803ae5c740`
 **Pre-flight:** PR #1202 (verdict B)
 
 ## Topology
@@ -47,6 +47,14 @@
 - `operator-vehicle-quick-view-tasks-localization.test.tsx` — 11/11 PASS
 - `npm run build` — PASS
 - P227 = 0; P226–P216 = 0
+
+## Micro-cleanup (post re-audit #1204)
+
+| Item | Decision |
+|------|----------|
+| Trailing whitespace in P227 docs | Removed (lines 3–4 in implementation + architecture docs) |
+| `status.overdue` DE copy | **A** — shared key corrected `Ueberfaellig` → `Überfällig` |
+| Rationale | UTF-8 umlauts are canonical for overdue copy (`dashboard.operations.status.overdue`, `tasks.*.overdue`); sole production consumer is QV-G adapter; presentation-only |
 
 ## Verdict
 

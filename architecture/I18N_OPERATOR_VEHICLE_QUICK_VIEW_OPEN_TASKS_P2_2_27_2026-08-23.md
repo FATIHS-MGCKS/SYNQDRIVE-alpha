@@ -1,7 +1,7 @@
 # P2.2.27 — Operator Vehicle Quick View Open Tasks Localization
 
-**Date:** 2026-08-23  
-**Baseline:** `9f87c3d793fa1f8c784df1d03e230c803ae5c740` (PR #1198 / P2.2.26)  
+**Date:** 2026-08-23
+**Baseline:** `9f87c3d793fa1f8c784df1d03e230c803ae5c740` (PR #1198 / P2.2.26)
 **Pre-flight:** PR #1202 (verdict B — split, QV-G selected)
 
 ## Scope (QV-G only)
