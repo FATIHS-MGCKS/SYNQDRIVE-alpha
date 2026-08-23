@@ -18,6 +18,8 @@ interface UtilizationKpiRowProps {
   utilizationDeltaPp: number | null;
   bookingCount: number;
   bookingDeltaPercent: number | null;
+  layout?: 'row' | 'stack';
+  className?: string;
 }
 
 export function UtilizationKpiRow({
@@ -28,32 +30,51 @@ export function UtilizationKpiRow({
   utilizationDeltaPp,
   bookingCount,
   bookingDeltaPercent,
+  layout = 'row',
+  className,
 }: UtilizationKpiRowProps) {
   const utilizationDelta = formatUtilizationDeltaPp(utilizationDeltaPp);
   const bookingDelta = formatBookingDeltaPercent(bookingDeltaPercent);
 
-  return (
-    <div className="grid grid-cols-2 gap-3 lg:gap-2">
-      <div className="min-w-0">
-        <p className={DASHBOARD_KPI_TITLE_CLASS}>{utilizationLabel}</p>
-        <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1 lg:mt-0.5 lg:text-[17px]')}>
-          {formatUtilizationPercent(utilizationPercent)}
+  const utilizationKpi = (
+    <div className="min-w-0">
+      <p className={DASHBOARD_KPI_TITLE_CLASS}>{utilizationLabel}</p>
+      <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1 lg:mt-0.5 lg:text-[17px]')}>
+        {formatUtilizationPercent(utilizationPercent)}
+      </p>
+      {utilizationDelta ? (
+        <p className={cn(DASHBOARD_KPI_HINT_CLASS, 'mt-0.5')}>
+          {utilizationDelta} {vsPreviousMonthLabel}
         </p>
-        {utilizationDelta ? (
-          <p className={cn(DASHBOARD_KPI_HINT_CLASS, 'mt-0.5')}>
-            {utilizationDelta} {vsPreviousMonthLabel}
-          </p>
-        ) : null}
+      ) : null}
+    </div>
+  );
+
+  const bookingsKpi = (
+    <div className="min-w-0">
+      <p className={DASHBOARD_KPI_TITLE_CLASS}>{bookingsLabel}</p>
+      <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1 lg:mt-0.5 lg:text-[17px]')}>{bookingCount}</p>
+      {bookingDelta ? (
+        <p className={cn(DASHBOARD_KPI_HINT_CLASS, 'mt-0.5')}>
+          {bookingDelta} {vsPreviousMonthLabel}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  if (layout === 'stack') {
+    return (
+      <div className={cn('flex min-w-0 flex-col gap-4 lg:gap-3', className)}>
+        {utilizationKpi}
+        {bookingsKpi}
       </div>
-      <div className="min-w-0">
-        <p className={DASHBOARD_KPI_TITLE_CLASS}>{bookingsLabel}</p>
-        <p className={cn(DASHBOARD_KPI_NUMBER_CLASS, 'mt-1 lg:mt-0.5 lg:text-[17px]')}>{bookingCount}</p>
-        {bookingDelta ? (
-          <p className={cn(DASHBOARD_KPI_HINT_CLASS, 'mt-0.5')}>
-            {bookingDelta} {vsPreviousMonthLabel}
-          </p>
-        ) : null}
-      </div>
+    );
+  }
+
+  return (
+    <div className={cn('grid grid-cols-2 gap-3 lg:gap-2', className)}>
+      {utilizationKpi}
+      {bookingsKpi}
     </div>
   );
 }

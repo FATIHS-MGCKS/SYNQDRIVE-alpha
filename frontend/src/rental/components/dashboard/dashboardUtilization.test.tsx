@@ -95,18 +95,11 @@ describe('dashboard utilization UI', () => {
     container.remove();
   });
 
-  it('renders title Auslastung', () => {
+  it('renders title Auslastung and KPI values', () => {
     act(() => {
       root.render(createElement(DashboardUtilizationPanel, { vm: minimalVm }));
     });
     expect(container.textContent).toContain(de['dashboard.utilization.title']);
-  });
-
-  it('renders selected month and KPI values', () => {
-    act(() => {
-      root.render(createElement(DashboardUtilizationPanel, { vm: minimalVm }));
-    });
-    expect(container.textContent).toContain('August 2026');
     expect(container.textContent).toContain('78 %');
     expect(container.textContent).toContain('42');
     expect(container.textContent).toContain('+6 PP');
@@ -194,6 +187,15 @@ describe('dashboard utilization UI', () => {
 describe('dashboard utilization layout contract', () => {
   const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
   const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
+  const panelSrc = readFileSync(resolve(testDir, './utilization/DashboardUtilizationPanel.tsx'), 'utf8');
+
+  it('uses side-by-side KPI stack and full-height calendar in utilization panel', () => {
+    expect(panelSrc).toMatch(/layout="stack"/);
+    expect(panelSrc).toMatch(/fillHeight/);
+    expect(panelSrc).toMatch(/lg:grid-cols-\[minmax\(0,2fr\)_minmax\(0,3fr\)\]/);
+    expect(panelSrc).not.toMatch(/UtilizationMonthNav/);
+    expect(panelSrc).not.toMatch(/UtilizationProgressBar/);
+  });
 
   it('places utilization panel beside ops and finance on desktop', () => {
     expect(shellSrc).toMatch(/controlFinanceGrid:[\s\S]*lg:grid-cols-2/);
