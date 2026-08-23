@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import communicationProjectionConfig from '@config/communication-projection.config';
+import { DocumentsModule } from '@modules/documents/documents.module';
 import { StationsModule } from '@modules/stations/stations.module';
 import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { PrismaModule } from '@shared/database/prisma.module';
@@ -32,6 +33,8 @@ import { CommunicationHumanTakeoverService } from './write/communication-human-t
 import { CommunicationReplyController } from './reply/communication-reply.controller';
 import { CommunicationReplyService } from './reply/communication-reply.service';
 import { CommunicationReplyChannelCapabilityService } from './reply/communication-reply-channel-capability.service';
+import { CommunicationAttachmentService } from './media/communication-attachment.service';
+import { CommunicationAttachmentController } from './media/communication-attachment.controller';
 import { WhatsAppCommunicationOutboundAdapter } from './reply/adapters/whatsapp-communication-outbound.adapter';
 import { SmsCommunicationOutboundAdapter } from './reply/adapters/sms-communication-outbound.adapter';
 import { CommunicationContentBackfillService } from './content/communication-content-backfill.service';
@@ -45,6 +48,7 @@ import { CommunicationContentService } from './content/communication-content.ser
   imports: [
     PrismaModule,
     StationsModule,
+    DocumentsModule,
     forwardRef(() => WhatsAppModule),
     ConfigModule.forFeature(communicationProjectionConfig),
   ],
@@ -78,10 +82,16 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationHumanTakeoverService,
     CommunicationReplyService,
     CommunicationReplyChannelCapabilityService,
+    CommunicationAttachmentService,
     WhatsAppCommunicationOutboundAdapter,
     SmsCommunicationOutboundAdapter,
   ],
-  controllers: [CommunicationReadController, CommunicationWriteController, CommunicationReplyController],
+  controllers: [
+    CommunicationReadController,
+    CommunicationWriteController,
+    CommunicationReplyController,
+    CommunicationAttachmentController,
+  ],
   exports: [
     CommunicationTenantContextValidation,
     CommunicationConversationRepository,
@@ -108,6 +118,8 @@ import { CommunicationContentService } from './content/communication-content.ser
     CommunicationWriteScopeService,
     CommunicationWriteService,
     CommunicationReplyService,
+    CommunicationAttachmentService,
+    CommunicationConversationRepository,
   ],
 })
 export class CommunicationModule {}

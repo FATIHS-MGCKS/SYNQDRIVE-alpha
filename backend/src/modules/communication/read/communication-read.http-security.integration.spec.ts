@@ -15,6 +15,9 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { CommunicationReadController } from './communication-read.controller';
 import { CommunicationReadRepository } from './communication-read.repository';
 import { CommunicationReadService } from './communication-read.service';
+import { CommunicationAttachmentService } from '../media/communication-attachment.service';
+import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
+import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
 
 @Injectable()
 class TestAuthGuard implements CanActivate {
@@ -89,6 +92,12 @@ describe('CommunicationReadController — HTTP security integration', () => {
       providers: [
         CommunicationReadService,
         CommunicationReadRepository,
+        CommunicationAttachmentService,
+        {
+          provide: CommunicationWriteScopeService,
+          useValue: { assertConversationReadable: jest.fn() },
+        },
+        { provide: DOCUMENTS_STORAGE, useValue: { putObject: jest.fn(), getObject: jest.fn(), getObjectStream: jest.fn() } },
         OrgScopingGuard,
         PermissionsGuard,
         RolesGuard,

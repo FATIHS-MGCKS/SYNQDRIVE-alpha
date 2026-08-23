@@ -88,6 +88,7 @@ describe('CommunicationWorkspacePane actions', () => {
           LanguageProvider,
           null,
           createElement(CommunicationWorkspacePane, {
+            orgId: 'org-1',
             selectedConversationId: 'conv-1',
             activeChannel: 'whatsapp',
             conversationState: baseConversationState(),

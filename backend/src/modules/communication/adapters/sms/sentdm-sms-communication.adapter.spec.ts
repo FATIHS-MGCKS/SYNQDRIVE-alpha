@@ -45,6 +45,8 @@ describe('SentDmSmsCommunicationAdapter', () => {
       acceptedAt: new Date('2026-08-21T10:01:00Z'),
       deliveredAt: null,
       failedAt: null,
+      dispatchAttemptedAt: null,
+      firstDispatchAttemptedAt: null,
       createdAt: new Date('2026-08-21T10:01:00Z'),
       updatedAt: new Date('2026-08-21T10:01:00Z'),
     };
@@ -73,6 +75,8 @@ describe('SentDmSmsCommunicationAdapter', () => {
       acceptedAt: new Date('2026-08-21T10:01:00Z'),
       deliveredAt: new Date('2026-08-21T10:02:00Z'),
       failedAt: null,
+      dispatchAttemptedAt: null,
+      firstDispatchAttemptedAt: null,
       createdAt: new Date('2026-08-21T10:01:00Z'),
       updatedAt: new Date('2026-08-21T10:02:00Z'),
     };

@@ -100,6 +100,7 @@ export const COMMUNICATION_EVENT_SELECT = {
       truncated: true,
       hasAttachments: true,
       attachmentCount: true,
+      nativeMessageId: true,
     },
   },
 } satisfies Prisma.CommunicationEventSelect;
@@ -250,6 +251,7 @@ export function mapConversationDetail(
 
 export function mapMessageContent(
   row: CommunicationEventRow['messageContent'],
+  attachments?: import('./dto/communication-read-response.dto').CommunicationAttachmentSummaryDto[],
 ): CommunicationMessageContentDto | null {
   if (!row) return null;
   return {
@@ -259,10 +261,14 @@ export function mapMessageContent(
     truncated: row.truncated,
     hasAttachments: row.hasAttachments,
     attachmentCount: row.attachmentCount,
+    attachments,
   };
 }
 
-export function mapCommunicationEvent(row: CommunicationEventRow): CommunicationEventDto {
+export function mapCommunicationEvent(
+  row: CommunicationEventRow,
+  attachments?: import('./dto/communication-read-response.dto').CommunicationAttachmentSummaryDto[],
+): CommunicationEventDto {
   return {
     id: row.id,
     eventType: row.eventType,
@@ -271,7 +277,7 @@ export function mapCommunicationEvent(row: CommunicationEventRow): Communication
     occurredAt: row.occurredAt.toISOString(),
     providerIdentity: row.providerIdentity,
     metadata: projectSafeReadMetadata(row.metadata),
-    content: mapMessageContent(row.messageContent),
+    content: mapMessageContent(row.messageContent, attachments),
   };
 }
 

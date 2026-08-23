@@ -11,6 +11,22 @@ export class CommunicationWriteScopeService {
     organizationId: string,
     conversation: CommunicationConversationListRow,
   ): Promise<void> {
+    await this.assertConversationInScope(actorUserId, organizationId, conversation);
+  }
+
+  async assertConversationReadable(
+    actorUserId: string,
+    organizationId: string,
+    conversation: CommunicationConversationListRow,
+  ): Promise<void> {
+    await this.assertConversationInScope(actorUserId, organizationId, conversation);
+  }
+
+  private async assertConversationInScope(
+    actorUserId: string,
+    organizationId: string,
+    conversation: CommunicationConversationListRow,
+  ): Promise<void> {
     if (conversation.stationId) {
       const access = await this.stationAccess.resolve(actorUserId, organizationId);
       try {

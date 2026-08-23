@@ -37,6 +37,14 @@ export class CommunicationConversationDetailDto extends CommunicationConversatio
   updatedAt!: string;
 }
 
+export class CommunicationAttachmentSummaryDto {
+  id!: string;
+  fileName!: string;
+  mimeType!: string;
+  sizeBytes!: number;
+  mediaType!: 'IMAGE' | 'DOCUMENT';
+}
+
 export class CommunicationMessageContentDto {
   id!: string;
   contentType!: CommunicationMessageContentType;
@@ -44,6 +52,7 @@ export class CommunicationMessageContentDto {
   truncated?: boolean;
   hasAttachments!: boolean;
   attachmentCount!: number;
+  attachments?: CommunicationAttachmentSummaryDto[];
 }
 
 export class CommunicationEventDto {

@@ -204,6 +204,8 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
               timestamp: string;
               type?: string;
               text?: { body?: string };
+              image?: { id?: string; mime_type?: string; caption?: string };
+              document?: { id?: string; mime_type?: string; filename?: string; caption?: string };
             }>;
             statuses?: Array<{
               id: string;
@@ -226,17 +228,61 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
         phoneNumberId = value.metadata?.phone_number_id ?? phoneNumberId;
 
         for (const msg of value.messages ?? []) {
-          if (msg.type !== 'text' || !msg.text?.body) continue;
-          entries.push({
-            externalEventId: `msg:${msg.id}`,
-            eventType: 'messages',
-            inboundMessage: {
-              providerMessageId: msg.id,
-              fromPhone: msg.from,
-              body: msg.text.body,
-              timestamp: new Date(Number(msg.timestamp) * 1000),
-            },
-          });
+          if (msg.type === 'text' && msg.text?.body) {
+            entries.push({
+              externalEventId: `msg:${msg.id}`,
+              eventType: 'messages',
+              inboundMessage: {
+                providerMessageId: msg.id,
+                fromPhone: msg.from,
+                body: msg.text.body,
+                timestamp: new Date(Number(msg.timestamp) * 1000),
+                messageType: 'text',
+              },
+            });
+            continue;
+          }
+
+          if (msg.type === 'image' && msg.image?.id) {
+            entries.push({
+              externalEventId: `msg:${msg.id}`,
+              eventType: 'messages',
+              inboundMessage: {
+                providerMessageId: msg.id,
+                fromPhone: msg.from,
+                body: msg.image.caption ?? '',
+                timestamp: new Date(Number(msg.timestamp) * 1000),
+                messageType: 'image',
+                media: {
+                  providerMediaId: msg.image.id,
+                  mimeType: msg.image.mime_type ?? 'image/jpeg',
+                  fileName: 'image.jpg',
+                  mediaKind: 'image',
+                },
+              },
+            });
+            continue;
+          }
+
+          if (msg.type === 'document' && msg.document?.id) {
+            entries.push({
+              externalEventId: `msg:${msg.id}`,
+              eventType: 'messages',
+              inboundMessage: {
+                providerMessageId: msg.id,
+                fromPhone: msg.from,
+                body: msg.document.caption ?? '',
+                timestamp: new Date(Number(msg.timestamp) * 1000),
+                messageType: 'document',
+                media: {
+                  providerMediaId: msg.document.id,
+                  mimeType: msg.document.mime_type ?? 'application/pdf',
+                  fileName: msg.document.filename ?? 'document.pdf',
+                  mediaKind: 'document',
+                },
+              },
+            });
+          }
         }
 
         for (const st of value.statuses ?? []) {
@@ -271,6 +317,139 @@ export class MetaWhatsAppCloudProvider implements WhatsAppProviderInterface {
         return 'FAILED';
       default:
         return null;
+    }
+  }
+
+  async uploadMedia(
+    config: WhatsAppProviderRuntimeConfig,
+    input: { buffer: Buffer; mimeType: string; fileName: string },
+  ): Promise<{ mediaId: string }> {
+    this.ensureConfigured(config);
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('file', new Blob([new Uint8Array(input.buffer)], { type: input.mimeType }), input.fileName);
+    form.append('type', input.mimeType);
+
+    const res = await fetch(this.graphUrl(config, `${config.phoneNumberId}/media`), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+      body: form,
+    });
+
+    const json = (await res.json()) as { id?: string; error?: { message: string } };
+    if (!res.ok || !json.id) {
+      throw new Error(json.error?.message ?? `Media upload failed (${res.status})`);
+    }
+    return { mediaId: json.id };
+  }
+
+  async downloadMedia(
+    config: WhatsAppProviderRuntimeConfig,
+    providerMediaId: string,
+  ): Promise<{ buffer: Buffer; mimeType: string; fileName: string }> {
+    this.ensureConfigured(config);
+    const metaRes = await fetch(this.graphUrl(config, providerMediaId), {
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+    });
+    const metaJson = (await metaRes.json()) as {
+      url?: string;
+      mime_type?: string;
+      error?: { message: string };
+    };
+    if (!metaRes.ok || !metaJson.url) {
+      throw new Error(metaJson.error?.message ?? `Media metadata fetch failed (${metaRes.status})`);
+    }
+
+    const downloadRes = await fetch(metaJson.url, {
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+    });
+    if (!downloadRes.ok) {
+      throw new Error(`Media download failed (${downloadRes.status})`);
+    }
+    const arrayBuffer = await downloadRes.arrayBuffer();
+    const mimeType = metaJson.mime_type ?? 'application/octet-stream';
+    const extension = mimeType === 'image/png'
+      ? 'png'
+      : mimeType === 'image/webp'
+        ? 'webp'
+        : mimeType === 'application/pdf'
+          ? 'pdf'
+          : 'jpg';
+    return {
+      buffer: Buffer.from(arrayBuffer),
+      mimeType,
+      fileName: `whatsapp-media.${extension}`,
+    };
+  }
+
+  async sendMediaMessage(
+    config: WhatsAppProviderRuntimeConfig,
+    toPhoneNumber: string,
+    media: {
+      mediaId: string;
+      mimeType: string;
+      fileName: string;
+      caption?: string;
+      mediaKind: 'image' | 'document';
+    },
+    _metadata: WhatsAppSendMetadata,
+  ): Promise<WhatsAppProviderSendResult> {
+    this.ensureConfigured(config);
+    const to = toPhoneNumber.replace(/\D/g, '');
+
+    const body =
+      media.mediaKind === 'image'
+        ? {
+            messaging_product: 'whatsapp',
+            to,
+            type: 'image',
+            image: {
+              id: media.mediaId,
+              ...(media.caption ? { caption: media.caption } : {}),
+            },
+          }
+        : {
+            messaging_product: 'whatsapp',
+            to,
+            type: 'document',
+            document: {
+              id: media.mediaId,
+              filename: media.fileName,
+              ...(media.caption ? { caption: media.caption } : {}),
+            },
+          };
+
+    try {
+      const res = await fetch(this.graphUrl(config, `${config.phoneNumberId}/messages`), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = (await res.json()) as { messages?: { id: string }[]; error?: { message: string } };
+      if (!res.ok) {
+        const failureReason = json.error?.message ?? `HTTP ${res.status}`;
+        const outcome = this.classifyHttpFailure(res.status, failureReason);
+        return {
+          providerMessageId: '',
+          status: outcome === 'UNKNOWN' ? 'UNKNOWN' : 'FAILED',
+          failureReason,
+        };
+      }
+
+      const providerMessageId = json.messages?.[0]?.id ?? '';
+      return { providerMessageId, status: providerMessageId ? 'SENT' : 'FAILED' };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown provider error';
+      this.logger.error(`Meta sendMediaMessage failed: ${message}`);
+      return {
+        providerMessageId: '',
+        status: this.isTransportUncertainty(message) ? 'UNKNOWN' : 'FAILED',
+        failureReason: message,
+      };
     }
   }
 

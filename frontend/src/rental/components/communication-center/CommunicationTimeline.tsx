@@ -9,11 +9,13 @@ import {
 } from '../../../lib/communication/timeline-presentation';
 import { classifyCommunicationTimestamp } from '../../../lib/communication/format';
 import { CommunicationMessageBubble } from './CommunicationMessageBubble';
+import { CommunicationMediaContent } from './CommunicationMediaContent';
 import { CommunicationCallEvent } from './CommunicationCallEvent';
 import { CommunicationLifecycleEvent } from './CommunicationLifecycleEvent';
 import { CommunicationTimelineSkeleton } from './skeletons/CommunicationTimelineSkeleton';
 
 interface CommunicationTimelineProps {
+  orgId: string;
   channel: CommunicationApiChannel;
   events: CommunicationEvent[];
   conversationSignature: string;
@@ -45,6 +47,7 @@ function formatDateSeparator(
 
 function renderTimelineItem(
   item: TimelinePresentationItem,
+  orgId: string,
   channel: CommunicationApiChannel,
   locale: string,
   t: ReturnType<typeof useLanguage>['t'],
@@ -66,7 +69,32 @@ function renderTimelineItem(
 
   if (item.kind === 'message') {
     const isText = item.contentType === 'TEXT';
+    const isRenderableMedia =
+      item.contentType === 'IMAGE' || item.contentType === 'DOCUMENT';
     const contentLabel = t(contentTypeLabelKey(item.contentType));
+
+    if (isRenderableMedia) {
+      return (
+        <div
+          data-testid="communication-message-bubble"
+          data-direction={item.direction}
+          className={item.direction === 'inbound' ? 'flex w-full justify-start' : 'flex w-full justify-end'}
+        >
+          <article
+            className="max-w-[min(85%,28rem)] rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-[13px]"
+          >
+            <CommunicationMediaContent
+              orgId={orgId}
+              contentType={item.contentType as 'IMAGE' | 'DOCUMENT'}
+              caption={item.text}
+              attachments={item.attachments}
+              t={t}
+            />
+          </article>
+        </div>
+      );
+    }
+
     return (
       <CommunicationMessageBubble
         direction={item.direction}
@@ -108,6 +136,7 @@ function renderTimelineItem(
 }
 
 export function CommunicationTimeline({
+  orgId,
   channel,
   events,
   conversationSignature,
@@ -249,7 +278,7 @@ export function CommunicationTimeline({
         <ol className="space-y-2" aria-label={t('communication.timeline.listLabel')}>
           {timelineItems.map((item) => (
             <li key={item.id} className="list-none">
-              {renderTimelineItem(item, channel, locale, t)}
+              {renderTimelineItem(item, orgId, channel, locale, t)}
             </li>
           ))}
         </ol>

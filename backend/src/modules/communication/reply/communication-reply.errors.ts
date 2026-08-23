@@ -21,6 +21,7 @@ export type CommunicationReplyErrorCode =
   | 'SEND_UNKNOWN'
   | 'TEMPLATE_REQUIRED'
   | 'RATE_LIMITED'
+  | 'MEDIA_NOT_SUPPORTED'
   | 'UNKNOWN';
 
 export class CommunicationReplyError {
@@ -113,6 +114,13 @@ export class CommunicationReplyError {
     return new BadRequestException({
       code: 'TEMPLATE_REQUIRED' satisfies CommunicationReplyErrorCode,
       message: 'A template is required to message this contact',
+    });
+  }
+
+  static mediaNotSupported(): BadRequestException {
+    return new BadRequestException({
+      code: 'MEDIA_NOT_SUPPORTED' satisfies CommunicationReplyErrorCode,
+      message: 'Media attachments are not supported for this reply',
     });
   }
 

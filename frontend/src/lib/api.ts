@@ -4276,12 +4276,44 @@ export const api = {
     replyConversation: (
       orgId: string,
       conversationId: string,
-      body: { text: string; idempotencyKey: string },
+      body: {
+        text?: string;
+        attachmentId?: string;
+        contentType?: import('./communication/types').CommunicationReplyContentType;
+        idempotencyKey: string;
+      },
     ) =>
       post<import('./communication/types').CommunicationReplyResponse>(
         `/organizations/${orgId}/communication/conversations/${conversationId}/reply`,
         body,
       ),
+    uploadAttachment: async (orgId: string, conversationId: string, file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      const token = getToken();
+      const res = await fetch(
+        `${BASE_URL}/organizations/${orgId}/communication/conversations/${conversationId}/attachments`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: form,
+        },
+      );
+      if (!res.ok) {
+        let message = `API error ${res.status}`;
+        try {
+          const body = (await res.json()) as { message?: string; code?: string };
+          if (body.message) message = body.message;
+          if (body.code) message = `${body.code}: ${message}`;
+        } catch {
+          // ignore
+        }
+        const error = new Error(message) as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
+      return res.json() as Promise<import('./communication/types').CommunicationAttachmentDto>;
+    },
   },
   bookings: {
     list: (

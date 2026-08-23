@@ -109,8 +109,21 @@ export const communicationClient = {
   replyConversation(
     orgId: string,
     conversationId: string,
-    body: { text: string; idempotencyKey: string },
+    body: {
+      text?: string;
+      attachmentId?: string;
+      contentType?: import('./types').CommunicationReplyContentType;
+      idempotencyKey: string;
+    },
   ) {
     return wrap(() => api.communication.replyConversation(orgId, conversationId, body));
+  },
+
+  uploadAttachment(orgId: string, conversationId: string, file: File) {
+    return wrap(() => api.communication.uploadAttachment(orgId, conversationId, file));
+  },
+
+  attachmentContentUrl(orgId: string, attachmentId: string) {
+    return `/api/v1/organizations/${orgId}/communication/attachments/${attachmentId}/content`;
   },
 };

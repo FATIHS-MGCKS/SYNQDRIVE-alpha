@@ -37,6 +37,13 @@ export interface WhatsAppWebhookEntry {
     fromName?: string;
     body: string;
     timestamp: Date;
+    messageType: 'text' | 'image' | 'document';
+    media?: {
+      providerMediaId: string;
+      mimeType: string;
+      fileName: string;
+      mediaKind: 'image' | 'document';
+    };
   };
   /** Delivery status update for outbound message */
   statusUpdate?: {
@@ -45,6 +52,24 @@ export interface WhatsAppWebhookEntry {
     timestamp: Date;
     failureReason?: string;
   };
+}
+
+export interface WhatsAppMediaUploadResult {
+  mediaId: string;
+}
+
+export interface WhatsAppMediaSendInput {
+  mediaId: string;
+  mimeType: string;
+  fileName: string;
+  caption?: string;
+  mediaKind: 'image' | 'document';
+}
+
+export interface WhatsAppMediaDownloadResult {
+  buffer: Buffer;
+  mimeType: string;
+  fileName: string;
 }
 
 export interface WhatsAppProviderInterface {
@@ -66,6 +91,23 @@ export interface WhatsAppProviderInterface {
     templateName: string,
     language: string,
     variables: Record<string, string>,
+    metadata: WhatsAppSendMetadata,
+  ): Promise<WhatsAppProviderSendResult>;
+
+  uploadMedia(
+    config: WhatsAppProviderRuntimeConfig,
+    input: { buffer: Buffer; mimeType: string; fileName: string },
+  ): Promise<WhatsAppMediaUploadResult>;
+
+  downloadMedia(
+    config: WhatsAppProviderRuntimeConfig,
+    providerMediaId: string,
+  ): Promise<WhatsAppMediaDownloadResult>;
+
+  sendMediaMessage(
+    config: WhatsAppProviderRuntimeConfig,
+    toPhoneNumber: string,
+    media: WhatsAppMediaSendInput,
     metadata: WhatsAppSendMetadata,
   ): Promise<WhatsAppProviderSendResult>;
 
