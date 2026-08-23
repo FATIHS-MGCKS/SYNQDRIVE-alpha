@@ -60,7 +60,7 @@ export function DashboardAttentionStack({
       className={cn(
         panelShellClass('tertiary'),
         'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-        isSidebar && 'h-full max-h-full',
+        isSidebar && 'max-lg:max-h-[min(480px,55vh)]',
         !isSidebar && 'max-lg:max-h-[min(480px,60vh)]',
       )}
       aria-label={t('notification.panelTitle')}
