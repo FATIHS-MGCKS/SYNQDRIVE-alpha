@@ -15,6 +15,44 @@ import { CommunicationContextLinkService } from './communication-context-link.se
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
 
+const C13_FORCED_NATIVE_FAILURE = 'C13_TEST_FORCED_NATIVE_FAILURE';
+
+function installForcedNativeUpdateFailure(prismaClient: PrismaClient) {
+  const originalTransaction = prismaClient.$transaction.bind(prismaClient);
+  let canonicalUpdateReached = false;
+
+  const transactionSpy = jest
+    .spyOn(prismaClient, '$transaction')
+    .mockImplementation((fn, options) => {
+      if (typeof fn !== 'function') {
+        return originalTransaction(fn, options);
+      }
+
+      return originalTransaction(async (tx) => {
+        const originalCanonicalUpdate = tx.communicationConversation.update.bind(
+          tx.communicationConversation,
+        );
+
+        jest.spyOn(tx.communicationConversation, 'update').mockImplementation((args) => {
+          canonicalUpdateReached = true;
+          return originalCanonicalUpdate(args);
+        });
+
+        jest.spyOn(tx.whatsAppConversation, 'update').mockImplementation(() => {
+          throw new Error(C13_FORCED_NATIVE_FAILURE);
+        });
+
+        return fn(tx);
+      }, options);
+    });
+
+  return {
+    transactionSpy,
+    wasCanonicalUpdateReached: () => canonicalUpdateReached,
+    restore: () => transactionSpy.mockRestore(),
+  };
+}
+
 describePg('Communication link_vehicle canonical authority postgres (C13.0)', () => {
   let prisma: PrismaClient;
   let linkService: CommunicationContextLinkService;
@@ -296,7 +334,7 @@ describePg('Communication link_vehicle canonical authority postgres (C13.0)', ()
     expect(immediateRead?.vehicleId).toBe(vehicle.id);
   });
 
-  it('does not partially diverge when booking is outside organization', async () => {
+  it('rejects cross-org booking at precondition without entering transaction', async () => {
     const vehicleB = await createVehicle(orgB, 'atomic-b');
     const bookingB = await createBooking(orgB, vehicleB.id);
     const vehicleA = await createVehicle(orgA, 'atomic-a');
@@ -326,5 +364,38 @@ describePg('Communication link_vehicle canonical authority postgres (C13.0)', ()
     ]);
     expect(canonicalRow?.vehicleId).toBeNull();
     expect(nativeRow?.vehicleId).toBeNull();
+  });
+
+  it('rolls back canonical vehicleId when native update fails inside transaction', async () => {
+    const vehicle = await createVehicle(orgA, 'tx-rollback');
+    const booking = await createBooking(orgA, vehicle.id);
+    const { wa, canonical } = await seedConversationPair({
+      orgId: orgA,
+      bookingId: booking.id,
+    });
+
+    const failureInjection = installForcedNativeUpdateFailure(prisma);
+
+    try {
+      await expect(
+        linkService.linkVehicleFromBooking({
+          organizationId: orgA,
+          canonicalConversationId: canonical.id,
+          nativeConversationId: wa.id,
+          actorUserId,
+        }),
+      ).rejects.toThrow(C13_FORCED_NATIVE_FAILURE);
+
+      expect(failureInjection.wasCanonicalUpdateReached()).toBe(true);
+
+      const [canonicalRow, nativeRow] = await Promise.all([
+        prisma.communicationConversation.findUnique({ where: { id: canonical.id } }),
+        prisma.whatsAppConversation.findUnique({ where: { id: wa.id } }),
+      ]);
+      expect(canonicalRow?.vehicleId).toBeNull();
+      expect(nativeRow?.vehicleId).toBeNull();
+    } finally {
+      failureInjection.restore();
+    }
   });
 });

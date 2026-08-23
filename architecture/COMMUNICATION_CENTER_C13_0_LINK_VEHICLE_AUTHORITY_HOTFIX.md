@@ -63,7 +63,14 @@ Executor delegates to service; no direct `prisma.whatsAppConversation.update` in
 
 ## 5. Transaction / atomicity
 
-Both canonical and native updates occur inside `prisma.$transaction`. Failure before commit leaves neither row changed (verified by cross-org rejection tests).
+Both canonical and native updates occur inside `prisma.$transaction`.
+
+| Evidence class | Mechanism | Result |
+|----------------|-----------|--------|
+| Tenant precondition rejection | Cross-org booking pointer rejected before `$transaction` | **PASS** |
+| In-transaction rollback | Real PostgreSQL interactive transaction; canonical `communicationConversation.update` executes, then forced native `whatsAppConversation.update` failure; both rows remain `vehicleId = null` after rollback | **PASS** |
+
+Do **not** conflate tenant precondition rejection with transaction rollback proof.
 
 ---
 
@@ -121,16 +128,16 @@ No Quick Action redesign. `link_vehicle` success returns `conversation` on `BUSI
 
 ## 12. PostgreSQL evidence
 
-`communication-context-link.postgres.integration.spec.ts` — **6/6 PASS**
+`communication-context-link.postgres.integration.spec.ts` — **7/7 PASS**
 
 | Test | Result |
 |------|--------|
 | Convergence (canonical + native) | PASS |
-| Tenant rejection | PASS |
+| Tenant precondition rejection (pre-transaction) | PASS |
+| In-transaction rollback after canonical update | PASS |
 | Replay idempotency | PASS |
 | Different-vehicle conflict | PASS |
 | Read-after-write | PASS |
-| Atomicity on failure (no partial divergence) | PASS |
 
 ---
 
