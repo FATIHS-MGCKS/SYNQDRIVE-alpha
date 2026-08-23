@@ -4,8 +4,24 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { hasCommunicationPermission } from '../../lib/communication-permissions';
 import { CommunicationCenterShell } from './CommunicationCenterShell';
+import type { CommunicationCenterUrlState } from './communication-center-navigation';
 
-export function CommunicationCenterView() {
+interface CommunicationCenterViewProps {
+  onOpenVoiceAssistant?: (options: {
+    opsTab: 'overview' | 'settings' | 'analytics' | 'automations';
+    wizardStep?: 'tests' | null;
+  }) => void;
+  onOpenEmailSettings?: () => void;
+  onOpenWorkflowAutomation?: () => void;
+  initialState?: Partial<CommunicationCenterUrlState>;
+}
+
+export function CommunicationCenterView({
+  onOpenVoiceAssistant,
+  onOpenEmailSettings,
+  onOpenWorkflowAutomation,
+  initialState,
+}: CommunicationCenterViewProps) {
   const { t } = useLanguage();
   const { hasPermission, userRole, loading } = useRentalOrg();
   const canRead = hasCommunicationPermission(hasPermission, 'read', userRole);
@@ -26,5 +42,12 @@ export function CommunicationCenterView() {
     );
   }
 
-  return <CommunicationCenterShell />;
+  return (
+    <CommunicationCenterShell
+      initialState={initialState}
+      onOpenVoiceAssistant={onOpenVoiceAssistant}
+      onOpenEmailSettings={onOpenEmailSettings}
+      onOpenWorkflowAutomation={onOpenWorkflowAutomation}
+    />
+  );
 }

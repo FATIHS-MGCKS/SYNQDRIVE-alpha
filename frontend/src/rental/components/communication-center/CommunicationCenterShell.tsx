@@ -11,12 +11,16 @@ import { useRentalOrg } from '../../RentalContext';
 import { hasCommunicationPermission } from '../../lib/communication-permissions';
 import {
   applyCommunicationChannelChange,
+  applyCommunicationChannelsSectionChange,
+  applyCommunicationOpenConversations,
   applyCommunicationPrimaryTabChange,
   applyCommunicationSettingsSectionChange,
   mergeCommunicationCenterState,
+  normalizeCommunicationChannelsSection,
   normalizeCommunicationSettingsSection,
   readCommunicationCenterStateFromUrl,
   syncCommunicationCenterStateToUrl,
+  COMMUNICATION_CHANNELS_PARAM,
   COMMUNICATION_SETTINGS_PARAM,
   type CommunicationCenterUrlState,
 } from './communication-center-navigation';
@@ -27,7 +31,13 @@ import { CommunicationContextPane } from './CommunicationContextPane';
 import { CommunicationPrimaryTabs } from './CommunicationPrimaryTabs';
 import { CommunicationSettingsPane } from './CommunicationSettingsPane';
 import { CommunicationAiActivityPane } from './CommunicationAiActivityPane';
+import { CommunicationChannelsPane } from './CommunicationChannelsPane';
+import { CommunicationAutomationsPane } from './CommunicationAutomationsPane';
 import { conversationHasContext } from './communication-context-utils';
+import {
+  canAccessCommunicationChannels,
+  canAccessWorkflowAutomations,
+} from './communication-channels-permissions';
 import {
   canAccessCommunicationSettings,
   canAccessCommunicationSettingsSection,
@@ -39,6 +49,7 @@ import {
 } from './communication-inbox-state';
 import type {
   CommunicationChannel,
+  CommunicationChannelsSection,
   CommunicationMobilePane,
   CommunicationPrimaryTab,
   CommunicationSettingsSection,
@@ -46,9 +57,20 @@ import type {
 
 interface CommunicationCenterShellProps {
   initialState?: Partial<CommunicationCenterUrlState>;
+  onOpenVoiceAssistant?: (options: {
+    opsTab: 'overview' | 'settings' | 'analytics' | 'automations';
+    wizardStep?: 'tests' | null;
+  }) => void;
+  onOpenEmailSettings?: () => void;
+  onOpenWorkflowAutomation?: () => void;
 }
 
-export function CommunicationCenterShell({ initialState }: CommunicationCenterShellProps) {
+export function CommunicationCenterShell({
+  initialState,
+  onOpenVoiceAssistant,
+  onOpenEmailSettings,
+  onOpenWorkflowAutomation,
+}: CommunicationCenterShellProps) {
   const { orgId, hasPermission, userRole } = useRentalOrg();
   const canWrite = hasCommunicationPermission(hasPermission, 'write', userRole);
   const canManage = hasCommunicationPermission(hasPermission, 'manage', userRole);
@@ -69,8 +91,12 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
   const [isTablet, setIsTablet] = useState(false);
 
   const showSettingsTab = canAccessCommunicationSettings(hasPermission, userRole);
+  const showChannelsTab = canAccessCommunicationChannels(hasPermission, userRole);
+  const showAutomationsTab = canAccessWorkflowAutomations(hasPermission);
   const inboxActive = state.primaryTab === 'inbox';
+  const channelsActive = state.primaryTab === 'channels';
   const aiActivityActive = state.primaryTab === 'ai-activity';
+  const automationsActive = state.primaryTab === 'automations';
   const settingsActive = state.primaryTab === 'settings' && showSettingsTab;
 
   useEffect(() => {
@@ -82,6 +108,26 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
       });
     }
   }, [showSettingsTab, state.primaryTab]);
+
+  useEffect(() => {
+    if (!showChannelsTab && state.primaryTab === 'channels') {
+      setState((current) => {
+        const next = mergeCommunicationCenterState({ ...current, primaryTab: 'inbox' });
+        syncCommunicationCenterStateToUrl(next, { replace: true });
+        return next;
+      });
+    }
+  }, [showChannelsTab, state.primaryTab]);
+
+  useEffect(() => {
+    if (!showAutomationsTab && state.primaryTab === 'automations') {
+      setState((current) => {
+        const next = mergeCommunicationCenterState({ ...current, primaryTab: 'inbox' });
+        syncCommunicationCenterStateToUrl(next, { replace: true });
+        return next;
+      });
+    }
+  }, [showAutomationsTab, state.primaryTab]);
 
   useEffect(() => {
     const mobileMq = window.matchMedia('(max-width: 1023px)');
@@ -123,10 +169,18 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawSection = params.get(COMMUNICATION_SETTINGS_PARAM);
-    if (!rawSection) return;
-    const normalized = normalizeCommunicationSettingsSection(rawSection);
-    if (rawSection !== normalized) {
-      patchState({ settingsSection: normalized, primaryTab: 'settings' }, { replace: true });
+    if (rawSection) {
+      const normalized = normalizeCommunicationSettingsSection(rawSection);
+      if (rawSection !== normalized) {
+        patchState({ settingsSection: normalized, primaryTab: 'settings' }, { replace: true });
+      }
+    }
+    const rawChannelsSection = params.get(COMMUNICATION_CHANNELS_PARAM);
+    if (rawChannelsSection) {
+      const normalized = normalizeCommunicationChannelsSection(rawChannelsSection);
+      if (rawChannelsSection !== normalized) {
+        patchState({ channelsSection: normalized, primaryTab: 'channels' }, { replace: true });
+      }
     }
   }, [patchState]);
 
@@ -148,6 +202,25 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
       return next;
     });
   }, []);
+
+  const handleChannelsSectionChange = useCallback((channelsSection: CommunicationChannelsSection) => {
+    setState((current) => {
+      const next = applyCommunicationChannelsSectionChange(current, channelsSection);
+      syncCommunicationCenterStateToUrl(next);
+      return next;
+    });
+  }, []);
+
+  const handleOpenConversations = useCallback(
+    (channel: 'whatsapp' | 'voice' | 'sms') => {
+      setState((current) => {
+        const next = applyCommunicationOpenConversations(current, channel);
+        syncCommunicationCenterStateToUrl(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleChannelChange = useCallback((channel: CommunicationChannel) => {
     setState((current) => {
@@ -275,6 +348,14 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
     [isMobile, patchState, state.mobilePane],
   );
 
+  const channelsSection = useMemo(() => {
+    const normalized = normalizeCommunicationChannelsSection(state.channelsSection);
+    if (!canAccessCommunicationChannels(hasPermission, userRole) && normalized !== 'overview') {
+      return 'overview';
+    }
+    return normalized;
+  }, [hasPermission, state.channelsSection, userRole]);
+
   const settingsSection = useMemo(() => {
     const normalized = normalizeCommunicationSettingsSection(state.settingsSection);
     if (!canAccessCommunicationSettingsSection(normalized, hasPermission, userRole)) {
@@ -304,6 +385,8 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
       <CommunicationPrimaryTabs
         activeTab={state.primaryTab}
         showSettings={showSettingsTab}
+        showChannels={showChannelsTab}
+        showAutomations={showAutomationsTab}
         onChange={handlePrimaryTabChange}
       />
 
@@ -313,6 +396,23 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
             activeSection={settingsSection}
             enabled={settingsActive}
             onSectionChange={handleSettingsSectionChange}
+          />
+        </div>
+      ) : channelsActive ? (
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] lg:min-h-[480px] lg:p-5">
+          <CommunicationChannelsPane
+            activeSection={channelsSection}
+            enabled={channelsActive}
+            onSectionChange={handleChannelsSectionChange}
+            onOpenConversations={handleOpenConversations}
+            onOpenVoiceAssistant={(options) => onOpenVoiceAssistant?.(options)}
+            onOpenEmailSettings={() => onOpenEmailSettings?.()}
+          />
+        </div>
+      ) : automationsActive ? (
+        <div className="surface-premium min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] lg:min-h-[480px] lg:p-5">
+          <CommunicationAutomationsPane
+            onOpenWorkflowAutomation={() => onOpenWorkflowAutomation?.()}
           />
         </div>
       ) : aiActivityActive ? (

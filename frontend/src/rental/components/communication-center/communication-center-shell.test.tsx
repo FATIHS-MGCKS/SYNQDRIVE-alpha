@@ -19,6 +19,16 @@ vi.mock('./CommunicationSettingsPane', () => ({
     createElement('div', { 'data-testid': 'communication-settings-shell' }),
 }));
 
+vi.mock('./CommunicationChannelsPane', () => ({
+  CommunicationChannelsPane: () =>
+    createElement('div', { 'data-testid': 'communication-channels-shell' }),
+}));
+
+vi.mock('./CommunicationAutomationsPane', () => ({
+  CommunicationAutomationsPane: () =>
+    createElement('div', { 'data-testid': 'communication-automations-pane' }),
+}));
+
 vi.mock('../../../lib/api', () => ({
   api: {
     whatsapp: { getConfig: vi.fn().mockResolvedValue({ isConnected: true, providerConfigured: true }) },
@@ -133,9 +143,21 @@ describe('CommunicationCenterShell', () => {
     expect(container.querySelector('[data-testid="communication-inbox-pane"]')).toBeNull();
   });
 
-  it('uses primary tabs for inbox and settings', () => {
+  it('uses primary tabs for inbox, channels, and settings', () => {
     renderShell();
+    expect(container.textContent).toContain('Channels');
     expect(container.textContent).toContain('Settings');
+  });
+
+  it('renders channels shell when channels tab is active', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/rental?view=communication-center&communicationTab=channels',
+    );
+    renderShell();
+    expect(container.querySelector('[data-testid="communication-channels-shell"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="communication-inbox-pane"]')).toBeNull();
   });
 
   it('renders German copy', () => {

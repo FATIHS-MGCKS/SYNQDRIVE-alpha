@@ -35,6 +35,11 @@ import {
   shouldShowOnboardingWizard,
   type VoiceOpsTab,
 } from './voice-assistant/voice-wizard.ops';
+import {
+  mergeVoiceAssistantState,
+  readVoiceAssistantStateFromUrl,
+  syncVoiceAssistantStateToUrl,
+} from './voice-assistant/voice-assistant-navigation';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface Props {
@@ -48,7 +53,13 @@ type VoiceBoolField = Exclude<{
 export function VoiceAssistantView({ isDarkMode }: Props) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
-  const [opsTab, setOpsTab] = useState<VoiceOpsTab>('overview');
+  const [opsTab, setOpsTabState] = useState<VoiceOpsTab>(() =>
+    mergeVoiceAssistantState(
+      readVoiceAssistantStateFromUrl(
+        typeof window !== 'undefined' ? window.location.search : '',
+      ),
+    ).opsTab,
+  );
   const [assistant, setAssistant] = useState<VoiceAssistantData | null>(null);
   const [readiness, setReadiness] = useState<VoiceAssistantReadiness | null>(null);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
@@ -65,6 +76,21 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [testPassed, setTestPassed] = useState(false);
   const operationLock = useRef(false);
+
+  const setOpsTab = useCallback((tab: VoiceOpsTab) => {
+    setOpsTabState(tab);
+    syncVoiceAssistantStateToUrl(mergeVoiceAssistantState({ opsTab: tab }), { replace: true });
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setOpsTabState(
+        mergeVoiceAssistantState(readVoiceAssistantStateFromUrl(window.location.search)).opsTab,
+      );
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const isBusy = saving || activating || syncing;
   const card = 'surface-premium rounded-2xl shadow-[var(--shadow-1)]';
@@ -317,6 +343,12 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   }
 
   if (showWizard) {
+    const urlWizardStep = mergeVoiceAssistantState(
+      readVoiceAssistantStateFromUrl(
+        typeof window !== 'undefined' ? window.location.search : '',
+      ),
+    ).wizardStep;
+
     return (
       <div className="mx-auto max-w-[1600px] space-y-4 pb-8">
         <VoiceOnboardingWizard
@@ -335,7 +367,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           hasDraft={hasDraft}
           testPassed={testPassed}
           actionError={actionError}
-          initialStep={loadWizardStep(orgId)}
+          initialStep={urlWizardStep ?? loadWizardStep(orgId)}
           textField={textField}
           setTextField={setTextField}
           setVoiceSelection={setVoiceSelection}
