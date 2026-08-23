@@ -368,6 +368,7 @@ describe('Vehicles — security negative tests', () => {
         vehiclesService as never,
         {} as never,
         vehicleCleaningTasks as never,
+        {} as never,
       );
 
       await controller.updateVehicleStatus(orgA, vehicleA, { user: { id: userId } }, {
@@ -534,6 +535,7 @@ describe('Vehicles — status mutation side effects', () => {
       vehiclesService as never,
       {} as never,
       vehicleCleaningTasks as never,
+      {} as never,
     );
 
     const result = await controller.updateVehicleStatus(
@@ -570,6 +572,7 @@ describe('Vehicles — status mutation side effects', () => {
       vehiclesService as never,
       {} as never,
       vehicleCleaningTasks as never,
+      {} as never,
     );
 
     const result = await controller.updateVehicleStatus(

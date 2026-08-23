@@ -22,7 +22,7 @@ describe('VehiclesController — operational status write guard', () => {
     vehiclesService as any,
     {} as any,
     vehicleCleaningTasks as any,
-    undefined,
+    {} as any,
   );
 
   beforeEach(() => {
