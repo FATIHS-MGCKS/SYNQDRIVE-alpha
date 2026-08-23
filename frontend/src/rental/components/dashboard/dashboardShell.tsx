@@ -50,8 +50,8 @@ export const DASHBOARD_LAYOUT = {
    */
   controlCenterRadius: '!rounded-[12px]',
   /** Primary finance KPIs embedded under operational twin cards in the control center. */
-  controlFinanceKpiGrid: 'grid grid-cols-2 items-stretch gap-3 sm:gap-3.5',
-  controlFinanceKpiCard: 'min-h-[88px] !rounded-[12px] px-3 py-3',
+  controlFinanceKpiGrid: 'grid grid-cols-2 items-stretch gap-2 sm:grid-cols-4 sm:gap-2.5 lg:gap-3',
+  controlFinanceKpiCard: 'min-h-[72px] !rounded-[12px] px-2.5 py-2.5 sm:min-h-[74px] lg:px-3 lg:py-2.5',
   /** Four finance KPI cards in one row inside the legacy Finanzen panel. */
   financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
   financeKpiCard:

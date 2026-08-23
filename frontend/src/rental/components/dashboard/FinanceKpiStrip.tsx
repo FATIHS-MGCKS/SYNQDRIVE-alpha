@@ -37,7 +37,7 @@ export function FinanceKpiStrip({
       <div aria-busy aria-label={t('dashboard.financesTitle')}>
         <SkeletonMetricGrid
           count={4}
-          className={cn(DASHBOARD_LAYOUT.controlFinanceKpiGrid, '!grid-cols-2')}
+          className={DASHBOARD_LAYOUT.controlFinanceKpiGrid}
           cardClassName={cn(DASHBOARD_LAYOUT.controlFinanceKpiCard, 'surface-elevated')}
         />
       </div>
