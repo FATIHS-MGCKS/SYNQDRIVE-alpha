@@ -24,6 +24,13 @@ export function communicationInboxQuerySignature(
     unreadOnly: filters.unreadOnly ?? false,
     unassigned: filters.unassigned ?? false,
     search: filters.search?.trim() ?? '',
+    intent: filters.intent ?? null,
+    callDirection: filters.callDirection ?? null,
+    callOutcome: filters.callOutcome ?? null,
+    callHasTranscript: filters.callHasTranscript ?? false,
+    callEscalatedOnly: filters.callEscalatedOnly ?? false,
+    dateFrom: filters.dateFrom ?? null,
+    dateTo: filters.dateTo ?? null,
     limit: filters.limit ?? null,
   });
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FormDialog } from '../../../components/patterns';
-import { api, type ApiServiceCase, type ApiTask, type Station, type Vendor } from '../../../lib/api';
+import { api, type ApiServiceCase, type ApiTask, type CreateTaskPayload, type Station, type Vendor } from '../../../lib/api';
 import {
   buildManualTaskCreatePayload,
   canSetBlocksVehicleAvailability,
@@ -26,6 +26,9 @@ interface TasksNewTaskDialogProps {
   orgMembers: OrgMemberRef[];
   orgStations: Station[];
   onCreated: (task: ApiTask) => void;
+  initialForm?: Partial<ManualTaskFormState>;
+  taskPayloadExtras?: Partial<CreateTaskPayload>;
+  prefillKey?: string;
 }
 
 interface EntityLookupState {
@@ -52,6 +55,9 @@ export function TasksNewTaskDialog({
   orgMembers,
   orgStations,
   onCreated,
+  initialForm,
+  taskPayloadExtras,
+  prefillKey,
 }: TasksNewTaskDialogProps) {
   const { userRole, hasPermission } = useRentalOrg();
   const [form, setForm] = useState<ManualTaskFormState>(EMPTY_MANUAL_TASK_FORM);
@@ -69,8 +75,13 @@ export function TasksNewTaskDialog({
       setChecklistItems([]);
       setErrors({});
       setSubmitError(null);
+      return;
     }
-  }, [open]);
+    setForm({ ...EMPTY_MANUAL_TASK_FORM, ...(initialForm ?? {}) });
+    setChecklistItems([]);
+    setErrors({});
+    setSubmitError(null);
+  }, [open, prefillKey, initialForm]);
 
   useEffect(() => {
     if (!orgId || !open) return;
@@ -167,7 +178,15 @@ export function TasksNewTaskDialog({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    const payload = buildManualTaskCreatePayload(form, checklistItems);
+    const basePayload = buildManualTaskCreatePayload(form, checklistItems);
+    const payload: CreateTaskPayload = {
+      ...basePayload,
+      ...taskPayloadExtras,
+      metadata: {
+        ...(taskPayloadExtras?.metadata ?? {}),
+        ...(basePayload.metadata ?? {}),
+      },
+    };
     setSubmitting(true);
     setSubmitError(null);
     try {

@@ -17,6 +17,7 @@ export interface UseCommunicationAiActivityOptions {
   orgId: string | null | undefined;
   category?: CommunicationAiActivityFilterCategory;
   channel?: CommunicationAiActivityListQuery['channel'];
+  conversationId?: string;
   enabled?: boolean;
 }
 
@@ -34,14 +35,15 @@ function querySignature(
   orgId: string,
   category: CommunicationAiActivityFilterCategory,
   channel?: CommunicationAiActivityListQuery['channel'],
+  conversationId?: string,
 ): string {
-  return `${orgId}|${category}|${channel ?? 'all'}`;
+  return `${orgId}|${category}|${channel ?? 'all'}|${conversationId ?? 'all'}`;
 }
 
 export function useCommunicationAiActivity(
   options: UseCommunicationAiActivityOptions,
 ): UseCommunicationAiActivityResult {
-  const { orgId, category = 'all', channel, enabled = true } = options;
+  const { orgId, category = 'all', channel, conversationId, enabled = true } = options;
   const [items, setItems] = useState<CommunicationAiActivityItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -51,8 +53,8 @@ export function useCommunicationAiActivity(
   const requestGenRef = useRef(0);
 
   const signature = useMemo(
-    () => (orgId ? querySignature(orgId, category, channel) : ''),
-    [orgId, category, channel],
+    () => (orgId ? querySignature(orgId, category, channel, conversationId) : ''),
+    [orgId, category, channel, conversationId],
   );
 
   const fetchPage = useCallback(
@@ -63,6 +65,7 @@ export function useCommunicationAiActivity(
         limit: COMMUNICATION_AI_ACTIVITY_PAGE_SIZE,
         ...(category !== 'all' ? { category } : {}),
         ...(channel ? { channel } : {}),
+        ...(conversationId ? { conversationId } : {}),
         ...(mode === 'more' && nextCursorRef.current ? { cursor: nextCursorRef.current } : {}),
       };
 
@@ -91,7 +94,7 @@ export function useCommunicationAiActivity(
         }
       }
     },
-    [orgId, enabled, category, channel],
+    [orgId, enabled, category, channel, conversationId],
   );
 
   useEffect(() => {

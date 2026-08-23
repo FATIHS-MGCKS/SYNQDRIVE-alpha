@@ -14,12 +14,29 @@ export type CommunicationIntentFilter =
   | 'payment'
   | 'damage';
 
+export type CommunicationVoiceDirectionFilter = 'all' | 'INBOUND' | 'OUTBOUND';
+
+export type CommunicationVoiceOutcomeFilter =
+  | 'all'
+  | 'PENDING'
+  | 'RESOLVED'
+  | 'ESCALATED'
+  | 'FAILED'
+  | 'ABANDONED';
+
+export type CommunicationVoiceCallFilter = 'all' | 'escalated' | 'hasTranscript';
+
 export interface CommunicationInboxFilters {
   search: string;
   unreadOnly: boolean;
   status: CommunicationStatusFilter;
   assignment: CommunicationAssignmentFilter;
   intent: CommunicationIntentFilter;
+  voiceDirection: CommunicationVoiceDirectionFilter;
+  voiceOutcome: CommunicationVoiceOutcomeFilter;
+  voiceCallFilter: CommunicationVoiceCallFilter;
+  voiceDateFrom: string;
+  voiceDateTo: string;
 }
 
 export const COMMUNICATION_SEARCH_MAX_LENGTH = 120;
@@ -30,6 +47,11 @@ export const DEFAULT_COMMUNICATION_INBOX_FILTERS: CommunicationInboxFilters = {
   status: 'all',
   assignment: 'all',
   intent: 'all',
+  voiceDirection: 'all',
+  voiceOutcome: 'all',
+  voiceCallFilter: 'all',
+  voiceDateFrom: '',
+  voiceDateTo: '',
 };
 
 export function clampCommunicationSearchDraft(value: string): string {
@@ -66,6 +88,22 @@ export const COMMUNICATION_UNREAD_PARAM = 'communicationUnread';
 export const COMMUNICATION_STATUS_PARAM = 'communicationStatus';
 export const COMMUNICATION_ASSIGNMENT_PARAM = 'communicationAssignment';
 export const COMMUNICATION_INTENT_PARAM = 'communicationIntent';
+export const COMMUNICATION_VOICE_DIRECTION_PARAM = 'communicationVoiceDirection';
+export const COMMUNICATION_VOICE_OUTCOME_PARAM = 'communicationVoiceOutcome';
+export const COMMUNICATION_VOICE_CALL_FILTER_PARAM = 'communicationVoiceCallFilter';
+export const COMMUNICATION_VOICE_DATE_FROM_PARAM = 'communicationVoiceDateFrom';
+export const COMMUNICATION_VOICE_DATE_TO_PARAM = 'communicationVoiceDateTo';
+
+const VOICE_DIRECTION_VALUES = new Set<string>(['all', 'INBOUND', 'OUTBOUND']);
+const VOICE_OUTCOME_VALUES = new Set<string>([
+  'all',
+  'PENDING',
+  'RESOLVED',
+  'ESCALATED',
+  'FAILED',
+  'ABANDONED',
+]);
+const VOICE_CALL_FILTER_VALUES = new Set<string>(['all', 'escalated', 'hasTranscript']);
 
 export function readCommunicationInboxFiltersFromUrl(
   search = '',
@@ -94,6 +132,27 @@ export function readCommunicationInboxFiltersFromUrl(
     next.intent = intent as CommunicationIntentFilter;
   }
 
+  const voiceDirection = params.get(COMMUNICATION_VOICE_DIRECTION_PARAM);
+  if (voiceDirection && VOICE_DIRECTION_VALUES.has(voiceDirection)) {
+    next.voiceDirection = voiceDirection as CommunicationVoiceDirectionFilter;
+  }
+
+  const voiceOutcome = params.get(COMMUNICATION_VOICE_OUTCOME_PARAM);
+  if (voiceOutcome && VOICE_OUTCOME_VALUES.has(voiceOutcome)) {
+    next.voiceOutcome = voiceOutcome as CommunicationVoiceOutcomeFilter;
+  }
+
+  const voiceCallFilter = params.get(COMMUNICATION_VOICE_CALL_FILTER_PARAM);
+  if (voiceCallFilter && VOICE_CALL_FILTER_VALUES.has(voiceCallFilter)) {
+    next.voiceCallFilter = voiceCallFilter as CommunicationVoiceCallFilter;
+  }
+
+  const voiceDateFrom = params.get(COMMUNICATION_VOICE_DATE_FROM_PARAM);
+  if (voiceDateFrom) next.voiceDateFrom = voiceDateFrom;
+
+  const voiceDateTo = params.get(COMMUNICATION_VOICE_DATE_TO_PARAM);
+  if (voiceDateTo) next.voiceDateTo = voiceDateTo;
+
   return next;
 }
 
@@ -113,7 +172,12 @@ export function hasActiveCommunicationInboxFilters(
     filters.unreadOnly ||
     filters.status !== 'all' ||
     filters.assignment !== 'all' ||
-    filters.intent !== 'all'
+    filters.intent !== 'all' ||
+    filters.voiceDirection !== 'all' ||
+    filters.voiceOutcome !== 'all' ||
+    filters.voiceCallFilter !== 'all' ||
+    Boolean(filters.voiceDateFrom) ||
+    Boolean(filters.voiceDateTo)
   );
 }
 
@@ -147,6 +211,19 @@ export function buildCommunicationInboxApiQuery(
   if (filters.assignment === 'unassigned') query.unassigned = true;
   if (filters.intent !== 'all') query.intent = filters.intent;
 
+  if (channel === 'voice') {
+    if (filters.voiceDirection !== 'all') query.callDirection = filters.voiceDirection;
+    if (filters.voiceOutcome !== 'all') query.callOutcome = filters.voiceOutcome;
+    if (filters.voiceCallFilter === 'escalated') query.callEscalatedOnly = true;
+    if (filters.voiceCallFilter === 'hasTranscript') query.callHasTranscript = true;
+    if (filters.voiceDateFrom) {
+      query.dateFrom = `${filters.voiceDateFrom}T00:00:00.000Z`;
+    }
+    if (filters.voiceDateTo) {
+      query.dateTo = `${filters.voiceDateTo}T23:59:59.999Z`;
+    }
+  }
+
   return query;
 }
 
@@ -160,6 +237,17 @@ export function applyCommunicationInboxFiltersToSearchParams(
     [COMMUNICATION_STATUS_PARAM, filters.status !== 'all' ? filters.status : null],
     [COMMUNICATION_ASSIGNMENT_PARAM, filters.assignment !== 'all' ? filters.assignment : null],
     [COMMUNICATION_INTENT_PARAM, filters.intent !== 'all' ? filters.intent : null],
+    [
+      COMMUNICATION_VOICE_DIRECTION_PARAM,
+      filters.voiceDirection !== 'all' ? filters.voiceDirection : null,
+    ],
+    [COMMUNICATION_VOICE_OUTCOME_PARAM, filters.voiceOutcome !== 'all' ? filters.voiceOutcome : null],
+    [
+      COMMUNICATION_VOICE_CALL_FILTER_PARAM,
+      filters.voiceCallFilter !== 'all' ? filters.voiceCallFilter : null,
+    ],
+    [COMMUNICATION_VOICE_DATE_FROM_PARAM, filters.voiceDateFrom || null],
+    [COMMUNICATION_VOICE_DATE_TO_PARAM, filters.voiceDateTo || null],
   ];
 
   for (const [key, value] of entries) {

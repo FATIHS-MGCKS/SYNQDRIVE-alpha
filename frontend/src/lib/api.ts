@@ -4190,6 +4190,12 @@ export const api = {
         if (query.unassigned) q.set('unassigned', 'true');
         if (query.search) q.set('search', query.search);
         if (query.intent) q.set('intent', query.intent);
+        if (query.callDirection) q.set('callDirection', query.callDirection);
+        if (query.callOutcome) q.set('callOutcome', query.callOutcome);
+        if (query.callHasTranscript) q.set('callHasTranscript', 'true');
+        if (query.callEscalatedOnly) q.set('callEscalatedOnly', 'true');
+        if (query.dateFrom) q.set('dateFrom', query.dateFrom);
+        if (query.dateTo) q.set('dateTo', query.dateTo);
         if (query.cursor) q.set('cursor', query.cursor);
         if (query.limit != null) q.set('limit', String(query.limit));
       }
@@ -4227,6 +4233,12 @@ export const api = {
         if (query.unassigned) q.set('unassigned', 'true');
         if (query.search) q.set('search', query.search);
         if (query.intent) q.set('intent', query.intent);
+        if (query.callDirection) q.set('callDirection', query.callDirection);
+        if (query.callOutcome) q.set('callOutcome', query.callOutcome);
+        if (query.callHasTranscript) q.set('callHasTranscript', 'true');
+        if (query.callEscalatedOnly) q.set('callEscalatedOnly', 'true');
+        if (query.dateFrom) q.set('dateFrom', query.dateFrom);
+        if (query.dateTo) q.set('dateTo', query.dateTo);
       }
       const qs = q.toString();
       return get<import('./communication/types').CommunicationConversationSummary>(
@@ -4347,6 +4359,14 @@ export const api = {
           providerStatus: string;
         }>;
       }>(`/organizations/${orgId}/communication/conversations/${conversationId}/sendable-templates`),
+    getVoiceCallDetail: (orgId: string, conversationId: string) =>
+      get<import('./communication/types').CommunicationVoiceCallDetail>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/voice-call`,
+      ),
+    getVoiceCallTranscript: (orgId: string, conversationId: string) =>
+      get<import('./communication/types').CommunicationVoiceCallTranscript>(
+        `/organizations/${orgId}/communication/conversations/${conversationId}/voice-call/transcript`,
+      ),
     uploadAttachment: async (orgId: string, conversationId: string, file: File) => {
       const form = new FormData();
       form.append('file', file);

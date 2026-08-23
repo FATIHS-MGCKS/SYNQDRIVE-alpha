@@ -1,5 +1,5 @@
 import { ArrowLeft, MoreHorizontal, PanelRightOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import {
   DropdownMenu,
@@ -22,12 +22,20 @@ import { useCommunicationComposerCapability } from '../../../lib/communication/h
 import { useCommunicationAiSuggestion } from '../../../lib/communication/hooks/useCommunicationAiSuggestion';
 import { useCommunicationQuickActions } from '../../../lib/communication/hooks/useCommunicationQuickActions';
 import { useCommunicationSendableTemplates } from '../../../lib/communication/hooks/useCommunicationSendableTemplates';
+import { useCommunicationVoiceCall } from '../../../lib/communication/hooks/useCommunicationVoiceCall';
+import { buildCommunicationVoiceTaskPrefill } from '../../../lib/communication/communication-voice-task-prefill';
+import { api, type CreateTaskPayload, type Station } from '../../../lib/api';
+import { useFleetVehicles } from '../../FleetContext';
+import { useRentalOrg } from '../../RentalContext';
+import type { ManualTaskFormState } from '../../lib/task-create-form.utils';
+import { TasksNewTaskDialog } from '../tasks/TasksNewTaskDialog';
 import { CommunicationAssigneeControl } from './CommunicationAssigneeControl';
 import { resolveCommunicationConversationActions } from '../../../lib/communication/communication-actions';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
 import { resolveConversationTitle } from './communication-inbox-display';
 import { CommunicationEmptyState } from './CommunicationEmptyState';
 import { CommunicationTimeline } from './CommunicationTimeline';
+import { CommunicationVoiceCallCard } from './CommunicationVoiceCallCard';
 import { CommunicationDetailSkeleton } from './skeletons/CommunicationDetailSkeleton';
 import { CommunicationTimelineSkeleton } from './skeletons/CommunicationTimelineSkeleton';
 import type { CommunicationChannel } from './communication-center.types';
@@ -51,6 +59,7 @@ interface CommunicationWorkspacePaneProps {
   hasContext?: boolean;
   onBack?: () => void;
   onOpenContext?: () => void;
+  onOpenAiActivity?: (conversationId: string) => void;
   onClearInvalidSelection?: () => void;
 }
 
@@ -134,9 +143,18 @@ export function CommunicationWorkspacePane({
   hasContext,
   onBack,
   onOpenContext,
+  onOpenAiActivity,
   onClearInvalidSelection,
 }: CommunicationWorkspacePaneProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const { hasPermission } = useRentalOrg();
+  const { fleetVehicles } = useFleetVehicles();
+  const canCreateTasks = hasPermission('tasks', 'write');
+  const [voiceTaskDialogOpen, setVoiceTaskDialogOpen] = useState(false);
+  const [voiceTaskPrefillKey, setVoiceTaskPrefillKey] = useState<string | null>(null);
+  const [voiceTaskInitialForm, setVoiceTaskInitialForm] = useState<Partial<ManualTaskFormState>>({});
+  const [voiceTaskPayloadExtras, setVoiceTaskPayloadExtras] = useState<Partial<CreateTaskPayload>>({});
+  const [orgStations, setOrgStations] = useState<Station[]>([]);
   const hasSelection = Boolean(selectedConversationId);
   const conversation = conversationState?.conversation ?? null;
   const detailLoading = conversationState?.detailLoading ?? false;
@@ -259,6 +277,65 @@ export function CommunicationWorkspacePane({
     composerState.mode === 'enabled'
     && composerCapability.replyMode === 'FREEFORM_TEXT_ALLOWED'
     && conversation?.channel === 'WHATSAPP';
+
+  const voiceCall = useCommunicationVoiceCall({
+    orgId,
+    conversationId: selectedConversationId,
+    enabled: conversation?.channel === 'VOICE',
+  });
+
+  useEffect(() => {
+    if (!orgId || !voiceTaskDialogOpen) return;
+    let cancelled = false;
+    void api.stations
+      .list(orgId)
+      .then((stations) => {
+        if (!cancelled) setOrgStations(stations);
+      })
+      .catch(() => {
+        if (!cancelled) setOrgStations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, voiceTaskDialogOpen]);
+
+  const localeTag = useMemo(() => {
+    switch (locale) {
+      case 'de':
+        return 'de-DE';
+      case 'fr':
+        return 'fr-FR';
+      case 'nl':
+        return 'nl-NL';
+      case 'es':
+        return 'es-ES';
+      case 'it':
+        return 'it-IT';
+      case 'pl':
+        return 'pl-PL';
+      case 'cs':
+        return 'cs-CZ';
+      default:
+        return 'en-US';
+    }
+  }, [locale]);
+
+  const openVoiceTaskDialog = () => {
+    if (!conversation || !voiceCall.callDetail || !canCreateTasks) return;
+    const prefill = buildCommunicationVoiceTaskPrefill(
+      {
+        callDetail: voiceCall.callDetail,
+        conversation,
+        t: (key, params) => t(key as Parameters<typeof t>[0], params),
+      },
+      localeTag,
+    );
+    setVoiceTaskInitialForm(prefill.initialForm);
+    setVoiceTaskPayloadExtras(prefill.payloadExtras);
+    setVoiceTaskPrefillKey(prefill.prefillKey);
+    setVoiceTaskDialogOpen(true);
+  };
 
   return (
     <div
@@ -438,24 +515,39 @@ export function CommunicationWorkspacePane({
             )}
           </div>
         ) : conversationState && conversation ? (
-          <CommunicationTimeline
-            orgId={orgId ?? ''}
-            channel={conversation.channel}
-            events={conversationState.events}
-            conversationSignature={conversationState.conversationSignature}
-            loading={conversationState.timelineLoading}
-            error={
-              conversationState.timelineError
-                ? resolveTimelineErrorMessage(conversationState.timelineError, t)
-                : null
-            }
-            loadingOlder={conversationState.loadingOlder}
-            hasMore={conversationState.hasMore}
-            paginationError={conversationState.paginationError}
-            onRetry={() => void conversationState.reloadTimeline()}
-            onLoadOlder={() => void conversationState.loadOlder()}
-            onRetryLoadOlder={() => void conversationState.retryLoadOlder()}
-          />
+          <div className="flex h-full min-h-0 flex-col">
+            {conversation.channel === 'VOICE' ? (
+              <CommunicationVoiceCallCard
+                voiceCall={voiceCall}
+                conversationId={conversation.id}
+                canCreateTask={canCreateTasks}
+                onOpenCreateTask={openVoiceTaskDialog}
+                onOpenAiActivity={
+                  onOpenAiActivity ? () => onOpenAiActivity(conversation.id) : undefined
+                }
+              />
+            ) : null}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <CommunicationTimeline
+                orgId={orgId ?? ''}
+                channel={conversation.channel}
+                events={conversationState.events}
+                conversationSignature={conversationState.conversationSignature}
+                loading={conversationState.timelineLoading}
+                error={
+                  conversationState.timelineError
+                    ? resolveTimelineErrorMessage(conversationState.timelineError, t)
+                    : null
+                }
+                loadingOlder={conversationState.loadingOlder}
+                hasMore={conversationState.hasMore}
+                paginationError={conversationState.paginationError}
+                onRetry={() => void conversationState.reloadTimeline()}
+                onLoadOlder={() => void conversationState.loadOlder()}
+                onRetryLoadOlder={() => void conversationState.retryLoadOlder()}
+              />
+            </div>
+          </div>
         ) : detailLoading ? (
           <CommunicationTimelineSkeleton />
         ) : null}
@@ -519,6 +611,24 @@ export function CommunicationWorkspacePane({
           onRemoveAttachment={attachmentDraftState?.removeAttachment}
         />
       ) : null}
+
+      <TasksNewTaskDialog
+        open={voiceTaskDialogOpen}
+        onOpenChange={setVoiceTaskDialogOpen}
+        orgId={orgId}
+        fleetVehicles={fleetVehicles}
+        orgMembers={(orgMembers?.members ?? []).map((member) => ({
+          id: member.id,
+          name: member.displayName,
+        }))}
+        orgStations={orgStations}
+        initialForm={voiceTaskInitialForm}
+        taskPayloadExtras={voiceTaskPayloadExtras}
+        prefillKey={voiceTaskPrefillKey ?? undefined}
+        onCreated={() => {
+          setVoiceTaskDialogOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -15,6 +15,8 @@ import {
   CommunicationChannel,
   CommunicationConversationStatus,
   CommunicationProviderIdentity,
+  VoiceConversationDirection,
+  VoiceConversationOutcome,
 } from '@prisma/client';
 import {
   COMMUNICATION_INBOX_MAX_LIMIT,
@@ -142,6 +144,24 @@ export class CommunicationConversationListQueryDto {
   @IsString()
   @MaxLength(64)
   intent?: string;
+
+  @IsOptional()
+  @IsEnum(VoiceConversationDirection)
+  callDirection?: VoiceConversationDirection;
+
+  @IsOptional()
+  @IsEnum(VoiceConversationOutcome)
+  callOutcome?: VoiceConversationOutcome;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  callHasTranscript?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  callEscalatedOnly?: boolean;
 
   @IsOptional()
   @Transform(trimEmptyToUndefined)

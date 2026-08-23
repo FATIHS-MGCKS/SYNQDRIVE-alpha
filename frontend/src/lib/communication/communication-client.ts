@@ -160,4 +160,12 @@ export const communicationClient = {
   attachmentContentUrl(orgId: string, attachmentId: string) {
     return `/api/v1/organizations/${orgId}/communication/attachments/${attachmentId}/content`;
   },
+
+  getVoiceCallDetail(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.getVoiceCallDetail(orgId, conversationId));
+  },
+
+  getVoiceCallTranscript(orgId: string, conversationId: string) {
+    return wrap(() => api.communication.getVoiceCallTranscript(orgId, conversationId));
+  },
 };

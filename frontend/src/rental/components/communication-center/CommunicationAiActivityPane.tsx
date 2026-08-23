@@ -13,6 +13,7 @@ import { EmptyState } from '../../../components/patterns';
 interface CommunicationAiActivityPaneProps {
   orgId: string | null | undefined;
   enabled: boolean;
+  conversationId?: string | null;
   onOpenConversation: (conversationId: string) => void;
 }
 
@@ -122,11 +123,17 @@ function ActivityRow({
 export function CommunicationAiActivityPane({
   orgId,
   enabled,
+  conversationId = null,
   onOpenConversation,
 }: CommunicationAiActivityPaneProps) {
   const { t } = useLanguage();
   const [category, setCategory] = useState<CommunicationAiActivityFilterCategory>('all');
-  const activity = useCommunicationAiActivity({ orgId, category, enabled });
+  const activity = useCommunicationAiActivity({
+    orgId,
+    category,
+    conversationId: conversationId ?? undefined,
+    enabled,
+  });
 
   const filterLabels = useMemo(
     () => ({

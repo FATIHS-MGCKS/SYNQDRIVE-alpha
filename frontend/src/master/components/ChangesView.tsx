@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'communication-center-c9-2-voice-ops-2026-08-23',
+    version: '4.9.941',
+    title: 'Communication Center C9.2 — Voice operations parity (final hardening)',
+    summary: [
+      'Canonical voice call card: summary, direction, duration, escalation, lazy transcript expansion.',
+      'Voice ops API: GET voice-call, GET voice-call/transcript; safe failureState; transcript redaction.',
+      'Reviewed task-from-call via TasksNewTaskDialog → canonical POST /tasks (tasks.create).',
+      'Server-side Voice inbox filters with 2500-ID bound; PostgreSQL integration tests.',
+      'All governed locales: native communication.voice.* translations.',
+      'No manual ElevenLabs sync in CC — classified SUPERSEDED.',
+    ],
+    reason: 'Close remaining C9 Voice operational gaps (transcript, summary, filters, task-from-call) without absorbing C10 specialized Voice surfaces.',
+    previousBehavior:
+      'Transcript, summary, rich filters, and task-from-call existed only in legacy VoiceConversationsPanel.',
+    details: 'architecture/COMMUNICATION_CENTER_C9_2_VOICE_OPERATIONS_PARITY_IMPLEMENTATION.md',
+    affectsArchitecture: true,
+    module: 'Communication',
+    createdAt: '2026-08-23T19:45:00.000Z',
+  },
+  {
     id: 'communication-center-c9-1-whatsapp-ops-2026-08-23',
     version: '4.9.940',
     title: 'Communication Center C9.1 — WhatsApp operations parity',

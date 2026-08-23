@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   CommunicationChannel,
   CommunicationConversationStatus,
@@ -6,6 +6,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildConversationWhere } from '@modules/voice-assistant/voice-conversation.util';
 import {
   buildCommunicationInboxCursorWhere,
   buildCommunicationTimelineCursorWhere,
@@ -32,6 +33,9 @@ import {
   resolveCommunicationAttentionPreviewLimit,
 } from './communication-read.attention-preview';
 import type { CommunicationConversationListQueryDto } from './dto/communication-read-shared.dto';
+
+/** Hard cap for voice filter native ID resolution — prevents unbounded IN clauses. */
+export const COMMUNICATION_VOICE_FILTER_NATIVE_ID_LIMIT = 2_500;
 
 export interface CommunicationConversationSummaryCounts {
   totalUnreadMessages: number;
@@ -61,11 +65,16 @@ export class CommunicationReadRepository {
       ? await this.resolveIntentFilterNativeIds(organizationId, query.intent)
       : undefined;
 
+    const voiceNativeIds = this.hasVoiceCallFilters(query)
+      ? await this.resolveVoiceFilterNativeIds(organizationId, query)
+      : undefined;
+
     const where = this.buildConversationListWhere(
       organizationId,
       query,
       cursorWhere,
       intentNativeIds,
+      voiceNativeIds,
     );
 
     const rows = await this.prisma.communicationConversation.findMany({
@@ -177,11 +186,14 @@ export class CommunicationReadRepository {
     const intentNativeIds = query.intent
       ? await this.resolveIntentFilterNativeIds(organizationId, query.intent)
       : undefined;
+    const voiceNativeIds = this.hasVoiceCallFilters(query)
+      ? await this.resolveVoiceFilterNativeIds(organizationId, query)
+      : undefined;
     const where = this.buildConversationListWhere(organizationId, {
       ...query,
       cursor: undefined,
       limit: undefined,
-    }, undefined, intentNativeIds);
+    }, undefined, intentNativeIds, voiceNativeIds);
 
     const [unreadAgg, unreadConversations, unassigned, requiresAttention, channelGroups] =
       await Promise.all([
@@ -224,6 +236,7 @@ export class CommunicationReadRepository {
     query: CommunicationConversationListQueryDto,
     cursorWhere?: Prisma.CommunicationConversationWhereInput,
     intentNativeIds?: string[] | null,
+    voiceNativeIds?: string[] | null,
   ): Prisma.CommunicationConversationWhereInput {
     const and: Prisma.CommunicationConversationWhereInput[] = [{ organizationId }];
 
@@ -264,11 +277,19 @@ export class CommunicationReadRepository {
         },
       });
     }
-    if (query.dateFrom) {
-      and.push({ lastActivityAt: { gte: new Date(query.dateFrom) } });
-    }
-    if (query.dateTo) {
-      and.push({ lastActivityAt: { lte: new Date(query.dateTo) } });
+    if (query.dateFrom || query.dateTo) {
+      const voiceOnlyDateFilter =
+        voiceNativeIds != null
+        && query.channel?.length === 1
+        && query.channel[0] === CommunicationChannel.VOICE;
+      if (!voiceOnlyDateFilter) {
+        if (query.dateFrom) {
+          and.push({ lastActivityAt: { gte: new Date(query.dateFrom) } });
+        }
+        if (query.dateTo) {
+          and.push({ lastActivityAt: { lte: new Date(query.dateTo) } });
+        }
+      }
     }
 
     const searchWhere = this.buildSearchWhere(organizationId, query.search);
@@ -280,6 +301,14 @@ export class CommunicationReadRepository {
       if (intentFilter) {
         and.push(intentFilter);
       }
+    }
+    if (voiceNativeIds) {
+      and.push({
+        channel: CommunicationChannel.VOICE,
+        nativeConversationId: {
+          in: voiceNativeIds.length > 0 ? voiceNativeIds : ['__none__'],
+        },
+      });
     }
     if (cursorWhere) {
       and.push(cursorWhere);
@@ -446,5 +475,55 @@ export class CommunicationReadRepository {
     const match = normalized.match(/^BK-([A-Z0-9]{1,6})$/);
     if (!match) return undefined;
     return match[1]!.toLowerCase();
+  }
+
+  private hasVoiceCallFilters(query: CommunicationConversationListQueryDto): boolean {
+    const includesVoice =
+      !query.channel?.length
+      || query.channel.includes(CommunicationChannel.VOICE);
+    if (!includesVoice) return false;
+
+    const voiceOnlyChannel =
+      query.channel?.length === 1 && query.channel[0] === CommunicationChannel.VOICE;
+
+    return Boolean(
+      query.callDirection
+      || query.callOutcome
+      || query.callHasTranscript != null
+      || query.callEscalatedOnly
+      || (voiceOnlyChannel && (query.dateFrom || query.dateTo)),
+    );
+  }
+
+  private async resolveVoiceFilterNativeIds(
+    organizationId: string,
+    query: CommunicationConversationListQueryDto,
+  ): Promise<string[]> {
+    const voiceOnlyChannel =
+      query.channel?.length === 1 && query.channel[0] === CommunicationChannel.VOICE;
+
+    const voiceWhere = buildConversationWhere(organizationId, {
+      direction: query.callDirection,
+      outcome: query.callOutcome,
+      hasTranscript: query.callHasTranscript,
+      escalatedOnly: query.callEscalatedOnly,
+      dateFrom: voiceOnlyChannel ? query.dateFrom : undefined,
+      dateTo: voiceOnlyChannel ? query.dateTo : undefined,
+    });
+
+    const rows = await this.prisma.voiceConversation.findMany({
+      where: voiceWhere,
+      select: { id: true },
+      take: COMMUNICATION_VOICE_FILTER_NATIVE_ID_LIMIT + 1,
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    if (rows.length > COMMUNICATION_VOICE_FILTER_NATIVE_ID_LIMIT) {
+      throw new BadRequestException(
+        'Voice call filter matches too many calls; narrow direction, outcome, date range, or transcript filters.',
+      );
+    }
+
+    return rows.map((row) => row.id);
   }
 }
