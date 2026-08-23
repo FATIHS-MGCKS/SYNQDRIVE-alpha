@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getStoredUser } from '../../../lib/auth';
 import { useCommunicationInbox } from '../../../lib/communication/hooks/useCommunicationInbox';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -39,6 +40,7 @@ export function CommunicationInboxPane({
 }: CommunicationInboxPaneProps) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
+  const currentUserId = getStoredUser()?.id ?? null;
   const [searchDraft, setSearchDraft] = useState(() =>
     clampCommunicationSearchDraft(inboxFilters.search),
   );
@@ -107,6 +109,7 @@ export function CommunicationInboxPane({
         onLoadMore={() => void inbox.loadMore()}
         onRetryLoadMore={() => void inbox.retryLoadMore()}
         onClearFilters={onClearInboxFilters}
+        currentUserId={currentUserId}
       />
     </div>
   );

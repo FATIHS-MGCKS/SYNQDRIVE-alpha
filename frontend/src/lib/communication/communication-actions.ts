@@ -1,7 +1,6 @@
 import type { CommunicationApiStatus, CommunicationConversationDetail } from './types';
 
 export type CommunicationConversationAction =
-  | 'claim'
   | 'resolve'
   | 'reopen'
   | 'markRead';
@@ -13,11 +12,8 @@ export function resolveCommunicationConversationActions(input: {
   if (!input.canWrite || !input.conversation) return [];
 
   const actions: CommunicationConversationAction[] = [];
-  const { status, unreadCount, assignedUser } = input.conversation;
+  const { status, unreadCount } = input.conversation;
 
-  if (status === 'HUMAN_REQUIRED' && !assignedUser) {
-    actions.push('claim');
-  }
   if (status === 'HUMAN_ACTIVE' || status === 'HUMAN_REQUIRED' || status === 'AI_ACTIVE' || status === 'WAITING_CUSTOMER') {
     actions.push('resolve');
   }

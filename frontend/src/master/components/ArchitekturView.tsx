@@ -1163,6 +1163,17 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
+    name: 'Communication Center Human Operations — C11.3 (V4.9.935)',
+    icon: MessagesSquare,
+    color: 'text-[color:var(--status-info)]',
+    apis: [
+      { label: 'Authority', detail: 'C11.1 claim/assign/unassign/resolve/reopen — no new mutation endpoints' },
+      { label: 'Ownership', detail: 'CommunicationAssigneeControl + resolveCommunicationHumanActions' },
+      { label: 'Assignment', detail: 'Lazy api.users.listByOrg picker for communication.manage; active members only' },
+      { label: 'Convergence', detail: 'Composer currentUserId, inbox assignee indicator, timeline/inbox refresh on mutation' },
+    ],
+  },
+  {
     name: 'Communication Center Reply / Composer — C11.2 (V4.9.934)',
     icon: MessagesSquare,
     color: 'text-[color:var(--status-info)]',

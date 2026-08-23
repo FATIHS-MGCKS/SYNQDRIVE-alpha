@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Sheet, SheetContent } from '../../../components/ui/sheet';
 import { cn } from '../../../components/ui/utils';
+import { getStoredUser } from '../../../lib/auth';
 import { useCommunicationConversation } from '../../../lib/communication/hooks/useCommunicationConversation';
 import { useCommunicationConversationActions } from '../../../lib/communication/hooks/useCommunicationConversationActions';
+import { useCommunicationOrgMembers } from '../../../lib/communication/hooks/useCommunicationOrgMembers';
 import { useCommunicationReply } from '../../../lib/communication/hooks/useCommunicationReply';
 import { useRentalOrg } from '../../RentalContext';
 import { hasCommunicationPermission } from '../../lib/communication-permissions';
@@ -47,6 +49,9 @@ interface CommunicationCenterShellProps {
 export function CommunicationCenterShell({ initialState }: CommunicationCenterShellProps) {
   const { orgId, hasPermission, userRole } = useRentalOrg();
   const canWrite = hasCommunicationPermission(hasPermission, 'write', userRole);
+  const canManage = hasCommunicationPermission(hasPermission, 'manage', userRole);
+  const currentUserId = getStoredUser()?.id ?? null;
+  const orgMembers = useCommunicationOrgMembers(orgId);
   const [inboxRefreshNonce, setInboxRefreshNonce] = useState(0);
   const [state, setState] = useState<CommunicationCenterUrlState>(() =>
     mergeCommunicationCenterState({
@@ -318,7 +323,10 @@ export function CommunicationCenterShell({ initialState }: CommunicationCenterSh
               conversationState={conversationState}
               conversationActions={conversationActions}
               replyState={replyState}
+              orgMembers={orgMembers}
               canWrite={canWrite}
+              canManage={canManage}
+              currentUserId={currentUserId}
               showBack={isMobile}
               showContextAction={hasConversation && (isMobile || isTablet)}
               hasContext={hasContext}
