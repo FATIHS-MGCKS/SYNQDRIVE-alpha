@@ -6,14 +6,18 @@ import {
 import { CommunicationChannel, WhatsAppTemplateProviderStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { WhatsAppService } from '@modules/whatsapp/whatsapp.service';
-import { WhatsAppConversationContextService } from '@modules/whatsapp/whatsapp-conversation-context.service';
-import { WhatsAppQuickActionsService } from '@modules/whatsapp/whatsapp-quick-actions.service';
 import { WhatsAppMessagePolicyService } from '@modules/whatsapp/whatsapp-message-policy.service';
+import type { WhatsAppQuickActionId } from '@modules/whatsapp/whatsapp-conversation-context.types';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
 import { CommunicationReplyError } from '../reply/communication-reply.errors';
-import type { WhatsAppQuickActionId } from '@modules/whatsapp/whatsapp-conversation-context.types';
 import type { CommunicationReplyActor } from '../reply/communication-reply.service';
+import { CommunicationQuickActionExecutorService } from './communication-quick-action.executor';
+import { CommunicationQuickActionResolverService } from './communication-quick-action.resolver';
+import type {
+  CommunicationQuickActionAvailability,
+  CommunicationQuickActionResult,
+} from './communication-quick-action.types';
 
 export type CommunicationComposerReplyMode =
   | 'FREEFORM_TEXT_ALLOWED'
@@ -28,8 +32,8 @@ export class CommunicationWhatsAppOpsService {
     private readonly scope: CommunicationWriteScopeService,
     private readonly whatsapp: WhatsAppService,
     private readonly policy: WhatsAppMessagePolicyService,
-    private readonly contextService: WhatsAppConversationContextService,
-    private readonly quickActions: WhatsAppQuickActionsService,
+    private readonly quickActionExecutor: CommunicationQuickActionExecutorService,
+    private readonly quickActionResolver: CommunicationQuickActionResolverService,
   ) {}
 
   async getComposerCapability(
@@ -81,10 +85,19 @@ export class CommunicationWhatsAppOpsService {
     }
   }
 
-  async getQuickActionsContext(organizationId: string, conversationId: string) {
-    const row = await this.requireWhatsAppConversationRow(organizationId, conversationId);
+  async getQuickActions(
+    organizationId: string,
+    conversationId: string,
+    actorUserId: string,
+  ): Promise<{ actions: CommunicationQuickActionAvailability[] }> {
+    await this.requireWhatsAppConversationRow(organizationId, conversationId);
     const nativeId = await this.requireNativeConversationId(organizationId, conversationId);
-    return this.contextService.getContext(organizationId, nativeId);
+    const actions = await this.quickActionResolver.listAvailableActions(
+      organizationId,
+      nativeId,
+      actorUserId,
+    );
+    return { actions };
   }
 
   async executeQuickAction(
@@ -93,15 +106,19 @@ export class CommunicationWhatsAppOpsService {
     actionId: WhatsAppQuickActionId,
     actor: CommunicationReplyActor,
     body: Record<string, unknown> = {},
-  ) {
+  ): Promise<CommunicationQuickActionResult> {
     const row = await this.requireWhatsAppConversationRow(organizationId, conversationId);
     await this.scope.assertConversationMutable(actor.userId, organizationId, row);
 
     const nativeId = await this.requireNativeConversationId(organizationId, conversationId);
-    return this.quickActions.execute(organizationId, nativeId, actionId, {
-      ...body,
-      userId: actor.userId,
-    } as Parameters<WhatsAppQuickActionsService['execute']>[3]);
+    return this.quickActionExecutor.execute(
+      organizationId,
+      conversationId,
+      nativeId,
+      actionId,
+      actor,
+      body,
+    );
   }
 
   async listSendableTemplates(organizationId: string, conversationId: string) {

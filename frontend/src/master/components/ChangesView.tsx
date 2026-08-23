@@ -41,6 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Communication Center C9.1 — WhatsApp operations parity',
     summary: [
       'Canonical composer: human AI suggestion draft (no auto-send), quick actions menu, template picker outside 24h window.',
+      'Quick actions canonicalized: no legacy WhatsAppQuickActionsService.execute bypass; COMPOSER_PREFILL / TEMPLATE_PREFILL / C11 resolve-reopen.',
       'Server-side intent inbox filter via WhatsApp lastDetectedIntent join.',
       'Canonical TEMPLATE reply command (C11.2 idempotency) delegating to WhatsAppTemplateService.',
     ],

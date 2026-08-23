@@ -1,4 +1,5 @@
 import { ArrowLeft, MoreHorizontal, PanelRightOpen } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import {
   DropdownMenu,
@@ -221,14 +222,32 @@ export function CommunicationWorkspacePane({
     onApplySuggestion: replyState?.setDraft,
   });
 
+  const [templatePrefill, setTemplatePrefill] = useState<{
+    templateId: string;
+    language: string;
+    variables: Record<string, string>;
+  } | null>(null);
+
   const quickActions = useCommunicationQuickActions({
     orgId,
     conversationId: selectedConversationId,
     channel: conversation?.channel,
     enabled: canWrite,
+    hasExistingDraft: Boolean(replyState?.draft.trim()),
+    onComposerPrefill: replyState?.setDraft,
+    onTemplatePrefill: (input) => {
+      setTemplatePrefill(input);
+    },
+    onConversationUpdated: (result) => {
+      if (result.conversation) {
+        conversationState?.applyConversationUpdate(result.conversation);
+      }
+    },
+    onRefresh: () => conversationState?.reloadDetail(),
   });
 
-  const templatePickerOpen = composerCapability.replyMode === 'TEMPLATE_REQUIRED';
+  const templatePickerOpen =
+    composerCapability.replyMode === 'TEMPLATE_REQUIRED' || Boolean(templatePrefill);
   const sendableTemplates = useCommunicationSendableTemplates({
     orgId,
     conversationId: selectedConversationId,
@@ -469,12 +488,13 @@ export function CommunicationWorkspacePane({
                 />
               ) : null}
               <CommunicationQuickActions
-                context={quickActions.context}
+                actions={quickActions.actions}
                 loading={quickActions.loading}
                 runningActionId={quickActions.runningActionId}
-                onExecute={(actionId, requiresConfirm) =>
-                  void quickActions.execute(actionId, requiresConfirm)
-                }
+                pendingConfirm={quickActions.pendingConfirm}
+                onExecute={quickActions.execute}
+                onConfirmPending={quickActions.confirmPending}
+                onCancelPending={quickActions.cancelPending}
               />
             </>
           }
@@ -484,7 +504,12 @@ export function CommunicationWorkspacePane({
                 templates={sendableTemplates.items}
                 loading={sendableTemplates.loading}
                 sending={replyState.sending}
-                onSend={(input) => void replyState.sendTemplate(input)}
+                initialTemplateId={templatePrefill?.templateId}
+                initialVariables={templatePrefill?.variables}
+                onSend={(input) => {
+                  setTemplatePrefill(null);
+                  void replyState.sendTemplate(input);
+                }}
               />
             ) : null
           }

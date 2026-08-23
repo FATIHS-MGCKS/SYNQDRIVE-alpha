@@ -3,11 +3,11 @@ import { CommunicationChannel } from '@prisma/client';
 import { CommunicationWhatsAppOpsService } from './communication-whatsapp-ops.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { WhatsAppService } from '@modules/whatsapp/whatsapp.service';
-import { WhatsAppConversationContextService } from '@modules/whatsapp/whatsapp-conversation-context.service';
-import { WhatsAppQuickActionsService } from '@modules/whatsapp/whatsapp-quick-actions.service';
 import { WhatsAppMessagePolicyService } from '@modules/whatsapp/whatsapp-message-policy.service';
 import { CommunicationWriteScopeService } from '../write/communication-write-scope.service';
 import { CommunicationReadRepository } from '../read/communication-read.repository';
+import { CommunicationQuickActionExecutorService } from './communication-quick-action.executor';
+import { CommunicationQuickActionResolverService } from './communication-quick-action.resolver';
 
 describe('CommunicationWhatsAppOpsService (C9.1)', () => {
   let service: CommunicationWhatsAppOpsService;
@@ -15,11 +15,12 @@ describe('CommunicationWhatsAppOpsService (C9.1)', () => {
   let policy: { canSendFreeText: jest.Mock };
   let scope: { assertConversationMutable: jest.Mock };
   let readRepository: { findConversationById: jest.Mock };
+  let executor: { execute: jest.Mock };
+  let resolver: { listAvailableActions: jest.Mock };
   let prisma: {
     communicationConversation: { findFirst: jest.Mock };
     orgWhatsAppConfig: { findUnique: jest.Mock };
     whatsAppConversation: { findFirst: jest.Mock };
-    whatsAppTemplate: { findMany: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -33,6 +34,8 @@ describe('CommunicationWhatsAppOpsService (C9.1)', () => {
         organizationId: 'org-1',
       }),
     };
+    executor = { execute: jest.fn() };
+    resolver = { listAvailableActions: jest.fn().mockResolvedValue([]) };
     prisma = {
       communicationConversation: {
         findFirst: jest.fn().mockResolvedValue({ nativeConversationId: 'wa-1' }),
@@ -47,7 +50,6 @@ describe('CommunicationWhatsAppOpsService (C9.1)', () => {
           lastCustomerMessageAt: new Date(),
         }),
       },
-      whatsAppTemplate: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -58,8 +60,8 @@ describe('CommunicationWhatsAppOpsService (C9.1)', () => {
         { provide: CommunicationWriteScopeService, useValue: scope },
         { provide: WhatsAppService, useValue: whatsapp },
         { provide: WhatsAppMessagePolicyService, useValue: policy },
-        { provide: WhatsAppConversationContextService, useValue: { getContext: jest.fn() } },
-        { provide: WhatsAppQuickActionsService, useValue: { execute: jest.fn() } },
+        { provide: CommunicationQuickActionExecutorService, useValue: executor },
+        { provide: CommunicationQuickActionResolverService, useValue: resolver },
       ],
     }).compile();
 
@@ -96,5 +98,30 @@ describe('CommunicationWhatsAppOpsService (C9.1)', () => {
     expect(result.canSendAutomatically).toBe(false);
     expect(whatsapp.getAiSuggestion).toHaveBeenCalledWith('org-1', 'wa-1');
     expect(whatsapp.getAiSuggestion).toHaveBeenCalledTimes(1);
+  });
+
+  it('delegates quick action execution to canonical executor', async () => {
+    executor.execute.mockResolvedValue({
+      actionType: 'COMPOSER_PREFILL',
+      actionId: 'send_pickup_instructions',
+      text: 'Pickup text',
+    });
+
+    const result = await service.executeQuickAction(
+      'org-1',
+      'conv-1',
+      'send_pickup_instructions',
+      { userId: 'user-1' },
+    );
+
+    expect(executor.execute).toHaveBeenCalledWith(
+      'org-1',
+      'conv-1',
+      'wa-1',
+      'send_pickup_instructions',
+      { userId: 'user-1' },
+      {},
+    );
+    expect(result.actionType).toBe('COMPOSER_PREFILL');
   });
 });

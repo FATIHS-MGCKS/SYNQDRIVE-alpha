@@ -47,8 +47,9 @@ export class CommunicationWhatsAppOpsController {
   getQuickActions(
     @Param('orgId') orgId: string,
     @Param('conversationId') conversationId: string,
+    @CurrentUser() user: AuthUser,
   ) {
-    return this.ops.getQuickActionsContext(orgId, conversationId);
+    return this.ops.getQuickActions(orgId, conversationId, String(user.id));
   }
 
   @Post('quick-actions/:actionId')

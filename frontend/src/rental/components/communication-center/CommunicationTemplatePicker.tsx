@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { CommunicationSendableTemplate } from '../../../lib/communication/hooks/useCommunicationSendableTemplates';
@@ -7,6 +7,8 @@ interface CommunicationTemplatePickerProps {
   templates: CommunicationSendableTemplate[];
   loading?: boolean;
   sending?: boolean;
+  initialTemplateId?: string;
+  initialVariables?: Record<string, string>;
   onSend: (input: { templateId: string; variables: Record<string, string> }) => void;
 }
 
@@ -14,11 +16,20 @@ export function CommunicationTemplatePicker({
   templates,
   loading,
   sending,
+  initialTemplateId,
+  initialVariables,
   onSend,
 }: CommunicationTemplatePickerProps) {
   const { t } = useLanguage();
   const [selectedId, setSelectedId] = useState<string>('');
   const [variables, setVariables] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (initialTemplateId) {
+      setSelectedId(initialTemplateId);
+      setVariables(initialVariables ?? {});
+    }
+  }, [initialTemplateId, initialVariables]);
 
   const selected = useMemo(
     () => templates.find((item) => item.id === selectedId) ?? null,

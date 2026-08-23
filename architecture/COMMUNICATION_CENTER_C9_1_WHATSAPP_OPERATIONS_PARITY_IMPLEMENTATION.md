@@ -41,13 +41,33 @@ Out of scope: WhatsApp connection/settings, template CRUD (C10 Channels), Voice 
 - Disabled outside free-form window (`TEMPLATE_REQUIRED`)
 - Org/conversation race: request id ignored when signature changes
 
-## 5–6. Quick Actions
+## 5–6. Quick Actions (canonical execution — PR #1217 hardening)
 
-**Migrated (enabled when legacy enables):** `link_vehicle`, `human_review`, `create_task`, `request_missing_documents`, `send_pickup_instructions`, `send_return_instructions`, `send_handover_link`, `send_return_link`, `send_payment_deposit_reminder`, `create_damage_followup_task`, `close_conversation`, `reopen_conversation`
+Canonical CC **does not** call `WhatsAppQuickActionsService.execute()` for customer-visible sends or lifecycle mutations.
 
-**Deferred:** `link_booking`, `link_customer`, `assign_user` (legacy stubs — require external entity picker)
+**Executor:** `CommunicationQuickActionExecutorService`  
+**Availability:** `CommunicationQuickActionResolverService` (permissions + legacy context eligibility)  
+**Result contract:** `COMPOSER_PREFILL` | `TEMPLATE_PREFILL` | `BUSINESS_MUTATION` | `CONVERSATION_MUTATION` | `HANDOFF`
 
-Classification: mix of auto-send operational actions (legacy semantics preserved) and business mutations via existing domain services.
+| Action | Legacy behavior | Canonical C9.1 | Authority | Permission | Customer send? | ReplyCommand? | Status |
+|--------|-----------------|----------------|-----------|------------|----------------|---------------|--------|
+| `send_pickup_instructions` | `WhatsAppService.sendMessage` | `COMPOSER_PREFILL` via `WhatsAppAiToolsService` | AI tools + messaging window | `communication.write` | No (human Send) | On Send only | Migrated |
+| `send_return_instructions` | `WhatsAppService.sendMessage` | `COMPOSER_PREFILL` | AI tools + messaging window | `communication.write` | No | On Send only | Migrated |
+| `request_missing_documents` | Reminder service direct send | `TEMPLATE_PREFILL` or `COMPOSER_PREFILL` | Template lookup / booking docs | `communication.write` | No | On Send only | Migrated |
+| `send_handover_link` | Reminder direct send | `TEMPLATE_PREFILL` or `COMPOSER_PREFILL` | Template / booking URL builder | `communication.write` | No | On Send only | Migrated |
+| `send_return_link` | Reminder direct send | `TEMPLATE_PREFILL` or `COMPOSER_PREFILL` | Template / booking URL builder | `communication.write` | No | On Send only | Migrated |
+| `send_payment_deposit_reminder` | Reminder direct send | `TEMPLATE_PREFILL` or `COMPOSER_PREFILL` | Template / booking finance | `communication.write` | No | On Send only | Migrated |
+| `human_review` | Native `PENDING_HUMAN` + projection | `HANDOFF` via `WhatsAppAiRouterService.requestHumanReview` | Canonical HUMAN_REQUIRED projection + C11.5 handoff | `communication.write` | No | N/A | Migrated |
+| `close_conversation` | Native `CLOSED` update | `CONVERSATION_MUTATION` via `CommunicationWriteService.resolveConversation` | C11.1/C11.3 resolve | `communication.write` | No | N/A | Migrated |
+| `reopen_conversation` | Native `OPEN` update | `CONVERSATION_MUTATION` via `CommunicationWriteService.reopenConversation` | C11.1/C11.3 reopen | `communication.write` | No | N/A | Migrated |
+| `create_task` | `TasksService.createManualTask` | `BUSINESS_MUTATION` (same service) | Tasks domain | `communication.write` + `tasks.create` | No | N/A | Migrated |
+| `create_damage_followup_task` | Task create DAMAGE | `BUSINESS_MUTATION` | Tasks domain | `communication.write` + `tasks.create` | No | N/A | Migrated |
+| `link_vehicle` | Native context enrich | `BUSINESS_MUTATION` | Booking/vehicle link | `communication.write` | No | N/A | Migrated |
+| `link_booking` | Native link | — | — | — | — | — | **Deferred** |
+| `link_customer` | Native link | — | — | — | — | — | **Deferred** |
+| `assign_user` | Native `assignedTo` | — | C11.3 Assign (future) | — | — | — | **Deferred** |
+
+**Policy:** No customer-visible Quick Action bypasses C11.2. No lifecycle Quick Action bypasses C11.1/C11.3 resolve/reopen.
 
 ## 7–8. Intent model & filter API
 
@@ -94,6 +114,7 @@ Classification: mix of auto-send operational actions (legacy semantics preserved
 ## 23. Tests
 
 - `communication-reply-payload.spec.ts` (template hash)
+- `communication-quick-action.executor.spec.ts`
 - `communication-center-c9-1.i18n.test.ts`
 - Postgres: intent filter + template idempotency (when `DATABASE_URL` set)
 

@@ -237,6 +237,43 @@ export interface CommunicationAiActivityListResponse {
   hasMore: boolean;
 }
 
+export type CommunicationQuickActionResultType =
+  | 'COMPOSER_PREFILL'
+  | 'TEMPLATE_PREFILL'
+  | 'BUSINESS_MUTATION'
+  | 'CONVERSATION_MUTATION'
+  | 'HANDOFF';
+
+export interface CommunicationQuickActionAvailability {
+  id: import('../api').WhatsAppQuickActionId;
+  labelKey: string;
+  confirmKey?: string;
+  enabled: boolean;
+  disabledReasonKey?: string;
+  requiresConfirmation?: boolean;
+  resultMode: CommunicationQuickActionResultType;
+}
+
+export interface CommunicationQuickActionListResponse {
+  actions: CommunicationQuickActionAvailability[];
+}
+
+export interface CommunicationQuickActionResult {
+  actionType: CommunicationQuickActionResultType;
+  actionId: import('../api').WhatsAppQuickActionId;
+  text?: string;
+  template?: {
+    templateId: string;
+    language: string;
+    templateVariables: Record<string, string>;
+    previewText?: string;
+  };
+  conversation?: CommunicationConversationDetail;
+  taskId?: string;
+  vehicleId?: string;
+  changed?: boolean;
+}
+
 export interface CommunicationAiActivityListQuery {
   channel?: CommunicationApiChannel;
   category?: 'all' | 'handoffs' | 'tools' | 'errors';

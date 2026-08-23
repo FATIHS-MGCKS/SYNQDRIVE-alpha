@@ -4322,7 +4322,7 @@ export const api = {
         canSendAutomatically: boolean;
       }>(`/organizations/${orgId}/communication/conversations/${conversationId}/ai-suggestion`, {}),
     getQuickActions: (orgId: string, conversationId: string) =>
-      get<WhatsAppConversationContext>(
+      get<import('./communication/types').CommunicationQuickActionListResponse>(
         `/organizations/${orgId}/communication/conversations/${conversationId}/quick-actions`,
       ),
     executeQuickAction: (
@@ -4331,7 +4331,7 @@ export const api = {
       actionId: WhatsAppQuickActionId,
       body: Record<string, unknown> = {},
     ) =>
-      post<unknown>(
+      post<import('./communication/types').CommunicationQuickActionResult>(
         `/organizations/${orgId}/communication/conversations/${conversationId}/quick-actions/${actionId}`,
         body,
       ),
