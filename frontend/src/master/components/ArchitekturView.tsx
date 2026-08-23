@@ -396,6 +396,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Platform i18n Operator Vehicle Quick View Open Tasks (P2.2.27 — V4.9.954)', icon: Globe,
+    endpoint: 'OperatorVehicleQuickView → `OperatorVehicleQuickViewTasks` (open tasks list + task row).',
+    service: '**Locale flow:** `useLanguage().locale` → extracted QV-G tasks sub-surface; `operator-vehicle-quick-view-i18n.ts` section chrome + status/priority/overdue maps (reuses `service-task-presentation-i18n`). **Keys:** +4 EN+DE `operator.vehicleQuickView.tasks.*` (8430→8434); reuses `tasks.filter.status.*`, `tasks.filter.priority.*`, `status.overdue`. **Machine values:** task IDs, status/priority/isOverdue, sort order, `openSheet` callbacks frozen. **Guardrails:** P2.2.27 enforce-clean exact (2 paths) — 0 findings. **Tests:** `operator-vehicle-quick-view-tasks-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',
+    dataSource: 'docs/audits/i18n-p2-2-27-operator-vehicle-quick-view-open-tasks-implementation-2026-08-23.md; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_OPEN_TASKS_P2_2_27_2026-08-23.md' },
   { name: 'Platform i18n Operator Tire Measure (P2.2.26 — V4.9.953)', icon: Globe,
     endpoint: 'Operator action `tire-measure` → `OperatorTireMeasureFlow` (vehicle → set → tread → context → review).',
     service: '**Locale flow:** `useLanguage().{t,locale}` → tire measure wizard (`tire-measure` action); `operator-tire-measure-i18n.ts` step/position/source/validation/plausibility maps. **Keys:** +77 EN+DE `operator.tireMeasure.*` (8353→8430); reuses `common.close`. **Machine values:** step IDs, tire position IDs (`fl`/`fr`/`rl`/`rr`), tread parsing, thresholds, API payload fields frozen. **Guardrails:** P2.2.26 enforce-clean exact (6 paths) — 0 findings. **Tests:** `operator-tire-measure-localization.test.tsx`. **Semantics:** presentation-only; Category E=0.',

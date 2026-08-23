@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-operator-vehicle-quick-view-open-tasks-p2-2-27-2026-08-23',
+    version: '4.9.954',
+    title: 'Platform i18n — P2.2.27 Operator Vehicle Quick View Open Tasks localization',
+    summary: [
+      'Localized Operator Vehicle Quick View Open Tasks sub-surface (QV-G) via extracted `OperatorVehicleQuickViewTasks.tsx` and `operator-vehicle-quick-view-i18n.ts`.',
+      'P227 enforce-clean exact scope (2 paths) reports 0 findings; +4 EN+DE keys under `operator.vehicleQuickView.tasks.*` (8430→8434); reuses `tasks.filter.status.*`, `tasks.filter.priority.*`, `status.overdue`.',
+      'Presentation-only — task IDs, status/priority/isOverdue machine values, sort order, navigation callbacks, and dynamic task titles unchanged. Category E=0.',
+    ],
+    reason:
+      'P2.2.27 post-P226 pre-flight (PR #1202) selected QV-G Open Tasks as the first bounded Vehicle Quick View split slice.',
+    previousBehavior:
+      'Open Tasks section in OperatorVehicleQuickView used hardcoded German section chrome and German/English-mixed task status/priority labels.',
+    details:
+      'operator/components/OperatorVehicleQuickViewTasks.tsx; operator/lib/operator-vehicle-quick-view-i18n.ts; OperatorVehicleQuickView.tsx (wiring); i18n/translations/operator.vehicleQuickView.tasks.{en,de}.ts; operator-vehicle-quick-view-tasks-localization.test.tsx; P227_ENFORCE_CLEAN_EXACT; architecture/I18N_OPERATOR_VEHICLE_QUICK_VIEW_OPEN_TASKS_P2_2_27_2026-08-23.md; docs/audits/i18n-p2-2-27-operator-vehicle-quick-view-open-tasks-implementation-2026-08-23.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-08-23T00:00:00.000Z',
+  },
+  {
     id: 'i18n-operator-tire-measure-p2-2-26-2026-08-23',
     version: '4.9.953',
     title: 'Platform i18n — P2.2.26 Operator Tire Measure Flow localization',

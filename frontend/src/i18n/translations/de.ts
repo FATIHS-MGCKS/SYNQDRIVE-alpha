@@ -18,6 +18,7 @@ import { invoicesDocumentsDe } from './invoices.documents.de';
 import { operatorDamageCaptureDe } from './operator.damageCapture.de';
 import { operatorPickupCheckDe } from './operator.pickupCheck.de';
 import { operatorTireMeasureDe } from './operator.tireMeasure.de';
+import { operatorVehicleQuickViewTasksDe } from './operator.vehicleQuickView.tasks.de';
 import { vendorsDirectoryDe } from './vendors.directory.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
@@ -992,7 +993,7 @@ export const de: Record<TranslationKey, string> = {
   'status.pending': 'Ausstehend',
   'status.completed': 'Abgeschlossen',
   'status.inProgress': 'In Bearbeitung',
-  'status.overdue': 'Ueberfaellig',
+  'status.overdue': 'Überfällig',
   'status.cancelled': 'Storniert',
   'status.available': 'Verfuegbar',
   'status.rented': 'Aktiv vermietet',
@@ -5589,5 +5590,6 @@ export const de: Record<TranslationKey, string> = {
   ...operatorDamageCaptureDe,
   ...operatorPickupCheckDe,
   ...operatorTireMeasureDe,
+  ...operatorVehicleQuickViewTasksDe,
   ...vendorsDirectoryDe,
 } satisfies CompleteTranslationDictionary;
