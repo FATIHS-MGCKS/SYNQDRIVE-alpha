@@ -174,7 +174,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(shellSrc).not.toMatch(/lg:row-span-2/);
     expect(shellSrc).toMatch(/notificationsPanelScroll/);
     expect(shellSrc).not.toMatch(/notificationsDayPlanGrid:[\s\S]*lg:grid-cols-2/);
-    expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*grid-cols-2/);
+    expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*sm:grid-cols-4/);
     expect(shellSrc).toMatch(/lg:items-start/);
     expect(dashboardViewSrc).toMatch(/useDashboardLeftColumnHeight/);
     expect(dashboardViewSrc).toMatch(/leftColumnRef/);
