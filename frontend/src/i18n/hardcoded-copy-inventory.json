@@ -111,10 +111,10 @@
     }
   },
   "summary": {
-    "total": 1574,
+    "total": 1573,
     "bySurface": {
       "MASTER": 1049,
-      "OPERATOR": 127,
+      "OPERATOR": 126,
       "RENTAL": 372,
       "SHARED": 1,
       "SHELL": 25
@@ -122,7 +122,7 @@
     "byCategory": {
       "ARIA": 56,
       "TITLE": 244,
-      "TEXT": 1110,
+      "TEXT": 1109,
       "LABEL": 85,
       "PLACEHOLDER": 71,
       "FORMAT_LOCALE": 8
@@ -14955,7 +14955,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 385,
+      "line": 336,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -14969,7 +14969,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 346,
+      "line": 297,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -14983,7 +14983,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 243,
+      "line": 194,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -15025,7 +15025,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 412,
+      "line": 363,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -15165,7 +15165,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 188,
+      "line": 139,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -15204,20 +15204,6 @@
       "files": [
         "operator/views/OperatorMoreView.tsx",
         "operator/views/OperatorTodayView.tsx"
-      ]
-    },
-    {
-      "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 164,
-      "surface": "OPERATOR",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Buchung für dieses Fahrzeug",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "occurrences": 1,
-      "files": [
-        "operator/components/OperatorVehicleQuickView.tsx"
       ]
     },
     {
@@ -15364,7 +15350,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 386,
+      "line": 337,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -15602,7 +15588,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 371,
+      "line": 322,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -15728,7 +15714,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 247,
+      "line": 198,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15798,7 +15784,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 315,
+      "line": 266,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -15952,7 +15938,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 307,
+      "line": 258,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",
@@ -16064,7 +16050,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 413,
+      "line": 364,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -16212,10 +16198,9 @@
       "sample": "Pickup starten",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "operator/components/OperatorBookingDetailSheet.tsx",
-        "operator/components/OperatorVehicleQuickView.tsx"
+        "operator/components/OperatorBookingDetailSheet.tsx"
       ]
     },
     {
@@ -16276,7 +16261,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 400,
+      "line": 351,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -16332,7 +16317,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 399,
+      "line": 350,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -16360,7 +16345,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 208,
+      "line": 159,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -16381,10 +16366,9 @@
       "sample": "Return starten",
       "severity": "debt",
       "migrationPhase": "P2.3",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "operator/components/OperatorBookingDetailSheet.tsx",
-        "operator/components/OperatorVehicleQuickView.tsx"
+        "operator/components/OperatorBookingDetailSheet.tsx"
       ]
     },
     {
@@ -16403,7 +16387,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 370,
+      "line": 321,
       "surface": "OPERATOR",
       "module": null,
       "category": "TITLE",
@@ -16462,7 +16446,7 @@
     },
     {
       "file": "operator/components/OperatorVehicleQuickView.tsx",
-      "line": 212,
+      "line": 163,
       "surface": "OPERATOR",
       "module": null,
       "category": "TEXT",

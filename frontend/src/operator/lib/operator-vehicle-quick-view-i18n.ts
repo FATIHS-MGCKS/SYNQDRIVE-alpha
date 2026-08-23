@@ -1,5 +1,5 @@
 /**
- * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header).
+ * Operator Vehicle Quick View presentation adapter (P2.2.27 QV-G tasks + P2.2.28 header + P2.2.29 quick actions).
  * Machine status/task values stay unchanged; presentation maps to TranslationKey only.
  */
 import type { ApiTaskPriority, ApiTaskStatus, RentalHealthState } from '../../lib/api';
@@ -140,4 +140,16 @@ export function operatorVehicleQuickViewTaskPriorityLabel(
   priority: ApiTaskPriority,
 ): string {
   return serviceTaskPriorityLabel(locale, priority);
+}
+
+export function operatorVehicleQuickViewQuickActionPickupLabel(locale: string): string {
+  return ovqt(locale, 'vehicle.bookings.startPickup');
+}
+
+export function operatorVehicleQuickViewQuickActionReturnLabel(locale: string): string {
+  return ovqt(locale, 'vehicle.bookings.startReturn');
+}
+
+export function operatorVehicleQuickViewQuickActionCreateBookingLabel(locale: string): string {
+  return ovqt(locale, 'operator.vehicleQuickView.quickActions.createBooking.title');
 }

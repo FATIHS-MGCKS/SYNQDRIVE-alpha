@@ -371,6 +371,11 @@ const P228_ENFORCE_CLEAN_EXACT = [
   'operator/lib/operator-vehicle-quick-view-i18n.ts',
 ];
 
+const P229_ENFORCE_CLEAN_EXACT = [
+  'operator/components/OperatorVehicleQuickViewQuickActions.tsx',
+  'operator/lib/operator-vehicle-quick-view-i18n.ts',
+];
+
 function isP27AEnforceCleanPath(relPath: string): boolean {
   return P27A_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
@@ -481,6 +486,10 @@ function isP227EnforceCleanPath(relPath: string): boolean {
 
 function isP228EnforceCleanPath(relPath: string): boolean {
   return P228_ENFORCE_CLEAN_EXACT.includes(relPath);
+}
+
+function isP229EnforceCleanPath(relPath: string): boolean {
+  return P229_ENFORCE_CLEAN_EXACT.includes(relPath);
 }
 
 function isP26EnforceCleanPath(relPath: string): boolean {
@@ -757,6 +766,13 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(p228Debt).toHaveLength(0);
   });
 
+  it('scopes P2.2.29 enforce-clean findings to Operator Vehicle Quick View Quick Actions only', () => {
+    const p229Debt = inventory.findings.filter((finding) =>
+      isP229EnforceCleanPath(finding.file),
+    );
+    expect(p229Debt).toHaveLength(0);
+  });
+
   it('keeps operator-vehicle-quick-view-i18n.ts on canonical translation keys', () => {
     const source = readFileSync(
       join(__dirname, '../operator/lib/operator-vehicle-quick-view-i18n.ts'),
@@ -793,6 +809,21 @@ describe('hardcoded copy guardrails (P2.1 + P2.2.1 + P2.2.2 + P2.2.3 + P2.2.4 + 
     expect(source).not.toMatch(/'Keine offenen Aufgaben'/);
     expect(source).not.toMatch(/'Überfällig'/);
     expect(source).not.toMatch(/taskStatusLabelDe/);
+  });
+
+  it('keeps OperatorVehicleQuickViewQuickActions.tsx free of hardcoded quick-action presentation literals', () => {
+    const source = readFileSync(
+      join(__dirname, '../operator/components/OperatorVehicleQuickViewQuickActions.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('operatorVehicleQuickViewQuickActionPickupLabel');
+    expect(source).toContain('operatorVehicleQuickViewQuickActionReturnLabel');
+    expect(source).toContain('operatorVehicleQuickViewQuickActionCreateBookingLabel');
+    expect(source).not.toMatch(/'Pickup starten'/);
+    expect(source).not.toMatch(/'Return starten'/);
+    expect(source).not.toMatch(/'Buchung für dieses Fahrzeug'/);
+    expect(source).not.toMatch(/locale:\s*'de'/);
+    expect(source).not.toMatch(/de-DE/);
   });
 
   it('keeps operator-tire-measure-i18n.ts on canonical translation keys', () => {
