@@ -22,6 +22,7 @@ import { CommunicationProjectionFeatureService } from './communication-projectio
 import { CommunicationProjectionService } from './communication-projection.service';
 import { CommunicationTenantContextValidation } from './communication-tenant-context.validation';
 import { CommunicationContextApplierService } from './context/communication-context-applier.service';
+import { CommunicationContextLinkService } from './context/communication-context-link.service';
 import { CommunicationContextBackfillService, CommunicationContextEnrichmentService } from './context/communication-context-enrichment.service';
 import { CommunicationContextResolverService } from './context/communication-context-resolver.service';
 import { CommunicationContextDuplicateAuditService } from './context/communication-context-duplicate-audit.service';
@@ -78,6 +79,7 @@ import { CommunicationQuickActionResolverService } from './ops/communication-qui
     CommunicationNativeContextLoader,
     CommunicationContextResolverService,
     CommunicationContextApplierService,
+    CommunicationContextLinkService,
     CommunicationContextEnrichmentService,
     CommunicationContextBackfillService,
     CommunicationContextDuplicateAuditService,
