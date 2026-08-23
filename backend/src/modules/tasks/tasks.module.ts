@@ -51,6 +51,7 @@ import { TaskPermissionService } from './task-permission.service';
     TaskDataRepairService,
     TaskAutomationRuleResolverService,
     TaskAutomationRuleOverrideService,
+    TaskPermissionService,
   ],
 })
 export class TasksModule {}
